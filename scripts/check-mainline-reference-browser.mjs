@@ -91,7 +91,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
    },{center:c.center,zoom,projection,expected});
-   try{await page.waitForFunction(expected=>testMap.isSourceLoaded('railReference')&&
+   try{await page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
     testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
     expected,{timeout:30000})}
    catch(error){
@@ -130,6 +130,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.screenshot({path:`browser-review/mainline-${profile.name}.png`});
  }catch(error){
   console.error('MAINLINE_PROFILE_FAILURE',profile.name,error.stack||error.message);
+  await page.screenshot({path:'browser-review/mainline-profile-failure.png'}).catch(()=>{});
   await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
   throw error;
  }finally{closing=true;await page.evaluate(()=>testMap?.remove()).catch(()=>{});await browser.close()}

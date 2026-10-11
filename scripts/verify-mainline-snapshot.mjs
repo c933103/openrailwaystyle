@@ -34,7 +34,7 @@ if(process.argv.includes('--require-browser-acceptance')&&!manifest.rendererAcce
  throw Error('Actual OSM renderer acceptance is required for publication');
 if(manifest.rendererAcceptance){
  const a=manifest.rendererAcceptance;
- if(a.complete!==true||a.path!==`generations/${manifest.generation}/renderer-acceptance.json`||a.samples!==840||a.appSamples!==18||
+ if(a.complete!==true||!/^[a-f0-9]{64}$/.test(a.sha256)||a.path!==`generations/${manifest.generation}/renderer-acceptance-${a.sha256}.json`||a.samples!==840||a.appSamples!==18||
   sha256(await readFile(join(root,a.path)))!==a.sha256)throw Error('Changed or incomplete retained renderer acceptance');
 }
 console.log('PASS: complete versioned world reference',JSON.stringify({generation:manifest.generation,ways:manifest.wayCount,

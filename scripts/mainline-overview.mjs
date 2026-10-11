@@ -65,7 +65,7 @@ export function normalizeMainlineWay(element){
      highspeed_tag:text(tags.highspeed),osm_timestamp:text(element.timestamp),
      start_node:Array.isArray(element.nodes)?String(element.nodes[0]):'',
      end_node:Array.isArray(element.nodes)?String(element.nodes.at(-1)):'',
-     state:'present',rank,name:text(tags.name),ref:text(tags.ref)},
+     rank,name:text(tags.name),ref:text(tags.ref)},
    geometry:lines.length===1?{type:'LineString',coordinates:lines[0]}:
      {type:'MultiLineString',coordinates:lines},
  };

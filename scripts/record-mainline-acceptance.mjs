@@ -19,9 +19,9 @@ for(const s of report.samples||[]){
 if(keys.size!==MAINLINE_CONTROLS.length*3*2*7||report.appSamples?.length!==18)
  throw Error('Missing geographic, engine, projection, zoom or Atlas integration acceptance');
 for(const s of report.appSamples)if(!s.ids?.length||Math.abs(s.cameraZoom-s.zoom)>.001)throw Error('Atlas handoff acceptance failed');
-const path=join('generations',manifest.generation,'renderer-acceptance.json');
+const digest=sha256(bytes),path=join('generations',manifest.generation,`renderer-acceptance-${digest}.json`);
 await writeFile(join(root,path),bytes);
-manifest.rendererAcceptance={complete:true,path,sha256:sha256(bytes),samples:keys.size,appSamples:report.appSamples.length,
+manifest.rendererAcceptance={complete:true,path,sha256:digest,samples:keys.size,appSamples:report.appSamples.length,
  assetRequests:report.assetRequests,assetBytes:report.requestBytes,timing:report.timing};
 await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('PASS: retained actual OSM renderer acceptance',JSON.stringify(manifest.rendererAcceptance));

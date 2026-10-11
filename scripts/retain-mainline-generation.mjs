@@ -1,19 +1,24 @@
 import {cp,readdir,readFile,stat,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {sha256} from './mainline-coverage.mjs';
 // Keep one previous immutable renderer generation. Source archives stay in
 // its earlier Git commit; only render assets need continued site availability.
 export async function retainMainlineGeneration(previous,current){
  const old=JSON.parse(await readFile(join(previous,'manifest.json'))),now=JSON.parse(await readFile(join(current,'manifest.json')));
  if(!/^[a-f0-9]{24}$/.test(old.generation)||old.complete!==true)throw Error('Invalid previous reference generation');
- if(old.generation===now.generation)return;
  const source=join(previous,'generations',old.generation),target=join(current,'generations',old.generation);
  async function copy(dir,out){
   await mkdir(out,{recursive:true});
   for(const f of await readdir(dir,{withFileTypes:true})){
    if(f.isSymbolicLink())throw Error('Unexpected generation symlink');
    if(f.isDirectory())await copy(join(dir,f.name),join(out,f.name));
-   else if(f.isFile()&&!/\.ndjson\.gz\.part-\d+$/.test(f.name))await cp(join(dir,f.name),join(out,f.name),{errorOnExist:true,force:false});
+   else if(f.isFile()&&!/\.ndjson\.gz\.part-\d+$/.test(f.name)){
+    const source=join(dir,f.name),target=join(out,f.name);
+    let existing;try{existing=await readFile(target)}catch(error){if(error.code!=='ENOENT')throw error}
+    if(existing){if(sha256(existing)!==sha256(await readFile(source)))throw Error('Immutable generation asset changed')}
+    else await cp(source,target,{errorOnExist:true,force:false});
+   }
   }
  }
  await copy(source,target);

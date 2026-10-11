@@ -20,7 +20,8 @@ Only `railway=rail|narrow_gauge` is eligible. Explicit `usage=main`,
 `usage=branch` and absent usage remain distinct. `service=*`, inactive lifecycle
 and other explicit usages are excluded from this major-corridor reference.
 High-speed priority comes only from `highspeed=yes`. An absent high-speed tag
-stays absent. No speed, power, control, gauge, owner or timetable is inferred.
+stays absent. No speed, power, control, gauge, owner, timetable or operational
+state is inferred.
 
 Low-zoom simplification of isolated short OSM ways can erase entire corridors.
 The compiler therefore joins degree-two paths using **shared OSM node IDs**
@@ -82,7 +83,7 @@ fractions by zoom (distinct from duplicated tile feature instances), largest
 tile, total tile bytes, compiler duration and peak RSS. Browser review records
 latency distributions for each geography, projection, zoom and device profile.
 The exact 840-sample renderer report and 18 actual-Atlas theme/handoff checks
-are retained at the generation's `renderer-acceptance.json`, with its digest
+are retained in a content-addressed renderer acceptance JSON, with its path and digest
 in the manifest. Site assembly requires this completed proof. No public
 OpenRailwayMap tile is downloaded by this pipeline or its tests.
 The cost inputs are measured transfer/storage bytes and runner time; monetary

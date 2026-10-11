@@ -1,4 +1,5 @@
 import {createReadStream} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {mkdir,readFile,writeFile,open} from 'node:fs/promises';
 import {createGunzip,createGzip,gunzipSync} from 'node:zlib';
 import {Readable} from 'node:stream';
@@ -43,9 +44,11 @@ validateMainlineSources(sources);
 const features=[...byId.values()].sort((a,b)=>a.id-b.id),audit=auditMainlineCoverage(features);
 if(!features.length)throw Error('Empty worldwide railway reference');
 const chained=mainlineChains(features),result=mainlineTiles(chained.features,{allowChains:true});
+const rowDigest=rows=>{const hash=createHash('sha256');for(const row of rows)hash.update(JSON.stringify(row)).update('\n');return hash.digest('hex')};
+const normalizedWaysSha256=rowDigest(features),membershipSha256=rowDigest(chained.membership);
 const tileDetails=[...result.tiles].map(([key,bytes])=>({key,bytes:bytes.length,sha256:sha256(bytes)}));
 if(tileDetails.reduce((n,t)=>n+t.bytes,0)>256*1024**2)throw Error('Reference tile-set exceeds publication bandwidth budget');
-const generation=sha256(JSON.stringify([sources.map(s=>[s.region,s.pbfSha256]),tileDetails])).slice(0,24);
+const generation=sha256(JSON.stringify([sources.map(s=>[s.region,s.pbfSha256]),normalizedWaysSha256,membershipSha256,tileDetails])).slice(0,24);
 // Independent source-vs-tile audit: retained source ways are not proof that
 // the simplifier emitted their corresponding chain in any low zoom tile.
 const byZoom=new Map();
@@ -103,7 +106,7 @@ const manifest={...result.manifest,complete:true,generation,inputSha256:await re
  controls:audit.map(({feature,...c})=>({...c,osmId:feature.properties.id,osmVersion:feature.properties.osm_version})),
  downloadedBytes:sources.reduce((n,s)=>n+s.pbfBytes,0),tileBytes:tileDetails.reduce((n,t)=>n+t.bytes,0),
  largestTileBytes:Math.max(...tileDetails.map(t=>t.bytes)),buildSeconds:(performance.now()-start)/1000,
- peakRssBytes:process.resourceUsage().maxRSS*1024,archives,
+ peakRssBytes:process.resourceUsage().maxRSS*1024,archives,normalizedWaysSha256,membershipSha256,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
  fullAcquisitionRequests:sources.length*4,providerTileRequests:0,
  tileFeatureInstancesByZoom:result.manifest.drawnFeaturesByZoom,sourceCoverageByZoom};

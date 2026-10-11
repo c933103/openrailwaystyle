@@ -29,7 +29,7 @@ test('operating main, high-speed and unspecified-usage railways survive; branche
  assert.equal(records[1].properties.rank,0);
  assert.equal(records[0].properties.rank,1);
  assert.equal(records[2].properties.rank,2);
- assert.equal(records[0].properties.state,'present');
+ assert.ok(!Object.hasOwn(records[0].properties,'state'),'neutral geometry must not invent operational state');
  assert.ok(!Object.hasOwn(records[0].properties,'maxspeed'),'geometry must not invent attribute data');
  assert.ok(!Object.hasOwn(records[0].properties,'highspeed'),'unknown high-speed status must not become false');
  assert.equal(records[1].properties.highspeed_tag,'yes');
