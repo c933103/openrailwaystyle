@@ -22,7 +22,7 @@
   "sourceDate": "2026-10-09",
   "oldestSource": "2026-10-09T20:21:04.000Z",
   "newestSource": "2026-10-09T20:21:04.000Z",
-  "generated": "2026-10-11T14:41:11.632Z",
+  "generated": "2026-10-11T14:56:25.404Z",
   "sources": [
     {
       "schema": 1,
@@ -2927,8 +2927,8 @@
   "downloadedBytes": 85497264561,
   "tileBytes": 20503710,
   "largestTileBytes": 521959,
-  "buildSeconds": 177.09218540500004,
-  "peakRssBytes": 5282377728,
+  "buildSeconds": 184.498282267,
+  "peakRssBytes": 5251534848,
   "archives": {
     "membership": {
       "parts": [
@@ -3044,15 +3044,15 @@
   },
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/5563c894755acda3187a948c/renderer-acceptance-83a3e4d4182380edee77ee54b9bb83cb248dcf78535743eb6383ed71f230585e.json",
-    "sha256": "83a3e4d4182380edee77ee54b9bb83cb248dcf78535743eb6383ed71f230585e",
+    "path": "generations/5563c894755acda3187a948c/renderer-acceptance-d48986af23698fc166d3b95f8d2ece99bfd999478862da42614b7d070f52c7f7.json",
+    "sha256": "d48986af23698fc166d3b95f8d2ece99bfd999478862da42614b7d070f52c7f7",
     "samples": 840,
     "appSamples": 18,
     "assetRequests": 1077,
-    "assetBytes": 62160393,
+    "assetBytes": 62160378,
     "timing": {
-      "medianMs": 339,
-      "p95Ms": 897
+      "medianMs": 348,
+      "p95Ms": 1284
     }
   }
 }
