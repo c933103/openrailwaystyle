@@ -55,7 +55,7 @@ jobs:
               checkStationAcquisition(state,rows);
               if(state.pending.length===0){
                 console.log('Station source is complete; no further collection requested.');
-                await appendFile(process.env.GITHUB_OUTPUT,'complete=true\\n');
+                await appendFile(process.env.GITHUB_OUTPUT,'complete=true\n');
               }
             "
           fi
