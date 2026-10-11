@@ -1,23 +1,23 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261010-matched-frequency-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261010-matched-frequency-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261010-matched-frequency-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261010-matched-frequency-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261010-matched-frequency-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261010-matched-frequency-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261010-rail-markers-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261010-rail-markers-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261010-rail-markers-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261010-rail-markers-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261010-rail-markers-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261010-rail-markers-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261010-matched-frequency-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261010-matched-frequency-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261010-matched-frequency-1';
-import {departureItem} from './departures-ui.mjs?v=20261010-matched-frequency-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261010-matched-frequency-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261010-matched-frequency-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261010-matched-frequency-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261010-matched-frequency-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261010-matched-frequency-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-matched-frequency-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261010-matched-frequency-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-matched-frequency-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261010-matched-frequency-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261010-rail-markers-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261010-rail-markers-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261010-rail-markers-1';
+import {departureItem} from './departures-ui.mjs?v=20261010-rail-markers-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261010-rail-markers-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261010-rail-markers-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261010-rail-markers-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261010-rail-markers-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261010-rail-markers-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-rail-markers-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261010-rail-markers-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-rail-markers-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261010-rail-markers-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -54,7 +54,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261010-matched-frequency-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261010-rail-markers-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -554,15 +554,27 @@ function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
  const source=map.getSource('stationMajor'),language=settings.language;
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
- if(!source||!stationTileFor||!stationTileURL)return;
+ if(!source)return;
  const generation=++majorStationGeneration,zoom=map.getZoom(),bounds=map.getBounds();
  majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
  majorStationsPromise.then(async data=>{
-  // Only the hubs this view can show are named; others wait for their view.
+  // Keep every curated location, but fetch names only at their label tier.
+  // A dot must not disappear just because a hub's name is deferred.
   const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
   // Into the world copy the view shows, however far it was panned.
   const centre=(west+east)/2;
-  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visible=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visibleIDs=new Set(visible.map(f=>f.id));
+  const wanted=visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom));
+  if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  // Publish locations immediately, before provider requests or rare-Han fonts
+  // settle. Only already-renderable names from this language may be reused.
+  const existing=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
+  const points=data.features.map(f=>existing.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null)).filter(Boolean);
+  majorStationSearchData={type:'FeatureCollection',language,features:points};
+  source.setData({type:'FeatureCollection',features:points});
+  // Provider metadata and the name adapter are optional for local geometry.
+  if(!stationTileFor||!stationTileURL)return;
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -572,7 +584,9 @@ function updateMajorStations(){
   const features=data.features.map(f=>{
    const p=names.get(f.id);
    if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
-   return previous.get(f.id)||null;
+   // A location is always present when in view, independently of whether
+   // its translated name has been fetched or has label priority yet.
+   return previous.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null);
   }).filter(Boolean);
   // These names reach the map as GeoJSON, not through a tile protocol, so
   // their rare Han slices load here (the layers draw atlas_name, else name).
@@ -582,8 +596,8 @@ function updateMajorStations(){
   source.setData({type:'FeatureCollection',features});
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
-// An open curated station's panel follows a language change on its own,
-// whether or not the overview currently shows that hub.
+// Selecting an unnamed curated dot resolves only that hub. The same guarded
+// path follows language changes, even outside the overview's label tier.
 function renameOpenMajorStation(){
  const open=currentFeature;
  const curatedData=majorStationsPromise||(majorStationData&&Promise.resolve(majorStationData));
@@ -591,7 +605,9 @@ function renameOpenMajorStation(){
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!stationTileURL)return;
  const language=settings.language;
+ if(open.properties?.atlas_language===language&&open.properties?.atlas_name)return;
  curatedData.then(data=>{
+  if(currentFeature!==open||language!==settings.language||$('details').hidden)return;
   const curated=data.features.find(f=>f.properties.id===open.properties?.id);
   return curated&&majorStationName(curated,language).then(p=>{
    if(!p||currentFeature!==open||language!==settings.language||$('details').hidden)return;
@@ -847,7 +863,9 @@ function showDepartures(panel, feature) {
   const section = document.createElement('section'); section.className = 'departures';
   section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
   panel.append(section);
-  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  // Matching uses names as well as position. A deferred hub's unnamed lookup
+  // must not mask its later named result for the rest of the cache minute.
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}:${JSON.stringify([...new Set(names)].sort())}`;
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
@@ -1675,7 +1693,7 @@ async function initialize() {
   map.on('moveend',updateMajorStations);
   // Curated names need the station source's tile address, known once its
   // TileJSON arrives (possibly after the first frame, with no move to follow).
-  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL)updateMajorStations();});
+  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL){updateMajorStations();renameOpenMajorStation();}});
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
@@ -1711,6 +1729,7 @@ async function initialize() {
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
     features[0].clickLngLat = event.lngLat;
     showDetails(features[0]);
+    renameOpenMajorStation();
   });
   // A full feature query on every mouse move is slow in dense areas and made
   // mouse panning stall. Skip it while dragging or moving, query only the

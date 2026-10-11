@@ -1,0 +1,1771 @@
+{
+  "schema": 1,
+  "scope": "Explicitly synthetic contamination control. Two-point GTFS shapes and coordinate-only stop pairs; not authentic Normandy SNCF bytes.",
+  "feed": {
+    "schema": 1,
+    "source": {
+      "id": "synthetic-paris-chords",
+      "sha256": "a849d823d3ecb902ea29eb456d231558d777390e9e47edf2aa0ffcfcdfe7a95e",
+      "name": "SYNTHETIC Paris forbidden chords",
+      "region": "FR",
+      "service_date": "2099-01-01",
+      "checked": "2099-01-01",
+      "retrieved": "2099-01-01",
+      "review_after_days": 36500,
+      "valid_until": 7258118400,
+      "feed_info": {
+        "feed_version": "synthetic-audit-1",
+        "feed_start_date": "20990101",
+        "feed_end_date": "21991231"
+      },
+      "geometry": "SYNTHETIC two-point timetable shape; forbidden as a separate Service route",
+      "geometry_audit": {},
+      "note": "Synthetic adversarial data only. Does not reproduce authentic Normandy SNCF source bytes or resolve issue #107.",
+      "url": "https://example.invalid/synthetic-paris",
+      "terms_url": "https://example.invalid/synthetic-paris",
+      "license": "Synthetic test data",
+      "attribution": "Synthetic fixture"
+    },
+    "agencies": [
+      {
+        "agency_id": "synthetic",
+        "agency_name": "Synthetic audit",
+        "agency_timezone": "Europe/Paris"
+      }
+    ],
+    "routes": [
+      {
+        "route_id": "saint-lazare-forbidden-chord",
+        "route_type": "2",
+        "route_short_name": "FORBIDDEN",
+        "route_long_name": "SYNTHETIC timetable chord",
+        "route_color": "FF00FF"
+      },
+      {
+        "route_id": "saint-lazare-forbidden-chord-stop-only",
+        "route_type": "2",
+        "route_short_name": "STOP-ONLY"
+      },
+      {
+        "route_id": "saint-lazare-regional-chord",
+        "route_type": "2",
+        "route_short_name": "FORBIDDEN",
+        "route_long_name": "SYNTHETIC timetable chord",
+        "route_color": "FF00FF"
+      },
+      {
+        "route_id": "saint-lazare-regional-chord-stop-only",
+        "route_type": "2",
+        "route_short_name": "STOP-ONLY"
+      },
+      {
+        "route_id": "montparnasse-forbidden-chord",
+        "route_type": "2",
+        "route_short_name": "FORBIDDEN",
+        "route_long_name": "SYNTHETIC timetable chord",
+        "route_color": "FF00FF"
+      },
+      {
+        "route_id": "montparnasse-forbidden-chord-stop-only",
+        "route_type": "2",
+        "route_short_name": "STOP-ONLY"
+      },
+      {
+        "route_id": "montparnasse-regional-chord",
+        "route_type": "2",
+        "route_short_name": "FORBIDDEN",
+        "route_long_name": "SYNTHETIC timetable chord",
+        "route_color": "FF00FF"
+      },
+      {
+        "route_id": "montparnasse-regional-chord-stop-only",
+        "route_type": "2",
+        "route_short_name": "STOP-ONLY"
+      }
+    ],
+    "profiles": {
+      "am": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "pm": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "offpeak": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "overnight": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h00": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h01": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h02": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h03": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h04": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h05": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h06": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h07": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h08": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h09": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h10": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h11": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h12": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h13": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h14": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h15": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h16": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h17": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h18": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h19": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h20": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h21": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h22": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      },
+      "h23": {
+        "start": "08:00:00",
+        "end": "09:00:00"
+      }
+    },
+    "stops": [
+      {
+        "id": "saint-lazare-forbidden-chord-a",
+        "name": "SYNTHETIC stop A",
+        "lon": 2.31888,
+        "lat": 48.87797
+      },
+      {
+        "id": "saint-lazare-forbidden-chord-b",
+        "name": "SYNTHETIC stop B",
+        "lon": 2.32088,
+        "lat": 48.87677
+      },
+      {
+        "id": "saint-lazare-regional-chord-a",
+        "name": "SYNTHETIC stop A",
+        "lon": 2.249,
+        "lat": 48.8666
+      },
+      {
+        "id": "saint-lazare-regional-chord-b",
+        "name": "SYNTHETIC stop B",
+        "lon": 2.251,
+        "lat": 48.8654
+      },
+      {
+        "id": "montparnasse-forbidden-chord-a",
+        "name": "SYNTHETIC stop A",
+        "lon": 2.31775,
+        "lat": 48.83998
+      },
+      {
+        "id": "montparnasse-forbidden-chord-b",
+        "name": "SYNTHETIC stop B",
+        "lon": 2.31975,
+        "lat": 48.83878
+      },
+      {
+        "id": "montparnasse-regional-chord-a",
+        "name": "SYNTHETIC stop A",
+        "lon": 2.244,
+        "lat": 48.8606
+      },
+      {
+        "id": "montparnasse-regional-chord-b",
+        "name": "SYNTHETIC stop B",
+        "lon": 2.246,
+        "lat": 48.8594
+      }
+    ],
+    "segments": [
+      {
+        "route_id": "saint-lazare-forbidden-chord",
+        "agency_id": "synthetic",
+        "geometry": [
+          [
+            2.31888,
+            48.87737
+          ],
+          [
+            2.32088,
+            48.87737
+          ]
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "saint-lazare-forbidden-chord-stop-only",
+        "agency_id": "synthetic",
+        "stops": [
+          "saint-lazare-forbidden-chord-a",
+          "saint-lazare-forbidden-chord-b"
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "saint-lazare-regional-chord",
+        "agency_id": "synthetic",
+        "geometry": [
+          [
+            2.235,
+            48.866
+          ],
+          [
+            2.265,
+            48.866
+          ]
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "saint-lazare-regional-chord-stop-only",
+        "agency_id": "synthetic",
+        "stops": [
+          "saint-lazare-regional-chord-a",
+          "saint-lazare-regional-chord-b"
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "montparnasse-forbidden-chord",
+        "agency_id": "synthetic",
+        "geometry": [
+          [
+            2.31775,
+            48.83938
+          ],
+          [
+            2.31975,
+            48.83938
+          ]
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "montparnasse-forbidden-chord-stop-only",
+        "agency_id": "synthetic",
+        "stops": [
+          "montparnasse-forbidden-chord-a",
+          "montparnasse-forbidden-chord-b"
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "montparnasse-regional-chord",
+        "agency_id": "synthetic",
+        "geometry": [
+          [
+            2.23,
+            48.86
+          ],
+          [
+            2.2600000000000002,
+            48.86
+          ]
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      },
+      {
+        "route_id": "montparnasse-regional-chord-stop-only",
+        "agency_id": "synthetic",
+        "stops": [
+          "montparnasse-regional-chord-a",
+          "montparnasse-regional-chord-b"
+        ],
+        "profiles": {
+          "am": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "pm": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "offpeak": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "overnight": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h00": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h01": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h02": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h03": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h04": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h05": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h06": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h07": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h08": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h09": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h10": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h11": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h12": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h13": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h14": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h15": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h16": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h17": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h18": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h19": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h20": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h21": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h22": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          },
+          "h23": {
+            "display_tph": 8,
+            "forward_tph": 8,
+            "backward_tph": 8,
+            "quality": "scheduled"
+          }
+        }
+      }
+    ]
+  },
+  "stopOnlyCandidates": [
+    {
+      "id": "saint-lazare-forbidden-chord-stop-only",
+      "stops": [
+        {
+          "id": "saint-lazare-forbidden-chord-a",
+          "name": "SYNTHETIC stop A",
+          "lon": 2.31888,
+          "lat": 48.87797
+        },
+        {
+          "id": "saint-lazare-forbidden-chord-b",
+          "name": "SYNTHETIC stop B",
+          "lon": 2.32088,
+          "lat": 48.87677
+        }
+      ]
+    },
+    {
+      "id": "saint-lazare-regional-chord-stop-only",
+      "stops": [
+        {
+          "id": "saint-lazare-regional-chord-a",
+          "name": "SYNTHETIC stop A",
+          "lon": 2.249,
+          "lat": 48.8666
+        },
+        {
+          "id": "saint-lazare-regional-chord-b",
+          "name": "SYNTHETIC stop B",
+          "lon": 2.251,
+          "lat": 48.8654
+        }
+      ]
+    },
+    {
+      "id": "montparnasse-forbidden-chord-stop-only",
+      "stops": [
+        {
+          "id": "montparnasse-forbidden-chord-a",
+          "name": "SYNTHETIC stop A",
+          "lon": 2.31775,
+          "lat": 48.83998
+        },
+        {
+          "id": "montparnasse-forbidden-chord-b",
+          "name": "SYNTHETIC stop B",
+          "lon": 2.31975,
+          "lat": 48.83878
+        }
+      ]
+    },
+    {
+      "id": "montparnasse-regional-chord-stop-only",
+      "stops": [
+        {
+          "id": "montparnasse-regional-chord-a",
+          "name": "SYNTHETIC stop A",
+          "lon": 2.244,
+          "lat": 48.8606
+        },
+        {
+          "id": "montparnasse-regional-chord-b",
+          "name": "SYNTHETIC stop B",
+          "lon": 2.246,
+          "lat": 48.8594
+        }
+      ]
+    }
+  ]
+}

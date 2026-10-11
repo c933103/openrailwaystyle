@@ -51,3 +51,16 @@ export function curatedStationFilter(entries){
  return ['any',['>=',['zoom'],7],['all',['<',['zoom'],firstZoom(identity,aliases)],['<',['zoom'],firstZoom(['coalesce',['get','wikidata'],''],wikidata)]]];
 }
 export function duplicatesMajorStation(p,entries){const raw=p.osm_type&&p.osm_id?`${p.osm_type}/${p.osm_id}`:String(p.id??p.osm_id??''),id=/^(node|way|relation)[/-](\d+)/.exec(raw);return stationAliases(entries).includes(id?`${id[1]}/${id[2]}`:raw)||entries.some(e=>e.wikidata===p.wikidata);}
+
+// Only points actually emitted in the curated GeoJSON own an overview dot.
+// Label tiers do not gate these circles; provider names remain independent.
+// Use vetted OSM identities only. Shared names/Wikidata or proximity cannot
+// hide a different OSM station whose identity has not been curated as an alias.
+export function curatedStationMarkerFilter(data){
+ const features=data?.features||[];
+ const identities=[...new Set(features.flatMap(f=>String(f.properties?.osm_ids||f.properties?.id||'').split(';')).filter(id=>/^(node|way|relation)-[1-9]\d*$/.test(id)).flatMap(id=>[id,id.replace('-','/')]))];
+ const identity=['let','raw',['to-string',['coalesce',['get','id'],['get','osm_id'],'']],['let','end',['index-of','-',['var','raw'],['+',['index-of','-',['var','raw']],1]],['case',['>=',['var','end'],0],['slice',['var','raw'],0,['var','end']],['var','raw']]]];
+ const clauses=[];
+ if(identities.length)clauses.push(['!', ['in',identity,['literal',identities]]]);
+ return clauses.length?['all',...clauses]:['literal',true];
+}

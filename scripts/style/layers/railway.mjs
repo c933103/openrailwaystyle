@@ -5,7 +5,7 @@ import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 // Each group has a fixed position in the atlas composition. Returning separate
 // groups keeps roads and structural cues ordered without searching layer IDs.
 export function createRailwayLayers() {
-  const groups = {overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
+  const groups = {backbone: [], overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
   const speedPaint = speedColours('metric');
   const infrastructurePaint = ['case',
     ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
@@ -50,6 +50,17 @@ export function createRailwayLayers() {
   const dualOffset = sign => ['interpolate', ['linear'], ['zoom'],
     7, ['case', isDual, 0.4 * sign, 0], 11, ['case', isDual, ['case', hasService, 0.275 * sign, 0.7 * sign], 0],
     16, ['case', isDual, ['case', hasService, 0.5 * sign, 1.2 * sign], 0], 20, ['case', isDual, 1.75 * sign, 0]];
+  // Independent, generalized mainline continuity for world/regional zooms.
+  // The two Natural Earth rail layers are distinct geographical coverages.
+  // Draw BEHIND thematic OpenRailwayMap lines: data without infrastructure
+  // attributes must never inherit a theme colour or masquerade as verified.
+  for (const sourceLayer of ['railroads','railroads_north_america']) groups.backbone.push({
+    id:`rail-backbone-${sourceLayer}`, type:'line', source:'railBackbone',
+    'source-layer':sourceLayer, minzoom:4, maxzoom:7,
+    layout:{'line-cap':'round','line-join':'round'},
+    paint:{'line-color':'#728783','line-width':['interpolate',['linear'],['zoom'],4,1,6,1.2,7,1.5],
+      'line-opacity':0.8,'line-dasharray':[2,2]},
+  });
   // Branch lines at zooms 4–7 are split the same way (the overview width).
   const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
   const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];

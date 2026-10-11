@@ -1,7 +1,7 @@
 // Maintenance build only: visitors never query Overpass. Keeps the worldwide
 // table of operating branch lines (branch-data branch) and writes its tiles.
 //
-// One region stage per run, in the order of STAGES (Japan first), each run
+// One region stage per run, least recently attempted first (Japan initially), each run
 // capped at BUDGET_BYTES of downloads and every run six hours apart
 // (branch-lines.yml), so the volume stays within the public Overpass
 // server's guidance (under about 1 GB and 10,000 requests a day). A stage
@@ -11,6 +11,9 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
+
+import {selectDownloadStage} from './download-stages.mjs';
+import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -51,14 +54,9 @@ if (BUDGET_BYTES < 10_000_000) {
   console.log(`${lastDay} bytes downloaded in the last 24 hours; waiting for a later run.`);
   process.exit(0);
 }
-// The stage to work on: one in progress, else the first never completed,
-// else the one completed longest ago if due for a refresh.
+// Resume unfinished stages fairly, retaining each stage's accepted data and queue.
 const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
-let stage = STAGES.find(s => info(s.name).pending?.length) || STAGES.find(s => !info(s.name).completed);
-if (!stage) {
-  const oldest = [...STAGES].sort((a, b) => info(a.name).completed.localeCompare(info(b.name).completed))[0];
-  if (Date.now() - Date.parse(info(oldest.name).completed) >= REFRESH_DAYS * 86400_000) stage = oldest;
-}
+const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
 if (!stage) {
   console.log('Every stage is current; nothing to fetch.');
   process.exit(0);
@@ -69,6 +67,7 @@ console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} reg
 
 const BUDGET = Symbol('budget');
 async function overpass(query) {
+  let lastFailure;
   for (let attempt = 0; attempt < 5; attempt++) {
     // A quiet interval between requests, growing after each failure.
     await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
@@ -94,14 +93,15 @@ async function overpass(query) {
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
       return toFeatures(JSON.parse(text));
     } catch (error) {
-      console.warn(error.message);
+      lastFailure = describeOverpassError(error);
+      console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
       // A busy server calls for waiting; a query that ran out of time or
       // memory calls for a smaller area (null); anything else, try again.
       if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
       if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
     }
   }
-  throw new Error('Overpass stayed unavailable');
+  throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
 }
 
 let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
@@ -151,9 +151,17 @@ if (!current.pending.length) {
 // published data as it was; bytes it did download are still recorded (the
 // state is published with the table unchanged, and the site not redeployed).
 if (!fetchedBoxes && !splitBoxes && stopped) {
-  if (!downloaded) throw new Error(`Nothing fetched: ${stopped}`);
   console.warn(`Nothing fetched (${stopped}); recording ${downloaded} bytes downloaded`);
 }
+
+// Persist failed zero-byte attempts too: the next scheduled run can give a
+// different region a turn. A deferred acquisition is never a completed box.
+current.lastAttempt = {at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+  status: !current.pending?.length ? 'acquired' : fetchedBoxes ? 'partial' : 'deferred',
+  reason: stopped, fetchedBoxes, splitBoxes, requests, downloadedBytes: downloaded};
+if (current.lastAttempt.status === 'deferred') console.warn(workflowWarning(`${stage.name} acquisition deferred: ${stopped}`));
+if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY,
+  `### ${stage.name}: ${current.lastAttempt.status}\n${fetchedBoxes} fetched boxes; ${current.pending?.length || 0} pending. ${stopped || ''}\n`);
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
@@ -175,9 +183,9 @@ for (const [key, data] of buildTiles(table)) {
 }
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
 const manifest = {generated: new Date().toISOString(), lines: table.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
-  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length),
+  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null,
     lines: [...table.values()].filter(f => f.stage === s.name).length})),
-  run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,
+  run: {stage: stage.name, ...current.lastAttempt}, source: api,
   query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service] and way[railway=subway][!service], by region', license: 'ODbL-1.0',
   description: 'OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
