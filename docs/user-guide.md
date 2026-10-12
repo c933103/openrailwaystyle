@@ -20,7 +20,8 @@ platforms conflict, the platform attached to the later predicted departure is
 used, with a consistent choice for equal times. This also cannot establish which
 platform update is newest. Ambiguous matches between different boards remain separate.
 
-If a selected stop’s departure board fails while another loads, usable departures
+An invalid departure-board response counts as a loading failure, not an empty
+timetable. If a selected stop’s departure board fails while another loads, usable departures
 remain visible with an incomplete-load warning. The same warning appears when the
 successful boards return no upcoming rail departures; this is not a complete empty
 result. Reopening or redrawing a station within the existing one-minute cache keeps

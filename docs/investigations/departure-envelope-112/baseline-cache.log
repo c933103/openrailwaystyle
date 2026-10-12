@@ -1,0 +1,50 @@
+✖ malformed departure-board handling refreshes exact app.mjs bytes from the immediate predecessor (11.871904ms)
+✖ malformed departure-board handling refreshes exact departures.mjs bytes from the immediate predecessor (3.788834ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 208.077624
+
+✖ failing tests:
+
+test at tests/sw-install.test.mjs:248:51
+✖ malformed departure-board handling refreshes exact app.mjs bytes from the immediate predecessor (11.871904ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  '20261011-departure-match-1'
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/cache-baseline/tests/sw-install.test.mjs:261:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '20261011-departure-match-1',
+    expected: '20261011-departure-match-1',
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/sw-install.test.mjs:248:51
+✖ malformed departure-board handling refreshes exact departures.mjs bytes from the immediate predecessor (3.788834ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  '20261011-departure-match-1'
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/cache-baseline/tests/sw-install.test.mjs:261:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '20261011-departure-match-1',
+    expected: '20261011-departure-match-1',
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
