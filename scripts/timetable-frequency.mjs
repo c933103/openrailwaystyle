@@ -267,7 +267,7 @@ export function summarizeBoundTimetableSections(bound,now=Date.now()){
     for(const row of rows){
       boundSections++;
       const record=row.record;
-      if(!record?.properties||!record.profiles||record.properties.frequency_until*1000<now)continue;
+      if(!record?.properties||!record.profiles||!Number.isFinite(record.properties.frequency_until)||!(record.properties.frequency_until*1000>=now))continue;
       if(!FREQUENCY_PROFILES.some(profile=>Number.isFinite(record.profiles[profile]?.rate)&&record.profiles[profile].rate>=0))continue;
       appliedWays.add(way);appliedRelations.add(row.relation);appliedSections++;
     }
