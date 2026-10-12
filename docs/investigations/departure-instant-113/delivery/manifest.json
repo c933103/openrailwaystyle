@@ -1,0 +1,75 @@
+{
+  "merge": "dea9f68e9d4c585c29ff225c4c052e689dac849b",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 5063,
+      "sha256": "fc2c029dbc7d97559b1a5e5611556b32c0a0cf764a3c2b4a6931d6ecefa5d129"
+    },
+    {
+      "path": "accepted-source-lineage.json",
+      "bytes": 485,
+      "sha256": "c32a79118a354fd0f8b6fd64faae6aeb3594a605aa9900f0fec0c21744d657ba"
+    },
+    {
+      "path": "check-served-departure-instant.mjs",
+      "bytes": 5048,
+      "sha256": "260843a9ea6416b36eb1b98c3be7759ee31581c8092f19358940093f7f957d1d"
+    },
+    {
+      "path": "final-served-verification.json",
+      "bytes": 4609,
+      "sha256": "963c62be3aa1c30a246162ae680882d04a39cf12388f0db1034e35bbfa8af62b"
+    },
+    {
+      "path": "final-workflow-receipt.json",
+      "bytes": 4491,
+      "sha256": "7f29efa9ae1114ecdf46f79b7d816e2e8f60500d9961c239d02b09bb9f847e6a"
+    },
+    {
+      "path": "first-served-verification.json",
+      "bytes": 4609,
+      "sha256": "d3acf0868a23751f591e037469e62d5c48997702e3fdca17226f0f1e9f449c92"
+    },
+    {
+      "path": "initial-checker-diagnostic.log",
+      "bytes": 20232,
+      "sha256": "b1717b453e4a71a75a70ef170a06e0598de2f6d8dac59239688a838e1933af2e"
+    },
+    {
+      "path": "served-composition.log",
+      "bytes": 200,
+      "sha256": "bb7b937a2c7236350f8289bd583e9facdce606e6072ae52b80d97dbf5b2c6bdc"
+    },
+    {
+      "path": "served-envelope.log",
+      "bytes": 159,
+      "sha256": "4797427ea9b69f01beec2d804ef15b3a684c4ce31a00471d7879e9fd2e907942"
+    },
+    {
+      "path": "served-monotonicity.log",
+      "bytes": 315,
+      "sha256": "f357551498f829f76d15b5cfd74f01b7899e785a614d03757b8324f802cb362a"
+    },
+    {
+      "path": "served-unit.log",
+      "bytes": 18529,
+      "sha256": "50c9b39ac23b7f74548d017374ebf609de4fbe3aa2fafae2f935ad274a22e098"
+    },
+    {
+      "path": "successor-controls-excerpt.log",
+      "bytes": 2368,
+      "sha256": "9165832c795ac9c4bc420734c1b02d89c9634e79f235499bfbdda059f612a8da"
+    },
+    {
+      "path": "successor-deploy-excerpt.log",
+      "bytes": 1466,
+      "sha256": "8c0c8fc0fa44184d3c8d8b7b2611ce149751fc8a1a49274cfb82571318d511f3"
+    },
+    {
+      "path": "successor-lineage.json",
+      "bytes": 760,
+      "sha256": "59dc126b1c3eae4011457bbe975a855d6c9f065565d8072feb98a46a65965ce6"
+    }
+  ]
+}

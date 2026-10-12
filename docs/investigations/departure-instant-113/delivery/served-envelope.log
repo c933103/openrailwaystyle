@@ -1,0 +1,7 @@
+{
+  "base": "/workspace/shared/atlas-trip-identity-20261012/postmerge/final-served",
+  "badBodyShapes": 26,
+  "passed": 366,
+  "failed": 0,
+  "failures": []
+}

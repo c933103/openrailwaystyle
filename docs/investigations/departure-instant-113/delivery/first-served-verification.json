@@ -1,0 +1,136 @@
+{
+  "observedAt": "2026-10-12T03:40:35.541Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "commit": "dea9f68e9d4c585c29ff225c4c052e689dac849b",
+  "version": "20261012-departure-instant-2",
+  "assets": [
+    {
+      "path": "",
+      "status": 200,
+      "bytes": 45806,
+      "sha256": "3717f556fece106103448682551e63cc513c84892fc6ad2c060dc575aa3963ef",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 155210,
+      "sha256": "6858cbe795e0e21c563224727c4ca5fff817a7983fdedec22e9d25559bb43837",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 16714,
+      "sha256": "15ae7b38773512932d40a407c6c3168c224f618c11a1c406d872b2afb6e561e0",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures-ui.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 6977,
+      "sha256": "5a3c93937136dbb28f33ef0f48865b434d007ca6c204796eb0e9611cbade13f8",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "map-model.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 58895,
+      "sha256": "dc5db455c1bdd51183899e651bfb0fc4e86f17b9a26737fca39c0e7d5db5e8c1",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "platform-length.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 30941,
+      "sha256": "0f6205c1dfe1994e9c4e29906f53c4c8f2351f7a594945e57396a678ec80fcc9",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "axle-load.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 4173,
+      "sha256": "d079a0d79985d0dc2cae76659e2a129b204a4e892dc9acd91526c1328aaaee0a",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "cjk-font.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 4081,
+      "sha256": "82afa67b4319a824bab405b87b25772a8d83049a01616e0f81e07c751d5b19bf",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "elevation.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 6816,
+      "sha256": "4aee8c86880701c5d97ad7f4e4ab5adb476eb607e8739b4160cb8a7d0750131b",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "layer-semantics.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 6075,
+      "sha256": "84ec5e80b0bb4de09e1ac750aface3eccf32426b3b96964dc121936d204ecd4e",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.css?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 23144,
+      "sha256": "736f338e7a855b7864802f0eaa7972a713650fe171bbad837156c6693416bc8b",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "bytes": 14826,
+      "sha256": "bae6f897ca776163b097b00e6210ff35932aa073b19ad49b0788d2066e8a910c",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "map-controls.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 22198,
+      "sha256": "fd00db57fa7ceb640abb1de2f2e7d0b1c756bb05669d819a34c41feb242fea86",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "power-facilities.mjs?v=20261012-departure-instant-2",
+      "status": 200,
+      "bytes": 8199,
+      "sha256": "3e52cb9bbec6a4b36088fee6ca00706980500e256ba0942f7f5e390907e546b4",
+      "matchesMergedSource": true
+    }
+  ],
+  "bundle": {
+    "bytes": 367634,
+    "sha256": "17ff7a6c41ccd7f3106f565fb0ecfbe660c3abc3311e2c150ac0cdf47bfb848f",
+    "commitPresent": true,
+    "versionPresent": true
+  },
+  "servedUnit": {
+    "tests": 186,
+    "failed": 0
+  },
+  "servedEnvelope": {
+    "passed": 366,
+    "failed": 0
+  },
+  "servedMonotonicity": {
+    "node": "v24.19.0",
+    "baselineSha256": "30f6c147858bdfbe3b4f2b0579ca7f7c8a7b9aa6d60be7a21cf43b14e4d3c231",
+    "candidateSha256": "15ae7b38773512932d40a407c6c3168c224f618c11a1c406d872b2afb6e561e0",
+    "trials": 12000,
+    "oldMergedGroups": 8267,
+    "candidateMergedGroups": 2664,
+    "newlyFormedGroupExamples": []
+  },
+  "servedComposition": {
+    "checks": 14,
+    "passed": 14,
+    "failed": 0,
+    "scope": "Envelope validation and exact-instant preservation compose correctly with retained status, cancellation isolation and bounded requests."
+  },
+  "scope": "First-party GET reads only, redirects rejected. Actual fetched parser, schedule renderer and service-worker bytes executed in synthetic unit/DOM/cache fixtures. No live timetable-provider traffic, native browser launch or service-worker interception claim."
+}

@@ -1,0 +1,11 @@
+2026-10-12T03:30:51.2006232Z [build] PASS build info desktop {"version":"20261012-departure-instant-2","commit":"dea9f68e9d4c585c29ff225c4c052e689dac849b","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/dea9f68e9d4c585c29ff225c4c052e689dac849b"}
+2026-10-12T03:31:09.0853552Z [build] PASS build info mobile {"version":"20261012-departure-instant-2","commit":"dea9f68e9d4c585c29ff225c4c052e689dac849b","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/dea9f68e9d4c585c29ff225c4c052e689dac849b"}
+2026-10-12T03:31:54.3327437Z [departures] chromium: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-12T03:32:09.5454222Z [departures] chromium: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-12T03:32:13.9552585Z [departures] chromium: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 180 intercepted board fixture requests.
+2026-10-12T03:32:14.1540396Z [departures] chromium: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-12T03:32:17.7161435Z [departures] webkit: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-12T03:32:23.5882443Z [departures] webkit: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-12T03:32:26.7017305Z [departures] webkit: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 180 intercepted board fixture requests.
+2026-10-12T03:32:26.8534042Z [departures] webkit: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-12T03:32:26.9552261Z PASS check-departures-browser.mjs in 38.5 s

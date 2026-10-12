@@ -1,0 +1,15 @@
+{
+  "merge": "dea9f68e9d4c585c29ff225c4c052e689dac849b",
+  "tree": "268b0fe8945644cfe6dda468ccbab322a324fac2",
+  "directSite": 38198361889,
+  "directSiteConclusion": "cancelled",
+  "directSiteJobCount": 0,
+  "directReference": 38198361850,
+  "directReferenceConclusion": "success",
+  "directReferenceAssembleJob": 114646230670,
+  "automaticSiteSuccessor": 38199070602,
+  "successorEvent": "workflow_dispatch",
+  "successorCreatedAt": "2026-10-12T03:15:58Z",
+  "dispatchLogLine": "2026-10-12T03:15:58.3139895Z https://github.com/c933103/openrailwaystyle/actions/runs/38199070602",
+  "scope": "Bounded direct merge and its exact reference-dispatched replacement only; no manual dispatch, superseded push-run rerun or unrelated later scheduled-run monitoring."
+}
