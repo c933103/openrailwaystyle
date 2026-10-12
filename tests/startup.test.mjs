@@ -1339,6 +1339,30 @@ test('Causeway Bay search reaches both APIs before a delayed label bundle loads'
 });
 
 
+test('full app search distinguishes partial-empty, healthy rows, complete-empty and outage',async()=>{
+ const station={osm_id:9001,name:'Synthetic healthy station',latitude:51.5,longitude:-.1,railway:'station'};
+ for(const scenario of ['partial-empty','partial-rows','complete-empty','unavailable']){
+  const {dom,window,loadLabels}=await start({delayLabels:true,fetcher:async url=>{
+   const href=String(url),facility=href.startsWith(model.SEARCH_API),place=href.startsWith(model.PLACE_SEARCH_API);
+   if(!facility&&!place)return {ok:true,json:async()=>structuredClone(style)};
+   const failed=scenario==='unavailable'||scenario==='partial-empty'&&facility||scenario==='partial-rows'&&place;
+   return {ok:!failed,status:failed?503:200,json:async()=>scenario==='partial-rows'&&facility?[station]:[]};
+  }});
+  try{
+   const $=id=>window.document.getElementById(id);
+   $('search-input').value='Synthetic';$('search-form').dispatchEvent(new window.Event('submit',{cancelable:true}));
+   for(let i=0;i<10;i++)await new Promise(resolve=>setTimeout(resolve,0));
+   const status=$('search-status');assert.equal(status.hidden,false);assert.equal(status.getAttribute('role'),'status');
+   if(scenario.startsWith('partial')){assert.match(status.textContent,/Search incomplete/);assert.doesNotMatch(status.textContent,/No matching facility or place found/);}
+   if(scenario==='partial-empty')assert.match(status.textContent,/No matches from the available sources.*station search unavailable/);
+   if(scenario==='partial-rows'){assert.match(status.textContent,/1 railway result, 0 places.*place search unavailable/);assert.match($('search-results').textContent,/Synthetic healthy station/);}
+   if(scenario==='complete-empty')assert.equal(status.textContent,'No matching facility or place found. Try a local name or railway code.');
+   if(scenario==='unavailable')assert.equal(status.textContent,'Search is unavailable. Try again, or browse by panning and zooming.');
+   assert.equal($('search-results').hidden,scenario!=='partial-rows');
+  }finally{loadLabels();for(let i=0;i<5;i++)await new Promise(resolve=>setTimeout(resolve,0));dom.window.close();}
+ }
+});
+
 test('map info identifies the executing cached asset and links to its build repository across backgrounds',async()=>{
  const commit='a'.repeat(40),sourceUrl=`https://git.example.test/fork/railway/commit/${commit}`,{dom,window,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-42',commit,sourceUrl}});
  try {
