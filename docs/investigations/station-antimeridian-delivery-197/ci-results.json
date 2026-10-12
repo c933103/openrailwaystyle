@@ -1,0 +1,172 @@
+{
+  "checkedAt": "2026-10-12T11:43:06Z",
+  "pullRequest": 197,
+  "reviewedHead": "2bde50d1f468aed520dffd234fcd37d89d031f80",
+  "merge": "85e7c7bfcd8c561f21ee9b000572b559c4928641",
+  "codeAndSecurityReview": {
+    "status": "completed",
+    "reviewedHead": "2bde50d1f468aed520dffd234fcd37d89d031f80",
+    "summary": "https://github.com/c933103/openrailwaystyle/pull/197#issuecomment-6122351186",
+    "cleanCodeComment": "https://github.com/c933103/openrailwaystyle/pull/197#issuecomment-6122373433",
+    "botThumbsUpAt": "2026-10-12T10:54:48Z",
+    "inlineReviewThreads": 0
+  },
+  "premerge": {
+    "siteRun": 38235973797,
+    "referenceRun": 38235973712,
+    "conclusion": "success"
+  },
+  "postmergeReference": {
+    "id": 38239117609,
+    "conclusion": "success"
+  },
+  "supersededPushDeployment": {
+    "id": 38239117678,
+    "conclusion": "cancelled",
+    "replacementRun": 38240453480
+  },
+  "successor": {
+    "id": 38240453480,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480",
+    "head_sha": "85e7c7bfcd8c561f21ee9b000572b559c4928641",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 114784874883,
+        "name": "plan",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114784874883",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114784875224,
+        "name": "facilities",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114784875224",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114784875239,
+        "name": "reference",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114784875239",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114784948544,
+        "name": "validate",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114784948544",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685133,
+        "name": "browser (infrastructure)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685133",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685144,
+        "name": "browser (rail-fixture)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685144",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685190,
+        "name": "browser (platforms)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685190",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685207,
+        "name": "browser (frequency)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685207",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685265,
+        "name": "browser (controls)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685265",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114786685309,
+        "name": "browser (context)",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114786685309",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114790478832,
+        "name": "browser-checks",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114790478832",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114790508483,
+        "name": "deploy",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114790508483",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-12T11:31:56Z",
+            "completed_at": "2026-10-12T11:32:29Z"
+          },
+          {
+            "name": "Verify deployed vector tile bytes",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-12T11:32:29Z",
+            "completed_at": "2026-10-12T11:32:30Z"
+          },
+          {
+            "name": "Verify deployed independent OSM geometry with live overview unavailable",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-12T11:33:30Z",
+            "completed_at": "2026-10-12T11:40:20Z"
+          },
+          {
+            "name": "Verify published map with local railway fixture",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-12T11:40:20Z",
+            "completed_at": "2026-10-12T11:42:12Z"
+          }
+        ]
+      },
+      {
+        "id": 114790510689,
+        "name": "record",
+        "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38240453480/job/114790510689",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "postDeployPassLines": [
+    "2026-10-12T11:32:30.3674509Z PASS: exact deployed vector tile 7/109/50 identity",
+    "2026-10-12T11:32:30.4834479Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity",
+    "2026-10-12T11:32:30.5881050Z PASS: exact deployed vector tile 0/0/0 identity",
+    "2026-10-12T11:32:30.6859746Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity",
+    "2026-10-12T11:32:30.8257484Z PASS: exact deployed vector tile 10/552/143 identity",
+    "2026-10-12T11:32:30.8981206Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity",
+    "2026-10-12T11:40:20.1969247Z PASS: independent reference with unavailable thematic provider {\"samples\":840,\"timing\":{\"medianMs\":348,\"p95Ms\":1402},\"generation\":\"d3ee80fd77568ab00e5071f8\"}",
+    "2026-10-12T11:41:59.6722745Z PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only {\"initial\":{\"requests\":61,\"unique\":61,\"byDataset\":{\"railway_line_high\":25,\"standard_railway_grouped_station_areas\":18,\"standard_railway_text_stations\":18}},\"afterPan\":{\"requests\":72,\"unique\":72,\"byDataset\":{\"railway_line_high\":30,\"standard_railway_grouped_station_areas\":21,\"standard_railway_text_stations\":21}},\"panAdded\":11,\"metadata\":1,\"tiles\":353}"
+  ]
+}

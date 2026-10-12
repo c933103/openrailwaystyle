@@ -1,0 +1,38 @@
+✔ installation drains response bodies without exhausting its three network slots (51.83863ms)
+✔ a truncated map-model.mjs response cannot publish or activate an incomplete shell (7.683925ms)
+✔ a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell (9.471089ms)
+✔ a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell (7.4292ms)
+✔ a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell (8.465528ms)
+✔ a complete replacement keeps the previous version and revised icons available offline (63.788199ms)
+✔ the current departure release refreshes app.mjs from 20261011-power-legend-1 while previous tabs retain their version (49.103331ms)
+✔ the current departure release refreshes departures.mjs from 20261011-power-legend-1 while previous tabs retain their version (33.395761ms)
+✔ the current departure release refreshes app.mjs from 20261011-departure-availability-1 while previous tabs retain their version (38.246717ms)
+✔ the current departure release refreshes departures.mjs from 20261011-departure-availability-1 while previous tabs retain their version (154.202237ms)
+✔ the current departure release refreshes app.mjs from 20261012-search-availability-1 while previous tabs retain their version (54.532656ms)
+✔ the current departure release refreshes departures.mjs from 20261012-search-availability-1 while previous tabs retain their version (32.17114ms)
+✔ numeric station search refreshes exact app.mjs bytes from the immediate predecessor (57.24846ms)
+✔ numeric station search refreshes exact map-model.mjs bytes from the immediate predecessor (25.020904ms)
+✔ unmatched timetable reporting refreshes exact app.mjs bytes from the immediate predecessor (36.980931ms)
+✔ unmatched timetable reporting refreshes exact departures.mjs bytes from the immediate predecessor (47.428742ms)
+✔ malformed departure-board handling refreshes exact app.mjs bytes from the immediate predecessor (24.449578ms)
+✔ malformed departure-board handling refreshes exact departures.mjs bytes from the immediate predecessor (23.227769ms)
+✔ exact departure instants refreshes exact app.mjs bytes from the immediate predecessor (44.856493ms)
+✔ exact departure instants refreshes exact departures.mjs bytes from the immediate predecessor (23.095489ms)
+✔ integrated departure instants refreshes exact app.mjs bytes from the immediate predecessor (25.826883ms)
+✔ integrated departure instants refreshes exact departures.mjs bytes from the immediate predecessor (44.517334ms)
+✔ search availability wording refreshes exact app.mjs bytes from the immediate predecessor (25.903269ms)
+✔ first-party libraries install together and remain available offline with every external origin blocked (22.550028ms)
+✔ actual CDN-era worker copies remain usable after first-party migration without new CDN requests (63.882783ms)
+✔ an old CDN JS URL receives the fixed library even without a legacy cache entry (19.513803ms)
+✔ legacy cache migration and serving reject tampered-bytes with otherwise valid responses (52.872201ms)
+✔ legacy cache migration and serving reject crypto-unavailable with otherwise valid responses (31.992922ms)
+✔ actual first-party worker migration serves fixed bytes to delayed old tabs (62.558032ms)
+✔ Power legend release upgrades the cached app, CSS and facility metadata together (30.52159ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1322.580082
