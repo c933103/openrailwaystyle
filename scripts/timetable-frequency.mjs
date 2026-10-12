@@ -147,9 +147,9 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
     if(feed.schema!==1||!Array.isArray(feed.routes)||!Array.isArray(feed.agencies)||!Array.isArray(feed.segments))throw new Error('Invalid compiled timetable');
     const agencies=new Map(feed.agencies.map(a=>[a.agency_id||'single-agency',a]));
     const segments=Map.groupBy(feed.segments,s=>s.route_id),matched=new Set(),applied=new Set();
-    const summary={id:feed.source.id,name:feed.source.name,source:feed.source,feedRoutes:feed.routes.length,mappedRoutes:0,routesWithProfiles:0,pathSegments:feed.segments.length,availableSegments:0,unmatchedRoutes:0,ambiguousRoutes:0};
+    const summary={id:feed.source.id,name:feed.source.name,source:feed.source,feedRoutes:feed.routes.length,mappedRoutes:0,routesWithProfiles:0,pathSegments:feed.segments.length,availableSegments:0,unmatchedRoutes:0,ambiguousRoutes:0,matchingReasons:{},unmatchedExamples:[]};
     for(const route of feed.routes){
-      const agency=agencies.get(route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'));if(!agency)throw new Error('Broken timetable agency');
+      const agencyId=route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'),agency=agencies.get(agencyId);if(!agency)throw new Error('Broken timetable agency');
       const sourceSegments=(segments.get(route.route_id)||[]).filter(s=>s.geometry?.length>=2&&s.geometry.every(coord));
       const keys=[...agencyNames(agency).flatMap(n=>{const prefix=`${kind(route.route_type)}|${n}|`;return [prefix+'ref:'+reference(route.route_short_name),prefix+'name:'+text(route.route_long_name)];}),...[route.route_id,...(route.source_route_ids||[])].map(id=>`gtfs|${feed.source.id}|${id}`)];
       const candidates=[...new Set(keys.flatMap(key=>[...(metadata.get(key)||[])]))].filter(g=>metadataMatch(g.route,route,agency,feed.source));
@@ -157,8 +157,22 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       // Full supplied path coverage prevents a short common corridor from
       // certifying an unrelated service or a same-ref branch in another place.
       const pathEdges=sourceSegments.flatMap(s=>edges([s.geometry]));
-      const candidatesCovered=candidates.filter(g=>pathEdges.length&&pathEdges.reduce((n,e)=>n+metres(...e.geometry),0)>=500&&pathEdges.every(e=>covered(e,g.lookup)));
-      if(candidatesCovered.length!==1){summary[candidatesCovered.length?'ambiguousRoutes':'unmatchedRoutes']++;continue;}
+      const pathMetres=pathEdges.reduce((n,e)=>n+metres(...e.geometry),0);
+      const candidatesCovered=candidates.filter(g=>pathEdges.length&&pathMetres>=500&&pathEdges.every(e=>covered(e,g.lookup)));
+      if(candidatesCovered.length!==1){
+        summary[candidatesCovered.length?'ambiguousRoutes':'unmatchedRoutes']++;
+        const reason=!pathEdges.length?'no_usable_path_segments':pathMetres<500?'path_below_spatial_threshold':
+          !candidates.length?'no_osm_service_identity_candidate':!candidatesCovered.length?'candidate_path_not_corroborated':'multiple_corroborated_osm_services';
+        summary.matchingReasons[reason]=(summary.matchingReasons[reason]||0)+1;
+        // Bounded, feed-scoped GTFS samples for diagnosing missing identities.
+        // Candidate counts do not prove that a service has been matched.
+        if(summary.unmatchedExamples.length<12){
+          const short=value=>Array.from(String(value??'')).slice(0,128).join('');
+          summary.unmatchedExamples.push({route_id:short(route.route_id),agency_id:short(agencyId),ref:short(route.route_short_name),
+            name:short(route.route_long_name),reason,identity_candidates:candidates.length,corroborated_candidates:candidatesCovered.length});
+        }
+        continue;
+      }
       const group=candidatesCovered[0];matched.add(route.route_id);
       const intern=new Map();
       const indexed=sourceSegments.flatMap(s=>{
@@ -237,4 +251,26 @@ export function bindTimetableSections(table,artifact){
     if(valid.length)bound.set(id,valid);
   }
   return {sections:bound,staleSections};
+}
+
+/**
+ * Report current OSM frequency coverage rather than just the ways containing
+ * timetable section evidence. Zero trains is a usable observed rate; a missing
+ * profile or expired record is not. No new timetable-to-OSM associations occur.
+ */
+export function summarizeBoundTimetableSections(bound,now=Date.now()){
+  if(!(bound?.sections instanceof Map)||!Number.isFinite(now))throw new TypeError('Invalid bound timetable summary input');
+  const appliedWays=new Set(),appliedRelations=new Set();
+  let boundSections=0,appliedSections=0;
+  for(const [way,rows] of bound.sections){
+    if(!Array.isArray(rows))throw new TypeError('Invalid bound timetable section rows');
+    for(const row of rows){
+      boundSections++;
+      const record=row.record;
+      if(!record?.properties||!record.profiles||!Number.isFinite(record.properties.frequency_until)||!(record.properties.frequency_until*1000>=now))continue;
+      if(!FREQUENCY_PROFILES.some(profile=>Number.isFinite(record.profiles[profile]?.rate)&&record.profiles[profile].rate>=0))continue;
+      appliedWays.add(way);appliedRelations.add(row.relation);appliedSections++;
+    }
+  }
+  return {boundWays:bound.sections.size,boundSections,appliedWays:appliedWays.size,appliedSections,appliedRelations:appliedRelations.size};
 }

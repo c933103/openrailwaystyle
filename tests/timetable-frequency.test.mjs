@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTimetableMatcher,bindTimetableSections} from '../scripts/timetable-frequency.mjs';
+import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSections} from '../scripts/timetable-frequency.mjs';
 import {addResult,commitStage,toTable,buildTiles as osmTiles,LAYER} from '../scripts/service-routes.mjs';
 import {frequencyDetails,frequencyWidth} from '../styles/service-frequency.mjs';
 import Pbf from 'pbf';
@@ -189,4 +189,65 @@ test('secondary grouped relations retain localized operators and feed-scoped rou
  add(bound,11,{'gtfs:feed':'jp-metro','gtfs:route_id':'ginza'});add(bound,12,{'gtfs:feed':'other-feed','gtfs:route_id':'unrelated'});
  assert.equal(apply(bound,[f]).sections.length,3);
  f.source.id='other-feed';assert.equal(apply(bound,[f]).sections.length,0,'route IDs never cross their feed namespace');
+});
+
+test('actual OSM frequency coverage excludes unavailable and expired section evidence but counts verified zero',()=>{
+  const valid={properties:{frequency_until:now/1000+86400},profiles:{am:{rate:0}}};
+  const unavailable={properties:{frequency_until:now/1000+86400},profiles:{}};
+  const expired={properties:{frequency_until:now/1000-1},profiles:{am:{rate:8}}};
+  const hourly={properties:{frequency_until:now/1000+86400},profiles:{h13:{rate:12}}};
+  const bound={sections:new Map([
+    [1,[{relation:100,record:valid},{relation:101,record:unavailable}]],
+    [2,[{relation:102,record:expired}]],
+    [3,[{relation:103,record:hourly}]],
+  ])};
+  assert.deepEqual(summarizeBoundTimetableSections(bound,now),
+    {boundWays:3,boundSections:4,appliedWays:2,appliedSections:2,appliedRelations:2});
+  assert.equal(summarizeBoundTimetableSections(bound,now+86401*1000).appliedWays,0);
+  assert.throws(()=>summarizeBoundTimetableSections({sections:[]},now),/Invalid bound timetable/);
+});
+
+test('bound counts agree with the original OSM section identities from a real fixture',()=>{
+  const t=table(),artifact=apply(t,[feed()]),bound=bindTimetableSections(t,artifact);
+  const before=summarizeBoundTimetableSections(bound,now);
+  assert.deepEqual(before,{boundWays:3,boundSections:3,appliedWays:3,appliedSections:3,appliedRelations:1});
+  // One section still exists in OSM but has no validated timetable profile.
+  const first=bound.sections.values().next().value[0];
+  first.record.profiles={};
+  const after=summarizeBoundTimetableSections(bound,now);
+  assert.equal(after.boundWays,3);
+  assert.equal(after.boundSections,3);
+  assert.equal(after.appliedWays,2);
+  assert.equal(after.appliedSections,2);
+});
+
+test('unmatched railway routes retain bounded route-specific identity and path diagnostics',()=>{
+  const scenarios=[
+    [f=>{f.agencies[0].agency_name='Wrong operator';},'no_osm_service_identity_candidate'],
+    [f=>{f.segments[2].geometry=[[140,35],[140.01,35]];},'candidate_path_not_corroborated'],
+    [f=>{f.segments=[];},'no_usable_path_segments'],
+  ];
+  for(const [change,reason] of scenarios){
+    const f=feed();change(f);
+    const result=apply(table(),[f]),summary=result.matching.feeds[0];
+    assert.equal(summary.unmatchedRoutes,1);
+    assert.equal(summary.matchingReasons[reason],1);
+    assert.equal(summary.unmatchedExamples.length,1);
+    assert.equal(summary.unmatchedExamples[0].route_id,f.routes[0].route_id);
+    assert.equal(summary.unmatchedExamples[0].reason,reason);
+    assert.equal(result.sections.length,0,'diagnostics never authorize a timetable-to-OSM association');
+  }
+});
+
+test('single-agency unmatched samples use the resolved agency even when the route omits agency_id',()=>{
+  for(const missingAgencyRecordId of [false,true]){
+    const f=feed(),expected=missingAgencyRecordId?'single-agency':f.agencies[0].agency_id;
+    delete f.routes[0].agency_id;
+    if(missingAgencyRecordId)delete f.agencies[0].agency_id;
+    f.agencies[0].agency_name='Wrong operator';
+    const summary=apply(table(),[f]).matching.feeds[0];
+    assert.equal(summary.unmatchedRoutes,1);
+    assert.equal(summary.unmatchedExamples[0].reason,'no_osm_service_identity_candidate');
+    assert.equal(summary.unmatchedExamples[0].agency_id,expected);
+  }
 });
