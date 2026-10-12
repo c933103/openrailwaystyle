@@ -56,6 +56,13 @@ const gaps=global?[{region:'Worldwide',status:global.applied_profiles?(coverage.
 // The periods some applied source covers; the viewer offers only these.
 const profiles=FREQUENCY_PROFILES.filter(p=>catalog.routes.some(r=>r.match&&r.profiles?.[p])||[...bound.sections.values()].some(rows=>rows.some(s=>s.record.properties.frequency_until*1000>=now&&usable(s.record,p))));
 await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,matching:{...applied.matching,staleSections:bound.staleSections,...coverage},geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
+console.log('[frequency-matching] '+JSON.stringify({
+  osmSnapshot:global?.applied_profiles?.osm_sha256??null,
+  ...coverage,staleSections:bound.staleSections,
+  conflictingSections:applied.matching?.conflictingSections??0,
+  identityMatchedFeeds:applied.matching?.feeds?.filter(f=>f.mappedRoutes>0).length??0,
+  feedsWithUsableProfiles:timetable.summary.length,
+}));
 console.log(`Rebuilt ${keys.length} service tiles from cached OSM routes (${bytes} bytes) with matched timetable counts and published headways; timetables add no lines; no extraction.`);
 
 await writeFrequencyCredits(timetable.summary,gaps,catalog,process.argv[3],{global:!!global,fixtures:fixture});
