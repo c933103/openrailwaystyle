@@ -105,7 +105,7 @@ try {
       console.log(`${engine}: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; ${requests.length} fixture requests.`);
       // Partial board failures must survive the production cache and renderer.
       // All responses below are synthetic; the loopback transport guard remains.
-      const boardRequests = [];
+      const boardRequests = [], boardStopIds = [];
       let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {};
       await context.route('https://api.transitous.org/api/v1/**', route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
@@ -114,6 +114,7 @@ try {
         assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
         assert.equal(url.searchParams.get('n'), '30');
         const id = url.searchParams.get('stopId');
+        boardStopIds.push(id);
         if (Object.hasOwn(boardBodies, id)) return route.fulfill({body:JSON.stringify(boardBodies[id]), contentType:'application/json'});
         return boardFailed.includes(id)
           ? route.fulfill({status:503, json:{error:'synthetic private provider response'}})
@@ -127,6 +128,40 @@ try {
         document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
       const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
         realTime:false, place:stop('Central','a',{arrival:'2099-01-01T12:00:00Z',departure:'2099-01-01T12:00:00Z'})};
+      // A nearer substring name cannot take a board slot or supply the journey
+      // origin/destination. Exercise the production click, matching and renderer.
+      const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
+        permutations(items.filter((_, j) => j !== i)).map(rest => [item, ...rest]));
+      for (const [name, other] of [['Terminal 1','Terminal 10'], ['Central','Central Park'], ['中央','中央公園']]) {
+        const candidates = [
+          {type:'STOP',name,id:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name,id:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:other,id:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
+        ];
+        boardBodies = Object.fromEntries(['a','b','wrong'].map(id => [id, {stopTimes:[
+          {...row,displayName:id === 'wrong' ? 'WRONG' : `RIGHT-${id}`,tripId:id},
+        ]}]));
+        for (const order of permutations(candidates)) {
+          lookupResponse = order;
+          const before = boardRequests.length, beforeIds = boardStopIds.length;
+          const properties = {id:`name-match-${name}-${order.map(c => c.id).join('-')}`};
+          await openStation(name, properties); await waitBoard();
+          assert.equal(boardRequests.length - before, 3);
+          assert.deepEqual(boardStopIds.slice(beforeIds), ['a','b']);
+          assert.equal(await page.locator('.departure-list > li').count(), 2);
+          assert.doesNotMatch(await page.locator('.departures').textContent(), /WRONG/);
+          for (const [i, direction] of ['from','to'].entries()) {
+            const url = new URL(await page.locator('.departure-links a').nth(i).getAttribute('href'));
+            assert.equal(url.searchParams.get(`${direction}Place`), 'a');
+            assert.equal(url.searchParams.get(`${direction}Name`), name);
+          }
+          await page.locator('#details-close').click();
+          await openStation(name, properties); await waitBoard();
+          assert.equal(boardRequests.length - before, 3, 'reopening keeps the name-compatible board cached');
+        }
+      }
+      lookupResponse = undefined; boardBodies = {};
+      console.log(`${engine}: numeric, Latin and native-script substring collisions excluded in all 18 candidate orders, both journey links and cached reopening passed.`);
       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
         boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
         boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
