@@ -40,7 +40,9 @@ function stopName(name) {
   const bilingual = bilingualNames.map(pattern => text.match(pattern)).find(match => match &&
     nativeLetter.test(match[0]) && /\p{Script=Latin}/u.test(match[0]));
   const parts = bilingual ? bilingual.slice(1) : [];
-  return {names:[text, ...parts].map(simplify).filter(Boolean), native:parts.find(part => nativeLetter.test(part))?.trim()};
+  const separated = text.match(/^([^/()]+)\s*\/\s*([^/()]+)$/u) || text.match(/^([^/()]+)\s*\(([^/()]+)\)$/u);
+  return {names:[text, ...parts].map(simplify).filter(Boolean), native:parts.find(part => nativeLetter.test(part))?.trim(),
+    aliases:separated ? separated.slice(1).map(simplify).filter(Boolean) : []};
 }
 function compatibleStopNames(a, b) {
   if (a.names[0] && a.names[0] === b.names[0]) return true;
@@ -55,10 +57,14 @@ function compatibleStopNames(a, b) {
 // cover one station (two operators), so up to two are kept.
 export function pickStops(candidates, station, limit = 2) {
   const names = (station.names || []).map(stopName);
+  // Same-script slash/parenthesized aliases need independent map evidence for
+  // every component; otherwise Central (North) could become Central again.
+  const suppliedAliases = new Set(names.map(name => name.names[0]).filter(Boolean));
   const scored = candidates
     .filter(c => c.type === 'STOP' && (c.modes || []).some(m => RAIL_MODES.has(m)) && Number.isFinite(c.lat) && Number.isFinite(c.lon))
     .map(c => {
-      const own = stopName(c.name), named = names.some(name => compatibleStopNames(own, name));
+      const own = stopName(c.name), named = names.some(name => compatibleStopNames(own, name)) ||
+        (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
       return {stop: c, distance: metres(station, c), named};
     })
     .filter(c => c.distance <= RADIUS_M)

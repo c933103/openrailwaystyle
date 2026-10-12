@@ -1,5 +1,9 @@
 # Departure stop-name compatibility (#112)
 
+The initial validation bundle below describes commit `d252a702`. The subsequent
+[Codex same-script alias correction and its final validation](same-script-aliases/README.md)
+supersede that matcher while preserving the original boundary regressions.
+
 Base: `b5a73c3aa03498259c2fd531b9644d52ae94db69` (main including PRs #193,
 #194 and #195). The only open PRs at preparation were the independent #185
 and paused domain PR #157. Neither is changed here.

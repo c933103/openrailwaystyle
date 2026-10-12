@@ -160,8 +160,35 @@ try {
           assert.equal(boardRequests.length - before, 3, 'reopening keeps the name-compatible board cached');
         }
       }
+      for (const composite of ['München Hbf / Munich','München (Munich)']) for (const supplied of [true,false]) {
+        const candidates = [
+          {type:'STOP',name:'München Hbf',id:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:composite,id:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:'Munich Park',id:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
+        ];
+        for (const order of permutations(candidates)) {
+          lookupResponse = order;
+          const before = boardRequests.length, beforeIds = boardStopIds.length;
+          const properties = {id:`same-script-${composite}-${supplied}-${order.map(c => c.id).join('-')}`,
+            ...(supplied ? {'name:en':'Munich'} : {})};
+          await openStation('München Hbf', properties); await waitBoard();
+          assert.deepEqual(boardStopIds.slice(beforeIds), supplied ? ['a','b'] : ['a']);
+          assert.equal(boardRequests.length - before, supplied ? 3 : 2);
+          assert.equal(await page.locator('.departure-list > li').count(), supplied ? 2 : 1);
+          assert.doesNotMatch(await page.locator('.departures').textContent(), /WRONG/);
+          for (const [i, direction] of ['from','to'].entries()) {
+            const url = new URL(await page.locator('.departure-links a').nth(i).getAttribute('href'));
+            assert.equal(url.searchParams.get(`${direction}Place`), 'a');
+            assert.equal(url.searchParams.get(`${direction}Name`), supplied ? 'Munich' : 'München Hbf');
+          }
+          await page.locator('#details-close').click();
+          await openStation('München Hbf', properties); await waitBoard();
+          assert.equal(boardRequests.length - before, supplied ? 3 : 2);
+        }
+      }
       lookupResponse = undefined; boardBodies = {};
       console.log(`${engine}: numeric, Latin and native-script substring collisions excluded in all 18 candidate orders, both journey links and cached reopening passed.`);
+      console.log(`${engine}: same-script slash/parenthesized aliases, absent-alias negative controls, both journey links and cached reopening passed in all 24 candidate orders.`);
       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
         boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
         boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];

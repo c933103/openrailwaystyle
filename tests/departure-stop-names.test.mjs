@@ -35,6 +35,10 @@ for (const [names, first, second] of [
   [['Москва'], 'Москва', 'Москва Moskva'],
   [['Αθήνα Athína'], 'Αθήνα', 'Athína'],
   [['München Hbf', 'Munich'], 'München Bahnhof', 'Munich Station'],
+  [['München Hbf', 'Munich'], 'München Hbf', 'München Hbf / Munich'],
+  [['München Hbf', 'Munich'], 'Munich', 'München (Munich)'],
+  [['München Hbf', 'Munich'], 'München Bahnhof', 'Munich / München Hbf'],
+  [['München Hbf', 'Munich'], 'Munich', 'Munich (München Hbf)'],
   [['Austin Station'], 'Austin', 'AUSTIN'],
   [['Gare de Lyon'], 'de Lyon', 'Gare de Lyon'],
   [['Terminal 1'], 'Terminal１', 'Terminal 1 (Platform 2)'],
@@ -50,6 +54,41 @@ for (const [names, first, second] of [
 test('mixed-script names do not turn a same-script prefix or a bare number into an alias', () => {
   for (const [name, other] of [['中央', '中央公園 Chūō Kōen'], ['Central', 'Central 1'], ['Terminal', 'Terminal 1']]) {
     assert.deepEqual(pickStops([stop(other, 'wrong', .0001), stop(name, 'right')], station([name])).map(s => s.id), ['right']);
+  }
+});
+
+test('same-script composite names need every complete alias supplied independently by the map', () => {
+  for (const [names, composite] of [
+    [['München Hbf'], 'München Hbf / Munich'], [['Munich'], 'München (Munich)'],
+    [['München Hbf', 'Munich'], 'München Hbf / Munich Park'],
+    [['Central'], 'Central (North)'], [['Central'], 'Central / Park'],
+    [['Terminal 1'], 'Terminal 1 / Terminal 10'],
+    [['JR 東京'], 'JR (神田)'],
+  ]) {
+    const candidates = [stop(names[0], 'right-a'), stop(names[0], 'right-b', .0011), stop(composite, 'wrong', .0001)];
+    for (const order of permutations(candidates)) assert.deepEqual(pickStops(order, station(names)).map(s => s.id), ['right-a', 'right-b']);
+  }
+});
+
+test('stationDepartures retains a second same-script composite operator only with supplied aliases', async () => {
+  for (const composite of ['München Hbf / Munich', 'München (Munich)']) {
+    const candidates = [stop('München Hbf', 'operator-a'), stop(composite, 'operator-b', .0011), stop('Munich Park', 'wrong', .0001)];
+    for (const names of [['München Hbf', 'Munich'], ['München Hbf']]) for (const order of permutations(candidates)) {
+      const calls = [];
+      const board = await stationDepartures(station(names), {fetch:async href => {
+        const url = new URL(href); calls.push(url);
+        const id = url.searchParams.get('stopId');
+        return {ok:true, json:async () => id === null ? order : {stopTimes:[{
+          mode:'REGIONAL_RAIL', displayName:id, headsign:'Fixture terminus', tripId:id,
+          place:{departure:'2099-01-01T12:00:00Z', scheduledDeparture:'2099-01-01T12:00:00Z', tz:'UTC'},
+        }]}};
+      }});
+      const expected = names.length === 2 ? ['operator-a', 'operator-b'] : ['operator-a'];
+      assert.deepEqual(board.stops.map(s => s.id), expected);
+      assert.deepEqual(calls.slice(1).map(url => url.searchParams.get('stopId')), expected);
+      assert.deepEqual(board.rows.map(row => row.line).sort(), expected);
+      assert.equal(calls.length, expected.length + 1);
+    }
   }
 });
 
