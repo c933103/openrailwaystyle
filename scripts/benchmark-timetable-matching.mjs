@@ -45,20 +45,28 @@ function child(path, mode) {
 if (process.argv[2] === '--child') {
   process.stdout.write(JSON.stringify(child(process.argv[3], process.argv[4])) + '\n');
 } else {
-  const directory = mkdtempSync(join(tmpdir(), 'atlas-matcher-benchmark-'));
-  try {
-    const path = join(directory, 'evidence.json');
-    const python = `import importlib.util,json,sys,hashlib\nfrom pathlib import Path\ndef load(name,path):\n s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m\nb=load('benchmark','scripts/benchmark-timetable-evidence.py')\nc=load('compiler','scripts/gtfs-frequency.py')\npath=Path(sys.argv[1]); archive=path.with_suffix('.zip')\nb.fixture(archive,10000,24,False)\nprofiles={f'h{h:02}':{'start':f'{h:02}:00:00','end':f'{h+1:02}:00:00'} for h in range(24)}\nprofiles.update({'am':{'start':'07:00:00','end':'09:00:00'},'pm':{'start':'16:00:00','end':'19:00:00'},'offpeak':{'start':'10:00:00','end':'16:00:00'},'overnight':{'start':'00:00:00','end':'06:00:00'}})\nresult=c.compile_feed(archive,{'source':{'id':'controlled-fixture'},'profiles':profiles},'2026-10-05',matching_evidence=True)\nevidence=result.pop('matching_evidence');assert evidence['status']=='captured'\npath.write_text(json.dumps(evidence,ensure_ascii=False,separators=(',',':')),encoding='utf-8')\nprint(json.dumps({'trips':10000,'stop_rows':240000,'profiles':len(result['profiles']),'patterns':len(evidence['patterns']),'observations':len(evidence['observations']),'sidecar_bytes':path.stat().st_size,'sidecar_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))\n`;
-    const generated = spawnSync('python3', ['-c', python, path], {cwd: root, encoding: 'utf8', timeout: 300000});
-    if (generated.status !== 0) throw Error(generated.stderr || 'Synthetic evidence generation failed');
-    const results = [];
-    for (let repeat = 0; repeat < 3; repeat++) for (const mode of ['verified', 'unbound', 'source-limit', 'candidate-limit']) {
-      const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', path, mode], {cwd: root, encoding: 'utf8', timeout: 120000});
-      if (run.status !== 0) throw Error(run.stderr || 'Controlled matcher child failed');
-      results.push({repeat, ...JSON.parse(run.stdout)});
-    }
-    process.stdout.write(JSON.stringify({schema: 1, synthetic: true, node: process.version, fixture: JSON.parse(generated.stdout),
-      measurement: 'Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.',
-      source_sha256: Object.fromEntries(['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs'].map(path => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')])), results}, null, 2) + '\n');
-  } finally { rmSync(directory, {recursive: true, force: true}); }
+  const smoke = process.argv[2] === '--smoke';
+  const describe = process.argv[2] === '--describe';
+  if (process.argv.length > 2 && (!(smoke || describe) || process.argv.length !== 3)) throw Error('Usage: benchmark-timetable-matching.mjs [--smoke|--describe]');
+  const trips = smoke ? 4 : 10000, calls = smoke ? 3 : 24, repeats = smoke ? 1 : 3;
+  if (describe) {
+    process.stdout.write(JSON.stringify({trips, calls, repeats}) + '\n');
+  } else {
+    const directory = mkdtempSync(join(tmpdir(), 'atlas-matcher-benchmark-'));
+    try {
+      const path = join(directory, 'evidence.json');
+      const python = `import importlib.util,json,sys,hashlib\nfrom pathlib import Path\ndef load(name,path):\n s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m\nb=load('benchmark','scripts/benchmark-timetable-evidence.py')\nc=load('compiler','scripts/gtfs-frequency.py')\npath=Path(sys.argv[1]); archive=path.with_suffix('.zip')\nb.fixture(archive,${trips},${calls},False)\nprofiles={f'h{h:02}':{'start':f'{h:02}:00:00','end':f'{h+1:02}:00:00'} for h in range(24)}\nprofiles.update({'am':{'start':'07:00:00','end':'09:00:00'},'pm':{'start':'16:00:00','end':'19:00:00'},'offpeak':{'start':'10:00:00','end':'16:00:00'},'overnight':{'start':'00:00:00','end':'06:00:00'}})\nresult=c.compile_feed(archive,{'source':{'id':'controlled-fixture'},'profiles':profiles},'2026-10-05',matching_evidence=True)\nevidence=result.pop('matching_evidence');assert evidence['status']=='captured'\npath.write_text(json.dumps(evidence,ensure_ascii=False,separators=(',',':')),encoding='utf-8')\nprint(json.dumps({'trips':${trips},'calls':${calls},'stop_rows':${trips * calls},'profiles':len(result['profiles']),'patterns':len(evidence['patterns']),'observations':len(evidence['observations']),'sidecar_bytes':path.stat().st_size,'sidecar_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))\n`;
+      const generated = spawnSync('python3', ['-c', python, path], {cwd: root, encoding: 'utf8', timeout: 300000});
+      if (generated.status !== 0) throw Error(generated.stderr || 'Synthetic evidence generation failed');
+      const results = [];
+      for (let repeat = 0; repeat < repeats; repeat++) for (const mode of ['verified', 'unbound', 'source-limit', 'candidate-limit']) {
+        const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', path, mode], {cwd: root, encoding: 'utf8', timeout: 120000});
+        if (run.status !== 0) throw Error(run.stderr || 'Controlled matcher child failed');
+        results.push({repeat, ...JSON.parse(run.stdout)});
+      }
+      process.stdout.write(JSON.stringify({schema: 1, synthetic: true, smoke, node: process.version, fixture: JSON.parse(generated.stdout),
+        measurement: 'Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.',
+        source_sha256: Object.fromEntries(['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs', 'scripts/gtfs-frequency.py', 'scripts/timetable_evidence.py', 'scripts/benchmark-timetable-evidence.py'].map(path => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')])), results}, null, 2) + '\n');
+    } finally { rmSync(directory, {recursive: true, force: true}); }
+  }
 }

@@ -344,6 +344,7 @@ all matched branches. Unknown is not zero.
 
 ```sh
 node --test tests/timetable-matching.test.mjs
+node scripts/benchmark-timetable-matching.mjs --smoke
 python3 scripts/benchmark-timetable-evidence.py
 python3 scripts/benchmark-timetable-evidence.py --trips 12000 --unique-patterns
 node scripts/benchmark-timetable-matching.mjs
@@ -358,6 +359,16 @@ peak RSS and sidecar size/status. It generates no public-provider traffic. The
 optional `--baseline-compiler` accepts the saved, reviewed baseline compiler for
 A/B measurements. These are bounded controlled fixtures, not a worldwide
 production-resource estimate.
+
+Ordinary tests run the matcher's `--smoke` mode: four generated trips with three
+calls, one repetition and all four verified/unbound/work-limit outcomes. It checks
+the actual compiler-to-matcher path, report shape and fresh source provenance without
+requiring a full performance run or changing historical evidence. The default
+matcher benchmark retains its 10,000-trip, 24-call, three-repetition cohort. Both
+modes label their fixture sizes and record current matcher, compiler and fixture
+generator hashes. Elapsed time and RSS are diagnostics, not portable CI thresholds.
+`--describe` prints the default cohort configuration without generating fixtures or
+measurements; CI checks that configuration independently of the smoke cohort.
 
 The saved [Paris/Normandy acceptance in #147](https://github.com/c933103/openrailwaystyle/pull/147)
 remains the geometry regression boundary. Its archived two-coordinate compiled
@@ -418,5 +429,10 @@ are retained under
 `historical_matcher_measurements`; they are not current-source performance
 evidence. Runtime/environment differences prevent a controlled speed or memory
 comparison between these generations. The historical compiler A/B cohorts
-above are unchanged. A regression requires the current report's matcher,
-zone-catalog and benchmark-script hashes to match the committed sources.
+above are unchanged. These dated measurements describe their recorded source
+hashes, not later revisions. The report is preserved unchanged, including at
+[the pre-migration commit](https://github.com/c933103/openrailwaystyle/blob/85e7c7bfcd8c561f21ee9b000572b559c4928641/docs/investigations/timetable-evidence-benchmark-20261009.json).
+Active CI checks current behavior and the provenance emitted by a fresh smoke run;
+it does not require current source bytes to equal this historical snapshot. New
+performance claims require new measurements on the claimed source/environment,
+with the original results retained.

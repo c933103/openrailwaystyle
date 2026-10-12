@@ -742,16 +742,53 @@ test('raw OSM tags default only when absent and reject explicit malformed values
   assert.equal(captureOsmServiceEvidence(hidden, snapshot).status, 'incomplete', 'a present hidden field is not silently replaced');
 });
 
-test('committed matcher benchmark is bound to the current measured sources', () => {
-  const report = JSON.parse(readFileSync(new URL('../docs/investigations/timetable-evidence-benchmark-20261009.json', import.meta.url), 'utf8'));
-  for (const path of ['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs']) {
+test('current matcher benchmark exercises controlled outcomes and records its own provenance', () => {
+  const run = spawnSync(process.execPath, ['scripts/benchmark-timetable-matching.mjs', '--smoke'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 120000,
+  });
+  assert.equal(run.status, 0, run.stderr || String(run.error));
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.schema, 1);
+  assert.equal(report.synthetic, true);
+  assert.equal(report.smoke, true);
+  assert.equal(report.node, process.version);
+  const sources = ['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs', 'scripts/gtfs-frequency.py', 'scripts/timetable_evidence.py', 'scripts/benchmark-timetable-evidence.py'];
+  assert.deepEqual(Object.keys(report.source_sha256).sort(), [...sources].sort());
+  for (const path of sources) {
     const actual = createHash('sha256').update(readFileSync(new URL(`../${path}`, import.meta.url))).digest('hex');
-    assert.equal(report.matcher.source_sha256[path], actual, `rerun the benchmark after changing ${path}`);
+    assert.equal(report.source_sha256[path], actual, `fresh report must identify its actual input: ${path}`);
   }
-  assert.equal(report.matcher.synthetic, true);
-  assert.ok(report.matcher.results.some(row => row.mode === 'verified' && row.status === 'verified'));
-  for (const [mode, reason] of [['unbound', 'missing_service_identity'], ['source-limit', 'source_work_limit'], ['candidate-limit', 'candidate_work_limit']]) {
-    assert.ok(report.matcher.results.some(row => row.mode === mode && row.status === 'missing_evidence' && row.reason === reason));
+  assert.deepEqual([report.fixture.trips, report.fixture.calls, report.fixture.stop_rows, report.fixture.profiles, report.fixture.patterns, report.fixture.observations], [4, 3, 12, 28, 2, 4]);
+  assert.match(report.fixture.sidecar_sha256, /^[a-f0-9]{64}$/);
+  assert.ok(report.fixture.sidecar_bytes > 0 && report.fixture.sidecar_bytes < 32 * 1024 * 1024);
+  assert.deepEqual(report.results.map(({repeat, mode, status, reason}) => [repeat, mode, status, reason]), [
+    [0, 'verified', 'verified', 'reviewed_identity_and_stops'],
+    [0, 'unbound', 'missing_evidence', 'missing_service_identity'],
+    [0, 'source-limit', 'missing_evidence', 'source_work_limit'],
+    [0, 'candidate-limit', 'missing_evidence', 'candidate_work_limit'],
+  ]);
+  for (const row of report.results) {
+    assert.ok(Number.isFinite(row.milliseconds) && row.milliseconds >= 0);
+    for (const field of ['rss_before_bytes', 'rss_after_bytes', 'peak_process_rss_kib']) assert.ok(Number.isSafeInteger(row[field]) && row[field] > 0, field);
+  }
+});
+
+test('matcher benchmark declares the default cohort without a performance run', () => {
+  const run = spawnSync(process.execPath, ['scripts/benchmark-timetable-matching.mjs', '--describe'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10000,
+  });
+  assert.equal(run.status, 0, run.stderr || String(run.error));
+  assert.deepEqual(JSON.parse(run.stdout), {trips: 10000, calls: 24, repeats: 3});
+});
+
+test('matcher benchmark rejects misspelled or extra arguments', () => {
+  for (const args of [['--smok'], ['--smoke', 'unexpected'], ['--describe', 'unexpected']]) {
+    const run = spawnSync(process.execPath, ['scripts/benchmark-timetable-matching.mjs', ...args], {
+      cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10000,
+    });
+    assert.equal(run.status, 1, run.stderr || String(run.error));
+    assert.match(run.stderr, /Usage: benchmark-timetable-matching/);
+    assert.equal(run.stdout, '');
   }
 });
 
