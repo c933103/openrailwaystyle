@@ -5,7 +5,7 @@
 import {readFile,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
 import {gunzipSync,gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
-import {createTimetableMatcher,bindTimetableSections} from './timetable-frequency.mjs';
+import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSections} from './timetable-frequency.mjs';
 import {buildTiles,geometrySummary,readTable} from './service-routes.mjs';
 import {loadTimetableServices} from './gtfs-service.mjs';
 import {writeFrequencyCredits} from './frequency-credits.mjs';
@@ -31,8 +31,12 @@ if(!fixture){
   }
 }
 if(fixture){const matcher=createTimetableMatcher(table);for(const feed of feeds)matcher.addFeed(feed);applied=matcher.finish();}
-const bound=bindTimetableSections(table,applied),tiles=buildTiles(table,{headways:catalog,timetables:bound.sections});
-const sources=new Set([...bound.sections.values()].flat().filter(s=>Object.keys(s.record.profiles).length&&s.record.properties.frequency_until*1000>=Date.now()).flatMap(s=>s.record.properties.frequency_sources.split(';')));
+const now=Date.now(),bound=bindTimetableSections(table,applied),coverage=summarizeBoundTimetableSections(bound,now);
+const tiles=buildTiles(table,{headways:catalog,timetables:bound.sections,now});
+const usable=(record,profile)=>Number.isFinite(record.profiles?.[profile]?.rate)&&record.profiles[profile].rate>=0;
+const sources=new Set([...bound.sections.values()].flat()
+  .filter(s=>s.record.properties.frequency_until*1000>=now&&FREQUENCY_PROFILES.some(p=>usable(s.record,p)))
+  .flatMap(s=>s.record.properties.frequency_sources.split(';')));
 const timetable={summary:applied.feeds.filter(f=>sources.has(f.id))};
 // A rebuild replaces the whole tile set: tiles from an earlier build (for
 // example the fixture build) would otherwise stay servable without an index entry.
@@ -48,10 +52,10 @@ for(const [key,data] of tiles){
   const gz=gzipSync(data,{level:9});await writeFile(`${directory}/${key}.pbf.gz`,gz);keys.push(key);bytes+=gz.length;
 }
 await writeFile(`${directory}/index.json`,JSON.stringify({tiles:keys.sort()}));
-const gaps=global?[{region:'Worldwide',status:global.applied_profiles?'Partial matched timetable coverage':'Awaiting matched timetable snapshot',reason:`${global.catalogue_entries} catalogue entries. Outcomes: ${JSON.stringify(global.counts)}. ${bound.sections.size} OSM ways have matched section evidence; ${bound.staleSections} changed section bindings were withheld. Unmatched and conflicting services remain unknown. Details: data/service-frequency/inventory.json.`}]:registry.gaps;
+const gaps=global?[{region:'Worldwide',status:global.applied_profiles?(coverage.appliedWays?'Partial matched timetable coverage':'No currently applicable OSM timetable frequencies'):'Awaiting matched timetable snapshot',reason:`${global.catalogue_entries} catalogue entries. Outcomes: ${JSON.stringify(global.counts)}. ${coverage.appliedWays} OSM ways, ${coverage.appliedRelations} OSM route relations and ${coverage.appliedSections} section records have currently usable timetable-derived profiles; ${coverage.boundWays} OSM ways carry section evidence (including unavailable profiles). ${bound.staleSections} changed section bindings were withheld. Unmatched and conflicting services remain unknown. Details: data/service-frequency/inventory.json.`}]:registry.gaps;
 // The periods some applied source covers; the viewer offers only these.
-const profiles=FREQUENCY_PROFILES.filter(p=>catalog.routes.some(r=>r.match&&r.profiles?.[p])||[...bound.sections.values()].some(rows=>rows.some(s=>s.record.properties.frequency_until*1000>=Date.now()&&s.record.profiles[p])));
-await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,matching:{...applied.matching,staleSections:bound.staleSections,appliedWays:bound.sections.size},geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
+const profiles=FREQUENCY_PROFILES.filter(p=>catalog.routes.some(r=>r.match&&r.profiles?.[p])||[...bound.sections.values()].some(rows=>rows.some(s=>s.record.properties.frequency_until*1000>=now&&usable(s.record,p))));
+await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,matching:{...applied.matching,staleSections:bound.staleSections,...coverage},geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
 console.log(`Rebuilt ${keys.length} service tiles from cached OSM routes (${bytes} bytes) with matched timetable counts and published headways; timetables add no lines; no extraction.`);
 
 await writeFrequencyCredits(timetable.summary,gaps,catalog,process.argv[3],{global:!!global,fixtures:fixture});
