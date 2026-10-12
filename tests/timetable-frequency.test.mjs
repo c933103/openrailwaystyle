@@ -238,3 +238,16 @@ test('unmatched railway routes retain bounded route-specific identity and path d
     assert.equal(result.sections.length,0,'diagnostics never authorize a timetable-to-OSM association');
   }
 });
+
+test('single-agency unmatched samples use the resolved agency even when the route omits agency_id',()=>{
+  for(const missingAgencyRecordId of [false,true]){
+    const f=feed(),expected=missingAgencyRecordId?'single-agency':f.agencies[0].agency_id;
+    delete f.routes[0].agency_id;
+    if(missingAgencyRecordId)delete f.agencies[0].agency_id;
+    f.agencies[0].agency_name='Wrong operator';
+    const summary=apply(table(),[f]).matching.feeds[0];
+    assert.equal(summary.unmatchedRoutes,1);
+    assert.equal(summary.unmatchedExamples[0].reason,'no_osm_service_identity_candidate');
+    assert.equal(summary.unmatchedExamples[0].agency_id,expected);
+  }
+});
