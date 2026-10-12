@@ -1,0 +1,415 @@
+✖ malformed board null body rejects before settlement and preserves each healthy sibling (5.952528ms)
+✖ malformed board undefined body rejects before settlement and preserves each healthy sibling (0.986567ms)
+✖ malformed board array body rejects before settlement and preserves each healthy sibling (1.19869ms)
+✖ malformed board false body rejects before settlement and preserves each healthy sibling (0.704902ms)
+✖ malformed board true body rejects before settlement and preserves each healthy sibling (0.887678ms)
+✖ malformed board zero body rejects before settlement and preserves each healthy sibling (0.619305ms)
+✖ malformed board number body rejects before settlement and preserves each healthy sibling (0.715755ms)
+✖ malformed board empty string body rejects before settlement and preserves each healthy sibling (1.002729ms)
+✖ malformed board string body rejects before settlement and preserves each healthy sibling (1.000253ms)
+✖ malformed board missing list rejects before settlement and preserves each healthy sibling (1.146644ms)
+✖ malformed board undefined list rejects before settlement and preserves each healthy sibling (0.540471ms)
+✖ malformed board null list rejects before settlement and preserves each healthy sibling (0.354778ms)
+✖ malformed board false list rejects before settlement and preserves each healthy sibling (0.359335ms)
+✖ malformed board true list rejects before settlement and preserves each healthy sibling (0.692621ms)
+✖ malformed board zero list rejects before settlement and preserves each healthy sibling (0.38478ms)
+✖ malformed board number list rejects before settlement and preserves each healthy sibling (0.723937ms)
+✖ malformed board empty string list rejects before settlement and preserves each healthy sibling (0.343497ms)
+✖ malformed board string list rejects before settlement and preserves each healthy sibling (0.422911ms)
+✖ malformed board object list rejects before settlement and preserves each healthy sibling (1.491896ms)
+✔ valid board envelopes allow empty lists, populated lists, and unused extension fields (5.364434ms)
+✖ all malformed boards reject in either selected-stop order with a generic error (1.362951ms)
+✖ DOM caches malformed board plus healthy empty as partial until normal expiry (254.836758ms)
+✖ DOM caches malformed board plus healthy rows as partial until normal expiry (262.397153ms)
+✖ DOM evicts all malformed boards, shows only the generic loading failure, and recovers on reopening (42.978152ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 1
+ℹ fail 23
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1875.990852
+
+✖ failing tests:
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board null body rejects before settlement and preserves each healthy sibling (5.952528ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: Cannot read properties of null (reading 'stopTimes')
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot read properties of null (reading 'stopTimes')
+        at file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:226:181
+        at async Promise.allSettled (index 0)
+        at async stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:226:19)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board undefined body rejects before settlement and preserves each healthy sibling (0.986567ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: Cannot read properties of undefined (reading 'stopTimes')
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot read properties of undefined (reading 'stopTimes')
+        at file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:226:181
+        at async Promise.allSettled (index 0)
+        at async stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:226:19)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board array body rejects before settlement and preserves each healthy sibling (1.19869ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board false body rejects before settlement and preserves each healthy sibling (0.704902ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board true body rejects before settlement and preserves each healthy sibling (0.887678ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board zero body rejects before settlement and preserves each healthy sibling (0.619305ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board number body rejects before settlement and preserves each healthy sibling (0.715755ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board empty string body rejects before settlement and preserves each healthy sibling (1.002729ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board string body rejects before settlement and preserves each healthy sibling (1.000253ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board missing list rejects before settlement and preserves each healthy sibling (1.146644ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board undefined list rejects before settlement and preserves each healthy sibling (0.540471ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board null list rejects before settlement and preserves each healthy sibling (0.354778ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board false list rejects before settlement and preserves each healthy sibling (0.359335ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board true list rejects before settlement and preserves each healthy sibling (0.692621ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: times is not iterable
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: times is not iterable
+        at departureRows (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:103:67)
+        at stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:230:24)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board zero list rejects before settlement and preserves each healthy sibling (0.38478ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board number list rejects before settlement and preserves each healthy sibling (0.723937ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: times is not iterable
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: times is not iterable
+        at departureRows (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:103:67)
+        at stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:230:24)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board empty string list rejects before settlement and preserves each healthy sibling (0.343497ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board string list rejects before settlement and preserves each healthy sibling (0.422911ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:86:46
+✖ malformed board object list rejects before settlement and preserves each healthy sibling (1.491896ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: times is not iterable
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: times is not iterable
+        at departureRows (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:103:67)
+        at stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:230:24)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:88:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:116:1
+✖ all malformed boards reject in either selected-stop order with a generic error (1.362951ms)
+  AssertionError [ERR_ASSERTION]: null body
+      at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:119:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: times is not iterable
+        at departureRows (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:103:67)
+        at stationDepartures (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/styles/departures.mjs:230:24)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:119:5)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:151:42
+✖ DOM caches malformed board plus healthy empty as partial until normal expiry (254.836758ms)
+  AssertionError [ERR_ASSERTION]: array body
+  + actual - expected
+  
+  + undefined
+  - 'Some departures could not load. The board may be incomplete.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:156:14)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'Some departures could not load. The board may be incomplete.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:151:42
+✖ DOM caches malformed board plus healthy rows as partial until normal expiry (262.397153ms)
+  AssertionError [ERR_ASSERTION]: array body
+  + actual - expected
+  
+  + undefined
+  - 'Some departures could not load. The board may be incomplete.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:156:14)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'Some departures could not load. The board may be incomplete.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-availability.test.mjs:175:1
+✖ DOM evicts all malformed boards, shows only the generic loading failure, and recovers on reopening (42.978152ms)
+  AssertionError [ERR_ASSERTION]: array body
+  + actual - expected
+  
+  + 'DeparturesNo rail departures in the published timetable soon.Journey from here ↗ Journey to here ↗ Timetables and live data: Transitous (see its sources and licences).'
+  - 'DeparturesDepartures could not load. Try again later.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/tests/departure-availability.test.mjs:180:14)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'DeparturesNo rail departures in the published timetable soon.Journey from here ↗ Journey to here ↗ Timetables and live data: Transitous (see its sources and licences).',
+    expected: 'DeparturesDepartures could not load. Try again later.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,756 @@
+{
+  "sourceSha256": "58809e88eb0e62f8501e3f7a9fa314e56417c343f7fe9bd9c523000c3c03bcec",
+  "predecessorSha256": "67f51839ec4e9c14d0f7a63e6cbe76970a6933d0514c85c0e86a5af71ca69bd8",
+  "parserSha256": "30f6c147858bdfbe3b4f2b0579ca7f7c8a7b9aa6d60be7a21cf43b14e4d3c231",
+  "exactOneRowTimestampChange": true,
+  "ageCutoffChecks": 2,
+  "expiryStepMs": 60001,
+  "prefixAdvances": 6,
+  "malformedScenarios": 28,
+  "totalAdvances": 34,
+  "firstOldRowLoss": {
+    "expirySteps": 11,
+    "nowOffsetMs": 660011,
+    "oldRows": 0,
+    "newRows": 1
+  },
+  "firstOldScenarioFailure": {
+    "label": "array",
+    "order": [
+      "a",
+      "b"
+    ],
+    "withRows": true,
+    "beforeMs": 660011,
+    "afterMs": 720012,
+    "oldCounts": [
+      0,
+      0
+    ],
+    "newCounts": [
+      1,
+      1
+    ]
+  },
+  "successorHorizonChecks": 35,
+  "successorScenarioCheckpoints": 56,
+  "allPass": true,
+  "scenarios": [
+    {
+      "label": "null",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 360006,
+      "afterMs": 420007,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "null",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 420007,
+      "afterMs": 480008,
+      "oldCounts": [
+        1,
+        1
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "null",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 480008,
+      "afterMs": 540009,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "null",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 540009,
+      "afterMs": 600010,
+      "oldCounts": [
+        1,
+        1
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "array",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 600010,
+      "afterMs": 660011,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "array",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 660011,
+      "afterMs": 720012,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "array",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 720012,
+      "afterMs": 780013,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "array",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 780013,
+      "afterMs": 840014,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "scalar",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 840014,
+      "afterMs": 900015,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "scalar",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 900015,
+      "afterMs": 960016,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "scalar",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 960016,
+      "afterMs": 1020017,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "scalar",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 1020017,
+      "afterMs": 1080018,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "missing-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 1080018,
+      "afterMs": 1140019,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "missing-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 1140019,
+      "afterMs": 1200020,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "missing-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 1200020,
+      "afterMs": 1260021,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "missing-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 1260021,
+      "afterMs": 1320022,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "false-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 1320022,
+      "afterMs": 1380023,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "false-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 1380023,
+      "afterMs": 1440024,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "false-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 1440024,
+      "afterMs": 1500025,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "false-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 1500025,
+      "afterMs": 1560026,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "string-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 1560026,
+      "afterMs": 1620027,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "string-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 1620027,
+      "afterMs": 1680028,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "string-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 1680028,
+      "afterMs": 1740029,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "string-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 1740029,
+      "afterMs": 1800030,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "object-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": false,
+      "beforeMs": 1800030,
+      "afterMs": 1860031,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "object-list",
+      "order": [
+        "a",
+        "b"
+      ],
+      "withRows": true,
+      "beforeMs": 1860031,
+      "afterMs": 1920032,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    },
+    {
+      "label": "object-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": false,
+      "beforeMs": 1920032,
+      "afterMs": 1980033,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        0,
+        0
+      ]
+    },
+    {
+      "label": "object-list",
+      "order": [
+        "b",
+        "a"
+      ],
+      "withRows": true,
+      "beforeMs": 1980033,
+      "afterMs": 2040034,
+      "oldCounts": [
+        0,
+        0
+      ],
+      "newCounts": [
+        1,
+        1
+      ]
+    }
+  ],
+  "horizon": [
+    {
+      "expirySteps": 0,
+      "nowOffsetMs": 0,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 1,
+      "nowOffsetMs": 60001,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 2,
+      "nowOffsetMs": 120002,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 3,
+      "nowOffsetMs": 180003,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 4,
+      "nowOffsetMs": 240004,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 5,
+      "nowOffsetMs": 300005,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 6,
+      "nowOffsetMs": 360006,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 7,
+      "nowOffsetMs": 420007,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 8,
+      "nowOffsetMs": 480008,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 9,
+      "nowOffsetMs": 540009,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 10,
+      "nowOffsetMs": 600010,
+      "oldRows": 1,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 11,
+      "nowOffsetMs": 660011,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 12,
+      "nowOffsetMs": 720012,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 13,
+      "nowOffsetMs": 780013,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 14,
+      "nowOffsetMs": 840014,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 15,
+      "nowOffsetMs": 900015,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 16,
+      "nowOffsetMs": 960016,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 17,
+      "nowOffsetMs": 1020017,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 18,
+      "nowOffsetMs": 1080018,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 19,
+      "nowOffsetMs": 1140019,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 20,
+      "nowOffsetMs": 1200020,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 21,
+      "nowOffsetMs": 1260021,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 22,
+      "nowOffsetMs": 1320022,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 23,
+      "nowOffsetMs": 1380023,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 24,
+      "nowOffsetMs": 1440024,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 25,
+      "nowOffsetMs": 1500025,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 26,
+      "nowOffsetMs": 1560026,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 27,
+      "nowOffsetMs": 1620027,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 28,
+      "nowOffsetMs": 1680028,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 29,
+      "nowOffsetMs": 1740029,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 30,
+      "nowOffsetMs": 1800030,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 31,
+      "nowOffsetMs": 1860031,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 32,
+      "nowOffsetMs": 1920032,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 33,
+      "nowOffsetMs": 1980033,
+      "oldRows": 0,
+      "newRows": 1
+    },
+    {
+      "expirySteps": 34,
+      "nowOffsetMs": 2040034,
+      "oldRows": 0,
+      "newRows": 1
+    }
+  ]
+}

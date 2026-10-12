@@ -106,14 +106,16 @@ try {
       // Partial board failures must survive the production cache and renderer.
       // All responses below are synthetic; the loopback transport guard remains.
       const boardRequests = [];
-      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse;
+      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {};
       await context.route('https://api.transitous.org/api/v1/**', route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
         if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
           ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
         assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
         assert.equal(url.searchParams.get('n'), '30');
-        return boardFailed.includes(url.searchParams.get('stopId'))
+        const id = url.searchParams.get('stopId');
+        if (Object.hasOwn(boardBodies, id)) return route.fulfill({body:JSON.stringify(boardBodies[id]), contentType:'application/json'});
+        return boardFailed.includes(id)
           ? route.fulfill({status:503, json:{error:'synthetic private provider response'}})
           : route.fulfill({json:{stopTimes:boardTimes}});
       });
@@ -124,7 +126,7 @@ try {
       const waitBoard = () => page.waitForFunction(() =>
         document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
       const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
-        realTime:false, place:stop('Central','a')};
+        realTime:false, place:stop('Central','a',{arrival:'2099-01-01T12:00:00Z',departure:'2099-01-01T12:00:00Z'})};
       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
         boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
         boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
@@ -219,6 +221,56 @@ try {
       }
       assert.deepEqual(errors, []);
       console.log(`${engine}: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; ${boardRequests.length} intercepted board fixture requests.`);
+      // Invalid consumed envelopes fail per board, without discarding a healthy
+      // sibling or making a malformed response look like a complete empty list.
+      const malformedBodies = [
+        ['null', null], ['array', []], ['scalar', 'synthetic private provider response'],
+        ['missing-list', {}], ['false-list', {stopTimes:false}],
+        ['string-list', {stopTimes:'synthetic private provider response'}], ['object-list', {stopTimes:{}}],
+      ];
+      lookupResponse = undefined; boardFailed = [];
+      const beforeMalformed = boardRequests.length;
+      for (const [label, body] of malformedBodies) for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
+        boardName = `Malformed board ${label} ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
+        boardOrder = order; boardTimes = withRows ? [row] : []; boardBodies = {b:body};
+        const before = boardRequests.length;
+        await openStation(boardName); await waitBoard();
+        assert.equal(boardRequests.length - before, 3);
+        assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
+        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
+        assert.equal(await page.locator('.departures button').count(), 0);
+        if (label === 'missing-list' && order[0] === 'a') await page.screenshot({path:`browser-review/departures-malformed-${withRows ? 'rows' : 'empty'}-${engine}.png`});
+        await page.locator('#details-close').click(); boardBodies = {};
+        await openStation(boardName); await waitBoard();
+        assert.equal(await page.locator('.departure-warning').count(), 1, 'malformed partial outcome stays cached');
+        assert.equal(boardRequests.length - before, 3);
+        await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
+        assert.equal(boardRequests.length - before, 3, 'expiry cannot start an automatic retry');
+        await openStation(boardName); await waitBoard();
+        assert.equal(boardRequests.length - before, 6);
+        assert.equal(await page.locator('.departure-warning').count(), 0);
+        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+        if (!withRows) assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
+      }
+      for (const order of [['a','b'], ['b','a']]) {
+        boardName = `All boards malformed ${order.join('')}`; boardOrder = order;
+        boardBodies = {a:{}, b:{stopTimes:{error:'synthetic private provider response'}}};
+        const before = boardRequests.length;
+        await openStation(boardName); await waitBoard();
+        assert.equal(await page.locator('.departures').textContent(), 'DeparturesDepartures could not load. Try again later.');
+        assert.equal(boardRequests.length - before, 3);
+        if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-all-malformed-${engine}.png`});
+        boardBodies = {}; boardTimes = [row];
+        await openStation(boardName); await waitBoard();
+        assert.equal(boardRequests.length - before, 6, 'all-malformed rejection is evicted');
+        assert.equal(await page.locator('.departure-list > li').count(), 1);
+        assert.equal(await page.locator('.departure-warning').count(), 0);
+        await openStation(boardName); await waitBoard();
+        assert.equal(boardRequests.length - before, 6, 'successful normal reopening is cached');
+      }
+      assert.deepEqual(errors, []);
+      console.log(`${engine}: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; ${boardRequests.length - beforeMalformed} intercepted board fixture requests.`);
       for (const withRows of [false, true]) {
         let release, requested;
         const held = new Promise(resolve => {release = resolve;});

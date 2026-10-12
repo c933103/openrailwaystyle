@@ -13,7 +13,7 @@ const observation = {mode: 'REGIONAL_RAIL', displayName: 'R7', headsign: 'Harbou
   tripId: 'fixture-trip', routeId: 'fixture-route',
   place: {stopId: 'a', departure: '2099-01-01T12:00:00Z', scheduledDeparture: '2099-01-01T12:00:00Z', tz: 'UTC'}};
 const failure = new Error('synthetic private error text must not appear in result or UI');
-function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'network', candidates = order.map(stop)} = {}) {
+function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'network', candidates = order.map(stop), bodies = {}} = {}) {
   const calls = [], before = structuredClone(times);
   return {calls, before, fetch: async (url, options) => {
     calls.push({url: new URL(url), options});
@@ -25,7 +25,7 @@ function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'ne
       if (failureKind === 'abort') throw new DOMException('Synthetic abort', 'AbortError');
       throw failure;
     }
-    return {ok: true, json: async () => ({stopTimes: times})};
+    return {ok: true, json: async () => Object.hasOwn(bodies, id) ? bodies[id] : {stopTimes: times}};
   }};
 }
 const statuses = board => Object.fromEntries(board.stopResults.map(r => [r.stopId, r.status]));
@@ -71,6 +71,56 @@ test('no matching stops, selected-stop limit, and all-failed behavior remain bou
   }
 });
 
+// Only validate the envelope consumed here, not complete provider row schemas.
+const malformedBoards = [
+  ['null body', null], ['undefined body', undefined], ['array body', []],
+  ['false body', false], ['true body', true], ['zero body', 0], ['number body', 1],
+  ['empty string body', ''], ['string body', 'synthetic private provider response'],
+  ['missing list', {}], ['undefined list', {stopTimes: undefined}], ['null list', {stopTimes: null}],
+  ['false list', {stopTimes: false}], ['true list', {stopTimes: true}],
+  ['zero list', {stopTimes: 0}], ['number list', {stopTimes: 1}],
+  ['empty string list', {stopTimes: ''}], ['string list', {stopTimes: 'synthetic private provider response'}],
+  ['object list', {stopTimes: {private: 'synthetic private provider response'}}],
+];
+const invalidBoardMessage = 'Invalid Transitous stop times response';
+for (const [label, body] of malformedBoards) test(`malformed board ${label} rejects before settlement and preserves each healthy sibling`, async () => {
+  const single = fixture({order: ['b'], bodies: {b: body}});
+  await assert.rejects(stationDepartures(station, {fetch: single.fetch}), error => error.message === invalidBoardMessage);
+  assert.equal(single.calls.length, 2);
+  for (const order of [['a', 'b'], ['b', 'a']]) for (const times of [[], [observation]]) {
+    const feed = fixture({order, times, bodies: {b: body}}), signal = new AbortController().signal;
+    const board = await stationDepartures(station, {fetch: feed.fetch, signal});
+    assert.deepEqual(board.stops, order.map(stop));
+    assert.deepEqual(statuses(board), {a: 'fulfilled', b: 'rejected'});
+    assert.deepEqual(board.stopResults.map(r => Object.keys(r)), [['stopId', 'status'], ['stopId', 'status']]);
+    assert.deepEqual(board.rows, departureRows([times]), 'malformed siblings never erase healthy rows');
+    assert.deepEqual(times, feed.before);
+    assert.equal(JSON.stringify(board).includes('synthetic private'), false);
+    assert.equal(feed.calls.length, 3, 'same bounded requests, no retries');
+    assert.ok(feed.calls.every(call => call.options.signal === signal));
+  }
+});
+
+test('valid board envelopes allow empty lists, populated lists, and unused extension fields', async () => {
+  for (const times of [[], [observation]]) {
+    const body = {stopTimes: times, extension: {ignored: true}}, before = structuredClone(body);
+    const feed = fixture({bodies: {a: body, b: body}});
+    const board = await stationDepartures(station, {fetch: feed.fetch});
+    assert.deepEqual(statuses(board), {a: 'fulfilled', b: 'fulfilled'});
+    assert.deepEqual(board.rows, departureRows([times, times]));
+    assert.deepEqual(body, before);
+    assert.equal(feed.calls.length, 3);
+  }
+});
+
+test('all malformed boards reject in either selected-stop order with a generic error', async () => {
+  for (const order of [['a', 'b'], ['b', 'a']]) for (const [label, body] of malformedBoards) {
+    const feed = fixture({order, bodies: {a: body, b: {stopTimes: {error: 'synthetic private'}}}});
+    await assert.rejects(stationDepartures(station, {fetch: feed.fetch}), error => error.message === invalidBoardMessage, label);
+    assert.equal(feed.calls.length, 3);
+  }
+});
+
 // Execute the production renderer and cache against a real DOM, with only its
 // external dependencies injected. The actual stationDepartures parser is used.
 const app = await readFile(new URL('../styles/app.mjs', import.meta.url), 'utf8');
@@ -98,6 +148,48 @@ function boardDom(feed) {
     }};
 }
 const partialMessage = 'Some departures could not load. The board may be incomplete.';
+for (const times of [[], [observation]]) test(`DOM caches malformed board plus healthy ${times.length ? 'rows' : 'empty'} as partial until normal expiry`, async () => {
+  for (const [label, body] of malformedBoards) for (const order of [['a', 'b'], ['b', 'a']]) {
+    const feed = {current: fixture({order, times, bodies: {b: body}})}, view = boardDom(feed);
+    try {
+      view.show(); await view.settle();
+      assert.equal(view.panel.querySelector('.departure-warning')?.textContent, partialMessage, label);
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
+      assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
+      assert.equal(view.departureBoards.size, 1);
+      assert.equal(view.panel.querySelectorAll('button').length, 0);
+      const previous = feed.current;
+      feed.current = fixture({times});
+      view.advance(60_000); view.show(); await view.settle();
+      assert.equal(view.panel.querySelector('.departure-warning')?.textContent, partialMessage);
+      assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 0);
+      view.advance(1); view.show(); await view.settle();
+      assert.equal(view.panel.querySelector('.departure-warning'), null);
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
+      assert.equal(feed.current.calls.length, 3);
+      view.show(); await view.settle(); assert.equal(feed.current.calls.length, 3);
+    } finally {view.dom.window.close();}
+  }
+});
+
+test('DOM evicts all malformed boards, shows only the generic loading failure, and recovers on reopening', async () => {
+  for (const [label, body] of malformedBoards) {
+    const feed = {current: fixture({bodies: {a: body, b: body}})}, view = boardDom(feed);
+    try {
+      view.show(); await view.settle();
+      assert.equal(view.panel.textContent, 'DeparturesDepartures could not load. Try again later.', label);
+      assert.equal(view.departureBoards.size, 0);
+      assert.equal(feed.current.calls.length, 3);
+      feed.current = fixture({times: [observation]});
+      view.show(); await view.settle();
+      assert.equal(view.panel.querySelector('.departure-warning'), null);
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 1);
+      assert.equal(feed.current.calls.length, 3);
+      view.show(); await view.settle(); assert.equal(feed.current.calls.length, 3);
+    } finally {view.dom.window.close();}
+  }
+});
+
 for (const times of [[], [observation]]) test(`DOM preserves cached partial ${times.length ? 'rows' : 'empty'} and normal expiry establishes recovery`, async () => {
   const feed = {current: fixture({failed: ['b'], times})}, view = boardDom(feed);
   try {
