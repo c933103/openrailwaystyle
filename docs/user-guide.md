@@ -18,7 +18,15 @@ update is newest. An explicit live platform is retained when another update
 supplies only a departure time; scheduled platforms remain a fallback. If live
 platforms conflict, the platform attached to the later predicted departure is
 used, with a consistent choice for equal times. This also cannot establish which
-platform update is newest. Ambiguous matches between different boards remain separate.
+platform update is newest. Matches between different boards require the same
+finite scheduled instant, including seconds; equivalent time-zone representations
+are compared as instants. Different or invalid scheduled times remain separate,
+even within one displayed minute. When a schedule is absent, the existing actual-time
+fallback is used. Precision disagreements are not guessed away; they can leave
+duplicate-looking rows until stronger shared identity evidence is available.
+The existing same-minute candidate checks remain in place so this stricter time
+condition cannot choose between previously ambiguous trains. Ambiguous matches
+between different boards remain separate.
 
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. If a selected stop’s departure board fails while another loads, usable departures

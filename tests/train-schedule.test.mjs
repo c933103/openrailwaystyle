@@ -90,14 +90,40 @@ test('schedule shows local dates over midnight, dwell, live scheduled times, can
   dom.window.close();
 });
 
-test('merged trip highlight uses its own observation time through both reconciliation stages',()=>{
- const linked=new Date(Date.parse(at)+30_000).toISOString();
+test('equal-instant merged trip keeps the linked stop context through both reconciliation stages',()=>{
+ const linked='2026-10-10T09:00:00+09:00';
  const rows=departureRows([[{mode:'SUBWAY',displayName:'G',headsign:'Asakusa',place:place('Suehirocho','preferred',{scheduledDeparture:at})}],
   [{mode:'SUBWAY',headsign:'Asakusa',tripId:'linked',place:place('Suehirocho','selected',{departure:linked,scheduledDeparture:linked})}]],{now:Date.parse(at)-60000});
  assert.equal(rows.length,1);assert.equal(rows[0].scheduled,Date.parse(at));assert.equal(rows[0].tripScheduled,Date.parse(linked));
  const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
- renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
+ renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)-30_000},
   {name:'Selected',stopId:'selected',scheduledDeparture:Date.parse(linked)}],rows[0]);
+ assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
+});
+
+test('different-instant boards keep the linked train separate and highlight its own repeated stop',()=>{
+ const linked=new Date(Date.parse(at)+30_000).toISOString();
+ const named={mode:'SUBWAY',displayName:'G',headsign:'Asakusa',place:place('Suehirocho','preferred',{scheduledDeparture:at})};
+ const observation={mode:'SUBWAY',headsign:'Asakusa',tripId:'linked',place:place('Suehirocho','selected',{departure:linked,scheduledDeparture:linked})};
+ for(const lists of [[[named],[observation]],[[observation],[named]]]) {
+  const rows=departureRows(lists,{now:Date.parse(at)-60000});
+  assert.equal(rows.length,2);
+  const row=rows.find(row=>row.tripId==='linked');
+  assert.equal(row.scheduled,Date.parse(linked));assert.equal(row.tripScheduled,Date.parse(linked));assert.equal(row.stopId,'selected');
+  assert.equal(rows.find(row=>row.line==='G').tripId,'','another train does not borrow this trip link');
+  const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
+  renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
+   {name:'Selected',stopId:'selected',scheduledDeparture:Date.parse(linked)}],row);
+  assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
+ }
+});
+
+test('schedule rendering prefers an explicit linked-trip time over the board presentation time',()=>{
+ const linked=Date.parse(at)+30_000;
+ const row={...boardRow,tripScheduled:linked,tripEvent:'departure'};
+ const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
+ renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
+  {name:'Selected',stopId:'selected',scheduledDeparture:linked}],row);
  assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
 });
 test('arrival-only board events highlight the matching arrival rather than a later departure',()=>{

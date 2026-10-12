@@ -1,0 +1,38 @@
+✔ TRAM: cross-list schedules 1 ms apart remain distinct within one minute (5.556642ms)
+✔ TRAM: cross-list schedules 500 ms apart remain distinct within one minute (0.631981ms)
+✔ TRAM: cross-list schedules 1000 ms apart remain distinct within one minute (0.375403ms)
+✔ TRAM: cross-list schedules 30000 ms apart remain distinct within one minute (0.247469ms)
+✔ TRAM: cross-list schedules 59999 ms apart remain distinct within one minute (0.277414ms)
+✔ SUBWAY: cross-list schedules 1 ms apart remain distinct within one minute (0.165146ms)
+✔ SUBWAY: cross-list schedules 500 ms apart remain distinct within one minute (0.158747ms)
+✔ SUBWAY: cross-list schedules 1000 ms apart remain distinct within one minute (1.291689ms)
+✔ SUBWAY: cross-list schedules 30000 ms apart remain distinct within one minute (0.263062ms)
+✔ SUBWAY: cross-list schedules 59999 ms apart remain distinct within one minute (0.301992ms)
+✔ REGIONAL_RAIL: cross-list schedules 1 ms apart remain distinct within one minute (0.440758ms)
+✔ REGIONAL_RAIL: cross-list schedules 500 ms apart remain distinct within one minute (0.124846ms)
+✔ REGIONAL_RAIL: cross-list schedules 1000 ms apart remain distinct within one minute (0.109319ms)
+✔ REGIONAL_RAIL: cross-list schedules 30000 ms apart remain distinct within one minute (0.13799ms)
+✔ REGIONAL_RAIL: cross-list schedules 59999 ms apart remain distinct within one minute (0.108033ms)
+✔ equal scheduled instant merges across offset/precision spelling: 2099-01-01T13:00:00+01:00 (1.115234ms)
+✔ equal scheduled instant merges across offset/precision spelling: 2099-01-01T07:00:00-05:00 (0.17377ms)
+✔ equal scheduled instant merges across offset/precision spelling: 2099-01-01T21:00:00.000+09:00 (0.110105ms)
+✔ equal scheduled instant merges across offset/precision spelling: 2099-01-01T12:00:00.000Z (0.575999ms)
+✔ different schedules cannot transfer cancellation, delay, platform or trip linkage at one live instant (0.534853ms)
+✔ invalid scheduled timestamps never authorize a cross-list merge (0.697305ms)
+✔ missing schedule preserves existing actual-time fallback with exact instant comparisons (0.541556ms)
+✔ missing or invalid actual timestamps still drop unusable rows (0.372778ms)
+✔ arrival-only observations use their exact scheduled instant (0.86108ms)
+✔ exact instants preserve simultaneous ambiguity and other existing cross-feed guards (1.077878ms)
+✔ selected stop-board acquisition preserves two same-minute trains and bounded requests (2.782757ms)
+✔ equal nonzero milliseconds and service dates are compared as absolute instants (0.211326ms)
+✔ shared IDs remain available without overriding conflicting stop-event times (0.392636ms)
+✔ a precision-conflicting competitor still blocks cancellation transfer to another train (0.586491ms)
+✔ a multi-board ambiguous group does not split into newly mergeable exact-time components (0.389671ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.136863

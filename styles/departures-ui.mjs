@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261011-departure-envelope-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261012-departure-instant-2';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

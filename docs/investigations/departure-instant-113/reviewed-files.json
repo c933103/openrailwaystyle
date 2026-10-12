@@ -1,0 +1,19 @@
+{
+  "baseRemoteCommit": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "localSnapshotCommit": "2c6b0af3f9dbc37ea897c623db9b53fa3b761d1d",
+  "files": {
+    "styles/departures.mjs": "52338c2e1a57c1c45c31f13e1e16c747b7b8b84af336de077d38eaeaee8940f2",
+    "styles/departures-ui.mjs": "ef460915fce4204e9fda541cf24f0abc4c6171c3b32865f57ae1d72683a9dd39",
+    "styles/app.mjs": "ee29385e941dca1c004807d0026fcbd2de3ab5ecfc05466e086efb2951956a74",
+    "styles/index.html": "ebcfbc0f68098967cd01eb1346a39f206cea4d3b479ace78dc4072564f2bc8a1",
+    "styles/cjk-font.mjs": "b00c73aed41efea6b4250ff7b9bf36868ee6933aceb80bda2733b8b7d959ca4c",
+    "styles/elevation.mjs": "188655ff48e6e925f4cfc864c2f8291ea0bf66907ef9800550879ed9a947e92b",
+    "styles/layer-semantics.mjs": "ea05e42fe82e65ebbf66fdba32639245d4a49060480295abed446a293a74550d",
+    "styles/map-model.mjs": "b21918a688647e10dc78240658dc17d599043339d4526c67aeb0f5e93402a665",
+    "docs/user-guide.md": "0c1aca34131b4b96a6704b6ac2350732981c011b4856900c679b68229adfe51b",
+    "tests/departure-instant.test.mjs": "425ee3c9ffb498b33cf21397ebfb5bb036f112576b4bb89314fc3d31e5a15475",
+    "tests/train-schedule.test.mjs": "b7917335a69c8a6e6b706196c90ab490143ef004307c45d4b5d1e0539858bb6d",
+    "tests/sw-install.test.mjs": "449a6bdfe5d44d475698108f1a16370e567a534935adea1186ce4bfc67200b79",
+    "tests/fixtures/departure-instant-predecessor.json.gz": "6217f3947863d75cac3b33e0a4cf830a64326993e1786d3ec8b86b7aa1a55939"
+  }
+}
