@@ -1,0 +1,249 @@
+=== clean-without-history (expected pass) ===
+✔ current matcher benchmark exercises controlled outcomes and records its own provenance (1643.910084ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1964.14181
+
+=== benign-source-edits-without-history (expected pass) ===
+✔ current matcher benchmark exercises controlled outcomes and records its own provenance (1243.006558ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1472.400549
+
+=== false-provenance (expected failure) ===
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (1157.18171ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1371.445143
+
+✖ failing tests:
+
+test at tests/timetable-matching.test.mjs:745:1
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (1157.18171ms)
+  AssertionError [ERR_ASSERTION]: fresh report must identify its actual input: scripts/timetable-matching.mjs
+  + actual - expected
+  
+  + '0000000000000000000000000000000000000000000000000000000000000000'
+  - '17468896f421ef84754194ff0da654b815718e6a414c0615095df37feefc8f3f'
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-benchmark-contract-grpfwtvv/tests/timetable-matching.test.mjs:759:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '0000000000000000000000000000000000000000000000000000000000000000',
+    expected: '17468896f421ef84754194ff0da654b815718e6a414c0615095df37feefc8f3f',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+=== missing-negative-outcome (expected failure) ===
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (1110.347995ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1268.097398
+
+✖ failing tests:
+
+test at tests/timetable-matching.test.mjs:745:1
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (1110.347995ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      [
+        0,
+        'verified',
+        'verified',
+  ...
+        0,
+  -     'unbound',
+  -     'missing_evidence',
+  -     'missing_service_identity'
+  -   ],
+  -   [
+  -     0,
+        'source-limit',
+        'missing_evidence',
+        'source_work_limit'
+      ],
+      [
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-benchmark-contract-grpfwtvv/tests/timetable-matching.test.mjs:764:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ [ 0, 'verified', 'verified', 'reviewed_identity_and_stops' ], [ 0, 'source-limit', 'missing_evidence', 'source_work_limit' ], [ 0, 'candidate-limit', 'missing_evidence', 'candidate_work_limit' ] ],
+    expected: [ [ 0, 'verified', 'verified', 'reviewed_identity_and_stops' ], [ 0, 'unbound', 'missing_evidence', 'missing_service_identity' ], [ 0, 'source-limit', 'missing_evidence', 'source_work_limit' ], [ 0, 'candidate-limit', 'missing_evidence', 'candidate_work_limit' ] ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+=== broken-source-limit (expected failure) ===
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (710.366581ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 894.928353
+
+✖ failing tests:
+
+test at tests/timetable-matching.test.mjs:745:1
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (710.366581ms)
+  AssertionError [ERR_ASSERTION]: file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:60
+        if (run.status !== 0) throw Error(run.stderr || 'Controlled matcher child failed');
+                                    ^
+  
+  Error: file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:42
+    if (outcome.status !== expected[0] || outcome.reasons[0] !== expected[1] || outcome.frequency_status !== 'not_evaluated') throw Error(JSON.stringify(outcome));
+                                                                                                                                    ^
+  
+  Error: {"schema":1,"status":"missing_evidence","reasons":["broken_source_limit_reason"],"frequency_status":"not_evaluated"}
+      at child (file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:42:131)
+      at file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:46:39
+      at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+      at async node:internal/modules/esm/loader:643:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+  
+  Node.js v24.19.0
+  
+      at file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:60:35
+      at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+      at async node:internal/modules/esm/loader:643:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+  
+  Node.js v24.19.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-benchmark-contract-grpfwtvv/tests/timetable-matching.test.mjs:749:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+=== broken-candidate-limit (expected failure) ===
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (835.300335ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1002.836584
+
+✖ failing tests:
+
+test at tests/timetable-matching.test.mjs:745:1
+✖ current matcher benchmark exercises controlled outcomes and records its own provenance (835.300335ms)
+  AssertionError [ERR_ASSERTION]: file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:60
+        if (run.status !== 0) throw Error(run.stderr || 'Controlled matcher child failed');
+                                    ^
+  
+  Error: file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:42
+    if (outcome.status !== expected[0] || outcome.reasons[0] !== expected[1] || outcome.frequency_status !== 'not_evaluated') throw Error(JSON.stringify(outcome));
+                                                                                                                                    ^
+  
+  Error: {"schema":1,"status":"missing_evidence","reasons":["broken_candidate_limit_reason"],"frequency_status":"not_evaluated"}
+      at child (file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:42:131)
+      at file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:46:39
+      at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+      at async node:internal/modules/esm/loader:643:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+  
+  Node.js v24.19.0
+  
+      at file:///tmp/atlas-benchmark-contract-grpfwtvv/scripts/benchmark-timetable-matching.mjs:60:35
+      at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+      at async node:internal/modules/esm/loader:643:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+  
+  Node.js v24.19.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-benchmark-contract-grpfwtvv/tests/timetable-matching.test.mjs:749:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+[
+  {
+    "case": "clean-without-history",
+    "expected": "pass",
+    "exit": 0
+  },
+  {
+    "case": "benign-source-edits-without-history",
+    "expected": "pass",
+    "exit": 0
+  },
+  {
+    "case": "false-provenance",
+    "expected": "fail",
+    "exit": 1
+  },
+  {
+    "case": "missing-negative-outcome",
+    "expected": "fail",
+    "exit": 1
+  },
+  {
+    "case": "broken-source-limit",
+    "expected": "fail",
+    "exit": 1
+  },
+  {
+    "case": "broken-candidate-limit",
+    "expected": "fail",
+    "exit": 1
+  }
+]
