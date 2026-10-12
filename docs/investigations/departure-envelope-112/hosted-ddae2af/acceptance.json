@@ -1,0 +1,136 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "pullRequest": 193,
+  "sourceHead": "ddae2afeea292c91b5720548aa48b84b1e5bb5df",
+  "siteRun": {
+    "id": 38186929980,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980",
+    "status": "completed",
+    "conclusion": "success",
+    "attempt": 1
+  },
+  "referenceRun": {
+    "id": 38186929979,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929979",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "jobs": [
+    {
+      "id": 114611215486,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114611215486"
+    },
+    {
+      "id": 114611215583,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114611215583"
+    },
+    {
+      "id": 114611215675,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114611215675"
+    },
+    {
+      "id": 114633953746,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114633953746"
+    },
+    {
+      "id": 114634796599,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796599"
+    },
+    {
+      "id": 114634796638,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796638"
+    },
+    {
+      "id": 114634796640,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796640"
+    },
+    {
+      "id": 114634796650,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796650"
+    },
+    {
+      "id": 114634796673,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796673"
+    },
+    {
+      "id": 114634796683,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114634796683"
+    },
+    {
+      "id": 114636834988,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114636834988"
+    },
+    {
+      "id": 114636855201,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114636855201"
+    },
+    {
+      "id": 114636856015,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980/job/114636856015"
+    }
+  ],
+  "recordedStatus": [
+    {
+      "context": "site/browser-checks",
+      "state": "success",
+      "target_url": "https://github.com/c933103/openrailwaystyle/actions/runs/38186929980"
+    }
+  ],
+  "codexReview": "https://github.com/c933103/openrailwaystyle/pull/193#issuecomment-6115464179",
+  "controlsArtifact": {
+    "id": 11722189059,
+    "name": "browser-review-controls",
+    "size": 4332304,
+    "sha256": "dd5e5a401d4d63f085167c9f4f3e82fa02be6bb975af744c97735e94d996e6ee",
+    "workflowHead": "ddae2afeea292c91b5720548aa48b84b1e5bb5df"
+  },
+  "browserAcceptance": {
+    "engines": [
+      "chromium",
+      "webkit"
+    ],
+    "malformedRequestsPerEngine": 180,
+    "departureScriptSeconds": 37.3,
+    "screenshotsInspected": 6,
+    "method": "Hosted fixture-only real renderer, externally guarded; no local browser launch or live timetable-provider probe."
+  }
+}
