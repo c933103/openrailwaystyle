@@ -6,6 +6,10 @@ and [#129](https://github.com/c933103/openrailwaystyle/issues/129), based on mai
 against GitHub's tree before editing; see [baseline verification](baseline-verification.json).
 Both wider issues remain open.
 
+The [browser-clock successor](browser-clock/README.md) records a one-line
+fixture timing correction found after initial publication, its negative/positive
+replay and the successor evidence. Production modules remain unchanged.
+
 ## Finding and contract
 
 `d.stopTimes || []` previously treated missing/falsey fields as successfully empty
