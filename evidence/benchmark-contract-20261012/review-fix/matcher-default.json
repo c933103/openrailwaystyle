@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "synthetic": true,
+  "smoke": false,
+  "node": "v24.19.0",
+  "fixture": {
+    "trips": 10000,
+    "calls": 24,
+    "stop_rows": 240000,
+    "profiles": 28,
+    "patterns": 2,
+    "observations": 10000,
+    "sidecar_bytes": 5825261,
+    "sidecar_sha256": "f02c73cd8bbe77d9df24cdf88c2f40d936586f79b5bae60d5163f9086c756d2c"
+  },
+  "measurement": "Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.",
+  "source_sha256": {
+    "scripts/timetable-matching.mjs": "17468896f421ef84754194ff0da654b815718e6a414c0615095df37feefc8f3f",
+    "scripts/timetable-timezones.mjs": "2275eaafa2258f29e17ca53efcedff6d31eb3f32298518855296e316e9d62d22",
+    "scripts/benchmark-timetable-matching.mjs": "d656fb70ba10daae3890a2923f8993a13f05ab9d5b53b296c99fac0dca4c67ad",
+    "scripts/gtfs-frequency.py": "3c5d527d470f369a5c9c1709ca039c6bb34e527b4ec97f3d2b96f8ebeca1fe12",
+    "scripts/timetable_evidence.py": "6e1fb0de4f0d63ef5d0110ed176b6fe043b3fe67026073a545cdb3e11aae3250",
+    "scripts/benchmark-timetable-evidence.py": "00228dc8c7af17b65d94250820e4b0e9231e6139dd610dc2ff3c121c8844aeed"
+  },
+  "results": [
+    {
+      "repeat": 0,
+      "mode": "verified",
+      "milliseconds": 275.579,
+      "rss_before_bytes": 59011072,
+      "rss_after_bytes": 86536192,
+      "peak_process_rss_kib": 84508,
+      "status": "verified",
+      "reason": "reviewed_identity_and_stops"
+    },
+    {
+      "repeat": 0,
+      "mode": "unbound",
+      "milliseconds": 307.065,
+      "rss_before_bytes": 59236352,
+      "rss_after_bytes": 86368256,
+      "peak_process_rss_kib": 84344,
+      "status": "missing_evidence",
+      "reason": "missing_service_identity"
+    },
+    {
+      "repeat": 0,
+      "mode": "source-limit",
+      "milliseconds": 73.472,
+      "rss_before_bytes": 88940544,
+      "rss_after_bytes": 85495808,
+      "peak_process_rss_kib": 88828,
+      "status": "missing_evidence",
+      "reason": "source_work_limit"
+    },
+    {
+      "repeat": 0,
+      "mode": "candidate-limit",
+      "milliseconds": 379.378,
+      "rss_before_bytes": 60190720,
+      "rss_after_bytes": 103575552,
+      "peak_process_rss_kib": 101148,
+      "status": "missing_evidence",
+      "reason": "candidate_work_limit"
+    },
+    {
+      "repeat": 1,
+      "mode": "verified",
+      "milliseconds": 309.296,
+      "rss_before_bytes": 58974208,
+      "rss_after_bytes": 86237184,
+      "peak_process_rss_kib": 84216,
+      "status": "verified",
+      "reason": "reviewed_identity_and_stops"
+    },
+    {
+      "repeat": 1,
+      "mode": "unbound",
+      "milliseconds": 394.941,
+      "rss_before_bytes": 59031552,
+      "rss_after_bytes": 86163456,
+      "peak_process_rss_kib": 84144,
+      "status": "missing_evidence",
+      "reason": "missing_service_identity"
+    },
+    {
+      "repeat": 1,
+      "mode": "source-limit",
+      "milliseconds": 99.606,
+      "rss_before_bytes": 88563712,
+      "rss_after_bytes": 85934080,
+      "peak_process_rss_kib": 88868,
+      "status": "missing_evidence",
+      "reason": "source_work_limit"
+    },
+    {
+      "repeat": 1,
+      "mode": "candidate-limit",
+      "milliseconds": 402.62,
+      "rss_before_bytes": 60301312,
+      "rss_after_bytes": 103686144,
+      "peak_process_rss_kib": 101256,
+      "status": "missing_evidence",
+      "reason": "candidate_work_limit"
+    },
+    {
+      "repeat": 2,
+      "mode": "verified",
+      "milliseconds": 399.757,
+      "rss_before_bytes": 59092992,
+      "rss_after_bytes": 85962752,
+      "peak_process_rss_kib": 83948,
+      "status": "verified",
+      "reason": "reviewed_identity_and_stops"
+    },
+    {
+      "repeat": 2,
+      "mode": "unbound",
+      "milliseconds": 487.663,
+      "rss_before_bytes": 59215872,
+      "rss_after_bytes": 86872064,
+      "peak_process_rss_kib": 84836,
+      "status": "missing_evidence",
+      "reason": "missing_service_identity"
+    },
+    {
+      "repeat": 2,
+      "mode": "source-limit",
+      "milliseconds": 80.602,
+      "rss_before_bytes": 89014272,
+      "rss_after_bytes": 85893120,
+      "peak_process_rss_kib": 89228,
+      "status": "missing_evidence",
+      "reason": "source_work_limit"
+    },
+    {
+      "repeat": 2,
+      "mode": "candidate-limit",
+      "milliseconds": 302.644,
+      "rss_before_bytes": 59965440,
+      "rss_after_bytes": 105185280,
+      "peak_process_rss_kib": 102720,
+      "status": "missing_evidence",
+      "reason": "candidate_work_limit"
+    }
+  ]
+}
