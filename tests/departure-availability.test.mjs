@@ -148,6 +148,58 @@ function boardDom(feed) {
     }};
 }
 const partialMessage = 'Some departures could not load. The board may be incomplete.';
+test('DOM retains same-script composite operators only when both aliases are supplied', async () => {
+  for (const name of ['München Hbf / Munich', 'München (Munich)']) for (const supplied of [true, false]) {
+    const candidates = [{...stop('a'), name:'München Hbf', lat:.001}, {...stop('b'), name, lat:.0011},
+      {...stop('wrong'), name:'Munich Park', lat:.0001}];
+    const bodies = Object.fromEntries(['a','b','wrong'].map(id => [id, {stopTimes:[{
+      ...observation, displayName:id === 'wrong' ? 'WRONG' : `RIGHT-${id}`, tripId:id,
+    }]}]));
+    const feed = {current:fixture({candidates, bodies})}, view = boardDom(feed);
+    try {
+      const properties = {name:'München Hbf', ...(supplied ? {'name:en':'Munich'} : {})};
+      view.show(properties); await view.settle();
+      assert.deepEqual(feed.current.calls.slice(1).map(({url}) => url.searchParams.get('stopId')), supplied ? ['a','b'] : ['a']);
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, supplied ? 2 : 1);
+      assert.doesNotMatch(view.panel.textContent, /WRONG/);
+      for (const [i, direction] of ['from','to'].entries()) {
+        const url = new URL(view.panel.querySelectorAll('.departure-links a')[i].href);
+        assert.equal(url.searchParams.get(`${direction}Place`), 'a');
+        assert.equal(url.searchParams.get(`${direction}Name`), supplied ? 'Munich' : 'München Hbf');
+      }
+      view.show(properties); await view.settle();
+      assert.equal(feed.current.calls.length, supplied ? 3 : 2, 'cached reopening preserves the bounded requests');
+    } finally {view.dom.window.close();}
+  }
+});
+test('DOM uses only name-compatible board IDs for both journey links and keeps the result cached', async () => {
+  const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
+    permutations(items.filter((_, j) => j !== i)).map(rest => [item, ...rest]));
+  for (const [name, other] of [['Terminal 1', 'Terminal 10'], ['Central', 'Central Park'], ['中央', '中央公園']]) {
+    const candidates = [{...stop('a'), name, lat:.001}, {...stop('b'), name, lat:.0011}, {...stop('wrong'), name:other, lat:.0001}];
+    const bodies = Object.fromEntries(['a','b','wrong'].map(id => [id, {stopTimes:[{
+      ...observation, displayName:id === 'wrong' ? 'WRONG' : `RIGHT-${id}`, tripId:id,
+    }]}]));
+    for (const order of permutations(candidates)) {
+      const feed = {current:fixture({candidates:order, bodies})}, view = boardDom(feed);
+      try {
+        view.show(name); await view.settle();
+        assert.deepEqual(feed.current.calls.slice(1).map(({url}) => url.searchParams.get('stopId')), ['a','b']);
+        assert.equal(feed.current.calls.length, 3);
+        assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 2);
+        assert.doesNotMatch(view.panel.textContent, /WRONG/);
+        const links = [...view.panel.querySelectorAll('.departure-links a')];
+        for (const [i, direction] of ['from','to'].entries()) {
+          const url = new URL(links[i].href);
+          assert.equal(url.searchParams.get(`${direction}Place`), 'a');
+          assert.equal(url.searchParams.get(`${direction}Name`), name);
+        }
+        view.show(name); await view.settle();
+        assert.equal(feed.current.calls.length, 3, 'normal reopening reuses the selected boards');
+      } finally {view.dom.window.close();}
+    }
+  }
+});
 for (const times of [[], [observation]]) test(`DOM caches malformed board plus healthy ${times.length ? 'rows' : 'empty'} as partial until normal expiry`, async () => {
   for (const [label, body] of malformedBoards) for (const order of [['a', 'b'], ['b', 'a']]) {
     const feed = {current: fixture({order, times, bodies: {b: body}})}, view = boardDom(feed);

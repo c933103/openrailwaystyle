@@ -1,0 +1,53 @@
+{
+  "base_commit": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+  "files": [
+    {
+      "path": "scripts/check-departures-browser.mjs",
+      "sha256": "ee4ab55723332ee60bde6aaf84f29e0f1e740450a90d7dfda532842d8406116d"
+    },
+    {
+      "path": "styles/app.mjs",
+      "sha256": "8f509567e6f05839826c2ba0e0b919b6a8db41fb22dcd900af7a8bb4eee9c60b"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "sha256": "3382b3043f54431b68c9d8c7e5c09ba453eb49d1960c5e6ef862eca3ae0bb7ac"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "sha256": "c5406a2dd7db74508ae6825e3d784d546bae856b3c9a38b2571cfd96616c870c"
+    },
+    {
+      "path": "styles/departures.mjs",
+      "sha256": "d54f80bed0944db459155ffb078b93c37d9d3ba702d50f676f220b7dd229cd5f"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "sha256": "34d37c70edf12578b167ac742450af32dcf9e7d7943fdad5a4b13352386992ee"
+    },
+    {
+      "path": "styles/index.html",
+      "sha256": "7fb43fa668ae3d790a9db233a8e6e7f99d9bf6655abb9f6ba35a6fddabec101b"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "sha256": "7c7403a02be715606104e87138890f966e0a111bc96bb303246fa0bda592c319"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "sha256": "f85c4dd3353a7144ebf2e85aabb7670f89ddddbf728dbd17c5a69e18eda2624b"
+    },
+    {
+      "path": "tests/departure-availability.test.mjs",
+      "sha256": "5a52f3f4b2cab5a8f33fb564668390ea46a510349598fcc4a7913a3de04f260a"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "sha256": "8fa04f96a94d309688c0a810efda162f686c1998f50bdd6d62e794fe40ea50ae"
+    },
+    {
+      "path": "tests/departure-stop-names.test.mjs",
+      "sha256": "25b90b14501d049c90197d635765becbf4ef74919e6ed3670cbd4ddb89ea91a0"
+    }
+  ]
+}

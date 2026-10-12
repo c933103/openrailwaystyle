@@ -18,17 +18,53 @@ const metres = (a, b) => {
   const r = Math.PI / 180, x = (b.lon - a.lon) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r;
   return Math.hypot(x, y) * 6371000;
 };
-const simplify = name => String(name ?? '').normalize('NFKC').toLowerCase().replace(/\b(station|bahnhof|hbf|gare|estación|stazione)\b|駅|站|역|[\s\-‐–—()（）.,'’]/g, '');
+const stationWords = /\b(station|bahnhof|hbf|gare|estación|stazione)\b|駅|站|역/g;
+const simplify = name => name.replace(stationWords, '').replace(/[\s\-‐–—()（）.,'’]/g, '');
+
+// Match complete names, not arbitrary substrings: Terminal 1 is not Terminal
+// 10, and Central is not Central Park. Keep explicitly supplied aliases and
+// the complete native and Latin parts of bilingual names such as 東京 Tōkyō.
+// Native scripts stay together: 中央公園 and 中央 must not become aliases.
+const nativeName = '(?:(?!\\p{Script=Latin})[\\p{Letter}\\p{Mark}\\p{Decimal_Number}\\s.\'’‐–—-])+';
+const latinName = '[\\p{Script=Latin}\\p{Mark}\\p{Decimal_Number}\\s.\'’‐–—-]+';
+const bilingualNames = [nativeName, latinName].map((part, i, parts) =>
+  new RegExp(`^(${part})[\\s(/]+(${parts[1 - i]})\\)?$`, 'u'));
+const nativeLetter = /(?!\p{Script=Latin})\p{Letter}/u;
+function stopName(name) {
+  const text = String(name ?? '').normalize('NFKC').toLowerCase().trim()
+    // A labelled platform is metadata; an unlabelled number remains part of
+    // the station name. Never strip arbitrary parenthesized station suffixes.
+    .replace(/[\s,(/‐–—-]+(?:platform|track|gleis|quai|binario|andén)\s+[\p{Letter}\p{Decimal_Number}]+(?:\s*[/,‐–—-]\s*[\p{Letter}\p{Decimal_Number}]+)*\)?$/u, '')
+    .replace(/[\s,(]+[\p{Decimal_Number}]+番線\)?$/u, '')
+    .replace(stationWords, '').trim();
+  const bilingual = bilingualNames.map(pattern => text.match(pattern)).find(match => match &&
+    nativeLetter.test(match[0]) && /\p{Script=Latin}/u.test(match[0]));
+  const parts = bilingual ? bilingual.slice(1) : [];
+  const separated = text.match(/^([^/()]+)\s*\/\s*([^/()]+)$/u) || text.match(/^([^/()]+)\s*\(([^/()]+)\)$/u);
+  return {names:[text, ...parts].map(simplify).filter(Boolean), native:parts.find(part => nativeLetter.test(part))?.trim(),
+    aliases:separated ? separated.slice(1).map(simplify).filter(Boolean) : []};
+}
+function compatibleStopNames(a, b) {
+  if (a.names[0] && a.names[0] === b.names[0]) return true;
+  // A shared Latin component can also be an operator: JR 東京 and JR 神田
+  // are not aliases. Keep native identity when both names supply it.
+  if (a.native && b.native && simplify(a.native) !== simplify(b.native)) return false;
+  return a.names.some(name => b.names.includes(name));
+}
 
 // The timetable stops that are this station: rail stops within 400 m, those
 // named like the station first, then the nearest. Several timetables can
 // cover one station (two operators), so up to two are kept.
 export function pickStops(candidates, station, limit = 2) {
-  const names = (station.names || []).map(simplify).filter(Boolean);
+  const names = (station.names || []).map(stopName);
+  // Same-script slash/parenthesized aliases need independent map evidence for
+  // every component; otherwise Central (North) could become Central again.
+  const suppliedAliases = new Set(names.map(name => name.names[0]).filter(Boolean));
   const scored = candidates
     .filter(c => c.type === 'STOP' && (c.modes || []).some(m => RAIL_MODES.has(m)) && Number.isFinite(c.lat) && Number.isFinite(c.lon))
     .map(c => {
-      const own = simplify(c.name), named = own && names.some(n => own.includes(n) || n.includes(own));
+      const own = stopName(c.name), named = names.some(name => compatibleStopNames(own, name)) ||
+        (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
       return {stop: c, distance: metres(station, c), named};
     })
     .filter(c => c.distance <= RADIUS_M)
