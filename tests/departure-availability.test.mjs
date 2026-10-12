@@ -487,3 +487,25 @@ for (const candidates of malformedLookups) test(`DOM shows a generic lookup fail
     assert.equal(feed.current.calls.length, 1, 'a recovered successful lookup is cached normally');
   } finally {view.dom.window.close();}
 });
+
+for (const direction of [-1, 1]) for (const failed of [[], ['b']])
+test(`DOM displays wrapped station boards and retains cached availability (${direction}, failed=${failed})`, async () => {
+  const from = direction * 179.999, candidates = [{...stop('a'), lon:-direction * 179.999},
+    {...stop('b'), lon:-direction * 179.9985}, {...stop('c'), lon:-direction * 179.998}];
+  const feed = {current:fixture({candidates, failed, times:[observation]})}, view = boardDom(feed);
+  const properties = {id:'node-180', name:'Central', 'name:en':'Central', 'name:ja':'中央'};
+  const feature = {geometry:{coordinates:[from, 0]}};
+  try {
+    view.show(properties, feature); await view.settle();
+    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 1);
+    assert.match(view.panel.textContent, /R7/);
+    assert.doesNotMatch(view.panel.textContent, /No matching rail timetable stop/);
+    assert.equal(view.panel.querySelector('.departure-warning')?.textContent ?? null, failed.length ? partialMessage : null);
+    assert.deepEqual(feed.current.calls.slice(1).map(({url}) => url.searchParams.get('stopId')), ['a','b']);
+    assert.equal(new URL(view.panel.querySelector('.departure-links a').href).searchParams.get('fromPlace'), 'a');
+    view.language('ja'); view.show(properties, feature); await view.settle();
+    assert.equal(feed.current.calls.length, 3, 'translated reopening reuses the original two-board result');
+    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 1);
+    assert.equal(view.panel.querySelector('.departure-warning')?.textContent ?? null, failed.length ? partialMessage : null);
+  } finally {view.dom.window.close();}
+});

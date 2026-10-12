@@ -8,6 +8,12 @@ Use station search to locate a place and choose a railway view: infrastructure (
 
 A station's panel lists its next rail departures from [Transitous](https://transitous.org), which combines operators' published timetables (GTFS) with their live updates (GTFS-RT) where they publish any: live rows show the expected time and the delay, others the timetabled time, and cancellations are marked. Coverage follows what operators publish. If no rail timetable stop matches within 400 metres, the panel reports that no nearby stop was matched; this does not establish that the station has no published timetable. A malformed or failed stop lookup is reported as a loading failure. “Journey from here” and “Journey to here” open the Transitous journey planner with the station filled in. Only opening a station sends its position to Transitous.
 
+Nearby timetable stops and duplicate station-search results use the short longitude
+distance across the ±180° meridian. Stops on opposite sides of that meridian
+can therefore belong to the same nearby station. The existing distance limits,
+name matching and two-board request limit still apply; this does not expand
+provider coverage.
+
 Repeated observations within one timetable board are combined only when their
 trip and route identifiers, service names, mode family, destination and scheduled
 time agree. Distinguishable simultaneous services remain separate. A combined

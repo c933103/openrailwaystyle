@@ -1,6 +1,6 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261012-departure-stop-names-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261012-station-antimeridian-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261012-departure-stop-names-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261012-station-antimeridian-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -79,7 +79,7 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   if (q.length < 2) return [];
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   // Names in a language (name:en, name:zh-Hant, name:ja_kana), not name:etymology and the like.
   const namesOf = p => Object.entries(p).filter(([key, value]) => (/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key) || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
   const [cx, cy] = centre || [0, 0], matches = new Map();
@@ -119,7 +119,7 @@ export function drawnStationQueries(layers, zoom) {
 export function searchResults(facilities, places) {
   const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
   const rail = facilities.filter(located), others = [];
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   const names = item => new Set(Object.entries(item).filter(([key, value]) => (key === 'name' || key.startsWith('name:')) && typeof value === 'string').map(([, value]) => value.toLowerCase()));
   for (const place of places) {
     const details = place.namedetails || {};

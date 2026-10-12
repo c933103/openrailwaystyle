@@ -15,7 +15,9 @@ export const RAIL_MODES = new Set(['HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAI
 const RADIUS_M = 400;
 
 const metres = (a, b) => {
-  const r = Math.PI / 180, x = (b.lon - a.lon) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r;
+  // Use the short arc at the antimeridian, as for ordinary nearby stops.
+  const dx = ((b.lon - a.lon) % 360 + 540) % 360 - 180;
+  const r = Math.PI / 180, x = dx * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r;
   return Math.hypot(x, y) * 6371000;
 };
 const stationWords = /\b(station|bahnhof|hbf|gare|estación|stazione)\b|駅|站|역/g;
