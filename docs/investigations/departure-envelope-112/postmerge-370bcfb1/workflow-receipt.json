@@ -1,0 +1,232 @@
+{
+  "pullRequest": "https://github.com/c933103/openrailwaystyle/pull/193",
+  "reviewedHead": "ddae2afeea292c91b5720548aa48b84b1e5bb5df",
+  "merge": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+  "tree": "e8367857d070314eed9c061857077b5118b94c5e",
+  "exactMergeTreeEquality": true,
+  "referenceRun": 38195488851,
+  "referenceConclusion": "success",
+  "runs": [
+    {
+      "id": 38195488586,
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+      "attempt": 1,
+      "createdAt": "2026-10-12T02:21:51Z",
+      "updatedAt": "2026-10-12T02:58:26Z",
+      "jobs": [
+        {
+          "id": 114637072484,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114637072484"
+        },
+        {
+          "id": 114637072600,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114637072600"
+        },
+        {
+          "id": 114637072618,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114637072618"
+        },
+        {
+          "id": 114639409259,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114639409259"
+        },
+        {
+          "id": 114640403390,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403390"
+        },
+        {
+          "id": 114640403412,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403412"
+        },
+        {
+          "id": 114640403472,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403472"
+        },
+        {
+          "id": 114640403490,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403490"
+        },
+        {
+          "id": 114640403497,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403497"
+        },
+        {
+          "id": 114640403542,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114640403542"
+        },
+        {
+          "id": 114642343588,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114642343588"
+        },
+        {
+          "id": 114642357043,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114642357043"
+        },
+        {
+          "id": 114642357605,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38195488586/job/114642357605"
+        }
+      ]
+    },
+    {
+      "id": 38196178426,
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+      "attempt": 1,
+      "createdAt": "2026-10-12T02:32:19Z",
+      "updatedAt": "2026-10-12T03:20:35Z",
+      "jobs": [
+        {
+          "id": 114644588367,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114644588367"
+        },
+        {
+          "id": 114644588458,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114644588458"
+        },
+        {
+          "id": 114644588513,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114644588513"
+        },
+        {
+          "id": 114644636202,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114644636202"
+        },
+        {
+          "id": 114645560324,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560324"
+        },
+        {
+          "id": 114645560330,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560330"
+        },
+        {
+          "id": 114645560370,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560370"
+        },
+        {
+          "id": 114645560372,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560372"
+        },
+        {
+          "id": 114645560374,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560374"
+        },
+        {
+          "id": 114645560384,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114645560384"
+        },
+        {
+          "id": 114647240843,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114647240843"
+        },
+        {
+          "id": 114647255357,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114647255357"
+        },
+        {
+          "id": 114647256583,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38196178426/job/114647256583"
+        }
+      ]
+    }
+  ],
+  "servedChecks": [
+    {
+      "record": "direct-served-verification.json",
+      "passed": 366,
+      "failed": 0
+    },
+    {
+      "record": "successor-served-verification.json",
+      "passed": 366,
+      "failed": 0
+    }
+  ],
+  "scope": "Bounded direct merge delivery and its direct reference-triggered successor only. Later PR deliveries and unrelated scheduled runs are not part of this record."
+}

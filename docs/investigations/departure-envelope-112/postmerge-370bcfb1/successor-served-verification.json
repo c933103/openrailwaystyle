@@ -1,0 +1,104 @@
+{
+  "observedAt": "2026-10-12T03:13:28.518Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "commit": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+  "version": "20261011-departure-envelope-1",
+  "assets": [
+    {
+      "path": "",
+      "status": 200,
+      "bytes": 45808,
+      "sha256": "0ce8c6c618a69dc0833fe56692272f1a6767e568fe9cb8e5f2a83a11ee76c053",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 155231,
+      "sha256": "fda6a37f139dc12e8068f3237ad380115dcfa6a93ede086f54e18b0a8a869ca6",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 16264,
+      "sha256": "30f6c147858bdfbe3b4f2b0579ca7f7c8a7b9aa6d60be7a21cf43b14e4d3c231",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures-ui.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 6978,
+      "sha256": "24b44a463a8937ba53018b78654d57d2ed52d1f9ec29fbd8951639b5de10c492",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "map-model.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 58897,
+      "sha256": "4f33adbd5688d726669374866fded4045c82d9ced1646ee51efc4f861f491ecd",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "platform-length.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 30941,
+      "sha256": "0f6205c1dfe1994e9c4e29906f53c4c8f2351f7a594945e57396a678ec80fcc9",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "axle-load.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 4173,
+      "sha256": "d079a0d79985d0dc2cae76659e2a129b204a4e892dc9acd91526c1328aaaee0a",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "cjk-font.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 4082,
+      "sha256": "0a41dcc332e85d9325d8e8fd1985ff60742aa48cfbd8cbb5285f7dca526e995e",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "elevation.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 6817,
+      "sha256": "2f1707f3f765926f83411ca9a16e6911c497eac52c6fc163c2d021ecc4bcb3b6",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "layer-semantics.mjs?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 6076,
+      "sha256": "17c21b06a27377129de4848c9b3c8affcf153e68477ebdd3d1b7f18aea73c2a7",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.css?v=20261011-departure-envelope-1",
+      "status": 200,
+      "bytes": 23144,
+      "sha256": "736f338e7a855b7864802f0eaa7972a713650fe171bbad837156c6693416bc8b",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "bytes": 14826,
+      "sha256": "bae6f897ca776163b097b00e6210ff35932aa073b19ad49b0788d2066e8a910c",
+      "matchesMergedSource": true
+    }
+  ],
+  "bundle": {
+    "bytes": 367635,
+    "sha256": "611949aa93f18ff17c59a008fac796693df5eeda4aa50ac527dcebdd48cffbda",
+    "commitPresent": true,
+    "versionPresent": true
+  },
+  "independentContract": {
+    "badBodyShapes": 26,
+    "passed": 366,
+    "failed": 0
+  },
+  "scope": "First-party asset reads only, redirects rejected. Actual served parser/DOM/cache replay with synthetic fixtures; no live timetable-provider traffic or local browser launch."
+}

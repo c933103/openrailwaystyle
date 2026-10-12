@@ -1,0 +1,14 @@
+2026-10-12T02:48:40.3144722Z [36;1mconst base=process.env.PAGE_URL.replace(/\/$/,'')+'/data/lifecycle/';[0m
+2026-10-12T02:48:40.3154920Z [36;1m        console.log('PASS: exact deployed vector tile',key,encoding);[0m
+2026-10-12T02:48:40.6306580Z   PAGE_URL: https://c933103.github.io/openrailwaystyle/
+2026-10-12T02:48:41.1257144Z PASS: exact deployed vector tile 7/109/50 identity
+2026-10-12T02:48:41.1699916Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity
+2026-10-12T02:48:41.2023025Z PASS: exact deployed vector tile 0/0/0 identity
+2026-10-12T02:48:41.2269764Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity
+2026-10-12T02:48:41.2614854Z PASS: exact deployed vector tile 10/552/143 identity
+2026-10-12T02:48:41.2874362Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity
+2026-10-12T02:49:44.0979534Z   MAP_BASE_URL: https://c933103.github.io/openrailwaystyle/
+2026-10-12T02:56:30.7935406Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":344,"p95Ms":1322},"generation":"d3ee80fd77568ab00e5071f8"}
+2026-10-12T02:56:30.8173107Z   MAP_BASE_URL: https://c933103.github.io/openrailwaystyle/
+2026-10-12T02:58:12.1608645Z PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only {"initial":{"requests":61,"unique":61,"byDataset":{"railway_line_high":25,"standard_railway_grouped_station_areas":18,"standard_railway_text_stations":18}},"afterPan":{"requests":72,"unique":72,"byDataset":{"railway_line_high":30,"standard_railway_grouped_station_areas":21,"standard_railway_text_stations":21}},"panAdded":11,"metadata":1,"tiles":334}
+

@@ -1,0 +1,11 @@
+2026-10-12T02:31:39.9625199Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":339,"p95Ms":893},"generation":"d3ee80fd77568ab00e5071f8"}
+2026-10-12T02:31:49.7636457Z [36;1mif [ "$PUBLISH_BRANCH" != mainline-data ] && [ "$(gh pr view "$PR_NUMBER" --json state --jq .state)" != OPEN ]; then[0m
+2026-10-12T02:31:49.7646166Z [36;1mgit commit -q -m 'Complete worldwide OSM railway reference 2026-10-10'[0m
+2026-10-12T02:31:49.7701787Z   PUBLISH_BRANCH: mainline-data
+2026-10-12T02:31:53.5883914Z  * branch            mainline-data -> FETCH_HEAD
+2026-10-12T02:31:53.5884292Z  * [new branch]      mainline-data -> origin/mainline-data
+2026-10-12T02:31:54.8515611Z Switched to a new branch 'mainline-data'
+2026-10-12T02:32:17.8818787Z    068520a..622eed8  HEAD -> mainline-data
+2026-10-12T02:32:17.8885041Z ##[group]Run gh workflow run site.yml --ref main
+2026-10-12T02:32:17.8885413Z [36;1mgh workflow run site.yml --ref main[0m
+

@@ -1,0 +1,33 @@
+2026-10-12T03:04:32.2195142Z PASS (webkit): iPhone, desktop-UA iPad, browser prompt wiring, standalone UI and legacy dialog fallback with failed renderer
+2026-10-12T03:04:33.1696708Z [network-guard] PASS: first-party bytes are fetched; fixtures work; unmocked page, context, fetch, URL-rewriting fallback, redirect and worker requests are blocked before provider egress
+2026-10-12T03:04:33.2797537Z PASS check-network-guard-browser.mjs in 0.6 s
+2026-10-12T03:09:33.7738752Z [map-controls] PASS: 83 real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles
+2026-10-12T03:09:33.8135906Z PASS check-map-controls-browser.mjs in 300.5 s
+2026-10-12T03:09:41.5681975Z [build] PASS build info desktop {"version":"20261011-departure-envelope-1","commit":"370bcfb1db684d80520ea43430e1cbb5bdb360dd","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/370bcfb1db684d80520ea43430e1cbb5bdb360dd"}
+2026-10-12T03:09:53.5387854Z [build] PASS build info mobile {"version":"20261011-departure-envelope-1","commit":"370bcfb1db684d80520ea43430e1cbb5bdb360dd","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/370bcfb1db684d80520ea43430e1cbb5bdb360dd"}
+2026-10-12T03:09:53.6031039Z PASS check-build-browser.mjs in 19.8 s
+2026-10-12T03:10:07.1958331Z PASS check-watch-browser.mjs in 13.6 s
+2026-10-12T03:10:09.1624439Z PASS check-service-frequency-browser.mjs in 2 s
+2026-10-12T03:10:22.7208979Z [first-party-assets] PASS: real MapLibre, stylesheet and PMTiles load from root/project URLs with public code CDNs blocked; zero CDN requests
+2026-10-12T03:10:22.7223437Z [first-party-assets] PASS: native Web Crypto accepts exact cached upstream JS/CSS and rejects correct-MIME tampering or unavailable crypto without a CDN request
+2026-10-12T03:10:22.7427101Z PASS check-first-party-assets-browser.mjs in 13.6 s
+2026-10-12T03:10:29.4810700Z [pwa-install] PASS (chromium): iPhone, desktop-UA iPad, browser prompt wiring, standalone UI and legacy dialog fallback with failed renderer
+2026-10-12T03:10:29.4981528Z PASS check-pwa-install-browser.mjs in 6.8 s
+2026-10-12T03:10:35.9754075Z [departures] chromium: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-12T03:10:57.1904082Z [departures] chromium: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-12T03:11:02.2244494Z [departures] chromium: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 180 intercepted board fixture requests.
+2026-10-12T03:11:02.4438605Z [departures] chromium: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-12T03:11:05.9855636Z [departures] webkit: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-12T03:11:11.1086725Z [departures] webkit: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-12T03:11:14.6189971Z [departures] webkit: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 180 intercepted board fixture requests.
+2026-10-12T03:11:14.8004909Z [departures] webkit: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-12T03:11:14.8882690Z PASS check-departures-browser.mjs in 45.4 s
+2026-10-12T03:11:14.9171581Z   pass      0.6 s  check-network-guard-browser.mjs
+2026-10-12T03:11:14.9172274Z   pass    300.5 s  check-map-controls-browser.mjs
+2026-10-12T03:11:14.9172726Z   pass     19.8 s  check-build-browser.mjs
+2026-10-12T03:11:14.9173050Z   pass     13.6 s  check-watch-browser.mjs
+2026-10-12T03:11:14.9173420Z   pass        2 s  check-service-frequency-browser.mjs
+2026-10-12T03:11:14.9173816Z   pass     13.6 s  check-first-party-assets-browser.mjs
+2026-10-12T03:11:14.9174193Z   pass      6.8 s  check-pwa-install-browser.mjs
+2026-10-12T03:11:14.9174557Z   pass     45.4 s  check-departures-browser.mjs
+
