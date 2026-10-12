@@ -1,0 +1,19 @@
+{
+  "reads": [
+    {
+      "observedAt": "2026-10-12T04:50:38.685Z",
+      "tests": 60
+    },
+    {
+      "observedAt": "2026-10-12T05:13:11.887Z",
+      "tests": 60
+    },
+    {
+      "observedAt": "2026-10-12T05:26:22.130Z",
+      "tests": 60
+    }
+  ],
+  "identicalAssetCount": 11,
+  "identicalVersionedBundle": true,
+  "testsAreRepeatedNotDistinct": true
+}

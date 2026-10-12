@@ -1,0 +1,105 @@
+{
+  "observedAt": "2026-10-12T04:50:38.685Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "commit": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+  "version": "20261012-search-availability-1",
+  "assets": [
+    {
+      "path": "",
+      "status": 200,
+      "bytes": 46116,
+      "sha256": "f136e0a9076384c92e2e8b51d5cb987b2f040a3074d5bdac65745ca9a638aae5",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 155520,
+      "sha256": "4c39ad3d8f0dc2bad265e2a51bb5f9e0e6a54b1566f550d6c36856495614e3dd",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "map-model.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 58899,
+      "sha256": "d57890e0b597427eeb9dc5515b9cd6f6bc96ea67d7af313cbcabfa9016c0af71",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "platform-length.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 30941,
+      "sha256": "0f6205c1dfe1994e9c4e29906f53c4c8f2351f7a594945e57396a678ec80fcc9",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "axle-load.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 4173,
+      "sha256": "d079a0d79985d0dc2cae76659e2a129b204a4e892dc9acd91526c1328aaaee0a",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "cjk-font.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 4083,
+      "sha256": "b670d382e1ef1dc2be1975cd9d5c1b67f5eb0afcb685b7025cba7fa43c1c9007",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures-ui.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 6979,
+      "sha256": "426b0691e63c83705881a6d30cca278b0f9233c9a04083f817e945c0cffd5e2f",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "elevation.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 6818,
+      "sha256": "fdad20a12793d3569aa846df9836c22ef270b7f7663231fb9bf497758a21ad2c",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "layer-semantics.mjs?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 6077,
+      "sha256": "566d5007f7edd13d6579f2e1c72f06cfc1faa465a6f6b25c8e6bf12a1167f0fb",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.css?v=20261012-search-availability-1",
+      "status": 200,
+      "bytes": 23144,
+      "sha256": "736f338e7a855b7864802f0eaa7972a713650fe171bbad837156c6693416bc8b",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "bytes": 14826,
+      "sha256": "bae6f897ca776163b097b00e6210ff35932aa073b19ad49b0788d2066e8a910c",
+      "matchesMergedSource": true
+    }
+  ],
+  "bundle": {
+    "path": "vendor/tile-labels.js?v=20261012-search-availability-1",
+    "bytes": 367636,
+    "sha256": "0db43353651a086f1ae54cffb7cbb20088789eeb4b1fca140f7b47ea4f19ca0b",
+    "matchesAcceptedBuild": true,
+    "expectedBuildInfo": {
+      "version": "20261012-search-availability-1",
+      "commit": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+      "sourceUrl": "https://github.com/c933103/openrailwaystyle/commit/b5a73c3aa03498259c2fd531b9644d52ae94db69"
+    }
+  },
+  "servedSearch": {
+    "tests": 57,
+    "failed": 0
+  },
+  "servedFullApp": {
+    "tests": 3,
+    "failed": 0
+  },
+  "scope": "First-party GET reads only, redirects rejected. Actual fetched app/map-model and version-coupled module bytes executed with synthetic search responses in DOM/VM/cache fixtures and accepted local dependencies. No live search-provider traffic, native browser launch, screenshot or real-client service-worker interception claim."
+}

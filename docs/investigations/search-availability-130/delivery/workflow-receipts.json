@@ -1,0 +1,2662 @@
+[
+  {
+    "id": 38203339532,
+    "name": "Validate and deploy world railway map",
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38203339532",
+    "event": "push",
+    "head": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+    "createdAt": "2026-10-12T04:19:55Z",
+    "updatedAt": "2026-10-12T04:54:30Z",
+    "status": "completed",
+    "conclusion": "success",
+    "runAttempt": 1,
+    "jobs": [
+      {
+        "id": 114661316279,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:19:57Z",
+        "completedAt": "2026-10-12T04:20:02Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Wait for the first complete worldwide facility snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661316411,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:19:58Z",
+        "completedAt": "2026-10-12T04:20:06Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run node scripts/ci-plan.mjs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661316445,
+        "name": "reference",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:19:58Z",
+        "completedAt": "2026-10-12T04:31:16Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Identify required reference inputs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require worldwide railway reference 09f04d328011ef7dc0372bb3b30d8e70018b67bbd285bafd946c2c503ec3d9f8",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114663712608,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:31:18Z",
+        "completedAt": "2026-10-12T04:35:07Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install style validator",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Rebuild world style",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check committed style is reproducible",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate speed semantics and MapLibre style",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check JavaScript syntax",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check public station search and CORS",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check station search and CORS with offline PR fixtures",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Wait for initial snapshot build",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Assemble site data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load and verify the complete independently acquired railway reference",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load a fork's verified reference artifact with read-only permissions",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify source completeness and current provenance before assembling either reference path",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Build rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Load the published axle-load lookup",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Wait for first street-running snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Assemble street-running tiles",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load level crossings",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load historic areas",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load branch lines",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load urban rail services",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Apply matched timetable counts and headways to the OSM service tiles",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load worldwide railway signals and energy supplies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Identify code and data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Look for a passed result for this code and data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save reviewable site",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509018,
+        "name": "browser (infrastructure)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:45:48Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509061,
+        "name": "browser (controls)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:42:08Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509092,
+        "name": "browser (frequency)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:41:17Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509093,
+        "name": "browser (context)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:37:36Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509102,
+        "name": "browser (platforms)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:41:58Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114664509149,
+        "name": "browser (rail-fixture)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:35:09Z",
+        "completedAt": "2026-10-12T04:45:56Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114666768653,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:45:58Z",
+        "completedAt": "2026-10-12T04:46:01Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run echo \"plan: $PLAN, browser checks needed: $NEEDED, earlier result reused: $REUSED, browser jobs: $BROWSER\"",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114666787851,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:46:05Z",
+        "completedAt": "2026-10-12T04:54:30Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/configure-pages@v5",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-pages-artifact@v3",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify deployed vector tile bytes",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npx playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install Safari engine for deployed reference verification",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify deployed independent OSM geometry with live overview unavailable",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify published map with local railway fixture",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save published map screenshots",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114666789344,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-12T04:46:02Z",
+        "completedAt": "2026-10-12T04:46:01Z",
+        "steps": []
+      }
+    ]
+  },
+  {
+    "id": 38203339466,
+    "name": "Build worldwide OSM railway reference",
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38203339466",
+    "event": "push",
+    "head": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+    "createdAt": "2026-10-12T04:19:55Z",
+    "updatedAt": "2026-10-12T04:30:43Z",
+    "status": "completed",
+    "conclusion": "success",
+    "runAttempt": 1,
+    "jobs": [
+      {
+        "id": 114661315971,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:19:58Z",
+        "completedAt": "2026-10-12T04:20:15Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run python - <<'PY'",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check the full worldwide download budget before acquiring any PBF",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Find completed continent artifacts across branch cache scopes",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384086,
+        "name": "extract (antarctica)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:16Z",
+        "completedAt": "2026-10-12T04:20:22Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384105,
+        "name": "extract (africa)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:17Z",
+        "completedAt": "2026-10-12T04:20:28Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384134,
+        "name": "extract (central-america)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:35Z",
+        "completedAt": "2026-10-12T04:20:47Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384165,
+        "name": "extract (asia)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:23Z",
+        "completedAt": "2026-10-12T04:20:34Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384176,
+        "name": "extract (north-america)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:48Z",
+        "completedAt": "2026-10-12T04:20:58Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384189,
+        "name": "extract (south-america)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:57Z",
+        "completedAt": "2026-10-12T04:21:08Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384211,
+        "name": "extract (australia-oceania)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:29Z",
+        "completedAt": "2026-10-12T04:20:37Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661384241,
+        "name": "extract (europe)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:20:43Z",
+        "completedAt": "2026-10-12T04:20:55Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reuse a completed continent artifact before requesting another PBF body",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Validate checkpoint date, identity and export checksum",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Make room for one bounded PBF on the disposable runner",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download one dated extract, verify checksum and export complete ways",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Require the planned byte bound for new and cached exports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore completed continent checkpoint",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114661571374,
+        "name": "assemble",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:21:10Z",
+        "completedAt": "2026-10-12T04:30:42Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate all continents, build independent tiles and audit real source coverage",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify the exact generation and renderer before publication",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save source and browser acceptance diagnostics",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Identify accepted reference inputs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Publish complete reference generation atomically",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Redeploy the reviewed production site",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 38204078239,
+    "name": "Validate and deploy world railway map",
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38204078239",
+    "event": "workflow_dispatch",
+    "head": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+    "createdAt": "2026-10-12T04:30:39Z",
+    "updatedAt": "2026-10-12T05:21:02Z",
+    "status": "completed",
+    "conclusion": "success",
+    "runAttempt": 1,
+    "jobs": [
+      {
+        "id": 114668539877,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:54:32Z",
+        "completedAt": "2026-10-12T04:54:37Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Wait for the first complete worldwide facility snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114668540121,
+        "name": "reference",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:54:32Z",
+        "completedAt": "2026-10-12T04:54:43Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Identify required reference inputs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require worldwide railway reference 09f04d328011ef7dc0372bb3b30d8e70018b67bbd285bafd946c2c503ec3d9f8",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114668540209,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:54:32Z",
+        "completedAt": "2026-10-12T04:54:41Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run node scripts/ci-plan.mjs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114668580818,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:54:45Z",
+        "completedAt": "2026-10-12T04:59:12Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install style validator",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Rebuild world style",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check committed style is reproducible",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate speed semantics and MapLibre style",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check JavaScript syntax",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check public station search and CORS",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check station search and CORS with offline PR fixtures",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Wait for initial snapshot build",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Assemble site data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load and verify the complete independently acquired railway reference",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load a fork's verified reference artifact with read-only permissions",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify source completeness and current provenance before assembling either reference path",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Build rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Load the published axle-load lookup",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Wait for first street-running snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Assemble street-running tiles",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load level crossings",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load historic areas",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load branch lines",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load urban rail services",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Apply matched timetable counts and headways to the OSM service tiles",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Load worldwide railway signals and energy supplies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Identify code and data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Look for a passed result for this code and data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save reviewable site",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516095,
+        "name": "browser (frequency)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:06:00Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516106,
+        "name": "browser (platforms)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:06:04Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516126,
+        "name": "browser (controls)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:05:25Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516130,
+        "name": "browser (context)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:01:46Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516148,
+        "name": "browser (rail-fixture)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:10:19Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114669516176,
+        "name": "browser (infrastructure)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T04:59:14Z",
+        "completedAt": "2026-10-12T05:07:19Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install test browser",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install WebKit for Safari installation and timetable checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Start test server",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Prepare check data",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Verify Safari installation help in WebKit",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run browser checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save browser review",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114671916089,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T05:10:22Z",
+        "completedAt": "2026-10-12T05:10:27Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run echo \"plan: $PLAN, browser checks needed: $NEEDED, earlier result reused: $REUSED, browser jobs: $BROWSER\"",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114671946290,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-12T05:10:30Z",
+        "completedAt": "2026-10-12T05:21:01Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/configure-pages@v5",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-pages-artifact@v3",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify deployed vector tile bytes",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npx playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install Safari engine for deployed reference verification",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify deployed independent OSM geometry with live overview unavailable",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify published map with local railway fixture",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save published map screenshots",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 114671947683,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-12T05:10:27Z",
+        "completedAt": "2026-10-12T05:10:27Z",
+        "steps": []
+      }
+    ]
+  }
+]

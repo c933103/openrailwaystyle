@@ -1,0 +1,16 @@
+{
+  "merge": "b5a73c3aa03498259c2fd531b9644d52ae94db69",
+  "tree": "f6eb6cc4c4a4b0c3629ecd18fc3a0bab6b2b5aa0",
+  "directSite": 38203339532,
+  "directReference": 38203339466,
+  "directReferenceAssembleJob": 114661571374,
+  "automaticSiteSuccessor": 38204078239,
+  "successorEvent": "workflow_dispatch",
+  "successorCreatedAt": "2026-10-12T04:30:39Z",
+  "dispatchLogLines": [
+    "2026-10-12T04:30:37.8975385Z ##[group]Run gh workflow run site.yml --ref main",
+    "2026-10-12T04:30:37.8975758Z \u001b[36;1mgh workflow run site.yml --ref main\u001b[0m",
+    "2026-10-12T04:30:39.8362216Z https://github.com/c933103/openrailwaystyle/actions/runs/38204078239"
+  ],
+  "scope": "Only the direct merge runs and the exact automatic site successor dispatched by that reference job; no manual dispatch, unrelated scheduled run or later unrelated push."
+}
