@@ -322,6 +322,31 @@ for (const file of ['app.mjs', 'departures.mjs']) test(`integrated departure ins
   assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
   assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
 });
+for (const file of ['app.mjs']) test(`search availability wording refreshes exact ${file} bytes from the immediate predecessor`, async () => {
+  // Exact files from main dea9f68e before the search availability correction. Keeping
+  // these compressed makes this an upgrade regression, not a synthetic version
+  // label test; no GitHub or provider access is needed at test time.
+  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/search-availability-predecessor.json.gz', import.meta.url))));
+  assert.equal(previous.commit, 'dea9f68e9d4c585c29ff225c4c052e689dac849b');
+  assert.equal(previous.version, '20261012-departure-instant-2');
+  const previousBytes = previous.files[file].text;
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
+  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);
+  assert.notEqual(currentVersion, previous.version);
+  const path = new URL(file, scope).pathname;
+  const old = startWorker({version: previous.version, assetBodies: new Map([[path, previousBytes]])});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]])});
+  await bounded(next.request('./', true));
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+  next.setOffline();
+  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+});
 
 test('first-party libraries install together and remain available offline with every external origin blocked', async () => {
   const worker = startWorker({rejectExternal: true});
