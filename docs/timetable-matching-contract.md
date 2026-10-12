@@ -367,6 +367,8 @@ requiring a full performance run or changing historical evidence. The default
 matcher benchmark retains its 10,000-trip, 24-call, three-repetition cohort. Both
 modes label their fixture sizes and record current matcher, compiler and fixture
 generator hashes. Elapsed time and RSS are diagnostics, not portable CI thresholds.
+`--describe` prints the default cohort configuration without generating fixtures or
+measurements; CI checks that configuration independently of the smoke cohort.
 
 The saved [Paris/Normandy acceptance in #147](https://github.com/c933103/openrailwaystyle/pull/147)
 remains the geometry regression boundary. Its archived two-coordinate compiled

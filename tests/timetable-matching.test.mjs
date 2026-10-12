@@ -773,8 +773,16 @@ test('current matcher benchmark exercises controlled outcomes and records its ow
   }
 });
 
-test('matcher benchmark rejects misspelled or extra smoke arguments', () => {
-  for (const args of [['--smok'], ['--smoke', 'unexpected']]) {
+test('matcher benchmark declares the default cohort without a performance run', () => {
+  const run = spawnSync(process.execPath, ['scripts/benchmark-timetable-matching.mjs', '--describe'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10000,
+  });
+  assert.equal(run.status, 0, run.stderr || String(run.error));
+  assert.deepEqual(JSON.parse(run.stdout), {trips: 10000, calls: 24, repeats: 3});
+});
+
+test('matcher benchmark rejects misspelled or extra arguments', () => {
+  for (const args of [['--smok'], ['--smoke', 'unexpected'], ['--describe', 'unexpected']]) {
     const run = spawnSync(process.execPath, ['scripts/benchmark-timetable-matching.mjs', ...args], {
       cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10000,
     });
