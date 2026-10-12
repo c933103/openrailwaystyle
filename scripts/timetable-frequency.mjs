@@ -149,7 +149,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
     const segments=Map.groupBy(feed.segments,s=>s.route_id),matched=new Set(),applied=new Set();
     const summary={id:feed.source.id,name:feed.source.name,source:feed.source,feedRoutes:feed.routes.length,mappedRoutes:0,routesWithProfiles:0,pathSegments:feed.segments.length,availableSegments:0,unmatchedRoutes:0,ambiguousRoutes:0,matchingReasons:{},unmatchedExamples:[]};
     for(const route of feed.routes){
-      const agency=agencies.get(route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'));if(!agency)throw new Error('Broken timetable agency');
+      const agencyId=route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'),agency=agencies.get(agencyId);if(!agency)throw new Error('Broken timetable agency');
       const sourceSegments=(segments.get(route.route_id)||[]).filter(s=>s.geometry?.length>=2&&s.geometry.every(coord));
       const keys=[...agencyNames(agency).flatMap(n=>{const prefix=`${kind(route.route_type)}|${n}|`;return [prefix+'ref:'+reference(route.route_short_name),prefix+'name:'+text(route.route_long_name)];}),...[route.route_id,...(route.source_route_ids||[])].map(id=>`gtfs|${feed.source.id}|${id}`)];
       const candidates=[...new Set(keys.flatMap(key=>[...(metadata.get(key)||[])]))].filter(g=>metadataMatch(g.route,route,agency,feed.source));
@@ -168,7 +168,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
         // Candidate counts do not prove that a service has been matched.
         if(summary.unmatchedExamples.length<12){
           const short=value=>Array.from(String(value??'')).slice(0,128).join('');
-          summary.unmatchedExamples.push({route_id:short(route.route_id),agency_id:short(route.agency_id),ref:short(route.route_short_name),
+          summary.unmatchedExamples.push({route_id:short(route.route_id),agency_id:short(agencyId),ref:short(route.route_short_name),
             name:short(route.route_long_name),reason,identity_candidates:candidates.length,corroborated_candidates:candidatesCovered.length});
         }
         continue;
