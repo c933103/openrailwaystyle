@@ -1,0 +1,9 @@
+{
+  "baseCommit": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+  "changedOccurrences": 2,
+  "oldToken": "20261011-departure-envelope-1",
+  "newToken": "20261012-departure-instant-2",
+  "onlyTokenReplacement": true,
+  "existingTermsSectionUnchanged": true,
+  "existingTermsSha256": "13645bdf8591b58c90772300f32297d34a9839991e62a4d96097f2dd7520cee9"
+}

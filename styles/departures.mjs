@@ -231,7 +231,12 @@ export async function stationDepartures(station, {signal, fetch: get = fetch} = 
   const stops = pickStops(candidates, station);
   if (!stops.length) return {stops, rows: [], stopResults: []};
   // Each stop's board on its own: one feed failing keeps the other's.
-  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => d.stopTimes || [])));
+  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => {
+    // Reject malformed envelopes inside this stop's promise so another board
+    // can still load. Only an explicit array establishes a successful board.
+    if (!d || typeof d !== 'object' || Array.isArray(d) || !Array.isArray(d.stopTimes)) throw new Error('Invalid Transitous stop times response');
+    return d.stopTimes;
+  })));
   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   if (!lists.length) throw results[0].reason;
   const stopResults = results.map((result, i) => ({stopId: stops[i].id, status: result.status}));
