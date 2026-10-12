@@ -85,7 +85,7 @@ const mergeObservations = group => {
 // train are combined, not discarded. Two services of one feed can leave together. Across lists,
 // two feeds can describe one train with different names and destination texts
 // ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
-// are compatible when they are of the same mode family, leave in the same
+// are candidates when they are of the same mode family, leave in the same
 // scheduled minute, their
 // destinations are non-empty and contain one another, and at least one has no
 // matching label or both have the same one. Matching retains the original
@@ -94,7 +94,12 @@ const mergeObservations = group => {
 // A compatible pair is merged only when
 // each is the other's only compatible row in that list, and a merged group
 // never holds two rows of one list; anything ambiguous stays separate, so the
-// result does not depend on the order of the lists or rows. A merged train has
+// result does not depend on the order of the lists or rows. A candidate group
+// merges only if every row has the same finite scheduled instant, including
+// seconds. Keep the minute-level candidates for ambiguity checks: narrowing
+// those first could remove a competing train and unlock a previously unsafe
+// merge. The exact-instant guard can only reject an existing candidate group.
+// A merged train has
 // the named row's line and colours, real-time state from a live row, and is
 // cancelled if any row is. A row is live when the operator's real-time feed
 // covers that trip; delay in whole minutes.
@@ -149,7 +154,10 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   rows.forEach((row, i) => { const g = find(i); groups.set(g, [...(groups.get(g) || []), row]); });
   const out = [];
   for (const group of groups.values()) {
-    if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
+    if (new Set(group.map(r => r.list)).size < group.length ||
+        !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled)) {
+      out.push(...group); continue;
+    }
     out.push(mergeObservations(group));
   }
   return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, ...row}) => row);
