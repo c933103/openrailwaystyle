@@ -97,10 +97,10 @@ downloaded response bodies and one hour, with three attempts per query and at
 most six subdivision levels. HTTP request/authentication failures, malformed
 JSON, unknown error remarks and incomplete geometry terminate immediately.
 HTTP 408/429/500/502/503/504 and temporary transport failures retry the same box;
-they never cause spatial fan-out. Connection/header timeouts and fetch deadlines
-before response headers are transport failures too. Only explicit query timeout
-or memory-limit responses, and timeouts reading a successful response body,
-can subdivide after exhausting retries. Retry-After is
+they never cause spatial fan-out. Connection/header/body timeouts and opaque
+fetch deadlines are transport failures too: a stalled connection does not
+establish a spatial query failure. Only explicit Overpass query timeout or
+memory-limit responses can subdivide after exhausting retries. Retry-After is
 honoured up to five minutes; longer waits or an exhausted time budget stop the
 run for later resumption. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
