@@ -29,20 +29,33 @@ jobs:
       contents: read
       actions: read
     outputs:
+      reuse: ${{ steps.reuse.outputs.reuse }}
+      reference_sha: ${{ steps.reuse.outputs.reference_sha }}
       date: ${{ steps.plan.outputs.date }}
       sizes: ${{ steps.budget.outputs.sizes }}
       checksums: ${{ steps.budget.outputs.checksums }}
       checkpoints: ${{ steps.checkpoints.outputs.checkpoints }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reuse verified data when only current renderer acceptance changed
+        id: reuse
+        env:
+          REFERENCE_EVENT: ${{ github.event_name }}
+          REQUESTED: ${{ inputs.source_date }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/plan-mainline-reuse.mjs
       - id: plan
         env:
           REQUESTED: ${{ inputs.source_date }}
           PREVIEW_PR: ${{ github.event.pull_request.number || inputs.preview_pr }}
+          PINNED_SOURCE_DATE: ${{ steps.reuse.outputs.reference_date }}
         run: |
           python - <<'PY'
           import datetime as d, os, re
-          date=os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
+          date=os.environ.get('PINNED_SOURCE_DATE') or os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
           if os.environ['GITHUB_REF']!='refs/heads/main' and not re.fullmatch(r'[1-9]\d*',os.environ.get('PREVIEW_PR','')): raise ValueError('Non-production builds require a PR number')
           if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date): raise ValueError('Invalid source date')
           d.date.fromisoformat(date)
@@ -50,14 +63,17 @@ jobs:
           PY
       - name: Check the full worldwide download budget before acquiring any PBF
         id: budget
+        if: steps.reuse.outputs.reuse != 'true'
         run: python scripts/plan-mainline-acquisition.py '${{ steps.plan.outputs.date }}'
       - name: Find completed continent artifacts across branch cache scopes
         id: checkpoints
+        if: steps.reuse.outputs.reuse != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/find-mainline-checkpoints.mjs
   extract:
     needs: plan
+    if: needs.plan.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
@@ -143,6 +159,7 @@ jobs:
           retention-days: 14
   assemble:
     needs: [plan, extract]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.reuse == 'true' || needs.extract.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     concurrency:
@@ -158,13 +175,26 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.reuse != 'true'
         with:
           pattern: mainline-source-*
           path: mainline-input
       - name: Validate all continents, build independent tiles and audit real source coverage
+        if: needs.plan.outputs.reuse != 'true'
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
+      - name: Read the pinned complete generation without reacquiring provider data
+        if: needs.plan.outputs.reuse == 'true'
+        env:
+          REFERENCE_SHA: ${{ needs.plan.outputs.reference_sha }}
+        run: |
+          set -eu
+          [[ "$REFERENCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags --depth=1 origin "$REFERENCE_SHA"
+          mkdir mainline-output
+          git archive FETCH_HEAD | tar -x -C mainline-output
+          node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
       - name: Verify the exact generation and renderer before publication
         run: |
           node scripts/verify-mainline-snapshot.mjs mainline-output
