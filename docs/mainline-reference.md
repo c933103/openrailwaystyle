@@ -55,13 +55,12 @@ verified data commit, so an older branch cannot satisfy a changed build.
 
 Data generation and application compatibility have separate fingerprints.
 `dataInputSha256` covers acquisition/compiler sources and their local dependencies,
-the package manifest/lockfile, and the fresh-generation workflow configuration:
-the complete extraction job, assembly runtime/dependency setup and generation
-commands, plus inherited global environment/defaults. Changes to acquisition
-arguments, Osmium installation, runners, Node versions or generator environment
-invalidate reuse. YAML aliases/anchors in this execution configuration are refused
-explicitly rather than resolved by a second workflow parser; ordinary trigger-path
-anchors are unrelated. Full package-lock invalidation is intentionally conservative.
+the whole package manifest/lockfile, and the **entire reference workflow file**.
+This deliberately conservative contract binds plan-stage date/preflight policy,
+tool installation, all inherited YAML settings, aliases and future workflow keys
+without maintaining a second YAML parser. Renderer-only JavaScript/application
+changes can reuse data, but any workflow edit or dependency-lock edit causes a
+normal rebuild, even when that edit only affects acceptance orchestration.
 
 An ordinary PR or push with the same data-generation fingerprint can pin the
 existing `mainline-data` commit and reuse its complete generation. It skips
@@ -78,14 +77,10 @@ is never relabeled as freshly acquired, and old renderer acceptance cannot satis
 a changed current application. Skipped extraction permits assembly, but normal
 user/concurrency cancellation is respected through `!cancelled()`.
 
-For a legacy manifest without the data-generation fingerprint, reuse requires the
-trusted event base's complete old input digest to match the published manifest,
-and the generator inputs to match the current implementation. This narrow
-transition removes only the former snapshot-builder metadata import and its
-`inputSha256` field before comparing generator bytes; those metadata writes now
-belong to fresh acceptance recording. All remaining transform dependencies and
-generation configuration must agree. Source proof uses immutable Git object
-reads without executing old code. Invalid metadata or failed reads fail closed.
+A legacy manifest without the data-generation fingerprint takes the normal
+rebuild path once. There is no inferred legacy equivalence or old-source execution.
+The snapshot builder creates data; fresh acceptance recording then binds both
+current provenance keys. Invalid metadata and failed reads still fail closed.
 
 Scheduled/manual refreshes, missing published data, or incompatible generation
 inputs retain the existing acquisition path and fresh two-days-ago source policy
