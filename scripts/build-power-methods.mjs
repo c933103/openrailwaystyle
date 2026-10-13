@@ -144,6 +144,10 @@ export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://
         try {json=await request(query);break;}catch(error) {
           failure=error;log(box.join(','),error.category,error.message);
           if(!error.retry)throw error;
+          // An explicit execution limit proves this box needs less work.
+          // Split now rather than reissuing it and possibly losing that
+          // evidence to a later transport failure. Transport alone never splits.
+          if(error.split)break;
         }
       }
       if(!json) {
