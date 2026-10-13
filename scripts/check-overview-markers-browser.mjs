@@ -17,7 +17,10 @@ const points=prefix=>({type:'FeatureCollection',features:Array.from({length:8},(
 const duplicate=structuredClone(style.sources.stationMajor.data.features.find(f=>f.properties.osm_ids.includes(';')));
 assert.ok(duplicate);duplicate.geometry.coordinates=[-.02,0];duplicate.properties={...duplicate.properties,name:'Curated identity control',atlas_name:'Curated identity control',tier:3,rank:99};
 const providerDuplicate={...structuredClone(duplicate),id:99,geometry:{type:'Point',coordinates:[.02,0]},properties:{...duplicate.properties,id:duplicate.properties.osm_ids.split(';')[1]+'-train-station'}};
-const layers=style.layers.filter(l=>l.id.startsWith('station-')||l.id.startsWith('rail-backbone-')).map(l=>({...l,layout:{...l.layout,visibility:'visible'}}));
+// Place overlapping crossing dots at the first station's coordinates to
+// check the actual renderer's paint order, not merely an array position.
+const fixtureCrossings=new Set(['infrastructure-crossing-overview','infrastructure-crossing-dots']);
+const layers=style.layers.filter(l=>l.id.startsWith('station-')||l.id.startsWith('rail-backbone-')||fixtureCrossings.has(l.id)).map(l=>({...l,layout:{...l.layout,visibility:'visible'}}));
 const sources={},indexes=new Map(),requests=[];
 for(const layer of layers){
  if(layer.source==='stationMajor'){sources.stationMajor={type:'geojson',data:{type:'FeatureCollection',features:[...points('major').features,duplicate]}};continue;}
@@ -57,7 +60,8 @@ try{
   await page.waitForFunction(()=>fixtureMap.loaded(),null,{timeout:30000});
   const sample=await page.evaluate(()=>{
    const features=fixtureMap.queryRenderedFeatures();return {zoom:fixtureMap.getZoom(),
-    markers:Object.fromEntries([...new Set(features.filter(f=>f.layer.type==='circle').map(f=>f.source))].map(source=>[source,[...new Set(features.filter(f=>f.source===source&&f.layer.type==='circle').map(f=>f.properties.id))]])),
+    markers:Object.fromEntries([...new Set(features.filter(f=>f.layer.type==='circle'&&f.layer.id.startsWith('station-')).map(f=>f.source))].map(source=>[source,[...new Set(features.filter(f=>f.source===source&&f.layer.type==='circle'&&f.layer.id.startsWith('station-')).map(f=>f.properties.id))]])),
+    overlapping:fixtureMap.queryRenderedFeatures(fixtureMap.project([0,0])).filter(f=>f.layer.type==='circle'&&(f.layer.id.startsWith('station-')||f.layer.id.startsWith('infrastructure-crossing-'))).map(f=>f.layer.id),
     names:[...new Set(features.filter(f=>f.layer.type==='symbol').map(f=>f.properties.id))],
     backbone:[...new Set(features.filter(f=>f.source==='railBackbone').map(f=>f.sourceLayer))]};
   });
@@ -66,11 +70,17 @@ try{
   assert.ok(sample.names.length>0,'positive label control must render before testing collision suppression');
   assert.ok(sample.names.length<expected.length*8,'collisions suppress names while every fixture point stays rendered: '+JSON.stringify(sample));
   assert.equal(sample.backbone.length,zoom>=4&&zoom<7?2:0,'backbone follows its z4–6 window');
+  if(zoom>=5&&zoom<11){
+   const marker=sample.overlapping.findIndex(id=>id.startsWith('station-'));
+   const crossing=sample.overlapping.findIndex(id=>id.startsWith('infrastructure-crossing-'));
+   assert.ok(marker>=0&&crossing>=0,'both station and crossing must render at the shared coordinates');
+   assert.ok(marker<crossing,'MapLibre must draw the overlapping station dot above the crossing dot');
+  }
   samples.push(sample);
  }
  await page.screenshot({path:'browser-review/overview-markers-z12.png'});
  assert.ok(requests.some(r=>r.metadata),'real backbone metadata URL was intercepted');
  assert.deepEqual(await page.evaluate(()=>fixtureErrors),[]);assert.deepEqual(errors,[]);
  await writeFile('browser-review/overview-markers.json',JSON.stringify({scope:'Synthetic cartography; no source completeness claim',samples,requests},null,2)+'\n');
- console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/12; exact-identity deduplication and collision-managed names and backbone z4–6');
+ console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/12; MapLibre paints stations above crossing dots at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6');
 }finally{await browser.close();}
