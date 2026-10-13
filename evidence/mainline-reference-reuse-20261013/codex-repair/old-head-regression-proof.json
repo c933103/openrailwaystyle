@@ -1,0 +1,26 @@
+{
+  "reviewedHead": "0e76eaa7ccae97df34b9a3d32aa0217aa31d0d17",
+  "regressions": [
+    {
+      "name": "plan source date",
+      "changedWorkflowBytes": true,
+      "oldProjectionEqual": true
+    },
+    {
+      "name": "plan acquisition arguments",
+      "changedWorkflowBytes": true,
+      "oldProjectionEqual": true
+    },
+    {
+      "name": "anchor 1 definition",
+      "changedWorkflowBytes": true,
+      "oldProjectionEqual": true
+    },
+    {
+      "name": "anchor -runner definition",
+      "changedWorkflowBytes": true,
+      "oldProjectionEqual": true
+    }
+  ],
+  "repair": "Entire workflow is a direct DATA_INPUTS member; the current unit test verifies changed identity for each case."
+}

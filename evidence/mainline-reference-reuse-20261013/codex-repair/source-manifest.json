@@ -1,0 +1,46 @@
+{
+  "baseCommit": "d8b70d02adf9babf72eb33c9d4ce2ba16ec9d3f0",
+  "previousHead": "0e76eaa7ccae97df34b9a3d32aa0217aa31d0d17",
+  "files": [
+    {
+      "path": ".github/workflows/mainline-reference.yml",
+      "sha256": "8a27095db4c8b6bac013f6772e151b0c0ea69903632abccdff84d6d6e82db88a",
+      "gitBlobSha": "c21a0d3f41a3c77cc62c9c81149477336574344a"
+    },
+    {
+      "path": "docs/mainline-reference.md",
+      "sha256": "fa6cdc1f9befca9512f9ead2963c897bc6de5977ddab3f9718af07435913478c",
+      "gitBlobSha": "b877e6e40fc023538a508b3bd4c48cbb54937830"
+    },
+    {
+      "path": "scripts/build-mainline-snapshot.mjs",
+      "sha256": "0a9a471d4e298be45cf2bb4a4f0b13a34a781a070b1b785e0b642c17a48dbc04",
+      "gitBlobSha": "33292cf9c9e99cd9904887ae605bff7053c104c6"
+    },
+    {
+      "path": "scripts/mainline-provenance.mjs",
+      "sha256": "a7a3df236fffec34c9f01fa610c26b24ece20b1945bf3ed8546eb0fdd973f4fa",
+      "gitBlobSha": "84ebbd90524d028b93681c073b517cbc10199a0e"
+    },
+    {
+      "path": "scripts/plan-mainline-reuse.mjs",
+      "sha256": "3c14be97f3ffa5b5b697bf547e74b7bfa9b5f682c4bd390164fae07d394dfce7",
+      "gitBlobSha": "3f023026b5c1aa39f83eec5182cb650495e8b23b"
+    },
+    {
+      "path": "scripts/record-mainline-acceptance.mjs",
+      "sha256": "b99ffc39f3ce90990e6a48e6594ca00bd3eb19e2cfbc8176bb1f665fac5231a5",
+      "gitBlobSha": "84cee1a37ab73142258af552cdda478b472e822e"
+    },
+    {
+      "path": "scripts/verify-mainline-snapshot.mjs",
+      "sha256": "03551e8018d8d928358e3318ff9d64bdcdb5622279be06abfa0c16c92790cd98",
+      "gitBlobSha": "cdfd31e72918cb7a716eddb992fad78230986069"
+    },
+    {
+      "path": "tests/mainline-reuse.test.mjs",
+      "sha256": "1a036d7e77f97116217a22dd98e266e111c83a127b792769f079479981b42cf8",
+      "gitBlobSha": "2b7c0be8af31046ccf8680e3c5c925c9b4679029"
+    }
+  ]
+}
