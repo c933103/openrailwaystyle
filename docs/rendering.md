@@ -79,8 +79,9 @@ platforms and explicit inactive subclasses are excluded. Geometry alone carries
 no verified operating status, speed, gauge, power, owner or timetable data.
 
 The reference appears in every rail view on Map, Carto and Hybrid backgrounds;
-Satellite-only still hides overlays. It introduces no new provider or data
-download. When the detailed source has settled with no thematic tracks in the
+Satellite-only still hides overlays. It reuses the existing basemap provider
+and its viewport tile requests; Carto and Hybrid also load that geometry when
+the reference is visible. When the detailed source has settled with no thematic tracks in the
 viewport but reference rails are visible, the status identifies reference-only
 coverage. Actual tile errors retain the existing warning and recovery behavior.
 Neither source readiness nor visible station symbols certify railway coverage.
