@@ -10,6 +10,7 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   feeder: {label:'Traction feeding point', group:'electricity', color:'#b77d00', mark:'E', minzoom:14},
   power_supply: {label:'Railway power supply', group:'electricity', color:'#b77d00', mark:'E', minzoom:13},
   preheating: {label:'Train preheating supply', group:'electricity', color:'#b77d00', mark:'E', minzoom:13},
+  charging_station: {label:'Battery train charging facility', group:'charging', color:'#008a83', mark:'B', minzoom:12},
   fuel: {label:'Locomotive fuel supply', group:'fuel', color:'#906532', mark:'F', minzoom:13},
   fuel_tank: {label:'Railway fuel tank', group:'fuel', color:'#906532', mark:'F', minzoom:13},
   coaling_facility: {label:'Locomotive coaling facility', group:'coal', color:'#4b4c50', mark:'C', minzoom:13},
@@ -22,6 +23,7 @@ export const POWER_FACILITY_KINDS = Object.freeze({
 export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
 export const POWER_FACILITY_LEGEND = Object.freeze([
   ['substation','Electricity supply'],
+  ['charging_station','Battery train charging'],
   ['fuel','Train refuelling point (fuel type where mapped)'],
   ['coaling_facility','Steam engine coaling'],
   ['water_tank','Steam engine water'],
@@ -29,7 +31,7 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
   const {color,mark} = POWER_FACILITY_KINDS[kind];
   return Object.freeze({symbol:'point',color,mark,label});
 }));
-const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating']);
+const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const values = value => String(value ?? '').split(';').map(v=>v.trim().toLowerCase()).filter(Boolean);
@@ -48,6 +50,12 @@ function railwayUse(tags, railway) {
 
 export function powerFacility(tags = {}) {
   const railway = lifecycleValue(tags,'railway'), power = lifecycleValue(tags,'power');
+  const charger = lifecycleValue(tags,'amenity'), chargePoint = lifecycleValue(tags,'man_made');
+  if ((has(charger.value,['charging_station']) || has(chargePoint.value,['charge_point'])) &&
+      (has(railway.value,['yes','rail','narrow_gauge','light_rail','subway','tram','monorail','miniature','power_supply']) || ['train','tram','light_rail','subway'].some(key=>has(tags[key],['yes','designated','only'])))) {
+    const state=has(charger.value,['charging_station'])?charger.state:chargePoint.state;
+    return {...POWER_FACILITY_KINDS.charging_station,kind:'charging_station',state:state!=='present'?state:STATES.find(s=>has(railway.value,[s]))||railway.state};
+  }
   const railwayKind = values(railway.value).find(v=>SUPPLIES.has(v));
   if (railwayKind) return {...POWER_FACILITY_KINDS[railwayKind], kind:railwayKind, state:railway.state};
   const feeding = lifecycleValue(tags,'railway:electricity');
@@ -85,11 +93,12 @@ export function powerFacilityName(properties = {}) {
 // The dataset is downloaded only once the Power view needs it. Visitors read
 // the prepared snapshot; there are no live Overpass requests in the browser.
 // glyphs(data) may delay showing localized names, for fonts they need.
-export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher = fetch, onError = ()=>{}, language = ()=>'', localize = data=>data, glyphs = async()=>{}} = {}) {
-  let pending, raw, shownLanguage, retryAfter = 0, showing;
+export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher = fetch, onError = ()=>{}, language = ()=>'', localize = data=>data, glyphs = async()=>{}, sourceId = 'electricFacilities'} = {}) {
+  let pending, raw, shownLanguage, shownSource, retryAfter = 0, showing;
   const show = async () => {
     const nextLanguage=language();
-    if (!raw || nextLanguage===shownLanguage || showing===nextLanguage) return;
+    const source=map.getSource(sourceId);
+    if (!raw || !source || nextLanguage===shownLanguage && source===shownSource || showing===nextLanguage) return;
     showing=nextLanguage;
     const data=localize(structuredClone(raw),nextLanguage);
     try { await glyphs(data); } catch {}
@@ -99,18 +108,18 @@ export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher 
     // A style being replaced can lack the source for a moment; the language
     // counts as shown only once a source has the data, so the next refresh
     // fills the new one.
-    const source=map.getSource('electricFacilities');
-    if (!source) return;
-    source.setData(data);
-    shownLanguage=nextLanguage;
+    const latestSource=map.getSource(sourceId);
+    if (!latestSource) return;
+    latestSource.setData(data);
+    shownLanguage=nextLanguage;shownSource=latestSource;
   };
   return async function refresh() {
-    if (!active() || !map.getSource('electricFacilities')) return;
+    if (!active() || !map.getSource(sourceId)) return;
     if (raw) return show();
     if (Date.now()<retryAfter) return;
     if (pending) return pending;
     pending = (async()=>{
-      const response = await fetcher(url,{signal:AbortSignal.timeout(20000)});
+      const response = await fetcher(url,{cache:'no-cache',signal:AbortSignal.timeout(20000)});
       if (!response.ok) throw new Error(`Railway energy supplies returned ${response.status}`);
       const data = await response.json();
       if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) throw new Error('Invalid railway energy supply snapshot');

@@ -8,6 +8,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
+import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
@@ -32,6 +33,7 @@ const datasets = {
   standard_railway_line_low:[mainOverview],
   electrification_railway_line_low:[mainOverview],
   railway_signals:[directed, feature({id:9999,railway:'buffer_stop',ref:'Buffer'},'Point',[.0007,-.0003])],
+  electrification_catenary:[feature({id:'9410-mast',feature:'mast',ref:'M1'},'Point',[.00095,-.0005]),feature({id:'9411-portal',feature:'portal',ref:'P1'},'LineString',[[.0009,-.00065],[.001,-.00065]])],
   electrification_substation:[feature({id:'way-9400',name:'Traction substation footprint'},'Polygon',[[[.00015,.00085],[.00035,.00085],[.00035,.00105],[.00015,.00105],[.00015,.00085]]])],
 };
 const supplies=powerFacilitiesGeoJSON({elements:[
@@ -44,6 +46,11 @@ const supplies=powerFacilitiesGeoJSON({elements:[
   {type:'node',id:9499,lon:.0007,lat:-.0007,tags:{name:'Ordinary roadside fuel station',amenity:'fuel'}},
 ]});
 assert.equal(supplies.features.length,6,'a roadside fuel station is not a railway supply');
+const methods=powerMethodsGeoJSON({elements:[
+  {type:'node',id:9420,lon:.0011,lat:-.00012,tags:{name:'Test battery train charger',amenity:'charging_station',train:'yes','socket:pantograph:output':'1000 kW'}},
+  {type:'way',id:9421,tags:{railway:'subway',electrified:'rail',voltage:'750',frequency:'0','electrified:rail':'bottom'},geometry:[{lon:-.0002,lat:.0002},{lon:.0016,lat:.0002}]},
+  {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
+]});
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
 const branchIndex = index([branchOverview,metroOverview]);
@@ -103,6 +110,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
   await page.route('**/data/**',async route=>{
     const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson')){await route.fulfill({json:methods});return;}
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
@@ -150,8 +158,8 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
           glyphVisible:glyph.width>0&&glyph.height>0&&glyph.x>=0&&glyph.x+glyph.width<=16&&glyph.y>=0&&glyph.y+glyph.height<=16};
       }),
     })));
-    assert.equal(samples.length,4,'E/F/C/W use circular point samples, not line swatches');
-    const expected=[['E','Electricity supply','#b77d00'],['F','Train refuelling point (fuel type where mapped)','#906532'],['C','Steam engine coaling','#4b4c50'],['W','Steam engine water','#287bad']];
+    assert.equal(samples.length,5,'E/B/F/C/W use circular point samples, not line swatches');
+    const expected=[['E','Electricity supply','#b77d00'],['B','Battery train charging','#008a83'],['F','Train refuelling point (fuel type where mapped)','#906532'],['C','Steam engine coaling','#4b4c50'],['W','Steam engine water','#287bad']];
     const paints=await page.evaluate(()=>[false,true].map(former=>{
       const map=window.reviewMap,prefix=former?'electrification-former-supply':'electrification-supply';
       return {radius:map.getPaintProperty(prefix+'-points','circle-radius').at(-1),
@@ -231,6 +239,11 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
+    await visible('electrification-conductor-rails');await visible('electrification-charging-points');
+    await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
+    await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
+    await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();
+    await clickCoordinates([.00095,-.0005]);assert.match(await page.locator('#detail-content').innerText(),/Catenary mast/);assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/node/9410"]').count(),1);await page.locator('#details-close').click();
     await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_kind)).size===5);
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['coal','electricity','fuel','water']);
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-former-supply-points']}).length),0,'disused supply follows the inactive setting');
