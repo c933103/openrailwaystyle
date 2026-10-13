@@ -34,8 +34,10 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
-    ...stations.platforms, ...stations.dots, ...placeLayers,
-    ...infrastructure.crossings, ...powerFacilityLayers(),
+    ...stations.platforms, ...infrastructure.crossings,
+    // A crossing may share a station location. Every station circle must
+    // paint above crossing dots AND x marks, at all zooms and in all views.
+    ...stations.dots, ...placeLayers, ...powerFacilityLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,
