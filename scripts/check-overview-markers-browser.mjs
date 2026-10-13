@@ -52,7 +52,7 @@ try{
    style:{version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]}});
   window.fixtureErrors=[];fixtureMap.on('error',event=>fixtureErrors.push(event.error?.message));
  },{sources,layers});
- for(const zoom of [3,4,5,6,7,6,7,8,12]){
+ for(const zoom of [3,4,5,6,7,6,7,8,9,10,12]){
   await page.evaluate(zoom=>fixtureMap.jumpTo({center:[0,0],zoom}),zoom);
   const expected=zoom<4?['stationMajor']:zoom<6?['stationMajor','stationLow']:zoom<7?['stationMajor','stationMed']:zoom<8?['stationMed']:['stations'];
   const expectedCounts=Object.fromEntries(expected.map(source=>[source,8+(source==='stationMajor'||zoom>=7?1:0)]));
@@ -73,7 +73,9 @@ try{
   if(zoom>=5&&zoom<11){
    const marker=sample.overlapping.findIndex(id=>id.startsWith('station-'));
    const crossing=sample.overlapping.findIndex(id=>id.startsWith('infrastructure-crossing-'));
+   const crossingLayer=zoom<9?'infrastructure-crossing-overview':'infrastructure-crossing-dots';
    assert.ok(marker>=0&&crossing>=0,'both station and crossing must render at the shared coordinates');
+   assert.ok(sample.overlapping.includes(crossingLayer),`${crossingLayer} must render at zoom ${zoom}`);
    assert.ok(marker<crossing,'MapLibre must draw the overlapping station dot above the crossing dot');
   }
   samples.push(sample);
@@ -82,5 +84,5 @@ try{
  assert.ok(requests.some(r=>r.metadata),'real backbone metadata URL was intercepted');
  assert.deepEqual(await page.evaluate(()=>fixtureErrors),[]);assert.deepEqual(errors,[]);
  await writeFile('browser-review/overview-markers.json',JSON.stringify({scope:'Synthetic cartography; no source completeness claim',samples,requests},null,2)+'\n');
- console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/12; MapLibre paints stations above crossing dots at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6');
+ console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/9/10/12; MapLibre paints stations above both crossing-dot sources at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6');
 }finally{await browser.close();}
