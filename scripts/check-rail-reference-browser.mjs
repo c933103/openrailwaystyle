@@ -17,27 +17,33 @@ const detailed=[rail,metro].map((f,i)=>({...f,properties:{id:f.properties.id,fea
 const station={type:'Feature',properties:{id:'fixture-station',feature:'station',station:'train',state:'present',station_size:'large',name:'Shanghai fixture'},geometry:{type:'Point',coordinates:center}};
 const index=features=>geojsonvt({type:'FeatureCollection',features},{maxZoom:16,indexMaxZoom:7,extent:4096,buffer:64});
 const basemap=index([rail,metro,road]),tracks=index(detailed),stations=index([station]);
+const urban=['light_rail','monorail','tram','funicular'].map((kind,i)=>({...rail,
+ properties:{id:`fixture-${kind}`,class:kind==='funicular'?'rail':'transit',subclass:kind},
+ geometry:{type:'LineString',coordinates:coordinates.map(([x,y])=>[x+(i-1.5)*.005,y])}}));
+const areas={mixed:{basemap,tracks},urban:{basemap:index([...urban,road]),tracks:index(urban.map(f=>({...f,
+ properties:{id:f.properties.id,feature:f.properties.subclass,state:'present',usage:'main',maxspeed:60,gaugeint0:1435}})))}};
 const tile=(index,layer,z,x,y)=>{const data=index.getTile(+z,+x,+y);return data?.features.length?Buffer.from(vtpbf.fromGeojsonVt({[layer]:data},{version:2})):Buffer.alloc(0)};
 const browser=await launchBrowser({headless:true});
 const context=await browser.newContext({viewport:{width:360,height:760}});
-const reports=[],errors=[];let provider='empty';
+const reports=[],errors=[];let provider='empty',area='mixed';
 try{
  await installEmptyMapProviders(context,base);
- const basemapTiles={};
- for(let z=8;z<=14;z++){
+ const basemapTiles={mixed:{},urban:{}};
+ for(const [name,indices] of Object.entries(areas))for(let z=8;z<=14;z++){
   const n=2**z,xt=lon=>Math.floor((lon+180)/360*n),yt=lat=>Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
   for(let x=xt(121.39);x<=xt(121.50);x++)for(let y=yt(31.30);y<=yt(31.10);y++){
-   const data=tile(basemap,'transportation',z,x,y);if(data.length)basemapTiles[`${z}/${x}/${y}`]=[...data];
+   const data=tile(indices.basemap,'transportation',z,x,y);if(data.length)basemapTiles[name][`${z}/${x}/${y}`]=[...data];
   }
  }
  // Extend the existing synthetic PMTiles transport with basemap rail bytes;
  // the production basemap source and atlasbase localization path stay intact.
  await context.addInitScript(tiles=>{
+  const selected=tiles[new URL(location.href).searchParams.get('fixture')||'mixed'];
   let pmtiles;
   const patch=value=>{if(!value)return value;const Protocol=value.Protocol;
    return {...value,Protocol:class extends Protocol{
     tile=async params=>({data:params.type==='json'?{tilejson:'3.0.0',minzoom:0,maxzoom:14,tiles:['pmtiles://fixture/{z}/{x}/{y}']}:
-     new Uint8Array(tiles[/\/(\d+\/\d+\/\d+)$/.exec(params.url)?.[1]]||[]).buffer});
+     new Uint8Array(selected[/\/(\d+\/\d+\/\d+)$/.exec(params.url)?.[1]]||[]).buffer});
    }};
   };
   pmtiles=patch(window.pmtiles);
@@ -52,11 +58,11 @@ try{
   if(!m)return route.fallback();
   const [,layer,z,x,y]=m;
   if(layer==='railway_line_high'&&provider==='error')return route.fulfill({status:403,body:'synthetic access error'});
-  const data=layer==='standard_railway_text_stations'?tile(stations,layer,z,x,y):layer==='railway_line_high'&&provider==='healthy'?tile(tracks,layer,z,x,y):Buffer.alloc(0);
+  const data=layer==='standard_railway_text_stations'?tile(stations,layer,z,x,y):layer==='railway_line_high'&&provider==='healthy'?tile(areas[area].tracks,layer,z,x,y):Buffer.alloc(0);
   return route.fulfill({contentType:'application/x-protobuf',body:data});
  });
  const open=async(mode,background='map',zoom=10.9)=>{
-  await page.goto(`${base}?mode=${mode}&background=${background}&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#${zoom}/${center[1]}/${center[0]}`);
+  await page.goto(`${base}?fixture=${area}&mode=${mode}&background=${background}&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#${zoom}/${center[1]}/${center[0]}`);
   await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
   await page.evaluate(async()=>{window.referenceMap=(await import(document.querySelector('script[type="module"]').src)).map});
   await page.waitForFunction(()=>window.referenceMap.loaded(),null,{timeout:60000});
@@ -65,7 +71,7 @@ try{
    return {mode,zoom:map.getZoom(),hasReference,reference:hasReference?map.queryRenderedFeatures({layers:['rail-basemap-reference']}).map(f=>f.properties.id):[],
     tracks:map.queryRenderedFeatures({layers:[`${mode}-tracks`]}).map(f=>f.properties.id),stations:map.queryRenderedFeatures({layers:['station-provider-dots']}).length,
     status:document.querySelector('#map-status').textContent,error:document.querySelector('#map-status').classList.contains('error')};
-  },mode);reports.push({provider,background,...report});return report;
+  },mode);reports.push({area,provider,background,...report});return report;
  };
  for(const mode of MODES){
   const report=await open(mode);
@@ -81,6 +87,28 @@ try{
  for(const mode of MODES){const report=await open(mode);assert.ok(report.tracks.length>0,`${mode}: detailed rails must remain above the reference`);assert.doesNotMatch(report.status,/Only.*reference/i)}
  provider='error';
  const failed=await open('infrastructure');assert.ok(failed.reference.length>0);assert.equal(failed.tracks.length,0);assert.ok(failed.error,'Reference must not conceal a real provider error');
+ area='urban';
+ for(const state of ['healthy','empty']) {
+  provider=state;
+  for(const mode of MODES) {
+   for(const zoom of [8,9]) {
+    const report=await open(mode,'map',zoom);
+    for(const kind of ['light_rail','monorail','tram','funicular'])assert.ok(report.reference.includes(`fixture-${kind}`),`${mode} z${zoom}: ${kind} reference remains visible`);
+    assert.equal(report.tracks.length,0,'Urban detail is intentionally suppressed below z10');
+    assert.equal(report.error,false);assert.doesNotMatch(report.status,/unavailable|Only.*reference/i);
+   }
+   const report=await open(mode,'map',10);
+   if(provider==='healthy') {
+    for(const kind of ['light_rail','monorail','tram','funicular'])assert.ok(report.tracks.includes(`fixture-${kind}`),`${mode} z10: eligible ${kind} detail`);
+    assert.doesNotMatch(report.status,/unavailable|Only.*reference/i);
+   }else {assert.equal(report.tracks.length,0);assert.match(report.status,/reference.*detailed railway data/i)}
+  }
+ }
+ provider='error';
+ for(const zoom of [8,9,10]) {
+  const report=await open('infrastructure','map',zoom);
+  assert.ok(report.reference.length>0);assert.equal(report.error,true,'Zoom suppression must not hide HTTP 403');
+ }
  assert.deepEqual(errors,[]);
  await mkdir('browser-review',{recursive:true});
  await page.screenshot({path:'browser-review/shanghai-rail-reference.png'});

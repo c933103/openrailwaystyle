@@ -81,14 +81,20 @@ no verified operating status, speed, gauge, power, owner or timetable data.
 The reference appears in every rail view on Map, Carto and Hybrid backgrounds;
 Satellite-only still hides overlays. It reuses the existing basemap provider
 and its viewport tile requests; Carto and Hybrid also load that geometry when
-the reference is visible. When the detailed source has settled with no thematic tracks in the
-viewport but reference rails are visible, the status identifies reference-only
-coverage. Actual tile errors retain the existing warning and recovery behavior.
+the reference is visible. When the detailed source has settled with no thematic
+tracks in the viewport, the status identifies missing detailed coverage only if
+a visible reference railway type is eligible for the selected track layer at
+the current zoom. The style builder and status share the type thresholds; the
+status also respects that layer's zoom bounds and visibility. Light rail,
+monorail, tram and funicular references at zooms 8–9 therefore keep the normal
+exploration status. At zoom 10 they become eligible for a missing-detail warning.
+Actual tile errors retain priority and the existing warning and recovery behavior.
 Neither source readiness nor visible station symbols certify railway coverage.
 
 `scripts/check-rail-reference-browser.mjs` uses the real renderer and synthetic
 Shanghai rail/metro geometry at zoom 10.9 in a 360×760 viewport. It checks empty,
-healthy and failed detailed-source responses separately. These cases reproduce
+healthy and failed detailed-source responses separately, plus urban-only views
+at zooms 8, 9 and 10 across all nine thematic modes. These cases reproduce
 the dependency gap; they do not identify the response served to the reporting
 user or establish live Shanghai provider coverage.
 
