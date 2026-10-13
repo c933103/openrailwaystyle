@@ -14,7 +14,9 @@ async function fixture(fn) {
   const dir=await mkdtemp(join(tmpdir(),'atlas-power-builder-'));
   let clock=Date.now(),calls=[],sleeps=[];
   const options={cache:join(dir,'cache'),output:join(dir,'output'),now:()=>clock,sleep:async ms=>{sleeps.push(ms);clock+=ms;},log:()=>{}};
-  const run=async(fetcher=()=>response(),extra={})=>buildPowerMethods({...options,fetcher:async(url,init)=>{calls.push({query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
+  // Error-policy tests below exercise one root query before any planning.
+  // Separate production-default tests cover the planned initial grid.
+  const run=async(fetcher=()=>response(),extra={})=>buildPowerMethods({...options,initialDepth:0,fetcher:async(url,init)=>{calls.push({query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
   try {await fn({dir,options,run,calls,sleeps,advance:ms=>clock+=ms});}finally{await rm(dir,{recursive:true,force:true});}
 }
 async function unpublished(output) {
@@ -219,4 +221,59 @@ test('optimized query leaves v1 responses and expensive-query split evidence unt
   const result=await run();assert.equal(result.manifest.requests,8);assert.equal(result.manifest.coverage.length,8);
   assert.equal(await readFile(stem,'utf8'),legacy);assert.equal(await readFile(stem+'.split','utf8'),split);
   assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
+}));
+
+test('production default plans 32 bounded cells with full world coverage and no split checkpoints',()=>fixture(async({run,calls,options})=>{
+  const {data,manifest}=await run(undefined,{initialDepth:undefined});
+  assert.equal(calls.length,32);assert.equal(manifest.coverage.length,32);
+  assert.ok(manifest.coverage.every(({bbox:[s,w,n,e]})=>n-s===45&&e-w===45));
+  assert.equal(data.features.length,1);validatePowerMethodsSnapshot(data,manifest);
+  assert.equal(calls.some(c=>POWER_METHOD_REGIONS.some(b=>c.query===powerMethodQuery(b))),false);
+  const {readdir}=await import('node:fs/promises');assert.equal((await readdir(options.cache)).some(n=>n.endsWith('.split')),false);
+  assert.equal((await run(()=>{throw new Error('Unexpected request');},{initialDepth:undefined})).manifest.requests,0);
+}));
+test('production plan reuses the six completed coarse regions and only queries eight remaining cells',()=>fixture(async({run,calls,options})=>{
+  await run();
+  for(const box of POWER_METHOD_REGIONS.slice(6))await rm(join(options.cache,`power-methods-v2-${box.join('_')}.json`));
+  const saved=await Promise.all(POWER_METHOD_REGIONS.slice(0,6).map(box=>readFile(join(options.cache,`power-methods-v2-${box.join('_')}.json`))));
+  const offset=calls.length,{data,manifest}=await run(undefined,{initialDepth:undefined});
+  assert.equal(manifest.requests,8);assert.equal(manifest.coverage.length,14);
+  assert.ok(calls.slice(offset).every(c=>!POWER_METHOD_REGIONS.some(b=>c.query===powerMethodQuery(b))));
+  validatePowerMethodsSnapshot(data,manifest);
+  for(let i=0;i<6;i++)assert.deepEqual(await readFile(join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[i].join('_')}.json`)),saved[i]);
+}));
+test('interrupted planned collection resumes child checkpoints without repeating completed cells',()=>fixture(async({run,calls,options})=>{
+  await assert.rejects(run(n=>n===2?response('forbidden',{status:403}):response(),{initialDepth:undefined}),/HTTP 403/);
+  assert.equal(calls.length,2);await unpublished(options.output);
+  const first=calls[0].query,{data,manifest}=await run(undefined,{initialDepth:undefined});
+  assert.equal(manifest.requests,31);assert.equal(manifest.coverage.length,32);
+  assert.equal(calls.slice(2).some(c=>c.query===first),false);validatePowerMethodsSnapshot(data,manifest);
+}));
+for(const category of ['permanent','parsing','transport','rate-limit'])test(`production grid ${category} failure stops without failure-triggered fan-out`,()=>fixture(async({run,calls,options})=>{
+  const fetcher=()=>{
+    if(category==='permanent')return response('timeout',{status:403});
+    if(category==='parsing')return response('{bad');
+    if(category==='rate-limit')return response('timeout',{status:429});
+    throw Object.assign(new TypeError('fetch failed'),{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}});
+  };
+  await assert.rejects(run(fetcher,{initialDepth:undefined}));
+  assert.equal(calls.length,['transport','rate-limit'].includes(category)?3:1);
+  assert.equal(new Set(calls.map(c=>c.query)).size,1);
+  const {readdir}=await import('node:fs/promises');assert.deepEqual(await readdir(options.cache),[]);await unpublished(options.output);
+}));
+test('production grid retains proven execution-limit subdivision inside planned cells',()=>fixture(async({run,calls})=>{
+  const first=powerMethodQuery([-90,-180,-45,-135]);
+  const {data,manifest}=await run((n,init)=>init.body.get('data')===first?response({remark:'Query timed out',elements:[]}):response(),{initialDepth:undefined});
+  assert.equal(calls.filter(c=>c.query===first).length,3);assert.equal(calls.length,38);assert.equal(manifest.coverage.length,35);
+  validatePowerMethodsSnapshot(data,manifest);
+}));
+test('production grid cannot exceed request or depth limits',()=>fixture(async({run,calls,options})=>{
+  await assert.rejects(run(undefined,{initialDepth:undefined,limits:{requests:1}}),/request budget/);
+  assert.equal(calls.length,1);await unpublished(options.output);
+  const {manifest}=await run(undefined,{initialDepth:undefined,refresh:true,limits:{depth:0}});
+  assert.equal(manifest.requests,8);assert.equal(manifest.coverage.length,8);
+}));
+test('invalid initial planning depth stops before any request',()=>fixture(async({run,calls})=>{
+  for(const initialDepth of [-1,2,0.5,NaN])await assert.rejects(run(undefined,{initialDepth}),/initial depth/);
+  assert.equal(calls.length,0);
 }));

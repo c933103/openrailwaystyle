@@ -71,7 +71,7 @@ test('facility data is restored into a replaced style source without another dow
   source=undefined;await refresh();next();await refresh();assert.equal(shown.length,3);language='ja';await refresh();assert.equal(shown.length,4);
 });
 
-test('maintenance builder publishes all eight regions, reuses exact caches and refuses failed/empty data',async()=>{
+test('maintenance CLI covers all eight quadrants with 32 cells, reuses exact caches and refuses failed/empty data',async()=>{
   const {mkdtemp,writeFile,readFile,access,rm}=await import('node:fs/promises');
   const {tmpdir}=await import('node:os');const {join}=await import('node:path');const {spawnSync}=await import('node:child_process');
   const script=new URL('../scripts/build-power-methods.mjs',import.meta.url).pathname;
@@ -85,7 +85,7 @@ test('maintenance builder publishes all eight regions, reuses exact caches and r
       assert.equal(run.error,undefined,run.stderr);
       if(outcome==='success') {
         assert.equal(run.status,0,run.stderr);const manifest=JSON.parse(await readFile(join(dir,'power/methods-manifest.json')));
-        assert.equal(manifest.complete,true);assert.equal(manifest.coverage.length,8);assert.equal(manifest.requests,8);assert.equal(manifest.features,1);
+        assert.equal(manifest.complete,true);assert.equal(manifest.coverage.length,32);assert.equal(manifest.requests,32);assert.equal(manifest.features,1);
         const reused=spawnSync(process.execPath,['--import',bootstrap,script],{cwd:dir,env:{...env,FIXTURE_CACHE_ONLY:'1'},encoding:'utf8',timeout:15000});
         assert.equal(reused.status,0,reused.stderr);assert.equal(JSON.parse(await readFile(join(dir,'power/methods-manifest.json'))).requests,0);
       } else {assert.notEqual(run.status,0);await assert.rejects(access(join(dir,'power/power-methods.geojson')));await assert.rejects(access(join(dir,'power/methods-manifest.json')));}

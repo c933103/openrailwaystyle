@@ -92,7 +92,13 @@ planned/former conductor rails and chargers follow the existing inactive setting
 The maintenance-only `build-power-methods.mjs` writes
 `power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
 It covers every world quadrant and caches exact completed queries and spatial
-split decisions for 28 days. Each run has hard limits of 96 requests, 100 MB of
+split decisions for 28 days. Uncached quadrants start with a uniform 45° × 45°
+query grid (32 cells), before making any requests. This fixed plan creates no
+failure checkpoint and retains the same failure classification. Completed larger
+responses take precedence, so the six coarse regions acquired by the first v2
+production run remain reusable. Planned cells share the existing depth ceiling;
+only explicit execution-limit responses can subdivide them further.
+Each run has hard limits of 96 requests, 100 MB of
 downloaded response bodies and one hour, with three attempts per query and at
 most six subdivision levels. HTTP request/authentication failures, malformed
 JSON, unknown error remarks and incomplete geometry terminate immediately.

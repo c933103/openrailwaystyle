@@ -70,9 +70,10 @@ export function validatePowerMethodsSnapshot(data,manifest) {
   return manifest;
 }
 
-export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter',output=process.env.POWER_OUTPUT||'power-data',cache='.snapshot-cache',refresh=process.env.POWER_REFRESH==='1',fetcher=globalThis.fetch,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),now=Date.now,limits={},log=console.log}={}) {
+export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter',output=process.env.POWER_OUTPUT||'power-data',cache='.snapshot-cache',refresh=process.env.POWER_REFRESH==='1',fetcher=globalThis.fetch,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),now=Date.now,limits={},initialDepth=1,log=console.log}={}) {
   const policy={...POWER_METHOD_LIMITS,...limits};
   for(const [key,value] of Object.entries(policy))if(!Number.isSafeInteger(value)||value<0||['attempts','requests','bytes','elapsedMs','timeoutMs'].includes(key)&&value===0||value>POWER_METHOD_LIMITS[key])throw fatal(`Invalid power-method limit: ${key}`,'budget');
+  if(!Number.isSafeInteger(initialDepth)||initialDepth<0||initialDepth>1)throw fatal('Invalid power-method initial depth','budget');
   await mkdir(cache,{recursive:true});await mkdir(output,{recursive:true});
   const started=now(),features=new Map(),coverage=[];let downloaded=0,requests=0;
   const remaining=()=>policy.elapsedMs-(now()-started);
@@ -132,6 +133,16 @@ export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://
     checkTime();
     const query=powerMethodQuery(box),file=join(cache,`power-methods-v${POWER_METHOD_CACHE_VERSION}-${box.join('_')}.json`),splitFile=`${file}.split`;
     let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
+    if(json)log('Reusing completed conductor-rail and charger region',box.join(','));
+    // Start uncached roots with a uniform 45-degree query grid. This is a
+    // deterministic acquisition plan, not evidence of a query failure: it
+    // never writes a spatial-split checkpoint. Completed 90-degree responses
+    // still take precedence, preserving the first six production regions.
+    if(!json&&!split&&depth<Math.min(initialDepth,policy.depth)) {
+      log('Planning smaller Power-method queries',box.join(','));
+      for(const child of children(box))await collect(child,depth+1);
+      return;
+    }
     if(!json&&!split) {
       let failure;
       for(let attempt=0;attempt<policy.attempts;attempt++) {
