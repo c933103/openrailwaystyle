@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261012-station-antimeridian-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261013-departure-destinations-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

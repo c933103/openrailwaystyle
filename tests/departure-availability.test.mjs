@@ -148,6 +148,29 @@ function boardDom(feed) {
     }};
 }
 const partialMessage = 'Some departures could not load. The board may be incomplete.';
+test('DOM keeps numeric destination conflicts separate through cached and translated redraws', async () => {
+  for (const order of [['a','b'], ['b','a']]) for (const [a, b] of [
+    ['Terminal 1','Terminal 10'], ['Central','Central 2'], ['中央1','中央10'],
+  ]) {
+    const bodies = {a:{stopTimes:[{...observation, tripId:'trip-a', headsign:a}]},
+      b:{stopTimes:[{...observation, tripId:'trip-b', headsign:b, cancelled:true}]}};
+    const feed = {current:fixture({order, bodies})}, view = boardDom(feed);
+    try {
+      const station = {id:'numeric-destinations', name:'Central', 'name:en':'Central', 'name:ja':'中央'};
+      for (const language of ['en','ja','en']) {
+        view.language(language); view.show(station); await view.settle();
+        assert.deepEqual(new Set([...view.panel.querySelectorAll('.departure-headsign')].map(node => node.textContent)), new Set([a,b]));
+        assert.equal(view.panel.querySelectorAll('.departure-status').length, 1, 'cancellation belongs only to its own train');
+        assert.equal(view.panel.querySelector('.departure-status').closest('li').querySelector('.departure-headsign').textContent, b);
+        assert.equal(view.panel.querySelectorAll('.departure-warning').length, 0);
+        assert.equal(feed.current.calls.length, 3, 'normal redraws do not request another board');
+      }
+      view.advance(60_001); view.show(station); await view.settle();
+      assert.equal(feed.current.calls.length, 6, 'normal expiry permits only the next bounded request set');
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 2);
+    } finally {view.dom.window.close();}
+  }
+});
 test('DOM retains same-script composite operators only when both aliases are supplied', async () => {
   for (const name of ['München Hbf / Munich', 'München (Munich)']) for (const supplied of [true, false]) {
     const candidates = [{...stop('a'), name:'München Hbf', lat:.001}, {...stop('b'), name, lat:.0011},

@@ -32,7 +32,12 @@ fallback is used. Precision disagreements are not guessed away; they can leave
 duplicate-looking rows until stronger shared identity evidence is available.
 The existing same-minute candidate checks remain in place so this stricter time
 condition cannot choose between previously ambiguous trains. Ambiguous matches
-between different boards remain separate.
+between different boards remain separate. Different numeric destination components
+(for example, Terminal 1 and Terminal 10, or Central and Central 2) also prevent
+the entire candidate group from merging. Bilingual names may repeat the same
+numeric component. Numbers attached to additional service descriptions are not
+guessed away, so this conservative check can retain duplicate-looking rows.
+It does not establish full destination or cross-source train identity.
 
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. If a selected stop’s departure board fails while another loads, usable departures

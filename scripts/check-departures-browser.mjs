@@ -187,6 +187,27 @@ try {
         }
       }
       lookupResponse = undefined; boardBodies = {};
+      // Destination numbers identify different simultaneous trains. Exercise
+      // the actual station handler, parser, renderer and cached reopening.
+      for (const order of [['a','b'], ['b','a']]) for (const [a, b] of [
+        ['Terminal 1','Terminal 10'], ['Central','Central 2'], ['中央1','中央10'],
+      ]) {
+        boardName = `Destinations ${order.join('')} ${a}`; boardOrder = order; boardFailed = [];
+        boardBodies = {a:{stopTimes:[{...row, tripId:'trip-a', headsign:a}]},
+          b:{stopTimes:[{...row, tripId:'trip-b', headsign:b, cancelled:true}]}};
+        const before = boardRequests.length;
+        for (let reopen = 0; reopen < 2; reopen++) {
+          await openStation(boardName); await waitBoard();
+          assert.deepEqual(new Set(await page.locator('.departure-headsign').allTextContents()), new Set([a,b]));
+          assert.equal(await page.locator('.departure-status').count(), 1);
+          assert.equal(await page.locator('.departure-list > li').filter({has:page.locator('.departure-status')}).locator('.departure-headsign').textContent(), b);
+          assert.equal(await page.locator('.departure-warning').count(), 0);
+          assert.equal(boardRequests.length - before, 3, 'cached reopening retains the two departures without extra requests');
+          await page.locator('#details-close').click();
+        }
+      }
+      boardBodies = {};
+      console.log(`${engine}: distinct numbered destinations, isolated cancellations and cached reopening passed in both board orders.`);
       console.log(`${engine}: numeric, Latin and native-script substring collisions excluded in all 18 candidate orders, both journey links and cached reopening passed.`);
       console.log(`${engine}: same-script slash/parenthesized aliases, absent-alias negative controls, both journey links and cached reopening passed in all 24 candidate orders.`);
       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
