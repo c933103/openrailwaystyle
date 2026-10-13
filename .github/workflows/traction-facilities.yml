@@ -72,13 +72,12 @@ jobs:
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile} from 'node:fs/promises';
+          import {validatePowerMethodsSnapshot} from './scripts/build-power-methods.mjs';
           const power=JSON.parse(await readFile('power-data/manifest.json'));
           const features=JSON.parse(await readFile('power-data/power-facilities.geojson'));
           const methods=JSON.parse(await readFile('power-data/methods-manifest.json'));
           const methodData=JSON.parse(await readFile('power-data/power-methods.geojson'));
-          assert.equal(methods.complete,true);
-          assert.equal(methods.features,methodData.features.length);
-          assert.ok(methods.coverage.length>=8 && methods.features>0);
+          validatePowerMethodsSnapshot(methodData,methods);
           assert.equal(power.complete,true);
           assert.equal(features.features.length,power.features);
           assert.ok(power.coverage.length>=8 && power.features>0);

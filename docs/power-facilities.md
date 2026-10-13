@@ -91,8 +91,28 @@ planned/former conductor rails and chargers follow the existing inactive setting
 
 The maintenance-only `build-power-methods.mjs` writes
 `power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
-It covers every world quadrant, caches exact completed queries, bounds download
-volume, retries/splits failed regions and refuses incomplete or empty publication.
+It covers every world quadrant and caches exact completed queries and spatial
+split decisions for 28 days. Each run has hard limits of 96 requests, 100 MB of
+downloaded response bodies and one hour, with three attempts per query and at
+most six subdivision levels. HTTP request/authentication failures, malformed
+JSON, unknown error remarks and incomplete geometry terminate immediately.
+HTTP 408/429/500/502/503/504 and temporary transport failures retry the same box;
+they never cause spatial fan-out. Only execution timeout and explicit query
+memory-limit failures can subdivide after exhausting retries. Retry-After is
+honoured up to five minutes; longer waits or an exhausted time budget stop the
+run for later resumption. Completed child boxes and split decisions survive
+failed runs, so resumption does not repeat failed parent queries. Refresh mode
+ignores both kinds of checkpoint.
+
+Publication requires a nonempty, deduplicated dataset, exact coverage of all
+eight world quadrants without gaps/overlaps, and a SHA-256 digest tying the
+manifest to the GeoJSON. Failed acquisition preserves prior output. Files are
+staged after validation and the manifest is replaced last. Both the traction
+publisher and site assembly reject incomplete or mismatched supplement files;
+legacy snapshots lacking both files remain usable while the first build is
+pending. The published files and coverage must be inspected separately from
+fixture rendering checks. Overpass's [admission and rate-limit documentation](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)
+distinguishes HTTP 504 admission failures from query execution limits.
 The existing v6 supply cache remains separate and reusable. The facility workflow
 validates both datasets before publishing. Rendering code alone does not supply
 new geometry: the supplementary snapshot must finish and be deployed too.
