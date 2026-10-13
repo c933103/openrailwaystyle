@@ -63,16 +63,31 @@ test('oversized Retry-After stops instead of retrying before the server deadline
 test('invalid Retry-After uses bounded default backoff',()=>fixture(async({run,sleeps})=>{
   await run(n=>n===1?response('busy',{status:429,headers:{'Retry-After':'invalid'}}):response());assert.equal(sleeps[0],40000);
 }));
-for(const kind of ['timeout','resource'])test(`${kind} subdivides after bounded attempts, deduplicates and retains full coverage`,()=>fixture(async({run,calls})=>{
+for(const kind of ['timeout','resource'])test(`${kind} subdivides on its first explicit response, deduplicates and retains full coverage`,()=>fixture(async({run,calls})=>{
   const root=powerMethodQuery(POWER_METHOD_REGIONS[0]);
   const {data,manifest}=await run((n,init)=>{
     if(init.body.get('data')!==root)return response();
     if(kind==='timeout')return response({remark:'runtime error: Query timed out in query at line 2',elements:[element]});
     return response({remark:'runtime error: Query ran out of memory in query at line 2',elements:[element]});
   });
-  assert.equal(calls.length,14);assert.equal(calls.filter(c=>c.query===root).length,3);
+  assert.equal(calls.length,12);assert.equal(calls.filter(c=>c.query===root).length,1);
   assert.equal(manifest.coverage.length,11);assert.equal(data.features.length,1);
   assert.equal(validatePowerMethodsSnapshot(data,manifest),manifest);
+}));
+for(const initial of ['transport','rate-limit'])test(`${initial} still backs off before an explicit limit splits without another parent request`,()=>fixture(async({run,calls,sleeps})=>{
+  const root=powerMethodQuery(POWER_METHOD_REGIONS[0]);let parents=0;
+  const result=await run((n,init)=>{
+    if(init.body.get('data')!==root)return response();
+    parents++;
+    if(parents===1){
+      if(initial==='transport')throw Object.assign(new TypeError('fetch failed'),{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}});
+      return response('busy',{status:429,headers:{'Retry-After':'120'}});
+    }
+    if(parents===2)return response({remark:'runtime error: Query timed out in query',elements:[element]});
+    throw Object.assign(new TypeError('fetch failed'),{cause:{code:'UND_ERR_BODY_TIMEOUT'}});
+  });
+  assert.equal(parents,2);assert.equal(calls.length,13);assert.equal(sleeps[0],initial==='transport'?40000:120000);
+  assert.equal(result.manifest.coverage.length,11);assert.equal(result.data.features.length,1);
 }));
 for(const kind of ['body-timeout','body-deadline'])test(`${kind} retries without persisting an unproven spatial split`,()=>fixture(async({run,calls,options})=>{
   await assert.rejects(run(()=>({ok:true,body:(async function*(){
@@ -106,7 +121,7 @@ test('global request budget caps spatial fan-out across the tree',()=>fixture(as
 }));
 test('depth budget caps repeated spatial failures independently of request budget',()=>fixture(async({run,calls,options})=>{
   await assert.rejects(run(()=>response({remark:'Query timed out',elements:[]}),{limits:{depth:1}}),/timed out/);
-  assert.equal(calls.length,6);await unpublished(options.output);
+  assert.equal(calls.length,2);await unpublished(options.output);
 }));
 test('download bytes include malformed responses and stop mid-stream without retry',()=>fixture(async({run,calls,options})=>{
   let closed=false;
@@ -123,11 +138,11 @@ test('elapsed-time budget also stops after a successful slow response',()=>fixtu
 }));
 test('incomplete runs reuse completed leaves and split checkpoints without re-querying the parent',()=>fixture(async({run,calls,options})=>{
   const root=powerMethodQuery(POWER_METHOD_REGIONS[0]);
-  await assert.rejects(run((n,init)=>init.body.get('data')===root?response({remark:'Query timed out',elements:[]}):n===5?response('forbidden',{status:403}):response()),/HTTP 403/);
-  assert.equal(calls.length,5);await unpublished(options.output);
+  await assert.rejects(run((n,init)=>init.body.get('data')===root?response({remark:'Query timed out',elements:[]}):n===3?response('forbidden',{status:403}):response()),/HTTP 403/);
+  assert.equal(calls.length,3);await unpublished(options.output);
   const {manifest}=await run();
   assert.equal(manifest.requests,10);assert.equal(manifest.coverage.length,11);
-  assert.equal(calls.slice(5).some(c=>c.query===root),false);
+  assert.equal(calls.slice(3).some(c=>c.query===root),false);
   const cached=await run(()=>{throw new Error('Unexpected request');});assert.equal(cached.manifest.requests,0);
   const body=await readFile(join(options.output,'power-methods.geojson'));
   assert.deepEqual(gunzipSync(await readFile(join(options.output,'power-methods.geojson.gz'))),body);
