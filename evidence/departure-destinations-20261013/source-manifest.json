@@ -1,0 +1,20 @@
+{
+  "baseCommit": "d8b70d02adf9babf72eb33c9d4ce2ba16ec9d3f0",
+  "baseTree": "d089f23418d1fc18edd9898ff7cd78287c5e6435",
+  "node": "24.19.0",
+  "sourceFiles": {
+    "docs/user-guide.md": "10d7e9e3a258fc1ce65fa5c5357f4715ce94b4f1cb9792cd8163a0c413f2769e",
+    "scripts/check-departures-browser.mjs": "0f4a26f717127c6c4fadc600edce9d11391d3050b532aec895db54c0c0701f67",
+    "styles/app.mjs": "a0d1048e0082fb8effc915f75a59e916a30195719304c3ae2e672fd6817ca157",
+    "styles/cjk-font.mjs": "d4d8872c2005d3d3283bf3c3036c3d2fb28ce3c8c7f7bffb8823c597dab836fc",
+    "styles/departures-ui.mjs": "ad68937964aafbf8bbf05edfa1f5390fe03ae187e58cd99a72e1e58d8c896dd2",
+    "styles/departures.mjs": "45806667e3e59ff5f4d6cb9fdcd053a06b4c725ee2d894069c5dc791176bfafe",
+    "styles/elevation.mjs": "ce2a6d9a3e7b3d9f49407e660932d23fef38add4a7de824ece528a898aef4632",
+    "styles/index.html": "c8effa7f4815fee79776f595bfc370760d3ae3b8129685c5693113762c89cb3e",
+    "styles/layer-semantics.mjs": "8f4bf058bfcefecd681a153e557399ab1e67ef4466f04eafa93e18823649655b",
+    "styles/map-model.mjs": "8cc7ded0598587997430f9ffd35a987aa277dd3a14c86e3e9029da0c9303e71b",
+    "styles/sw.js": "4986fe64155396b3ca9b06c866b22c1b0ad0da4a177b97834ec7b09958559367",
+    "tests/departure-availability.test.mjs": "349869015c1551430e7af2901ce6ca682fcae962afd2031197bcf6a879849a49",
+    "tests/departure-destinations.test.mjs": "06e333548a4f5428dff23a9ffeca37c70fda82961e7f2b7bc5c79c0ae9564fcd"
+  }
+}

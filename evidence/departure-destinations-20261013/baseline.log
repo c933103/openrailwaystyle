@@ -1,0 +1,320 @@
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 10 (4.545761ms)
+✖ different numeric destinations remain separate: Central / Central 2 (0.764277ms)
+✖ different numeric destinations remain separate: 中央1 / 中央10 (0.699649ms)
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1-1 (1.298265ms)
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1/2 (0.437703ms)
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1.1 (0.762624ms)
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1 − 1 (0.512686ms)
+✖ different numeric destinations remain separate: 航廈１ / 航廈１０ (0.38977ms)
+✖ different numeric destinations remain separate: محطة ١ / محطة ١٠ (0.556062ms)
+✖ different numeric destinations remain separate: Terminal Ⅳ / Terminal ⅣⅢ (0.75298ms)
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1 / 第2航廈 (0.465995ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / (Local) Terminal 1 (1.769799ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / 第1航廈 Terminal 1 (0.134403ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / Terminal 1 / 第１航廈 (0.093521ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1-2 / (Local) Terminal 1-2 (0.07916ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: 桜木町 / (普通 Local) 桜木町 Sakuragichō (0.237329ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Central / (Local) Central (0.498465ms)
+✖ numeric conflict cannot transfer cancellation, platform, prediction or trip identity (0.755173ms)
+✔ numeric veto does not remove competitors from the original ambiguity graph (0.747822ms)
+✖ a numeric-conflicting multi-board group is rejected whole, without new subgroup matches (0.357481ms)
+✔ same-board exact repeats and compatible groups retain live observations (1.258395ms)
+✖ selected stop boards retain both numbered destinations with normal request and outcome limits (6.901768ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 8
+ℹ fail 14
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.865518
+
+✖ failing tests:
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 10 (4.545761ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Central / Central 2 (0.764277ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: 中央1 / 中央10 (0.699649ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1-1 (1.298265ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1/2 (0.437703ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1.1 (0.762624ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1 − 1 (0.512686ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: 航廈１ / 航廈１０ (0.38977ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: محطة ١ / محطة ١٠ (0.556062ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal Ⅳ / Terminal ⅣⅢ (0.75298ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:19:35
+✖ different numeric destinations remain separate: Terminal 1 / Terminal 1 / 第2航廈 (0.465995ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:24:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:39:1
+✖ numeric conflict cannot transfer cancellation, platform, prediction or trip identity (0.755173ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:45:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:65:1
+✖ a numeric-conflicting multi-board group is rejected whole, without new subgroup matches (0.357481ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 3
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:70:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-destinations.test.mjs:86:1
+✖ selected stop boards retain both numbered destinations with normal request and outcome limits (6.901768ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-departure-destinations-113-20261013/tests/departure-destinations.test.mjs:97:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

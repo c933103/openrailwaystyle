@@ -1,0 +1,3 @@
+Independent review of the bounded departure destination correction
+
+A separate reviewer inspected the current-main comparison and full departure parsing/merge flow, then independently ran all 22 new regressions, which passed. No blocking issue was found. The reviewer verified that row.to is a string, the numeric conflict guard rejects final groups only, and the original ambiguity graph and cancellation/platform/trip-identity boundaries remain intact. Scope: conservative conflict guard, not universal destination equivalence; extra duplicate-looking rows remain possible, and NFKC does not equate every numeric script. Browser/build/aggregate results are recorded separately.

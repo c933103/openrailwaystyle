@@ -1,0 +1,30 @@
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 10 (4.154329ms)
+✔ different numeric destinations remain separate: Central / Central 2 (0.609833ms)
+✔ different numeric destinations remain separate: 中央1 / 中央10 (0.809035ms)
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 1-1 (0.244531ms)
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 1/2 (0.304772ms)
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 1.1 (0.429019ms)
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 1 − 1 (0.214886ms)
+✔ different numeric destinations remain separate: 航廈１ / 航廈１０ (0.209157ms)
+✔ different numeric destinations remain separate: محطة ١ / محطة ١٠ (0.337501ms)
+✔ different numeric destinations remain separate: Terminal Ⅳ / Terminal ⅣⅢ (0.690856ms)
+✔ different numeric destinations remain separate: Terminal 1 / Terminal 1 / 第2航廈 (0.542832ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / (Local) Terminal 1 (0.212021ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / 第1航廈 Terminal 1 (0.150788ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1 / Terminal 1 / 第１航廈 (0.141795ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Terminal 1-2 / (Local) Terminal 1-2 (0.294846ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: 桜木町 / (普通 Local) 桜木町 Sakuragichō (0.148285ms)
+✔ compatible numeric components and existing multilingual duplicates still merge: Central / (Local) Central (0.327556ms)
+✔ numeric conflict cannot transfer cancellation, platform, prediction or trip identity (0.441198ms)
+✔ numeric veto does not remove competitors from the original ambiguity graph (0.624084ms)
+✔ a numeric-conflicting multi-board group is rejected whole, without new subgroup matches (0.306114ms)
+✔ same-board exact repeats and compatible groups retain live observations (0.34315ms)
+✔ selected stop boards retain both numbered destinations with normal request and outcome limits (4.701718ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 134.413963
