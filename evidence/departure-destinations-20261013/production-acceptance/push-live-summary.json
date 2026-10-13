@@ -1,0 +1,18 @@
+{
+  "artifactId": 11792974854,
+  "artifactSha256": "9307f1d9b7e80ba82f47b2e7737c134de544236dbf577e820b2934f225298534",
+  "reportSha256": "b80aa8a3b73cb2b7f11f5ca2dd78f05406a5caa319b3f6c03b3bfdd75c7574f8",
+  "gzipSha256": "646e4f87f65d226942176b652d1aa7ab7153da87c7decb15247bcf0ebeb6a08c",
+  "reportBytes": 581543,
+  "gzipBytes": 48225,
+  "scope": "Actual OSM generation; exact chain identities",
+  "assetBase": "https://c933103.github.io/openrailwaystyle/",
+  "generation": "8b430e70e32c08a25a1c4aac",
+  "samples": 840,
+  "appSamples": 18,
+  "providerRequests": 0,
+  "timing": {
+    "medianMs": 348,
+    "p95Ms": 1422
+  }
+}

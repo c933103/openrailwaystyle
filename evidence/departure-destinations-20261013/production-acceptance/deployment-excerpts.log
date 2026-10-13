@@ -1,0 +1,30 @@
+Production dataset plan
+2026-10-13T05:57:25.9082508Z Reference plan {"reuse":true,"sha":"6238b333143a8061e171346e009b0cb1b1e6cfd1","date":"2026-10-11","generation":"8b430e70e32c08a25a1c4aac","dataDigest":"d89f5bc2b5f33bc95a9bf982b732d1ef80284751fabf34a3d2c501e916996779"}
+Push deployment
+2026-10-13T06:22:39.0940658Z Created deployment for a52a7d2b7033d7f1201410b3dd38861069ae2911, ID: a52a7d2b7033d7f1201410b3dd38861069ae2911
+2026-10-13T06:23:00.6558629Z PASS: exact deployed vector tile 7/109/50 identity
+2026-10-13T06:23:00.7647778Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity
+2026-10-13T06:23:00.8693266Z PASS: exact deployed vector tile 0/0/0 identity
+2026-10-13T06:23:00.9733898Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity
+2026-10-13T06:23:01.0680389Z PASS: exact deployed vector tile 10/552/143 identity
+2026-10-13T06:23:01.1437775Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity
+2026-10-13T06:30:54.2319182Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":348,"p95Ms":1422},"generation":"8b430e70e32c08a25a1c4aac"}
+2026-10-13T06:32:35.0331899Z PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only {"initial":{"requests":61,"unique":61,"byDataset":{"railway_line_high":25,"standard_railway_grouped_station_areas":18,"standard_railway_text_stations":18}},"afterPan":{"requests":72,"unique":72,"byDataset":{"railway_line_high":30,"standard_railway_grouped_station_areas":21,"standard_railway_text_stations":21}},"panAdded":11,"metadata":1,"tiles":334}
+2026-10-13T06:17:01.4233877Z [build] PASS build info desktop {"version":"20261013-departure-destinations-1","commit":"a52a7d2b7033d7f1201410b3dd38861069ae2911","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/a52a7d2b7033d7f1201410b3dd38861069ae2911"}
+2026-10-13T06:17:15.9589325Z [build] PASS build info mobile {"version":"20261013-departure-destinations-1","commit":"a52a7d2b7033d7f1201410b3dd38861069ae2911","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/a52a7d2b7033d7f1201410b3dd38861069ae2911"}
+2026-10-13T06:17:58.3598279Z [departures] chromium: distinct numbered destinations, isolated cancellations and cached reopening passed in both board orders.
+2026-10-13T06:18:24.3787792Z [departures] webkit: distinct numbered destinations, isolated cancellations and cached reopening passed in both board orders.
+Automatic redeployment
+2026-10-13T06:49:52.8638224Z Created deployment for a52a7d2b7033d7f1201410b3dd38861069ae2911, ID: a52a7d2b7033d7f1201410b3dd38861069ae2911
+2026-10-13T06:49:58.9805446Z PASS: exact deployed vector tile 7/109/50 identity
+2026-10-13T06:49:59.2431016Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity
+2026-10-13T06:49:59.4994663Z PASS: exact deployed vector tile 0/0/0 identity
+2026-10-13T06:49:59.7883496Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity
+2026-10-13T06:50:00.0582118Z PASS: exact deployed vector tile 10/552/143 identity
+2026-10-13T06:50:00.2909027Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity
+2026-10-13T06:56:13.9740666Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":337,"p95Ms":895},"generation":"8b430e70e32c08a25a1c4aac"}
+2026-10-13T06:57:18.2712898Z PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only {"initial":{"requests":61,"unique":61,"byDataset":{"railway_line_high":25,"standard_railway_grouped_station_areas":18,"standard_railway_text_stations":18}},"afterPan":{"requests":72,"unique":72,"byDataset":{"railway_line_high":30,"standard_railway_grouped_station_areas":21,"standard_railway_text_stations":21}},"panAdded":11,"metadata":1,"tiles":343}
+2026-10-13T06:44:26.2526210Z [build] PASS build info desktop {"version":"20261013-departure-destinations-1","commit":"a52a7d2b7033d7f1201410b3dd38861069ae2911","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/a52a7d2b7033d7f1201410b3dd38861069ae2911"}
+2026-10-13T06:44:36.3080869Z [build] PASS build info mobile {"version":"20261013-departure-destinations-1","commit":"a52a7d2b7033d7f1201410b3dd38861069ae2911","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/a52a7d2b7033d7f1201410b3dd38861069ae2911"}
+2026-10-13T06:45:15.7855202Z [departures] chromium: distinct numbered destinations, isolated cancellations and cached reopening passed in both board orders.
+2026-10-13T06:45:42.4977042Z [departures] webkit: distinct numbered destinations, isolated cancellations and cached reopening passed in both board orders.
