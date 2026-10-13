@@ -1,0 +1,692 @@
+diff --git a/.github/workflows/mainline-reference.yml b/.github/workflows/mainline-reference.yml
+index d1c5be4..5efd882 100644
+--- a/.github/workflows/mainline-reference.yml
++++ b/.github/workflows/mainline-reference.yml
+@@ -29,20 +29,34 @@ jobs:
+       contents: read
+       actions: read
+     outputs:
++      reuse: ${{ steps.reuse.outputs.reuse }}
++      reference_sha: ${{ steps.reuse.outputs.reference_sha }}
+       date: ${{ steps.plan.outputs.date }}
+       sizes: ${{ steps.budget.outputs.sizes }}
+       checksums: ${{ steps.budget.outputs.checksums }}
+       checkpoints: ${{ steps.checkpoints.outputs.checkpoints }}
+     steps:
+       - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '22'
++      - name: Reuse verified data when only current renderer acceptance changed
++        id: reuse
++        env:
++          REFERENCE_EVENT: ${{ github.event_name }}
++          REFERENCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
++          REQUESTED: ${{ inputs.source_date }}
++          GH_TOKEN: ${{ github.token }}
++        run: node scripts/plan-mainline-reuse.mjs
+       - id: plan
+         env:
+           REQUESTED: ${{ inputs.source_date }}
+           PREVIEW_PR: ${{ github.event.pull_request.number || inputs.preview_pr }}
++          PINNED_SOURCE_DATE: ${{ steps.reuse.outputs.reference_date }}
+         run: |
+           python - <<'PY'
+           import datetime as d, os, re
+-          date=os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
++          date=os.environ.get('PINNED_SOURCE_DATE') or os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
+           if os.environ['GITHUB_REF']!='refs/heads/main' and not re.fullmatch(r'[1-9]\d*',os.environ.get('PREVIEW_PR','')): raise ValueError('Non-production builds require a PR number')
+           if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date): raise ValueError('Invalid source date')
+           d.date.fromisoformat(date)
+@@ -50,14 +64,17 @@ jobs:
+           PY
+       - name: Check the full worldwide download budget before acquiring any PBF
+         id: budget
++        if: steps.reuse.outputs.reuse != 'true'
+         run: python scripts/plan-mainline-acquisition.py '${{ steps.plan.outputs.date }}'
+       - name: Find completed continent artifacts across branch cache scopes
+         id: checkpoints
++        if: steps.reuse.outputs.reuse != 'true'
+         env:
+           GH_TOKEN: ${{ github.token }}
+         run: node scripts/find-mainline-checkpoints.mjs
+   extract:
+     needs: plan
++    if: needs.plan.outputs.reuse != 'true'
+     runs-on: ubuntu-latest
+     timeout-minutes: 180
+     permissions:
+@@ -143,6 +160,7 @@ jobs:
+           retention-days: 14
+   assemble:
+     needs: [plan, extract]
++    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.reuse == 'true' || needs.extract.result == 'success') }}
+     runs-on: ubuntu-latest
+     timeout-minutes: 90
+     concurrency:
+@@ -158,13 +176,26 @@ jobs:
+           node-version: '22'
+       - run: npm ci --ignore-scripts --no-audit --no-fund
+       - uses: actions/download-artifact@v4
++        if: needs.plan.outputs.reuse != 'true'
+         with:
+           pattern: mainline-source-*
+           path: mainline-input
+       - name: Validate all continents, build independent tiles and audit real source coverage
++        if: needs.plan.outputs.reuse != 'true'
+         env:
+           NODE_OPTIONS: --max-old-space-size=6144
+         run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
++      - name: Read the pinned complete generation without reacquiring provider data
++        if: needs.plan.outputs.reuse == 'true'
++        env:
++          REFERENCE_SHA: ${{ needs.plan.outputs.reference_sha }}
++        run: |
++          set -eu
++          [[ "$REFERENCE_SHA" =~ ^[0-9a-f]{40}$ ]]
++          git fetch --no-tags --depth=1 origin "$REFERENCE_SHA"
++          mkdir mainline-output
++          git archive FETCH_HEAD | tar -x -C mainline-output
++          node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
+       - name: Verify the exact generation and renderer before publication
+         run: |
+           node scripts/verify-mainline-snapshot.mjs mainline-output
+diff --git a/docs/mainline-reference.md b/docs/mainline-reference.md
+index 74374da..024aeef 100644
+--- a/docs/mainline-reference.md
++++ b/docs/mainline-reference.md
+@@ -50,6 +50,49 @@ acceptance inputs, including authored browser bundle entries. Package sources
+ are represented by the pinned lockfile, so the fingerprint is identical before
+ and after dependency installation. Site readiness waits for that fingerprint and pins the
+ verified data commit, so an older branch cannot satisfy a changed build.
++
++### Reuse data, renew renderer acceptance
++
++Data generation and application compatibility have separate fingerprints.
++`dataInputSha256` covers acquisition/compiler sources and their local dependencies,
++the package manifest/lockfile, and the fresh-generation workflow configuration:
++the complete extraction job, assembly runtime/dependency setup and generation
++commands, plus inherited global environment/defaults. Changes to acquisition
++arguments, Osmium installation, runners, Node versions or generator environment
++invalidate reuse. YAML aliases/anchors in this execution configuration are refused
++explicitly rather than resolved by a second workflow parser; ordinary trigger-path
++anchors are unrelated. Full package-lock invalidation is intentionally conservative.
++
++An ordinary PR or push with the same data-generation fingerprint can pin the
++existing `mainline-data` commit and reuse its complete generation. It skips
++provider preflight/extraction and tile regeneration, preserves source dates,
++coverage, hashes, original generation time and immutable geometry, and verifies
++the stored tile/index/audit/acceptance bytes before proceeding. This still reads
++the stored data from GitHub; it does not mean zero network transfer.
++
++The existing whole-application `inputSha256` remains mandatory. The current
++source must build and pass all 840 reference-renderer samples and 18 actual-Atlas
++checks against the reused generation. Only then does acceptance recording bind
++that fresh report to the current application digest. The original source snapshot
++is never relabeled as freshly acquired, and old renderer acceptance cannot satisfy
++a changed current application. Skipped extraction permits assembly, but normal
++user/concurrency cancellation is respected through `!cancelled()`.
++
++For a legacy manifest without the data-generation fingerprint, reuse requires the
++trusted event base's complete old input digest to match the published manifest,
++and the generator inputs to match the current implementation. This narrow
++transition removes only the former snapshot-builder metadata import and its
++`inputSha256` field before comparing generator bytes; those metadata writes now
++belong to fresh acceptance recording. All remaining transform dependencies and
++generation configuration must agree. Source proof uses immutable Git object
++reads without executing old code. Invalid metadata or failed reads fail closed.
++
++Scheduled/manual refreshes, missing published data, or incompatible generation
++inputs retain the existing acquisition path and fresh two-days-ago source policy
++(unless an explicit date is supplied). Only actual reuse preserves the published
++source date: a generator rebuild does not pin an old dated file that the provider
++may already have removed. Existing size/checksum/coverage gates remain binding.
++
+ The site readiness job allows six hours rather than timing out during acquisition.
+ For builds that outlast that window, a trusted default-branch completion
+ workflow retries failed/timed-out site checks for the same current open PR
+diff --git a/scripts/build-mainline-snapshot.mjs b/scripts/build-mainline-snapshot.mjs
+index 9caa046..33292cf 100644
+--- a/scripts/build-mainline-snapshot.mjs
++++ b/scripts/build-mainline-snapshot.mjs
+@@ -10,7 +10,6 @@ import {join,dirname,resolve} from 'node:path';
+ import {performance} from 'node:perf_hooks';
+ import {normalizeMainlineWay,mainlineTiles,MAINLINE_LAYER} from './mainline-overview.mjs';
+ import {mainlineChains} from './mainline-chains.mjs';
+-import {referenceInputDigest} from './mainline-provenance.mjs';
+ import {sha256,validateMainlineSources,auditMainlineCoverage,MAINLINE_REGIONS,featureInBox} from './mainline-coverage.mjs';
+ const [input,output]=process.argv.slice(2);
+ if(!input||!output||resolve(input)===resolve(output))throw Error('Expected separate input/output directories');
+@@ -103,7 +102,7 @@ const archives={membership:await archive('membership',chained.membership),ways:a
+ if(archives.membership.bytes+archives.ways.bytes>512*1024**2)throw Error('Combined reference source archives exceed publication size budget');
+ await writeFile(join(target,'coverage-audit.json'),coverageAuditBytes);
+ const classes={};for(const f of features)classes[f.properties.classification]=(classes[f.properties.classification]||0)+1;
+-const manifest={...result.manifest,complete:true,generation,inputSha256:await referenceInputDigest(),coverage:'all eight Geofabrik continent extracts; complete OSM ways',
++const manifest={...result.manifest,complete:true,generation,coverage:'all eight Geofabrik continent extracts; complete OSM ways',
+  sourceDate:sources[0].date,oldestSource:new Date(Math.min(...sources.map(s=>Date.parse(s.sourceTimestamp)))).toISOString(),
+  newestSource:new Date(Math.max(...sources.map(s=>Date.parse(s.sourceTimestamp)))).toISOString(),
+  generated:new Date().toISOString(),sources,wayCount:features.length,chainCount:chained.features.length,classifications:classes,
+diff --git a/scripts/mainline-provenance.mjs b/scripts/mainline-provenance.mjs
+index 34c44b9..41501f2 100644
+--- a/scripts/mainline-provenance.mjs
++++ b/scripts/mainline-provenance.mjs
+@@ -1,10 +1,11 @@
+ import {readFile,readdir} from 'node:fs/promises';
+ import {resolve,dirname,relative,join} from 'node:path';
+ import {fileURLToPath} from 'node:url';
++import {execFileSync} from 'node:child_process';
+ import {sha256} from './mainline-coverage.mjs';
+ // Deployment accepts only data built and browser-checked with these inputs.
+ // Documentation-only and unrelated orchestration edits can reuse that result.
+-export const REFERENCE_INPUTS=Object.freeze([
++const LEGACY_REFERENCE_INPUTS=Object.freeze([
+  '.github/workflows/mainline-reference.yml','package.json','package-lock.json',
+  'tests/fixtures/browser-glyphs/0-255.pbf',
+  // The acceptance workflow also executes these drivers and reads station data.
+@@ -22,6 +23,64 @@ export const REFERENCE_INPUTS=Object.freeze([
+  'styles/map-controls.mjs','styles/vector-tile-validation.mjs','styles/pbf-utf8.mjs',
+  'styles/mainline-reference.mjs','styles/world.style.json','styles/app.mjs','styles/index.html','styles/app.css',
+ ]);
++export const REFERENCE_INPUTS=Object.freeze([...LEGACY_REFERENCE_INPUTS,
++ 'scripts/plan-mainline-reuse.mjs',
++]);
++// Dataset identity is separate from compatibility with the current app.
++// The snapshot builder no longer imports application-acceptance code; every
++// transform dependency is included normally, without ignored metadata edges.
++export const DATA_INPUTS=Object.freeze([
++ 'package.json','package-lock.json','scripts/acquire-mainline-extract.py',
++ 'scripts/plan-mainline-acquisition.py','scripts/build-mainline-snapshot.mjs',
++ 'scripts/mainline-overview.mjs','scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
++]);
++export function generationWorkflowInputs(workflow){
++ const lines=workflow.split('\n');
++ const global=[];
++ for(const key of ['env','defaults']){
++  const starts=lines.flatMap((line,i)=>line.startsWith(`${key}:`)?[i]:[]);
++  if(starts.length>1)throw Error('Duplicate global generation configuration');
++  if(starts.length){const start=starts[0],offset=lines.slice(start+1).findIndex(line=>/^\S/.test(line));
++   global.push(...lines.slice(start,offset<0?lines.length:start+1+offset));}
++ }
++ const job=name=>{
++  const starts=lines.flatMap((line,i)=>line===`  ${name}:`?[i]:[]);
++  if(starts.length!==1)throw Error('Unrecognized generation workflow job');
++  const start=starts[0],offset=lines.slice(start+1).findIndex(line=>/^  [\w-]+:$/.test(line));
++  return lines.slice(start,offset<0?lines.length:start+1+offset);
++ };
++ const extract=job('extract').filter(line=>line!=="    if: needs.plan.outputs.reuse != 'true'");
++ const assemble=job('assemble'),boundary=assemble.indexOf('      - name: Verify the exact generation and renderer before publication');
++ if(boundary<0)throw Error('Unrecognized generation/renderer boundary');
++ const prefix=assemble.slice(0,boundary).filter(line=>line!=="    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.reuse == 'true' || needs.extract.result == 'success') }}");
++ const steps=prefix.indexOf('    steps:');if(steps<0)throw Error('Missing generation steps');
++ const blocks=[];let current;
++ for(const line of prefix.slice(steps+1)){
++  if(line.startsWith('      - ')){current=[];blocks.push(current);}
++  if(!current)throw Error('Unrecognized generation step indentation');
++  current.push(line);
++ }
++ // Only steps that can run in a fresh generation belong to its recipe. The
++ // reuse-only hydration path is still bound by the full acceptance digest.
++ const fresh=blocks.filter(block=>!block.includes("        if: needs.plan.outputs.reuse == 'true'"))
++  .flatMap(block=>block.filter(line=>line!=="        if: needs.plan.outputs.reuse != 'true'"));
++ if(!fresh.some(line=>line.includes('node scripts/build-mainline-snapshot.mjs mainline-input mainline-output')))
++  throw Error('Missing generation invocation');
++ const recipe=[...global,...extract,...prefix.slice(0,steps+1),...fresh].join('\n').trimEnd();
++ // Resolving arbitrary YAML aliases would require a second workflow parser.
++ // Refuse inherited/aliased execution configuration instead of missing a
++ // definition elsewhere in the document. Trigger path aliases are unrelated.
++ if(/(?:^|[\s:[,{])[*&][A-Za-z_][\w-]*/m.test(recipe))throw Error('YAML aliases/anchors are unsupported in generation configuration');
++ return recipe;
++}
++function sourceReader(root,ref){
++ if(ref&&!/^[a-f0-9]{40}$/.test(ref))throw Error('Expected immutable source commit');
++ const git=args=>execFileSync('git',args,{cwd:root,maxBuffer:16*1024**2});
++ return {read:path=>ref?git(['show',`${ref}:${path}`]):readFile(resolve(root,path)),
++  native:()=>ref?git(['ls-tree','-r','--name-only',ref,'--','styles']).toString().split('\n')
++   .filter(path=>!path.startsWith('styles/vendor/')&&!path.startsWith('styles/data/')&&/\.(?:mjs|js)$/.test(path))
++   :nativeStyleInputs(root)};
++}
+ async function nativeStyleInputs(root,dir='styles'){
+  const files=[];
+  for(const entry of await readdir(resolve(root,dir),{withFileTypes:true})){
+@@ -34,26 +93,45 @@ async function nativeStyleInputs(root,dir='styles'){
+  }
+  return files;
+ }
+-export async function referenceInputDigest(root=process.cwd()){
+- root=resolve(root);
+- // Include authored browser entries even when a build driver or template
+- // literal loads them without a static import (workers, labels, polar layer).
+- const entries=new Map(),queue=[...REFERENCE_INPUTS,...await nativeStyleInputs(root)];
++async function inputDigest(root,reader,inputs,{legacyData=false}={}){
++ const entries=new Map(),queue=[...inputs];
+  while(queue.length){
+   const path=queue.pop();if(entries.has(path))continue;
+-  const bytes=await readFile(resolve(root,path));entries.set(path,sha256(bytes));
++  let bytes=await reader.read(path);
++  if(legacyData&&path==='scripts/build-mainline-snapshot.mjs'){
++   // One-time legacy transition: remove only the former metadata import and
++   // its manifest field. Every remaining byte must match the current builder.
++   // The caller separately proves the complete old source acceptance digest.
++   let source=bytes.toString();
++   for(const metadata of ["import {referenceInputDigest} from './mainline-provenance.mjs';\n",',inputSha256:await referenceInputDigest()']){
++    if(source.split(metadata).length!==2)throw Error('Unsupported legacy snapshot metadata layout');
++    source=source.replace(metadata,'');
++   }
++   bytes=Buffer.from(source);
++  }
++  entries.set(path,sha256(bytes));
+   if(/\.(?:mjs|js)$/.test(path))for(const match of bytes.toString().matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"](\.[^'"]+)['"]/g)){
+    const dependency=relative(root,resolve(root,dirname(path),match[1].split('?')[0]));
+    if(dependency.startsWith('..'))throw Error('Reference dependency escaped repository');
+-   // Installed dependencies are bound by package-lock and immutable library
+-   // pins; generated outputs are bound by their authored build inputs. The
+-   // readiness job intentionally computes this digest without npm install.
+    if(dependency.startsWith('node_modules/')||dependency.startsWith('styles/vendor/')||dependency.startsWith('styles/data/'))continue;
+    queue.push(dependency);
+   }
+  }
+  return sha256(JSON.stringify([...entries].sort(([a],[b])=>a.localeCompare(b))));
+ }
++export async function referenceDataInputDigest(root=process.cwd(),{ref,legacy=false}={}){
++ root=resolve(root);
++ const reader=sourceReader(root,ref),workflow=generationWorkflowInputs((await reader.read('.github/workflows/mainline-reference.yml')).toString());
++ return sha256(JSON.stringify(['mainline-generator-v1',generationWorkflowInputs.toString(),workflow,
++  await inputDigest(root,reader,DATA_INPUTS,{legacyData:legacy})]));
++}
++export async function referenceInputDigest(root=process.cwd(),{ref,legacy=false}={}){
++ root=resolve(root);
++ // Include authored browser entries even when a build driver or template
++ // literal loads them without a static import (workers, labels, polar layer).
++ const reader=sourceReader(root,ref);
++ return inputDigest(root,reader,[...(legacy?LEGACY_REFERENCE_INPUTS:REFERENCE_INPUTS),...await reader.native()]);
++}
+ export function matchingReferenceInputs(manifest,digest){
+  return manifest?.complete===true&&/^[a-f0-9]{64}$/.test(digest)&&manifest.inputSha256===digest;
+ }
+diff --git a/scripts/record-mainline-acceptance.mjs b/scripts/record-mainline-acceptance.mjs
+index 16038b5..84cee1a 100644
+--- a/scripts/record-mainline-acceptance.mjs
++++ b/scripts/record-mainline-acceptance.mjs
+@@ -1,6 +1,7 @@
+ import {readFile,writeFile} from 'node:fs/promises';
+ import {join} from 'node:path';
+ import {MAINLINE_CONTROLS,sha256} from './mainline-coverage.mjs';
++import {referenceInputDigest,referenceDataInputDigest} from './mainline-provenance.mjs';
+ const [root,reportPath]=process.argv.slice(2);
+ if(!root||!reportPath)throw Error('Expected snapshot directory and renderer acceptance report');
+ const manifest=JSON.parse(await readFile(join(root,'manifest.json'))),bytes=await readFile(reportPath),report=JSON.parse(bytes);
+@@ -21,7 +22,11 @@ if(keys.size!==MAINLINE_CONTROLS.length*3*2*7||report.appSamples?.length!==18)
+ for(const s of report.appSamples)if(!s.ids?.length||Math.abs(s.cameraZoom-s.zoom)>.001)throw Error('Atlas handoff acceptance failed');
+ const digest=sha256(bytes),path=join('generations',manifest.generation,`renderer-acceptance-${digest}.json`);
+ await writeFile(join(root,path),bytes);
+-manifest.rendererAcceptance={complete:true,path,sha256:digest,samples:keys.size,appSamples:report.appSamples.length,
++// The dataset and its original date/generation stay intact. A reused dataset
++// gets a new exact current-app acceptance only after this fresh report passes.
++manifest.dataInputSha256=await referenceDataInputDigest();
++manifest.inputSha256=await referenceInputDigest();
++manifest.rendererAcceptance={complete:true,path,sha256:digest,inputSha256:manifest.inputSha256,samples:keys.size,appSamples:report.appSamples.length,
+  assetRequests:report.assetRequests,assetBytes:report.requestBytes,timing:report.timing};
+ await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+ console.log('PASS: retained actual OSM renderer acceptance',JSON.stringify(manifest.rendererAcceptance));
+diff --git a/scripts/verify-mainline-snapshot.mjs b/scripts/verify-mainline-snapshot.mjs
+index d7cc9fe..cdfd31e 100644
+--- a/scripts/verify-mainline-snapshot.mjs
++++ b/scripts/verify-mainline-snapshot.mjs
+@@ -8,6 +8,8 @@ import {validateMainlineSources,sha256,MAINLINE_CONTROLS} from './mainline-cover
+ import {MAINLINE_LAYER} from './mainline-overview.mjs';
+ const root=process.argv[2];if(!root)throw Error('Expected reference snapshot directory');
+ const manifest=validateReferenceManifest(JSON.parse(await readFile(join(root,'manifest.json'))));
++if(manifest.dataInputSha256!==undefined&&!/^[a-f0-9]{64}$/.test(manifest.dataInputSha256))
++ throw Error('Invalid dataset generator provenance');
+ validateMainlineSources(manifest.sources);
+ const dir=join(root,'generations',manifest.generation),indexBytes=await readFile(join(dir,'index.json'));
+ if(sha256(indexBytes)!==manifest.indexSha256)throw Error('Reference index does not match generation');
+@@ -36,6 +38,8 @@ if(process.argv.includes('--require-browser-acceptance')&&!manifest.rendererAcce
+  throw Error('Actual OSM renderer acceptance is required for publication');
+ if(manifest.rendererAcceptance){
+  const a=manifest.rendererAcceptance;
++ if((manifest.dataInputSha256!==undefined||a.inputSha256!==undefined)&&(a.inputSha256!==manifest.inputSha256||!/^[a-f0-9]{64}$/.test(a.inputSha256)))
++  throw Error('Renderer acceptance belongs to different application inputs');
+  if(a.complete!==true||!/^[a-f0-9]{64}$/.test(a.sha256)||a.path!==`generations/${manifest.generation}/renderer-acceptance-${a.sha256}.json`||a.samples!==840||a.appSamples!==18||
+   sha256(await readFile(join(root,a.path)))!==a.sha256)throw Error('Changed or incomplete retained renderer acceptance');
+ }
+diff --git a/scripts/plan-mainline-reuse.mjs b/scripts/plan-mainline-reuse.mjs
+new file mode 100644
+index 0000000..018adb4
+--- /dev/null
++++ b/scripts/plan-mainline-reuse.mjs
+@@ -0,0 +1,63 @@
++import {execFileSync} from 'node:child_process';
++import {appendFile} from 'node:fs/promises';
++import {resolve} from 'node:path';
++import {fileURLToPath} from 'node:url';
++import {validateReferenceManifest} from '../styles/mainline-reference.mjs';
++import {validateMainlineSources} from './mainline-coverage.mjs';
++import {referenceDataInputDigest,referenceInputDigest} from './mainline-provenance.mjs';
++
++// This only chooses a candidate. The entire pinned dataset must still pass
++// current checksum/coverage validation and fresh current-app browser acceptance.
++export async function reusableReference(manifest,{dataDigest,legacyInputDigest,legacyDataDigest}={}){
++ validateReferenceManifest(manifest);validateMainlineSources(manifest.sources);
++ if(manifest.sourceDate!==manifest.sources[0].date)throw Error('Changed reference source date');
++ if(!manifest.rendererAcceptance?.complete||!/^[a-f0-9]{64}$/.test(manifest.inputSha256||''))
++  throw Error('Published reference lacks accepted provenance');
++ if(!/^[a-f0-9]{64}$/.test(dataDigest||''))throw Error('Missing current generator identity');
++ if(manifest.dataInputSha256!==undefined){
++  if(!/^[a-f0-9]{64}$/.test(manifest.dataInputSha256))throw Error('Invalid published generator identity');
++  return manifest.dataInputSha256===dataDigest;
++ }
++ // One narrow legacy transition: the trusted event base must reproduce the
++ // published full acceptance key AND have identical dataset-generating inputs.
++ return manifest.inputSha256===legacyInputDigest&&legacyDataDigest===dataDigest;
++}
++
++export async function planReferenceReuse({event,requestedDate,baseSha,readPublished,readLegacy,root=process.cwd()}={}){
++ if(event==='schedule'||event==='workflow_dispatch'||requestedDate)return {reuse:false,reason:'explicit-refresh'};
++ if(!['pull_request','push'].includes(event))throw Error('Unsupported reference event');
++ const published=await readPublished();
++ if(!published)return {reuse:false,reason:'no-published-reference'};
++ if(!/^[a-f0-9]{40}$/.test(published.sha||''))throw Error('Unpinned reference candidate');
++ const dataDigest=await referenceDataInputDigest(root),manifest=published.manifest;
++ let legacy={};
++ if(manifest.dataInputSha256===undefined&&/^[a-f0-9]{40}$/.test(baseSha||''))legacy=await readLegacy(baseSha);
++ if(!await reusableReference(manifest,{dataDigest,...legacy}))return {reuse:false,reason:'generator-or-legacy-provenance-mismatch'};
++ return {reuse:true,sha:published.sha,date:manifest.sourceDate,generation:manifest.generation,dataDigest};
++}
++
++async function main(){
++ const repository=process.env.GITHUB_REPOSITORY;
++ if(!/^[\w.-]+\/[\w.-]+$/.test(repository||''))throw Error('Expected GitHub repository');
++ const api=path=>JSON.parse(execFileSync('gh',['api',`repos/${repository}/${path}`],{encoding:'utf8',timeout:90000,maxBuffer:2*1024**2}));
++ const result=await planReferenceReuse({event:process.env.REFERENCE_EVENT,requestedDate:process.env.REQUESTED,
++  baseSha:process.env.REFERENCE_BASE_SHA,
++  readPublished:async()=>{
++   // Absence is a known bootstrap condition; other transport/API errors fail
++   // rather than silently turning a failed read into a new acquisition.
++   const refs=api('git/matching-refs/heads/mainline-data');
++   const ref=refs.find(ref=>ref.ref==='refs/heads/mainline-data');if(!ref)return null;
++   const sha=ref.object.sha,file=api(`contents/manifest.json?ref=${sha}`);
++   if(file.encoding!=='base64'||file.size>256*1024)throw Error('Invalid reference manifest envelope');
++   return {sha,manifest:JSON.parse(Buffer.from(file.content,'base64').toString('utf8'))};
++  },
++  readLegacy:async ref=>{
++   execFileSync('git',['fetch','--no-tags','--depth=1','origin',ref],{stdio:'pipe',timeout:90000});
++   return {legacyInputDigest:await referenceInputDigest(process.cwd(),{ref,legacy:true}),
++    legacyDataDigest:await referenceDataInputDigest(process.cwd(),{ref,legacy:true})};
++  }});
++ const outputs={reuse:String(result.reuse),reference_sha:result.sha||'',reference_date:result.date||''};
++ for(const [key,value] of Object.entries(outputs))await appendFile(process.env.GITHUB_OUTPUT,`${key}=${value}\n`);
++ console.log('Reference plan',JSON.stringify(result));
++}
++if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();
+diff --git a/tests/mainline-reuse.test.mjs b/tests/mainline-reuse.test.mjs
+new file mode 100644
+index 0000000..55b5212
+--- /dev/null
++++ b/tests/mainline-reuse.test.mjs
+@@ -0,0 +1,265 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFile,writeFile,mkdtemp,mkdir,rm,cp,chmod} from 'node:fs/promises';
++import {join,dirname} from 'node:path';
++import {tmpdir} from 'node:os';
++import {execFileSync,spawnSync} from 'node:child_process';
++import {gzipSync} from 'node:zlib';
++import vtpbf from 'vt-pbf';
++import {DATA_INPUTS,REFERENCE_INPUTS,generationWorkflowInputs,referenceDataInputDigest,referenceInputDigest} from '../scripts/mainline-provenance.mjs';
++import {reusableReference,planReferenceReuse} from '../scripts/plan-mainline-reuse.mjs';
++import {MAINLINE_REGIONS,MAINLINE_CONTROLS,sha256} from '../scripts/mainline-coverage.mjs';
++
++const hash='a'.repeat(64),other='b'.repeat(64),sha='c'.repeat(40);
++const sources=()=>MAINLINE_REGIONS.map(region=>({schema:1,complete:true,region,date:'2026-10-09',license:'ODbL-1.0',
++ url:`https://download.geofabrik.de/${region}-261009.osm.pbf`,sourceTimestamp:'2026-10-09T20:00:00Z',
++ pbfBytes:100,pbfSha256:hash,exportBytes:100,exportSha256:other}));
++const manifest=()=>({schema:1,complete:true,generation:'d'.repeat(24),minzoom:0,maxzoom:6,wayCount:1,license:'ODbL-1.0',
++ indexSha256:hash,inputSha256:other,sourceDate:'2026-10-09',oldestSource:'2026-10-09T20:00:00Z',newestSource:'2026-10-09T20:00:00Z',
++ sources:sources(),rendererAcceptance:{complete:true}});
++
++test('modern generator identity permits fresh renderer acceptance without changing the dataset',async()=>{
++ const m={...manifest(),dataInputSha256:hash},before=structuredClone(m);
++ assert.equal(await reusableReference(m,{dataDigest:hash}),true);
++ assert.equal(await reusableReference(m,{dataDigest:other}),false);
++ assert.deepEqual(m,before,'selection does not rewrite source dates, checksums or old renderer claims');
++});
++test('legacy adoption requires both exact old renderer provenance and unchanged generating code',async()=>{
++ const m=manifest();
++ assert.equal(await reusableReference(m,{dataDigest:hash,legacyInputDigest:other,legacyDataDigest:hash}),true);
++ for(const proof of [{},{legacyInputDigest:hash,legacyDataDigest:hash},{legacyInputDigest:other,legacyDataDigest:other}])
++  assert.equal(await reusableReference(m,{dataDigest:hash,...proof}),false);
++});
++for(const [label,patch] of [['incomplete',{complete:false}],['invalid generator',{dataInputSha256:'broken'}],
++ ['no renderer',{rendererAcceptance:null}],['no accepted key',{inputSha256:'broken'}],
++ ['changed source date',{sourceDate:'2026-10-10'}],['missing continent',{sources:sources().slice(1)}]]){
++ test(`invalid published candidate cannot become a reuse result: ${label}`,async()=>{
++  await assert.rejects(reusableReference({...manifest(),...patch},{dataDigest:hash,legacyInputDigest:other,legacyDataDigest:hash}));
++ });
++}
++test('scheduled and explicit refreshes never silently select an older generation',async()=>{
++ for(const options of [{event:'schedule'},{event:'workflow_dispatch'},{event:'pull_request',requestedDate:'2026-10-10'}]){
++  const result=await planReferenceReuse({...options,readPublished:()=>{throw Error('must not read candidate');}});
++  assert.deepEqual(result,{reuse:false,reason:'explicit-refresh'});
++ }
++});
++test('PR/push reuse pins the exact reference ref and date, without invoking legacy reads for modern provenance',async()=>{
++ const dataDigest=await referenceDataInputDigest(),m={...manifest(),dataInputSha256:dataDigest};
++ for(const event of ['pull_request','push']){
++  const result=await planReferenceReuse({event,readPublished:async()=>({sha,manifest:m}),readLegacy:()=>{throw Error('not needed');}});
++  assert.deepEqual(result,{reuse:true,sha,date:m.sourceDate,generation:m.generation,dataDigest});
++ }
++});
++test('changed generators use the normal fresh-source plan instead of pinning a potentially expired published date',async()=>{
++ const m={...manifest(),dataInputSha256:hash};
++ const result=await planReferenceReuse({event:'pull_request',readPublished:async()=>({sha,manifest:m})});
++ assert.deepEqual(result,{reuse:false,reason:'generator-or-legacy-provenance-mismatch'});
++});
++test('legacy base proof must be successful; read/transport failure never turns into automatic acquisition',async()=>{
++ const m=manifest(),dataDigest=await referenceDataInputDigest();let read=0;
++ const args={event:'pull_request',baseSha:sha,readPublished:async()=>({sha,manifest:m}),readLegacy:async base=>{
++  assert.equal(base,sha);read++;return {legacyInputDigest:m.inputSha256,legacyDataDigest:dataDigest};}};
++ assert.equal((await planReferenceReuse(args)).reuse,true);assert.equal(read,1);
++ await assert.rejects(planReferenceReuse({...args,readLegacy:async()=>{throw Error('source unavailable');}}),/source unavailable/);
++ await assert.rejects(planReferenceReuse({...args,readPublished:async()=>{throw Error('API unavailable');}}),/API unavailable/);
++ await assert.rejects(planReferenceReuse({...args,readPublished:async()=>({sha:'mainline-data',manifest:m})}),/Unpinned/);
++ assert.deepEqual(await planReferenceReuse({...args,readPublished:async()=>null}),{reuse:false,reason:'no-published-reference'});
++});
++
++test('generator identity follows actual transform dependencies and package lock, while browser changes retain data identity',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-data-provenance-'));
++ try{
++  for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
++  await mkdir(join(root,'tests/fixtures'),{recursive:true});await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
++  const data=await referenceDataInputDigest(root),renderer=await referenceInputDigest(root);
++  for(const path of ['styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){
++   const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n// renderer or acceptance change\n')]));
++   assert.equal(await referenceDataInputDigest(root),data,path);
++   assert.notEqual(await referenceInputDigest(root),renderer,path);
++   await writeFile(file,bytes);
++  }
++  for(const path of [...DATA_INPUTS,'styles/pbf-utf8.mjs']){
++   const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n')]));
++   assert.notEqual(await referenceDataInputDigest(root),data,path);await writeFile(file,bytes);
++  }
++  const file=join(root,'scripts/mainline-overview.mjs'),bytes=await readFile(file);
++  await writeFile(join(root,'scripts/generator-fixture.mjs'),'export const value=1;\n');
++  await writeFile(file,Buffer.concat([bytes,Buffer.from('\nimport "./generator-fixture.mjs";\n')]));
++  const first=await referenceDataInputDigest(root);
++  await writeFile(join(root,'scripts/generator-fixture.mjs'),'export const value=2;\n');
++  assert.notEqual(await referenceDataInputDigest(root),first,'new transform imports are bound');
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++test('Git object reads reproduce pinned source keys without checking out or executing old code',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-legacy-source-'));
++ try{
++  for(const path of new Set([...DATA_INPUTS,...REFERENCE_INPUTS])){
++   await mkdir(dirname(join(root,path)),{recursive:true});await writeFile(join(root,path),'fixture bytes\n');
++  }
++  await writeFile(join(root,'.github/workflows/mainline-reference.yml'),await readFile('.github/workflows/mainline-reference.yml'));
++  const git=args=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
++  git(['init','-q']);git(['add','.']);git(['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','Fixture']);
++  const ref=git(['rev-parse','HEAD']);
++  assert.equal(await referenceInputDigest(root,{ref}),await referenceInputDigest(root));
++  assert.equal(await referenceInputDigest(root,{ref,legacy:true}),await referenceInputDigest(root,{legacy:true}));
++  assert.equal(await referenceDataInputDigest(root,{ref}),await referenceDataInputDigest(root));
++  await writeFile(join(root,'styles/app.mjs'),'changed\n');
++  assert.notEqual(await referenceInputDigest(root,{ref}),await referenceInputDigest(root));
++  await assert.rejects(referenceDataInputDigest(root,{ref:'HEAD'}),/immutable/);
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++
++test('actual CLI reads only pinned GitHub metadata, writes reuse outputs and fails closed on API errors',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-reuse-cli-'));
++ try{
++  const bin=join(root,'bin'),output=join(root,'outputs'),calls=join(root,'calls');await mkdir(bin);
++  const m={...manifest(),dataInputSha256:await referenceDataInputDigest()},payload=join(root,'manifest.json');
++  await writeFile(payload,JSON.stringify(m));
++  const mock=`#!/usr/bin/env python3
++import os,sys,json,base64
++args=sys.argv[1:]
++with open(os.environ['MOCK_CALLS'],'a') as f:f.write(json.dumps(args)+'\\n')
++if os.environ.get('MOCK_FAIL'): sys.exit(1)
++assert args[0]=='api'
++if args[1].endswith('/git/matching-refs/heads/mainline-data'):
++ print(json.dumps([dict(ref='refs/heads/mainline-data',object=dict(sha='${sha}'))]))
++else:
++ assert args[1].endswith('/contents/manifest.json?ref=${sha}')
++ body=open(os.environ['MOCK_MANIFEST'],'rb').read()
++ print(json.dumps(dict(encoding='base64',size=len(body),content=base64.b64encode(body).decode())))
++`;
++  await writeFile(join(bin,'gh'),mock);await chmod(join(bin,'gh'),0o755);
++  const run=extra=>spawnSync(process.execPath,['scripts/plan-mainline-reuse.mjs'],{encoding:'utf8',env:{...process.env,
++   PATH:bin+':'+process.env.PATH,GITHUB_REPOSITORY:'fixture/repository',GITHUB_OUTPUT:output,
++   REFERENCE_EVENT:'pull_request',MOCK_MANIFEST:payload,MOCK_CALLS:calls,...extra}});
++  const result=run({});assert.equal(result.status,0,result.stderr);
++  assert.equal(await readFile(output,'utf8'),`reuse=true\nreference_sha=${sha}\nreference_date=2026-10-09\n`);
++  assert.equal((await readFile(calls,'utf8')).trim().split('\n').length,2,'no provider request or acquisition command');
++  await writeFile(output,'');assert.notEqual(run({MOCK_FAIL:'1'}).status,0);
++  assert.equal(await readFile(output,'utf8'),'','a failed candidate read cannot select acquisition');
++  await writeFile(calls,'');assert.equal(run({REFERENCE_EVENT:'schedule'}).status,0);
++  assert.equal(await readFile(calls,'utf8'),'','explicit refresh remains a separate path');
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++
++test('legacy metadata extraction never hides a transform change or arbitrary provenance dependency',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-legacy-transition-'));
++ try{
++  for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
++  const file=join(root,'scripts/build-mainline-snapshot.mjs'),current=await readFile(file,'utf8');
++  const expected=await referenceDataInputDigest(root);
++  const legacy="import {referenceInputDigest} from './mainline-provenance.mjs';\n"+
++   current.replace('complete:true,generation,coverage:', 'complete:true,generation,inputSha256:await referenceInputDigest(),coverage:');
++  assert.notEqual(current,legacy);await writeFile(file,legacy);
++  assert.equal(await referenceDataInputDigest(root,{legacy:true}),expected,'only the exact removed metadata expressions are normalized');
++  await writeFile(file,legacy+'\n// actual transform change\n');
++  assert.notEqual(await referenceDataInputDigest(root,{legacy:true}),expected);
++  await writeFile(file,current+"\nimport './mainline-provenance.mjs';\n");
++  assert.notEqual(await referenceDataInputDigest(root),expected,'new metadata imports are not exempt from transform closure');
++  await writeFile(file,current);await assert.rejects(referenceDataInputDigest(root,{legacy:true}),/Unsupported legacy/);
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++
++test('generation configuration changes invalidate reuse while renderer-only workflow edits do not',async()=>{
++ const workflow=await readFile('.github/workflows/mainline-reference.yml','utf8'),base=generationWorkflowInputs(workflow);
++ const changes=[
++  workflow.replace('sudo apt-get install -y osmium-tool','sudo apt-get install -y osmium-tool=99'),
++  workflow.replace('acquire.acquire(os.environ','acquire.altered(os.environ'),
++  workflow.replace('MAX_PBF_BYTES=min','MAX_PBF_BYTES=max'),
++  workflow.replace('NODE_OPTIONS: --max-old-space-size=6144','NODE_OPTIONS: --max-old-space-size=2048'),
++  workflow.replace('max-parallel: 2','max-parallel: 3'),
++  workflow.replace('    runs-on: ubuntu-latest\n    timeout-minutes: 180','    runs-on: ubuntu-24.04\n    timeout-minutes: 180'),
++  workflow.replace("          node-version: '22'\n      - run: npm ci", "          node-version: '24'\n      - run: npm ci"),
++  workflow.replace('jobs:\n','env:\n  GENERATOR_SCALE: 2\njobs:\n'),
++  workflow.replace('jobs:\n','defaults:\n  run:\n    shell: sh\njobs:\n'),
++  workflow.replace('      - name: Verify the exact generation and renderer before publication','      - run: node scripts/extra-transform.mjs\n      - name: Verify the exact generation and renderer before publication'),
++ ];
++ for(const changed of changes){assert.notEqual(changed,workflow);assert.notEqual(generationWorkflowInputs(changed),base);}
++ const renderer=workflow.replace('node scripts/check-mainline-reference-browser.mjs --published','node scripts/check-mainline-reference-browser.mjs --published --new-renderer-check');
++ assert.equal(generationWorkflowInputs(renderer),base);
++ assert.throws(()=>generationWorkflowInputs(workflow.replace('Verify the exact generation and renderer before publication','Unknown boundary')),/boundary/);
++ assert.throws(()=>generationWorkflowInputs(workflow.replace('  extract:','  extract-new:')),/job/);
++ for(const changed of [
++  workflow.replace('name: Build worldwide OSM railway reference','name: &runner ubuntu-latest').replace('    runs-on: ubuntu-latest\n    timeout-minutes: 180','    runs-on: *runner\n    timeout-minutes: 180'),
++  workflow.replace('jobs:\n','defaults: *externalDefaults\njobs:\n'),
++  workflow.replace('  extract:\n','  extract:\n    env: &generatorEnv\n      NODE_OPTIONS: --random-seed=42\n'),
++ ])assert.throws(()=>generationWorkflowInputs(changed),/aliases\/anchors/);
++});
++
++test('fresh renderer receipt preserves generation/source bytes and binds both provenance keys only after passing',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-reaccept-'));
++ try{
++  const m=manifest();m.controls=MAINLINE_CONTROLS.map(c=>({...c,chainIdsByZoom:Object.fromEntries(Array.from({length:7},(_,z)=>[z,['chain-'+c.name]]))}));
++  const generation=join(root,'generations',m.generation);await mkdir(join(generation,'0/0'),{recursive:true});
++  const tile=join(generation,'0/0/0.pbf.gz');await writeFile(tile,'untouched stored bytes');
++  const samples=MAINLINE_CONTROLS.flatMap(c=>['desktop','android','safari'].flatMap(profile=>['mercator','globe'].flatMap(projection=>
++   [-.1,0,3,4,5,6,7].map(zoom=>({name:c.name,profile,projection,zoom,cameraZoom:zoom,painted:1,ids:['chain-'+c.name]})))));
++  const report={generation:m.generation,scope:'Actual OSM generation; exact chain identities',samples,
++   appSamples:Array.from({length:18},()=>({ids:['fixture'],zoom:3,cameraZoom:3}))};
++  const manifestPath=join(root,'manifest.json'),reportPath=join(root,'report.json');
++  await writeFile(manifestPath,JSON.stringify(m));await writeFile(reportPath,JSON.stringify({...report,samples:samples.slice(1)}));
++  const run=()=>spawnSync(process.execPath,['scripts/record-mainline-acceptance.mjs',root,reportPath],{encoding:'utf8'});
++  assert.notEqual(run().status,0,'incomplete renderer evidence is not accepted');
++  assert.deepEqual(JSON.parse(await readFile(manifestPath)),m);
++  await writeFile(reportPath,JSON.stringify(report));const result=run();assert.equal(result.status,0,result.stderr);
++  const after=JSON.parse(await readFile(manifestPath));
++  assert.equal(after.inputSha256,await referenceInputDigest());assert.equal(after.dataInputSha256,await referenceDataInputDigest());
++  assert.equal(after.rendererAcceptance.inputSha256,after.inputSha256);
++  for(const key of ['generation','sourceDate','oldestSource','newestSource','sources','indexSha256'])assert.deepEqual(after[key],m[key],key);
++  assert.equal(await readFile(tile,'utf8'),'untouched stored bytes');
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++
++test('actual snapshot verifier rejects changed data and current-acceptance bindings while retaining legacy compatibility',async()=>{
++ const root=await mkdtemp(join(tmpdir(),'mainline-verifier-inputs-'));
++ try{
++  // Synthetic integrity fixture only; this is not geographic/OSM acceptance.
++  const m={...manifest(),dataInputSha256:hash},dir=join(root,'generations',m.generation);
++  const tile=gzipSync(vtpbf.fromGeojsonVt({atlas_mainline_overview:{features:[
++   {type:2,geometry:[[[0,0],[4096,4096]]],tags:{id:'chain'},id:1},
++  ]}})),tiles=[];
++  for(let z=0;z<=6;z++){
++   const key=`${z}/0/0`;await mkdir(join(dir,String(z),'0'),{recursive:true});
++   await writeFile(join(dir,key+'.pbf.gz'),tile);tiles.push({key,bytes:tile.length,sha256:sha256(tile)});
++  }
++  const index=JSON.stringify({schema:1,complete:true,generation:m.generation,tiles});
++  await writeFile(join(dir,'index.json'),index);m.indexSha256=sha256(index);m.tileBytes=tile.length*7;
++  const audit=JSON.stringify(MAINLINE_CONTROLS.map(c=>({name:c.name,feature:{properties:{id:'way-1',osm_version:1}},
++   chainIdsByZoom:Object.fromEntries(Array.from({length:7},(_,z)=>[z,['chain']]))})));
++  await writeFile(join(dir,'coverage-audit.json'),audit);m.coverageAuditSha256=sha256(audit);
++  const report='{}',reportSha=sha256(report),reportPath=`generations/${m.generation}/renderer-acceptance-${reportSha}.json`;
++  await writeFile(join(root,reportPath),report);
++  m.rendererAcceptance={complete:true,path:reportPath,sha256:reportSha,samples:840,appSamples:18,inputSha256:m.inputSha256};
++  const manifestPath=join(root,'manifest.json');
++  const run=()=>spawnSync(process.execPath,['scripts/verify-mainline-snapshot.mjs',root,'--require-browser-acceptance'],{encoding:'utf8'});
++  await writeFile(manifestPath,JSON.stringify(m));let result=run();assert.equal(result.status,0,result.stderr);
++  for(const patch of [
++   {dataInputSha256:'broken'},
++   {rendererAcceptance:{...m.rendererAcceptance,inputSha256:hash}},
++   {rendererAcceptance:{...m.rendererAcceptance,inputSha256:undefined}},
++  ]){
++   await writeFile(manifestPath,JSON.stringify({...m,...patch}));result=run();
++   assert.notEqual(result.status,0);assert.match(result.stderr,/generator provenance|different application inputs/);
++  }
++  const legacy=structuredClone(m);delete legacy.dataInputSha256;delete legacy.rendererAcceptance.inputSha256;
++  await writeFile(manifestPath,JSON.stringify(legacy));result=run();assert.equal(result.status,0,result.stderr);
++  await writeFile(manifestPath,JSON.stringify(m));await writeFile(join(dir,'0/0/0.pbf.gz'),'changed bytes');
++  result=run();assert.notEqual(result.status,0);assert.match(result.stderr,/tile byte count|tile digest/);
++ }finally{await rm(root,{recursive:true,force:true})}
++});
++
++test('reuse workflow still verifies every stored byte and performs full current renderer acceptance before publication',async()=>{
++ const workflow=await readFile('.github/workflows/mainline-reference.yml','utf8');
++ assert.match(workflow,/PINNED_SOURCE_DATE: \$\{\{ steps\.reuse\.outputs\.reference_date \}\}/);
++ assert.match(workflow,/extract:\n\s+needs: plan\n\s+if: needs\.plan\.outputs\.reuse != 'true'/);
++ assert.ok(workflow.includes("if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.reuse == 'true' || needs.extract.result == 'success') }}"));
++ const start=workflow.indexOf('Read the pinned complete generation');
++ const verify=workflow.indexOf('node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance',start);
++ const browser=workflow.indexOf('node scripts/check-mainline-reference-browser.mjs --published',verify);
++ const record=workflow.indexOf('node scripts/record-mainline-acceptance.mjs',browser);
++ const publish=workflow.indexOf('Publish complete reference generation atomically',record);
++ assert.ok(start>0&&verify>start&&browser>verify&&record>browser&&publish>record);
++ assert.match(workflow,/git fetch --no-tags --depth=1 origin "\$REFERENCE_SHA"/);
++ assert.match(workflow,/node scripts\/verify-mainline-snapshot\.mjs mainline-output --require-browser-acceptance\n/);
++ assert.ok((await readFile('.github/workflows/site.yml','utf8')).includes('if [ "$actual" = "$expected" ]'),'existing exact current-renderer readiness remains mandatory');
++});

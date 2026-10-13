@@ -1,0 +1,45 @@
+{
+  "baseCommit": "d8b70d02adf9babf72eb33c9d4ce2ba16ec9d3f0",
+  "files": [
+    {
+      "path": ".github/workflows/mainline-reference.yml",
+      "sha256": "4c97ab1c196ca48d9027c13dd5bd4ddc653b8e6a037b238bab6f7a467eab994b",
+      "gitBlobSha": "5efd882bfa487ed05edfb8565f82d3b10903e9f7"
+    },
+    {
+      "path": "docs/mainline-reference.md",
+      "sha256": "4a56fe898de60776884109523fb3de22e74d48250fe818e68e8a2d639d5d1599",
+      "gitBlobSha": "024aeefe046bcbf214ed88f298163582f2c436e1"
+    },
+    {
+      "path": "scripts/build-mainline-snapshot.mjs",
+      "sha256": "0a9a471d4e298be45cf2bb4a4f0b13a34a781a070b1b785e0b642c17a48dbc04",
+      "gitBlobSha": "33292cf9c9e99cd9904887ae605bff7053c104c6"
+    },
+    {
+      "path": "scripts/mainline-provenance.mjs",
+      "sha256": "66f32b49c3ae31eca54f88351ed566d4bda02ebf1d3805635656d1cf6153e3a8",
+      "gitBlobSha": "41501f21cf6fb665825edc84b1b22246f7045a70"
+    },
+    {
+      "path": "scripts/plan-mainline-reuse.mjs",
+      "sha256": "817d67826916cd76d2f3a18eb3260a04f331dc53476e93979507b3943d5a96ba",
+      "gitBlobSha": "018adb4822caad06d0baa808e923ba7ae45ae6f6"
+    },
+    {
+      "path": "scripts/record-mainline-acceptance.mjs",
+      "sha256": "b99ffc39f3ce90990e6a48e6594ca00bd3eb19e2cfbc8176bb1f665fac5231a5",
+      "gitBlobSha": "84cee1a37ab73142258af552cdda478b472e822e"
+    },
+    {
+      "path": "scripts/verify-mainline-snapshot.mjs",
+      "sha256": "03551e8018d8d928358e3318ff9d64bdcdb5622279be06abfa0c16c92790cd98",
+      "gitBlobSha": "cdfd31e72918cb7a716eddb992fad78230986069"
+    },
+    {
+      "path": "tests/mainline-reuse.test.mjs",
+      "sha256": "d79a0abeeb87d618d8b8a304776c47b4f321c9d0439babf5469607b560828cf6",
+      "gitBlobSha": "55b52123b0c7e4e9e309d75107da3a35728ee499"
+    }
+  ]
+}

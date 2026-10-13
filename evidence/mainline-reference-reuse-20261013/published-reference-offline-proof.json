@@ -1,0 +1,15 @@
+{
+  "baseSource": "d8b70d02adf9babf72eb33c9d4ce2ba16ec9d3f0",
+  "publishedReference": "407544ae5aaebdcdddcbe759e3e7a790010a513a",
+  "legacyInputDigest": "70b3cdb7166621badb3fa94e9d4406d467d860615c91c75cceb5e8be01dc5699",
+  "legacyDataDigest": "2d6245d127969dd5b3f9d0c1d6d488e8399d6199758a56950095d535d5374d09",
+  "currentDataDigest": "2d6245d127969dd5b3f9d0c1d6d488e8399d6199758a56950095d535d5374d09",
+  "decision": {
+    "reuse": true,
+    "sha": "407544ae5aaebdcdddcbe759e3e7a790010a513a",
+    "date": "2026-10-10",
+    "generation": "d3ee80fd77568ab00e5071f8",
+    "dataDigest": "2d6245d127969dd5b3f9d0c1d6d488e8399d6199758a56950095d535d5374d09"
+  },
+  "note": "Offline planner replay over a connector-read pinned manifest; no data download or renderer pass is inferred."
+}
