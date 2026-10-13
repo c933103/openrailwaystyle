@@ -42,6 +42,11 @@ for(const status of [408,429,500,502,503,504])test(`HTTP ${status} retries only 
   await assert.rejects(run(()=>response('timed out',{status})),new RegExp(`HTTP ${status}`));
   assert.equal(calls.length,3);assert.equal(new Set(calls.map(c=>c.query)).size,1);assert.deepEqual(sleeps,[40000,40000]);await unpublished(options.output);
 }));
+for(const status of [403,429])test(`HTTP ${status} classification survives error-body cancellation failure`,()=>fixture(async({run,calls,options})=>{
+  await assert.rejects(run(()=>({ok:false,status,body:{cancel:async()=>{throw Object.assign(new Error('error body timed out'),{code:'UND_ERR_BODY_TIMEOUT'});}}})),new RegExp(`HTTP ${status}`));
+  assert.equal(calls.length,status===403?1:3);
+  const {readdir}=await import('node:fs/promises');assert.deepEqual(await readdir(options.cache),[]);
+}));
 test('rate limit honors Retry-After seconds and recovers without a split',()=>fixture(async({run,calls,sleeps})=>{
   const result=await run(n=>n===1?response('busy',{status:429,headers:{'Retry-After':'120'}}):response());
   assert.equal(calls.length,9);assert.equal(sleeps[0],120000);assert.equal(result.manifest.coverage.length,8);

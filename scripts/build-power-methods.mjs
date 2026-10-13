@@ -94,7 +94,10 @@ export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://
       // HTTP classification precedes parsing; a 403 saying "timeout" is not
       // evidence that a spatial query executed or can benefit from subdivision.
       if(!response.ok) {
-        await response.body?.cancel?.();
+        // Discarding an error body can itself reject after a transport reset.
+        // Preserve the authoritative HTTP category rather than reclassifying
+        // that cleanup error as a query/body timeout.
+        try {await response.body?.cancel?.();}catch{}
         const status=response.status,wait=retryAfter(response.headers?.get('retry-after'),now());
         if(status===429||status===408||[500,502,503,504].includes(status))throw new AcquisitionError(`HTTP ${status}`,status===429?'rate-limit':'http-transient',{retry:true,retryAfterMs:wait});
         throw fatal(`HTTP ${status}`,'http-permanent');
