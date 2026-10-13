@@ -9580,6 +9580,124 @@
       }
     },
     {
+      "id": "rail-basemap-reference",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "any",
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "rail"
+            ],
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "subclass"
+                ],
+                ""
+              ],
+              [
+                "",
+                "rail",
+                "narrow_gauge",
+                "preserved",
+                "funicular"
+              ],
+              true,
+              false
+            ]
+          ],
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "transit"
+            ],
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "subway",
+                "light_rail",
+                "monorail",
+                "tram"
+              ],
+              true,
+              false
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#70777b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          11,
+          1.3,
+          16,
+          2
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          3,
+          2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "reference",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
