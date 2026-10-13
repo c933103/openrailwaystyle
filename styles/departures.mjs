@@ -89,6 +89,13 @@ const labelText = value => String(value || '').trim();
 const MODE_FAMILY = {METRO: 'metro', SUBWAY: 'metro', TRAM: 'tram', FUNICULAR: 'funicular', CABLE_CAR: 'cable'};
 const modeFamily = mode => MODE_FAMILY[mode] || 'rail';
 const squash = text => String(text || '').replace(/[\s()（）]/g, '');
+// Containment is insufficient when destinations carry different numbers:
+// Terminal 1 is not Terminal 10 or Terminal 1-1. Keep joined components intact,
+// but let bilingual names repeat the same component (第1航廈 Terminal 1).
+// This is a conservative conflict veto, not proof of destination identity.
+const destinationNumbers = text => JSON.stringify([...new Set(
+  (text.match(/\p{N}+(?:[\p{Pd}−./／．]\p{N}+)*/gu) || []).map(part => part.normalize('NFKC')),
+)].sort());
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
@@ -136,7 +143,9 @@ const mergeObservations = group => {
 // merges only if every row has the same finite scheduled instant, including
 // seconds. Keep the minute-level candidates for ambiguity checks: narrowing
 // those first could remove a competing train and unlock a previously unsafe
-// merge. The exact-instant guard can only reject an existing candidate group.
+// merge. Conflicting numeric destination components also reject the whole
+// group at this final stage. Both guards can only reject an existing group;
+// neither removes competitors or creates new subgroup matches.
 // A merged train has
 // the named row's line and colours, real-time state from a live row, and is
 // cancelled if any row is. A row is live when the operator's real-time feed
@@ -193,7 +202,8 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   const out = [];
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length ||
-        !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled)) {
+        !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
+        !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to))) {
       out.push(...group); continue;
     }
     out.push(mergeObservations(group));
