@@ -50,6 +50,44 @@ acceptance inputs, including authored browser bundle entries. Package sources
 are represented by the pinned lockfile, so the fingerprint is identical before
 and after dependency installation. Site readiness waits for that fingerprint and pins the
 verified data commit, so an older branch cannot satisfy a changed build.
+
+### Reuse data, renew renderer acceptance
+
+Data generation and application compatibility have separate fingerprints.
+`dataInputSha256` covers acquisition/compiler sources and their local dependencies,
+the whole package manifest/lockfile, and the **entire reference workflow file**.
+This deliberately conservative contract binds plan-stage date/preflight policy,
+tool installation, all inherited YAML settings, aliases and future workflow keys
+without maintaining a second YAML parser. Renderer-only JavaScript/application
+changes can reuse data, but any workflow edit or dependency-lock edit causes a
+normal rebuild, even when that edit only affects acceptance orchestration.
+
+An ordinary PR or push with the same data-generation fingerprint can pin the
+existing `mainline-data` commit and reuse its complete generation. It skips
+provider preflight/extraction and tile regeneration, preserves source dates,
+coverage, hashes, original generation time and immutable geometry, and verifies
+the stored tile/index/audit/acceptance bytes before proceeding. This still reads
+the stored data from GitHub; it does not mean zero network transfer.
+
+The existing whole-application `inputSha256` remains mandatory. The current
+source must build and pass all 840 reference-renderer samples and 18 actual-Atlas
+checks against the reused generation. Only then does acceptance recording bind
+that fresh report to the current application digest. The original source snapshot
+is never relabeled as freshly acquired, and old renderer acceptance cannot satisfy
+a changed current application. Skipped extraction permits assembly, but normal
+user/concurrency cancellation is respected through `!cancelled()`.
+
+A legacy manifest without the data-generation fingerprint takes the normal
+rebuild path once. There is no inferred legacy equivalence or old-source execution.
+The snapshot builder creates data; fresh acceptance recording then binds both
+current provenance keys. Invalid metadata and failed reads still fail closed.
+
+Scheduled/manual refreshes, missing published data, or incompatible generation
+inputs retain the existing acquisition path and fresh two-days-ago source policy
+(unless an explicit date is supplied). Only actual reuse preserves the published
+source date: a generator rebuild does not pin an old dated file that the provider
+may already have removed. Existing size/checksum/coverage gates remain binding.
+
 The site readiness job allows six hours rather than timing out during acquisition.
 For builds that outlast that window, a trusted default-branch completion
 workflow retries failed/timed-out site checks for the same current open PR

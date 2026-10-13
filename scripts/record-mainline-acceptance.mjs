@@ -1,6 +1,7 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {MAINLINE_CONTROLS,sha256} from './mainline-coverage.mjs';
+import {referenceInputDigest,referenceDataInputDigest} from './mainline-provenance.mjs';
 const [root,reportPath]=process.argv.slice(2);
 if(!root||!reportPath)throw Error('Expected snapshot directory and renderer acceptance report');
 const manifest=JSON.parse(await readFile(join(root,'manifest.json'))),bytes=await readFile(reportPath),report=JSON.parse(bytes);
@@ -21,7 +22,11 @@ if(keys.size!==MAINLINE_CONTROLS.length*3*2*7||report.appSamples?.length!==18)
 for(const s of report.appSamples)if(!s.ids?.length||Math.abs(s.cameraZoom-s.zoom)>.001)throw Error('Atlas handoff acceptance failed');
 const digest=sha256(bytes),path=join('generations',manifest.generation,`renderer-acceptance-${digest}.json`);
 await writeFile(join(root,path),bytes);
-manifest.rendererAcceptance={complete:true,path,sha256:digest,samples:keys.size,appSamples:report.appSamples.length,
+// The dataset and its original date/generation stay intact. A reused dataset
+// gets a new exact current-app acceptance only after this fresh report passes.
+manifest.dataInputSha256=await referenceDataInputDigest();
+manifest.inputSha256=await referenceInputDigest();
+manifest.rendererAcceptance={complete:true,path,sha256:digest,inputSha256:manifest.inputSha256,samples:keys.size,appSamples:report.appSamples.length,
  assetRequests:report.assetRequests,assetBytes:report.requestBytes,timing:report.timing};
 await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('PASS: retained actual OSM renderer acceptance',JSON.stringify(manifest.rendererAcceptance));

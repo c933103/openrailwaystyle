@@ -13,7 +13,7 @@ export const REFERENCE_INPUTS=Object.freeze([
  'scripts/build-mainline-snapshot.mjs','scripts/mainline-overview.mjs',
  'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
  'scripts/mainline-provenance.mjs','scripts/retain-mainline-generation.mjs',
- 'scripts/record-mainline-acceptance.mjs',
+ 'scripts/record-mainline-acceptance.mjs','scripts/plan-mainline-reuse.mjs',
  'scripts/find-mainline-checkpoints.mjs',
  'scripts/verify-mainline-snapshot.mjs','scripts/check-mainline-reference-browser.mjs',
  'scripts/browser-renderer-fixture.mjs','scripts/browser.mjs',
@@ -21,6 +21,15 @@ export const REFERENCE_INPUTS=Object.freeze([
  'scripts/browser-network-guard.mjs','scripts/browser-policy.mjs',
  'styles/map-controls.mjs','styles/vector-tile-validation.mjs','styles/pbf-utf8.mjs',
  'styles/mainline-reference.mjs','styles/world.style.json','styles/app.mjs','styles/index.html','styles/app.css',
+]);
+// Keep generation provenance deliberately conservative: the entire workflow and
+// package lock are inputs. This binds plan commands, inherited configuration and
+// all YAML semantics without a second workflow parser or migration equivalence.
+export const DATA_INPUTS=Object.freeze([
+ '.github/workflows/mainline-reference.yml','package.json','package-lock.json',
+ 'scripts/acquire-mainline-extract.py','scripts/plan-mainline-acquisition.py',
+ 'scripts/build-mainline-snapshot.mjs','scripts/mainline-overview.mjs',
+ 'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
 ]);
 async function nativeStyleInputs(root,dir='styles'){
  const files=[];
@@ -34,11 +43,8 @@ async function nativeStyleInputs(root,dir='styles'){
  }
  return files;
 }
-export async function referenceInputDigest(root=process.cwd()){
- root=resolve(root);
- // Include authored browser entries even when a build driver or template
- // literal loads them without a static import (workers, labels, polar layer).
- const entries=new Map(),queue=[...REFERENCE_INPUTS,...await nativeStyleInputs(root)];
+async function inputDigest(root,inputs){
+ const entries=new Map(),queue=[...inputs];
  while(queue.length){
   const path=queue.pop();if(entries.has(path))continue;
   const bytes=await readFile(resolve(root,path));entries.set(path,sha256(bytes));
@@ -53,6 +59,15 @@ export async function referenceInputDigest(root=process.cwd()){
   }
  }
  return sha256(JSON.stringify([...entries].sort(([a],[b])=>a.localeCompare(b))));
+}
+export async function referenceDataInputDigest(root=process.cwd()){
+ root=resolve(root);
+ return inputDigest(root,DATA_INPUTS);
+}
+export async function referenceInputDigest(root=process.cwd()){
+ root=resolve(root);
+ // Include authored browser entries loaded outside static import syntax too.
+ return inputDigest(root,[...REFERENCE_INPUTS,...await nativeStyleInputs(root)]);
 }
 export function matchingReferenceInputs(manifest,digest){
  return manifest?.complete===true&&/^[a-f0-9]{64}$/.test(digest)&&manifest.inputSha256===digest;
