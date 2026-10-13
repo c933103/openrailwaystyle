@@ -1758,6 +1758,41 @@
       "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
+      "id": "infrastructure-crossing-overview",
+      "type": "circle",
+      "source": "crossingsOverview",
+      "sourceLayer": "level_crossings",
+      "minzoom": 5,
+      "maxzoom": 9,
+      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "circle",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 11,
+      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
+    },
+    {
+      "id": "infrastructure-crossing-marks",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 11,
+      "maxzoom": 15,
+      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
+    },
+    {
+      "id": "infrastructure-level-crossings",
+      "type": "symbol",
+      "source": "crossings",
+      "sourceLayer": "points_of_interest",
+      "minzoom": 15,
+      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
+    },
+    {
       "id": "station-stationLow-dots",
       "type": "circle",
       "source": "stationLow",
@@ -1833,41 +1868,6 @@
       "minzoom": 4,
       "maxzoom": 10,
       "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
-    },
-    {
-      "id": "infrastructure-crossing-overview",
-      "type": "circle",
-      "source": "crossingsOverview",
-      "sourceLayer": "level_crossings",
-      "minzoom": 5,
-      "maxzoom": 9,
-      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
-    },
-    {
-      "id": "infrastructure-crossing-dots",
-      "type": "circle",
-      "source": "crossingsDetail",
-      "sourceLayer": "level_crossings",
-      "minzoom": 9,
-      "maxzoom": 11,
-      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
-    },
-    {
-      "id": "infrastructure-crossing-marks",
-      "type": "symbol",
-      "source": "crossingsDetail",
-      "sourceLayer": "level_crossings",
-      "minzoom": 11,
-      "maxzoom": 15,
-      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
-    },
-    {
-      "id": "infrastructure-level-crossings",
-      "type": "symbol",
-      "source": "crossings",
-      "sourceLayer": "points_of_interest",
-      "minzoom": 15,
-      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
     },
     {
       "id": "electrification-substation-areas",
