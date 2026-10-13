@@ -1,0 +1,440 @@
+{
+  "loaded": false,
+  "tilesLoaded": false,
+  "moving": false,
+  "zoom": 9,
+  "canvas": {
+    "width": 1365,
+    "height": 900,
+    "clientWidth": 5460,
+    "clientHeight": 3600,
+    "pixelRatio": 0.25
+  },
+  "renderer": {
+    "styleDirty": false,
+    "sourcesDirty": true,
+    "placementDirty": false,
+    "frameScheduled": true,
+    "repaint": null,
+    "contextLost": false,
+    "drawingBufferWidth": 1365,
+    "drawingBufferHeight": 900
+  },
+  "sources": {
+    "openmaptiles": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "network": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "speed": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "electric": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "control": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "gaugeLow": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "loadingLow": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "ownerLow": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "ownerRail": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "axleLow": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "axleRail": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "axleBranch": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "railway": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "railBackbone": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "railReference": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "trackCounts": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "stationMajor": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "platforms": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "platformEdges": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "platformLengths": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "platformNumbers": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "railwaySignals": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "railwaySignalSupplementOverview": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "railwaySignalSupplement": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "electricSubstations": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "electricFacilities": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "stationEntrances": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "stationLow": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "stationMed": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "stations": {
+      "loaded": false,
+      "tiles": {
+        "states": {
+          "loaded": 83,
+          "loading": 19
+        },
+        "total": 102,
+        "truncated": false
+      }
+    },
+    "inactiveRegional": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "crossings": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "crossingsOverview": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "crossingsDetail": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "branchLines": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "serviceRoutes": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "streetRunning": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "heritageAreas": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "contours": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "seabedContours": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "seabedContoursClose": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "satellite": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "carto": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "relief": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "bathymetry": {
+      "loaded": true,
+      "tiles": {
+        "states": {},
+        "total": 0,
+        "truncated": false
+      }
+    },
+    "atlas-drawing": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "atlas-drawing-draft": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "atlas-drawing-handles": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    },
+    "atlas-measure": {
+      "loaded": true,
+      "tiles": {
+        "states": {
+          "loaded": 88
+        },
+        "total": 88,
+        "truncated": false
+      }
+    }
+  },
+  "sourcesTruncated": false,
+  "unavailable": [
+    "repaint"
+  ]
+}

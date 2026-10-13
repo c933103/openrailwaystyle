@@ -1,0 +1,8 @@
+[network-guard] PASS: first-party bytes are fetched; fixtures work; unmocked page, context, fetch, URL-rewriting fallback, redirect and worker requests are blocked before provider egress
+PASS check-network-guard-browser.mjs in 0.8 s
+[map-controls] PASS: 83 real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles
+PASS check-map-controls-browser.mjs in 141.3 s
+
+Browser checks:
+  pass      0.8 s  check-network-guard-browser.mjs
+  pass    141.3 s  check-map-controls-browser.mjs

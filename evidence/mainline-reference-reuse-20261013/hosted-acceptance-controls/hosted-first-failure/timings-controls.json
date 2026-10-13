@@ -1,0 +1,42 @@
+[
+  {
+    "check": "check-network-guard-browser.mjs",
+    "code": 0,
+    "seconds": 0.6
+  },
+  {
+    "check": "check-map-controls-browser.mjs",
+    "code": 1,
+    "seconds": 101.5
+  },
+  {
+    "check": "check-build-browser.mjs",
+    "code": 0,
+    "seconds": 39.2
+  },
+  {
+    "check": "check-watch-browser.mjs",
+    "code": 0,
+    "seconds": 11.2
+  },
+  {
+    "check": "check-service-frequency-browser.mjs",
+    "code": 0,
+    "seconds": 1.8
+  },
+  {
+    "check": "check-first-party-assets-browser.mjs",
+    "code": 0,
+    "seconds": 13.3
+  },
+  {
+    "check": "check-pwa-install-browser.mjs",
+    "code": 0,
+    "seconds": 6
+  },
+  {
+    "check": "check-departures-browser.mjs",
+    "code": 0,
+    "seconds": 44.2
+  }
+]

@@ -1,0 +1,446 @@
+[
+  {
+    "name": "fresh desktop",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "desktop position-only safe inset change",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 821,
+      "bottom": 848,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with carto",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 746,
+      "bottom": 850,
+      "width": 330,
+      "height": 104
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with satellite",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 553.5625,
+      "width": 310,
+      "height": 533.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 746,
+      "bottom": 850,
+      "width": 330,
+      "height": 104
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with hybrid",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 746,
+      "bottom": 850,
+      "width": 330,
+      "height": 104
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with map",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 726,
+      "bottom": 850,
+      "width": 330,
+      "height": 124
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 833.609375,
+      "bottom": 855.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 858.609375,
+      "bottom": 876,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 757.609375,
+      "bottom": 779.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 782.609375,
+      "bottom": 800,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 749.609375,
+      "width": 310,
+      "height": 729.609375
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  }
+]

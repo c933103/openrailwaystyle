@@ -1,0 +1,12 @@
+[
+  {
+    "check": "check-network-guard-browser.mjs",
+    "code": 0,
+    "seconds": 0.8
+  },
+  {
+    "check": "check-map-controls-browser.mjs",
+    "code": 0,
+    "seconds": 141.3
+  }
+]
