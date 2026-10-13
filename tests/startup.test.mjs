@@ -1427,6 +1427,36 @@ test('entering watch mode deactivates hidden drawing and measurement input',asyn
   } finally {dom.window.close();}
 });
 
+test('reference-only rail coverage is reported without mistaking a different view for detail',async()=>{
+ const f=await start({search:'?mode=infrastructure'});
+ try{
+  const map=f.maps[0],status=f.window.document.getElementById('map-status');
+  map.handlers['style.load']();map.zoom=10.9;
+  const reference={source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}};
+  map.rendered=[reference,{source:'railway',properties:{},layer:{id:'speed-tracks'}}];
+  map.handlers.idle();assert.match(status.textContent,/Only basemap railway reference.*detailed railway data/);
+  for(const id of ['infrastructure-tracks','infrastructure-metro-overview']){
+   map.rendered=[reference,{source:'railway',properties:{},layer:{id}}];
+   map.handlers.idle();assert.doesNotMatch(status.textContent,/Only basemap/);
+  }
+  map.rendered=[];map.handlers.idle();assert.doesNotMatch(status.textContent,/Only basemap/,'empty geography cannot prove missing rails');
+ }finally{f.dom.window.close()}
+});
+test('reference coverage waits for the selected detail source and preserves actual resource errors',async()=>{
+ for(const [mode,source] of [['infrastructure','railway'],['owner','ownerRail'],['axle','axleRail']]){
+  const f=await start({search:`?mode=${mode}`});
+  try{
+   const map=f.maps[0],status=f.window.document.getElementById('map-status');
+   map.handlers['style.load']();map.zoom=10.9;map.rendered=[{source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}}];
+   let loaded=false;map.isSourceLoaded=id=>{assert.equal(id,source);return loaded};
+   map.handlers.idle();assert.doesNotMatch(status.textContent,/Only basemap/,'pending geometry is not declared absent');
+   loaded=true;map.handlers.idle();assert.match(status.textContent,/Only basemap/);
+   map.handlers.error({sourceId:source,error:new Error('HTTP 403')});
+   map.handlers.idle();assert.ok(status.classList.contains('error'));assert.doesNotMatch(status.textContent,/Only basemap/,'reference never clears a genuine failure');
+  }finally{f.dom.window.close()}
+ }
+});
+
 function recoveryClock() {
   const timers = new Map(), retries = [];
   let next = 0;

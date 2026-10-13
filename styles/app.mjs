@@ -1,24 +1,24 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261013-departure-destinations-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261013-departure-destinations-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261013-departure-destinations-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261013-departure-destinations-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261013-departure-destinations-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261013-departure-destinations-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261013-detail-rail-reference-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261013-detail-rail-reference-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261013-detail-rail-reference-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261013-detail-rail-reference-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261013-detail-rail-reference-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261013-detail-rail-reference-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261013-departure-destinations-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261013-departure-destinations-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261013-departure-destinations-1';
-import {departureItem} from './departures-ui.mjs?v=20261013-departure-destinations-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261013-departure-destinations-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261013-departure-destinations-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261013-departure-destinations-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261013-departure-destinations-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261013-departure-destinations-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261013-departure-destinations-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261013-departure-destinations-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261013-departure-destinations-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261013-departure-destinations-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261013-departure-destinations-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261013-detail-rail-reference-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261013-detail-rail-reference-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261013-detail-rail-reference-1';
+import {departureItem} from './departures-ui.mjs?v=20261013-detail-rail-reference-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261013-detail-rail-reference-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261013-detail-rail-reference-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261013-detail-rail-reference-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261013-detail-rail-reference-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261013-detail-rail-reference-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261013-detail-rail-reference-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261013-detail-rail-reference-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261013-detail-rail-reference-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261013-detail-rail-reference-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261013-detail-rail-reference-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261013-departure-destinations-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261013-detail-rail-reference-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -497,7 +497,7 @@ function renderLegend() {
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
-  note+=' At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification.';
+  note+=' At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification. From zoom 8, dashed grey basemap railways preserve reference geometry beneath detailed tracks; they do not establish operating status or any missing railway attributes.';
   if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale across periods, using the lower directional rate or the lower bound of a published range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
@@ -1148,6 +1148,12 @@ function updateStatus() {
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
+  const reference = features.some(f => f.layer?.id === 'rail-basemap-reference');
+  const detailed = features.some(f => f.layer?.id === `${settings.mode}-tracks` || f.layer?.id === `${settings.mode}-metro-overview` || settings.mode === 'service' && f.layer?.id === 'service-routes');
+  const detailSource = settings.mode === 'owner' ? 'ownerRail' : settings.mode === 'axle' ? 'axleRail' : 'railway';
+  if (reference && !detailed && map.isSourceLoaded(detailSource)) {
+    status.textContent = 'Only basemap railway reference is visible here; detailed railway data is unavailable.';
+  }
   const tracks = features.filter(f => ['railway','speed','network','electric'].includes(f.source));
   const stations = features.filter(f => f.source.startsWith('station'));
   status.dataset.renderedTracks = String(tracks.length);

@@ -66,6 +66,31 @@ zoom-0 tiles; the regression checks actual geometry at -0.1, 0 and 0.1 in
 both projections and every rail view. These changes neither remove More
 detail nor supply an independent worldwide fallback during a provider outage.
 
+## Independent geometry at detailed zooms
+
+From zoom 8, `rail-basemap-reference` draws neutral dashed railway geometry
+from the existing OpenMapTiles `transportation` source beneath all detailed
+railway strokes. This closes the gap after the Atlas-owned overview ends at
+zoom 8: an empty or failed detailed provider must not erase the basemap's
+already-loaded rail geometry while stations and crossings remain visible.
+Rail and narrow-gauge/funicular/preserved subclasses and the explicitly mapped
+metro/light-rail/monorail/tram subclasses are eligible; roads, ferries, aerialways,
+platforms and explicit inactive subclasses are excluded. Geometry alone carries
+no verified operating status, speed, gauge, power, owner or timetable data.
+
+The reference appears in every rail view on Map, Carto and Hybrid backgrounds;
+Satellite-only still hides overlays. It introduces no new provider or data
+download. When the detailed source has settled with no thematic tracks in the
+viewport but reference rails are visible, the status identifies reference-only
+coverage. Actual tile errors retain the existing warning and recovery behavior.
+Neither source readiness nor visible station symbols certify railway coverage.
+
+`scripts/check-rail-reference-browser.mjs` uses the real renderer and synthetic
+Shanghai rail/metro geometry at zoom 10.9 in a 360×760 viewport. It checks empty,
+healthy and failed detailed-source responses separately. These cases reproduce
+the dependency gap; they do not identify the response served to the reporting
+user or establish live Shanghai provider coverage.
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.
