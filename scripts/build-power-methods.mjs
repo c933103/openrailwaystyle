@@ -1,5 +1,5 @@
-// Maintenance-only extraction. Existing exact-query v1 and facility v6 caches
-// remain reusable. Spatial splits are reserved for query timeout/memory limits.
+// Maintenance-only extraction. Facility v6 caches remain reusable; method v1
+// files are retained separately from the optimized query's v2 checkpoints.
 import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {powerMethodQuery,powerMethodsGeoJSON} from './power-method-data.mjs';
 
 export const POWER_METHOD_LIMITS=Object.freeze({requests:96,bytes:100_000_000,elapsedMs:3600_000,depth:6,attempts:3,timeoutMs:300_000,pauseMs:10_000,retryMs:40_000,maxRetryAfterMs:300_000});
+export const POWER_METHOD_CACHE_VERSION=2;
 export const POWER_METHOD_REGIONS=Object.freeze(Array.from({length:8},(_,i)=>Object.freeze([i<4?-90:0,-180+(i%4)*90,i<4?0:90,-90+(i%4)*90])));
 const CACHE_AGE=28*86400_000;
 const children=([s,w,n,e])=>{const lat=(s+n)/2,lon=(w+e)/2;return [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]];};
@@ -129,7 +130,7 @@ export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://
   }
   async function collect(box,depth=0) {
     checkTime();
-    const query=powerMethodQuery(box),file=join(cache,`power-methods-v1-${box.join('_')}.json`),splitFile=`${file}.split`;
+    const query=powerMethodQuery(box),file=join(cache,`power-methods-v${POWER_METHOD_CACHE_VERSION}-${box.join('_')}.json`),splitFile=`${file}.split`;
     let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
     if(!json&&!split) {
       let failure;

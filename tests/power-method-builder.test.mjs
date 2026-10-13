@@ -36,7 +36,7 @@ for(const [name,payload,category] of [
 ])test(`${name} terminates without retries and never caches partial data`,()=>fixture(async({run,calls,options})=>{
   await assert.rejects(run(()=>response(payload)),error=>error.category===category);
   assert.equal(calls.length,1);await unpublished(options.output);
-  await assert.rejects(access(join(options.cache,`power-methods-v1-${POWER_METHOD_REGIONS[0].join('_')}.json`)));
+  await assert.rejects(access(join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`)));
 }));
 for(const status of [408,429,500,502,503,504])test(`HTTP ${status} retries only the same region and exhausts after three`,()=>fixture(async({run,calls,sleeps,options})=>{
   await assert.rejects(run(()=>response('timed out',{status})),new RegExp(`HTTP ${status}`));
@@ -134,7 +134,7 @@ test('incomplete runs reuse completed leaves and split checkpoints without re-qu
 }));
 test('changed, expired, partial and refresh-requested checkpoints cannot suppress requests',()=>fixture(async({run,options})=>{
   await run();
-  const file=join(options.cache,`power-methods-v1-${POWER_METHOD_REGIONS[0].join('_')}.json`);
+  const file=join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`);
   const saved=await readFile(file,'utf8');
   for(const record of [{query:'changed',response:complete},{query:powerMethodQuery(POWER_METHOD_REGIONS[0]),response:{remark:'Query timed out',elements:[]}}]) {
     await writeFile(file,JSON.stringify(record));assert.equal((await run()).manifest.requests,1);
@@ -144,7 +144,7 @@ test('changed, expired, partial and refresh-requested checkpoints cannot suppres
   assert.equal((await run(undefined,{refresh:true})).manifest.requests,8);
 }));
 test('stale or wrong-query split decisions are ignored',()=>fixture(async({run,options})=>{
-  const file=join(options.cache,`power-methods-v1-${POWER_METHOD_REGIONS[0].join('_')}.json.split`);
+  const file=join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json.split`);
   await import('node:fs/promises').then(fs=>fs.mkdir(options.cache,{recursive:true}));
   await writeFile(file,JSON.stringify({query:'obsolete',kind:'spatial-split',version:1}));
   assert.equal((await run()).manifest.coverage.length,8);
@@ -208,4 +208,15 @@ test('actual publisher and site workflow gates reject incomplete files and prese
   for(const file of ['power-methods.geojson','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
   assert.equal(gate(site).status,0);
   await writeFile(join(dir,'power-data/methods-manifest.json'),JSON.stringify({...manifest,sha256:'bad'}));assert.notEqual(gate(site).status,0);
+}));
+
+test('optimized query leaves v1 responses and expensive-query split evidence untouched',()=>fixture(async({run,options})=>{
+  const {mkdir}=await import('node:fs/promises');await mkdir(options.cache,{recursive:true});
+  const legacyQuery=await readFile(new URL('./fixtures/power-methods-v1-query.ql',import.meta.url),'utf8');
+  const stem=join(options.cache,`power-methods-v1-${POWER_METHOD_REGIONS[0].join('_')}.json`);
+  const legacy=JSON.stringify({query:legacyQuery.trim(),response:complete}),split=JSON.stringify({query:legacyQuery.trim(),kind:'spatial-split',version:1});
+  await writeFile(stem,legacy);await writeFile(stem+'.split',split);
+  const result=await run();assert.equal(result.manifest.requests,8);assert.equal(result.manifest.coverage.length,8);
+  assert.equal(await readFile(stem,'utf8'),legacy);assert.equal(await readFile(stem+'.split','utf8'),split);
+  assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
 }));
