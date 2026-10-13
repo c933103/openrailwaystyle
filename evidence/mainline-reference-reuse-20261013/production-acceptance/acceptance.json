@@ -1,0 +1,96 @@
+{
+  "mergeCommit": "089a652ad3fab9aa2cc51dbce5cb714883a524ce",
+  "acceptedHead": "0bc66e1fb0af3f59de40fd5309d00a95b494a976",
+  "identicalTree": "8cfc22a271022a5b7e3650830714c2a797575e24",
+  "productionReferenceRun": 38345172460,
+  "productionDataCommit": "6238b333143a8061e171346e009b0cb1b1e6cfd1",
+  "productionManifest": {
+    "sourceDate": "2026-10-11",
+    "generation": "8b430e70e32c08a25a1c4aac",
+    "dataInputSha256": "d89f5bc2b5f33bc95a9bf982b732d1ef80284751fabf34a3d2c501e916996779",
+    "inputSha256": "80d1b7f90cd4f60d2601e4a26de22196cc334f3e9c49456e7fc264ef384d0293",
+    "rendererAcceptance": {
+      "complete": true,
+      "path": "generations/8b430e70e32c08a25a1c4aac/renderer-acceptance-eaf4c2d7db243ddc5514a4c004a6d641a2591404897de38187cd81d9fa3332f6.json",
+      "sha256": "eaf4c2d7db243ddc5514a4c004a6d641a2591404897de38187cd81d9fa3332f6",
+      "inputSha256": "80d1b7f90cd4f60d2601e4a26de22196cc334f3e9c49456e7fc264ef384d0293",
+      "samples": 840,
+      "appSamples": 18,
+      "assetRequests": 1077,
+      "assetBytes": 62164334,
+      "timing": {
+        "medianMs": 345,
+        "p95Ms": 1344
+      }
+    }
+  },
+  "productionPbfDownloadSteps": "All eight skipped; verified existing source checkpoints restored",
+  "liveDeploymentRun": 38345172597,
+  "liveDeploymentJob": 115132310993,
+  "liveReport": {
+    "artifactId": 11789198041,
+    "artifactSha256": "e29eed09b477b212d2499ba9ecd9fef4db1552a58f9cbcf098b67da004bc3a6b",
+    "reportSha256": "02661a42e3b12e9b85dbbc1c3019a0b0ac5ef8b90b1dc6ffb931a6d76fa5b4a4",
+    "gzipSha256": "d8a45ad57986425982451dcce02e6df7297adcd342df37be6354a5e0ba1539a9",
+    "reportBytes": 581403,
+    "gzipBytes": 47955,
+    "scope": "Actual OSM generation; exact chain identities",
+    "assetBase": "https://c933103.github.io/openrailwaystyle/",
+    "generation": "8b430e70e32c08a25a1c4aac",
+    "samples": 840,
+    "appSamples": 18,
+    "providerRequests": 0,
+    "assetRequests": 1078,
+    "requestBytes": 62213586,
+    "timing": {
+      "medianMs": 337,
+      "p95Ms": 845
+    },
+    "profiles": [
+      {
+        "name": "desktop",
+        "engine": "chromium",
+        "width": 800,
+        "height": 450,
+        "assetRequests": 414,
+        "assetBytes": 23377472,
+        "decodedTileBytes": 63279474,
+        "cachedTileBytes": 15883443
+      },
+      {
+        "name": "android",
+        "engine": "chromium",
+        "width": 360,
+        "height": 450,
+        "assetRequests": 329,
+        "assetBytes": 19316805,
+        "decodedTileBytes": 50167027,
+        "cachedTileBytes": 16768817
+      },
+      {
+        "name": "safari",
+        "engine": "webkit",
+        "width": 390,
+        "height": 450,
+        "assetRequests": 335,
+        "assetBytes": 19519309,
+        "decodedTileBytes": 51164304,
+        "cachedTileBytes": 16505225
+      }
+    ]
+  },
+  "readOnlyPlannerProbe": {
+    "reuse": true,
+    "sha": "6238b333143a8061e171346e009b0cb1b1e6cfd1",
+    "date": "2026-10-11",
+    "generation": "8b430e70e32c08a25a1c4aac",
+    "dataDigest": "d89f5bc2b5f33bc95a9bf982b732d1ef80284751fabf34a3d2c501e916996779"
+  },
+  "automaticRedeploymentRun": 38346202839,
+  "automaticRedeploymentState": "in progress at evidence recording",
+  "limitations": [
+    "Read-only planner probe is not a hosted renderer-only reuse run.",
+    "No extra workflow was manually dispatched to prove future reuse.",
+    "Original mainline acquisition totals include historical checkpoint provenance; they are not newly transferred provider bytes."
+  ]
+}
