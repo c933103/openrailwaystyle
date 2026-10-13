@@ -63,3 +63,38 @@ Primary references:
 - [Power frequency tagging](https://wiki.openstreetmap.org/wiki/Key:frequency)
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
+
+## Conductor rails, charging and catenary equipment
+
+Power view also draws a dashed parallel line for mapped `electrified=rail`,
+`4th_rail` and `ground-level_power_supply` tracks from zoom 10. Method labels
+appear from zoom 12 and follow Labels; clicking the geometry shows its method,
+recorded voltage/frequency, conductor contact position and OSM way. Colour still
+follows the electrical system. The supplement keeps these methods because the
+provider's railway line tiles carry voltage/frequency but discard `electrified`.
+Unknown method or low DC voltage alone never establishes third rail.
+
+**B** markers show battery train charging from zoom 12. Selection accepts an
+explicit `railway=charging_station`, or `amenity=charging_station` /
+`man_made=charge_point` with explicit rail-vehicle tags (such as `train=yes`).
+Railway landuse, a nearby station and an operator name alone are insufficient;
+station car-park chargers must not become train chargers. This accepts explicit
+source tags and does not prescribe a new OSM tagging convention. Charger socket
+and output tags are retained in the details. An ordinary power socket or an
+electrified terminal is not automatically classified as a battery charger.
+Facilities absent from the source data remain absent from the map.
+
+Catenary masts and portals use the provider's `electrification_catenary` endpoint
+from zoom 16, with mapped references from 18. Clicking a mast or portal links to
+the original OSM node or way. All these layers are independent of Destinations;
+planned/former conductor rails and chargers follow the existing inactive setting.
+
+The maintenance-only `build-power-methods.mjs` writes
+`power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
+It covers every world quadrant, caches exact completed queries, bounds download
+volume, retries/splits failed regions and refuses incomplete or empty publication.
+The existing v6 supply cache remains separate and reusable. The facility workflow
+validates both datasets before publishing. Rendering code alone does not supply
+new geometry: the supplementary snapshot must finish and be deployed too.
+Same-language style replacement restores cached facility and method data into the
+new MapLibre sources without downloading again.

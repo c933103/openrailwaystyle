@@ -14,6 +14,7 @@ export const RAIL_TILE_RANGES = Object.freeze({
   standard_railway_platforms: [17, 22],
   standard_railway_platform_edges: [17, 22],
   railway_signals: [13, 22],
+  electrification_catenary: [16, 22],
   electrification_substation: [13, 22],
   standard_station_entrances: [16, 22],
   standard_railway_text_stations_low: [4, 6],

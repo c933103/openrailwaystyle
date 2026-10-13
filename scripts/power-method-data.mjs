@@ -1,0 +1,64 @@
+// Maintenance-only supplement: provider railway tiles discard electrified=*.
+// Keep actual OSM geometry and charger evidence; never infer from a voltage,
+// nearby track, operator name, or the presence of battery trains on a route.
+import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {powerFacility} from '../styles/power-facilities.mjs';
+import {hanRegion,chineseArea} from '../styles/han-region.mjs';
+const states=['construction','proposed','disused','abandoned','razed','demolished','removed'];
+const prefixes=['',...states.map(s=>s+':')];
+const tokens=value=>String(value??'').split(';').map(s=>s.trim().toLowerCase());
+const match=(key,values)=>`[${JSON.stringify(key)}~${JSON.stringify(`(^|;)[[:space:]]*(${values})[[:space:]]*(;|$)`)},i]`;
+const tracks=['rail','narrow_gauge','subway','light_rail','tram','monorail','miniature'];
+const methods=['rail','4th_rail','ground-level_power_supply'];
+export function powerMethodQuery(box) {
+  if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)||box[0]<-90||box[2]>90||box[1]<-180||box[3]>180||box[0]>=box[2]||box[1]>=box[3])throw new Error('Invalid power-method bbox');
+  const bbox=`(${box.join(',')})`,selectors=[];
+  for(const prefix of prefixes) {
+    selectors.push(`way${match(prefix+'electrified',methods.join('|'))}${bbox};`,
+      `nwr${match(prefix+'railway','charging_station')}${bbox};`);
+    for(const [key,value] of [['amenity','charging_station'],['man_made','charge_point']]) {
+      for(const hint of ['train','tram','light_rail','subway'])selectors.push(`nwr${match(prefix+key,value)}${match(hint,'yes|designated|only')}${bbox};`);
+      for(const railPrefix of prefixes)selectors.push(`nwr${match(prefix+key,value)}${match(railPrefix+'railway','yes|power_supply|'+tracks.join('|'))}${bbox};`);
+      selectors.push(`nwr${match(prefix+key,value)}${match('usage','railway|traction')}${bbox};`,
+        `nwr${match(prefix+key,value)}${match('landuse','railway')}${bbox};`);
+    }
+  }
+  return `[out:json][timeout:240][maxsize:134217728];(${selectors.join('')});out body geom qt;`;
+}
+export function powerMethodsGeoJSON(json) {
+  if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'Incomplete power-method response');
+  const byId=new Map();
+  for(const element of json.elements) {
+    if(!['node','way','relation'].includes(element.type)||!Number.isSafeInteger(element.id))continue;
+    const tags=element.tags||{};
+    if(powerFacility(tags)?.kind==='charging_station') {
+      const points=(element.geometry||element.members?.flatMap(m=>m.geometry||(Number.isFinite(m.lon)?[m]:[]))||[]).map(p=>[p.lon,p.lat]);
+      const bounds=element.bounds;
+      const center=element.center||(bounds?{lon:(bounds.minlon+bounds.maxlon)/2,lat:(bounds.minlat+bounds.maxlat)/2}:points.length?{lon:(Math.min(...points.map(p=>p[0]))+Math.max(...points.map(p=>p[0])))/2,lat:(Math.min(...points.map(p=>p[1]))+Math.max(...points.map(p=>p[1])))/2}:undefined);
+      for(const feature of powerFacilitiesGeoJSON({elements:[{...element,center}]}).features)byId.set(feature.id,feature);
+      continue;
+    }
+    if(element.type!=='way')continue;
+    const railPrefix=prefixes.find(prefix=>tokens(tags[prefix+'railway']).some(v=>tracks.includes(v)));
+    const genericState=states.find(s=>tokens(tags.railway).includes(s));
+    if(railPrefix===undefined&&!genericState)continue;
+    const prefix=prefixes.find(prefix=>tokens(tags[prefix+'electrified']).some(v=>methods.includes(v)));
+    if(prefix===undefined)continue;
+    const selected=tokens(tags[prefix+'electrified']).filter(v=>methods.includes(v));
+    const coordinates=element.geometry?.map(p=>[p.lon,p.lat]);
+    if(!coordinates||coordinates.length<2||coordinates.some(p=>!p.every(Number.isFinite)||Math.abs(p[0])>180||Math.abs(p[1])>90))throw new Error(`Incomplete geometry for power method way-${element.id}`);
+    const center=coordinates[Math.floor(coordinates.length/2)],atlas_han=hanRegion(...center);
+    // Track lifecycle and electrification lifecycle are independent. Proposed
+    // rails cannot be displayed as operating merely because electrified exists.
+    const state=genericState||railPrefix?.slice(0,-1)||prefix.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
+    const number=key=>/^\d+(\.\d+)?$/.test(tags[prefix+key]||'')?Number(tags[prefix+key]):undefined;
+    const id=`way-${element.id}`;
+    byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
+      atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
+      power_state:state,electrification_state:state==='present'?'present':state,
+      power_method:selected.join(';'),power_method_label:selected.map(v=>({rail:'Third rail', '4th_rail':'Fourth rail','ground-level_power_supply':'Ground-level power supply'}[v])).join(' + '),
+      ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
+    }});
+  }
+  return {type:'FeatureCollection',features:[...byId.values()].sort((a,b)=>a.id.localeCompare(b.id))};
+}

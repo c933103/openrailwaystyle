@@ -1,6 +1,6 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261013-departure-destinations-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261013-power-infrastructure-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261013-departure-destinations-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261013-power-infrastructure-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -708,6 +708,10 @@ export function osmObject(feature) {
     if (match) return {type: match[1], id: match[2]};
   }
   if (feature.sourceLayer === 'level_crossings') return Number.isInteger(feature.id) ? {type: 'node', id: String(feature.id)} : null;
+  if(feature.source==='electricCatenary') {
+    const match=/^([1-9]\d*)-(mast|portal)$/.exec(String(p.id??feature.id??''));
+    return match?{type:match[2]==='mast'?'node':'way',id:match[1]}:null;
+  }
   // The dedicated signal and entrance tile functions expose bare OSM node IDs.
   if (['railwaySignals','railwaySignalSupplementOverview','railwaySignalSupplement','stationEntrances'].includes(feature.source)) {
     const id=p.id??feature.id;

@@ -5061,6 +5061,22 @@
       },
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "electricMethods": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      },
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
+    "electricCatenary": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/electrification_catenary",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "stationEntrances": {
       "type": "vector",
       "url": "https://openrailwaymap.app/standard_station_entrances",
@@ -57547,6 +57563,1446 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-conductor-rails",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-method-labels",
+      "type": "symbol",
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "text-field": [
+          "get",
+          "power_method_label"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "text-offset": [
+          0,
+          1
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#26363d",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-charging-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": [
+          "get",
+          "power_color"
+        ],
+        "circle-radius": 6.5,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-charging-marks",
+      "type": "symbol",
+      "layout": {
+        "text-field": "B",
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#fffef8"
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-charging-names",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "atlas_name"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "ref"
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.9
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#008a83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-conductor-rails",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive",
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-method-labels",
+      "type": "symbol",
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "text-field": [
+          "get",
+          "power_method_label"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "text-offset": [
+          0,
+          1
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#26363d",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-charging-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-radius": 6.5,
+        "circle-stroke-color": [
+          "get",
+          "power_color"
+        ],
+        "circle-stroke-width": 2
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-charging-marks",
+      "type": "symbol",
+      "layout": {
+        "text-field": "B",
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": [
+          "get",
+          "power_color"
+        ]
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive",
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-charging-names",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "atlas_name"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "ref"
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.9
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#008a83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 16,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-masts",
+      "type": "circle",
+      "filter": [
+        "==",
+        [
+          "get",
+          "feature"
+        ],
+        "mast"
+      ],
+      "paint": {
+        "circle-color": "#b77d00",
+        "circle-radius": 2.5,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 16,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-portals",
+      "type": "line",
+      "filter": [
+        "==",
+        [
+          "get",
+          "feature"
+        ],
+        "portal"
+      ],
+      "paint": {
+        "line-color": "#b77d00",
+        "line-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 18,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-references",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 10,
+        "text-offset": [
+          0,
+          1
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#8c5f00",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1
       }
     },
     {
