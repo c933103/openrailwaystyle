@@ -1,0 +1,410 @@
+{
+  "fixtureResponse": {
+    "status": 200,
+    "contentType": "application/x-protobuf",
+    "bytes": 0
+  },
+  "fixtureTiles": {
+    "https://openrailwaymap.app/railway_line_high": {
+      "started": 161,
+      "fulfilled": 161,
+      "peak": 4,
+      "maxMs": 22
+    },
+    "https://openrailwaymap.app/standard_railway_text_stations_med": {
+      "started": 36,
+      "fulfilled": 36,
+      "peak": 4,
+      "maxMs": 12
+    },
+    "https://openrailwaymap.app/standard_railway_text_stations": {
+      "started": 123,
+      "fulfilled": 123,
+      "peak": 4,
+      "maxMs": 20
+    },
+    "https://openrailwaymap.app/standard_railway_line_low": {
+      "started": 1,
+      "fulfilled": 1,
+      "peak": 1,
+      "maxMs": 11
+    }
+  },
+  "settlements": [
+    {
+      "after": "startup",
+      "ms": 310,
+      "pending": 0
+    },
+    {
+      "after": "desktop position-only safe inset change",
+      "ms": 509,
+      "pending": 0
+    },
+    {
+      "after": "open credits with map",
+      "ms": 365,
+      "pending": 0
+    },
+    {
+      "after": "open credits with map",
+      "ms": 56,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=true, detail=0",
+      "ms": 3352,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=true, detail=1",
+      "ms": 49500,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=true, detail=2",
+      "ms": 6190,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=false, detail=0",
+      "ms": 4103,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=false, detail=1",
+      "ms": 2476,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=false, detail=2",
+      "ms": 645,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=true, detail=0",
+      "ms": 2234,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=true, detail=1",
+      "ms": 4364,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=true, detail=2",
+      "ms": 2367,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=false, detail=0",
+      "ms": 4388,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=false, detail=1",
+      "ms": 1302,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=false, readout=false, detail=2",
+      "ms": 614,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=true, detail=0",
+      "ms": 2990,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=true, detail=1",
+      "ms": 265,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=true, detail=2",
+      "ms": 826,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=false, detail=0",
+      "ms": 1446,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=false, detail=1",
+      "ms": 245,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=true, readout=false, detail=2",
+      "ms": 437,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=true, detail=0",
+      "ms": 888,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=true, detail=1",
+      "ms": 1140,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=true, detail=2",
+      "ms": 671,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=false, detail=0",
+      "ms": 833,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=false, detail=1",
+      "ms": 820,
+      "pending": 0
+    },
+    {
+      "after": "800x400, menu=false, readout=false, detail=2",
+      "ms": 454,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=true, detail=0",
+      "ms": 1032,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=true, detail=1",
+      "ms": 775,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=true, detail=2",
+      "ms": 2407,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=false, detail=0",
+      "ms": 881,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=false, detail=1",
+      "ms": 913,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=true, readout=false, detail=2",
+      "ms": 307,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=true, detail=0",
+      "ms": 1750,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=true, detail=1",
+      "ms": 1594,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=true, detail=2",
+      "ms": 1343,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=false, detail=0",
+      "ms": 1260,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=false, detail=1",
+      "ms": 1153,
+      "pending": 0
+    },
+    {
+      "after": "650x900, menu=false, readout=false, detail=2",
+      "ms": 574,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=true, detail=0",
+      "ms": 1314,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=true, detail=1",
+      "ms": 1624,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=true, detail=2",
+      "ms": 1299,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=false, detail=0",
+      "ms": 1071,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=false, detail=1",
+      "ms": 363,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=true, readout=false, detail=2",
+      "ms": 191,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=true, detail=0",
+      "ms": 1015,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=true, detail=1",
+      "ms": 1711,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=true, detail=2",
+      "ms": 1175,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=false, detail=0",
+      "ms": 1176,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=false, detail=1",
+      "ms": 1017,
+      "pending": 0
+    },
+    {
+      "after": "412x915, menu=false, readout=false, detail=2",
+      "ms": 883,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=true, detail=0",
+      "ms": 651,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=true, detail=1",
+      "ms": 1033,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=true, detail=2",
+      "ms": 1168,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=false, detail=0",
+      "ms": 1039,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=false, detail=1",
+      "ms": 641,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=true, readout=false, detail=2",
+      "ms": 308,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=true, detail=0",
+      "ms": 932,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=true, detail=1",
+      "ms": 638,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=true, detail=2",
+      "ms": 961,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=false, detail=0",
+      "ms": 1121,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=false, detail=1",
+      "ms": 654,
+      "pending": 0
+    },
+    {
+      "after": "360x640, menu=false, readout=false, detail=2",
+      "ms": 313,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=true, detail=0",
+      "ms": 698,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=true, detail=1",
+      "ms": 730,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=true, detail=2",
+      "ms": 1073,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=false, detail=0",
+      "ms": 717,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=false, detail=1",
+      "ms": 821,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=true, readout=false, detail=2",
+      "ms": 484,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=false, readout=true, detail=0",
+      "ms": 615,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=false, readout=true, detail=1",
+      "ms": 669,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=false, readout=true, detail=2",
+      "ms": 889,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=false, readout=false, detail=0",
+      "ms": 764,
+      "pending": 0
+    },
+    {
+      "after": "320x568, menu=false, readout=false, detail=1",
+      "ms": 695,
+      "pending": 0
+    }
+  ]
+}

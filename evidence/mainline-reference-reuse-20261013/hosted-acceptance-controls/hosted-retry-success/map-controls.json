@@ -1,0 +1,4115 @@
+[
+  {
+    "name": "fresh desktop",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "desktop position-only safe inset change",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 821,
+      "bottom": 848,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with carto",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 766,
+      "bottom": 850,
+      "width": 330,
+      "height": 84
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with satellite",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 553.5625,
+      "width": 310,
+      "height": 533.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 766,
+      "bottom": 850,
+      "width": 330,
+      "height": 84
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with hybrid",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 746,
+      "bottom": 850,
+      "width": 330,
+      "height": 104
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "open credits with map",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 10,
+      "right": 108.734375,
+      "top": 847.609375,
+      "bottom": 869.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 10,
+      "right": 258.421875,
+      "top": 872.609375,
+      "bottom": 890,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 542.1875,
+      "right": 822.8125,
+      "top": 845,
+      "bottom": 872,
+      "width": 280.625,
+      "height": 27
+    },
+    "info": {
+      "left": 1323,
+      "right": 1355,
+      "top": 858,
+      "bottom": 890,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 1025,
+      "right": 1355,
+      "top": 726,
+      "bottom": 850,
+      "width": 330,
+      "height": 124
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 833.609375,
+      "bottom": 855.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 858.609375,
+      "bottom": 876,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 757.609375,
+      "bottom": 779.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 782.609375,
+      "bottom": 800,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 749.609375,
+      "width": 310,
+      "height": 729.609375
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 757.609375,
+      "bottom": 779.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 782.609375,
+      "bottom": 800,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 749.609375,
+      "width": 310,
+      "height": 729.609375
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 790.5625,
+      "width": 310,
+      "height": 770.5625
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 833.609375,
+      "bottom": 855.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 858.609375,
+      "bottom": 876,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 757.609375,
+      "bottom": 779.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 782.609375,
+      "bottom": 800,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 757.609375,
+      "bottom": 779.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 782.609375,
+      "bottom": 800,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "1365x900, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 1365,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 20,
+      "right": 330,
+      "top": 20,
+      "bottom": 97,
+      "width": 310,
+      "height": 77
+    },
+    "status": {
+      "left": 341.25,
+      "right": 1023.75,
+      "top": 808,
+      "bottom": 848,
+      "width": 682.5,
+      "height": 40
+    },
+    "info": {
+      "left": 1321,
+      "right": 1353,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 236.609375,
+      "width": 310,
+      "height": 226.609375
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 236.609375,
+      "width": 310,
+      "height": 226.609375
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 236.609375,
+      "width": 310,
+      "height": 226.609375
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 340,
+      "width": 310,
+      "height": 330
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 340,
+      "width": 310,
+      "height": 330
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 340,
+      "width": 310,
+      "height": 330
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 244.609375,
+      "bottom": 266.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 269.609375,
+      "bottom": 287,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "800x400, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 354,
+      "bottom": 376,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 200,
+      "right": 600,
+      "top": 295,
+      "bottom": 348,
+      "width": 400,
+      "height": 53
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 736.609375,
+      "width": 310,
+      "height": 726.609375
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 736.609375,
+      "width": 310,
+      "height": 726.609375
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 736.609375,
+      "width": 310,
+      "height": 726.609375
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 744.609375,
+      "bottom": 766.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 365.765625,
+      "top": 769.609375,
+      "bottom": 787,
+      "width": 347.765625,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "650x900, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 650,
+      "height": 900
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 854,
+      "bottom": 876,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 632.5,
+      "top": 795,
+      "bottom": 831,
+      "width": 615,
+      "height": 36
+    },
+    "info": {
+      "left": 606,
+      "right": 638,
+      "top": 844,
+      "bottom": 876,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 748.609375,
+      "bottom": 770.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 773.609375,
+      "bottom": 791,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 740.609375,
+      "width": 310,
+      "height": 730.609375
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 733.21875,
+      "bottom": 755.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 358,
+      "top": 758.21875,
+      "bottom": 791,
+      "width": 340,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 725.21875,
+      "width": 310,
+      "height": 715.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 733.21875,
+      "bottom": 755.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 358,
+      "top": 758.21875,
+      "bottom": 791,
+      "width": 340,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 725.21875,
+      "width": 310,
+      "height": 715.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 756.5625,
+      "width": 310,
+      "height": 746.5625
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 748.609375,
+      "bottom": 770.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 773.609375,
+      "bottom": 791,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 733.21875,
+      "bottom": 755.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 358,
+      "top": 758.21875,
+      "bottom": 791,
+      "width": 340,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 733.21875,
+      "bottom": 755.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 358,
+      "top": 758.21875,
+      "bottom": 791,
+      "width": 340,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "412x915, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 869,
+      "bottom": 891,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 394.5,
+      "top": 799,
+      "bottom": 846,
+      "width": 377,
+      "height": 47
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 473.609375,
+      "bottom": 495.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 498.609375,
+      "bottom": 516,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 465.609375,
+      "width": 295,
+      "height": 455.609375
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 458.21875,
+      "bottom": 480.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 306,
+      "top": 483.21875,
+      "bottom": 516,
+      "width": 288,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 450.21875,
+      "width": 295,
+      "height": 440.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 458.21875,
+      "bottom": 480.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 306,
+      "top": 483.21875,
+      "bottom": 516,
+      "width": 288,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 450.21875,
+      "width": 295,
+      "height": 440.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 585,
+      "width": 295,
+      "height": 575
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 585,
+      "width": 295,
+      "height": 575
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 305,
+      "top": 10,
+      "bottom": 585,
+      "width": 295,
+      "height": 575
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 473.609375,
+      "bottom": 495.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 498.609375,
+      "bottom": 516,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 458.21875,
+      "bottom": 480.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 306,
+      "top": 483.21875,
+      "bottom": 516,
+      "width": 288,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 458.21875,
+      "bottom": 480.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 306,
+      "top": 483.21875,
+      "bottom": 516,
+      "width": 288,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "360x640, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 360,
+      "height": 640
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 594,
+      "bottom": 616,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 342.5,
+      "top": 524,
+      "bottom": 571,
+      "width": 325,
+      "height": 47
+    },
+    "info": {
+      "left": 316,
+      "right": 348,
+      "top": 584,
+      "bottom": 616,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=true, detail=0",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 367.21875,
+      "width": 255,
+      "height": 357.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=true, detail=1",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 367.21875,
+      "width": 255,
+      "height": 357.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=true, detail=2",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 367.21875,
+      "width": 255,
+      "height": 357.21875
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=false, detail=0",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 513,
+      "width": 255,
+      "height": 503
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=false, detail=1",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 513,
+      "width": 255,
+      "height": 503
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=true, readout=false, detail=2",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 265,
+      "top": 10,
+      "bottom": 513,
+      "width": 255,
+      "height": 503
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=true, detail=0",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=true, detail=1",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=true, detail=2",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 375.21875,
+      "bottom": 397.21875,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266,
+      "top": 400.21875,
+      "bottom": 433,
+      "width": 248,
+      "height": 32.78125
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=false, detail=0",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=false, detail=1",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "320x568, menu=false, readout=false, detail=2",
+    "view": {
+      "width": 320,
+      "height": 568
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 522,
+      "bottom": 544,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": null,
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 17.5,
+      "right": 302.5,
+      "top": 441,
+      "bottom": 499,
+      "width": 285,
+      "height": 58
+    },
+    "info": {
+      "left": 276,
+      "right": 308,
+      "top": 512,
+      "bottom": 544,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "narrow bottom sheet",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 410.859375,
+      "bottom": 432.859375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 435.859375,
+      "bottom": 453.25,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 77.3515625,
+      "right": 334.6484375,
+      "top": 821,
+      "bottom": 846,
+      "width": 257.296875,
+      "height": 25
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": {
+      "left": 10,
+      "right": 402,
+      "top": 461.25,
+      "bottom": 873,
+      "width": 392,
+      "height": 411.75
+    },
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "narrow info popover",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 116.734375,
+      "top": 696.609375,
+      "bottom": 718.609375,
+      "width": 98.734375,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 266.421875,
+      "top": 721.609375,
+      "bottom": 739,
+      "width": 248.421875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 77.3515625,
+      "right": 334.6484375,
+      "top": 821,
+      "bottom": 846,
+      "width": 257.296875,
+      "height": 25
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": {
+      "left": 70,
+      "right": 400,
+      "top": 747,
+      "bottom": 851,
+      "width": 330,
+      "height": 104
+    },
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "50 km"
+  },
+  {
+    "name": "original polar-to-phone regression",
+    "view": {
+      "width": 412,
+      "height": 915
+    },
+    "ruler": {
+      "left": 18,
+      "right": 95.5625,
+      "top": 848.609375,
+      "bottom": 870.609375,
+      "width": 77.5625,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 253.171875,
+      "top": 873.609375,
+      "bottom": 891,
+      "width": 235.171875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 58,
+      "top": 10,
+      "bottom": 58,
+      "width": 48,
+      "height": 48
+    },
+    "status": {
+      "left": 111.9296875,
+      "right": 300.0703125,
+      "top": 821,
+      "bottom": 846,
+      "width": 188.140625,
+      "height": 25
+    },
+    "info": {
+      "left": 368,
+      "right": 400,
+      "top": 859,
+      "bottom": 891,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "100 km"
+  },
+  {
+    "name": "expanded short landscape",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 99.8125,
+      "top": 333.609375,
+      "bottom": 355.609375,
+      "width": 81.8125,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 253.171875,
+      "top": 358.609375,
+      "bottom": 376,
+      "width": 235.171875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 325.609375,
+      "width": 310,
+      "height": 315.609375
+    },
+    "status": {
+      "left": 297.7265625,
+      "right": 502.2734375,
+      "top": 321,
+      "bottom": 348,
+      "width": 204.546875,
+      "height": 27
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": null,
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "100 km"
+  },
+  {
+    "name": "expanded short landscape with tall right details",
+    "view": {
+      "width": 800,
+      "height": 400
+    },
+    "ruler": {
+      "left": 18,
+      "right": 99.8125,
+      "top": 333.609375,
+      "bottom": 355.609375,
+      "width": 81.8125,
+      "height": 22
+    },
+    "readout": {
+      "left": 18,
+      "right": 253.171875,
+      "top": 358.609375,
+      "bottom": 376,
+      "width": 235.171875,
+      "height": 17.390625
+    },
+    "panel": {
+      "left": 10,
+      "right": 320,
+      "top": 10,
+      "bottom": 325.609375,
+      "width": 310,
+      "height": 315.609375
+    },
+    "status": {
+      "left": 297.7265625,
+      "right": 502.2734375,
+      "top": 321,
+      "bottom": 348,
+      "width": 204.546875,
+      "height": 27
+    },
+    "info": {
+      "left": 756,
+      "right": 788,
+      "top": 344,
+      "bottom": 376,
+      "width": 32,
+      "height": 32
+    },
+    "popover": null,
+    "sheet": {
+      "left": 430,
+      "right": 740,
+      "top": 20,
+      "bottom": 340,
+      "width": 310,
+      "height": 320
+    },
+    "hitRuler": true,
+    "hitInfo": true,
+    "text": "100 km"
+  }
+]

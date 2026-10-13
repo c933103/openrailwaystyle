@@ -23,3 +23,9 @@ The previous PR head 0e76eaa7ccae97df34b9a3d32aa0217aa31d0d17 passed the same ho
 ## Reference acceptance
 
 Immutable preview commit f20a5aac354c8ceeb14a62fe0bb47394ef062fb6, generation 8b430e70e32c08a25a1c4aac, source date 2026-10-11, 840 actual OSM renderer and 18 app observations. Data input d89f5bc2b5f33bc95a9bf982b732d1ef80284751fabf34a3d2c501e916996779; full input 80d1b7f90cd4f60d2601e4a26de22196cc334f3e9c49456e7fc264ef384d0293; renderer report 4a22c8334b4e0f70ea1a0a78b69f8ea57b5b840541b62fcf092d02395f0bbd04. Both input hashes independently recomputed from matching current source. Current mainline-data remains legacy without dataInputSha256; future automatic renderer-only reuse is not seeded there yet.
+
+## Same-head hosted retry outcome
+
+The specific controls job was retried once without source changes. https://github.com/c933103/openrailwaystyle/actions/runs/38335157910/job/115113428215 passed all eight controls scripts, including 83 map-controls cases in 266.1 s. The 75 idle settlements retained every original condition and the 60-second limit; worst 49500 ms. Site run attempt 2, aggregate browser-checks, and status recording all succeeded; deployment was skipped for the PR. These results demonstrate successful retry, not a diagnosed or repaired root cause. The first failure remains preserved above.
+
+Retry artifact 11787027898 ZIP SHA256 dcf4e9875ec57cdcbcafff0fd2f848e9893aae6eccbe77670a7475d6e6e5031e, 4,334,349 bytes, independently verified. Exact current-head site/browser-checks commit status is success. No source changes, ready-for-review transition, merge or deployment were performed.
