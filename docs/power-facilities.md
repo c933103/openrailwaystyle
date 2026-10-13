@@ -106,6 +106,16 @@ run for later resumption. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
 ignores both kinds of checkpoint.
 
+The query first collects bounded amenity/charge-point candidates, then applies
+the 14 railway-use hints within that named set. This factors the original 240
+selectors into 32 spatial primary searches and 14 local hint filters without
+changing their raw selection or the geometry/classification rules. It avoids
+repeating common railway/landuse value scans for every charger lifecycle key.
+The query uses a separate v2 checkpoint namespace: v1 responses and split
+decisions are preserved, while expensive-query split routes are not carried
+into the optimized query. Completed v2 queries and v2 split decisions remain
+resumable. Existing facility v6 caches and the published data schema are unchanged.
+
 Publication requires a nonempty, deduplicated dataset, exact coverage of all
 eight world quadrants without gaps/overlaps, and a SHA-256 digest tying the
 manifest to the GeoJSON. Failed acquisition preserves prior output. Files are

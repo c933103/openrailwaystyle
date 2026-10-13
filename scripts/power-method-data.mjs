@@ -12,18 +12,24 @@ const tracks=['rail','narrow_gauge','subway','light_rail','tram','monorail','min
 const methods=['rail','4th_rail','ground-level_power_supply'];
 export function powerMethodQuery(box) {
   if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)||box[0]<-90||box[2]>90||box[1]<-180||box[3]>180||box[0]>=box[2]||box[1]>=box[3])throw new Error('Invalid power-method bbox');
-  const bbox=`(${box.join(',')})`,selectors=[];
+  const bbox=`(${box.join(',')})`,charging=[],selectors=[];
   for(const prefix of prefixes) {
     selectors.push(`way${match(prefix+'electrified',methods.join('|'))}${bbox};`,
       `nwr${match(prefix+'railway','charging_station')}${bbox};`);
     for(const [key,value] of [['amenity','charging_station'],['man_made','charge_point']]) {
-      for(const hint of ['train','tram','light_rail','subway'])selectors.push(`nwr${match(prefix+key,value)}${match(hint,'yes|designated|only')}${bbox};`);
-      for(const railPrefix of prefixes)selectors.push(`nwr${match(prefix+key,value)}${match(railPrefix+'railway','yes|power_supply|'+tracks.join('|'))}${bbox};`);
-      selectors.push(`nwr${match(prefix+key,value)}${match('usage','railway|traction')}${bbox};`,
-        `nwr${match(prefix+key,value)}${match('landuse','railway')}${bbox};`);
+      charging.push(`nwr${match(prefix+key,value)}${bbox};`);
     }
   }
-  return `[out:json][timeout:240][maxsize:134217728];(${selectors.join('')});out body geom qt;`;
+  // All 16 primary charging selectors used the same 14 alternative hints.
+  // Factor (primary AND hint) into a bounded primary set before inspecting
+  // common railway/landuse values. Item_Constraint keeps these regex scans on
+  // the candidate IDs instead of repeatedly searching global railway tags.
+  const hints=['train','tram','light_rail','subway',...prefixes.map(p=>p+'railway'),'usage','landuse'];
+  const potential=`nwr.charging(if:${hints.map(k=>`is_tag(${JSON.stringify(k)})`).join('||')})->.potential;`;
+  for(const hint of ['train','tram','light_rail','subway'])selectors.push(`nwr.potential${match(hint,'yes|designated|only')};`);
+  for(const prefix of prefixes)selectors.push(`nwr.potential${match(prefix+'railway','yes|power_supply|'+tracks.join('|'))};`);
+  selectors.push(`nwr.potential${match('usage','railway|traction')};`,`nwr.potential${match('landuse','railway')};`);
+  return `[out:json][timeout:240][maxsize:134217728];(${charging.join('')})->.charging;${potential}(${selectors.join('')});out body geom qt;`;
 }
 export function powerMethodsGeoJSON(json) {
   if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'Incomplete power-method response');
