@@ -21,11 +21,15 @@ function retryAfter(value,now) {
   if(/^\d+$/.test(value.trim()))return Number(value)*1000;
   const date=Date.parse(value);return Number.isFinite(date)?Math.max(0,date-now):0;
 }
-function transportError(error,signal) {
+function transportError(error,signal,{responseStarted=false}={}) {
   if(error instanceof AcquisitionError)return error;
   const reason=signal?.aborted?signal.reason:error;
   const code=reason?.cause?.code||reason?.code;
-  if(reason?.name==='TimeoutError'||['ETIMEDOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_BODY_TIMEOUT','UND_ERR_CONNECT_TIMEOUT'].includes(code))return new AcquisitionError('Power-method request timed out','timeout',{retry:true,split:true,cause:error});
+  // Connect/header deadlines do not establish that a query executed. An
+  // opaque fetch deadline can expire before connection too. Never persist a
+  // spatial split from these transport failures, even after repeated attempts.
+  if(['ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT'].includes(code)||reason?.name==='TimeoutError'&&!responseStarted)return new AcquisitionError('Power-method connection or header timed out','transport',{retry:true,cause:error});
+  if(code==='UND_ERR_BODY_TIMEOUT'||reason?.name==='TimeoutError'&&responseStarted)return new AcquisitionError('Power-method response body timed out','timeout',{retry:true,split:true,cause:error});
   if(['ECONNRESET','ECONNREFUSED','EAI_AGAIN','ENETUNREACH','EHOSTUNREACH','UND_ERR_SOCKET'].includes(code)||error instanceof TypeError&&error.message==='fetch failed')return new AcquisitionError('Power-method transport failed','transport',{retry:true,cause:error});
   return fatal(error.message||'Power-method request failed','transport',error);
 }
@@ -102,11 +106,11 @@ export async function buildPowerMethods({api=process.env.OVERPASS_URL||'https://
           if(downloaded>policy.bytes)throw fatal('Power-method download budget exceeded','budget');
           checkTime();chunks.push(chunk);
         }
-      }catch(error){throw transportError(error,signal);}
+      }catch(error){throw transportError(error,signal,{responseStarted:true});}
       let json;
       try {json=JSON.parse(Buffer.concat(chunks));}catch(error){throw fatal('Malformed power-method JSON','parsing',error);}
       checkTime();completedResponse(json);return json;
-    }catch(error){throw transportError(error,signal);}
+    }catch(error){throw transportError(error,signal,{responseStarted:response?.ok===true});}
   }
   async function checkpoint(file,query,split=false) {
     if(refresh)return undefined;

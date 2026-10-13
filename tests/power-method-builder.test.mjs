@@ -58,17 +58,27 @@ test('oversized Retry-After stops instead of retrying before the server deadline
 test('invalid Retry-After uses bounded default backoff',()=>fixture(async({run,sleeps})=>{
   await run(n=>n===1?response('busy',{status:429,headers:{'Retry-After':'invalid'}}):response());assert.equal(sleeps[0],40000);
 }));
-for(const kind of ['timeout','body-timeout','resource'])test(`${kind} subdivides after bounded attempts, deduplicates and retains full coverage`,()=>fixture(async({run,calls})=>{
+for(const kind of ['timeout','body-timeout','body-deadline','resource'])test(`${kind} subdivides after bounded attempts, deduplicates and retains full coverage`,()=>fixture(async({run,calls})=>{
   const root=powerMethodQuery(POWER_METHOD_REGIONS[0]);
   const {data,manifest}=await run((n,init)=>{
     if(init.body.get('data')!==root)return response();
-    if(kind==='timeout')throw new DOMException('request timed out','TimeoutError');
+    if(kind==='timeout')return response({remark:'runtime error: Query timed out in query at line 2',elements:[element]});
     if(kind==='body-timeout')return {ok:true,body:(async function*(){throw Object.assign(new Error('read failed'),{code:'UND_ERR_BODY_TIMEOUT'});})()};
+    if(kind==='body-deadline')return {ok:true,body:(async function*(){throw new DOMException('body read timed out','TimeoutError');})()};
     return response({remark:'runtime error: Query ran out of memory in query at line 2',elements:[element]});
   });
   assert.equal(calls.length,14);assert.equal(calls.filter(c=>c.query===root).length,3);
   assert.equal(manifest.coverage.length,11);assert.equal(data.features.length,1);
   assert.equal(validatePowerMethodsSnapshot(data,manifest),manifest);
+}));
+for(const code of ['ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','opaque-fetch-deadline'])test(`${code} retries without creating spatial checkpoints`,()=>fixture(async({run,calls,sleeps,options})=>{
+  await assert.rejects(run(()=>{
+    if(code==='opaque-fetch-deadline')throw new DOMException('fetch timed out','TimeoutError');
+    throw Object.assign(new TypeError('fetch failed'),{cause:{code}});
+  }),error=>error.category==='transport');
+  assert.equal(calls.length,3);assert.equal(new Set(calls.map(c=>c.query)).size,1);assert.deepEqual(sleeps,[40000,40000]);
+  const {readdir}=await import('node:fs/promises');assert.deepEqual(await readdir(options.cache),[]);
+  const recovered=await run();assert.equal(recovered.manifest.requests,8);assert.equal(recovered.manifest.coverage.length,8);
 }));
 test('transport reset retries without subdivision',()=>fixture(async({run,calls})=>{
   await assert.rejects(run(()=>{throw Object.assign(new TypeError('fetch failed'),{cause:{code:'ECONNRESET'}});}),error=>error.category==='transport');
