@@ -9,6 +9,8 @@ on:
       - styles/pbf-utf8.mjs
       - scripts/build-power-facilities.mjs
       - scripts/power-facility-data.mjs
+      - scripts/power-method-data.mjs
+      - scripts/build-power-methods.mjs
       - styles/power-facilities.mjs
   workflow_dispatch:
 permissions:
@@ -45,6 +47,8 @@ jobs:
       # Allow reachable endpoints longer than Node's 250 ms per-address default.
       - name: Collect railway energy supplies worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-facilities.mjs
+      - name: Collect conductor rails and battery train charging worldwide
+        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-methods.mjs
       - name: Collect signals missing provider direction data worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
       - name: Preserve completed region responses
@@ -68,8 +72,12 @@ jobs:
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile} from 'node:fs/promises';
+          import {validatePowerMethodsSnapshot} from './scripts/build-power-methods.mjs';
           const power=JSON.parse(await readFile('power-data/manifest.json'));
           const features=JSON.parse(await readFile('power-data/power-facilities.geojson'));
+          const methods=JSON.parse(await readFile('power-data/methods-manifest.json'));
+          const methodData=JSON.parse(await readFile('power-data/power-methods.geojson'));
+          validatePowerMethodsSnapshot(methodData,methods);
           assert.equal(power.complete,true);
           assert.equal(features.features.length,power.features);
           assert.ok(power.coverage.length>=8 && power.features>0);

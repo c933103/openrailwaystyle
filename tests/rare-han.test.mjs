@@ -188,7 +188,8 @@ test('power facility names wait for their glyphs, and a newer language wins', as
 test('power facility names whose source vanished while their glyphs loaded are shown by the next refresh', async () => {
   const {createPowerFacilityLoader} = await import('../styles/power-facilities.mjs');
   const shown = [], waits = [];let present = true;
-  const map = {getSource: () => present ? {setData: data => shown.push(data.features.length)} : undefined};
+  const source={setData:data=>shown.push(data.features.length)};
+  const map = {getSource: () => present ? source : undefined};
   const refresh = createPowerFacilityLoader(map, {url: 'https://atlas.example/power.geojson', language: () => 'zh',
     fetcher: async () => ({ok: true, json: async () => ({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: 'x'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})}),
     glyphs: () => waits.length ? Promise.resolve() : new Promise(resolve => waits.push(resolve))});

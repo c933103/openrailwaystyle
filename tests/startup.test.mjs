@@ -1672,13 +1672,14 @@ test('Power legend shows facility point letters and preserves track samples acro
     const doc = window.document, legend = doc.getElementById('legend');
     const expected = [
       ['substation','Electricity supply'],
+      ['charging_station','Battery train charging'],
       ['fuel','Train refuelling point (fuel type where mapped)'],
       ['coaling_facility','Steam engine coaling'],
       ['water_tank','Steam engine water'],
     ];
     const checkPoints = former => {
       const points = [...legend.querySelectorAll('.point-swatch')];
-      assert.equal(points.length,4,'E/F/C/W must use point samples, not empty line swatches');
+      assert.equal(points.length,5,'E/B/F/C/W must use point samples, not empty line swatches');
       for (const [index,[kind,label]] of expected.entries()) {
         const point = points[index], definition = powerFacilities.POWER_FACILITY_KINDS[kind];
         assert.equal(point.getAttribute('aria-hidden'),'true','visual letters do not duplicate the accessible label');
