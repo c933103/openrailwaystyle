@@ -1,0 +1,673 @@
+{
+  "sourceCommit": "1c786c5a90d9e0e69d9c19a1909b68b023c4a824",
+  "sourceTree": "8494162705d20e950ddb63b460beaab52033c02b",
+  "snapshotCommit": "71bed1de58c6a4a27f0b82702e00ee94286be24a",
+  "acquisitionRun": 38429333760,
+  "deploymentRun": 38434308659,
+  "environment": {
+    "node": "24.19.0",
+    "playwright": "1.56.1",
+    "chromium": "141",
+    "renderer": "MapLibre 5.24.0, SwiftShader",
+    "viewports": [
+      "desktop 1365x900 DPR2",
+      "mobile 412x915 DPR2, touch"
+    ]
+  },
+  "published": {
+    "built": "2026-10-13T16:53:58.731Z",
+    "sha256": "ac0d917e19358a4b8aa6373f50d8072c4a49da1a07b316ff7da34e1810e6715b",
+    "features": 84392,
+    "counts": {
+      "charging_station": 7,
+      "rail": 79647,
+      "4th_rail": 4212,
+      "ground-level_power_supply": 526
+    },
+    "coverage": 20,
+    "coverageTimestamps": [
+      "2026-10-13T15:20:58Z",
+      "2026-10-13T15:22:02Z",
+      "2026-10-13T15:23:02Z",
+      "2026-10-13T15:24:02Z",
+      "2026-10-13T15:24:57Z",
+      "2026-10-13T16:00:36Z",
+      "2026-10-13T16:03:36Z",
+      "2026-10-13T16:34:21Z",
+      "2026-10-13T16:35:21Z",
+      "2026-10-13T16:37:25Z",
+      "2026-10-13T16:38:31Z",
+      "2026-10-13T16:40:32Z",
+      "2026-10-13T16:43:34Z",
+      "2026-10-13T16:45:35Z",
+      "2026-10-13T16:46:36Z",
+      "2026-10-13T16:48:34Z",
+      "2026-10-13T16:49:36Z",
+      "2026-10-13T16:50:36Z"
+    ],
+    "requests": 16,
+    "downloadedBytes": 48640790,
+    "samples": {
+      "charging_station": {
+        "id": "node-11505915383",
+        "tags": {
+          "electrified": "ground-level_power_supply",
+          "gtfs:stop_id": "2145587",
+          "light_rail": "yes",
+          "man_made": "charge_point",
+          "name": "Westmead Light Rail",
+          "public_transport": "stop_position",
+          "railway": "stop",
+          "ref": "2145587",
+          "side": "right",
+          "atlas_han": "none",
+          "atlas_zh": "",
+          "osm_type": "node",
+          "osm_id": "11505915383",
+          "power_kind": "charging_station",
+          "power_group": "charging",
+          "power_state": "present",
+          "power_minzoom": 12,
+          "power_mark": "B",
+          "power_color": "#008a83"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            150.9876442,
+            -33.8076039
+          ]
+        }
+      },
+      "rail": {
+        "id": "way-1000030142",
+        "tags": {
+          "electrified": "rail",
+          "frequency": 0,
+          "gauge": "1000",
+          "maxspeed": "30",
+          "operator": "TMR",
+          "railway": "narrow_gauge",
+          "ref": "132",
+          "usage": "main",
+          "voltage": 850,
+          "atlas_han": "none",
+          "atlas_zh": "",
+          "osm_type": "way",
+          "osm_id": "1000030142",
+          "power_state": "present",
+          "electrification_state": "present",
+          "power_method": "rail",
+          "power_method_label": "Third rail"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              6.9789143,
+              46.0816043
+            ],
+            [
+              6.979175,
+              46.0816222
+            ],
+            [
+              6.9792918,
+              46.0816328
+            ],
+            [
+              6.9794047,
+              46.0816682
+            ],
+            [
+              6.9795478,
+              46.0817201
+            ],
+            [
+              6.9796828,
+              46.0817946
+            ],
+            [
+              6.9799208,
+              46.0819378
+            ],
+            [
+              6.9800542,
+              46.0821011
+            ],
+            [
+              6.9800709,
+              46.0821216
+            ],
+            [
+              6.9803213,
+              46.0824677
+            ],
+            [
+              6.9804239,
+              46.0826138
+            ],
+            [
+              6.980516,
+              46.0827181
+            ],
+            [
+              6.980592,
+              46.0827893
+            ],
+            [
+              6.9806717,
+              46.0828433
+            ],
+            [
+              6.9807672,
+              46.0829023
+            ],
+            [
+              6.9808515,
+              46.0829403
+            ],
+            [
+              6.9809325,
+              46.0829785
+            ],
+            [
+              6.9820484,
+              46.0835233
+            ],
+            [
+              6.98219,
+              46.0835968
+            ],
+            [
+              6.9823493,
+              46.0836632
+            ],
+            [
+              6.9824201,
+              46.0836803
+            ],
+            [
+              6.9825491,
+              46.0837092
+            ],
+            [
+              6.9826945,
+              46.0837276
+            ],
+            [
+              6.9828266,
+              46.0837297
+            ],
+            [
+              6.9829526,
+              46.0837184
+            ],
+            [
+              6.9831447,
+              46.0836831
+            ],
+            [
+              6.9832901,
+              46.08365
+            ],
+            [
+              6.9834923,
+              46.0835993
+            ],
+            [
+              6.9836102,
+              46.0835837
+            ],
+            [
+              6.9837495,
+              46.0835767
+            ],
+            [
+              6.9838501,
+              46.0835774
+            ],
+            [
+              6.9839914,
+              46.0835929
+            ],
+            [
+              6.9841062,
+              46.0836155
+            ],
+            [
+              6.9842231,
+              46.0836507
+            ],
+            [
+              6.984341,
+              46.0837015
+            ],
+            [
+              6.9844924,
+              46.0837755
+            ],
+            [
+              6.9846012,
+              46.0838396
+            ],
+            [
+              6.9847343,
+              46.0839116
+            ],
+            [
+              6.9849193,
+              46.0839813
+            ],
+            [
+              6.9850545,
+              46.0840124
+            ],
+            [
+              6.9852659,
+              46.0840349
+            ],
+            [
+              6.9853645,
+              46.0840363
+            ],
+            [
+              6.9855119,
+              46.0840258
+            ],
+            [
+              6.9856663,
+              46.0840095
+            ],
+            [
+              6.9858432,
+              46.0839926
+            ],
+            [
+              6.9859956,
+              46.0839813
+            ],
+            [
+              6.9860851,
+              46.0839835
+            ],
+            [
+              6.9862233,
+              46.0839926
+            ],
+            [
+              6.9863229,
+              46.0840173
+            ],
+            [
+              6.9864662,
+              46.0840645
+            ],
+            [
+              6.986639,
+              46.0841421
+            ],
+            [
+              6.9867413,
+              46.084192
+            ]
+          ]
+        }
+      },
+      "4th_rail": {
+        "id": "way-1000714279",
+        "tags": {
+          "electrified": "4th_rail",
+          "frequency": 0,
+          "gauge": "1435",
+          "line": "District",
+          "name": "District Line",
+          "network": "London Underground",
+          "network:wikidata": "Q20075",
+          "operator": "London Underground",
+          "operator:wikidata": "Q20075",
+          "railway": "subway",
+          "voltage": 750,
+          "atlas_han": "none",
+          "atlas_zh": "",
+          "osm_type": "way",
+          "osm_id": "1000714279",
+          "power_state": "present",
+          "electrification_state": "present",
+          "power_method": "4th_rail",
+          "power_method_label": "Fourth rail"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -0.2079601,
+              51.49612
+            ],
+            [
+              -0.208222,
+              51.4963316
+            ],
+            [
+              -0.2084572,
+              51.4964798
+            ],
+            [
+              -0.2085161,
+              51.496514
+            ],
+            [
+              -0.2087353,
+              51.4966397
+            ],
+            [
+              -0.2090939,
+              51.4968678
+            ],
+            [
+              -0.2092553,
+              51.4969796
+            ],
+            [
+              -0.2093877,
+              51.4970826
+            ],
+            [
+              -0.2096064,
+              51.4972577
+            ],
+            [
+              -0.2097577,
+              51.4973802
+            ]
+          ]
+        }
+      },
+      "ground-level_power_supply": {
+        "id": "way-1021275164",
+        "tags": {
+          "electrified": "ground-level_power_supply",
+          "gauge": "1435",
+          "maxspeed": "40",
+          "oneway": "yes",
+          "railway": "tram",
+          "atlas_han": "none",
+          "atlas_zh": "",
+          "osm_type": "way",
+          "osm_id": "1021275164",
+          "power_state": "present",
+          "electrification_state": "present",
+          "power_method": "ground-level_power_supply",
+          "power_method_label": "Ground-level power supply"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -43.1798701,
+              -22.899932
+            ],
+            [
+              -43.1804323,
+              -22.9000994
+            ],
+            [
+              -43.1805895,
+              -22.9001434
+            ],
+            [
+              -43.1808708,
+              -22.9002289
+            ],
+            [
+              -43.1809787,
+              -22.9002738
+            ],
+            [
+              -43.1811199,
+              -22.9003471
+            ],
+            [
+              -43.1813099,
+              -22.9004429
+            ],
+            [
+              -43.1813425,
+              -22.9004595
+            ],
+            [
+              -43.1815592,
+              -22.9005768
+            ],
+            [
+              -43.1816777,
+              -22.9006425
+            ],
+            [
+              -43.1817631,
+              -22.9006886
+            ],
+            [
+              -43.1819412,
+              -22.9007858
+            ],
+            [
+              -43.1821266,
+              -22.9008869
+            ],
+            [
+              -43.1823105,
+              -22.900968
+            ],
+            [
+              -43.182575,
+              -22.9010845
+            ],
+            [
+              -43.1829472,
+              -22.9012419
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "liveFiles": {
+    "http200": true,
+    "geojsonEqualsPublished": true,
+    "gzipEqualsPublished": true,
+    "manifestEqualsPublished": true,
+    "httpGeojsonEncoding": "gzip",
+    "httpGeojsonContentLength": 9133388
+  },
+  "localCases": [
+    {
+      "kind": "desktop",
+      "category": "rail",
+      "id": "way-1000030142",
+      "center": [
+        6.9832901,
+        46.08365
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "4th_rail",
+      "id": "way-1000714279",
+      "center": [
+        -0.2090939,
+        51.4968678
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "ground-level_power_supply",
+      "id": "way-1021275164",
+      "center": [
+        -43.1815592,
+        -22.9005768
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "charging_station",
+      "id": "node-11505915383",
+      "center": [
+        150.9876442,
+        -33.8076039
+      ],
+      "layer": "electrification-charging-points",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "rail",
+      "id": "way-1000030142",
+      "center": [
+        6.9832901,
+        46.08365
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "4th_rail",
+      "id": "way-1000714279",
+      "center": [
+        -0.2090939,
+        51.4968678
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "ground-level_power_supply",
+      "id": "way-1021275164",
+      "center": [
+        -43.1815592,
+        -22.9005768
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "charging_station",
+      "id": "node-11505915383",
+      "center": [
+        150.9876442,
+        -33.8076039
+      ],
+      "layer": "electrification-charging-points",
+      "result": "rendered actual published OSM geometry"
+    }
+  ],
+  "liveCases": [
+    {
+      "kind": "desktop",
+      "category": "rail",
+      "id": "way-1000030142",
+      "center": [
+        6.9832901,
+        46.08365
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "4th_rail",
+      "id": "way-1000714279",
+      "center": [
+        -0.2090939,
+        51.4968678
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "ground-level_power_supply",
+      "id": "way-1021275164",
+      "center": [
+        -43.1815592,
+        -22.9005768
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "desktop",
+      "category": "charging_station",
+      "id": "node-11505915383",
+      "center": [
+        150.9876442,
+        -33.8076039
+      ],
+      "layer": "electrification-charging-points",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "rail",
+      "id": "way-1000030142",
+      "center": [
+        6.9832901,
+        46.08365
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "4th_rail",
+      "id": "way-1000714279",
+      "center": [
+        -0.2090939,
+        51.4968678
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "ground-level_power_supply",
+      "id": "way-1021275164",
+      "center": [
+        -43.1815592,
+        -22.9005768
+      ],
+      "layer": "electrification-conductor-rails",
+      "result": "rendered actual published OSM geometry"
+    },
+    {
+      "kind": "mobile",
+      "category": "charging_station",
+      "id": "node-11505915383",
+      "center": [
+        150.9876442,
+        -33.8076039
+      ],
+      "layer": "electrification-charging-points",
+      "result": "rendered actual published OSM geometry"
+    }
+  ],
+  "limitations": [
+    "External map providers use empty, explicit fixtures. This verifies the real first-party snapshot and its render integration, not live provider geometry or service health.",
+    "Mobile is a viewport check, not an installed Android-device test.",
+    "The combined live attempt hit a five-minute overall harness deadline after six passes. The remaining two passed in a separate mobile batch, retaining the same 45-second per-case assertions and exact HTTP byte digest checks."
+  ],
+  "preliminaryHarnessFailures": [
+    "A preview server in a separate isolated execution could not be reached; the corrected local runner hosts server and test in one process.",
+    "Chromium evicted the 66 MB response from its inspector cache; the corrected observer hashes actual Node-side HTTP response bytes and fulfills those unchanged bytes.",
+    "Initial direct live requests failed with EAI_AGAIN; the corrected live runner uses the existing managed proxy, retaining TLS validation, no redirects and the repository browser-egress guard."
+  ]
+}
