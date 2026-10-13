@@ -87,10 +87,63 @@
     "dataDigest": "d89f5bc2b5f33bc95a9bf982b732d1ef80284751fabf34a3d2c501e916996779"
   },
   "automaticRedeploymentRun": 38346202839,
-  "automaticRedeploymentState": "in progress at evidence recording",
+  "automaticRedeploymentState": "completed/success",
   "limitations": [
     "Read-only planner probe is not a hosted renderer-only reuse run.",
     "No extra workflow was manually dispatched to prove future reuse.",
     "Original mainline acquisition totals include historical checkpoint provenance; they are not newly transferred provider bytes."
-  ]
+  ],
+  "automaticRedeploymentJob": 115137536485,
+  "automaticRedeploymentLiveReport": {
+    "artifactId": 11790033180,
+    "artifactSha256": "f9215837ddfe9683d39f4d960234418315e6b5e1edc43a7607abe837c141d31d",
+    "reportSha256": "8fac4c36f60b700841bafdf8c9ec91034cdc72e12829494a0df96daa96e82d74",
+    "gzipSha256": "4972d88acc489a7d1a2041042cb92dc171c25e43ae0c09829ef312495a88b438",
+    "reportBytes": 581547,
+    "gzipBytes": 48198,
+    "scope": "Actual OSM generation; exact chain identities",
+    "assetBase": "https://c933103.github.io/openrailwaystyle/",
+    "generation": "8b430e70e32c08a25a1c4aac",
+    "samples": 840,
+    "appSamples": 18,
+    "providerRequests": 0,
+    "assetRequests": 1077,
+    "requestBytes": 62166434,
+    "timing": {
+      "medianMs": 349,
+      "p95Ms": 1413
+    },
+    "profiles": [
+      {
+        "name": "desktop",
+        "engine": "chromium",
+        "width": 800,
+        "height": 450,
+        "assetRequests": 414,
+        "assetBytes": 23377472,
+        "decodedTileBytes": 63279474,
+        "cachedTileBytes": 15883443
+      },
+      {
+        "name": "android",
+        "engine": "chromium",
+        "width": 360,
+        "height": 450,
+        "assetRequests": 328,
+        "assetBytes": 19269653,
+        "decodedTileBytes": 50078561,
+        "cachedTileBytes": 16768817
+      },
+      {
+        "name": "safari",
+        "engine": "webkit",
+        "width": 390,
+        "height": 450,
+        "assetRequests": 335,
+        "assetBytes": 19519309,
+        "decodedTileBytes": 51164304,
+        "cachedTileBytes": 16505225
+      }
+    ]
+  }
 }
