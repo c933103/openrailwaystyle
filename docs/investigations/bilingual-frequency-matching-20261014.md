@@ -54,12 +54,34 @@ published revision is older, deduplicates active refreshes, and stops dispatchin
 after a current revision is published. Malformed or future revisions fail before
 mutation. Legacy aggregates remain usable while the refresh runs.
 
-Node 24.19.0, locked dependencies installed without lifecycle scripts.
-The bilingual regression fails on the baseline. Focused matching/width/service
-tests pass 51/51; revision and publication checks pass 22/22. Five selected new
-regressions pass, including the complete GTFS-calendar-to-OSM publication test.
-The compiler/browser fixture now declares a bilingual agency too. Build and
-whitespace checks pass. Final aggregate tests, hosted browser checks, current-head
-review and production refresh/deployment must be recorded in the PR before
-claiming those stages complete. Bulky inputs and logs remain outside the source
-branch; the immutable input artifacts above preserve their provenance.
+Node 24.19.0; dependencies installed with
+`npm ci --ignore-scripts --no-audit --no-fund`.
+
+| Exact command | Observed result |
+| --- | --- |
+| `node --test --test-name-pattern='bilingual agency\|agency language normalization' tests/timetable-frequency.test.mjs` on the pre-correction source with the new regression | 1 pass, 1 fail: bilingual declaration rejected |
+| `node --test tests/timetable-frequency.test.mjs tests/service-frequency.test.mjs tests/service-routes.test.mjs` | 51 pass, 0 fail, 0 skip; repeated on final implementation |
+| `node --test tests/frequency-artifact-staging.test.mjs tests/data-maintenance.test.mjs` | 22 pass, 0 fail, 0 skip |
+| `node --test --test-name-pattern='bilingual agency\|agency language\|full GTFS calendar\|older matcher\|matcher revision' tests/timetable-frequency.test.mjs tests/data-maintenance.test.mjs tests/frequency-artifact-staging.test.mjs` | 5 pass, 0 fail, 0 skip |
+| `npm run build` | exit 0; 256 style layers generated |
+| `node --check scripts/timetable-frequency.mjs` and `node --check scripts/maintain-data-workflows.mjs` | exit 0 |
+| `git diff --check` | exit 0 |
+
+The compiler/browser fixture now declares a bilingual agency too. Local
+`npm test` on the final implementation reported 1,629 passes, five failures and
+one existing platform skip out of 1,635 tests. Failed checks were unchanged
+globe-drag timing, power-publisher subprocess, two delayed Han-slice checks and
+the departure-details deferred toggle. Isolated checks also retained the toggle
+failure. These are recorded failures, not local passes.
+
+Hosted validation of the identical implementation at
+`4325648c992ca008d7f7f64b28dd24639a98e33d`, job `115886354415` in
+[site run 38574005385](https://github.com/c933103/openrailwaystyle/actions/runs/38574005385),
+ran `npm test` on Node 22 and passed all 1,635 tests with no failures or skips;
+the four offline search fixtures also passed. The separate frequency workflow
+`38574005451` passed its loopback-only frequency suite. Hosted browser checks,
+review of the latest head and production refresh/deployment must be recorded in
+the PR before claiming those stages complete.
+
+Bulky inputs and logs remain outside the source branch; the immutable input
+artifacts above preserve their provenance.
