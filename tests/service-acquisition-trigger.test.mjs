@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {needsServiceAcquisition} from '../scripts/service-acquisition-trigger.mjs';
 test('maintenance-only pushes never select service acquisition; source changes and existing cadence do',()=>{
-  for (const paths of [['.github/workflows/service-frequency.yml'],['scripts/maintain-data-workflows.mjs'],['docs/service-frequency.md']])
+  for (const paths of [['.github/workflows/service-frequency.yml'],['scripts/maintain-data-workflows.mjs'],['scripts/timetable-frequency.mjs'],['scripts/timetable-frequency-version.mjs'],['docs/service-frequency.md']])
     assert.equal(needsServiceAcquisition('push',paths),false);
   for (const event of ['schedule','workflow_dispatch']) assert.equal(needsServiceAcquisition(event),true);
   assert.equal(needsServiceAcquisition('pull_request',['scripts/service-routes.mjs']),false);

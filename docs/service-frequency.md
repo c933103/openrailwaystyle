@@ -31,6 +31,10 @@ operator names. A spelled-out agency acronym is accepted only when the feed
 uses that exact acronym as its agency ID. Tram/light-rail modes share a compatible
 family. Different candidates remain ambiguous. These are corroborated source
 declarations, not independent certification of upstream metadata.
+Whitespace-separated native and Latin name runs in a bilingual agency declaration
+are also compared as complete names. This preserves the original source and does
+not extract individual words, guess translations or remove corporate suffixes.
+The same route, mode, complete-path and conflicting-source checks still apply.
 
 Rates attach separately to each original OSM edge. Every sampled interior point,
 including midpoints between supplied interval boundaries, and both ends must
@@ -137,8 +141,15 @@ concurrency supersedes stale fixture checks without replacing or cancelling a
 queued/running production refresh. Existing path filters remain precise:
 docs/test-only changes can trigger PR fixtures but not the frequency push
 workflow; ordinary site/unit CI is unchanged. Scheduled and explicitly requested
-refreshes retain the eight-shard pipeline, budgets,
-inventory gates and caches. Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish OSM-bound section-count aggregates, manifest and
+refreshes retain the eight-shard pipeline, budgets and inventory gates.
+
+The main-only Service maintenance job separately requests one production refresh
+when the aggregate's matcher revision predates the deployed matching semantics.
+It retains active-run deduplication and stops requesting refreshes once the new
+revision is published. Invalid or unsupported future revision metadata fails
+before dispatch. The revision is bound to the compressed profile aggregate at
+artifact staging; legacy aggregates remain readable during the refresh.
+Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish OSM-bound section-count aggregates, manifest and
 inventory rather than per-feed derived archives. Further source/station
 reconciliation and coverage remain tracked in #111. Site maps draw only OSM
 routes, and never draw raw GTFS shape copies.

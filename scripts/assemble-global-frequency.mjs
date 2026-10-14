@@ -242,7 +242,7 @@ export async function assemble(directory,{osmTable,now=Date.now()}={}){
   const applied=publishedMetadata(matcher.finish());
   const appliedBytes=gzipSync(JSON.stringify(applied),{level:9});
   await writeFile(join(directory,'profiles.json.gz'),appliedBytes);
-  const manifest=publishedMetadata({schema:3,applied_profiles:{schema:1,file:'profiles.json.gz',sha256:createHash('sha256').update(appliedBytes).digest('hex'),osm_sha256:applied.osm_sha256,sections:applied.sections.length,matching:applied.matching},service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
+  const manifest=publishedMetadata({schema:3,applied_profiles:{schema:1,matcher_revision:applied.matcher_revision,file:'profiles.json.gz',sha256:createHash('sha256').update(appliedBytes).digest('hex'),osm_sha256:applied.osm_sha256,sections:applied.sections.length,matching:applied.matching},service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
     catalogue_provenance:inventory.catalogue_provenance,
     countries_scanned:countrySet(()=>true),
     countries_compiled:countrySet(e=>e.status==='compiled'),
