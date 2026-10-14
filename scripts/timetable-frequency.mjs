@@ -4,17 +4,32 @@ import {createHash} from 'node:crypto';
 import {geometryLines} from './service-geometry.mjs';
 import {drawnGeometry, serviceRoutes, wayRoutes} from './service-routes.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
+import {TIMETABLE_MATCHER_REVISION} from './timetable-frequency-version.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const text=value=>String(value||'').normalize('NFKC').toLocaleLowerCase('und').replace(/[\s\p{P}]/gu,'');
 const reference=value=>String(value||'').normalize('NFKC').toLocaleLowerCase('und').replace(/\s/gu,'');
 const osmKind=value=>value==='light_rail'?'tram':value;
+// Some feeds declare complete native and Latin names in one agency_name.
+// Keep the complete declaration and its whitespace-separated script runs.
+// Never extract individual words, remove corporate suffixes or use arbitrary
+// agency IDs: each alias must still pass route identity and full-path checks.
+const declaredNames=value=>{
+  const name=String(value||''),runs=[];let script,words=[];
+  for(const word of name.trim().split(/\s+/u)){
+    const next=/\p{L}/u.test(word)?(/[\p{L}&&\P{Script_Extensions=Latin}]/v.test(word)?'native':'latin'):script;
+    if(script&&next&&script!==next){runs.push(words.join(' '));words=[];}
+    words.push(word);script=next;
+  }
+  if(words.length)runs.push(words.join(' '));
+  return [...new Set([name,...runs].map(text).filter(Boolean))];
+};
 const agencyNames=agency=>{
   const name=String(agency.agency_name||''),words=name.match(/[\p{L}\p{N}]+/gu)||[];
   const initials=words.map(w=>Array.from(w)[0]).join('');
   // An ID is not an operator name. Accept a spelled-out agency's acronym
   // only when the feed itself uses exactly that acronym as its agency ID.
-  return [name,...(initials.length>=3&&text(initials)===text(agency.agency_id)?[agency.agency_id]:[])].map(text).filter(Boolean);
+  return [...new Set([...declaredNames(name),...(initials.length>=3&&text(initials)===text(agency.agency_id)?[text(agency.agency_id)]:[])])];
 };
 const kind=type=>{const n=Number(type);return n===0||n===5||n>=900&&n<1000?'tram':n===12||n===405?'monorail':n===7||n===1400?'funicular':n===1||n>=400&&n<500?'subway':'commuter';};
 const coord=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=85;
@@ -215,7 +230,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       }
     }
     rows.sort((a,b)=>a.way-b.way||a.relation-b.relation||a.line-b.line||a.edge-b.edge);
-    return {schema:1,osm_sha256:hash([...table.routes.values()].concat([...table.ways.values()])),records,sections:rows,
+    return {schema:1,matcher_revision:TIMETABLE_MATCHER_REVISION,osm_sha256:hash([...table.routes.values()].concat([...table.ways.values()])),records,sections:rows,
       feeds:summaries.filter(s=>usedSources.has(s.id)).map(s=>({...s,routesWithProfiles:appliedBySource.get(s.id).routes.size,availableSegments:appliedBySource.get(s.id).sections})),matching:{feeds:summaries.map(({source,...s})=>({...s,routesWithProfiles:appliedBySource.get(s.id)?.routes.size||0,availableSegments:appliedBySource.get(s.id)?.sections||0})),sections:rows.length,conflictingSections:conflicts}};
   }
   return {addFeed,finish};

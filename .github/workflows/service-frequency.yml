@@ -21,6 +21,7 @@ on:
       - scripts/assemble-global-frequency.mjs
       - scripts/read-frequency-feed.mjs
       - scripts/timetable-frequency.mjs
+      - scripts/timetable-frequency-version.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs
@@ -65,6 +66,7 @@ on:
       - scripts/assemble-global-frequency.mjs
       - scripts/read-frequency-feed.mjs
       - scripts/timetable-frequency.mjs
+      - scripts/timetable-frequency-version.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs

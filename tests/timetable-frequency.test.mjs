@@ -28,6 +28,22 @@ test('metadata normalization preserves script, permits typography, and never mat
  const f=feed();f.agencies[0].agency_name=' 東京 メトロ ';f.routes[0].route_short_name='Ｇ';assert.equal(apply(table(),[f]).sections.length,3);
  f.agencies[0].agency_name='';assert.equal(apply(table(),[f]).sections.length,0);
 });
+test('bilingual agency declarations match either complete language name without changing the source',()=>{
+ for(const [name,operator] of [['東京メトロ Tokyo Metro','東京メトロ'],['東京メトロ Tokyo Metro','Tokyo Metro'],['Метро Metro Transit','Метро'],['مترو المدينة City Metro','City Metro']]){
+  const t=table(),f=feed();t.routes.get('r10').evidence.view.operator=operator;t.routes.get('r10').evidence.view.network='';
+  f.agencies[0].agency_name=name;const before=structuredClone(f);const a=apply(t,[f]);
+  assert.equal(a.sections.length,3,name+' / '+operator);assert.equal(a.records[0].profiles.am.rate,10);assert.deepEqual(f,before);
+ }
+});
+test('agency language normalization preserves operator, route, mode and spatial boundaries',()=>{
+ for(const [name,operator] of [['Other Tokyo Metro','Tokyo Metro'],['東京メトロ Tokyo Metro','Metro'],['東京メトロ Tokyo Metro','Other Metro'],['東京メトロTokyoMetro','東京メトロ']]){
+  const t=table(),f=feed();t.routes.get('r10').evidence.view.operator=operator;t.routes.get('r10').evidence.view.network='';f.agencies[0].agency_name=name;
+  assert.equal(apply(t,[f]).sections.length,0,name+' / '+operator);
+ }
+ for(const change of [f=>f.routes[0].route_short_name='H',f=>f.routes[0].route_type='0',f=>f.segments[2].geometry=[[140,35],[140.01,35]]]){
+  const f=feed();f.agencies[0].agency_name='東京メトロ Tokyo Metro';change(f);assert.equal(apply(table(),[f]).sections.length,0);
+ }
+});
 test('duplicate feeds agree without doubling trains; conflicting observations are withheld',()=>{
  const a=feed(),b=feed();b.source.id='second';a.source.input_signature=b.source.input_signature='c'.repeat(64);
  const agreed=apply(table(),[a,b]);assert.equal(agreed.records[0].profiles.am.rate,10);assert.equal(agreed.records[0].properties.frequency_sources,'jp-metro;second');

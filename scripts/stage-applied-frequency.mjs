@@ -13,6 +13,7 @@ export function validateAppliedFrequency(bytes,manifest){
  const binding=manifest?.applied_profiles;
  if(!binding||binding.schema!==1||binding.file!=='profiles.json.gz'||! /^[a-f0-9]{64}$/.test(binding.sha256)||! /^[a-f0-9]{64}$/.test(binding.osm_sha256)||!Number.isSafeInteger(binding.sections)||binding.sections<0||bytes.length>MAX_APPLIED_BYTES||createHash('sha256').update(bytes).digest('hex')!==binding.sha256)throw new Error('Invalid applied profile binding');
  const artifact=JSON.parse(gunzipSync(bytes,{maxOutputLength:MAX_APPLIED_BYTES}).toString());
+ if(Object.hasOwn(binding,'matcher_revision')&&(!Number.isSafeInteger(binding.matcher_revision)||binding.matcher_revision<1||artifact.matcher_revision!==binding.matcher_revision))throw new Error('Invalid applied matcher revision');
  indexTimetableSections(artifact);
  if(artifact.osm_sha256!==binding.osm_sha256||artifact.sections.length!==binding.sections||!Array.isArray(artifact.feeds)||!artifact.matching||artifact.matching.sections!==artifact.sections.length||!isDeepStrictEqual(artifact,publishedMetadata(artifact)))throw new Error('Invalid applied profile publication');
  return artifact;
