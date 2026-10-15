@@ -28,6 +28,7 @@ import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as referenceModule from '../styles/mainline-reference.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
+import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -1000,6 +1001,28 @@ test('station fallback keeps the failed tile mask through neighboring success, r
   for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'none','panning to loaded tiles retires fallback');
   map.handlers.sourcedata({sourceId:'stations',tile:{...b,state:'loaded'},isSourceLoaded:true});
   assert.equal(window.document.getElementById('map-status').classList.contains('error'),false);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
+test('healthy descendant success immediately masks retained ancestor failures without clearing status',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);map.handlers['style.load']();
+  const parent={state:'errored',tileID:{wrap:0,canonical:{z:9,x:259,y:176}}};
+  const failed={state:'errored',tileID:{wrap:0,canonical:{z:10,x:518,y:352}}};
+  const healthy={state:'loading',tileID:{wrap:0,canonical:{z:10,x:519,y:352}}};
+  const tiles=[parent,failed,healthy];
+  map.style={tileManagers:{stations:{getSource:()=>map.getSource('stations'),getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]}}};
+  for(const tile of [parent,failed])map.handlers.error({sourceId:'stations',tile,error:{status:403,message:'HTTP403'}});
+  const shown=(id,tile)=>featureFilter(map.getFilter(id)).filter({zoom:10},{type:1,properties:{class:'railway',subclass:'station',feature:'station',tier:3},geometry:[[{x:4096,y:4096}]]},tile.tileID.canonical);
+  for(const id of stationFallbackModule.STATION_FALLBACK_IDS)assert.equal(shown(id,healthy),true);
+  healthy.state='loaded';map.handlers.sourcedata({sourceId:'stations',tile:healthy,isSourceLoaded:false});
+  for(const id of stationFallbackModule.STATION_FALLBACK_IDS){
+   assert.equal(shown(id,healthy),false,'only sourcedata is needed to remove the healthy neighbor fallback');
+   assert.equal(shown(id,failed),true,'failed child stays covered');
+   assert.equal(map.getLayoutProperty(id,'visibility'),'visible');
+  }
+  assert.match(window.document.getElementById('map-status').textContent,/station data unavailable/);
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 

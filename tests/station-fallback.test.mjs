@@ -11,6 +11,86 @@ const failedTile = (x=518,y=352,z=10) => ({state:'errored',tileID:{canonical:{z,
 const contains = (filter, tile, properties={class:'railway',subclass:'station',feature:'station',tier:3}) =>
   featureFilter(filter).filter({zoom:tile.z},{type:1,properties,geometry:[[{x:4096,y:4096}]]},tile);
 
+function mixedLodFixture() {
+  const source={maxzoom:16},failed=failedTile(),neighbor={...failedTile(519),state:'loaded'};
+  const parents=[failedTile(259,176,9),failedTile(129,88,8)];
+  const tiles=[failed,neighbor,...parents];
+  for(const tile of tiles)tile.tileID.wrap=0;
+  const manager={getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]};
+  const state=createStationFallbackState({getSource:()=>source,getZoom:()=>10,style:{tileManagers:{stations:manager}}});
+  for(const tile of [failed,...parents])state.noteError({sourceId:'stations',tile,error:{status:503}});
+  const shown=(tile,id=STATION_FALLBACK_IDS[0])=>contains(stationFallbackFilter(id,state.area(10)),tile.tileID.canonical);
+  return {source,failed,neighbor,parents,tiles,state,shown};
+}
+
+test('failed retained ancestors never extend station fallback into healthy descendants',()=>{
+  // Exact mixed-LOD requests from the hosted Paris fixture: MapLibre retries
+  // z10/518/352 through z9/259/176 and z8/129/88, both covering the healthy neighbor.
+  const {failed,neighbor,parents,state,shown}=mixedLodFixture();
+  for(const id of STATION_FALLBACK_IDS){
+    assert.equal(shown(failed,id),true,`${id}: genuine failed child keeps fallback`);
+    assert.equal(shown(neighbor,id),false,`${id}: healthy child excludes failed ancestors`);
+  }
+  assert.equal(state.hasSourceFailure('stations'),true,'presentation cannot settle failed requests');
+  failed.state='loaded';state.noteSourceData({sourceId:'stations',tile:failed});
+  assert.equal(shown(failed),false,'successful child excludes still-failed ancestors');
+  assert.equal(state.hasSourceFailure('stations'),true);
+  for(const parent of parents){parent.state='loaded';state.noteSourceData({sourceId:'stations',tile:parent});}
+  assert.equal(state.area(10),null);
+});
+
+test('healthy-descendant completion requests a mask refresh while failed ancestors remain',()=>{
+  const {neighbor,tiles,state,shown}=mixedLodFixture();
+  neighbor.state='loading';assert.equal(shown(neighbor),true,'pending tiles do not establish healthy coverage');
+  neighbor.state='loaded';
+  assert.equal(state.noteSourceData({sourceId:'stations',tile:neighbor}),true,'app must refresh the mask on descendant success');
+  assert.equal(shown(neighbor),false,'successful empty tiles also establish coverage');
+  for(const status of ['expired','reloading','errored','unloaded']){
+    neighbor.state=status;assert.equal(shown(neighbor),true,`${status} is not fresh successful coverage`);
+  }
+  neighbor.state='loaded';neighbor.aborted=true;assert.equal(shown(neighbor),true,'aborted tile cannot authorize exclusion');
+  neighbor.aborted=false;tiles.splice(tiles.indexOf(neighbor),1);
+  assert.equal(shown(neighbor),true,'removed healthy tile cannot keep an obsolete hole');
+});
+
+test('mixed-LOD subtraction retains uncovered areas and finer failures',()=>{
+  const {neighbor,tiles,state,shown}=mixedLodFixture();
+  neighbor.state='loading';
+  const child={...failedTile(1038,704,11),state:'loaded',tileID:{wrap:0,canonical:{z:11,x:1038,y:704}}};
+  tiles.push(child);
+  assert.equal(shown(child),false,'partial healthy child is excluded');
+  assert.equal(shown(failedTile(1039,704,11)),true,'uncovered sibling remains fallback');
+  const deeper=failedTile(2076,1408,12);deeper.tileID.wrap=0;tiles.push(deeper);
+  state.noteError({sourceId:'stations',tile:deeper,error:{status:403}});
+  assert.equal(shown(deeper),true,'a finer explicit failure wins over coarser successful coverage');
+});
+
+test('healthy descendants on another world copy cannot mask an independent failure',()=>{
+  const {failed,neighbor,parents,tiles,state,shown}=mixedLodFixture();
+  neighbor.tileID.wrap=1;assert.equal(shown(neighbor),true,'success in another wrap cannot clear this failed parent area');
+  neighbor.tileID.wrap=0;assert.equal(shown(neighbor),false);
+  const copy={...parents[0],tileID:{...parents[0].tileID,wrap:1}};tiles.push(copy);
+  state.noteError({sourceId:'stations',tile:copy,error:{status:403}});
+  assert.equal(shown(neighbor),true,'canonical mask preserves the independently failing world copy');
+  const loadedCopy={...neighbor,tileID:{...neighbor.tileID,wrap:1}};tiles.push(loadedCopy);
+  assert.equal(shown(neighbor),false,'both failed copies have matching healthy child coverage');
+  assert.equal(shown(failed),true);
+});
+
+test('healthy-child masking introduces no subdivision seams in failed parent interiors',()=>{
+  const {state}=mixedLodFixture(),parent={z:9,x:259,y:176};
+  const evaluate=(id,x,y)=>featureFilter(stationFallbackFilter(id,state.area(10)))
+    .filter({zoom:10},{type:1,properties:{class:'railway',subclass:'station',feature:'station',tier:3},geometry:[[{x,y}]]},parent);
+  for(const id of STATION_FALLBACK_IDS){
+    assert.equal(evaluate(id,2048,4096),true,`${id}: horizontal interior seam stays covered`);
+    assert.equal(evaluate(id,4096,6144),true,`${id}: vertical interior seam stays covered`);
+    assert.equal(evaluate(id,6144,2048),false,`${id}: healthy northeast child interior stays excluded`);
+    // Preserve conservative boundary behavior: within() cannot prove which
+    // tile owns a point exactly on a healthy tile edge.
+    assert.equal(evaluate(id,4096,2048),true,`${id}: exact healthy edge retains fallback`);
+  }
+});
+
 test('mixed station failures scope basemap dots, names and curated hubs to failed tiles', () => {
   const sources={stations:{url:'atlasstation://en/stations'}},state=createStationFallbackState({getSource:id=>sources[id]});
   const a=failedTile(),b=failedTile(519);
@@ -61,7 +141,7 @@ test('failed-tile filters validate in the complete production style', async () =
   addStationFallbackLayers(style,{annotateLayers,labelExpression});
   const source={},state=createStationFallbackState({getSource:()=>source});
   state.noteError({sourceId:'stations',tile:failedTile(),error:{status:503}});
-  for(const area of [null,true,state.area(10)]){
+  for(const area of [null,true,state.area(10),mixedLodFixture().state.area(10)]){
     for(const id of STATION_FALLBACK_IDS)style.layers.find(l=>l.id===id).filter=stationFallbackFilter(id,area);
     assert.deepEqual(validateStyleMin(style).map(error=>error.message),[]);
   }

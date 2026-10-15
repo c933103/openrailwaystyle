@@ -22,6 +22,10 @@ const tileKey = c => `${c.z}/${c.x}/${c.y}`;
 const validCoordinate = c => c && Number.isInteger(c.z) && c.z >= 0 && c.z <= 30 &&
   Number.isInteger(c.x) && c.x >= 0 && c.x < 2 ** c.z &&
   Number.isInteger(c.y) && c.y >= 0 && c.y < 2 ** c.z;
+const descendant = (child, parent) => validCoordinate(child) && child.z > parent.z &&
+  Math.floor(child.x / 2 ** (child.z - parent.z)) === parent.x &&
+  Math.floor(child.y / 2 ** (child.z - parent.z)) === parent.y;
+const sameWorld = (a, b) => (a?.tileID?.wrap ?? 0) === (b?.tileID?.wrap ?? 0);
 const tilePolygon = c => {
   const n = 2 ** c.z, latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
   const west = c.x / n * 360 - 180, east = (c.x + 1) / n * 360 - 180;
@@ -152,13 +156,33 @@ export function createStationFallbackState(map) {
           record.instances = record.instances.filter(tile => tile !== event.tile);
           changed = record.instances.length !== previous || changed;
         } else changed = state.tiles.delete(tileKey(c)) || changed;
+        // A successful child changes the displayed coverage of a retained
+        // failed parent even though it cannot settle that parent's request.
+        if (activeTiles(event.sourceId, state.source)?.includes(event.tile))
+          changed = [...state.tiles.values()].some(record => descendant(c, record.coordinate) &&
+            record.instances?.some(tile => sameWorld(tile, event.tile))) || changed;
       }
       return !stateFor(event.sourceId) || changed || state.tiles.size !== previousSize;
     },
     area(zoom) {
       const id = stationSource(zoom), state = id && stateFor(id);
       if (!state) return null;
-      return state.metadata ? true : {type: 'MultiPolygon', coordinates: [...state.tiles.values()].map(record => tilePolygon(record.coordinate))};
+      if (state.metadata) return true;
+      const records = [...state.tiles.values()];
+      const area = {type: 'MultiPolygon', coordinates: records.map(record => tilePolygon(record.coordinate))};
+      const healthy = (activeTiles(id, state.source) || []).filter(tile => tile.state === 'loaded' && !tile.aborted);
+      const masks = records.flatMap(record => (record.instances || [record.tile]).map(tile => ({
+        failed: {type: 'Polygon', coordinates: tilePolygon(record.coordinate)},
+        covered: {type: 'MultiPolygon', coordinates: healthy.filter(candidate =>
+          sameWorld(tile, candidate) && descendant(candidate.tileID?.canonical, record.coordinate))
+          .map(candidate => tilePolygon(candidate.tileID.canonical))},
+      })));
+      // MapLibre retains failed ancestors while looking for replacement data.
+      // Their rectangles must not add fallback over a healthy finer tile.
+      // Keep masks per failed instance: another world's success cannot erase
+      // this world's failure, and a finer failure remains independently visible.
+      if (masks.some(mask => mask.covered.coordinates.length)) area.tileMasks = masks;
+      return area;
     },
     hasSourceFailure: id => Boolean(stateFor(id)),
   };
@@ -166,7 +190,12 @@ export function createStationFallbackState(map) {
 
 export function stationFallbackFilter(id, area) {
   const base = id === STATION_FALLBACK_IDS[1] ? CURATED_STATION_FILTER : STATION_BASEMAP_POI_FILTER;
-  return area === true ? base : ['all', base, area ? ['within', area] : ['literal', false]];
+  // Use boolean geometry instead of subdividing rectangles: `within` excludes
+  // polygon boundaries, so subdivision would introduce gaps along new seams.
+  const mask = area?.tileMasks ? ['any', ...area.tileMasks.map(({failed, covered}) =>
+    covered.coordinates.length ? ['all', ['within', failed], ['!', ['within', covered]]] : ['within', failed])]
+    : area ? ['within', area] : ['literal', false];
+  return area === true ? base : ['all', base, mask];
 }
 
 export function stationFallbackLayers(labelExpression) {

@@ -61,8 +61,11 @@ try{
  });
  const sample=async()=>page.evaluate(async ids=>{
   const map=window.stationMap,all=map.getStyle().layers;
+  const manager=map.style.tileManagers.stations;
   const rendered=layers=>map.queryRenderedFeatures({layers}).map(f=>({id:f.properties.id,name:f.properties.atlas_name||f.properties.name}));
   return {zoom:map.getZoom(),styleLoaded:map.isStyleLoaded(),tilesLoaded:map.areTilesLoaded(),
+   filters:Object.fromEntries(ids.map(id=>[id,map.getFilter(id)])),
+   stationTiles:manager.getIds().map(id=>{const tile=manager.getTileByID(id);return {state:tile.state,wrap:tile.tileID.wrap,...tile.tileID.canonical};}),
    visibility:Object.fromEntries(ids.map(id=>[id,map.getLayoutProperty(id,'visibility')])),
    fallback:rendered([ids[0]]),curated:rendered([ids[1]]),names:rendered([ids[2]]),
    provider:rendered(all.filter(l=>l.source==='stations'&&l.type==='circle').map(l=>l.id)),
