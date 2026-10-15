@@ -1,6 +1,10 @@
 import {addResult,commitStage,toTable} from '../../../scripts/service-routes.mjs';
 export const now=Date.parse('2026-10-10T00:00:00Z');
 export const points=[[139.7,35.68],[139.71,35.68],[139.72,35.68],[139.73,35.68]];
+// Test-only assertions pin the actual synthetic ZIP hash returned by the compiler.
+export const operatorBindingsFor=feed=>({schema:1,bindings:[{id:'fixture-operator',feed:feed.source.id,source_sha256:feed.source.sha256,
+ agency_id:feed.agencies[0].agency_id,agency_name:feed.agencies[0].agency_name,agency_url:feed.agencies[0].agency_url,osm_operators:['東京メトロ'],
+ checked:'2026-10-09',expires:'2026-10-13',evidence:['https://operator.example.test/about/']}]});
 export function table(){
  const t={routes:new Map(),ways:new Map()};
  addResult(t,toTable({elements:[{type:'relation',id:10,tags:{route:'subway',ref:'G',name:'銀座線',colour:'#f39700',network:'東京メトロ'},members:[1,2,3].map(ref=>({type:'way',ref,role:''}))},...points.slice(1).map((b,i)=>({type:'way',id:i+1,geometry:[points[i],b].map(([lon,lat])=>({lon,lat}))}))]}),'japan');commitStage(t,'japan');return t;

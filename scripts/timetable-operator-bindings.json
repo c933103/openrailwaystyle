@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "bindings": [
+    {
+      "id": "toei-tokyo-rail-20261015",
+      "feed": "jp_tokyo-rail",
+      "source_sha256": "5b2c2f846189b681ddfaab173e2c669ee0ef88bbb9883ef996aa487c9e04267c",
+      "agency_id": "Toei",
+      "agency_name": "都営地下鉄 Toei Subway",
+      "agency_url": "https://www.kotsu.metro.tokyo.jp/",
+      "osm_operators": ["東京都交通局"],
+      "checked": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": [
+        "https://www.kotsu.metro.tokyo.jp/",
+        "https://www.kotsu.metro.tokyo.jp/toden/"
+      ]
+    }
+  ]
+}

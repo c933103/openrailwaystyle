@@ -4,12 +4,77 @@ import {readFileSync} from 'node:fs';
 import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSections} from '../scripts/timetable-frequency.mjs';
 import {addResult,commitStage,toTable,buildTiles as osmTiles,LAYER} from '../scripts/service-routes.mjs';
 import {frequencyDetails,frequencyWidth,frequencyAvailability} from '../styles/service-frequency.mjs';
+import {operatorBindingIndex} from '../scripts/timetable-operator-bindings.mjs';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {now,table,feed} from './fixtures/service-frequency/matching-fixture.mjs';
+import {now,table,feed,operatorBindingsFor} from './fixtures/service-frequency/matching-fixture.mjs';
 const apply=(t,feeds)=>{const m=createTimetableMatcher(t,{now});for(const f of feeds)m.addFeed(f);return m.finish();};
 const buildTiles=(t,options={})=>osmTiles(t,{...options,now});
 const features=tiles=>[...tiles].filter(([k])=>k.startsWith('12/')).flatMap(([,bytes])=>{const layer=new VectorTile(new Pbf(bytes)).layers[LAYER];return Array.from({length:layer.length},(_,i)=>layer.feature(i).properties);});
+const operatorFixture=()=>{
+ const f=feed();f.agencies[0].agency_name='Metro brand';f.agencies[0].agency_url='https://operator.example.test/';
+ return {f,operatorBindings:operatorBindingsFor(f)};
+};
+
+test('reviewed operator binding applies actual counts, retains its proof and expires with the assertion',()=>{
+ const {f,operatorBindings}=operatorFixture(),before=structuredClone(f),m=createTimetableMatcher(table(),{now,operatorBindings});
+ m.addFeed(f);const a=m.finish();assert.equal(a.sections.length,3);assert.equal(a.records[0].profiles.am.rate,10);
+ assert.equal(a.records[0].properties.frequency_operator_binding,'fixture-operator');
+ assert.deepEqual(JSON.parse(a.records[0].properties.frequency_operator_evidence),['https://operator.example.test/about/']);
+ assert.equal(a.records[0].properties.frequency_until,Date.parse('2026-10-13T00:00:00Z')/1000-.001);
+ assert.deepEqual(f,before);assert.equal(apply(table(),[f]).sections.length,0,'a brand alone is not an operator assertion');
+});
+
+test('operator assertions are feed/revision/agency/declaration scoped, including the original URL fingerprint',()=>{
+ const changes=[f=>f.source.id='other-feed',f=>f.source.sha256='b'.repeat(64),f=>{f.agencies[0].agency_id='other';f.routes[0].agency_id='other';},
+  f=>f.agencies[0].agency_name='Other brand',f=>f.agencies[0].agency_url='https://other.example.test/',f=>f.agencies[0].agency_url_sha256='0'.repeat(64)];
+ for(const change of changes){const {f,operatorBindings}=operatorFixture();change(f);const m=createTimetableMatcher(table(),{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);}
+});
+test('operator assertions never bypass mode, reference, path, ambiguity, or duplicate-service checks',()=>{
+ for(const change of [f=>f.routes[0].route_type='0',f=>f.routes[0].route_short_name='H',f=>f.segments[2].geometry=[[140,35],[140.01,35]]]){
+  const {f,operatorBindings}=operatorFixture();change(f);const m=createTimetableMatcher(table(),{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);
+ }
+ const {f,operatorBindings}=operatorFixture(),t=table(),other=structuredClone(t.routes.get('r10'));
+ other.key='r20';other.evidence.view.ref='G';other.evidence.view.relation=20;other.evidence.view.key='r20';other.evidence.view.group='another-service';
+ t.routes.set('r20',other);for(const w of t.ways.values())w.routes.japan.push('r20');
+ const ambiguous=createTimetableMatcher(t,{now,operatorBindings});ambiguous.addFeed(f);const unresolved=ambiguous.finish();assert.equal(unresolved.sections.length,0);assert.equal(unresolved.matching.feeds[0].ambiguousRoutes,1);
+ const duplicate=structuredClone(f);duplicate.source.id='other-feed';const duplicateBinding=structuredClone(operatorBindings.bindings[0]);duplicateBinding.id='second-binding';duplicateBinding.feed='other-feed';
+ duplicate.source.sha256='b'.repeat(64);duplicateBinding.source_sha256=duplicate.source.sha256;
+ const conflict=createTimetableMatcher(table(),{now,operatorBindings:{schema:1,bindings:[operatorBindings.bindings[0],duplicateBinding]}});
+ conflict.addFeed(f);conflict.addFeed(duplicate);const rejected=conflict.finish();assert.equal(rejected.sections.length,0);assert.ok(rejected.matching.conflictingSections>0);
+});
+test('verified duplicate archives count once and retain both operator assertion receipts',()=>{
+ const {f,operatorBindings}=operatorFixture(),duplicate=structuredClone(f),second=structuredClone(operatorBindings.bindings[0]);
+ duplicate.source.id='other-feed';second.feed=duplicate.source.id;second.id='second-binding';second.evidence=['https://operator.example.test/about;brand/'];
+ f.source.input_signature=duplicate.source.input_signature='c'.repeat(64);
+ const m=createTimetableMatcher(table(),{now,operatorBindings:{schema:1,bindings:[operatorBindings.bindings[0],second]}});
+ m.addFeed(f);m.addFeed(duplicate);const a=m.finish();assert.equal(a.sections.length,3);assert.equal(a.records[0].profiles.am.rate,10);
+ assert.equal(a.records[0].properties.frequency_operator_binding,'fixture-operator;second-binding');
+ assert.deepEqual(JSON.parse(a.records[0].properties.frequency_operator_evidence),['https://operator.example.test/about/','https://operator.example.test/about;brand/']);
+});
+test('operator review validity is enforced at both boundaries without restricting independently declared identities',()=>{
+ for(const at of ['2026-10-08T23:59:59.999Z','2026-10-13T00:00:00Z']){
+  const {f,operatorBindings}=operatorFixture(),m=createTimetableMatcher(table(),{now:Date.parse(at),operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);
+ }
+ const {f,operatorBindings}=operatorFixture();f.agencies[0].agency_name='東京メトロ';operatorBindings.bindings[0].agency_name='東京メトロ';
+ const direct=createTimetableMatcher(table(),{now,operatorBindings});direct.addFeed(f);const a=direct.finish();
+ assert.equal(a.sections.length,3);assert.ok(a.records[0].properties.frequency_until>Date.parse('2026-10-13T00:00:00Z')/1000);assert.equal(a.records[0].properties.frequency_operator_binding,undefined);
+});
+test('operator context works across scripts and does not infer translations or substrings',()=>{
+ for(const operator of ['Transit Authority','Городской транспорт','هيئة النقل']){
+  const {f,operatorBindings}=operatorFixture(),t=table();t.routes.get('r10').evidence.view.network=operator;operatorBindings.bindings[0].osm_operators=[operator];
+  const m=createTimetableMatcher(t,{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,3);
+  operatorBindings.bindings[0].osm_operators=['Transit'];const negative=createTimetableMatcher(t,{now,operatorBindings});negative.addFeed(f);assert.equal(negative.finish().sections.length,0);
+ }
+});
+test('malformed, duplicate, oversized or unbounded operator assertions fail before matching',()=>{
+ const changes=[d=>d.schema=2,d=>d.extra=true,d=>d.bindings[0].extra=true,d=>d.bindings[0].source_sha256='bad',d=>d.bindings[0].expires='2026-02-30',
+  d=>d.bindings[0].checked='2026-13-01',d=>d.bindings[0].expires='2026-10-08',d=>d.bindings[0].expires='2030-10-01',
+  d=>d.bindings[0].agency_url='https://user:password@example.test/',d=>d.bindings[0].evidence=['https://example.test/?token=private'],
+  d=>d.bindings[0].osm_operators=[''],d=>d.bindings[0].osm_operators=new Array(1),d=>d.bindings[0].agency_name='a'.repeat(513),
+  d=>d.bindings.push(structuredClone(d.bindings[0])),d=>{const b=structuredClone(d.bindings[0]);b.id='other';d.bindings.push(b);},d=>d.bindings=new Array(1001)];
+ for(const change of changes){const {operatorBindings}=operatorFixture();change(operatorBindings);assert.throws(()=>operatorBindingIndex(operatorBindings),/Invalid reviewed timetable operator bindings/);}
+});
 
 test('Ginza-style OSM service gets actual per-section timetable counts, hourly widths and original OSM identity',()=>{
  const t=table(),artifact=apply(t,[feed()]),bound=bindTimetableSections(t,artifact);
@@ -104,25 +169,26 @@ test('curved timetable sections keep the whole OSM line orientation and their or
 });
 
 
-test('full GTFS calendar-to-publication-to-OSM tile pipeline counts short workings only on their section',async()=>{
+for(const variant of ['declared','operator-binding'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
  const {mkdtemp,mkdir,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
  const {spawnSync}=await import('node:child_process'),{gzipSync,gunzipSync}=await import('node:zlib');
  const {assemble}=await import('../scripts/assemble-global-frequency.mjs'),{writeTable}=await import('../scripts/service-routes.mjs');
  const root=await mkdtemp(join(tmpdir(),'atlas-matched-frequency-'));
  try{
-  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output],{encoding:'utf8'});
+  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='operator-binding'?['--operator-binding']:[])],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   const f=JSON.parse(await readFile(output,'utf8')),t=table();
   await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds','jp-metro.json.gz'),gzipSync(JSON.stringify(f)));
   await writeFile(join(root,'osm.ndjson.gz'),gzipSync(writeTable(t)));
   await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_entries:1,catalogue_sha256:'fixture',service_date:f.source.service_date,entries:[{id:f.source.id,status:'compiled',output:'feeds/jp-metro.json.gz',sha256:f.source.sha256,country:'JP'}]}));
-  const manifest=await assemble(root,{osmTable:join(root,'osm.ndjson.gz'),now});
+  const manifest=await assemble(root,{osmTable:join(root,'osm.ndjson.gz'),now,...(variant==='operator-binding'?{operatorBindings:operatorBindingsFor(f)}:{})});
   assert.equal(manifest.applied_profiles.sections,3);assert.equal(manifest.tiles,0,'no standalone GTFS tiles');
   const artifact=JSON.parse(gunzipSync(await readFile(join(root,'profiles.json.gz'))));
   const rendered=features(buildTiles(t,{timetables:bindTimetableSections(t,artifact).sections}));
   assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,6]);
   assert.ok(rendered.every(p=>p.frequency_overnight===0));
   assert.ok(rendered.every(p=>p.frequency_source==='Offline Metro fixture'));
+  if(variant==='operator-binding')assert.ok(rendered.every(p=>p.frequency_operator_binding==='fixture-operator'));
   assert.match(JSON.stringify(artifact.feeds),new RegExp(f.source.sha256));
  }finally{await rm(root,{recursive:true,force:true});}
 });
