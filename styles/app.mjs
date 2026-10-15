@@ -1,25 +1,25 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261015-service-relations-1';
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-service-relations-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-service-relations-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-service-relations-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-service-relations-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-service-relations-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-service-relations-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261015-station-resilience-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-station-resilience-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-station-resilience-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-station-resilience-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-station-resilience-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-station-resilience-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-station-resilience-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-service-relations-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-service-relations-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-service-relations-1';
-import {departureItem} from './departures-ui.mjs?v=20261015-service-relations-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-service-relations-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-service-relations-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-service-relations-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-service-relations-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-service-relations-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-service-relations-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261015-service-relations-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-service-relations-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261015-service-relations-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261015-service-relations-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-station-resilience-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-station-resilience-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-station-resilience-1';
+import {departureItem} from './departures-ui.mjs?v=20261015-station-resilience-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-station-resilience-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-station-resilience-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-station-resilience-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-station-resilience-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-station-resilience-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-station-resilience-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261015-station-resilience-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-resilience-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-resilience-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-resilience-1';
 import { addStationFallbackLayers, stationFallbackNamesEnabled } from './station-fallback.mjs?v=20261015-station-resilience-1';
 
 const $ = id => document.getElementById(id);
@@ -57,7 +57,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-service-relations-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-station-resilience-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -672,7 +672,8 @@ function applySettings() {
     if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
     if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer, settings);
-    if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+    const enabled = layer.id==='station-basemap-fallback-names' ? false : visible;
+    if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -682,7 +683,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  if (ready) { applyStationFallbackNameState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -1187,14 +1188,32 @@ function applyUnits() {
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
   map.getSource('seabedContoursClose')?.setTiles(style.sources.seabedContoursClose.tiles);
 }
-const mapErrorMessage = () => railRecovery?.hasFailures()
-  ? 'OpenRailwayMap railway tiles are unavailable. Retrying automatically; some lines may be missing.'
-  : 'Some map data could not load. Check your connection or reload to retry.';
+function applyStationFallbackNameState() {
+  if (!ready || !map?.getLayer('station-basemap-fallback-names')) return;
+  const failedSources=new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])]);
+  const visible=stationFallbackNamesEnabled({zoom:map.getZoom(),stationsEnabled:settings.stations,
+    background:settings.background,failedSources})?'visible':'none';
+  if(map.getLayoutProperty('station-basemap-fallback-names','visibility')!==visible)
+    map.setLayoutProperty('station-basemap-fallback-names','visibility',visible);
+}
+const mapErrorMessage = () => {
+  const railFailed=railRecovery?.hasFailures();
+  const failed=[...new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])])];
+  const stationFailed=failed.some(id=>['stations','stationLow','stationMed'].includes(id));
+  const trackFailed=failed.some(id=>['railway','network','speed','electric','control','gaugeLow','ownerRail','axleRail','loadingLow'].includes(id));
+  if(railFailed||stationFailed||trackFailed){
+    const kind=stationFailed&&trackFailed?'station and track data':stationFailed?'station data':'railway data';
+    return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
+      'Independent map references remain where available; detail may be missing.';
+  }
+  return 'Some map data could not load. Check your connection or reload to retry.';
+};
 function updateStatus() {
   const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
   for (const [id, error] of errors) {
     if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
   }
+  applyStationFallbackNameState();
   if (errors.size || railFailed) {
     status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
@@ -1214,7 +1233,7 @@ function updateStatus() {
     status.textContent = 'Only basemap railway reference is visible here; detailed railway data is unavailable.';
   }
   const tracks = features.filter(f => ['railway','speed','network','electric'].includes(f.source));
-  const stations = features.filter(f => f.source.startsWith('station'));
+  const stations = features.filter(f => f.source.startsWith('station') || f.layer?.id.startsWith('station-basemap-fallback-'));
   status.dataset.renderedTracks = String(tracks.length);
   status.dataset.renderedStations = String(stations.length);
   const regional = features.filter(f => f.source === 'inactiveRegional');
