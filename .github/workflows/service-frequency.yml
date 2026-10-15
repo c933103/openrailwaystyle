@@ -22,6 +22,8 @@ on:
       - scripts/read-frequency-feed.mjs
       - scripts/timetable-frequency.mjs
       - scripts/timetable-frequency-version.mjs
+      - scripts/timetable-operator-bindings.mjs
+      - scripts/timetable-operator-bindings.json
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs
@@ -67,6 +69,8 @@ on:
       - scripts/read-frequency-feed.mjs
       - scripts/timetable-frequency.mjs
       - scripts/timetable-frequency-version.mjs
+      - scripts/timetable-operator-bindings.mjs
+      - scripts/timetable-operator-bindings.json
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs

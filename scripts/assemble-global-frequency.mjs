@@ -12,6 +12,7 @@ import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {projectLegacyMetadata} from './frequency-publication-metadata.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
+import reviewedOperatorBindings from './timetable-operator-bindings.json' with {type:'json'};
 import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl,referenceResourceKey} from './frequency-reference-metadata.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
 // unchanged. The sibling <field>_sha256 is SHA-256 of the exact original UTF-8
@@ -207,9 +208,9 @@ export async function pruneFrequencyOutputs(directory,entries){
   let files;try{files=await readdir(join(directory,'feeds'));}catch(error){if(error.code==='ENOENT')return;throw error;}
   for(const file of files)if(!wanted.has('feeds/'+file))await rm(join(directory,'feeds',file),{recursive:true,force:true});
 }
-export async function assemble(directory,{osmTable,now=Date.now()}={}){
+export async function assemble(directory,{osmTable,now=Date.now(),operatorBindings=reviewedOperatorBindings}={}){
   const table=readTable(osmTable ? gunzipSync(await readFile(osmTable)).toString() : '');
-  const matcher=createTimetableMatcher(table,{now});
+  const matcher=createTimetableMatcher(table,{now,operatorBindings});
   const names=(await readdir(directory)).filter(n=>/^inventory-\d+\.json$/.test(n));
   const shards=await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8'))));
   const inventory=mergeInventories(shards);

@@ -22,7 +22,7 @@ for direction in (0,1):
             times.append(dict(trip_id=ident,stop_id=chr(65+k),stop_sequence=i,arrival_time=value,departure_time=value))
 config={'source':{'id':'jp-metro','name':'Offline Metro fixture','checked':'2026-10-10','retrieved':'2026-10-10','license':'CC0','attribution':'Synthetic test timetable','terms_url':'https://example.test/terms'},'profiles':{'am':{'start':'07:00:00','end':'09:00:00'},'h08':{'start':'08:00:00','end':'09:00:00'},'overnight':{'start':'00:00:00','end':'05:00:00'}}}
 tables={
- 'agency.txt':(['agency_id','agency_name','agency_timezone'],[dict(agency_id='metro',agency_name='東京メトロ Tokyo Metro',agency_timezone='Asia/Tokyo')]),
+ 'agency.txt':(['agency_id','agency_name','agency_timezone','agency_url'],[dict(agency_id='metro',agency_name='Fixture Metro Brand' if '--operator-binding' in sys.argv[2:] else '東京メトロ Tokyo Metro',agency_timezone='Asia/Tokyo',agency_url='https://operator.example.test/')]),
  'routes.txt':(['route_id','agency_id','route_type','route_short_name','route_long_name'],[dict(route_id='ginza',agency_id='metro',route_type=1,route_short_name='G',route_long_name='銀座線')]),
  'calendar.txt':(['service_id','start_date','end_date','monday','tuesday','wednesday','thursday','friday','saturday','sunday'],[dict(service_id='W',start_date='20260101',end_date='20261231',**{d:1 for d in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']})]),
  'stops.txt':(['stop_id','stop_name','stop_lon','stop_lat'],[dict(stop_id=chr(65+i),stop_name=chr(65+i),stop_lon=x,stop_lat=y) for i,(x,y) in enumerate(points)]),

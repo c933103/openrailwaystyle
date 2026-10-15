@@ -36,6 +36,29 @@ are also compared as complete names. This preserves the original source and does
 not extract individual words, guess translations or remove corporate suffixes.
 The same route, mode, complete-path and conflicting-source checks still apply.
 
+Where a feed's agency brand differs from its formal OSM operator name, production
+assembly also accepts the reviewed assertions in
+[`timetable-operator-bindings.json`](../scripts/timetable-operator-bindings.json).
+Each assertion pins the feed ID, exact original GTFS ZIP SHA-256, agency ID,
+unchanged agency name and exact agency URL. A retained original URL fingerprint
+must agree too. Dated official evidence supplies explicit operator names; these
+are not guessed translations, substrings or automatically stripped suffixes.
+The assertion only supplies operator context. All existing mode, reference/name,
+whole-path, section, ambiguity and duplicate-source checks still run; it does
+not certify stop equivalence or resolve rapid/local variants.
+
+Reviews have an exclusive UTC expiry. Applied records retain the binding ID and
+JSON-encoded evidence URLs, and expire at the earlier of their timetable limits
+or the review boundary. Changed source/declaration pins and future/expired reviews
+cannot establish an alias. Direct declared identities remain independent.
+The bounded local registry makes no visitor/provider requests. Updating it
+requires reviewing the new source pins and incrementing
+`TIMETABLE_MATCHER_REVISION`; revision 3 requests the existing automatic refresh.
+The October 15 Toei assertion adds Arakawa to the held Tokyo input: 15 → 16
+matched services, with 60 additional sections. Its four subway services already
+matched through declared network names. JR rapid/local identity remains unresolved.
+See the [source replay and acceptance receipt](investigations/reviewed-operator-frequency-20261015.md).
+
 Rates attach separately to each original OSM edge. Every sampled interior point,
 including midpoints between supplied interval boundaries, and both ends must
 resolve to the same measurement, with compatible
