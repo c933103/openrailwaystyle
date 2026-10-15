@@ -206,6 +206,20 @@ try{
   const diagnostic={zoom,kind,positive};
   await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify([...collisionSamples,diagnostic],null,2)+'\n');
   assert.ok(positive.crossing>0&&positive.place===0,`crossing keeps production collision priority at ${zoom}/${kind}: ${JSON.stringify(positive)}`);
+  // Reproduce the insertion-order trap in the exact shipped renderer too,
+  // independently of Node's installed style-spec packages.
+  await page.evaluate(()=>fixtureMap.setStyle({version:8,sources:{},layers:[]},{diff:false}));await rendered();
+  await page.evaluate(({sources,layers})=>fixtureMap.setStyle({
+   version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,layers
+  }),{sources:collisionSources,layers:collisionLayers});await rendered();
+  const diffed=await placement();diagnostic.diffed=diffed;
+  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify([...collisionSamples,diagnostic],null,2)+'\n');
+  assert.ok(diffed.place>0&&diffed.crossing===0,'default diff reproduces the visible-first placement trap in the shipped renderer');
+  await page.evaluate(()=>fixtureMap.setStyle(fixtureMap.getStyle(),{diff:false}));await rendered();
+  const recovered=await placement();diagnostic.recovered=recovered;
+  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify([...collisionSamples,diagnostic],null,2)+'\n');
+  assert.ok(recovered.crossing>0&&recovered.place===0,'the production full-replacement path recovers crossing priority');
+
   await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),crossingId);await rendered();
   const placeOnly=await placement();assert.ok(placeOnly.place>0,'place label must render when the crossing is absent');
   await page.evaluate(({placementId,crossingId})=>{fixtureMap.moveLayer(placementId);fixtureMap.setLayoutProperty(crossingId,'visibility','visible');},{placementId,crossingId});await rendered();

@@ -32,7 +32,7 @@ retain their former symbol-collision priority over place labels.
 The pinned MapLibre 5.24 renderer separates these requirements through
 identical-layout place-label twins. A zero-opacity placement representative
 comes before crossings; the original visible label comes after station dots.
-[Layout grouping](https://github.com/maplibre/maplibre-style-spec/blob/v24.8.1/src/group_by_layout.ts)
+[Layout grouping](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/group_by_layout.ts)
 shares one symbol bucket, and
 [placement](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/symbol/placement.ts)
 uses its first layer. Both twins share accepted/rejected placement, so the
@@ -41,12 +41,15 @@ suppresses drawing, not placement. Source, zoom, filter and every layout field
 must remain identical; localization, font fallback and background visibility
 apply to both twins. Atlas's initial load and existing language reload use full
 style replacement (`diff:false`), preserving family insertion order. This is
-required: the pinned [style differ](https://github.com/maplibre/maplibre-style-spec/blob/v24.8.1/src/diff.ts)
+required: the pinned [style differ](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/diff.ts)
 adds layers backwards, while the [worker layer index](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/style/style_layer_index.ts)
 groups them in insertion order. A diffed replacement can therefore make the
 visible twin the placement representative despite identical final paint order.
-The unit regression demonstrates this trap; browser fixtures use the actual
-full-replacement path and repeat reloads. Any future change to diff-based
+The unit regression resolves style-spec from MapLibre's own locked dependency
+(currently 24.10.0), not the separate 23.1.0 validator. Atlas ships MapLibre's
+hash-pinned prebuilt distribution rather than rebundling that dependency, so
+the browser also reproduces the default-diff failure in the exact shipped
+renderer and verifies full-replacement recovery and repeated reloads. Any future change to diff-based
 application reloads needs a new placement contract and renderer coverage.
 No collision-overlap override or extra source request is used.
 
