@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {JSDOM} from 'jsdom';
 import maplibre from 'maplibre-gl';
 import {railReferenceSettled} from '../scripts/rail-reference-settlement.mjs';
 import {waitUntil} from '../scripts/wait-until.mjs';
@@ -64,6 +67,45 @@ test('missing idle fails at the external deadline rather than accepting loaded()
   assert.equal(map.loaded(),true);
   await assert.rejects(waitUntil(page,railReferenceSettled,undefined,{timeout:25,polling:1}),/Timed out after 25 ms/);
   map.fire('idle');
+});
+
+test('terminal tile errors settle before the fresh idle frame is requested',async()=>{
+  // Execute the pinned tile manager's actual rejection/loaded paths. A 403
+  // emits error, not the data event that normally schedules another render.
+  const compiled=await build({stdin:{
+    contents:"export {TileManager} from './node_modules/maplibre-gl/src/tile/tile_manager.ts'; export {Evented} from './node_modules/maplibre-gl/src/util/evented.ts';",
+    resolveDir:fileURLToPath(new URL('../',import.meta.url)),loader:'ts',
+  },bundle:true,write:false,format:'iife',globalName:'fixtureLibrary',platform:'browser',
+  tsconfigRaw:{compilerOptions:{useDefineForClassFields:false}},loader:{'.glsl':'text'}});
+  const dom=new JSDOM('',{runScripts:'outside-only'});
+  try{
+    dom.window.eval(compiled.outputFiles[0].text);
+    const {TileManager,Evented}=dom.window.fixtureLibrary,source=new Evented();
+    const request=Promise.withResolvers(),tile={state:'loading'};
+    source.loaded=()=>true;source.loadTile=()=>request.promise;
+    const manager=Object.create(TileManager.prototype);
+    Object.assign(manager,{_source:source,_sourceLoaded:true,_updated:true,_inViewTiles:{getAllTiles:()=>[tile]}});
+    const loading=manager._loadTile(tile,'fixture','loading');
+    const f=renderer(),{map}=f;f.placement(false);
+    map.style.loaded=()=>manager.loaded();map.areTilesLoaded=()=>manager.loaded();
+    const errors=[];let dataEvents=0,repaints=0,evaluations=0;
+    source.on('error',event=>errors.push(event.error.status));
+    source.on('data',()=>{dataEvents++;map.triggerRepaint();});
+    map.triggerRepaint=()=>{repaints++;queueMicrotask(()=>map._render(repaints));};
+    map._render(0);assert.equal(map.loaded(),false);
+    const page={evaluate:fn=>{
+      const acceptance=fn(map);
+      if(++evaluations===1)queueMicrotask(()=>request.reject(Object.assign(new dom.window.Error('synthetic HTTP 403'),{status:403})));
+      return acceptance;
+    }};
+    await waitUntil(page,railReferenceSettled,undefined,{timeout:1000,polling:1});
+    await loading;
+    assert.deepEqual(errors,[403]);assert.equal(tile.state,'errored');
+    assert.equal(dataEvents,0,'terminal errors do not schedule the success-path frame');
+    assert.equal(manager.loaded(),true);assert.equal(map.loaded(),true);
+    assert.equal(repaints,1,'request the genuine idle frame only after the final tile settles');
+    assert.ok(evaluations>=2,'the pending-source observation cannot wait indefinitely on idle');
+  }finally{dom.window.close();}
 });
 
 test('the browser checker keeps status assertions, deadline and failure evidence',async()=>{
