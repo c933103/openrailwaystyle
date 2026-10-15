@@ -1,0 +1,135 @@
+[
+  {
+    "sourceCommit": "e106dc46e7cc1f13d5777b1b16f10f96cc165bbf",
+    "workflowRun": 38731080611,
+    "job": 116410894432,
+    "artifact": 11970227249,
+    "artifactZipSha256": "a9094035b43b75af6013065b7bf5c72c2a9bb5dbc0fefeb98847e3e4058010f0",
+    "controlsCases": 83,
+    "settlements": 75,
+    "maxSettlementMs": 6102,
+    "firstDesktopDetail2SettlementMs": 6102,
+    "maxObservedLongTaskMs": 1366,
+    "maxObservedHeartbeatDelayMs": 1573.1000000000058,
+    "maxFixtureHandlerMs": 22,
+    "requestCounts": {
+      "started": 511,
+      "fulfilled": 412,
+      "responded": 511,
+      "finished": 508,
+      "failed": 3
+    },
+    "limitations": [
+      "Successful run does not establish the cause of the original 60-second timeout.",
+      "This earlier head could reset timing on repeated polls; its per-phase statistics are not guaranteed complete.",
+      "Fixture completion is not browser response/body consumption.",
+      "Three local polar-file reads returned HTTP 404 late in the run; the controls checker passed its unchanged assertions."
+    ],
+    "files": {
+      "map-controls-settlement.json": {
+        "bytes": 84847,
+        "sha256": "900069f3339f838edf98972c39a5a0cb90307b72c6d763273751c94ed2e08f95"
+      },
+      "map-controls.json": {
+        "bytes": 76826,
+        "sha256": "67d3e1c1f36d24993220f3140ffeaddbe6f45f5d6cb4cad9547fb938049bf7f7"
+      },
+      "timings-controls.json": {
+        "bytes": 95,
+        "sha256": "9054a96cb96460b0e0759166280cac913863bad6c23de49794450815ec6f90fc"
+      },
+      "map-controls-requests.json": {
+        "bytes": 29946,
+        "sha256": "8a755016da49c3685fd21730f25a5361a1fa69719a03c9b46c5d50c67d3cc8c0"
+      }
+    }
+  },
+  {
+    "sourceCommit": "b95c43ae6098c8137e455a3070bf18e38647d47b",
+    "workflowRun": 38736113731,
+    "job": 116428323578,
+    "artifact": 11974732765,
+    "artifactZipSha256": "d6ed101a1bfe483976e693670e80ec9949ef2baab7852b84bf2eb9c4b1420eec",
+    "controlsCases": 83,
+    "settlements": 75,
+    "maxSettlementMs": 5126,
+    "firstDesktopDetail2SettlementMs": 4948,
+    "maxObservedLongTaskMs": 1473,
+    "maxObservedHeartbeatDelayMs": 1395.8999999999942,
+    "maxFixtureHandlerMs": 28,
+    "requestCounts": {
+      "started": 511,
+      "fulfilled": 412,
+      "responded": 511,
+      "finished": 508,
+      "failed": 3
+    },
+    "limitations": [
+      "Successful run does not establish the cause of the original 60-second timeout.",
+      "This head could discard observations before the first predicate evaluation; its per-phase statistics are not guaranteed complete.",
+      "Fixture completion is not browser response/body consumption."
+    ],
+    "files": {
+      "map-controls-settlement.json": {
+        "bytes": 82943,
+        "sha256": "0d66e115e12c09c33411ee152a0a121292e22ee8dce5b3435b28deb5330db2af"
+      },
+      "map-controls.json": {
+        "bytes": 76827,
+        "sha256": "224392266d23dafedb4a71e5694de7a5071d072c3d955de6f1b2c74ff3ee6b6c"
+      },
+      "timings-controls.json": {
+        "bytes": 95,
+        "sha256": "81855a133a7499eb79ebb4c358bad07f5a048ea92f3ed405075d7940de42c021"
+      },
+      "map-controls-requests.json": {
+        "bytes": 29946,
+        "sha256": "8ea84e3b4dbd04f6aa2f437f80f3a3b7802be1ef3e676ecf8e15771df5b2e02b"
+      }
+    }
+  },
+  {
+    "sourceCommit": "0dee8e81eaf268b76f28de0455c7cd4ade5cc8ef",
+    "workflowRun": 38738322737,
+    "job": 116435712949,
+    "artifact": 11976425153,
+    "artifactZipSha256": "849a63bb42abfae395b5e11a850f2b60281aef32c0a729450af23484dde0e095",
+    "controlsCases": 83,
+    "settlements": 75,
+    "maxSettlementMs": 5776,
+    "firstDesktopDetail2SettlementMs": 5776,
+    "maxObservedLongTaskMs": 2183,
+    "maxObservedHeartbeatDelayMs": 2032.0999999999767,
+    "maxFixtureHandlerMs": 43,
+    "requestCounts": {
+      "started": 511,
+      "fulfilled": 412,
+      "responded": 511,
+      "finished": 508,
+      "failed": 3
+    },
+    "limitations": [
+      "Successful run does not establish the cause of the original 60-second timeout.",
+      "This head could discard an unreported interval when a timed-out diagnostic read completed late.",
+      "Fixture completion is not browser response/body consumption."
+    ],
+    "files": {
+      "map-controls-settlement.json": {
+        "bytes": 133521,
+        "sha256": "78e189f03ae0d72ef593b4a12691f25fd9cd0750035a7c01986bf73497c38553"
+      },
+      "map-controls.json": {
+        "bytes": 76826,
+        "sha256": "81746f1b3e8e72daa027ff38829a784a63d8fe4a2173bb227d9550b2d1f9d8e3"
+      },
+      "timings-controls.json": {
+        "bytes": 95,
+        "sha256": "fc4783c61c78d47c74be5e37b0dc2bc7b4457e53333185e68ad53a43e80fbdab"
+      },
+      "map-controls-requests.json": {
+        "bytes": 29946,
+        "sha256": "059a531aa88357e110dc3afe18870770dccf7559e25fbc9009a76ef7b609e058"
+      }
+    }
+  }
+]

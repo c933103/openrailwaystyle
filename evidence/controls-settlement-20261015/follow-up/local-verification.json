@@ -1,0 +1,103 @@
+{
+  "sourceCommit": "29e06a435020c7e7af24322827b366d873818c95",
+  "sourceTree": "2e5a836fa4a8f1f0a59b5abe070fe4be494a317b",
+  "environment": {
+    "node": "v24.19.0",
+    "os": "Linux",
+    "dependencies": "existing pinned package-lock.json"
+  },
+  "sourceBlobs": {
+    "scripts/browser-timing.mjs": "23821427d23c288a6af00252500ec612ce09cba1",
+    "scripts/check-map-controls-browser.mjs": "c5e77e5fc7afb89afdd29c8e500582a578cd8db3",
+    "tests/browser-timing.test.mjs": "b14c204c63b8cfe79f1c585a0974eec8138367b3"
+  },
+  "checks": [
+    {
+      "command": "node --test tests/browser-timing.test.mjs tests/map-render-state.test.mjs tests/request-lifecycle.test.mjs tests/wait-until.test.mjs",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "npm test",
+      "passed": 1678,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "exitCode": 0,
+      "durationMs": 102781.118639
+    },
+    {
+      "command": "npm run build; generated style equality; syntax; git diff --check",
+      "result": "pass"
+    },
+    {
+      "kind": "controlled mutation",
+      "result": "Expected failure against prior 0dee8e8 helper: late timed-out read erased observations; actual 0 ms versus expected 60000 ms."
+    }
+  ],
+  "earlierSourceFailures": [
+    {
+      "sourceCommit": "0dee8e81eaf268b76f28de0455c7cd4ade5cc8ef",
+      "passed": 1675,
+      "failed": 2,
+      "tests": [
+        "platform-extent frame budget: 170.5 ms exceeds unchanged 100 ms assertion",
+        "train-schedule departure expansion: calls 0 versus expected 1"
+      ],
+      "isolatedReplay": "13 tests passed, including both failures"
+    },
+    {
+      "sourceCommit": "0dee8e81eaf268b76f28de0455c7cd4ade5cc8ef",
+      "passed": 1676,
+      "failed": 1,
+      "tests": [
+        "globe-drag work: 1488.1 ms exceeds unchanged 500 ms assertion"
+      ],
+      "isolatedReplay": "1 test passed, 119.4 ms total test duration"
+    }
+  ],
+  "logHashes": {
+    "full-tests-resumed-2.log": {
+      "sha256": "45ba333efa93540b763b7cf5bf6443412814baad515f7c26f9e71ad4b3a5fbb5",
+      "bytes": 171651
+    },
+    "focused-v4-final.log": {
+      "sha256": "f4fe4817398d16e015e7d952249e59bff9608bb6c750daf2881dbb10991c6cca",
+      "bytes": 2284
+    },
+    "build-v4.log": {
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "bytes": 209
+    },
+    "full-tests-v4.log": {
+      "sha256": "e168daa1a1d0244b9d5573a387cfd66bc40ed7493db5a6a54471f2a20a130240",
+      "bytes": 171900
+    },
+    "late-read-mutation.log": {
+      "sha256": "ed471e49cba8e8c7170e261d45ac8637a51789807befc23e2ff4da263f1f18fb",
+      "bytes": 919
+    },
+    "full-tests-v3.log": {
+      "sha256": "469b391a46e6e11077fdcacf2e26566b62658fd3fa584e15c3b2164e596d5178",
+      "bytes": 173423
+    },
+    "isolated-v3.log": {
+      "sha256": "e56a9fbc9eaaed45844063ba114c2422e8fba518f55847a13d0ee18ea1201123",
+      "bytes": 1521
+    },
+    "full-tests-v3-final.log": {
+      "sha256": "1aa0de2ad81f1d48dfdb74d3e1a8bd373282cd1a9aa18ccd0a61678d831ea927",
+      "bytes": 172452
+    },
+    "map-replay-v3.log": {
+      "sha256": "e3db318b3e2f2bc668843638cdda49093e54719bf318d4c3f8672b8197a642da",
+      "bytes": 216
+    }
+  },
+  "limits": [
+    "Two other local aggregate invocations lost their execution session without terminal receipts and are not counted as passes.",
+    "Full generated logs/captures are not duplicated here; compact receipts and exact hashes are retained.",
+    "Local Chromium was blocked before application execution by the sandbox socket restriction; no bypass was attempted."
+  ]
+}
