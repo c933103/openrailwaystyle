@@ -811,7 +811,7 @@ function showDetails(feature) {
   if(isPlatform){row(dl,p.feature==='platform_edge'?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',formatPlatformLength(Number(p.platform_length),settings.units));if(p.length_estimated)panel.append(textNode('p','Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));row(dl,'Platform',p.ref);}
   else if (isStation) {
     row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
-    if(isBasemapStation) panel.append(textNode('p','Basemap railway POI. Mapping, station identity and current operating status are not independently verified here. Nearby departures, if offered, may refer to another stop.','small'));
+    if(isBasemapStation) panel.append(textNode('p','Station location from basemap POI data. Its operating status and identity match with timetable stops have not been verified; departures are unavailable for this fallback marker.','small'));
     if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
     if (p.station_size&&!p.curated) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
@@ -857,7 +857,7 @@ function showDetails(feature) {
     updateNearbyTransport();
     // Departures only for operating stations: a former or planned one near a
     // current stop would otherwise show that stop's trains as its own.
-    if (feature.geometry?.type === 'Point' && (!p.state || p.state === 'present')) showDepartures(panel, feature);
+    if (!isBasemapStation && feature.geometry?.type === 'Point' && (!p.state || p.state === 'present')) showDepartures(panel, feature);
   }
   $('details').hidden = false;
 }
