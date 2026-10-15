@@ -180,3 +180,26 @@ test('unknown bounds do not invent offscreen evidence or clear metadata failure'
  assert.ok(state.area(10));bounds=viewport(NaN,48,NaN,49);assert.ok(state.area(10));
  state.noteError({sourceId:'stations',error:{status:403}});bounds=viewport(20,48,21,49);assert.equal(state.area(10),true);
 });
+
+test('coordinate-only failures expire when camera tile selection or station band changes',()=>{
+ let zoom=10;const source={maxzoom:22};const state=createStationFallbackState({getSource:()=>source,getZoom:()=>zoom});
+ const fail=()=>state.noteError({sourceId:'stations',coord:{canonical:{z:10,x:518,y:352}},error:{status:403}});
+ fail();assert.ok(state.area(zoom));zoom=10.9;assert.ok(state.area(zoom),'fractional zoom within same selection retains error');
+ zoom=11;assert.equal(state.area(zoom),null);assert.equal(state.hasSourceFailure('stations'),false);
+ state.noteSourceData({sourceId:'stations',tile:{state:'loaded',tileID:{canonical:{z:11,x:1036,y:704}}}});
+ assert.equal(state.area(zoom),null,'healthy child cannot revive obsolete parent');
+ zoom=10;fail();zoom=7;assert.equal(state.hasSourceFailure('stations'),false,'inactive station source band retires coord-only errors');
+ zoom=10;assert.equal(state.area(zoom),null);
+});
+test('overzooming unchanged canonical source selection retains coord-only failures',()=>{
+ let zoom=14;const source={maxzoom:14};const state=createStationFallbackState({getSource:()=>source,getZoom:()=>zoom});
+ const coord={canonical:{z:14,x:8290,y:5640}};
+ state.noteError({sourceId:'stations',coord,error:{status:503}});assert.ok(state.area(zoom));
+ zoom=20;assert.ok(state.area(zoom),'source maxzoom caps canonical selection');
+ state.noteSourceData({sourceId:'stations',tile:{state:'loaded',tileID:coord}});assert.equal(state.area(zoom),null);
+});
+test('tile-object failures retain explicit lifecycle authority across zoom changes',()=>{
+ let zoom=10;const source={maxzoom:22};const state=createStationFallbackState({getSource:()=>source,getZoom:()=>zoom});
+ const tile=failedTile();state.noteError({sourceId:'stations',tile,error:{status:503}});
+ zoom=11;assert.ok(state.area(zoom));tile.state='unloaded';assert.equal(state.area(zoom),null);
+});

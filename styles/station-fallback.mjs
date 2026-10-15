@@ -52,13 +52,25 @@ export function createStationFallbackState(map) {
     // An integer world offset must place the tile across this interval.
     return Math.ceil((start - right) / 360) <= Math.floor((start + width - left) / 360);
   }
+  function selectionFor(source) {
+    const zoom = map.getZoom?.();
+    if (!Number.isFinite(zoom)) return null;
+    // Pinned vector sources use 512px tiles and floor camera zoom; canonical
+    // selection is capped at source maxzoom. Fractional zoom and overzooming
+    // the same source therefore do not invent recovery. A coord-only error
+    // has no tile lifecycle object and is scoped to this selection epoch.
+    const max = Number.isFinite(source?.maxzoom) ? source.maxzoom : 22;
+    return `${stationSource(zoom)}:${Math.min(Math.max(0, Math.floor(zoom)), max)}`;
+  }
   function stateFor(id) {
     const state = failed.get(id);
     if (!state) return null;
     const source = map.getSource(id);
     if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
     for (const [key, record] of state.tiles) {
-      if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
+      const selection = selectionFor(source);
+      const obsolete = !record.tile && record.selection !== null && selection !== null && record.selection !== selection;
+      if (obsolete || record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
     }
     if (!state.metadata && !state.tiles.size) { failed.delete(id); return null; }
     return state;
@@ -72,7 +84,7 @@ export function createStationFallbackState(map) {
       const source = map.getSource(event.sourceId);
       if (!source) return;
       const state = stateFor(event.sourceId) || {source, url: source.url, metadata: false, tiles: new Map()};
-      if (c) state.tiles.set(tileKey(c), {coordinate: {...c}, tile: event.tile});
+      if (c) state.tiles.set(tileKey(c), {coordinate: {...c}, tile: event.tile, selection: selectionFor(source)});
       else state.metadata = true;
       failed.set(event.sourceId, state);
       return true;

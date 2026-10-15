@@ -1021,6 +1021,22 @@ test('coordinate-only station failure clears presentation and status after a hea
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 
+test('coordinate-only parent station failures retire when healthy higher-zoom tiles replace them',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
+  map.getBounds=()=>({getWest:()=>2,getEast:()=>3,getSouth:()=>48,getNorth:()=>49});map.handlers['style.load']();
+  map.handlers.error({sourceId:'stations',coord:{canonical:{z:10,x:518,y:352}},error:{status:403,message:'HTTP 403'}});
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS,status=window.document.getElementById('map-status');
+  assert.match(status.textContent,/station data unavailable/);
+  map.zoom=11;map.handlers.moveend();
+  map.handlers.sourcedata({sourceId:'stations',tile:{state:'loaded',tileID:{canonical:{z:11,x:1036,y:704}}},isSourceLoaded:true});await tick();
+  for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'none');
+  assert.equal(status.classList.contains('error'),false);
+  map.zoom=10;map.handlers.moveend();assert.equal(status.classList.contains('error'),false,'old parent does not resurrect');
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
 for(const [mode,source] of [['owner','ownerLow'],['axle','axleLow']])test(`${mode} low-zoom HTTP 403 remains an ORM railway outage`,async()=>{
  const {dom,maps,window}=await start({search:`?mode=${mode}&stations=0`});
  try{
