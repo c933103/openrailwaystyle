@@ -10,6 +10,7 @@ import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {waitUntil} from './wait-until.mjs';
 import {STATION_FALLBACK_IDS} from '../styles/station-fallback.mjs';
+import {stationLanguageStyleReady} from './rail-fixture-readiness.mjs';
 
 const center=[2.3553,48.8809],curated=[2.3753,48.8909],distant=[32.3753,48.8909];
 const point=(id,coordinates,properties)=>({type:'Feature',id,properties:{id,...properties},geometry:{type:'Point',coordinates}});
@@ -111,7 +112,7 @@ try{
  }
  for(const language of ['fr','en','fr']){
   currentCase={provider,action:'language switch',language};await page.selectOption('#language',language);
-  await page.waitForFunction(language=>window.stationMap.getStyle().sources.openmaptiles.url?.startsWith(`atlasbase://${language}/`),language);
+  await page.waitForFunction(stationLanguageStyleReady,language,{timeout:30000});
   await check();
   if(provider==='failed'){
   await waitUntil(page,name=>window.stationMap.queryRenderedFeatures({layers:['station-basemap-fallback-names']}).some(f=>f.properties.atlas_name===name),language==='fr'?'Gare témoin':'Fixture station');

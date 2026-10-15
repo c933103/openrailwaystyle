@@ -11,16 +11,24 @@ import {readMapRenderState} from './map-render-state.mjs';
 import {createRequestLifecycle} from './request-lifecycle.mjs';
 import {installBrowserTiming,readBrowserTiming} from './browser-timing.mjs';
 import {createControlsCpuProfile} from './controls-cpu-profile.mjs';
+import {installControlsFetchProbe} from './controls-painter-probe.mjs';
+import {createControlsSettlementTrace,armControlsSettlementProbe,readControlsSettlementProbe} from './controls-settlement-trace.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
 const renderer=await rendererFixture(base);
+const painterProbeSource=await readFile(new URL('./controls-painter-probe.mjs',import.meta.url));
 const browser=await launchBrowser({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
 const cpuProfile=createControlsCpuProfile(()=>context.newCDPSession(page));
+// Sampling can perturb scheduling and is not an acceptance requirement.
+const cpuProfileEnabled=process.env.ATLAS_CONTROLS_CPU_PROFILE==='1';
 let profileSettlement=false;
+const settlementTrace=createControlsSettlementTrace();
+let probeSetup={unavailable:true,reason:'not-started'},probeResult={unavailable:true,reason:'not-started'},earlyProbeRead;
 await page.addInitScript(installBrowserTiming);
+await page.addInitScript(installControlsFetchProbe);
 // Frames at the largest More detail scale can take seconds on a small CI
 // runner, and page evaluation waits for them.
 page.setDefaultTimeout(30000);
@@ -46,6 +54,7 @@ await context.route('**/*',async route=>{
   const asset=renderer.get(url.href);
   if(asset)return fulfill(asset);
   if(url.href.startsWith(base)){
+    if(url.href===base+'__controls-painter-probe.mjs')return fulfill({contentType:'text/javascript',body:painterProbeSource});
     if(path.endsWith('/major-stations.geojson'))return fulfill({json:{type:'FeatureCollection',features:[]}});
     if(path.endsWith('/world.style.json'))return fulfill({json:style});
     const reference=emptyReferenceFixture(path);if(reference)return fulfill(reference);
@@ -69,19 +78,24 @@ const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList
 async function waitForMapIdle(){
   const start=Date.now();
   try{
-  await waitUntil(page,async()=>{
+  await settlementTrace.observe('idle-acceptance',()=>waitUntil(page,async()=>{
     const{map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('idle',()=>resolve());map.triggerRepaint();});
     const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
     return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
       && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
-  },null,{timeout:60000});
+  },null,{timeout:60000}));
   }finally{
     const ms=Date.now()-start, pendingCount=pending.size;
+    // Snapshot the request state before any post-deadline diagnostic await.
+    // Later body/frame observations carry their own clocks, not this deadline.
+    const captured=settlementTrace.active()&&settlementTrace.stop('settlement-finished',requestLifecycle.snapshot());
+    const probeRead=captured?readControlsSettlementProbe(page,'settlement-finished'):null;
     // Stop alongside the already-bounded timing read, after acceptance ends.
     const profileRead=profileSettlement?cpuProfile.stop('settlement-finished'):null;
     profileSettlement=false;
     settlements.push({after:results.at(-1)?.name??'startup',ms,pending:pendingCount,timing:await readBrowserTiming(page)});
+    if(probeRead)probeResult=await probeRead;
     if(profileRead)await profileRead;
   }
 }
@@ -151,22 +165,24 @@ try{
           assert.equal(await page.locator('.map-readout').isVisible(),readout);
           await check(`${size.width}x${size.height}, menu=${expanded}, readout=${readout}, detail=${detail}`);
           const next=(detail+1)%3;
-          // Profile only the original failing transition. Arm before its
+          // Observe only the original failing transition. Arm before its
           // pointer action so setup cannot give its new tiles extra time.
           if(size.width===1365&&size.height===900&&expanded&&readout&&detail===1){
-            await cpuProfile.start();profileSettlement=true;
+            settlementTrace.start();
+            if(cpuProfileEnabled){await settlementTrace.observe('cpu-profile-setup',()=>cpuProfile.start());profileSettlement=true;}
+            probeSetup=await settlementTrace.observe('frame-body-probe-setup',()=>armControlsSettlementProbe(page,base));
           }
           // Hit-test the visible counter-scaled control before real pointer
           // input. Automatic scroll-into-view hung before clicking this
           // already-visible target in CI; forced or DOM clicks are not used.
-          await clickVisibleControl(page,'button.atlas-ctrl[title^="More detail:"]');
-          await waitUntil(page,expected=>{
+          await settlementTrace.observe('visible-pointer-click',()=>clickVisibleControl(page,'button.atlas-ctrl[title^="More detail:"]'));
+          await settlementTrace.observe('detail-state',()=>waitUntil(page,expected=>{
             const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');
             const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;
             return level===expected && button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);
-          },next,{timeout:20000});
-          await page.waitForFunction(expected=>{try{return JSON.parse(decodeURIComponent(document.cookie.match(/(?:^|; )atlas_settings=([^;]*)/)?.[1]||'%7B%7D')).detail===expected;}catch{return false;}},next);
-          assert.equal((await cookie()).detail,next,'detail click persists the actual next level');
+          },next,{timeout:20000}));
+          await settlementTrace.observe('cookie-state',()=>page.waitForFunction(expected=>{try{return JSON.parse(decodeURIComponent(document.cookie.match(/(?:^|; )atlas_settings=([^;]*)/)?.[1]||'%7B%7D')).detail===expected;}catch{return false;}},next));
+          await settlementTrace.observe('cookie-readback',async()=>assert.equal((await cookie()).detail,next,'detail click persists the actual next level'));
         }
       }
     }
@@ -192,6 +208,9 @@ try{
   assert.deepEqual(errors,[],'UI lifecycle has no JavaScript exceptions');
   console.log(`PASS: ${results.length} real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles`);
 } catch(error){
+  // Pointer/detail/cookie failure can occur before idle's finally. Freeze its
+  // acceptance boundary now, before any awaited failure diagnostics progress.
+  if(settlementTrace.active()&&settlementTrace.stop('acceptance-failed',requestLifecycle.snapshot()))earlyProbeRead=readControlsSettlementProbe(page,'acceptance-failed');
   console.error(error.stack);console.error('UI_PAGE_ERRORS',JSON.stringify(errors));
   console.error('UI_PENDING_REQUESTS',JSON.stringify([...pending].map(r=>r.url())));
   console.error('UI_REQUEST_FAILURES',JSON.stringify(requestFailures));
@@ -204,9 +223,13 @@ try{
   console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
+  if(earlyProbeRead)probeResult=await earlyProbeRead;
+  // Fallback cleanup for an active window that did not reach either boundary.
+  if(settlementTrace.active()&&settlementTrace.stop('check-ended',requestLifecycle.snapshot()))probeResult=await readControlsSettlementProbe(page,'check-ended');
   await cpuProfile.stop('check-ended');
   await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));
-  await writeFile('browser-review/map-controls-cpu-profile.json',JSON.stringify(cpuProfile.snapshot()));
+  await writeFile('browser-review/map-controls-cpu-profile.json',JSON.stringify({enabled:cpuProfileEnabled,...cpuProfile.snapshot()}));
+  await writeFile('browser-review/map-controls-transition.json',JSON.stringify({...settlementTrace.snapshot(),cpuProfileEnabled,probeSetup,probe:probeResult},null,2));
   await writeFile('browser-review/map-controls-requests.json',JSON.stringify(requestLifecycle.snapshot(),null,2));
   await writeFile('browser-review/map-controls-settlement.json',JSON.stringify({fixtureResponse:{status:200,contentType:'application/x-protobuf',bytes:0},fixtureTiles,settlements},null,2));await browser.close();
 }

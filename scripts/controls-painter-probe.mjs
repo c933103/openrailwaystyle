@@ -12,8 +12,10 @@ export function guardHiddenTileMasks(original) {
 export function installControlsFetchProbe(scope=globalThis) {
  const original=scope.fetch,now=()=>scope.performance.now(),limit=512;
  let current=null;
- const wrapped=async function(...args) {
+ const wrapped=function(...args) {
   const capture=current;
+  // Preserve the original promise and scheduling outside the one capture.
+  if(!capture?.active)return original.apply(this,args);
   let record;
   if(capture?.active) {
    let address;
@@ -21,7 +23,7 @@ export function installControlsFetchProbe(scope=globalThis) {
     if(url.hostname==='openrailwaymap.app')address=url.origin+url.pathname;}catch{}
    if(address){capture.total++;if(capture.records.length<limit){record={id:capture.total,url:address,start:now()};capture.records.push(record);}else capture.truncated=true;}
   }
-  try{
+  return (async()=>{try{
    const response=await original.apply(this,args);
    if(record){
     record.headers=now();record.status=response.status;
@@ -33,7 +35,7 @@ export function installControlsFetchProbe(scope=globalThis) {
     };}catch{record.bodyObservationUnavailable=true;}
    }
    return response;
-  }catch(error){if(record)record.failed=now();throw error;}
+  }catch(error){if(record)record.failed=now();throw error;}})();
  };
  scope.fetch=wrapped;
  const api={
