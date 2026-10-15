@@ -23,7 +23,7 @@ export async function checkServiceStatusBrowser(browser,root) {
   await context.route('**/data/service-routes/frequency-manifest.json',route=>{
    requests++;
    return metadata==='failed'?route.fulfill({status:503,body:'synthetic metadata failure'}):
-    route.fulfill({json:metadata==='legacy'?{schema:3,profiles:manifest.profiles}:metadata==='mismatched'?{...manifest,osmSnapshotSha256:'b'.repeat(64)}:manifest});
+    route.fulfill({json:metadata==='limited'?{...manifest,profiles:['am','pm','offpeak']}:metadata==='legacy'?{schema:3,profiles:manifest.profiles}:metadata==='mismatched'?{...manifest,osmSnapshotSha256:'b'.repeat(64)}:manifest});
   });
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
@@ -81,12 +81,21 @@ export async function checkServiceStatusBrowser(browser,root) {
   await waitUntil(page,()=>statusMap.loaded()&&statusMap.areTilesLoaded()&&!statusMap.isMoving());
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/service-status-expired.png'});
+  // Assembly can omit expired-only periods from the usable width selector.
+  // Their per-route expiry facts must still be reachable in actual details.
+  metadata='limited';await open();
+  await page.waitForFunction(()=>['overnight','hour'].every(value=>document.querySelector('#frequency-period option[value="'+value+'"]').hidden));
+  const expiredHidden=frequencyBundle([{ref:'synthetic',kind:'subway'}],[[[0,0],[1,1]]],null,[{properties:{frequency_until:past},profiles:{overnight:{rate:2},h08:{rate:0}}}],Date.parse('2026-10-15T12:00:00Z'))[0];
+  await show(expiredHidden);
+  for(const label of ['Overnight · 00:00–05:00','08:00–09:00'])assert.match(await detailRow(label),/evidence had expired at this snapshot build/);
+  assert.equal(await detailRow('09:00–10:00'),undefined,'an absent hourly period remains unrecorded');
+  for(const value of ['overnight','hour'])assert.equal(await page.locator('#frequency-period option[value="'+value+'"]').evaluate(option=>option.hidden),true);
   for(const value of ['failed','legacy','mismatched']){
    metadata=value;await open();
    const expected=value==='failed'?'could not be loaded; coverage is unknown':'Service acquisition status is unknown';
    await page.waitForFunction(expected=>document.querySelector('#service-data-status').textContent.includes(expected),expected);
   }
-  assert.equal(requests,4,'one manifest read per page load; no status polling or provider acquisition');
+  assert.equal(requests,5,'one manifest read per page load; no status polling or provider acquisition');
   assert.deepEqual(errors,[]);
   console.log('PASS: service stage partial/deferred/unresolved/empty/failed/unknown; metadata failure and snapshot binding; zero/expired/unmatched/unknown details and live expiry');
  }finally{await context.close();}

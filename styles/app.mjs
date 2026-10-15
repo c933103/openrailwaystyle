@@ -872,7 +872,10 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  const profiles=[...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered),sources=new Map();
+  const standardProfiles=new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)]);
+  // Selector coverage describes usable widths, not all evidence on this route.
+  // Retain recorded expiry rows even when no current source offers the period.
+  const profiles=Object.keys(FREQUENCY_LABELS).filter(profile=>standardProfiles.has(profile)&&profileCovered(profile)||p[`frequency_status_${profile}`]==='expired'),sources=new Map();
   for(const profile of profiles){
     row(dl,FREQUENCY_LABELS[profile],frequencyAvailability(p,profile).text);
     if(p[`frequency_${profile}`]===undefined)continue;

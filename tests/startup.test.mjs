@@ -1720,3 +1720,22 @@ test('Power legend shows facility point letters and preserves track samples acro
     assert.deepEqual(errors,[]);
   } finally {dom.window.close();}
 });
+
+test('expired unoffered overnight and hourly evidence remains visible only in service details',async()=>{
+ const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({schema:3,profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
+ const {dom,window,maps,errors}=await start({search:'?mode=service',fetcher,frequencyClock:{now:()=>1000,setTimer:()=>0,clearTimer:()=>{}}});
+ try{
+  const map=maps[0],doc=window.document;map.handlers['style.load']();
+  for(let i=0;i<20&&!doc.querySelector('#frequency-period option[value="overnight"]').hidden;i++)await new Promise(r=>setTimeout(r,0));
+  map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  const evidence=frequencyModule.frequencyBundle([{ref:'R',kind:'rail'}],[[[0,0],[1,0]]],null,[{properties:{frequency_until:.5},profiles:{overnight:{rate:2},h08:{rate:0}}}],1000)[0];
+  map.rendered=[{source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{...evidence,id:'relation-10',ref:'R',kind:'rail',i:0,n:1,frequency_status_h09:'invented'},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}}];
+  map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+  const rows=Object.fromEntries([...doc.querySelectorAll('#detail-content dt')].map(term=>[term.textContent,term.nextElementSibling.textContent]));
+  assert.match(rows['Overnight · 00:00–05:00'],/evidence had expired at this snapshot build/);
+  assert.match(rows['08:00–09:00'],/evidence had expired at this snapshot build/);
+  assert.equal(rows['09:00–10:00'],undefined,'unrecorded or unrecognized hourly statuses are not invented');
+  for(const period of ['overnight','hour'])assert.equal(doc.querySelector('#frequency-period option[value="'+period+'"]').hidden,true,'expired evidence does not offer an unavailable width selector');
+  assert.equal(errors.length,0);
+ }finally{dom.window.close();}
+});

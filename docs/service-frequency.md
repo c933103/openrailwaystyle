@@ -112,6 +112,7 @@ matching conclusion is inferred from the current producer's missing rows. Expiry
 remain unknown instead of being retroactively labelled unmatched. A missing
 period on an otherwise matched profile also remains unknown. Discarded expired
 evidence is recorded per period; AM-only evidence never certifies PM expiry.
+Recorded expired-only hourly or overnight periods remain visible in route details even when the manifest omits them from usable width selectors. No missing hourly period is invented.
 Legacy route-wide expiry labels without per-period evidence remain unknown. This does not
 complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
 regression, and departure-board evidence remains independently scoped.
