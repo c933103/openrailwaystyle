@@ -116,6 +116,16 @@ Legacy route-wide expiry labels without per-period evidence remain unknown. This
 complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
 regression, and departure-board evidence remains independently scoped.
 
+A separate status-delivery observer runs after successful main-branch service
+builds. For a recorded zero-box run, it reads only the existing GitHub
+service-data manifest and the published Pages frequency manifest, then requests
+a site rebuild if stable displayed stage facts changed. Positive-box runs keep
+the producer's existing dispatch path. Retry timestamps, error text and
+diagnostic counters alone do not dispatch another build. Metadata reads are
+bounded to 8 MiB and 15 seconds each; malformed data fails closed. The observer
+does not change the acquisition trigger or query any provider, and its workflow
+and comparison fixtures are offline-tested.
+
 ## Worldwide discovery and updates
 
 The source registry is assembled from **three independently credited inputs**:

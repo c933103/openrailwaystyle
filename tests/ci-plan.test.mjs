@@ -45,7 +45,7 @@ test('a check, its helpers and its fixtures run only the checks that use them', 
   }
   assert.deepEqual(groupsFor(['scripts/service-geometry-browser-fixture.mjs']), ['frequency:1']);
   for(const path of ['scripts/service-status-browser-fixture.mjs','tests/fixtures/service-status.json'])
-    assert.deepEqual(groupsFor([path]),['frequency:1'],'status helper and fixture stay in the guarded frequency entry point');
+    assert.deepEqual(groupsFor([path]),['controls:1'],'status helper and fixture stay in the guarded service-frequency entry point in controls');
   assert.deepEqual(groupsFor(['scripts/paris-service-geometry-fixture.mjs']), ['frequency:2']);
   for (const path of ['scripts/assemble-global-frequency.mjs', 'scripts/read-frequency-feed.mjs'])
     assert.deepEqual(groupsFor([path]), ['frequency:2'], `Paris production CLI dependency ${path} selects its browser gate`);
