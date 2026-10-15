@@ -10,6 +10,7 @@ import {rendererFixture,emptyReferenceFixture} from './browser-renderer-fixture.
 import {readMapRenderState} from './map-render-state.mjs';
 import {createRequestLifecycle} from './request-lifecycle.mjs';
 import {installBrowserTiming,readBrowserTiming} from './browser-timing.mjs';
+import {createControlsCpuProfile} from './controls-cpu-profile.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
@@ -17,6 +18,8 @@ const renderer=await rendererFixture(base);
 const browser=await launchBrowser({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
+const cpuProfile=createControlsCpuProfile(()=>context.newCDPSession(page));
+let profileSettlement=false;
 await page.addInitScript(installBrowserTiming);
 // Frames at the largest More detail scale can take seconds on a small CI
 // runner, and page evaluation waits for them.
@@ -75,7 +78,11 @@ async function waitForMapIdle(){
   },null,{timeout:60000});
   }finally{
     const ms=Date.now()-start, pendingCount=pending.size;
+    // Stop alongside the already-bounded timing read, after acceptance ends.
+    const profileRead=profileSettlement?cpuProfile.stop('settlement-finished'):null;
+    profileSettlement=false;
     settlements.push({after:results.at(-1)?.name??'startup',ms,pending:pendingCount,timing:await readBrowserTiming(page)});
+    if(profileRead)await profileRead;
   }
 }
 async function ready(){
@@ -144,6 +151,11 @@ try{
           assert.equal(await page.locator('.map-readout').isVisible(),readout);
           await check(`${size.width}x${size.height}, menu=${expanded}, readout=${readout}, detail=${detail}`);
           const next=(detail+1)%3;
+          // Profile only the original failing transition. Arm before its
+          // pointer action so setup cannot give its new tiles extra time.
+          if(size.width===1365&&size.height===900&&expanded&&readout&&detail===1){
+            await cpuProfile.start();profileSettlement=true;
+          }
           // Hit-test the visible counter-scaled control before real pointer
           // input. Automatic scroll-into-view hung before clicking this
           // already-visible target in CI; forced or DOM clicks are not used.
@@ -192,7 +204,9 @@ try{
   console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
+  await cpuProfile.stop('check-ended');
   await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));
+  await writeFile('browser-review/map-controls-cpu-profile.json',JSON.stringify(cpuProfile.snapshot()));
   await writeFile('browser-review/map-controls-requests.json',JSON.stringify(requestLifecycle.snapshot(),null,2));
   await writeFile('browser-review/map-controls-settlement.json',JSON.stringify({fixtureResponse:{status:200,contentType:'application/x-protobuf',bytes:0},fixtureTiles,settlements},null,2));await browser.close();
 }
