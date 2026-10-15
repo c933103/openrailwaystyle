@@ -110,7 +110,9 @@ An absent binding alone stays unknown: matching may have been unavailable, or a
 previous match may have been withheld for conflict or stale identity. No negative
 matching conclusion is inferred from the current producer's missing rows. Expiry updates an already-open detail panel. Legacy absent fields
 remain unknown instead of being retroactively labelled unmatched. A missing
-period on an otherwise matched profile also remains unknown. This does not
+period on an otherwise matched profile also remains unknown. Discarded expired
+evidence is recorded per period; AM-only evidence never certifies PM expiry.
+Legacy route-wide expiry labels without per-period evidence remain unknown. This does not
 complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
 regression, and departure-board evidence remains independently scoped.
 

@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {summarizeServiceAcquisition,serviceCoverageMessages} from '../styles/service-status.mjs';
 import {serviceAcquisitionForBuild} from '../scripts/service-status-manifest.mjs';
-import {frequencyAvailability,frequencyBundle} from '../styles/service-frequency.mjs';
+import {frequencyAvailability,frequencyBundle,FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 const fixture=JSON.parse(await readFile(new URL('fixtures/service-status.json',import.meta.url)));
 const sha='a'.repeat(64),now=Date.parse('2026-10-15T12:00:00Z');
 
@@ -61,7 +61,9 @@ test('available zero, expiry, explicit no-match and unknown reasons have distinc
  assert.match(frequencyAvailability(fresh,'am',now).text,/^0\/h\/direction/);
  assert.equal(frequencyAvailability(fresh,'pm',now).status,'unknown');
  assert.equal(frequencyAvailability(fresh,'am',now+2000).status,'expired');
- assert.equal(frequencyAvailability({frequency_status:'expired'},'am',now).status,'expired');
+ assert.equal(frequencyAvailability({frequency_status:'expired'},'am',now).status,'unknown');
+ assert.equal(frequencyAvailability({frequency_status_am:'expired'},'am',now).status,'expired');
+ assert.equal(frequencyAvailability({frequency_status_am:'expired'},'pm',now).status,'unknown');
  assert.equal(frequencyAvailability({frequency_status:'unmatched'},'am',now).status,'unmatched');
  for(const bad of [{},{frequency_am:1},{...fresh,frequency_until:0},{...fresh,frequency_am:''},{...fresh,frequency_am:false},{...fresh,frequency_am:-1}])
   assert.equal(frequencyAvailability(bad,'am',now).status,'unknown');
@@ -74,6 +76,24 @@ test('assembly preserves unmatched versus expired input without inventing freque
  const unmatched=frequencyBundle([route],lines,null,[{properties:{frequency_status:'unmatched'},profiles:{}}],now)[0];
  assert.equal(unmatched.frequency_status,'unmatched');
  const incomplete=frequencyBundle([route],lines,null,[{properties:{frequency_until:now/1000+1},profiles:{}}],now)[0];
- assert.equal(missing.frequency_status,'unknown');assert.equal(expired.frequency_status,'expired');assert.equal(incomplete.frequency_status,'unknown');
+ assert.equal(missing.frequency_status,'unknown');assert.equal(expired.frequency_status,'unknown');
+ assert.equal(expired.frequency_status_am,'expired');assert.equal(expired.frequency_status_pm,undefined);
+ assert.equal(frequencyAvailability(expired,'am',now).status,'expired');assert.equal(frequencyAvailability(expired,'pm',now).status,'unknown');assert.equal(incomplete.frequency_status,'unknown');
  for(const properties of [missing,expired,incomplete])assert.equal(properties.frequency_am,undefined);
+});
+
+test('discarded expiry requires usable evidence for the selected period',()=>{
+ const route={ref:'synthetic',kind:'subway'},lines=[[[0,0],[1,1]]];
+ for(const rate of [0,4,null,'4',-1,NaN]){
+  const p=frequencyBundle([route],lines,null,[{properties:{frequency_until:now/1000-1},profiles:{am:{rate}}}],now)[0];
+  for(const profile of FREQUENCY_PROFILES){
+   const expected=profile==='am'&&[0,4].includes(rate)?'expired':'unknown';
+   assert.equal(frequencyAvailability(p,profile,now).status,expected,`${String(rate)}/${profile}`);
+   assert.equal(p[`frequency_${profile}`],undefined);
+  }
+ }
+ for(const record of [{properties:{frequency_until:now/1000-1},profiles:{}},{properties:{frequency_until:0},profiles:{am:{rate:4}}}]){
+  const p=frequencyBundle([route],lines,null,[record],now)[0];
+  for(const profile of FREQUENCY_PROFILES)assert.equal(frequencyAvailability(p,profile,now).status,'unknown');
+ }
 });

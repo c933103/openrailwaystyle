@@ -4,6 +4,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {summarizeServiceAcquisition} from '../styles/service-status.mjs';
+import {frequencyBundle} from '../styles/service-frequency.mjs';
 import {waitUntil} from './wait-until.mjs';
 
 export async function checkServiceStatusBrowser(browser,root) {
@@ -55,10 +56,17 @@ export async function checkServiceStatusBrowser(browser,root) {
    await page.mouse.click(point.x,point.y);await page.locator('#details').waitFor({state:'visible'});
    return page.locator('#detail-content').textContent();
   };
+  const detailRow=label=>page.locator('#detail-content dt').evaluateAll((terms,label)=>terms.find(term=>term.textContent===label)?.nextElementSibling?.textContent,label);
   const future=Date.parse('2026-10-16T12:00:00Z')/1000,past=Date.parse('2026-10-14T12:00:00Z')/1000;
   assert.match(await show({frequency_am:0,frequency_high_am:0,frequency_until:future,frequency_quality_am:'scheduled'}),/0\/h\/direction/);
   assert.match(await show({frequency_am:4,frequency_high_am:4,frequency_until:past}),/Matched frequency profile has expired/);
-  assert.match(await show({frequency_status:'expired'}),/evidence had expired at this snapshot build/);
+  assert.match(await detailRow('Evening peak'),/reason is unknown/);
+  const expiredAtBuild=frequencyBundle([{ref:'synthetic',kind:'subway'}],[[[0,0],[1,1]]],null,[{properties:{frequency_until:past},profiles:{am:{rate:0}}}],Date.parse('2026-10-15T12:00:00Z'))[0];
+  await show(expiredAtBuild);
+  assert.match(await detailRow('Morning peak'),/evidence had expired at this snapshot build/);
+  assert.match(await detailRow('Evening peak'),/reason is unknown/);
+  await show({frequency_status:'expired'});
+  for(const label of ['Morning peak','Evening peak','Off-peak','Overnight · 00:00–05:00'])assert.match(await detailRow(label),/reason is unknown/);
   assert.match(await show({frequency_status:'unmatched'}),/No timetable or headway profile matched this map service/);
   assert.match(await show({}),/reason is unknown/);
   assert.match(await show({frequency_am:4,frequency_high_am:4,frequency_until:future}),/4\/h\/direction/);
@@ -67,6 +75,7 @@ export async function checkServiceStatusBrowser(browser,root) {
   assert.match(await show({frequency_am:4,frequency_high_am:4,frequency_until:until}),/4\/h\/direction/);
   await page.clock.runFor(4000);
   await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('Matched frequency profile has expired'));
+  assert.match(await detailRow('Evening peak'),/reason is unknown/);
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/service-status-expired.png'});
   for(const value of ['failed','legacy','mismatched']){
    metadata=value;await open();

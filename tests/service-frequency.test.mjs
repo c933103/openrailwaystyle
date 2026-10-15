@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createExpression,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES,FREQUENCY_LABELS} from '../styles/service-frequency.mjs';
+import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,frequencyAvailability,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES,FREQUENCY_LABELS} from '../styles/service-frequency.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
 const requireProfiles=await readFile(new URL('../styles/data-src/frequency-source-rules.json',import.meta.url),'utf8').then(s=>JSON.stringify(JSON.parse(s).profiles));
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url)));
@@ -143,4 +143,12 @@ test('hour and overnight settings select separate profiles, preserve unknowns an
 test('operator peak categories do not acquire configured GTFS clock windows',()=>{
   for(const key of ['am','pm','offpeak'])assert.doesNotMatch(FREQUENCY_LABELS[key],/\d\d:\d\d/);
   assert.match(catalog.source.period_definition,/clock windows are not supplied/);
+});
+
+test('discarded hourly timetable expiry does not erase surviving headway periods',()=>{
+ const p=frequencyBundle([route('ISL')],line,catalog,[{properties:{frequency_until:now/1000-1},profiles:{h08:{rate:4}}}],now)[0];
+ assert.ok(Number.isFinite(p.frequency_am));
+ assert.equal(frequencyAvailability(p,'am',now).status,'available');
+ assert.equal(frequencyAvailability(p,'h08',now).status,'expired');
+ assert.equal(frequencyAvailability(p,'h09',now).status,'unknown');
 });

@@ -67,14 +67,19 @@ export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.
   // Unknown peers must retain the source expiry so known routes in a mixed
   // OSM bundle remain usable; unknown width is still the baseline.
   const expiry=Math.min(...records.filter(Boolean).map(r=>r.properties.frequency_until));
-  return profileBundle(records.map((r,i)=>r||{properties:{
-    frequency_until:Number.isFinite(expiry)?expiry:0,
-    // No frequencies are invented. Preserve the reason known at this build;
-    // An absent binding may be stale, conflicting or unavailable, rather than
-    // evidence that matching was attempted and found no match.
-    frequency_status:timetables[i]?.properties.frequency_status==='unmatched'?'unmatched':
-      Number.isFinite(timetables[i]?.properties.frequency_until)&&timetables[i].properties.frequency_until*1000<now?'expired':'unknown',
-  },profiles:{}}));
+  return profileBundle(records.map((r,i)=>{
+    const timetable=timetables[i];
+    const properties={...(r?.properties||{
+      frequency_until:Number.isFinite(expiry)?expiry:0,
+      // Missing bindings may be withheld or unavailable, not explicit no-match.
+      frequency_status:timetable?.properties.frequency_status==='unmatched'?'unmatched':'unknown',
+    })};
+    // Discarded evidence can certify expiry only for the periods it covered.
+    if(Number.isFinite(timetable?.properties.frequency_until)&&timetable.properties.frequency_until>0&&timetable.properties.frequency_until*1000<now)
+      for(const profile of FREQUENCY_PROFILES)
+        if(usable(timetable.profiles?.[profile])&&!usable(r?.profiles?.[profile]))properties[`frequency_status_${profile}`]='expired';
+    return {properties,profiles:r?.profiles||{}};
+  }));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
@@ -117,7 +122,7 @@ export function frequencyAvailability(properties,profile,now=Date.now()) {
     if(until*1000<now)return {status:'expired',text:'Matched frequency profile has expired; current frequency is unknown.'};
     return {status:'available',text:frequencyDetails(properties,profile,now)};
   }
-  if(!numeric&&properties.frequency_status==='expired')
+  if(!numeric&&properties[`frequency_status_${profile}`]==='expired')
     return {status:'expired',text:'Matched frequency evidence had expired at this snapshot build; current frequency is unknown.'};
   if(!numeric&&properties.frequency_status==='unmatched')
     return {status:'unmatched',text:'No timetable or headway profile matched this map service in this snapshot.'};
