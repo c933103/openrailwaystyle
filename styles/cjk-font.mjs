@@ -1,4 +1,4 @@
-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261013-departure-destinations-1';
+import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261013-detail-rail-reference-3';
 // Which local font draws Han labels. Names mix scripts (a Simplified name in
 // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
 // extension characters), and a font missing some of them makes the browser

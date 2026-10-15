@@ -1037,6 +1037,10 @@
       "sha256": "124bddccabea17b60867fbf2a06b6f3a52fcc3d4b91a22a0c26ffea2cc3789b4"
     },
     {
+      "id": "rail-basemap-reference",
+      "sha256": "6445d1bcfe1cf3157f3552a8af888c714d3043c012688167ade6907f59bfc0cf"
+    },
+    {
       "id": "structure-bridge-edge",
       "type": "line",
       "source": "railway",

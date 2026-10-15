@@ -332,6 +332,16 @@ jobs:
             const manifest=JSON.parse(await readFile(`styles/data/traction/${kind}/manifest.json`));
             assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
           }
+          // Legacy traction snapshots may lack both supplement files. Once
+          // either is present, require the complete, digest-matched world.
+          const readOptional=async path=>{try{return await readFile(path,'utf8');}catch(error){if(error.code==='ENOENT')return null;throw error;}};
+          const methods=await readOptional('styles/data/traction/power/methods-manifest.json');
+          const methodData=await readOptional('styles/data/traction/power/power-methods.geojson');
+          if(methods!==null || methodData!==null) {
+            const {validatePowerMethodsSnapshot}=await import('./scripts/build-power-methods.mjs');
+            assert.ok(methods!==null && methodData!==null,'Incomplete power-method files');
+            validatePowerMethodsSnapshot(JSON.parse(methodData),JSON.parse(methods));
+          }
           JS
       # The code tree and a digest of the assembled data: a pull request
       # records it when its checks pass, and main skips the browser checks

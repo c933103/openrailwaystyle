@@ -11,6 +11,7 @@ import {createRailwayLayers} from './layers/railway.mjs';
 import {lifecycleLayers} from './layers/lifecycle.mjs';
 import {stationLayers} from './layers/stations.mjs';
 import {infrastructureContextLayers} from './layers/infrastructure.mjs';
+import {powerMethodLayers} from './layers/power-methods.mjs';
 import {powerFacilityLayers} from './layers/power-facilities.mjs';
 import {roadLayers, constraintLayers} from '../planning-style.mjs';
 import {contextLayers} from '../context-style.mjs';
@@ -30,14 +31,13 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...context.areas, ...constraints.areas, ...buildingLayers,
     ...context.lines, ...constraints.lines,
     ...contourLayers, ...baseLines, ...contourLabels,
-    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview,
+    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
     ...stations.platforms, ...infrastructure.crossings,
-    // A crossing may share a station location. Every station circle must
-    // paint above crossing dots AND x marks, at all zooms and in all views.
-    ...stations.dots, ...placeLayers, ...powerFacilityLayers(),
+    // Keep station circles above overlapping crossing dots and symbols.
+    ...stations.dots, ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

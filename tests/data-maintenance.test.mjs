@@ -48,7 +48,7 @@ const trackedPaths = ['.github/workflows/site.yml','.github/workflows/pr71-live.
 test('cleanup only disables allowlisted diagnostics removed from main', () => {
   assert.deepEqual(removedDiagnosticWorkflows(workflows,trackedPaths).map(w => w.id),[1,2,3,4]);
 });
-const upgraded = {schema:3,applied_profiles:{schema:1,file:'profiles.json.gz',sha256:'a'.repeat(64),osm_sha256:'b'.repeat(64),sections:0}};
+const upgraded = {schema:3,applied_profiles:{schema:1,matcher_revision:2,file:'profiles.json.gz',sha256:'a'.repeat(64),osm_sha256:'b'.repeat(64),sections:0}};
 const run = async (manifest, active = [], ref = 'refs/heads/main') => {
   const calls = [];
   const api = async (method,path,paginate,body) => {
@@ -91,6 +91,19 @@ test('non-main and malformed release metadata fail before any workflow mutation'
   for (const manifest of [{schema:2},{schema:3,applied_profiles:{schema:1}}]) await assert.rejects(
     maintainDataWorkflows({repo:'example/atlas',ref:'refs/heads/main',trackedPaths,api,readManifest:async () => manifest}),/Invalid/);
   assert.deepEqual(mutations,[]);
+});
+test('older matcher aggregates dispatch once and respect active production refreshes',async()=>{
+ for(const revision of [undefined,1]){
+  const manifest=structuredClone(upgraded);
+  if(revision===undefined)delete manifest.applied_profiles.matcher_revision;else manifest.applied_profiles.matcher_revision=revision;
+  assert.equal((await run(manifest)).result.frequency,'refresh-dispatched');
+  const active=await run(manifest,[{event:'workflow_dispatch',head_branch:'main',status:'in_progress'}]);
+  assert.equal(active.result.frequency,'already-running');assert.ok(active.calls.every(c=>c.method!=='POST'));
+ }
+ for(const revision of [null,0,-1,1.5,'2',3,Number.MAX_SAFE_INTEGER+1]){
+  const manifest=structuredClone(upgraded);manifest.applied_profiles.matcher_revision=revision;
+  await assert.rejects(run(manifest),/Invalid aggregate matcher revision/);
+ }
 });
 
 

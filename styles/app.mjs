@@ -1,24 +1,24 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261013-departure-destinations-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261013-departure-destinations-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261013-departure-destinations-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261013-departure-destinations-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261013-departure-destinations-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261013-departure-destinations-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261013-detail-rail-reference-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261013-detail-rail-reference-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261013-detail-rail-reference-3';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261013-detail-rail-reference-3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261013-detail-rail-reference-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261013-detail-rail-reference-3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261013-departure-destinations-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261013-departure-destinations-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261013-departure-destinations-1';
-import {departureItem} from './departures-ui.mjs?v=20261013-departure-destinations-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261013-departure-destinations-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261013-departure-destinations-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261013-departure-destinations-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261013-departure-destinations-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261013-departure-destinations-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261013-departure-destinations-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261013-departure-destinations-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261013-departure-destinations-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261013-departure-destinations-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261013-departure-destinations-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261013-detail-rail-reference-3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261013-detail-rail-reference-3';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261013-detail-rail-reference-3';
+import {departureItem} from './departures-ui.mjs?v=20261013-detail-rail-reference-3';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261013-detail-rail-reference-3';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261013-detail-rail-reference-3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261013-detail-rail-reference-3';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261013-detail-rail-reference-3';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261013-detail-rail-reference-3';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261013-detail-rail-reference-3';
+import { installWatchGesture } from './watch-map.mjs?v=20261013-detail-rail-reference-3';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261013-detail-rail-reference-3';
+import { createBundleReader } from './tile-bundles.mjs?v=20261013-detail-rail-reference-3';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261013-detail-rail-reference-3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -52,10 +52,10 @@ settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? rem
 const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
-let powerFacilities;
+let powerFacilities, powerMethods;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261013-departure-destinations-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261013-detail-rail-reference-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -452,7 +452,7 @@ function renderLegend() {
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
-  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND);
+  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,['#b77d00','Conductor rail (method labelled)','conductor-rail']);
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   // Existing track tuples become explicit line samples. Point categories keep
@@ -487,7 +487,7 @@ function renderLegend() {
   }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
-    electrification: 'Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded.',
+    electrification: 'Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/B/F/C/W markers identify railway electricity, battery charging, fuel, coal and steam-water supplies. Dashed parallel lines and text identify third rail, fourth rail and ground-level supply where mapped. Catenary masts and portals appear at close zoom. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded.',
     control: 'Hue groups related systems; darker is more advanced: warning only, spot transmission, continuous, radio. Parallel colour bands show each recorded system on a shared track. Hover a system name for its description, or tap/click it to expand. Purple dots mark mapped signals, not live aspects. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
@@ -497,7 +497,7 @@ function renderLegend() {
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
-  note+=' At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification.';
+  note+=' At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification. From zoom 8, dashed grey basemap railways preserve reference geometry beneath detailed tracks; they do not establish operating status or any missing railway attributes.';
   if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale across periods, using the lower directional rate or the lower bound of a published range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
@@ -672,7 +672,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.(); }
+  if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -699,12 +699,12 @@ function updateAttribution() {
   );
 }
 const SIGNAL_SOURCES = ['railwaySignals','railwaySignalSupplement','railwaySignalSupplementOverview'];
-const featurePickRank = f => [...SIGNAL_SOURCES,'stationEntrances','electricFacilities','electricSubstations'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
+const featurePickRank = f => [...SIGNAL_SOURCES,'stationEntrances','electricFacilities','electricMethods','electricCatenary','electricSubstations'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running','infrastructure-signal-points','infrastructure-signal-references','infrastructure-signal-supplement-overview','infrastructure-signal-supplement-points','infrastructure-signal-supplement-references','infrastructure-entrance-points','infrastructure-entrance-references'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(points|marks|names))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^electrification-(?:(?:former-)?(?:conductor-rails|method-labels|charging-(?:points|marks|names))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(points|marks|names))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -773,7 +773,15 @@ function stationObject(osmId) {
 function showDetails(feature) {
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
-  if (['electricFacilities','electricSubstations'].includes(feature.source)) { showPowerFacilityDetails(feature); return; }
+  if (feature.source==='electricMethods' && feature.geometry.type!=='Point') {
+    const p=feature.properties,panel=$('detail-content');
+    panel.replaceChildren(textNode('div','RAILWAY POWER','eyebrow'),textNode('h2',p.power_method_label));
+    const dl=document.createElement('dl');row(dl,'Status',p.power_state);row(dl,'Electrification method',p.power_method);
+    row(dl,'Current',describeCurrent(typeof p.voltage==='number'?p.voltage:undefined,typeof p.frequency==='number'?p.frequency:undefined));
+    row(dl,'Voltage',p.voltage);row(dl,'Frequency',p.frequency===undefined?undefined:`${p.frequency} Hz`);
+    row(dl,'Conductor contact',p['electrified:rail']);panel.append(dl);osmLink(panel,feature);$('details').hidden=false;return;
+  }
+  if (['electricFacilities','electricMethods','electricCatenary','electricSubstations'].includes(feature.source)) { showPowerFacilityDetails(feature); return; }
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
@@ -985,14 +993,16 @@ function showRailwayPointDetails(feature) {
   osmLink(panel,feature);$('details').hidden=false;
 }
 function showPowerFacilityDetails(feature) {
-  const p=feature.properties, panel=$('detail-content'), label=feature.source==='electricSubstations'?'Traction substation':powerFacilityName(p);
+  const p=feature.properties, panel=$('detail-content'), label=feature.source==='electricSubstations'?'Traction substation':feature.source==='electricCatenary'?(p.feature==='portal'?'Catenary portal':'Catenary mast'):powerFacilityName(p);
   panel.replaceChildren(textNode('div','RAILWAY ENERGY SUPPLY','eyebrow'),textNode('h2',displayName(p,settings.language)||p.ref||label));
   const dl=document.createElement('dl');
   row(dl,'Type',label); row(dl,'Status',p.power_state||(feature.source==='electricSubstations'?'Not recorded':'present')); row(dl,'Reference',p.ref);
   row(dl,'Operator',p.operator); row(dl,'Owner',p.owner); row(dl,'Voltage',p.voltage); row(dl,'Frequency',p.frequency!==undefined&&p.frequency!==null&&p.frequency!=='' ? `${p.frequency} Hz` : undefined);
   row(dl,'Fuel',p.fuel || Object.entries(p).filter(([k,v])=>k.startsWith('fuel:')&&v==='yes').map(([k])=>k.slice(5)).join(', ') || p['generator:source'] || p['plant:source']); row(dl,'Stored contents',p.content);
   row(dl,'Output',p['plant:output:electricity'] || p['generator:output:electricity']); row(dl,'Capacity',p.capacity);
-  row(dl,'Mapped as',p.railway || p.power || p.man_made); panel.append(dl); osmLink(panel,feature);
+  row(dl,'Charging output',p['charging_station:output']);row(dl,'Rail vehicle charging',p.train || p.tram || p.light_rail || p.subway);
+  for(const [key,value] of Object.entries(p))if(/^socket:/.test(key))row(dl,key,value);
+  row(dl,'Mapped as',p.railway || p.power || p.man_made || p.amenity); panel.append(dl); osmLink(panel,feature);
   $('details').hidden=false;
 }
 function showInfrastructureContext(feature) {
@@ -1148,6 +1158,13 @@ function updateStatus() {
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
+  const trackLayer = map.getStyle().layers.find(layer => layer.id === `${settings.mode}-tracks`);
+  const reference = features.some(f => f.layer?.id === 'rail-basemap-reference' && referenceDetailEligible(f, map.getZoom(), trackLayer));
+  const detailed = features.some(f => f.layer?.id === `${settings.mode}-tracks` || f.layer?.id === `${settings.mode}-metro-overview` || settings.mode === 'service' && f.layer?.id === 'service-routes');
+  const detailSource = settings.mode === 'owner' ? 'ownerRail' : settings.mode === 'axle' ? 'axleRail' : 'railway';
+  if (reference && !detailed && map.isSourceLoaded(detailSource)) {
+    status.textContent = 'Only basemap railway reference is visible here; detailed railway data is unavailable.';
+  }
   const tracks = features.filter(f => ['railway','speed','network','electric'].includes(f.source));
   const stations = features.filter(f => f.source.startsWith('station'));
   status.dataset.renderedTracks = String(tracks.length);
@@ -1545,6 +1562,11 @@ async function initialize() {
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
+  powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson',import.meta.url),
+    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
+    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language)}}))}),
+    glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
+    onError:error=>console.warn('Conductor rails and railway charging unavailable:',error.message)});
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
   // linked there is applied again once that is allowed. So is any view
@@ -1731,7 +1753,7 @@ async function initialize() {
     map.once('render',()=>{platformFramePending=false;platformLengths.update();});
   });
   map.on('moveend', scheduleLegend);
-  map.on('moveend', () => powerFacilities?.());
+  map.on('moveend', () => {powerFacilities?.();powerMethods?.();});
   map.on('moveend',updateMajorStations);
   // Curated names need the station source's tile address, known once its
   // TileJSON arrives (possibly after the first frame, with no move to follow).

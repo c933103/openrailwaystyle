@@ -63,3 +63,72 @@ Primary references:
 - [Power frequency tagging](https://wiki.openstreetmap.org/wiki/Key:frequency)
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
+
+## Conductor rails, charging and catenary equipment
+
+Power view also draws a dashed parallel line for mapped `electrified=rail`,
+`4th_rail` and `ground-level_power_supply` tracks from zoom 10. Method labels
+appear from zoom 12 and follow Labels; clicking the geometry shows its method,
+recorded voltage/frequency, conductor contact position and OSM way. Colour still
+follows the electrical system. The supplement keeps these methods because the
+provider's railway line tiles carry voltage/frequency but discard `electrified`.
+Unknown method or low DC voltage alone never establishes third rail.
+
+**B** markers show battery train charging from zoom 12. Selection accepts an
+explicit `railway=charging_station`, or `amenity=charging_station` /
+`man_made=charge_point` with explicit rail-vehicle tags (such as `train=yes`).
+Railway landuse, a nearby station and an operator name alone are insufficient;
+station car-park chargers must not become train chargers. This accepts explicit
+source tags and does not prescribe a new OSM tagging convention. Charger socket
+and output tags are retained in the details. An ordinary power socket or an
+electrified terminal is not automatically classified as a battery charger.
+Facilities absent from the source data remain absent from the map.
+
+Catenary masts and portals use the provider's `electrification_catenary` endpoint
+from zoom 16, with mapped references from 18. Clicking a mast or portal links to
+the original OSM node or way. All these layers are independent of Destinations;
+planned/former conductor rails and chargers follow the existing inactive setting.
+
+The maintenance-only `build-power-methods.mjs` writes
+`power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
+It covers every world quadrant and caches exact completed queries and spatial
+split decisions for 28 days. Each run has hard limits of 96 requests, 100 MB of
+downloaded response bodies and one hour, with at most three attempts per query and at
+most six subdivision levels. HTTP request/authentication failures, malformed
+JSON, unknown error remarks and incomplete geometry terminate immediately.
+HTTP 408/429/500/502/503/504 and temporary transport failures retry the same box;
+they never cause spatial fan-out. Connection/header/body timeouts and opaque
+fetch deadlines are transport failures too: a stalled connection does not
+establish a spatial query failure. An explicit Overpass query timeout or
+memory-limit response subdivides immediately: repeating the same execution-limited
+box consumes capacity and a later transport failure can obscure its limit evidence.
+Transport and admission failures still retry the same box, without subdivision. Retry-After is
+honoured up to five minutes; longer waits or an exhausted time budget stop the
+run for later resumption. Completed child boxes and split decisions survive
+failed runs, so resumption does not repeat failed parent queries. Refresh mode
+ignores both kinds of checkpoint.
+
+The query first collects bounded amenity/charge-point candidates, then applies
+the 14 railway-use hints within that named set. This factors the original 240
+selectors into 32 spatial primary searches and 14 local hint filters without
+changing their raw selection or the geometry/classification rules. It avoids
+repeating common railway/landuse value scans for every charger lifecycle key.
+The query uses a separate v2 checkpoint namespace: v1 responses and split
+decisions are preserved, while expensive-query split routes are not carried
+into the optimized query. Completed v2 queries and v2 split decisions remain
+resumable. Existing facility v6 caches and the published data schema are unchanged.
+
+Publication requires a nonempty, deduplicated dataset, exact coverage of all
+eight world quadrants without gaps/overlaps, and a SHA-256 digest tying the
+manifest to the GeoJSON. Failed acquisition preserves prior output. Files are
+staged after validation and the manifest is replaced last. Both the traction
+publisher and site assembly reject incomplete or mismatched supplement files;
+legacy snapshots lacking both files remain usable while the first build is
+pending. The published files and coverage must be inspected separately from
+fixture rendering checks. Overpass's [admission and rate-limit documentation](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)
+distinguishes HTTP 504 admission failures from query execution limits.
+The existing v6 supply cache remains separate and reusable. The facility workflow
+validates both datasets before publishing. Rendering code alone does not supply
+new geometry: the supplementary snapshot must finish and be deployed too.
+Same-language style replacement restores cached facility and method data into the
+new MapLibre sources without downloading again.

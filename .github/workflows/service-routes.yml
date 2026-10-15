@@ -11,7 +11,7 @@ on:
     - cron: '11 3-23/6 * * *'
   push:
     branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/maintain-data-workflows.mjs', 'scripts/service-acquisition-trigger.mjs', '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
+    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/maintain-data-workflows.mjs', 'scripts/timetable-frequency.mjs', 'scripts/timetable-frequency-version.mjs', 'scripts/service-acquisition-trigger.mjs', '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
 permissions:
   contents: write
   actions: write
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Retire removed diagnostics and refresh the missing timetable aggregate
+      - name: Retire removed diagnostics and refresh missing or older matcher aggregates
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/maintain-data-workflows.mjs

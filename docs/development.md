@@ -154,6 +154,7 @@ The old external tile cache is not used by the harness or CI:
 ```sh
 npx playwright install --with-deps chromium
 node scripts/check-orm-fixture-browser.mjs
+node scripts/check-rail-reference-browser.mjs
 node scripts/check-platform-browser.mjs
 node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs

@@ -1,0 +1,32 @@
+import {electrificationPaint} from '../../../styles/map-model.mjs';
+import {POWER_FACILITY_SYMBOL} from '../../../styles/power-facilities.mjs';
+
+export function powerMethodLayers() {
+  const metadata={'atlas:group':'railway','atlas:category':'energy-supply','atlas:views':['electrification'],'atlas:settings':[],'atlas:initial-hidden':true};
+  const layers=[];
+  for(const former of [false,true]) {
+    const suffix=former?'former-':'',meta={...metadata,'atlas:settings':former?['inactive']:[]};
+    const base={source:'electricMethods',minzoom:10,metadata:meta,
+      filter:['all',['==',['geometry-type'],'LineString'],[former?'!=':'==',['get','power_state'],'present']]};
+    layers.push({...base,id:`electrification-${suffix}conductor-rails`,type:'line',
+      layout:{'line-cap':'butt','line-join':'round'},
+      paint:{'line-color':electrificationPaint(),'line-width':2,'line-offset':3.5,'line-dasharray':[2,2],'line-opacity':former?0.5:1}});
+    layers.push({...base,id:`electrification-${suffix}method-labels`,type:'symbol',minzoom:12,
+      metadata:{...meta,'atlas:settings':[...meta['atlas:settings'],'labels']},
+      layout:{'symbol-placement':'line','symbol-spacing':350,'text-field':['get','power_method_label'],'text-font':['Noto Sans Bold'],'text-size':11,'text-offset':[0,1]},
+      paint:{'text-color':'#26363d','text-halo-color':'#fffef8','text-halo-width':2}});
+    const point={source:'electricMethods',minzoom:12,metadata:meta,filter:['all',['==',['geometry-type'],'Point'],[former?'!=':'==',['get','power_state'],'present']]};
+    const {paper,radius,textSize,stroke,formerStroke}=POWER_FACILITY_SYMBOL;
+    layers.push({...point,id:`electrification-${suffix}charging-points`,type:'circle',paint:{'circle-color':former?paper:['get','power_color'],'circle-radius':radius,'circle-stroke-color':former?['get','power_color']:paper,'circle-stroke-width':former?formerStroke:stroke}});
+    layers.push({...point,id:`electrification-${suffix}charging-marks`,type:'symbol',layout:{'text-field':'B','text-font':['Noto Sans Bold'],'text-size':textSize,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':former?['get','power_color']:paper}});
+    layers.push({...point,id:`electrification-${suffix}charging-names`,type:'symbol',minzoom:14,
+      metadata:{...meta,'atlas:settings':[...meta['atlas:settings'],'labels'],'atlas:localize':true},
+      layout:{'text-field':['coalesce',['get','atlas_name'],['get','name'],['get','ref'],''],'text-font':['Noto Sans Regular'],'text-size':11,'text-anchor':'top','text-offset':[0,0.9]},paint:{'text-color':'#008a83','text-halo-color':paper,'text-halo-width':1.5}});
+  }
+  const catenary={source:'electricCatenary','source-layer':'electrification_catenary',minzoom:16,metadata};
+  layers.push({...catenary,id:'electrification-catenary-masts',type:'circle',filter:['==',['get','feature'],'mast'],paint:{'circle-color':'#b77d00','circle-radius':2.5,'circle-stroke-color':'#fffef8','circle-stroke-width':1}});
+  layers.push({...catenary,id:'electrification-catenary-portals',type:'line',filter:['==',['get','feature'],'portal'],paint:{'line-color':'#b77d00','line-width':1.5}});
+  layers.push({...catenary,id:'electrification-catenary-references',type:'symbol',minzoom:18,
+    metadata:{...metadata,'atlas:settings':['labels']},layout:{'text-field':['get','ref'],'text-font':['Noto Sans Regular'],'text-size':10,'text-offset':[0,1]},paint:{'text-color':'#8c5f00','text-halo-color':'#fffef8','text-halo-width':1}});
+  return layers;
+}

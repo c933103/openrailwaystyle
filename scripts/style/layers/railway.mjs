@@ -5,7 +5,7 @@ import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 // Each group has a fixed position in the atlas composition. Returning separate
 // groups keeps roads and structural cues ordered without searching layer IDs.
 export function createRailwayLayers() {
-  const groups = {backbone: [], overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
+  const groups = {backbone: [], referenceDetail: [], overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
   const speedPaint = speedColours('metric');
   const infrastructurePaint = ['case',
     ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
@@ -77,6 +77,22 @@ export function createRailwayLayers() {
   const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
   const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
   const SERVICE_TRACK = '#b8c0c5';
+  // Close views otherwise depend entirely on the live detailed rail source:
+  // the Atlas-owned overview ends at z8 and the basemap never drew its rails.
+  // Reuse already-loaded OpenMapTiles geometry beneath every thematic stroke.
+  // Dashed neutral lines carry no operating status or infrastructure attributes.
+  groups.referenceDetail.push({
+    id:'rail-basemap-reference',type:'line',source:'openmaptiles','source-layer':'transportation',minzoom:8,
+    filter:['all',['==',['geometry-type'],'LineString'],
+      ['any',
+        ['all',['==',['get','class'],'rail'],['match',['coalesce',['get','subclass'],''],['','rail','narrow_gauge','preserved','funicular'],true,false]],
+        ['all',['==',['get','class'],'transit'],['match',['get','subclass'],['subway','light_rail','monorail','tram'],true,false]],
+      ]],
+    layout:{'line-cap':'butt','line-join':'round'},
+    paint:{'line-color':'#70777b','line-width':['interpolate',['linear'],['zoom'],8,1,11,1.3,16,2],
+      'line-opacity':0.8,'line-dasharray':[3,2]},
+    metadata:{'atlas:group':'railway','atlas:category':'reference','atlas:base-map':false},
+  });
   for (const [mode, source, sourceLayer, color] of [
     ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
     ['speed', 'speed', 'speed_railway_line_low', speedPaint],

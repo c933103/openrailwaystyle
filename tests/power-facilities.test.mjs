@@ -267,7 +267,7 @@ test('Power-only facility layers place symbols by actual supply zoom and gate fo
 
 test('supply snapshot loading is lazy, shared and re-localized without downloading again',async()=>{
   let enabled=false,calls=0,currentLanguage='en';const shown=[];
-  const map={getSource:()=>({setData:data=>shown.push(data)})};
+  const source={setData:data=>shown.push(data)};const map={getSource:()=>source};
   const data={type:'FeatureCollection',features:[]};
   const refresh=createPowerFacilityLoader(map,{url:'fixture.geojson',active:()=>enabled,language:()=>currentLanguage,
     localize:(d,language)=>({...d,language}),fetcher:async()=>{calls++;return{ok:true,json:async()=>data};}});
@@ -288,7 +288,7 @@ test('former railway use does not describe an operating traction supply',()=>{
 
 
 test('each facility category shares its point letter and color with the legend and map paint',()=>{
-  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>row.mark),['E','F','C','W']);
+  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>row.mark),['E','B','F','C','W']);
   for (const [kind,definition] of Object.entries(POWER_FACILITY_KINDS)) {
     const rows=POWER_FACILITY_LEGEND.filter(row=>row.mark===definition.mark);
     assert.equal(rows.length,1,kind);assert.equal(rows[0].symbol,'point');assert.equal(rows[0].color,definition.color,kind);

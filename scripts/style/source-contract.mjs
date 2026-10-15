@@ -51,6 +51,7 @@ export const SOURCE_CONTRACTS = {
   railwaySignals:{railway_signals:['railway', 'ref', 'caption']},
   railwaySignalSupplementOverview:{railway_signals:['railway', 'ref', 'caption']},
   railwaySignalSupplement:{railway_signals:['railway', 'ref', 'caption']},
+  electricCatenary:{electrification_catenary:['feature','ref','transition']},
   electricSubstations:{electrification_substation:[]},
   stationEntrances:{standard_station_entrances:['label']},
   stationLow:{standard_railway_text_stations_low:[...STATION, 'id', 'osm_id', 'wikidata']},

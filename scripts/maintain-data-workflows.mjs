@@ -1,12 +1,13 @@
 // Main-only maintenance in the existing service workflow. Retain historical
-// runs, but disable removed diagnostic workflows. Refresh the pre-#171 data
-// release once; code deployment cannot create its missing section aggregate.
+// runs, but disable removed diagnostic workflows. Rebuild missing or older
+// matcher aggregates; deploying code alone cannot apply new matching semantics.
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtemp, readFile, readdir, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {TIMETABLE_MATCHER_REVISION} from './timetable-frequency-version.mjs';
 const execute = promisify(execFile);
 const obsolete = /^\.github\/workflows\/(?:pr(?:71|73)-[\w-]+|repair-pr73|audit-country-label)\.ya?ml$/;
 
@@ -32,8 +33,11 @@ export async function maintainDataWorkflows({repo, ref, trackedPaths, api, readM
     !/^[a-f0-9]{64}$/.test(manifest.applied_profiles.sha256 || '') ||
     !/^[a-f0-9]{64}$/.test(manifest.applied_profiles.osm_sha256 || '') ||
     !Number.isSafeInteger(manifest.applied_profiles.sections) || manifest.applied_profiles.sections < 0)) throw new Error('Invalid aggregate publication metadata');
+  const revision=manifest.applied_profiles?.matcher_revision;
+  if(revision!==undefined&&(!Number.isSafeInteger(revision)||revision<1||revision>TIMETABLE_MATCHER_REVISION))throw new Error('Invalid aggregate matcher revision');
+  const current=hasAggregate&&revision===TIMETABLE_MATCHER_REVISION;
   let active = [];
-  if (!hasAggregate) {
+  if (!current) {
     const statuses = ['queued', 'in_progress', 'requested', 'waiting', 'pending'];
     const runs = await Promise.all(statuses.map(status => api('GET',
       `repos/${repo}/actions/workflows/service-frequency.yml/runs?status=${status}&per_page=100`, true)));
@@ -42,9 +46,9 @@ export async function maintainDataWorkflows({repo, ref, trackedPaths, api, readM
       ['schedule', 'workflow_dispatch'].includes(r.event) && r.status !== 'completed');
   }
   for (const w of removed) await api('PUT', `repos/${repo}/actions/workflows/${w.id}/disable`);
-  if (!hasAggregate && !active.length) await api('POST',
+  if (!current && !active.length) await api('POST',
     `repos/${repo}/actions/workflows/service-frequency.yml/dispatches`, false, {ref:'main'});
-  return {disabled: removed.map(w => w.path), frequency: hasAggregate ? 'aggregate-present' : active.length ? 'already-running' : 'refresh-dispatched'};
+  return {disabled: removed.map(w => w.path), frequency: current ? 'aggregate-present' : active.length ? 'already-running' : 'refresh-dispatched'};
 }
 
 async function run() {

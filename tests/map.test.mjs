@@ -192,14 +192,13 @@ test('regional station dots survive name collision and begin before level crossi
   assert.ok(names(11,{feature:'halt'}).length);
   const firstCrossing=Math.min(...style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')).map(l=>l.minzoom));
   assert.equal(firstCrossing,5);
-  assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
-  // Layer order is a separate issue from source completeness and minzoom:
-  // every station circle must paint above every crossing dot or x marker.
+  // Layer order is independent of source completeness and minzoom.
   const crossingLayers=style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')||l.id==='infrastructure-level-crossings');
   const stationDots=layers.filter(l=>l.type==='circle');
-  assert.ok(crossingLayers.length>=4&&stationDots.length>=6);
+  assert.ok(crossingLayers.length===4&&stationDots.length>=6);
   for(const dot of stationDots)for(const crossing of crossingLayers)
     assert.ok(style.layers.indexOf(dot)>style.layers.indexOf(crossing),`${dot.id} must be above ${crossing.id}`);
+  assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
   for (const [id,zmin,zmax] of [
     ['station-stationLow-dots',4,6],['station-stationMed-dots',6,8],
     ['station-provider-dots',8,12],['station-stations-dots',12,undefined],
