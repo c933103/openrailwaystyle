@@ -83,6 +83,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') { this.visibility[id] = value; const layer=this.options.style.layers.find(l=>l.id===id); if(layer)(layer.layout ||= {}).visibility=value; } else (this.layout ||= {})[id] = value; }
     getLayoutProperty(id, property) { return this.options.style.layers.find(layer=>layer.id===id)?.layout?.[property]; }
+    getFilter(id) { return this.options.style.layers.find(layer=>layer.id===id)?.filter; }
+    setFilter(id, filter) { this.options.style.layers.find(layer=>layer.id===id).filter=filter; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
@@ -969,6 +971,47 @@ test('curated fallback repopulates on cold load and pan at raw zoom 22',async()=
   map.getBounds=()=>({getWest:()=>32.37,getEast:()=>32.38,getSouth:()=>48.88,getNorth:()=>48.90});
   map.handlers.moveend();await tick();await tick();
   assert.ok(map.sourceData.stationMajor.features.some(f=>f.properties.id==='distant'),'maximum-zoom pan refreshes geometry beyond the initial viewport');
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
+test('station fallback keeps the failed tile mask through neighboring success, recovery and pan',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
+  map.handlers['style.load']();
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS;
+  const a={state:'errored',tileID:{canonical:{z:10,x:518,y:352}}},b={state:'errored',tileID:{canonical:{z:10,x:519,y:352}}};
+  map.handlers.error({sourceId:'stations',tile:a,error:{status:403,message:'HTTP 403'}});
+  for(const id of ids){
+   assert.equal(map.getLayoutProperty(id,'visibility'),'visible');
+   assert.equal(map.getFilter(id)[2][0],'within','fallback uses failed-tile geometry instead of the whole source');
+   assert.equal(map.getFilter(id)[2][1].coordinates.length,1);
+  }
+  const first=JSON.stringify(map.getFilter(ids[0]));
+  map.handlers.sourcedata({sourceId:'stations',tile:{...b,state:'loaded'},isSourceLoaded:true});
+  assert.equal(JSON.stringify(map.getFilter(ids[0])),first,'neighbor success retains the exact failed-area mask');
+  assert.match(window.document.getElementById('map-status').textContent,/station data unavailable/);
+  map.handlers.error({sourceId:'stations',tile:b,error:{status:403,message:'HTTP 403'}});
+  assert.equal(map.getFilter(ids[0])[2][1].coordinates.length,2);
+  map.handlers.sourcedata({sourceId:'stations',tile:{...a,state:'loaded'},isSourceLoaded:true});
+  assert.equal(map.getFilter(ids[0])[2][1].coordinates.length,1,'only one recovered tile leaves the failure set');
+  assert.notEqual(JSON.stringify(map.getFilter(ids[0])),first);
+  b.state='unloaded';map.handlers.moveend();
+  for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'none','panning to loaded tiles retires fallback');
+  map.handlers.sourcedata({sourceId:'stations',tile:{...b,state:'loaded'},isSourceLoaded:true});
+  assert.equal(window.document.getElementById('map-status').classList.contains('error'),false);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
+for(const [mode,source] of [['owner','ownerLow'],['axle','axleLow']])test(`${mode} low-zoom HTTP 403 remains an ORM railway outage`,async()=>{
+ const {dom,maps,window}=await start({search:`?mode=${mode}&stations=0`});
+ try{
+  const map=maps[0];map.zoom=6;map.handlers['style.load']();
+  map.handlers.error({sourceId:source,error:{status:403,message:'HTTP 403'}});
+  const status=window.document.getElementById('map-status');
+  assert.match(status.textContent,/OpenRailwayMap railway data unavailable/);
+  assert.doesNotMatch(status.textContent,/Retrying|Some map data/,'nonretryable failure retains the provider identity');
+  assert.equal(status.classList.contains('error'),true);
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 const providerHubTile=(hub,language)=>{

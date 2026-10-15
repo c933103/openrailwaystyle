@@ -20,7 +20,7 @@ import { installWatchGesture } from './watch-map.mjs?v=20261015-station-resilien
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-resilience-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-resilience-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-resilience-1';
-import { addStationFallbackLayers, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261015-station-resilience-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261015-station-resilience-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -55,7 +55,7 @@ const status = $('map-status');
 let legendHelpOpen = false, serviceStatusOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
-let railRecovery, wakeRailRecovery = () => {};
+let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-station-resilience-1';
 // An old active worker can save this new page before its replacement has
@@ -1190,11 +1190,14 @@ function applyUnits() {
 }
 function applyStationFallbackState() {
   if (!ready || !map?.getLayer('station-basemap-fallback-names')) return;
+  const area=stationFailures?.area(map.getZoom());
   const options={zoom:map.getZoom(),stationsEnabled:settings.stations,background:settings.background,
-    failedSources:new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])])};
+    failedSources:new Set(area?[map.getZoom()>=8?'stations':'stationMed']:[])};
   const showMarkers=stationFallbackMarkersEnabled(options);
   const showNames=stationFallbackNamesEnabled(options);
   for (const id of ['station-basemap-fallback-dots','station-curated-fallback-dots','station-basemap-fallback-names']) {
+    const filter=stationFallbackFilter(id,area);
+    if (JSON.stringify(map.getFilter(id))!==JSON.stringify(filter)) map.setFilter(id,filter);
     const visible=((id.endsWith('-names')?showNames:showMarkers) ? 'visible' : 'none');
     if (map.getLayoutProperty(id,'visibility')!==visible)
       map.setLayoutProperty(id,'visibility',visible);
@@ -1204,7 +1207,7 @@ const mapErrorMessage = () => {
   const railFailed=railRecovery?.hasFailures();
   const failed=[...new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])])];
   const stationFailed=failed.some(id=>['stations','stationLow','stationMed'].includes(id));
-  const trackFailed=failed.some(id=>['railway','network','speed','electric','control','gaugeLow','ownerRail','axleRail','loadingLow'].includes(id));
+  const trackFailed=failed.some(id=>['railway','network','speed','electric','control','gaugeLow','ownerLow','ownerRail','axleLow','axleRail','loadingLow'].includes(id));
   if(railFailed||stationFailed||trackFailed){
     const kind=stationFailed&&trackFailed?'station and track data':stationFailed?'station data':'railway data';
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
@@ -1745,6 +1748,7 @@ async function initialize() {
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   let recoveryRemoved = false, recoveryStatusPending = false;
+  stationFailures = createStationFallbackState(map);
   railRecovery = createRailProviderRecovery(map, {provider: ORM, onChange: () => {
     // Timer-driven retirement also changes status. Defer/coalesce notifications
     // so source handlers finish their error bookkeeping before reconciliation.
@@ -1767,6 +1771,7 @@ async function initialize() {
     // carry no stack, and plain logs of them show only "Error".
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     const railError = railRecovery.noteError(e);
+    stationFailures.noteError(e);
     const id = e.sourceId || 'resource', instance = e.sourceId && map.getSource(e.sourceId), previous = errors.get(id);
     // A retryable error cannot take ownership of a nonretryable error on the
     // same source instance; pruning must not erase that independent failure.
@@ -1788,18 +1793,19 @@ async function initialize() {
   });
   map.on('sourcedata', e => {
     const recovered = railRecovery.noteSourceData(e);
+    const stationChanged = stationFailures.noteSourceData(e);
     // MapLibre also reports isSourceLoaded after errors settle. Require actual
     // success, and keep a source's error until all its failed tiles recover.
     const successful = e.sourceDataType === 'metadata' || e.tile?.state === 'loaded';
     let cleared = false;
     if (e.sourceId && (recovered || successful && e.isSourceLoaded) &&
-      !railRecovery.failedSourceIds().includes(e.sourceId)) {
+      !railRecovery.failedSourceIds().includes(e.sourceId) && !stationFailures.hasSourceFailure(e.sourceId)) {
       cleared = errors.delete(e.sourceId);
       otherMetadataRetries.delete(e.sourceId);
     }
     // Refresh after BOTH recovery state and app bookkeeping change. A callback
     // inside noteSourceData would observe stale errors; idle may never arrive.
-    if (recovered || cleared) updateStatus();
+    if (recovered || cleared || stationChanged) updateStatus();
   });
   // Apply settings as soon as the style is in place, not at MapLibre's
   // 'load', which waits for every initial tile: zoomed out that is dozens of

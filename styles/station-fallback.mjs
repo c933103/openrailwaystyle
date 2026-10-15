@@ -15,6 +15,72 @@ export const STATION_FALLBACK_IDS = Object.freeze([
   'station-basemap-fallback-names',
 ]);
 
+const CURATED_STATION_FILTER = ['all', ['==', ['get', 'feature'], 'station'], ['has', 'tier']];
+const stationSource = zoom => zoom >= 8 ? 'stations' : zoom >= 7 ? 'stationMed' : null;
+const coordinate = event => event?.tile?.tileID?.canonical || event?.coord?.canonical;
+const tileKey = c => `${c.z}/${c.x}/${c.y}`;
+const validCoordinate = c => c && Number.isInteger(c.z) && c.z >= 0 && c.z <= 30 &&
+  Number.isInteger(c.x) && c.x >= 0 && c.x < 2 ** c.z &&
+  Number.isInteger(c.y) && c.y >= 0 && c.y < 2 ** c.z;
+const tilePolygon = c => {
+  const n = 2 ** c.z, latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+  const west = c.x / n * 360 - 180, east = (c.x + 1) / n * 360 - 180;
+  const north = latitude(c.y), south = latitude(c.y + 1);
+  return [[[west, south], [east, south], [east, north], [west, north], [west, south]]];
+};
+
+// Presentation tracks retryable AND nonretryable errors independently of retry
+// scheduling. A healthy neighboring tile cannot clear another tile's failure or
+// acquire fallback markers. Metadata failure is the only source-wide fallback.
+export function createStationFallbackState(map) {
+  const failed = new Map();
+  function stateFor(id) {
+    const state = failed.get(id);
+    if (!state) return null;
+    const source = map.getSource(id);
+    if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
+    for (const [key, record] of state.tiles) {
+      if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state)) state.tiles.delete(key);
+    }
+    if (!state.metadata && !state.tiles.size) { failed.delete(id); return null; }
+    return state;
+  }
+  return {
+    noteError(event) {
+      if (!['stations', 'stationMed'].includes(event?.sourceId) || event.error?.name === 'AbortError') return;
+      const c = coordinate(event);
+      // An unlocated tile failure is not evidence of a whole-source outage.
+      if ((event.tile || c) && !validCoordinate(c)) return;
+      const source = map.getSource(event.sourceId);
+      if (!source) return;
+      const state = stateFor(event.sourceId) || {source, url: source.url, metadata: false, tiles: new Map()};
+      if (c) state.tiles.set(tileKey(c), {coordinate: {...c}, tile: event.tile});
+      else state.metadata = true;
+      failed.set(event.sourceId, state);
+    },
+    noteSourceData(event) {
+      const state = failed.get(event?.sourceId);
+      if (!state) return false;
+      let changed = false;
+      if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; changed = true; }
+      const c = coordinate(event);
+      if (validCoordinate(c) && event.tile?.state === 'loaded') changed = state.tiles.delete(tileKey(c)) || changed;
+      return !stateFor(event.sourceId) || changed;
+    },
+    area(zoom) {
+      const id = stationSource(zoom), state = id && stateFor(id);
+      if (!state) return null;
+      return state.metadata ? true : {type: 'MultiPolygon', coordinates: [...state.tiles.values()].map(record => tilePolygon(record.coordinate))};
+    },
+    hasSourceFailure: id => Boolean(stateFor(id)),
+  };
+}
+
+export function stationFallbackFilter(id, area) {
+  const base = id === STATION_FALLBACK_IDS[1] ? CURATED_STATION_FILTER : STATION_BASEMAP_POI_FILTER;
+  return area === true ? base : ['all', base, area ? ['within', area] : ['literal', false]];
+}
+
 export function stationFallbackLayers(labelExpression) {
   if (typeof labelExpression !== 'function') throw new TypeError('Station labels require a language expression');
   const priority = ['match', ['get', 'subclass'], 'station', 0, 'subway', 1, 'halt', 2, 'tram_stop', 3, 4];
@@ -33,7 +99,7 @@ export function stationFallbackLayers(labelExpression) {
       // These already vetted hubs can be displayed after a station-tile failure
       // above z7 without duplicating normal ORM station markers.
       id: STATION_FALLBACK_IDS[1], type: 'circle', source: 'stationMajor',
-      minzoom: 7, filter: ['all', ['==', ['get', 'feature'], 'station'], ['has', 'tier']],
+      minzoom: 7, filter: CURATED_STATION_FILTER,
       paint: {
         'circle-color': '#ffa323', 'circle-stroke-color': '#123e52',
         'circle-stroke-width': 1.2,
@@ -80,7 +146,7 @@ export function addStationFallbackLayers(style, {annotateLayers, labelExpression
 }
 
 export function stationFallbackMarkersEnabled({zoom, stationsEnabled, background, failedSources}) {
-  const requiredSource=zoom>=8?'stations':zoom>=7?'stationMed':null;
+  const requiredSource=stationSource(zoom);
   return Boolean(requiredSource && stationsEnabled && background!=='satellite' &&
     failedSources?.has?.(requiredSource)===true);
 }

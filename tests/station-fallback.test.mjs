@@ -5,7 +5,67 @@ import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {annotateLayers, layerVisibility} from '../styles/layer-semantics.mjs';
 import {labelExpression} from '../styles/map-model.mjs';
 import {assertSourceContracts} from '../scripts/style/source-contract.mjs';
-import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from '../styles/station-fallback.mjs';
+import {addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from '../styles/station-fallback.mjs';
+
+const failedTile = (x=518,y=352,z=10) => ({state:'errored',tileID:{canonical:{z,x,y}}});
+const contains = (filter, tile, properties={class:'railway',subclass:'station',feature:'station',tier:3}) =>
+  featureFilter(filter).filter({zoom:tile.z},{type:1,properties,geometry:[[{x:4096,y:4096}]]},tile);
+
+test('mixed station failures scope basemap dots, names and curated hubs to failed tiles', () => {
+  const sources={stations:{url:'atlasstation://en/stations'}},state=createStationFallbackState({getSource:id=>sources[id]});
+  const a=failedTile(),b=failedTile(519);
+  for(const status of [503,403]){
+    state.noteError({sourceId:'stations',tile:a,error:{status}});
+    for(const id of STATION_FALLBACK_IDS){
+      const filter=stationFallbackFilter(id,state.area(10));
+      assert.equal(contains(filter,a.tileID.canonical),true,`${status} ${id}: failed tile`);
+      assert.equal(contains(filter,b.tileID.canonical),false,`${status} ${id}: healthy neighbor`);
+    }
+    state.noteSourceData({sourceId:'stations',isSourceLoaded:true,tile:{...b,state:'loaded'}});
+    assert.ok(state.area(10),'healthy neighbor completion does not recover the failed tile');
+  }
+  state.noteError({sourceId:'stations',tile:b,error:{status:503}});
+  state.noteSourceData({sourceId:'stations',tile:{...a,state:'loaded'}});
+  const filter=stationFallbackFilter(STATION_FALLBACK_IDS[0],state.area(10));
+  assert.equal(contains(filter,a.tileID.canonical),false,'only recovered tile loses fallback');
+  assert.equal(contains(filter,b.tileID.canonical),true,'other failure survives recovery');
+  b.state='unloaded';
+  assert.equal(state.area(10),null,'panning unloads retired failed tiles');
+  state.noteError({sourceId:'stations',tile:failedTile(520),error:{status:503}});
+  assert.ok(state.area(10),'new viewport failure is independently tracked');
+  sources.stations={url:'atlasstation://fr/stations'};
+  assert.equal(state.area(10),null,'style/source replacement cannot retain old failures');
+});
+
+test('only metadata failures permit source-wide fallback; success, language and aborts retire it', () => {
+  const source={url:'atlasstation://en/stations'},state=createStationFallbackState({getSource:()=>source});
+  state.noteError({sourceId:'stations',tile:{state:'errored'},error:{status:503}});
+  assert.equal(state.area(10),null,'unlocated tile is not treated as a source-wide error');
+  state.noteError({sourceId:'stations',error:{status:403}});
+  assert.equal(state.area(10),true);
+  state.noteSourceData({sourceId:'stations',tile:{...failedTile(),state:'loaded'},isSourceLoaded:true});
+  assert.equal(state.area(10),true,'tile completion cannot clear failed metadata');
+  state.noteSourceData({sourceId:'stations',sourceDataType:'metadata'});
+  assert.equal(state.area(10),null);
+  state.noteError({sourceId:'stations',tile:failedTile(),error:{name:'AbortError'}});
+  assert.equal(state.area(10),null);
+  state.noteError({sourceId:'stations',tile:failedTile(),error:{status:503}});
+  source.url='atlasstation://fr/stations';
+  assert.equal(state.area(10),null,'same source object with a changed URL drops old-language failures');
+  state.noteError({sourceId:'stationMed',tile:failedTile(1,1,7),error:{status:503}});
+  assert.ok(state.area(7));assert.equal(state.area(8),null);assert.equal(state.area(6),null);
+});
+
+test('failed-tile filters validate in the complete production style', async () => {
+  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
+  addStationFallbackLayers(style,{annotateLayers,labelExpression});
+  const source={},state=createStationFallbackState({getSource:()=>source});
+  state.noteError({sourceId:'stations',tile:failedTile(),error:{status:503}});
+  for(const area of [null,true,state.area(10)]){
+    for(const id of STATION_FALLBACK_IDS)style.layers.find(l=>l.id===id).filter=stationFallbackFilter(id,area);
+    assert.deepEqual(validateStyleMin(style).map(error=>error.message),[]);
+  }
+});
 
 const sample = (cls, subclass) =>
   featureFilter(STATION_BASEMAP_POI_FILTER).filter({zoom: 12}, {type: 1, properties: {class: cls, subclass}});
