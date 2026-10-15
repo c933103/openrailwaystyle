@@ -4,7 +4,7 @@ import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {annotateLayers, layerVisibility} from '../styles/layer-semantics.mjs';
 import {labelExpression} from '../styles/map-model.mjs';
 import {assertSourceContracts} from '../scripts/style/source-contract.mjs';
-import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled} from '../styles/station-fallback.mjs';
+import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from '../styles/station-fallback.mjs';
 
 const sample = (cls, subclass) =>
   featureFilter(STATION_BASEMAP_POI_FILTER).filter({zoom: 12}, {type: 1, properties: {class: cls, subclass}});
@@ -77,4 +77,15 @@ test('entire deployed style plus fallback validates without new network sources'
   const provider=style.layers.findIndex(layer=>layer.id==='station-provider-dots');
   assert.ok(low>=0&&fallback>low&&provider>fallback,
     'fallback station dots paint above independent crossings and below provider stations');
+});
+
+test('curated station fallback can populate after a cold load at maximum More detail zoom', () => {
+  const settings={ready:true,stationsEnabled:true,background:'map'};
+  for(const zoom of [3,7,9.8,21.999,22,24])
+    assert.equal(shouldRefreshCuratedStationSource({...settings,zoom}),true,'raw zoom '+zoom);
+  for(const zoom of [-1,0,2.99,NaN,Infinity])
+    assert.equal(shouldRefreshCuratedStationSource({...settings,zoom}),false,'invalid or insufficient zoom '+zoom);
+  assert.equal(shouldRefreshCuratedStationSource({...settings,stationsEnabled:false,zoom:22}),false);
+  assert.equal(shouldRefreshCuratedStationSource({...settings,background:'satellite',zoom:22}),false);
+  assert.equal(shouldRefreshCuratedStationSource({...settings,ready:false,zoom:22}),false);
 });
