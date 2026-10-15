@@ -23,6 +23,41 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## Station, crossing and place-label priority
+
+Station circles paint above crossing dots and × marks. Accepted city,
+settlement and state labels still paint above those circles, while crossings
+retain their former symbol-collision priority over place labels.
+
+The pinned MapLibre 5.24 renderer separates these requirements through
+identical-layout place-label twins. A zero-opacity placement representative
+comes before crossings; the original visible label comes after station dots.
+[Layout grouping](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/group_by_layout.ts)
+shares one symbol bucket, and
+[placement](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/symbol/placement.ts)
+uses its first layer. Both twins share accepted/rejected placement, so the
+later paint layer does not revive a label rejected by a crossing. Opacity zero
+suppresses drawing, not placement. Source, zoom, filter and every layout field
+must remain identical; localization, font fallback and background visibility
+apply to both twins. Atlas's initial load and existing language reload use full
+style replacement (`diff:false`), preserving family insertion order. This is
+required: the pinned [style differ](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/diff.ts)
+adds layers backwards, while the [worker layer index](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/style/style_layer_index.ts)
+groups them in insertion order. A diffed replacement can therefore make the
+visible twin the placement representative despite identical final paint order.
+The unit regression resolves style-spec from MapLibre's own locked dependency
+(currently 24.10.0), not the separate 23.1.0 validator. Atlas ships MapLibre's
+hash-pinned prebuilt distribution rather than rebundling that dependency, so
+the browser also reproduces the default-diff failure in the exact shipped
+renderer and verifies full-replacement recovery and repeated reloads. Any future change to diff-based
+application reloads needs a new placement contract and renderer coverage.
+No collision-overlap override or extra source request is used.
+
+This is a pinned-runtime contract, checked with production layers and local
+MapLibre fixtures: crossing/station pixels at z11–16, crossing/place collision
+reversal, and city/village/state glyphs over station circles with paint-order
+reversal and restoration. Renderer upgrades must retain these checks.
+
 ## Source availability and z7 handoff
 
 Main-line railway geometry comes from OpenRailwayMap's live vector service, not
@@ -296,3 +331,14 @@ Label tiers, nearby coordinates, similar names and shared Wikidata alone do not
 remove another station's dot. At zoom 7 the curated layer ends and the provider
 marker resumes; zooming back below 7 restores the curated ownership. Candidates
 not emitted by the curated selection cannot suppress provider points.
+
+The symbol-overlap fixture also tests the production crossing icon at z11–14
+and crossing text at z15–16 against a single co-located station. It first measures
+the station's solid interior and a crossing-only dark-ink mask, requires a
+nonempty intersection, then requires the entire interior in production order,
+visible occlusion of the measured intersection with reversed order, and full
+restoration. Sampling scales with device-pixel ratio; a wider ink bounding box
+is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs/README.md)
+uses fontnik-compatible FreeType-origin bearings rather than Pillow's
+alphabetic-baseline bearings. This is a fixture correction, not production
+typography evidence.

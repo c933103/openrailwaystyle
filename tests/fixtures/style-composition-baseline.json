@@ -1762,6 +1762,67 @@
       "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
+      "id": "place_label_city-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "sha256": "6d5e0d6e9ab49f4369328bc74789b2c2e8cd16aa41bf0bf8834cb37be26aea3b"
+    },
+    {
+      "id": "place_label_other-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 8,
+      "sha256": "6f7337d56a022a6b5929efae4406f38f17eec1b33d4009540a7be51f8d27ecf9"
+    },
+    {
+      "id": "state_label-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "sha256": "667351e24dac2623041d90a9a5b7d0e5c87e7d88343ceab037a924f52a521b9f"
+    },
+    {
+      "id": "infrastructure-crossing-overview",
+      "type": "circle",
+      "source": "crossingsOverview",
+      "sourceLayer": "level_crossings",
+      "minzoom": 5,
+      "maxzoom": 9,
+      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "circle",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 11,
+      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
+    },
+    {
+      "id": "infrastructure-crossing-marks",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 11,
+      "maxzoom": 15,
+      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
+    },
+    {
+      "id": "infrastructure-level-crossings",
+      "type": "symbol",
+      "source": "crossings",
+      "sourceLayer": "points_of_interest",
+      "minzoom": 15,
+      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
+    },
+    {
       "id": "station-stationLow-dots",
       "type": "circle",
       "source": "stationLow",
@@ -1837,41 +1898,6 @@
       "minzoom": 4,
       "maxzoom": 10,
       "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
-    },
-    {
-      "id": "infrastructure-crossing-overview",
-      "type": "circle",
-      "source": "crossingsOverview",
-      "sourceLayer": "level_crossings",
-      "minzoom": 5,
-      "maxzoom": 9,
-      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
-    },
-    {
-      "id": "infrastructure-crossing-dots",
-      "type": "circle",
-      "source": "crossingsDetail",
-      "sourceLayer": "level_crossings",
-      "minzoom": 9,
-      "maxzoom": 11,
-      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
-    },
-    {
-      "id": "infrastructure-crossing-marks",
-      "type": "symbol",
-      "source": "crossingsDetail",
-      "sourceLayer": "level_crossings",
-      "minzoom": 11,
-      "maxzoom": 15,
-      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
-    },
-    {
-      "id": "infrastructure-level-crossings",
-      "type": "symbol",
-      "source": "crossings",
-      "sourceLayer": "points_of_interest",
-      "minzoom": 15,
-      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
     },
     {
       "id": "electrification-substation-areas",
@@ -2499,6 +2525,15 @@
       ],
       "sources": [
         "heritageAreas"
+      ]
+    },
+    {
+      "reviewed": "2026-10-15",
+      "reason": "Separate place-label collision placement from paint using identical-layout symbol twins in the pinned MapLibre runtime. Crossings retain collision priority; station circles cover crossing ink; accepted place glyphs retain paint priority over station circles. Actual renderer controls exercise all three constraints.",
+      "addedLayers": [
+        "place_label_city-placement",
+        "place_label_other-placement",
+        "state_label-placement"
       ]
     }
   ]

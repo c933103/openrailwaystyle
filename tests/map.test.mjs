@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
-import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject } from '../styles/map-model.mjs';
+import {createRequire} from 'node:module';
+// Resolve from MapLibre, not the older direct validator dependency.
+const rendererRequire=createRequire(import.meta.resolve('maplibre-gl'));
+const rendererStyleSpec=rendererRequire('@maplibre/maplibre-gl-style-spec');
+import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject, labelExpression } from '../styles/map-model.mjs';
 import { CONTEXT_CATEGORIES, AREA_CATEGORIES } from '../styles/context.mjs';
+import {layerVisibility,shouldLocalizeLayer} from '../styles/layer-semantics.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
 test('unknown speed is never turned into zero, low speed, or high-speed-class inference', () => {
@@ -192,6 +197,21 @@ test('regional station dots survive name collision and begin before level crossi
   assert.ok(names(11,{feature:'halt'}).length);
   const firstCrossing=Math.min(...style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')).map(l=>l.minzoom));
   assert.equal(firstCrossing,5);
+  // Layer order is independent of source completeness and minzoom.
+  const crossingLayers=style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')||l.id==='infrastructure-level-crossings');
+  const stationDots=layers.filter(l=>l.type==='circle');
+  assert.ok(crossingLayers.length===4&&stationDots.length>=6);
+  for(const dot of stationDots)for(const crossing of crossingLayers)
+    assert.ok(style.layers.indexOf(dot)>style.layers.indexOf(crossing),`${dot.id} must be above ${crossing.id}`);
+  for(const id of ['place_label_city','place_label_other','state_label']){
+    const visible=style.layers.find(l=>l.id===id),placement=style.layers.find(l=>l.id===id+'-placement');
+    for(const crossing of crossingLayers)
+      assert.ok(style.layers.indexOf(placement)<style.layers.indexOf(crossing),`${crossing.id} retains placement priority over ${id}`);
+    for(const dot of stationDots)assert.ok(style.layers.indexOf(visible)>style.layers.indexOf(dot),`${id} remains painted above ${dot.id}`);
+    for(const key of ['type','source','source-layer','minzoom','maxzoom','filter','layout'])
+      assert.deepEqual(placement[key],visible[key],`${id} twins share the exact placement layout: ${key}`);
+    assert.deepEqual(placement.paint,{...visible.paint,'text-opacity':0,'icon-opacity':0},'placement twin has no ink');
+  }
   assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
   for (const [id,zmin,zmax] of [
     ['station-stationLow-dots',4,6],['station-stationMed-dots',6,8],
@@ -1185,4 +1205,44 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
   for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
   assert.equal(stationTracks(scissors, [zone], 1)[0].tracks, 2);
+});
+
+test('place paint twins retain shared placement across localization, fonts, backgrounds and reloads',()=>{
+  for(const language of ['en','ja'])for(const background of ['standard','satellite','hybrid','carto']){
+    const layers=structuredClone(style.layers);
+    for(const layer of layers){
+      if(shouldLocalizeLayer(layer))layer.layout['text-field']=labelExpression(language);
+      if(Array.isArray(layer.layout?.['text-font']))layer.layout['text-font']=[...layer.layout['text-font'],'Fixture fallback'];
+      const visible=layerVisibility(layer,{background,mode:'infrastructure',stations:true});
+      if(visible!==undefined){layer.layout||={};layer.layout.visibility=visible?'visible':'none';}
+    }
+    for(const reloaded of [layers,JSON.parse(JSON.stringify(layers))]){
+      const groups=rendererStyleSpec.groupByLayout(reloaded,{});
+      for(const id of ['place_label_city','place_label_other','state_label']){
+        const group=groups.find(group=>group.some(layer=>layer.id===id));
+        assert.equal(group[0].id,id+'-placement','the invisible first family member alone controls collision placement');
+        assert.ok(group.some(layer=>layer.id===id));
+        assert.equal(group[0].paint['text-opacity'],0);
+        assert.deepEqual(group[0].layout,reloaded.find(layer=>layer.id===id).layout);
+      }
+    }
+  }
+});
+
+test('place placement twins require the full replacement path used by Atlas',async()=>{
+  assert.equal(rendererRequire('@maplibre/maplibre-gl-style-spec/package.json').version,'24.10.0',
+    'review this regression when MapLibre’s locked style-spec changes');
+  const ids=new Set(['place_label_city-placement','infrastructure-level-crossings','place_label_city']);
+  const layers=style.layers.filter(layer=>ids.has(layer.id));
+  const sourceStyle={version:8,sources:style.sources,layers:[]};
+  const targetStyle={...sourceStyle,layers};
+  // Actual pinned diff insertion order differs from final paint order.
+  // Worker StyleLayerIndex keeps this insertion order when forming families.
+  const inserted=rendererStyleSpec.diff(sourceStyle,targetStyle).filter(op=>op.command==='addLayer').map(op=>op.args[0]);
+  const diffFamily=rendererStyleSpec.groupByLayout(inserted,{}).find(group=>group.some(layer=>layer.id==='place_label_city'));
+  assert.equal(diffFamily[0].id,'place_label_city','default diff reproduces the wrong placement representative');
+  const fullFamily=rendererStyleSpec.groupByLayout(layers,{}).find(group=>group.some(layer=>layer.id==='place_label_city'));
+  assert.equal(fullFamily[0].id,'place_label_city-placement','full style load retains the intended representative');
+  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/map\.setStyle\(style,\{diff:false,/,'changing Atlas to diff-based reloads needs a new placement contract');
 });
