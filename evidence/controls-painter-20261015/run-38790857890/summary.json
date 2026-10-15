@@ -1,0 +1,319 @@
+{
+  "run": 38790857890,
+  "head": "8c0b485d903544f5b5ef66ea0f1b66ca034431b2",
+  "artifactZipSha256": "d3a4886215083a8b4467958ccb3023622060bff8506d1702278624e898ba88ae",
+  "arms": [
+    {
+      "arm": "baseline",
+      "settled": true,
+      "nodeActionAndSettlementMs": 7137,
+      "pageCaptureMs": 7139.2,
+      "maskDraws": 21668,
+      "maskTimeMs": 1474.3,
+      "stencilClears": 56,
+      "frames": [
+        {
+          "start": 3052.8,
+          "maskDraws": 3000,
+          "maskMs": 7.7,
+          "end": 3153.6
+        },
+        {
+          "start": 3218.3,
+          "maskDraws": 3000,
+          "maskMs": 8.3,
+          "end": 3283.0
+        },
+        {
+          "start": 3376.2,
+          "maskDraws": 4052,
+          "maskMs": 10.6,
+          "end": 3414.8
+        },
+        {
+          "start": 5622.4,
+          "maskDraws": 11616,
+          "maskMs": 1447.7,
+          "end": 7136.2
+        }
+      ],
+      "fetchCount": 176,
+      "fetchesComplete": true,
+      "headersMs": {
+        "n": 176,
+        "min": 4.7,
+        "median": 11.2,
+        "p95": 23,
+        "max": 100.9
+      },
+      "bodyMs": {
+        "n": 176,
+        "min": 0.2,
+        "median": 1.5,
+        "p95": 5.7,
+        "max": 26.1
+      },
+      "fetchToBodyMs": {
+        "n": 176,
+        "min": 5.4,
+        "median": 13.0,
+        "p95": 27.2,
+        "max": 126.2
+      },
+      "lastBodyFromCaptureStartMs": 4053.6,
+      "lastBodyToStopMs": 3085.6,
+      "fixtureCounts": {
+        "provider": 371,
+        "nonempty": 184,
+        "dem": 29,
+        "unknown": 0
+      },
+      "framesTruncated": false,
+      "fetchTruncated": false,
+      "errors": [],
+      "pixelCases": [
+        {
+          "case": "mercator-hidden",
+          "sha256": "c10e80700c94f98e557394aeceab9d89dc1151b4d361837ab5b4426a259bbdbe",
+          "blue": 16128,
+          "red": 0,
+          "features": 32,
+          "stencilClears": 6
+        },
+        {
+          "case": "mercator-shown",
+          "sha256": "8c8c57f232b8c8e2a3e0d959677428c9d98d52b7b81950adc161507cd6d329ed",
+          "blue": 0,
+          "red": 27904,
+          "features": 32,
+          "stencilClears": 12
+        },
+        {
+          "case": "mercator-hidden-again",
+          "sha256": "c10e80700c94f98e557394aeceab9d89dc1151b4d361837ab5b4426a259bbdbe",
+          "blue": 16128,
+          "red": 0,
+          "features": 32,
+          "stencilClears": 12
+        },
+        {
+          "case": "mercator-zoom4",
+          "sha256": "10647e2f585298e6196f586a1e0afde9f052b99f177426eae770de9ceb465a03",
+          "blue": 3968,
+          "red": 0,
+          "features": 48,
+          "stencilClears": 36
+        },
+        {
+          "case": "mercator-pitched",
+          "sha256": "ace81ff8adc9262c58ba5323c79be93f6520e1bcb12a21c41d690c2cd5d28be0",
+          "blue": 1902,
+          "red": 0,
+          "features": 77,
+          "stencilClears": 32
+        },
+        {
+          "case": "globe",
+          "sha256": "d8fdf3cb074e8f41e4d0a9bf3a5fb4b7917be5f909e7a6281e57f62e4448b0cf",
+          "blue": 1042,
+          "red": 0,
+          "features": 8,
+          "stencilClears": 82
+        },
+        {
+          "case": "terrain",
+          "sha256": "fb8b3cc0e2c7e3334e47981e4d5182e2eb997572b83ddedb09b624242ded3196",
+          "blue": 11642,
+          "red": 0,
+          "features": 36,
+          "stencilClears": 9
+        }
+      ]
+    },
+    {
+      "arm": "hidden-mask-guard",
+      "settled": true,
+      "nodeActionAndSettlementMs": 8516,
+      "pageCaptureMs": 8520.1,
+      "maskDraws": 13564,
+      "maskTimeMs": 68.8,
+      "stencilClears": 37,
+      "frames": [
+        {
+          "start": 3737.9,
+          "maskDraws": 1200,
+          "maskMs": 4.0,
+          "end": 3827.4
+        },
+        {
+          "start": 3883.1,
+          "maskDraws": 1200,
+          "maskMs": 8.5,
+          "end": 3937.5
+        },
+        {
+          "start": 4028.9,
+          "maskDraws": 2012,
+          "maskMs": 3.8,
+          "end": 4050.0
+        },
+        {
+          "start": 7025.3,
+          "maskDraws": 4576,
+          "maskMs": 45.5,
+          "end": 7100.2
+        },
+        {
+          "start": 8440.9,
+          "maskDraws": 4576,
+          "maskMs": 7,
+          "end": 8515.1
+        }
+      ],
+      "fetchCount": 176,
+      "fetchesComplete": true,
+      "headersMs": {
+        "n": 176,
+        "min": 3.9,
+        "median": 9.25,
+        "p95": 27.8,
+        "max": 65.6
+      },
+      "bodyMs": {
+        "n": 176,
+        "min": 0.2,
+        "median": 1.4,
+        "p95": 5.0,
+        "max": 35.2
+      },
+      "fetchToBodyMs": {
+        "n": 176,
+        "min": 4.5,
+        "median": 10.95,
+        "p95": 30.4,
+        "max": 99.3
+      },
+      "lastBodyFromCaptureStartMs": 4615.1,
+      "lastBodyToStopMs": 3905.0,
+      "fixtureCounts": {
+        "provider": 371,
+        "nonempty": 184,
+        "dem": 29,
+        "unknown": 0
+      },
+      "framesTruncated": false,
+      "fetchTruncated": false,
+      "errors": [],
+      "pixelCases": [
+        {
+          "case": "mercator-hidden",
+          "sha256": "c10e80700c94f98e557394aeceab9d89dc1151b4d361837ab5b4426a259bbdbe",
+          "blue": 16128,
+          "red": 0,
+          "features": 32,
+          "stencilClears": 3
+        },
+        {
+          "case": "mercator-shown",
+          "sha256": "8c8c57f232b8c8e2a3e0d959677428c9d98d52b7b81950adc161507cd6d329ed",
+          "blue": 0,
+          "red": 27904,
+          "features": 32,
+          "stencilClears": 9
+        },
+        {
+          "case": "mercator-hidden-again",
+          "sha256": "c10e80700c94f98e557394aeceab9d89dc1151b4d361837ab5b4426a259bbdbe",
+          "blue": 16128,
+          "red": 0,
+          "features": 32,
+          "stencilClears": 9
+        },
+        {
+          "case": "mercator-zoom4",
+          "sha256": "10647e2f585298e6196f586a1e0afde9f052b99f177426eae770de9ceb465a03",
+          "blue": 3968,
+          "red": 0,
+          "features": 48,
+          "stencilClears": 49
+        },
+        {
+          "case": "mercator-pitched",
+          "sha256": "ace81ff8adc9262c58ba5323c79be93f6520e1bcb12a21c41d690c2cd5d28be0",
+          "blue": 1902,
+          "red": 0,
+          "features": 77,
+          "stencilClears": 31
+        },
+        {
+          "case": "globe",
+          "sha256": "d8fdf3cb074e8f41e4d0a9bf3a5fb4b7917be5f909e7a6281e57f62e4448b0cf",
+          "blue": 1042,
+          "red": 0,
+          "features": 8,
+          "stencilClears": 49
+        },
+        {
+          "case": "terrain",
+          "sha256": "fb8b3cc0e2c7e3334e47981e4d5182e2eb997572b83ddedb09b624242ded3196",
+          "blue": 11642,
+          "red": 0,
+          "features": 36,
+          "stencilClears": 10
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "case": "mercator-hidden",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 2240,
+      "guardedMaskDraws": 1024
+    },
+    {
+      "case": "mercator-shown",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 4480,
+      "guardedMaskDraws": 3072
+    },
+    {
+      "case": "mercator-hidden-again",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 4480,
+      "guardedMaskDraws": 3072
+    },
+    {
+      "case": "mercator-zoom4",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 16022,
+      "guardedMaskDraws": 20560
+    },
+    {
+      "case": "mercator-pitched",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 14532,
+      "guardedMaskDraws": 13658
+    },
+    {
+      "case": "globe",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 25060,
+      "guardedMaskDraws": 22864
+    },
+    {
+      "case": "terrain",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "baselineMaskDraws": 2296,
+      "guardedMaskDraws": 2340
+    }
+  ],
+  "causation": "Original intermittent timeout remains unresolved; a single pair is diagnostic, not a statistical speed claim."
+}

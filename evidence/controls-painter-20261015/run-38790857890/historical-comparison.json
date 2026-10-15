@@ -1,0 +1,116 @@
+[
+  {
+    "name": "original",
+    "counts": {
+      "started": 494,
+      "fulfilled": 395,
+      "responded": 494,
+      "finished": 494,
+      "failed": 0
+    },
+    "retained": 128,
+    "windowMs": 53732,
+    "intervalsMs": {
+      "fulfilled-started": {
+        "n": 128,
+        "median": 9.0,
+        "max": 20,
+        "p95": 16
+      },
+      "responded-fulfilled": {
+        "n": 128,
+        "median": 1195.0,
+        "max": 2476,
+        "p95": 2330
+      },
+      "finished-responded": {
+        "n": 128,
+        "median": 15.5,
+        "max": 2369,
+        "p95": 2318
+      },
+      "finished-fulfilled": {
+        "n": 128,
+        "median": 1292.5,
+        "max": 3540,
+        "p95": 3525
+      }
+    }
+  },
+  {
+    "name": "baseline",
+    "counts": {
+      "started": 495,
+      "fulfilled": 396,
+      "responded": 495,
+      "finished": 495,
+      "failed": 0
+    },
+    "retained": 128,
+    "windowMs": 461,
+    "intervalsMs": {
+      "fulfilled-started": {
+        "n": 128,
+        "median": 7.0,
+        "max": 18,
+        "p95": 15
+      },
+      "responded-fulfilled": {
+        "n": 128,
+        "median": 3.0,
+        "max": 12,
+        "p95": 10
+      },
+      "finished-responded": {
+        "n": 128,
+        "median": 1.0,
+        "max": 12,
+        "p95": 8
+      },
+      "finished-fulfilled": {
+        "n": 128,
+        "median": 5.0,
+        "max": 21,
+        "p95": 13
+      }
+    }
+  },
+  {
+    "name": "hidden-mask-guard",
+    "counts": {
+      "started": 495,
+      "fulfilled": 396,
+      "responded": 495,
+      "finished": 495,
+      "failed": 0
+    },
+    "retained": 128,
+    "windowMs": 394,
+    "intervalsMs": {
+      "fulfilled-started": {
+        "n": 128,
+        "median": 5.0,
+        "max": 16,
+        "p95": 12
+      },
+      "responded-fulfilled": {
+        "n": 128,
+        "median": 3.0,
+        "max": 10,
+        "p95": 8
+      },
+      "finished-responded": {
+        "n": 128,
+        "median": 1.0,
+        "max": 9,
+        "p95": 5
+      },
+      "finished-fulfilled": {
+        "n": 128,
+        "median": 5.0,
+        "max": 11,
+        "p95": 10
+      }
+    }
+  }
+]
