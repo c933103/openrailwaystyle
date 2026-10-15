@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
+import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {annotateLayers, layerVisibility} from '../styles/layer-semantics.mjs';
 import {labelExpression} from '../styles/map-model.mjs';
+import {assertSourceContracts} from '../scripts/style/source-contract.mjs';
 import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled} from '../styles/station-fallback.mjs';
 
 const sample = (cls, subclass) =>
@@ -60,4 +61,20 @@ test('station fallback activation is scoped to the active zoom band and its actu
   assert.equal(stationFallbackNamesEnabled({...options,background:'hybrid'}),true);
   assert.equal(stationFallbackMarkersEnabled({...options,background:'hybrid'}),true);
   assert.equal(stationFallbackNamesEnabled({...options,failedSources:new Set()}),false);
+});
+
+test('entire deployed style plus fallback validates without new network sources', async () => {
+  const style=JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
+  const originalSources=structuredClone(style.sources);
+  const originalLayerCount=style.layers.length;
+  addStationFallbackLayers(style,{annotateLayers,labelExpression});
+  assert.deepEqual(style.sources, originalSources, 'no additional TileJSON, vectors or OSM network requests');
+  assert.equal(style.layers.length, originalLayerCount+3);
+  assert.deepEqual(validateStyleMin(style).map(error=>error.message),[]);
+  assert.doesNotThrow(()=>assertSourceContracts(style));
+  const low=style.layers.findIndex(layer=>layer.id==='infrastructure-crossing-overview');
+  const fallback=style.layers.findIndex(layer=>layer.id==='station-basemap-fallback-dots');
+  const provider=style.layers.findIndex(layer=>layer.id==='station-provider-dots');
+  assert.ok(low>=0&&fallback>low&&provider>fallback,
+    'fallback station dots paint above independent crossings and below provider stations');
 });
