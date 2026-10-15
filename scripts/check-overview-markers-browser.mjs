@@ -111,7 +111,8 @@ try{
   const scratch=document.createElement('canvas');scratch.width=canvas.width;scratch.height=canvas.height;
   const context=scratch.getContext('2d');context.drawImage(canvas,0,0);
   const rgba=[...context.getImageData(Math.round(point.x*ratio)-1,Math.round(point.y*ratio)-1,3,3).data];
-  return {rgba,orange:rgba.filter((_,i)=>i%4===0&&rgba[i]>240&&rgba[i+1]>145&&rgba[i+1]<180&&rgba[i+2]<70&&rgba[i+3]===255).length,
+  const orangePixels=rgba.flatMap((_,i)=>i%4===0&&rgba[i]>240&&rgba[i+1]>145&&rgba[i+1]<180&&rgba[i+2]<70&&rgba[i+3]===255?[i/4]:[]);
+  return {rgba,orange:orangePixels.length,orangePixels,
    overlapping:map.queryRenderedFeatures(point).filter(f=>f.layer.id.startsWith('station-')||f.layer.id.startsWith('infrastructure-crossing-')||f.layer.id==='infrastructure-level-crossings').map(f=>({id:f.layer.id,type:f.layer.type}))};
  });
  const rendered=()=>waitUntil(page,async()=>{await new Promise(resolve=>{fixtureMap.once('idle',resolve);fixtureMap.triggerRepaint();});return fixtureMap.loaded()&&fixtureMap.areTilesLoaded();});
@@ -121,14 +122,21 @@ try{
   const positive=await pixels();
   assert.ok(positive.overlapping.some(f=>f.id===layer&&f.type==='symbol'),`real crossing symbol must render at zoom ${zoom}`);
   assert.ok(positive.overlapping.some(f=>f.id.startsWith('station-')&&f.type==='circle'),`station circle must render at zoom ${zoom}`);
-  assert.equal(positive.orange,9,`station must cover the crossing at zoom ${zoom}: ${JSON.stringify(positive)}`);
-  await page.evaluate(id=>fixtureMap.moveLayer(id),layer);await rendered();
+  // Small production circles have antialiased/stroked edges. Measure their
+  // solid interior with the crossing hidden, rather than assuming all nine
+  // sampled pixels are inside the circle at every zoom.
+  await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),layer);await rendered();
+  const stationOnly=await pixels();
+  assert.ok(stationOnly.orangePixels.includes(4),`station-only center must be solid orange at zoom ${zoom}: ${JSON.stringify(stationOnly)}`);
+  const interiorVisible=sample=>stationOnly.orangePixels.filter(pixel=>sample.orangePixels.includes(pixel)).length;
+  assert.equal(interiorVisible(positive),stationOnly.orange,`station interior must cover the crossing at zoom ${zoom}: ${JSON.stringify({positive,stationOnly})}`);
+  await page.evaluate(id=>{fixtureMap.moveLayer(id);fixtureMap.setLayoutProperty(id,'visibility','visible');},layer);await rendered();
   const wrongOrder=await pixels();
   assert.ok(wrongOrder.overlapping.some(f=>f.id===layer), 'negative control retains the crossing');
-  assert.ok(wrongOrder.orange<positive.orange,`reversed paint order must visibly cover the station at zoom ${zoom}`);
+  assert.ok(interiorVisible(wrongOrder)<stationOnly.orange,`reversed paint order must visibly cover the station interior at zoom ${zoom}: ${JSON.stringify({wrongOrder,stationOnly})}`);
   await page.evaluate(id=>fixtureMap.moveLayer(id,'station-stationLow-dots'),layer);await rendered();
-  const restored=await pixels();assert.equal(restored.orange,9,'restoring production order recovers station visibility');
-  overlapSamples.push({zoom,layer,positive,wrongOrder,restored});
+  const restored=await pixels();assert.equal(interiorVisible(restored),stationOnly.orange,'restoring production order recovers the entire measured station interior');
+  overlapSamples.push({zoom,layer,stationOnly,positive,wrongOrder,restored});
  }
  await page.screenshot({path:'browser-review/crossing-symbol-overlap-z16.png'});
  await writeFile('browser-review/crossing-symbol-overlap.json',JSON.stringify(overlapSamples,null,2)+'\n');
