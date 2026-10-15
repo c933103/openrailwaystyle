@@ -461,7 +461,7 @@ export function joinLines(lines) {
 // these routes (headways).
 export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
-  const service = serviceRoutes({routes, ways});
+  const service = serviceRoutes({routes, ways}), relationIds = new Map();
   for (const way of ways.values()) {
     // Keep the actual eligible contributors separate from the whole service
     // group. The display identity need not itself contribute to this way.
