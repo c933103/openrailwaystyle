@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {buildTiles, readTable, serviceRoutes, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, commitStage, toTable, buildTiles, readTable, serviceRoutes, writeTable, LAYER} from '../scripts/service-routes.mjs';
 import {serviceProvenanceFixture} from '../scripts/service-provenance-fixture.mjs';
 
 const decode = tiles => [...tiles].filter(([key]) => key.startsWith('12/')).flatMap(([key, bytes]) => {
@@ -53,4 +53,24 @@ test('service provenance: rejected or withdrawn memberships never become segment
   assert.ok(a.length);
   assert.ok(a.every(f => f.properties.group_relation_ids === '[10,30]'));
   assert.ok(features.every(f => !JSON.parse(f.properties.segment_relation_ids).some(id => [20, 999].includes(id))));
+});
+
+test('service provenance: source identity/tag resolution does not grow with way membership count', () => {
+  const resolveCount = count => {
+    const table = {routes: new Map(), ways: new Map()};
+    const ways = Array.from({length: count}, (_, i) => ({type: 'way', id: i + 1, tags: {railway: 'subway'},
+      geometry: [{lon: .005 + i * .0001, lat: .04}, {lon: .0051 + i * .0001, lat: .04}]}));
+    addResult(table, toTable({elements: [{type: 'relation', id: 10,
+      tags: {type: 'route', route: 'subway', ref: 'A', name: 'A', network: 'Metro'},
+      members: ways.map(way => ({type: 'way', ref: way.id, role: ''}))}, ...ways]}), 'A');
+    commitStage(table, 'A');
+    const evidence = table.routes.get('r10').evidence, tags = evidence.tags;
+    let reads = 0;
+    Object.defineProperty(evidence, 'tags', {get() { reads++; return tags; }});
+    assert.ok(buildTiles(table).size);
+    return reads;
+  };
+  const one = resolveCount(1);
+  assert.ok(one > 0, 'instrument the real routeView tag processing');
+  assert.equal(resolveCount(100), one, 'one identity resolution per source relation, not per contributed way');
 });

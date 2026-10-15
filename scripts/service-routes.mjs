@@ -470,7 +470,9 @@ export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()
       const group = service.get(key);
       if (!group) continue;
       if (!contributors.has(group)) contributors.set(group, new Set());
-      contributors.get(group).add(routeView(routes.get(key)).relation);
+      // Resolve each source frontier only once, not for every way it uses.
+      if (!relationIds.has(key)) relationIds.set(key, routeView(routes.get(key)).relation);
+      contributors.get(group).add(relationIds.get(key));
     }
     // A route once, whichever of its relations run here.
     const all = [...contributors.keys()]
