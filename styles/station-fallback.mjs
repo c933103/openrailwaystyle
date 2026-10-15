@@ -87,3 +87,10 @@ export function stationFallbackMarkersEnabled({zoom, stationsEnabled, background
 export function stationFallbackNamesEnabled(options) {
   return options.zoom>=8 && stationFallbackMarkersEnabled(options);
 }
+
+export function shouldRefreshCuratedStationSource({ready,stationsEnabled,background,zoom}) {
+  // The camera's raw maximum zoom depends on the More detail setting.
+  // Curated geometry remains reusable at every zoom once activated at z3.
+  return Boolean(ready && stationsEnabled && background!=='satellite' &&
+    Number.isFinite(zoom) && zoom>=3);
+}
