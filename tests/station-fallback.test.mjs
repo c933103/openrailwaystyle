@@ -150,3 +150,33 @@ test('curated station fallback can populate after a cold load at maximum More de
   assert.equal(shouldRefreshCuratedStationSource({...settings,background:'satellite',zoom:22}),false);
   assert.equal(shouldRefreshCuratedStationSource({...settings,ready:false,zoom:22}),false);
 });
+
+const viewport=(west,south,east,north)=>({getWest:()=>west,getSouth:()=>south,getEast:()=>east,getNorth:()=>north});
+test('coordinate-only failures retire after a pan without a tile lifecycle event',()=>{
+ let bounds=viewport(2,48,3,49);const source={};
+ const state=createStationFallbackState({getSource:()=>source,getBounds:()=>bounds});
+ const coord={canonical:{z:10,x:518,y:352}};
+ for(const status of [403,503]){
+  bounds=viewport(2,48,3,49);state.noteError({sourceId:'stations',coord,error:{status}});
+  assert.ok(state.area(10));assert.equal(state.hasSourceFailure('stations'),true);
+  bounds=viewport(20,48,21,49);
+  assert.equal(state.area(10),null);assert.equal(state.hasSourceFailure('stations'),false);
+  bounds=viewport(2,48,3,49);assert.equal(state.area(10),null,'returning cannot resurrect a retired error');
+ }
+});
+test('coordinate-only retirement handles wrapped bounds and latitude exclusion',()=>{
+ let bounds=viewport(170,-60,-170,60);const source={};
+ const state=createStationFallbackState({getSource:()=>source,getBounds:()=>bounds});
+ const error=x=>state.noteError({sourceId:'stations',coord:{canonical:{z:2,x,y:1}},error:{status:403}});
+ error(0);error(3);assert.equal(state.area(10).coordinates.length,2);
+ bounds=viewport(530,-60,550,60);assert.equal(state.area(10).coordinates.length,2,'wrapped world copy retained');
+ bounds=viewport(-180,70,180,80);assert.equal(state.area(10),null,'latitude proves exclusion even across full world');
+ bounds=viewport(-180,-60,180,60);error(0);error(3);assert.equal(state.area(10).coordinates.length,2);
+ bounds=viewport(0,-60,20,60);assert.equal(state.area(10),null);
+});
+test('unknown bounds do not invent offscreen evidence or clear metadata failure',()=>{
+ let bounds=undefined;const source={};const state=createStationFallbackState({getSource:()=>source,getBounds:()=>bounds});
+ state.noteError({sourceId:'stations',coord:{canonical:{z:10,x:518,y:352}},error:{status:503}});
+ assert.ok(state.area(10));bounds=viewport(NaN,48,NaN,49);assert.ok(state.area(10));
+ state.noteError({sourceId:'stations',error:{status:403}});bounds=viewport(20,48,21,49);assert.equal(state.area(10),true);
+});

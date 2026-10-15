@@ -1218,7 +1218,8 @@ const mapErrorMessage = () => {
 function updateStatus() {
   const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
   for (const [id, error] of errors) {
-    if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
+    if (error.stationOwned && !stationFailures?.hasSourceFailure(id)) errors.delete(id);
+    else if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
   }
   applyStationFallbackState();
   if (errors.size || railFailed) {
@@ -1771,11 +1772,13 @@ async function initialize() {
     // carry no stack, and plain logs of them show only "Error".
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     const railError = railRecovery.noteError(e);
-    stationFailures.noteError(e);
+    const stationError = stationFailures.noteError(e);
     const id = e.sourceId || 'resource', instance = e.sourceId && map.getSource(e.sourceId), previous = errors.get(id);
     // A retryable error cannot take ownership of a nonretryable error on the
     // same source instance; pruning must not erase that independent failure.
-    errors.set(id, {source:instance, recoveryOwned:railError && (!previous || previous.source !== instance || previous.recoveryOwned)});
+    errors.set(id, {source:instance,
+      stationOwned:stationError && (!previous || previous.source !== instance || previous.stationOwned),
+      recoveryOwned:railError && (!previous || previous.source !== instance || previous.recoveryOwned)});
     updateStatus();
     // Demand-driven recovery handles failed railway metadata and tiles.
     // Preserve the existing three source-metadata retries for unrelated map

@@ -1003,6 +1003,24 @@ test('station fallback keeps the failed tile mask through neighboring success, r
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 
+test('coordinate-only station failure clears presentation and status after a healthy pan',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
+  map.getBounds=()=>({getWest:()=>2,getEast:()=>3,getSouth:()=>48,getNorth:()=>49});
+  map.handlers['style.load']();
+  map.handlers.error({sourceId:'stations',coord:{canonical:{z:10,x:518,y:352}},error:{status:403,message:'HTTP 403'}});
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS,status=window.document.getElementById('map-status');
+  for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'visible');
+  assert.match(status.textContent,/station data unavailable/);
+  map.getBounds=()=>({getWest:()=>20,getEast:()=>21,getSouth:()=>48,getNorth:()=>49});
+  map.handlers.moveend();await tick();
+  for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'none');
+  assert.doesNotMatch(status.textContent,/station data unavailable/);
+  assert.equal(status.classList.contains('error'),false);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
 for(const [mode,source] of [['owner','ownerLow'],['axle','axleLow']])test(`${mode} low-zoom HTTP 403 remains an ORM railway outage`,async()=>{
  const {dom,maps,window}=await start({search:`?mode=${mode}&stations=0`});
  try{

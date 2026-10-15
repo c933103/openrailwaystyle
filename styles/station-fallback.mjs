@@ -34,13 +34,31 @@ const tilePolygon = c => {
 // acquire fallback markers. Metadata failure is the only source-wide fallback.
 export function createStationFallbackState(map) {
   const failed = new Map();
+  function onScreen(c) {
+    if (!c || !map.getBounds) return true;
+    const bounds = map.getBounds();
+    if (!bounds?.getWest) return true;
+    const n = 2 ** c.z, latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+    if (latitude(c.y) < bounds.getSouth?.() || latitude(c.y + 1) > bounds.getNorth?.()) return false;
+    const west = bounds.getWest(), east = bounds.getEast?.();
+    // Unknown longitude cannot establish exclusion; known latitude still can.
+    if (!Number.isFinite(west) || !Number.isFinite(east)) return true;
+    let width = east - west;
+    if (!Number.isFinite(width)) return true;
+    if (width >= 360) return true;
+    if (width < 0) width = (width % 360 + 360) % 360; // antimeridian bounds
+    const start = (west % 360 + 360) % 360;
+    const left = c.x / n * 360 - 180, right = (c.x + 1) / n * 360 - 180;
+    // An integer world offset must place the tile across this interval.
+    return Math.ceil((start - right) / 360) <= Math.floor((start + width - left) / 360);
+  }
   function stateFor(id) {
     const state = failed.get(id);
     if (!state) return null;
     const source = map.getSource(id);
     if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
     for (const [key, record] of state.tiles) {
-      if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state)) state.tiles.delete(key);
+      if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
     }
     if (!state.metadata && !state.tiles.size) { failed.delete(id); return null; }
     return state;
@@ -57,6 +75,7 @@ export function createStationFallbackState(map) {
       if (c) state.tiles.set(tileKey(c), {coordinate: {...c}, tile: event.tile});
       else state.metadata = true;
       failed.set(event.sourceId, state);
+      return true;
     },
     noteSourceData(event) {
       const state = failed.get(event?.sourceId);
