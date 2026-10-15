@@ -385,6 +385,23 @@ limits also remain unresolved scalability constraints for valid large feeds.
 
 ## Geometry and service identity
 
+OSM service grouping retains the lowest relation ID as its canonical display
+identity and a sorted, deduplicated `relations` list in the grouped model.
+Service vector tiles serialize `group_relation_ids` and `segment_relation_ids`
+as JSON arrays of numeric OSM relation IDs inside scalar MVT string attributes.
+The first lists the complete display group; the second lists only the eligible
+relation memberships contributing to the feature's OSM way/segment. Adjacent
+segments with different contributor sets are not joined into one tile feature.
+The canonical relation need not contribute to the segment being inspected.
+
+Service details link both sets separately and label the display identity.
+Legacy or malformed provenance falls back to the representative link with an
+explicit unknown-constituents explanation. These identities provide provenance,
+not proof of identical stops, matched timetables, rates or per-relation source
+health. Frequency selection and matching are unchanged. Existing snapshots gain
+these fields when their service tiles are rebuilt; no fresh provider extraction
+is needed to reconstruct them from the retained relation/way table.
+
 The compiled geometry below is kept for matching timetable routes to
 OpenStreetMap routes; it is never drawn as a Service route.
 

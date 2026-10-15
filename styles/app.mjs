@@ -1,25 +1,25 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261015-station-crossings-1';
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-station-crossings-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-station-crossings-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-station-crossings-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-station-crossings-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-station-crossings-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-station-crossings-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261015-service-relations-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-service-relations-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-service-relations-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-service-relations-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-service-relations-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-service-relations-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-service-relations-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-station-crossings-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-station-crossings-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-station-crossings-1';
-import {departureItem} from './departures-ui.mjs?v=20261015-station-crossings-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-station-crossings-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-station-crossings-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-station-crossings-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-station-crossings-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-station-crossings-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-station-crossings-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261015-station-crossings-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-crossings-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-crossings-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-crossings-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-service-relations-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-service-relations-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-service-relations-1';
+import {departureItem} from './departures-ui.mjs?v=20261015-service-relations-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-service-relations-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-service-relations-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-service-relations-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-service-relations-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-service-relations-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-service-relations-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261015-service-relations-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-service-relations-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261015-service-relations-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261015-service-relations-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -56,7 +56,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-station-crossings-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-service-relations-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -890,8 +890,41 @@ function showServiceDetails(feature) {
   row(dl,'Geometry',p.geometry_source);
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
-  osmLink(panel, feature);
+  serviceSourceRelations(panel, feature);
   $('details').hidden = false;
+}
+// Group identity is not proof that every relation runs on the clicked segment,
+// has the same stops or has a matched timetable. Old tiles disclose their limit.
+function serviceSourceRelations(panel, feature) {
+  const p = feature.properties;
+  const ids = value => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) && parsed.length && parsed.every(id => Number.isSafeInteger(id) && id > 0)
+        ? [...new Set(parsed)].sort((a, b) => a - b) : null;
+    } catch { return null; }
+  };
+  const group = ids(p.group_relation_ids), segment = ids(p.segment_relation_ids);
+  const representative = /^relation-([1-9]\d*)$/.exec(p.id || '')?.[1];
+  if (!group || !segment || !group.includes(Number(representative)) || !segment.every(id => group.includes(id))) {
+    osmLink(panel, feature);
+    panel.append(textNode('p', 'Constituent source relations are unavailable in this tile. The linked representative does not establish which relations contribute to this segment.', 'small'));
+    return;
+  }
+  const section = textNode('section', '', 'service-source-relations');
+  section.append(textNode('h3', 'OpenStreetMap source relations'));
+  for (const [scope, label, values] of [['group', 'Relations in this service group', group], ['segment', 'Relations contributing to this segment', segment]]) {
+    section.append(textNode('h4', label));
+    const list = document.createElement('ul'); list.dataset.relationScope = scope;
+    for (const id of values) {
+      const item = document.createElement('li'), link = textNode('a', `Relation ${id}${scope === 'group' && id === Number(representative) ? ' (display identity)' : ''} ↗`);
+      link.href = `https://www.openstreetmap.org/relation/${id}`; link.target = '_blank'; link.rel = 'noopener';
+      item.append(link); list.append(item);
+    }
+    section.append(list);
+  }
+  section.append(textNode('p', 'Grouping records mapped service identity; it does not establish identical stops, timetable matches or frequency for every relation.', 'small'));
+  panel.append(section);
 }
 // Departures from Transitous, live where the operator publishes real-time
 // data, and journey links. Fetched once a minute at most per station (the
