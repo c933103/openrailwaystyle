@@ -993,13 +993,45 @@ test('station fallback keeps the failed tile mask through neighboring success, r
   assert.match(window.document.getElementById('map-status').textContent,/station data unavailable/);
   map.handlers.error({sourceId:'stations',tile:b,error:{status:403,message:'HTTP 403'}});
   assert.equal(map.getFilter(ids[0])[2][1].coordinates.length,2);
-  map.handlers.sourcedata({sourceId:'stations',tile:{...a,state:'loaded'},isSourceLoaded:true});
+  a.state='loaded';map.handlers.sourcedata({sourceId:'stations',tile:a,isSourceLoaded:true});
   assert.equal(map.getFilter(ids[0])[2][1].coordinates.length,1,'only one recovered tile leaves the failure set');
   assert.notEqual(JSON.stringify(map.getFilter(ids[0])),first);
   b.state='unloaded';map.handlers.moveend();
   for(const id of ids)assert.equal(map.getLayoutProperty(id,'visibility'),'none','panning to loaded tiles retires fallback');
   map.handlers.sourcedata({sourceId:'stations',tile:{...b,state:'loaded'},isSourceLoaded:true});
   assert.equal(window.document.getElementById('map-status').classList.contains('error'),false);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
+test('ordinary failed world copies retain fallback and status until all copies recover',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);map.handlers['style.load']();
+  const a={state:'errored',tileID:{canonical:{z:10,x:518,y:352}}},b={state:'errored',tileID:{canonical:{z:10,x:518,y:352}}};
+  for(const tile of [a,b])map.handlers.error({sourceId:'stations',tile,error:{status:403,message:'HTTP403'}});
+  const status=window.document.getElementById('map-status');
+  b.state='loaded';map.handlers.sourcedata({sourceId:'stations',tile:b,isSourceLoaded:true});
+  for(const id of stationFallbackModule.STATION_FALLBACK_IDS)assert.equal(map.getLayoutProperty(id,'visibility'),'visible');
+  assert.match(status.textContent,/station data unavailable/);
+  a.state='loaded';map.handlers.sourcedata({sourceId:'stations',tile:a,isSourceLoaded:true});
+  for(const id of stationFallbackModule.STATION_FALLBACK_IDS)assert.equal(map.getLayoutProperty(id,'visibility'),'none');
+  assert.equal(status.classList.contains('error'),false);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
+test('source-data inventory pruning immediately updates the remaining station mask',async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=11;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);map.handlers['style.load']();
+  const a={state:'errored',tileID:{canonical:{z:10,x:518,y:352}}},b={state:'errored',tileID:{canonical:{z:10,x:519,y:352}}};
+  const child={state:'loaded',tileID:{canonical:{z:11,x:1036,y:704}}};let tiles=[a,b];
+  map.style={tileManagers:{stations:{getSource:()=>map.getSource('stations'),getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]}}};
+  for(const tile of [a,b])map.handlers.error({sourceId:'stations',tile,error:{status:403,message:'HTTP403'}});
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS;
+  for(const id of ids)assert.equal(map.getFilter(id)[2][1].coordinates.length,2);
+  tiles=[b,child];map.handlers.sourcedata({sourceId:'stations',tile:child,isSourceLoaded:true});
+  for(const id of ids)assert.equal(map.getFilter(id)[2][1].coordinates.length,1,'no idle or move event required');
+  assert.match(window.document.getElementById('map-status').textContent,/station data unavailable/);
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 

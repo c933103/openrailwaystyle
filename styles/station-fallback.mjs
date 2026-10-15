@@ -73,9 +73,8 @@ export function createStationFallbackState(map) {
     if (!state) return null;
     const source = map.getSource(id);
     if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
+    const selection = selectionFor(source), inventory = activeTiles(id, source);
     for (const [key, record] of state.tiles) {
-      const selection = selectionFor(source);
-      const inventory = record.fromCoordinate ? activeTiles(id, source) : null;
       if (record.instances) {
         record.instances = record.instances.filter(tile => (!inventory || inventory.includes(tile)) &&
           !tile.aborted && !['loaded', 'unloaded'].includes(tile.state));
@@ -126,6 +125,13 @@ export function createStationFallbackState(map) {
             if (current !== null && current !== selection) return true;
           }
         }
+        if (tile) {
+          const previous = state.tiles.get(tileKey(c));
+          // A new coordinate-only notification must also preserve failures
+          // already retrying in expired/reloading states on other world copies.
+          instances = [...new Set([...(previous?.instances || (previous?.tile ? [previous.tile] : [])), ...(instances || [tile])])];
+          tile = instances[0];
+        }
         state.tiles.set(tileKey(c), {coordinate: {...c}, tile, instances, fromCoordinate, selection});
       } else state.metadata = true;
       failed.set(event.sourceId, state);
@@ -135,6 +141,7 @@ export function createStationFallbackState(map) {
       const state = failed.get(event?.sourceId);
       if (!state) return false;
       let changed = false;
+      const previousSize = state.tiles.size;
       if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; changed = true; }
       const c = coordinate(event);
       if (validCoordinate(c) && event.tile?.state === 'loaded') {
@@ -143,10 +150,10 @@ export function createStationFallbackState(map) {
         if (record?.instances) {
           const previous = record.instances.length;
           record.instances = record.instances.filter(tile => tile !== event.tile);
-          changed = record.instances.length !== previous;
+          changed = record.instances.length !== previous || changed;
         } else changed = state.tiles.delete(tileKey(c)) || changed;
       }
-      return !stateFor(event.sourceId) || changed;
+      return !stateFor(event.sourceId) || changed || state.tiles.size !== previousSize;
     },
     area(zoom) {
       const id = stationSource(zoom), state = id && stateFor(id);

@@ -25,7 +25,7 @@ test('mixed station failures scope basemap dots, names and curated hubs to faile
     assert.ok(state.area(10),'healthy neighbor completion does not recover the failed tile');
   }
   state.noteError({sourceId:'stations',tile:b,error:{status:503}});
-  state.noteSourceData({sourceId:'stations',tile:{...a,state:'loaded'}});
+  a.state='loaded';state.noteSourceData({sourceId:'stations',tile:a});
   const filter=stationFallbackFilter(STATION_FALLBACK_IDS[0],state.area(10));
   assert.equal(contains(filter,a.tileID.canonical),false,'only recovered tile loses fallback');
   assert.equal(contains(filter,b.tileID.canonical),true,'other failure survives recovery');
@@ -264,4 +264,59 @@ test('all failed wrapped instances survive an earlier loading copy and independe
  loading.state='loaded';state.noteSourceData({sourceId:'stations',tile:loading});assert.ok(state.area(11));
  a.state='loaded';state.noteSourceData({sourceId:'stations',tile:a});assert.ok(state.area(11),'second failed copy remains');
  tiles=[loading,a];assert.equal(state.area(11),null,'last failed copy removed');
+});
+
+
+test('ordinary tile errors retain each failed world copy and isolate success by identity',()=>{
+ const source={},a=failedTile(),b=failedTile(),healthy={...failedTile(),state:'loaded'};
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>10});
+ state.noteError({sourceId:'stations',tile:a,error:{status:503}});
+ state.noteError({sourceId:'stations',tile:b,error:{status:403}});
+ assert.equal(state.area(10).coordinates.length,1,'one polygon for shared canonical geometry');
+ state.noteSourceData({sourceId:'stations',tile:healthy});assert.ok(state.area(10),'unrelated copy cannot erase failures');
+ b.state='loaded';state.noteSourceData({sourceId:'stations',tile:b});assert.ok(state.area(10),'older failed instance remains');
+ assert.equal(state.hasSourceFailure('stations'),true);
+ a.state='loaded';state.noteSourceData({sourceId:'stations',tile:a});assert.equal(state.area(10),null);
+ assert.equal(state.hasSourceFailure('stations'),false);
+});
+test('ordinary and coordinate-only events compose on the same active world copies',()=>{
+ const source={},a=failedTile(),b=failedTile();let tiles=[a,b];
+ const manager={getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]};
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>10,style:{tileManagers:{stations:manager}}});
+ for(const reverse of [false,true]){
+  a.state=b.state='errored';tiles=[a,b];
+  const events=[{sourceId:'stations',coord:a.tileID,error:{status:503}},{sourceId:'stations',tile:b,error:{status:503}}];
+  for(const event of reverse?events.reverse():events)state.noteError(event);
+  b.state='loaded';state.noteSourceData({sourceId:'stations',tile:b});assert.ok(state.area(10));
+  tiles=[b];assert.equal(state.area(10),null,'inventory removal retires final failed instance');
+ }
+});
+
+test('coordinate-only updates preserve previously failed world copies while they retry',()=>{
+ const source={},a=failedTile(),b=failedTile();const tiles=[a,b];
+ const manager={getSource:()=>source,getIds:()=>[0,1],getTileByID:i=>tiles[i]};
+ for(const retryState of ['expired','reloading']){
+  a.state=b.state='errored';const state=createStationFallbackState({getSource:()=>source,getZoom:()=>10,style:{tileManagers:{stations:manager}}});
+  state.noteError({sourceId:'stations',tile:a,error:{status:503}});a.state=retryState;
+  state.noteError({sourceId:'stations',coord:b.tileID,error:{status:503}});
+  b.state='loaded';state.noteSourceData({sourceId:'stations',tile:b});assert.ok(state.area(10),retryState+' failure still unresolved');
+  a.state='loaded';state.noteSourceData({sourceId:'stations',tile:a});assert.equal(state.area(10),null);
+ }
+});
+
+test('source-data pruning reports geometry changes while another failure remains',()=>{
+ const source={},a=failedTile(),b=failedTile(519),child={...failedTile(1036,704,11),state:'loaded'};let tiles=[a,b];
+ const manager={getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]};
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>11,style:{tileManagers:{stations:manager}}});
+ for(const tile of [a,b])state.noteError({sourceId:'stations',tile,error:{status:403}});
+ assert.equal(state.area(11).coordinates.length,2);tiles=[b,child];
+ assert.equal(state.noteSourceData({sourceId:'stations',tile:child,isSourceLoaded:true}),true);
+ assert.equal(state.area(11).coordinates.length,1);assert.equal(state.hasSourceFailure('stations'),true);
+});
+test('metadata recovery notification survives an unrelated successful tile on the same event',()=>{
+ const source={},a=failedTile();const state=createStationFallbackState({getSource:()=>source,getZoom:()=>10});
+ state.noteError({sourceId:'stations',tile:a,error:{status:403}});
+ state.noteError({sourceId:'stations',error:{status:403}});assert.equal(state.area(10),true);
+ assert.equal(state.noteSourceData({sourceId:'stations',sourceDataType:'metadata',tile:{...a,state:'loaded'}}),true);
+ assert.equal(state.area(10).coordinates.length,1,'unrelated tile cannot erase retained failure');
 });
