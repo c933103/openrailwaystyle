@@ -120,12 +120,21 @@ test('diagnostic build overrides merge-event provenance with the selected checko
  const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
  const block=workflow.split('- name: Build with the checked-out source identity')[1]?.split('\n      - ')[0];
  assert.ok(block);
- assert.match(block,/run: GITHUB_SHA="\$ATLAS_DIAGNOSTIC_REF" npm run build/);
+ assert.match(block,/run: GITHUB_SHA="\$ATLAS_DIAGNOSTIC_REF" GITHUB_REPOSITORY="\$ATLAS_DIAGNOSTIC_REPOSITORY" npm run build/);
  const expression=block.match(/ATLAS_DIAGNOSTIC_REF: \$\{\{ (.+) \}\}/)?.[1];
  assert.ok(expression);
  for(const [event,head,merge] of [['pull_request','a'.repeat(40),'b'.repeat(40)],['push',null,'c'.repeat(40)]]){
   const selected=runInNewContext(expression,{github:{event_name:event,event:head?{pull_request:{head:{sha:head}}}:{},sha:merge}});
   assert.equal(selected,head||merge);
   if(head)assert.notEqual(selected,merge);
+ }
+});
+
+test('diagnostic build uses fork source repository for PRs and event repository for pushes',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+ const block=workflow.split('- name: Build with the checked-out source identity')[1]?.split('\n      - ')[0];
+ const expression=block?.match(/ATLAS_DIAGNOSTIC_REPOSITORY: \$\{\{ (.+) \}\}/)?.[1];assert.ok(expression);
+ for(const [event,head,base,expected] of [['pull_request','contributor/atlas','c933103/openrailwaystyle','contributor/atlas'],['pull_request','c933103/openrailwaystyle','c933103/openrailwaystyle','c933103/openrailwaystyle'],['push',null,'c933103/openrailwaystyle','c933103/openrailwaystyle']]){
+  const actual=runInNewContext(expression,{github:{event_name:event,event:head?{pull_request:{head:{repo:{full_name:head}}}}:{},repository:base}});assert.equal(actual,expected);
  }
 });
