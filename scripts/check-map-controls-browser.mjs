@@ -9,6 +9,7 @@ import {clickVisibleControl} from './click-visible-control.mjs';
 import {rendererFixture,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
 import {createRequestLifecycle} from './request-lifecycle.mjs';
+import {installBrowserTiming,readBrowserTiming} from './browser-timing.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
@@ -16,6 +17,7 @@ const renderer=await rendererFixture(base);
 const browser=await launchBrowser({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
+await page.addInitScript(installBrowserTiming);
 // Frames at the largest More detail scale can take seconds on a small CI
 // runner, and page evaluation waits for them.
 page.setDefaultTimeout(30000);
@@ -65,13 +67,17 @@ async function waitForMapIdle(){
   const start=Date.now();
   try{
   await waitUntil(page,async()=>{
+    globalThis.__atlasControlsTiming?.begin();
     const{map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('idle',()=>resolve());map.triggerRepaint();});
     const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
     return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
       && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
   },null,{timeout:60000});
-  }finally{settlements.push({after:results.at(-1)?.name??'startup',ms:Date.now()-start,pending:pending.size});}
+  }finally{
+    const ms=Date.now()-start, pendingCount=pending.size;
+    settlements.push({after:results.at(-1)?.name??'startup',ms,pending:pendingCount,timing:await readBrowserTiming(page)});
+  }
 }
 async function ready(){
   await page.waitForSelector('body[data-map-ready="true"]');
