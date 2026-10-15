@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import {annotateLayers, layerVisibility} from '../styles/layer-semantics.mjs';
 import {labelExpression} from '../styles/map-model.mjs';
-import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled} from '../styles/station-fallback.mjs';
+import {addStationFallbackLayers, STATION_BASEMAP_POI_FILTER, STATION_FALLBACK_IDS, stationFallbackNamesEnabled, stationFallbackMarkersEnabled} from '../styles/station-fallback.mjs';
 
 const sample = (cls, subclass) =>
   featureFilter(STATION_BASEMAP_POI_FILTER).filter({zoom: 12}, {type: 1, properties: {class: cls, subclass}});
@@ -46,13 +46,18 @@ test('fallback is added once, above crossing marks but beneath detailed station 
   assert.equal(style.layers.find(l=>l.id===STATION_FALLBACK_IDS[2]).layout.visibility, 'none');
 });
 
-test('station fallback name activation is scoped to actual station-source errors', () => {
+test('station fallback activation is scoped to the active zoom band and its actual source failures', () => {
   const options={zoom:9.8,stationsEnabled:true,background:'map',failedSources:new Set(['stations'])};
+  assert.equal(stationFallbackMarkersEnabled(options),true);
   assert.equal(stationFallbackNamesEnabled(options),true);
   assert.equal(stationFallbackNamesEnabled({...options,failedSources:new Set(['railway'])}),false);
   assert.equal(stationFallbackNamesEnabled({...options,zoom:7}),false);
+  assert.equal(stationFallbackMarkersEnabled({...options,zoom:7}),false);
+  assert.equal(stationFallbackMarkersEnabled({...options,zoom:7,failedSources:new Set(['stationMed'])}),true);
+  assert.equal(stationFallbackMarkersEnabled({...options,zoom:6,failedSources:new Set(['stationLow'])}),false);
   assert.equal(stationFallbackNamesEnabled({...options,stationsEnabled:false}),false);
   assert.equal(stationFallbackNamesEnabled({...options,background:'satellite'}),false);
   assert.equal(stationFallbackNamesEnabled({...options,background:'hybrid'}),true);
+  assert.equal(stationFallbackMarkersEnabled({...options,background:'hybrid'}),true);
   assert.equal(stationFallbackNamesEnabled({...options,failedSources:new Set()}),false);
 });
