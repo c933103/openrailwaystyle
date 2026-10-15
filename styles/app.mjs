@@ -1609,7 +1609,10 @@ async function initialize() {
   // Hidden sources must stay hidden before MapLibre starts its first requests.
   for (const layer of style.layers) {
     const visible=layerVisibility(layer, settings);
-    if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
+    // Station fallback names are used only after the ORM station source fails.
+    // Avoid flashing fallback names during the first frame of a healthy load.
+    const enabled=layer.id==='station-basemap-fallback-names'?false:visible;
+    if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
     if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
   // Reopen where the last visit ended, unless the link gives a position; start
