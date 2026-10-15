@@ -1739,3 +1739,51 @@ test('expired unoffered overnight and hourly evidence remains visible only in se
   assert.equal(errors.length,0);
  }finally{dom.window.close();}
 });
+
+test('service details expose exact grouped and segment OSM sources, retain them on redraw, and disclose legacy limits', async () => {
+ const {buildTiles,LAYER}=await import('../scripts/service-routes.mjs');
+ const {serviceProvenanceFixture}=await import('../scripts/service-provenance-fixture.mjs');
+ const {default:Pbf}=await import('pbf'),{VectorTile}=await import('@mapbox/vector-tile');
+ const features=[...buildTiles(serviceProvenanceFixture())].filter(([key])=>key.startsWith('12/')).flatMap(([key,bytes])=>{
+  const [z,x,y]=key.split('/').map(Number),layer=new VectorTile(new Pbf(bytes)).layers[LAYER];
+  return Array.from({length:layer.length},(_,i)=>layer.feature(i).toGeoJSON(x,y,z));
+ });
+ const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock:{now:()=>1000,setTimer:()=>0,clearTimer:()=>{}}});
+ try{
+  const map=maps[0],doc=window.document;map.handlers['style.load']();map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  const show=properties=>{
+   map.rendered=[{source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties,geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}}];
+   map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+  };
+  const links=scope=>[...doc.querySelectorAll(`[data-relation-scope="${scope}"] a`)].map(a=>a.href);
+  const urls=ids=>ids.map(id=>`https://www.openstreetmap.org/relation/${id}`);
+  const south=features.find(f=>f.properties.id==='relation-10'&&f.properties.segment_relation_ids==='[20]').properties;
+  show(south);
+  assert.deepEqual(links('group'),urls([10,20,30]));assert.deepEqual(links('segment'),urls([20]));
+  assert.match(doc.getElementById('detail-content').textContent,/Relation 10 \(display identity\)/);
+  assert.match(doc.getElementById('detail-content').textContent,/does not establish identical stops, timetable matches or frequency/);
+  const language=doc.getElementById('language');language.value='en';language.dispatchEvent(new window.Event('change'));
+  assert.deepEqual(links('segment'),urls([20]),'translated redraw retains provenance');
+  doc.getElementById('details-close').click();assert.equal(doc.getElementById('details').hidden,true);
+  show({...south,segment_relation_ids:'[30]'});assert.deepEqual(links('segment'),urls([30]),'reopening a branch replaces previous contributors');
+  for(const group of ['[10,20]','[20,10,20]']){
+   show({...south,id:'relation-20',group_relation_ids:group,segment_relation_ids:'[20]'});
+   assert.deepEqual(links('group'),[],'a noncanonical representative invalidates group provenance');
+   assert.deepEqual(links('segment'),[],'a noncanonical representative invalidates segment provenance');
+   assert.match(doc.getElementById('detail-content').textContent,/Constituent source relations are unavailable/);
+   assert.equal(doc.querySelector('#detail-content a').href,'https://www.openstreetmap.org/relation/20');
+   assert.doesNotMatch(doc.getElementById('detail-content').textContent,/display identity/);
+  }
+  show({...south,group_relation_ids:'[20,10,20]',segment_relation_ids:'[20]'});
+  assert.deepEqual(links('group'),urls([10,20]),'the lowest normalized group ID remains canonical');
+  assert.deepEqual(links('segment'),urls([20]),'the canonical relation need not contribute to this segment');
+  assert.match(doc.getElementById('detail-content').textContent,/Relation 10 \(display identity\)/);
+  for(const invalid of [undefined,'[999]','["<script>alert(1)</script>"]','[0]','[9007199254740992]','[10,']){
+   show({...south,segment_relation_ids:invalid});
+   assert.deepEqual(links('group'),[]);assert.deepEqual(links('segment'),[]);
+   assert.match(doc.getElementById('detail-content').textContent,/Constituent source relations are unavailable/);
+   assert.equal(doc.querySelector('#detail-content a').href,'https://www.openstreetmap.org/relation/10');
+  }
+  assert.equal(errors.length,0);
+ }finally{dom.window.close();}
+});

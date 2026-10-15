@@ -350,8 +350,9 @@ export function geometrySummary({routes, ways}) {
 // each other (the directions and variants of a line); apart, they are the
 // like-named routes of different places. Made from the whole table, which
 // holds every relation found, in whichever box or stage. Returns relation
-// key → the route as drawn: its lowest relation, which gives its link and
-// details.
+// key → the route as drawn: its lowest relation remains the display identity;
+// relations retains all constituent source identities, without implying matching
+// success or an identical stop pattern.
 const NEAR = 0.1; // degrees: relations of one service this close are one route
 export function serviceRoutes({routes, ways}) {
   const views = new Map([...routes.values()].map(route => [route.key, routeView(route)]).filter(([, view]) => view.active !== false));
@@ -397,7 +398,7 @@ export function serviceRoutes({routes, ways}) {
     // The lowest relation gives the link and the name; translations and
     // tags it lacks come from the others (lowest first).
     const [first, ...rest] = members.map(key => views.get(key)).sort((a, b) => a.relation - b.relation);
-    const view = {...first, names: {...first.names}};
+    const view = {...first, names: {...first.names}, relations: [...new Set([first, ...rest].map(route => route.relation))].sort((a, b) => a - b)};
     for (const other of rest) {
       for (const [k, v] of Object.entries(other.names || {})) if (!view.names[k]) view.names[k] = v;
       for (const field of ['network', 'operator', 'colour']) if (!view[field] && other[field]) view[field] = other[field];
@@ -460,10 +461,21 @@ export function joinLines(lines) {
 // these routes (headways).
 export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
-  const service = serviceRoutes({routes, ways});
+  const service = serviceRoutes({routes, ways}), relationIds = new Map();
   for (const way of ways.values()) {
+    // Keep the actual eligible contributors separate from the whole service
+    // group. The display identity need not itself contribute to this way.
+    const contributors = new Map();
+    for (const key of wayRoutes(way, routes)) {
+      const group = service.get(key);
+      if (!group) continue;
+      if (!contributors.has(group)) contributors.set(group, new Set());
+      // Resolve each source frontier only once, not for every way it uses.
+      if (!relationIds.has(key)) relationIds.set(key, routeView(routes.get(key)).relation);
+      contributors.get(group).add(relationIds.get(key));
+    }
     // A route once, whichever of its relations run here.
-    const all = [...new Set(wayRoutes(way, routes).map(key => service.get(key)).filter(Boolean))]
+    const all = [...contributors.keys()]
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
     const original = drawnLines(way), sections = timetables?.get(way.id);
     // Only split at existing OSM vertices. Timetable shapes never supply a
@@ -483,6 +495,11 @@ export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()
       // the label language.
       list.forEach((route, i) => {
         const properties = {id: `relation-${route.relation}`, name: route.label, ...route.names,
+          // MVT attributes are scalar: encode sorted numeric IDs as JSON text.
+          // Including both in the grouping key prevents joining segments whose
+          // contributing relations differ, even if their display identity agrees.
+          group_relation_ids: JSON.stringify(route.relations),
+          segment_relation_ids: JSON.stringify([...contributors.get(route)].sort((a, b) => a - b)),
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
           slot: Math.max(-63, Math.min(63, 2 * i - (list.length - 1)))};
