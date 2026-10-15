@@ -459,3 +459,39 @@ test('Power legend release upgrades the cached app, CSS and facility metadata to
   }
   assert.match(await(await next.request('./',true)).text(),new RegExp(version));
 });
+
+test('station crossing release replaces cached style bytes while previous tabs stay coherent',async()=>{
+  const previous='20261015-service-status-1';
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous,'the changed style needs a fresh cache-first asset version');
+  const paths=['app.mjs','world.style.json'];
+  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,
+    readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
+  const style=JSON.parse(current.get(new URL('world.style.json',scope).pathname));
+  for(const id of ['place_label_city','place_label_other','state_label'])
+    assert.ok(style.layers.some(layer=>layer.id===id+'-placement'),'the new cached style contains the placement fix');
+  // Compact cache payloads model the previous token; they are not archived
+  // production source. The new app/style payloads above are exact built inputs.
+  const oldBodies=new Map(paths.map(path=>[new URL(path,scope).pathname,'previous cached '+path]));
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+
+  // Negative control: deploying new bytes under the old token really leaves
+  // the cached style unchanged, reproducing the reviewed delivery defect.
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const path of paths)
+    assert.equal(await(await unchanged.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
+
+  // Same actual worker/cache generation, normal navigation, no cache purge.
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
+  }
+  assert.match(await(await next.request('./',true)).text(),new RegExp(version));
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
