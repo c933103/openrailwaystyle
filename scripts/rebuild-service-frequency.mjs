@@ -9,11 +9,13 @@ import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSect
 import {buildTiles,geometrySummary,readTable} from './service-routes.mjs';
 import {loadTimetableServices} from './gtfs-service.mjs';
 import {writeFrequencyCredits} from './frequency-credits.mjs';
+import {serviceAcquisitionForBuild} from './service-status-manifest.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 const directory=process.argv[2] || 'styles/data/service-routes';
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
 let raw;
 try{raw=await readFile(`${directory}/service-routes.ndjson.gz`);}catch(error){if(error.code==='ENOENT'){raw=gzipSync('');}else throw error;}
+const acquisition=await serviceAcquisitionForBuild(directory,raw);
 const fixture=process.argv.includes('--fixtures');
 const {registry,feeds}=await loadTimetableServices(fixture?new URL('../tests/fixtures/service-frequency/registry.json',import.meta.url):undefined);
 const table=readTable(gunzipSync(raw).toString());
@@ -55,7 +57,7 @@ await writeFile(`${directory}/index.json`,JSON.stringify({tiles:keys.sort()}));
 const gaps=global?[{region:'Worldwide',status:global.applied_profiles?(coverage.appliedWays?'Partial matched timetable coverage':'No currently applicable OSM timetable frequencies'):'Awaiting matched timetable snapshot',reason:`${global.catalogue_entries} catalogue entries. Outcomes: ${JSON.stringify(global.counts)}. ${coverage.appliedWays} OSM ways, ${coverage.appliedRelations} OSM route relations and ${coverage.appliedSections} section records have currently usable timetable-derived profiles; ${coverage.boundWays} OSM ways carry section evidence (including unavailable profiles). ${bound.staleSections} changed section bindings were withheld. Unmatched and conflicting services remain unknown. Details: data/service-frequency/inventory.json.`}]:registry.gaps;
 // The periods some applied source covers; the viewer offers only these.
 const profiles=FREQUENCY_PROFILES.filter(p=>catalog.routes.some(r=>r.match&&r.profiles?.[p])||[...bound.sections.values()].some(rows=>rows.some(s=>s.record.properties.frequency_until*1000>=now&&usable(s.record,p))));
-await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,matching:{...applied.matching,staleSections:bound.staleSections,...coverage},geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
+await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,...acquisition,matching:{...applied.matching,staleSections:bound.staleSections,...coverage},geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
 console.log('[frequency-matching] '+JSON.stringify({
   osmSnapshot:global?.applied_profiles?.osm_sha256??null,
   ...coverage,staleSections:bound.staleSections,

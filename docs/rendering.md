@@ -39,7 +39,16 @@ uses its first layer. Both twins share accepted/rejected placement, so the
 later paint layer does not revive a label rejected by a crossing. Opacity zero
 suppresses drawing, not placement. Source, zoom, filter and every layout field
 must remain identical; localization, font fallback and background visibility
-apply to both twins. No collision-overlap override or extra source request is used.
+apply to both twins. Atlas's initial load and existing language reload use full
+style replacement (`diff:false`), preserving family insertion order. This is
+required: the pinned [style differ](https://github.com/maplibre/maplibre-style-spec/blob/v24.8.1/src/diff.ts)
+adds layers backwards, while the [worker layer index](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/style/style_layer_index.ts)
+groups them in insertion order. A diffed replacement can therefore make the
+visible twin the placement representative despite identical final paint order.
+The unit regression demonstrates this trap; browser fixtures use the actual
+full-replacement path and repeat reloads. Any future change to diff-based
+application reloads needs a new placement contract and renderer coverage.
+No collision-overlap override or extra source request is used.
 
 This is a pinned-runtime contract, checked with production layers and local
 MapLibre fixtures: crossing/station pixels at z11–16, crossing/place collision

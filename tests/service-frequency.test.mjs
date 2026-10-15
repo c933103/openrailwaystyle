@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createExpression,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES,FREQUENCY_LABELS} from '../styles/service-frequency.mjs';
+import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,frequencyAvailability,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES,FREQUENCY_LABELS} from '../styles/service-frequency.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
 const requireProfiles=await readFile(new URL('../styles/data-src/frequency-source-rules.json',import.meta.url),'utf8').then(s=>JSON.stringify(JSON.parse(s).profiles));
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url)));
@@ -50,7 +50,10 @@ test('partial timetable counts take precedence while missing periods retain thei
  assert.match(frequencyDetails(p,'am',now),/scheduled.*2026-10-05/);assert.match(frequencyDetails(p,'offpeak',now),/estimated from/);
  assert.equal(p.frequency_until,timetable.properties.frequency_until);
  const expired={...timetable,properties:{...timetable.properties,frequency_until:now/1000-1}};
- assert.deepEqual(frequencyBundle([route('ISL')],line,catalog,[expired],now),frequencyBundle([route('ISL')],line,catalog,[],now));
+ const expiredFallback=frequencyBundle([route('ISL')],line,catalog,[expired],now);
+ assert.deepEqual(expiredFallback,frequencyBundle([route('ISL')],line,catalog,[],now).map(p=>({...p,frequency_status_h08:'expired'})),
+   'all headway values and layout fields stay unchanged; only the discarded hourly evidence gains status');
+ assert.equal(frequencyAvailability(expiredFallback[0],'h08',now).status,'expired');
  const staleCatalog=structuredClone(catalog);staleCatalog.source.checked='2020-01-01';
  const current=frequencyBundle([route('ISL')],line,staleCatalog,[timetable],now)[0];assert.equal(current.frequency_offpeak,undefined);assert.equal(current.frequency_am,0);assert.equal(current.frequency_until,timetable.properties.frequency_until);
 });
@@ -143,4 +146,12 @@ test('hour and overnight settings select separate profiles, preserve unknowns an
 test('operator peak categories do not acquire configured GTFS clock windows',()=>{
   for(const key of ['am','pm','offpeak'])assert.doesNotMatch(FREQUENCY_LABELS[key],/\d\d:\d\d/);
   assert.match(catalog.source.period_definition,/clock windows are not supplied/);
+});
+
+test('discarded hourly timetable expiry does not erase surviving headway periods',()=>{
+ const p=frequencyBundle([route('ISL')],line,catalog,[{properties:{frequency_until:now/1000-1},profiles:{h08:{rate:4}}}],now)[0];
+ assert.ok(Number.isFinite(p.frequency_am));
+ assert.equal(frequencyAvailability(p,'am',now).status,'available');
+ assert.equal(frequencyAvailability(p,'h08',now).status,'expired');
+ assert.equal(frequencyAvailability(p,'h09',now).status,'unknown');
 });

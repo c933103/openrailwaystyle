@@ -100,6 +100,9 @@ try{
  }
  await page.screenshot({path:'browser-review/overview-markers-z12.png'});
 
+ // Match Atlas's existing full-style reload contract (diff:false). Default
+ // diffing inserts new layers in reverse order and can change the first
+ // shared-bucket representative even when the final paint order is identical.
  // Symbols have a separate placement path. Isolate the overlap from station
  // names, while retaining the production circle/icon/text layers and MVT data.
  // Exercise both symbol sources, their handoff, and the previous wrong order.
@@ -115,7 +118,7 @@ try{
  overlapSources.stationMajor.data={type:'FeatureCollection',features:points('overlap').features.slice(0,1)};
  await page.route('https://symbol-overlap-fixture.invalid/**',route=>serveTiles(route,overlapIndexes));
  await page.evaluate(({sources,layers})=>fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,
-  layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]}),{sources:overlapSources,layers:overlapLayers});
+  layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]},{diff:false}),{sources:overlapSources,layers:overlapLayers});
  const overlapSamples=[];
  const pixels=()=>page.evaluate(()=>{
   const map=fixtureMap,canvas=map.getCanvas(),point=map.project([0,0]),ratio=canvas.width/map.getContainer().clientWidth;
@@ -192,7 +195,7 @@ try{
    type:'Feature',properties:{class:kind,'name:latin':'Collision','name:nonlatin':''},geometry:{type:'Point',coordinates:[0,0]}
   }]}}};
   await page.evaluate(({zoom,sources,layers})=>{
-   fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,layers});
+   fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,layers},{diff:false});
    fixtureMap.jumpTo({center:[0,0],zoom});
   },{zoom,sources:collisionSources,layers:collisionLayers});await rendered();
   const placement=()=>page.evaluate(({placeId,crossingId})=>({
@@ -200,6 +203,8 @@ try{
    crossing:fixtureMap.queryRenderedFeatures({layers:[crossingId]}).length
   }),{placeId,crossingId});
   const positive=await placement();
+  const diagnostic={zoom,kind,positive};
+  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify([...collisionSamples,diagnostic],null,2)+'\n');
   assert.ok(positive.crossing>0&&positive.place===0,`crossing keeps production collision priority at ${zoom}/${kind}: ${JSON.stringify(positive)}`);
   await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),crossingId);await rendered();
   const placeOnly=await placement();assert.ok(placeOnly.place>0,'place label must render when the crossing is absent');
@@ -208,7 +213,14 @@ try{
   assert.ok(wrongOrder.place>0&&wrongOrder.crossing===0,'reversed symbol priority must suppress the crossing');
   await page.evaluate(({placementId,crossingId})=>fixtureMap.moveLayer(placementId,crossingId),{placementId,crossingId});await rendered();
   const restored=await placement();assert.ok(restored.crossing>0&&restored.place===0,'restoring priority recovers the crossing');
-  collisionSamples.push({zoom,kind,positive,placeOnly,wrongOrder,restored});
+  // Atlas reloadLanguage uses a full replacement. Verify its repeated-load
+  // path too; setStyle's default diff inserts new layers in reverse order.
+  await page.evaluate(()=>fixtureMap.setStyle(fixtureMap.getStyle(),{diff:false}));await rendered();
+  const reloaded=await placement();
+  Object.assign(diagnostic,{placeOnly,wrongOrder,restored,reloaded});
+  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify([...collisionSamples,diagnostic],null,2)+'\n');
+  assert.ok(reloaded.crossing>0&&reloaded.place===0,'full production reload retains crossing placement priority');
+  collisionSamples.push(diagnostic);
  }
  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify(collisionSamples,null,2)+'\n');
  // Place labels keep their visible ink above station circles while their
@@ -244,7 +256,7 @@ try{
   };
   await page.evaluate(({zoom,sources,layers})=>{
    fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,
-    layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]});
+    layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]},{diff:false});
    fixtureMap.jumpTo({center:[0,0],zoom});
   },{zoom,sources:stationPlaceSources,layers:stationPlaceLayers});await rendered();
 
