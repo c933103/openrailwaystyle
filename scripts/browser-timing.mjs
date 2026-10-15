@@ -4,22 +4,27 @@
 export function installBrowserTiming(scope = globalThis) {
   scope.__atlasControlsTiming?.dispose();
   const now = () => scope.performance.now(), interval = 250, limit = 64;
-  let observer, timer, disposed = false, start = now(), last = start, phase;
+  let observer, timer, disposed = false, start = now(), last = start;
   let longTaskSupported = false, heartbeatSupported = false;
   let longTasks, heartbeat;
   const empty = () => ({count: 0, totalMs: 0, maxMs: 0, recent: []});
   const reset = () => {longTasks = empty(); heartbeat = empty();};
   reset();
   const record = (stats, at, duration) => {
-    if (!Number.isFinite(at) || !Number.isFinite(duration) || duration < 0 || at < start) return;
+    if (!Number.isFinite(at) || !Number.isFinite(duration) || duration < 0) return;
     stats.count++; stats.totalMs += duration; stats.maxMs = Math.max(stats.maxMs, duration);
     stats.recent.push({at: at - start, duration});
     if (stats.recent.length > limit) stats.recent.shift();
   };
+  const recordTask = entry => {
+    // An entry can be delivered after a read even though its task began before
+    // that read. Keep the whole overlapping task, with a negative relative at.
+    if (entry.startTime + entry.duration > start) record(longTasks, entry.startTime, entry.duration);
+  };
   try {
     observer = new scope.PerformanceObserver(list => {
       if (disposed) return;
-      for (const entry of list.getEntries()) record(longTasks, entry.startTime, entry.duration);
+      for (const entry of list.getEntries()) recordTask(entry);
     });
     observer.observe({type: 'longtask', buffered: false});
     longTaskSupported = true;
@@ -34,17 +39,16 @@ export function installBrowserTiming(scope = globalThis) {
   } catch {}
   const copy = stats => ({...stats, recent: stats.recent.map(entry => ({...entry})), truncated: stats.count > limit});
   const api = {
-    begin(nextPhase) {
-      // Repeated predicate polls belong to the same acceptance deadline.
-      if (nextPhase !== undefined && nextPhase === phase) return;
-      phase = nextPhase;
-      observer?.takeRecords(); start = now(); last = start; reset();
-    },
-    snapshot() {
+    snapshot({resetAfterRead = false} = {}) {
       // Include observer records queued behind a delayed task before reading.
-      if (!disposed) for (const entry of observer?.takeRecords() || []) record(longTasks, entry.startTime, entry.duration);
-      return {elapsed: now() - start, interval, longTaskSupported, heartbeatSupported,
+      if (!disposed) for (const entry of observer?.takeRecords() || []) recordTask(entry);
+      const state = {window: 'since-previous-diagnostic-read', elapsed: now() - start,
+        interval, longTaskSupported, heartbeatSupported,
         longTasks: copy(longTasks), heartbeat: copy(heartbeat)};
+      // Reset only after collecting the complete interval. Work triggered by a
+      // UI action before the next acceptance poll must remain observable.
+      if (resetAfterRead) {start = now(); last = start; reset();}
+      return state;
     },
     dispose() {
       if (disposed) return;
@@ -61,7 +65,7 @@ export async function readBrowserTiming(page, timeout = 2000) {
   let timer;
   try {
     return await Promise.race([
-      Promise.resolve().then(() => page.evaluate(() => globalThis.__atlasControlsTiming?.snapshot() ?? {unavailable: true}))
+      Promise.resolve().then(() => page.evaluate(() => globalThis.__atlasControlsTiming?.snapshot({resetAfterRead: true}) ?? {unavailable: true}))
         .catch(() => ({unavailable: true})),
       new Promise(resolve => {timer = setTimeout(() => resolve({unavailable: true, timeout}), timeout);}),
     ]);

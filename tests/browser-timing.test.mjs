@@ -29,20 +29,34 @@ test('observes task duration and heartbeat delay independently without recording
   assert.doesNotMatch(JSON.stringify(state),/secret|private|URL/);
 });
 
-test('phase resets exclude old observations and include queued current tasks',()=>{
-  const f=fixture();f.queue([{startTime:1050,duration:60}]);f.advance(500);f.api.begin();
+test('read checkpoints exclude old observations and include queued current tasks',()=>{
+  const f=fixture();f.queue([{startTime:1050,duration:60}]);f.advance(500);f.api.snapshot({resetAfterRead:true});
   f.tasks([{startTime:1100,duration:300},{startTime:1501,duration:75}]);
   f.queue([{startTime:1600,duration:80}]);f.advance(750);f.tick();
   const state=f.api.snapshot();assert.equal(state.longTasks.count,2);assert.equal(state.longTasks.totalMs,155);
   assert.equal(state.heartbeat.maxMs,500);assert.equal(f.api.snapshot().longTasks.count,2,'queued records read once');
 });
 
-test('repeated polls retain the whole settlement while a new settlement resets it',()=>{
-  const f=fixture();f.api.begin(1);f.advance(700);f.tick();f.tasks([{startTime:1100,duration:400}]);
-  f.api.begin(1);f.advance(900);f.tick();f.tasks([{startTime:1800,duration:500}]);
-  const state=f.api.snapshot();assert.equal(state.elapsed,1600);assert.equal(state.longTasks.count,2);
-  assert.equal(state.longTasks.totalMs,900);assert.equal(state.heartbeat.totalMs,1100);
-  f.api.begin(2);assert.equal(f.api.snapshot().elapsed,0);assert.equal(f.api.snapshot().longTasks.count,0);
+test('the triggering UI work is retained before a delayed first poll and across repeated polls',()=>{
+  const f=fixture();f.api.snapshot({resetAfterRead:true});
+  // The action blocks before the first predicate can run, and its observer
+  // notification is still queued when diagnostics are eventually read.
+  f.advance(60000);f.queue([{startTime:1001,duration:59999}]);f.tick();
+  const first=f.api.snapshot();assert.equal(first.elapsed,60000);
+  assert.equal(first.longTasks.count,1);assert.equal(first.longTasks.maxMs,59999);
+  assert.equal(first.heartbeat.maxMs,59750);
+  f.advance(900);f.tick();f.tasks([{startTime:61001,duration:500}]);
+  const state=f.api.snapshot({resetAfterRead:true});assert.equal(state.elapsed,60900);
+  assert.equal(state.window,'since-previous-diagnostic-read');
+  assert.equal(state.longTasks.count,2);assert.equal(state.longTasks.totalMs,60499);
+  assert.equal(f.api.snapshot().elapsed,0);assert.equal(f.api.snapshot().longTasks.count,0);
+});
+
+test('a queued task overlapping a read boundary is retained with its original duration',()=>{
+  const f=fixture();f.advance(500);f.api.snapshot({resetAfterRead:true});
+  f.advance(500);f.queue([{startTime:1400,duration:550},{startTime:1100,duration:300}]);
+  const state=f.api.snapshot();assert.equal(state.longTasks.count,1);
+  assert.deepEqual(state.longTasks.recent,[{at:-100,duration:550}]);
 });
 
 test('bounded copied records retain exact totals and reject invalid timing values',()=>{
@@ -72,11 +86,10 @@ test('controls record diagnostics per settlement without changing the idle gate'
   const source=await readFile(new URL('../scripts/check-map-controls-browser.mjs',import.meta.url),'utf8');
   assert.match(source,/page\.addInitScript\(installBrowserTiming\)/);
   assert.match(source,/timing:await readBrowserTiming\(page\)/);
-  assert.match(source,/phase=\+\+settlementPhase/);
-  assert.match(source,/__atlasControlsTiming\?\.begin\(phase\)/);
-  assert.doesNotMatch(source,/await page\.evaluate\([^;]*begin/);
+  assert.doesNotMatch(source,/__atlasControlsTiming\?\.begin|settlementPhase/);
   assert.match(source,/map\.once\('idle',\(\)=>resolve\(\)\);map\.triggerRepaint\(\)/);
-  assert.match(source,/\},phase,\{timeout:60000\}\)/);
+  assert.match(source,/\},null,\{timeout:60000\}\)/);
   const helper=await readFile(new URL('../scripts/browser-timing.mjs',import.meta.url),'utf8');
+  assert.match(helper,/snapshot\(\{resetAfterRead: true\}\)/);
   assert.doesNotMatch(helper,/requestAnimationFrame|triggerRepaint|setData|setTiles|fetch\(/);
 });
