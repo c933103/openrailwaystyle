@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261015-station-resilience-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261015-station-world-copy-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import vm from 'node:vm';
 import {webcrypto, createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
@@ -492,6 +492,95 @@ test('station crossing release replaces cached style bytes while previous tabs s
     assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
     assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
   }
+  assert.match(await(await next.request('./',true)).text(),new RegExp(version));
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
+test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
+  const root=new URL('../styles/',import.meta.url),html=readFileSync(new URL('index.html',root),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,'20261015-service-relations-1');
+  let references=0;
+  for(const file of readdirSync(root).filter(file=>/\.(mjs|html)$/.test(file))){
+    const code=readFileSync(new URL(file,root),'utf8');
+    for(const match of code.matchAll(/\?v=([0-9][\w.-]*)/g)){
+      assert.equal(match[1],version,`${file}: cached imports must use the page's complete shell`);references++;
+    }
+  }
+  assert.ok(references>=30,'covers direct and transitive versioned entrypoints');
+  const app=readFileSync(new URL('app.mjs',root),'utf8');
+  assert.equal(app.match(/const assetVersion[^\n]+\|\| '([^']+)'/)?.[1],version,'lazy modules, styles and worker URLs inherit this version');
+  assert.ok(app.includes(`./rail-provider-recovery.mjs?v=${version}`));
+  assert.match(source,/'rail-provider-recovery\.mjs'/,'the actual worker saves recovery with the complete shell');
+});
+
+async function cachedWorldCopyRecovery(moduleBytes){
+  // Execute the bytes actually returned by Cache Storage, without a provider
+  // or renderer request. The original bug erased the unresolved first copy.
+  const {createRailProviderRecovery}=await import('data:text/javascript;base64,'+Buffer.from(moduleBytes).toString('base64'));
+  const timers=new Map(),reloads=[],source={url:'https://openrailwaymap.app/railway_line_high'};let sequence=0;
+  const recovery=createRailProviderRecovery({getSource:()=>source,refreshTiles:(id,tiles)=>reloads.push({id,tiles})},{
+    active:()=>true,setTimer:(fn,delay)=>{timers.set(++sequence,{fn,delay});return sequence;},clearTimer:id=>timers.delete(id),
+  });
+  try{
+    const copies=[0,1].map(wrap=>({state:'errored',tileID:{wrap,canonical:{z:7,x:1,y:2}}}));
+    for(const tile of copies)recovery.noteError({sourceId:'railway',tile,error:{status:520}});
+    copies[1].state='loaded';recovery.noteSourceData({sourceId:'railway',tile:copies[1]});
+    const pendingAfterSiblingSuccess=recovery.hasFailures();
+    if(timers.size){const [id,timer]=timers.entries().next().value;timers.delete(id);timer.fn();}
+    copies[0].state='loaded';recovery.noteSourceData({sourceId:'railway',tile:copies[0]});
+    assert.equal(recovery.hasFailures(),false);assert.equal(timers.size,0);
+    return {pendingAfterSiblingSuccess,reloads};
+  }finally{recovery.dispose();}
+}
+
+test('world-copy recovery release upgrades cached app and exact recovery bytes on online navigation',async()=>{
+  const previous=JSON.parse(gunzipSync(readFileSync(new URL('fixtures/world-copy-recovery-predecessor.json.gz',import.meta.url))));
+  assert.equal(previous.commit,'4d44db85a61d956d81d51549ffb5310085f2265c');
+  assert.equal(previous.version,'20261015-service-relations-1');
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,previous.version,'changed recovery bytes require a fresh cache-first version');
+  const paths=['app.mjs','rail-provider-recovery.mjs'],oldBodies=new Map(),current=new Map();
+  for(const path of paths){
+    const old=previous.files[path];
+    if(old)assert.equal(createHash('sha256').update(old.text).digest('hex'),old.sha256);
+    // Only recovery needs an exact historical payload for execution below.
+    // The old app entry is a compact synthetic cache marker, not an archive.
+    const previousBytes=old?.text??'export const previousApp = "20261015-service-relations-1";';
+    oldBodies.set(new URL(path,scope).pathname,previousBytes);
+    current.set(new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8'));
+    assert.notEqual(current.get(new URL(path,scope).pathname),previousBytes,'current bytes differ from the previous cache entry');
+  }
+  const old=startWorker({version:previous.version,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const originalCaches=[...old.stores.keys()];
+
+  // Negative control: new deployment bytes under the previous token continue
+  // to serve the cached predecessor, including its broken recovery behavior.
+  const unchanged=startWorker({version:previous.version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const path of paths){
+    assert.equal(await(await unchanged.request(path+'?v='+previous.version)).text(),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===new URL(path,scope).pathname).length,0);
+  }
+  const stale=await(await unchanged.request('rail-provider-recovery.mjs?v='+previous.version)).text();
+  assert.deepEqual(await cachedWorldCopyRecovery(stale),{pendingAfterSiblingSuccess:false,reloads:[]});
+
+  // The existing worker learns the complete new shell during navigation. No
+  // worker replacement, cache purge or generation bump is needed.
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
+    assert.equal(await(await next.request(path+'?v='+previous.version)).text(),oldBodies.get(new URL(path,scope).pathname),'previous tabs retain their saved version offline');
+    assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
+  }
+  const served=await(await next.request('rail-provider-recovery.mjs?v='+version)).text();
+  assert.deepEqual(await cachedWorldCopyRecovery(served),{pendingAfterSiblingSuccess:true,reloads:[{id:'railway',tiles:[{z:7,x:1,y:2}]}]});
+  assert.deepEqual([...next.stores.keys()],originalCaches,'same worker cache generation');
+  const versions=await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json();
+  assert.deepEqual(versions,[version,previous.version]);
   assert.match(await(await next.request('./',true)).text(),new RegExp(version));
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
