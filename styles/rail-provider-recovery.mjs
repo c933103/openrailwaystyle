@@ -11,6 +11,10 @@ export function isRetryableRailError(error) {
 }
 const coordinate = event => event?.tile?.tileID?.canonical || event?.coord?.canonical || null;
 const tileKey = c => c && `${c.z}/${c.x}/${c.y}`;
+const validCoordinate = c => c && Number.isInteger(c.z) && c.z >= 0 && c.z <= 30 &&
+  Number.isInteger(c.x) && c.x >= 0 && c.x < 2 ** c.z &&
+  Number.isInteger(c.y) && c.y >= 0 && c.y < 2 ** c.z;
+const inFlight = tile => !tile?.aborted && ['loading', 'reloading', 'expired'].includes(tile?.state);
 
 export function createRailProviderRecovery(map, {
   provider = 'https://openrailwaymap.app',
@@ -31,6 +35,19 @@ export function createRailProviderRecovery(map, {
     const zoom = map.getZoom();
     return map.getStyle()?.layers?.some(layer => layer.source === id && layer.layout?.visibility !== 'none'
       && (!layer.minzoom || zoom >= layer.minzoom) && (!layer.maxzoom || zoom < layer.maxzoom));
+  }
+  function activeTiles(id, source) {
+    // The pinned renderer's inventory includes active non-renderable copies.
+    // Without it, compatibility callers can only guard recorded instances.
+    try {
+      const manager = map.style?.tileManagers?.[id];
+      if (typeof manager?.getIds !== 'function' || typeof manager.getTileByID !== 'function' ||
+          typeof manager.getSource !== 'function' || manager.getSource() !== source) return null;
+      const ids = manager.getIds();
+      if (!Array.isArray(ids)) return null;
+      const tiles = ids.map(key => manager.getTileByID(key));
+      return tiles.every(Boolean) ? tiles : null;
+    } catch { return null; } // A style transition may invalidate the snapshot.
   }
   function onScreen(c) {
     if (!c || !map.getBounds) return true;
@@ -53,8 +70,23 @@ export function createRailProviderRecovery(map, {
   function prune() {
     for (const [id, state] of failed) {
       if (sourceFor(id) !== state.source) { failed.delete(id); continue; }
+      const inventory = activeTiles(id, state.source);
       for (const [key, record] of state.tiles) {
-        if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
+        // Bind coordinate-only evidence to unresolved active copies when the
+        // inventory is known; an empty match retires a stale location marker.
+        if (inventory !== null && record.instances.delete(null)) {
+          for (const tile of inventory) {
+            if (!tile.aborted && !['loaded', 'unloaded'].includes(tile.state) &&
+                validCoordinate(tile.tileID?.canonical) && tileKey(tile.tileID.canonical) === key) record.instances.add(tile);
+          }
+        }
+        for (const tile of record.instances) {
+          // Removed copies can finish failing in MapLibre's cache without
+          // being aborted. Refreshing their coordinate cannot recover them.
+          const retired = inventory !== null && !inventory.includes(tile);
+          if (retired || tile?.aborted || ['unloaded', 'loaded'].includes(tile?.state)) record.instances.delete(tile);
+        }
+        if (!record.instances.size || !onScreen(record.coordinate)) state.tiles.delete(key);
       }
       if (!state.metadata && !state.tiles.size) failed.delete(id);
     }
@@ -85,7 +117,13 @@ export function createRailProviderRecovery(map, {
           if (typeof state.source.setUrl === 'function') dispatch(() => state.source.setUrl(state.source.url));
           continue;
         }
-        const tiles = [...state.tiles.values()].filter(record => !['loading', 'reloading'].includes(record.tile?.state)).map(record => record.coordinate);
+        // A canonical refresh also reaches sibling world copies. Wait while
+        // any recorded or active instance is in flight instead of restarting it.
+        // MapLibre keeps refreshed tiles 'expired' until their load settles.
+        const busy = new Set((activeTiles(id, state.source) || []).filter(inFlight)
+          .map(tile => tile.tileID?.canonical).filter(validCoordinate).map(tileKey));
+        const tiles = [...state.tiles.values()].filter(record => [...record.instances]
+          .every(tile => !inFlight(tile)) && !busy.has(tileKey(record.coordinate))).map(record => record.coordinate);
         if (tiles.length && typeof map.refreshTiles === 'function') dispatch(() => map.refreshTiles(id, tiles));
       } catch { /* A style replacement may remove a source while recovering. */ }
     }
@@ -93,26 +131,42 @@ export function createRailProviderRecovery(map, {
   }
   function noteError(event) {
     if (disposed || !event?.sourceId || !isRetryableRailError(event.error)) return false;
+    const c = coordinate(event);
+    // An explicitly supplied but invalid location is not a metadata outage.
+    // Reject it before creating or changing any existing recovery state.
+    if (('tile' in event || 'coord' in event) && !validCoordinate(c)) return false;
     const source = sourceFor(event.sourceId);
     if (!source) return false;
     let state = failed.get(event.sourceId);
     if (!state || state.source !== source) { state = {source, metadata: false, tiles: new Map()}; failed.set(event.sourceId, state); }
-    const c = coordinate(event);
-    if (c) state.tiles.set(tileKey(c), {coordinate: {z: c.z, x: c.x, y: c.y}, tile: event.tile});
-    else if (!event.tile) state.metadata = true;
-    else { failed.delete(event.sourceId); return false; }
+    if (c) {
+      const key = tileKey(c);
+      let record = state.tiles.get(key);
+      if (!record) { record = {coordinate: {z: c.z, x: c.x, y: c.y}, instances: new Set()}; state.tiles.set(key, record); }
+      record.instances.add(event.tile ?? null);
+    }
+    else state.metadata = true;
     schedule(); onChange(); return true;
   }
   function noteSourceData(event) {
-    if (disposed) return false;
+    if (disposed || !event?.sourceId) return false;
+    const c = coordinate(event), located = 'tile' in event || 'coord' in event;
+    if (located && !validCoordinate(c)) return false;
     const state = failed.get(event?.sourceId);
     if (!state) return false;
     let recovered = false;
     // isSourceLoaded also becomes true after failed tiles settle. Only a
     // successful metadata event or this particular loaded tile is evidence.
-    if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; recovered = true; }
-    const key = tileKey(coordinate(event));
-    if (key && event.tile?.state === 'loaded') recovered = state.tiles.delete(key) || recovered;
+    if (!located && state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; recovered = true; }
+    const key = tileKey(c);
+    const record = key && state.tiles.get(key);
+    if (record && event.tile?.state === 'loaded') {
+      const instance = record.instances.delete(event.tile);
+      // Coordinate-only errors have no tile identity. A loaded tile settles
+      // that marker, but never another known instance at the same coordinate.
+      const coordinateOnly = record.instances.delete(null);
+      recovered = instance || coordinateOnly || recovered;
+    }
     prune(); onChange(); return recovered;
   }
   // Movement rechecks demand without postponing an already scheduled retry.
