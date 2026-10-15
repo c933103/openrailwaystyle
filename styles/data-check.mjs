@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20260922-3';
+import {SEARCH_API} from './map-model.mjs?v=20261015-world-copy-recovery-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

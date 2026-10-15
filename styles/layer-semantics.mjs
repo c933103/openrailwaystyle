@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261015-service-relations-1';
+import { MODES } from './map-model.mjs?v=20261015-world-copy-recovery-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
