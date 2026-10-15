@@ -70,10 +70,10 @@ export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.
   return profileBundle(records.map((r,i)=>r||{properties:{
     frequency_until:Number.isFinite(expiry)?expiry:0,
     // No frequencies are invented. Preserve the reason known at this build;
-    // an absent matched record says nothing about whether trains operate.
-    frequency_status:timetables[i]?
-      Number.isFinite(timetables[i].properties.frequency_until)&&timetables[i].properties.frequency_until*1000<now?'expired':'unknown':
-      'unmatched',
+    // An absent binding may be stale, conflicting or unavailable, rather than
+    // evidence that matching was attempted and found no match.
+    frequency_status:timetables[i]?.properties.frequency_status==='unmatched'?'unmatched':
+      Number.isFinite(timetables[i]?.properties.frequency_until)&&timetables[i].properties.frequency_until*1000<now?'expired':'unknown',
   },profiles:{}}));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];

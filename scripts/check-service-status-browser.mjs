@@ -38,6 +38,10 @@ export async function checkServiceStatusBrowser(browser,root) {
   await page.waitForFunction(()=>document.querySelector('#service-data-status').textContent.includes('Partial fixture: Acquisition partial'));
   const text=await status.textContent();
   for(const expected of ['Latest acquisition deferred','Acquisition completed; source eligibility/geometry unresolved','contains no route records','Legacy fixture: Acquisition completed; source eligibility/geometry unknown','Latest acquisition failed','visible area or a particular route'])assert.ok(text.includes(expected),expected);
+  await page.selectOption('#frequency-period','offpeak');
+  assert.equal(await status.evaluate(element=>element.open),true,'status stays open after period changes');
+  await page.selectOption('#frequency-period','peak');
+  assert.equal(await status.evaluate(element=>element.open),true);
   const manifestHref=await status.locator('a').getAttribute('href');assert.equal(manifestHref,base+'data/service-routes/frequency-manifest.json');
   const show=async properties=>{
    if(await page.locator('#details').isVisible())await page.locator('#details-close').click();

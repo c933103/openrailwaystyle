@@ -51,7 +51,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 // setting. Keep it in the same settings cookie, closed on a first visit.
 settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
 const status = $('map-status');
-let legendHelpOpen = false;
+let legendHelpOpen = false, serviceStatusOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, wakeRailRecovery = () => {};
@@ -507,7 +507,8 @@ function renderLegend() {
   help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
   box.append(help);
   if(settings.mode==='service'){
-    const dataStatus=textNode('details','','legend-help');dataStatus.id='service-data-status';
+    const dataStatus=Object.assign(textNode('details','','legend-help'),{open:serviceStatusOpen});dataStatus.id='service-data-status';
+    dataStatus.addEventListener('toggle',()=>{serviceStatusOpen=dataStatus.open;});
     dataStatus.append(textNode('summary','Service data status'));
     for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
     const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;

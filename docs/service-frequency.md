@@ -105,8 +105,10 @@ request is reported. No visitor-side acquisition, status polling or wider
 provider requests are introduced.
 
 Service details distinguish an available profile (including a measured zero),
-expired evidence, an explicit unmatched result from the current build, and an
-unknown reason. Expiry updates an already-open detail panel. Legacy absent fields
+expired evidence, an explicitly recorded unmatched reason, and an unknown reason.
+An absent binding alone stays unknown: matching may have been unavailable, or a
+previous match may have been withheld for conflict or stale identity. No negative
+matching conclusion is inferred from the current producer's missing rows. Expiry updates an already-open detail panel. Legacy absent fields
 remain unknown instead of being retroactively labelled unmatched. A missing
 period on an otherwise matched profile also remains unknown. This does not
 complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end

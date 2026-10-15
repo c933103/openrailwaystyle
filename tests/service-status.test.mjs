@@ -71,7 +71,9 @@ test('assembly preserves unmatched versus expired input without inventing freque
  const route={ref:'synthetic',kind:'subway'},lines=[[[0,0],[1,1]]];
  const missing=frequencyBundle([route],lines,null,[],now)[0];
  const expired=frequencyBundle([route],lines,null,[{properties:{frequency_until:now/1000-1},profiles:{am:{rate:4}}}],now)[0];
+ const unmatched=frequencyBundle([route],lines,null,[{properties:{frequency_status:'unmatched'},profiles:{}}],now)[0];
+ assert.equal(unmatched.frequency_status,'unmatched');
  const incomplete=frequencyBundle([route],lines,null,[{properties:{frequency_until:now/1000+1},profiles:{}}],now)[0];
- assert.equal(missing.frequency_status,'unmatched');assert.equal(expired.frequency_status,'expired');assert.equal(incomplete.frequency_status,'unknown');
+ assert.equal(missing.frequency_status,'unknown');assert.equal(expired.frequency_status,'expired');assert.equal(incomplete.frequency_status,'unknown');
  for(const properties of [missing,expired,incomplete])assert.equal(properties.frequency_am,undefined);
 });
