@@ -147,6 +147,9 @@ export function createStationFallbackState(map) {
       let changed = false;
       const previousSize = state.tiles.size;
       if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; changed = true; }
+      // Native source-content updates can reload/remove healthy descendants
+      // before bubbling here, without a tile or coordinate on the event.
+      if (event.sourceDataType === 'content' && state.tiles.size) changed = true;
       const c = coordinate(event);
       if (validCoordinate(c) && event.tile?.state === 'loaded') {
         const record = state.tiles.get(tileKey(c));
@@ -156,12 +159,13 @@ export function createStationFallbackState(map) {
           record.instances = record.instances.filter(tile => tile !== event.tile);
           changed = record.instances.length !== previous || changed;
         } else changed = state.tiles.delete(tileKey(c)) || changed;
-        // A successful child changes the displayed coverage of a retained
-        // failed parent even though it cannot settle that parent's request.
-        if (activeTiles(event.sourceId, state.source)?.includes(event.tile))
-          changed = [...state.tiles.values()].some(record => descendant(c, record.coordinate) &&
-            record.instances?.some(tile => sameWorld(tile, event.tile))) || changed;
       }
+      // Descendant lifecycle events can add OR remove healthy coverage without
+      // settling the failed ancestor. Refresh even after removal from inventory:
+      // the already-installed filter can still contain that child's old hole.
+      if (validCoordinate(c) && event.tile)
+        changed = [...state.tiles.values()].some(record => descendant(c, record.coordinate) &&
+          record.instances?.some(tile => sameWorld(tile, event.tile))) || changed;
       return !stateFor(event.sourceId) || changed || state.tiles.size !== previousSize;
     },
     area(zoom) {

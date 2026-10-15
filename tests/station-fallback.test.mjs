@@ -46,11 +46,37 @@ test('healthy-descendant completion requests a mask refresh while failed ancesto
   assert.equal(state.noteSourceData({sourceId:'stations',tile:neighbor}),true,'app must refresh the mask on descendant success');
   assert.equal(shown(neighbor),false,'successful empty tiles also establish coverage');
   for(const status of ['expired','reloading','errored','unloaded']){
-    neighbor.state=status;assert.equal(shown(neighbor),true,`${status} is not fresh successful coverage`);
+    neighbor.state=status;
+    assert.equal(state.noteSourceData({sourceId:'stations',tile:neighbor}),true,`${status} requests a displayed mask refresh`);
+    assert.equal(shown(neighbor),true,`${status} is not fresh successful coverage`);
   }
-  neighbor.state='loaded';neighbor.aborted=true;assert.equal(shown(neighbor),true,'aborted tile cannot authorize exclusion');
+  neighbor.state='loaded';neighbor.aborted=true;
+  assert.equal(state.noteSourceData({sourceId:'stations',tile:neighbor}),true,'aborted descendant requests a mask refresh');
+  assert.equal(shown(neighbor),true,'aborted tile cannot authorize exclusion');
   neighbor.aborted=false;tiles.splice(tiles.indexOf(neighbor),1);
+  assert.equal(state.noteSourceData({sourceId:'stations',tile:neighbor}),true,'removed descendant requests a mask refresh');
   assert.equal(shown(neighbor),true,'removed healthy tile cannot keep an obsolete hole');
+});
+
+test('descendant lifecycle notifications stay scoped to source, geometry and world copy',()=>{
+  const {neighbor,state}=mixedLodFixture();
+  const changed=(sourceId,tile)=>state.noteSourceData({sourceId,tile,isSourceLoaded:false});
+  assert.equal(changed('stationMed',neighbor),false,'unrelated source');
+  const remote={...neighbor,tileID:{...neighbor.tileID,canonical:{z:10,x:600,y:352}}};
+  assert.equal(changed('stations',remote),false,'outside failed ancestors');
+  const wrapped={...neighbor,tileID:{...neighbor.tileID,wrap:1},state:'unloaded'};
+  assert.equal(changed('stations',wrapped),false,'another world cannot change this coverage');
+  assert.equal(changed('stations',{state:'unloaded',tileID:{canonical:{z:10,x:-1,y:352}}}),false,'invalid coordinate');
+  assert.equal(state.hasSourceFailure('stations'),true);
+});
+
+test('source-level content changes refresh coverage without inventing recovery',()=>{
+  const {neighbor,state,shown}=mixedLodFixture();
+  assert.equal(shown(neighbor),false);neighbor.state='reloading';
+  assert.equal(state.noteSourceData({sourceId:'stations',sourceDataType:'content',isSourceLoaded:false}),true);
+  assert.equal(shown(neighbor),true);assert.equal(state.hasSourceFailure('stations'),true);
+  assert.equal(state.noteSourceData({sourceId:'stations',isSourceLoaded:true}),false,'bare completion is still not recovery evidence');
+  assert.equal(state.noteSourceData({sourceId:'stationMed',sourceDataType:'content'}),false,'unrelated source remains ignored');
 });
 
 test('mixed-LOD subtraction retains uncovered areas and finer failures',()=>{

@@ -1026,6 +1026,38 @@ test('healthy descendant success immediately masks retained ancestor failures wi
  }finally{maps[0].handlers.remove();dom.window.close();}
 });
 
+for(const transition of ['expired','reloading','errored','unloaded','aborted','removed','content-reloading','content-expired','native-abort'])test(`descendant ${transition} immediately restores installed station fallback masks without idle`,async()=>{
+ const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
+ try{
+  const map=maps[0];map.zoom=10;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);map.handlers['style.load']();
+  const parent={state:'errored',tileID:{wrap:0,canonical:{z:9,x:259,y:176}}};
+  const failed={state:'errored',tileID:{wrap:0,canonical:{z:10,x:518,y:352}}};
+  const child={state:'loaded',tileID:{wrap:0,canonical:{z:10,x:519,y:352}}};
+  const tiles=[parent,failed,child];
+  map.style={tileManagers:{stations:{getSource:()=>map.getSource('stations'),getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]}}};
+  for(const tile of [parent,failed])map.handlers.error({sourceId:'stations',tile,error:{status:403,message:'HTTP403'}});
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS;
+  const shown=(id,tile)=>featureFilter(map.getFilter(id)).filter({zoom:10},{type:1,properties:{class:'railway',subclass:'station',feature:'station',tier:3},geometry:[[{x:4096,y:4096}]]},tile.tileID.canonical);
+  for(const id of ids)assert.equal(shown(id,child),false,'loaded child initially excludes fallback');
+  const calls=[],setFilter=map.setFilter.bind(map);map.setFilter=(id,filter)=>{calls.push(id);setFilter(id,filter);};
+  const sourceContent=transition.startsWith('content-');
+  if(transition==='removed')tiles.pop();else if(transition==='aborted')child.aborted=true;else child.state=transition.replace('content-','');
+  if(transition==='native-abort'){child.state='reloading';child.aborted=true;tiles.pop();}
+  map.handlers[transition==='native-abort'?'sourcedataabort':'sourcedata'](sourceContent
+   ? {sourceId:'stations',sourceDataType:'content',sourceDataChanged:transition==='content-expired',isSourceLoaded:false}
+   : {sourceId:'stations',tile:child,isSourceLoaded:false});
+  assert.deepEqual(calls,[...ids],'all three literal filters must refresh on the lifecycle event');
+  for(const id of ids){assert.equal(shown(id,child),true,'obsolete hole closes immediately');assert.equal(shown(id,failed),true);}
+  assert.match(window.document.getElementById('map-status').textContent,/station data unavailable/);
+  calls.length=0;child.state='loaded';child.aborted=false;if(['removed','native-abort'].includes(transition))tiles.push(child);
+  map.handlers.sourcedata({sourceId:'stations',tile:child,isSourceLoaded:false});
+  assert.deepEqual(calls,[...ids],'successful recovery removes fallback again');
+  for(const id of ids){assert.equal(shown(id,child),false);assert.equal(shown(id,failed),true);}
+  calls.length=0;map.handlers.sourcedata({sourceId:'stations',tile:child,isSourceLoaded:false});
+  assert.equal(calls.length,0,'unchanged filters are not reinstalled');
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+
 test('ordinary failed world copies retain fallback and status until all copies recover',async()=>{
  const {dom,maps,window}=await start({search:'?mode=infrastructure&stations=1'});
  try{
