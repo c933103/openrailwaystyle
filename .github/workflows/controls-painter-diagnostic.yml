@@ -25,7 +25,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run build
+      - name: Build with the checked-out source identity
+        env:
+          ATLAS_DIAGNOSTIC_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: GITHUB_SHA="$ATLAS_DIAGNOSTIC_REF" npm run build
       - run: git diff --exit-code -- styles/world.style.json
       - run: node --experimental-vm-modules --test tests/controls-painter-*.test.mjs
       - run: npx playwright install --with-deps chromium

@@ -113,3 +113,19 @@ test('hosted experiment is isolated, fixture guarded, single-pair, and retains f
  const fixture=await readFile(new URL('../scripts/controls-painter-fixture.mjs',import.meta.url),'utf8');assert.doesNotMatch(fixture,/route\.fetch\(/);assert.match(script,/This experiment is loopback-only/);
  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');assert.doesNotMatch(app,/controls-painter/);
 });
+
+// The event SHA stays available to the measurement manifest; only the build
+// process receives the reviewed checkout identity.
+test('diagnostic build overrides merge-event provenance with the selected checkout',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+ const block=workflow.split('- name: Build with the checked-out source identity')[1]?.split('\n      - ')[0];
+ assert.ok(block);
+ assert.match(block,/run: GITHUB_SHA="\$ATLAS_DIAGNOSTIC_REF" npm run build/);
+ const expression=block.match(/ATLAS_DIAGNOSTIC_REF: \$\{\{ (.+) \}\}/)?.[1];
+ assert.ok(expression);
+ for(const [event,head,merge] of [['pull_request','a'.repeat(40),'b'.repeat(40)],['push',null,'c'.repeat(40)]]){
+  const selected=runInNewContext(expression,{github:{event_name:event,event:head?{pull_request:{head:{sha:head}}}:{},sha:merge}});
+  assert.equal(selected,head||merge);
+  if(head)assert.notEqual(selected,merge);
+ }
+});
