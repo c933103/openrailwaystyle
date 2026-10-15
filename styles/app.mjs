@@ -581,7 +581,7 @@ async function majorStationName(feature,language){
  return null;
 }
 function updateMajorStations(){
- if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=22)return;
+ if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3)return;
  const source=map.getSource('stationMajor'),language=settings.language;
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!source)return;
