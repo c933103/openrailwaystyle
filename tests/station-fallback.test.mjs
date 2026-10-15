@@ -203,3 +203,45 @@ test('tile-object failures retain explicit lifecycle authority across zoom chang
  const tile=failedTile();state.noteError({sourceId:'stations',tile,error:{status:503}});
  zoom=11;assert.ok(state.area(zoom));tile.state='unloaded';assert.equal(state.area(zoom),null);
 });
+
+test('delayed coordinate-only parent failures cannot adopt a newer camera selection',()=>{
+ let zoom=11;const source={maxzoom:22};const state=createStationFallbackState({getSource:()=>source,getZoom:()=>zoom});
+ const event={sourceId:'stations',coord:{canonical:{z:10,x:518,y:352}},error:{status:403}};
+ assert.equal(state.noteError(event),true,'obsolete event remains owned for status cleanup');
+ assert.equal(state.area(zoom),null);assert.equal(state.hasSourceFailure('stations'),false);
+ zoom=7;assert.equal(state.noteError(event),true);assert.equal(state.hasSourceFailure('stations'),false);
+ zoom=10;assert.equal(state.area(zoom),null,'returning cannot revive discarded events');
+});
+
+test('active inventory preserves mixed LOD and retires removed or replaced coordinate-only tiles',()=>{
+ let zoom=11;const source={maxzoom:22};let tiles=[];
+ const manager={getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]};
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>zoom,style:{tileManagers:{stations:manager}}});
+ const a=failedTile(),event={sourceId:'stations',coord:a.tileID,error:{status:503}};
+ tiles=[{...failedTile(1036,704,11),state:'loaded'}];
+ assert.equal(state.noteError(event),true);assert.equal(state.area(zoom),null,'old parent no longer in inventory');
+ tiles.push(a);state.noteError(event);assert.ok(state.area(zoom),'active lower-LOD errored tile retained');
+ zoom=12;assert.ok(state.area(zoom),'camera heuristic cannot discard active mixed LOD');
+ tiles[1]=failedTile();assert.equal(state.area(zoom),null,'same coordinate replacement has independent lifecycle');
+ state.noteError(event);assert.ok(state.area(zoom));tiles.pop();assert.equal(state.area(zoom),null,'removal retires without unloaded notification');
+ tiles=[{...a,state:'loaded'}];state.noteError(event);assert.equal(state.area(zoom),null,'late event cannot mask a healthy replacement');
+ tiles=[{...a,state:'loaded'},a];state.noteError(event);assert.ok(state.area(zoom),'failed world copy survives healthy copy');
+ a.state='loaded';assert.equal(state.area(zoom),null,'hydrated lifecycle recovery clears failure');
+});
+
+test('inventory belonging to a replaced source cannot authorize obsolete coordinates',()=>{
+ const source={maxzoom:22},oldSource={maxzoom:22},tile=failedTile();
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>11,style:{tileManagers:{stations:{
+  getSource:()=>oldSource,getIds:()=>[0],getTileByID:()=>tile,
+ }}}});
+ state.noteError({sourceId:'stations',coord:tile.tileID,error:{status:503}});assert.equal(state.area(11),null);
+});
+
+test('pinned renderer exposes active errored-tile inventory rather than renderable-only coordinates',async()=>{
+ const source=await readFile(new URL('../node_modules/maplibre-gl/src/tile/tile_manager.ts',import.meta.url),'utf8');
+ assert.match(source,/getIds\(\)[^{]*\{\s*return this\._inViewTiles\.getAllIds\(true\);/);
+ assert.match(source,/getTileByID\(id:[^)]*\)[^{]*\{\s*return this\._inViewTiles\.getTileById\(id\);/);
+ assert.match(source,/getSource\(\)/);
+ const style=await readFile(new URL('../node_modules/maplibre-gl/src/style/style.ts',import.meta.url),'utf8');
+ assert.match(style,/tileManagers/);
+});

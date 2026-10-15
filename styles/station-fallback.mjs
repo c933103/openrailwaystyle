@@ -55,12 +55,18 @@ export function createStationFallbackState(map) {
   function selectionFor(source) {
     const zoom = map.getZoom?.();
     if (!Number.isFinite(zoom)) return null;
-    // Pinned vector sources use 512px tiles and floor camera zoom; canonical
-    // selection is capped at source maxzoom. Fractional zoom and overzooming
-    // the same source therefore do not invent recovery. A coord-only error
-    // has no tile lifecycle object and is scoped to this selection epoch.
+    // Compatibility fallback when the pinned renderer's active inventory is
+    // unavailable. Vector sources use 512px tiles and floor camera zoom.
     const max = Number.isFinite(source?.maxzoom) ? source.maxzoom : 22;
     return `${stationSource(zoom)}:${Math.min(Math.max(0, Math.floor(zoom)), max)}`;
+  }
+  function activeTiles(id, source) {
+    // Read the pinned MapLibre inventory, including errored/non-renderable
+    // tiles. Camera zoom alone cannot identify the active mixed-LOD selection.
+    const manager = map.style?.tileManagers?.[id];
+    if (typeof manager?.getIds !== 'function' || typeof manager.getTileByID !== 'function' ||
+        typeof manager.getSource !== 'function' || manager.getSource() !== source) return null;
+    return manager.getIds().map(key => manager.getTileByID(key)).filter(Boolean);
   }
   function stateFor(id) {
     const state = failed.get(id);
@@ -69,7 +75,12 @@ export function createStationFallbackState(map) {
     if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
     for (const [key, record] of state.tiles) {
       const selection = selectionFor(source);
-      const obsolete = !record.tile && record.selection !== null && selection !== null && record.selection !== selection;
+      const inventory = record.fromCoordinate ? activeTiles(id, source) : null;
+      const zoom = map.getZoom?.();
+      const inactive = record.fromCoordinate && Number.isFinite(zoom) && stationSource(zoom) !== id;
+      const obsolete = inactive || (record.fromCoordinate && inventory !== null
+        ? !inventory.includes(record.tile)
+        : !record.tile && record.selection !== null && selection !== null && record.selection !== selection);
       if (obsolete || record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
     }
     if (!state.metadata && !state.tiles.size) { failed.delete(id); return null; }
@@ -84,8 +95,30 @@ export function createStationFallbackState(map) {
       const source = map.getSource(event.sourceId);
       if (!source) return;
       const state = stateFor(event.sourceId) || {source, url: source.url, metadata: false, tiles: new Map()};
-      if (c) state.tiles.set(tileKey(c), {coordinate: {...c}, tile: event.tile, selection: selectionFor(source)});
-      else state.metadata = true;
+      if (c) {
+        let tile = event.tile;
+        const fromCoordinate = !tile;
+        const selection = `${event.sourceId}:${c.z}`;
+        if (fromCoordinate) {
+          const zoom = map.getZoom?.();
+          if (Number.isFinite(zoom) && stationSource(zoom) !== event.sourceId) return true;
+          const inventory = activeTiles(event.sourceId, source);
+          if (inventory !== null) {
+            // A delayed error for a removed parent must not be stamped with
+            // the new camera selection. Prefer a failed world copy if present.
+            const matches = inventory.filter(candidate => {
+              const canonical = candidate.tileID?.canonical;
+              return validCoordinate(canonical) && tileKey(canonical) === tileKey(c);
+            });
+            tile = matches.find(candidate => !candidate.aborted && !['loaded', 'unloaded'].includes(candidate.state));
+            if (!tile) return true;
+          } else {
+            const current = selectionFor(source);
+            if (current !== null && current !== selection) return true;
+          }
+        }
+        state.tiles.set(tileKey(c), {coordinate: {...c}, tile, fromCoordinate, selection});
+      } else state.metadata = true;
       failed.set(event.sourceId, state);
       return true;
     },
