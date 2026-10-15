@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {annotateLayers, layerVisibility} from '../styles/layer-semantics.mjs';
 import {labelExpression} from '../styles/map-model.mjs';

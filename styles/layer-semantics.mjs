@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261015-service-relations-1';
+import { MODES } from './map-model.mjs?v=20261015-station-resilience-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

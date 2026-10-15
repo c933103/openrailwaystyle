@@ -23,6 +23,7 @@ import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
+import * as stationFallbackModule from '../styles/station-fallback.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as referenceModule from '../styles/mainline-reference.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
@@ -81,6 +82,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') { this.visibility[id] = value; const layer=this.options.style.layers.find(l=>l.id===id); if(layer)(layer.layout ||= {}).visibility=value; } else (this.layout ||= {})[id] = value; }
+    getLayoutProperty(id, property) { return this.options.style.layers.find(layer=>layer.id===id)?.layout?.[property]; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
@@ -220,10 +222,11 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
+  const stationFallback = new vm.SyntheticModule(Object.keys(stationFallbackModule),function(){for(const [key,value] of Object.entries(stationFallbackModule))this.setExport(key,value);},{context});
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -925,6 +928,49 @@ test('curated hub names with rare Han wait for their slices before reaching the 
 });
 
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+for(const zoom of [9,9.8,10,11,12])test(`station fallback tracks actual source errors and settings at Paris zoom ${zoom}`,async()=>{
+ const {dom,window,maps}=await start({search:'?mode=infrastructure&language=en&stations=1'});
+ try{
+  const map=maps[0];map.zoom=zoom;map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
+  map.handlers['style.load']();
+  const ids=stationFallbackModule.STATION_FALLBACK_IDS;
+  const visibility=()=>ids.map(id=>map.getLayoutProperty(id,'visibility'));
+  assert.deepEqual(visibility(),['none','none','none'],'healthy sources never duplicate station markers');
+  map.handlers.error({sourceId:'railway',error:{status:403,message:'HTTP 403'}});
+  assert.deepEqual(visibility(),['none','none','none'],'railway errors cannot activate a station fallback');
+  map.handlers.error({sourceId:'stations',error:{status:403,message:'HTTP 403'}});
+  assert.deepEqual(visibility(),['visible','visible','visible'],'station source error enables points and names');
+  assert.match(window.document.getElementById('map-status').textContent,/station and track data unavailable/);
+  for(const mode of ['speed','electrification','infrastructure']){
+   window.document.querySelector(`[data-mode="${mode}"]`).click();assert.deepEqual(visibility(),['visible','visible','visible']);
+  }
+  for(const background of ['carto','hybrid']){
+   window.document.querySelector(`[data-background="${background}"]`).click();assert.deepEqual(visibility(),['visible','visible','visible']);
+  }
+  const stations=window.document.getElementById('stations');stations.checked=false;stations.dispatchEvent(new window.Event('change'));
+  assert.deepEqual(visibility(),['none','none','none']);
+  stations.checked=true;stations.dispatchEvent(new window.Event('change'));assert.deepEqual(visibility(),['visible','visible','visible']);
+  window.document.querySelector('[data-background="satellite"]').click();assert.deepEqual(visibility(),['none','none','none']);
+  window.document.querySelector('[data-background="map"]').click();assert.deepEqual(visibility(),['visible','visible','visible']);
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
+test('curated fallback repopulates on cold load and pan at raw zoom 22',async()=>{
+ const input=structuredClone(style);
+ const point=(id,coordinates)=>({type:'Feature',id,properties:{id,feature:'station',tier:3,name:'deferred'},geometry:{type:'Point',coordinates}});
+ input.sources.stationMajor.data={type:'FeatureCollection',features:[point('paris',[2.3753,48.8909]),point('distant',[32.3753,48.8909])]};
+ const {dom,maps}=await start({search:'?detail=2&language=en&stations=1',fetcher:async()=>({ok:true,json:async()=>structuredClone(input)})});
+ try{
+  const map=maps[0];map.zoom=22;
+  map.getBounds=()=>({getWest:()=>2.37,getEast:()=>2.38,getSouth:()=>48.88,getNorth:()=>48.90});
+  assert.equal(map.options.style.sources.stationMajor.data.features.length,0,'startup really clears the embedded GeoJSON');
+  map.handlers['style.load']();await tick();await tick();
+  assert.ok(map.sourceData.stationMajor,'cold maximum-zoom load must populate the source');
+  assert.deepEqual(Array.from(map.sourceData.stationMajor.features,f=>f.properties.id),['paris'],'cold maximum-zoom load publishes the visible hub');
+  map.getBounds=()=>({getWest:()=>32.37,getEast:()=>32.38,getSouth:()=>48.88,getNorth:()=>48.90});
+  map.handlers.moveend();await tick();await tick();
+  assert.ok(map.sourceData.stationMajor.features.some(f=>f.properties.id==='distant'),'maximum-zoom pan refreshes geometry beyond the initial viewport');
+ }finally{maps[0].handlers.remove();dom.window.close();}
+});
 const providerHubTile=(hub,language)=>{
  const id=hub.properties.osm_ids.split(';')[0],name=`Provider hub (${language})`;
  const bytes=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,
@@ -1534,7 +1580,7 @@ test('partial rail recovery and loaded-but-errored sources retain the outage sta
     f.data({isSourceLoaded:true});f.data({tile:a, isSourceLoaded:true});
     assert.equal(f.status.classList.contains('error'), true);
     a.state = 'loaded';f.data({tile:a, isSourceLoaded:true});
-    assert.match(f.status.textContent, /Retrying automatically/);
+    assert.match(f.status.textContent, /OpenRailwayMap railway data unavailable\. Retrying failed tiles\./);
     assert.equal(f.clock.timers.size, 1);
     b.state = 'loaded';f.data({tile:b, isSourceLoaded:true});
     assert.equal(f.status.classList.contains('error'), false);
@@ -1628,7 +1674,7 @@ test('off-screen retirement reconciles owned errors without source success and r
  try{
   const a=failedRailTile(1),b=failedRailTile(2);f.fail(a);f.fail(b);
   f.map.getBounds=()=>({getWest:()=>-174,getEast:()=>-172,getSouth:()=>80,getNorth:()=>85});
-  f.map.handlers.moveend();assert.match(f.status.textContent,/Retrying automatically/,'one remaining tile retains the warning');
+  f.map.handlers.moveend();assert.match(f.status.textContent,/OpenRailwayMap railway data unavailable\. Retrying failed tiles\./,'one remaining tile retains the warning');
   f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
   f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);
   f.map.getBounds=()=>undefined;f.fail(failedRailTile());
@@ -1645,7 +1691,7 @@ test('retirement cannot clear nonretryable or newer same-ID errors',async()=>{
    f.map.handlers.error({sourceId:'railway',tile:failedRailTile(3),error:{status:403,message:'HTTP 403'}});
    f.fail(failedRailTile(4));
    f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
-   assert.equal(f.status.classList.contains('error'),true);assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.clock.timers.size,0);
+   assert.equal(f.status.classList.contains('error'),true);assert.match(f.status.textContent,/OpenRailwayMap railway data unavailable/);assert.doesNotMatch(f.status.textContent,/Retrying/);assert.equal(f.clock.timers.size,0);
   }finally{f.close();}
  }
 });
