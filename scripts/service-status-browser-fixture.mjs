@@ -27,7 +27,10 @@ export async function checkServiceStatusBrowser(browser,root) {
   });
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.clock.install({time:new Date('2026-10-15T12:00:00Z')});
+  // Only wall-clock frequency evidence is pinned. Keep native timers, RAF and
+  // performance time for MapLibre and screenshot capture; the expiry below
+  // deliberately runs through the real application timer.
+  await page.addInitScript(epoch=>{const realNow=Date.now,offset=epoch-realNow();Date.now=()=>realNow()+offset;},Date.parse('2026-10-15T12:00:00Z'));
   const open=async()=>{
    await page.goto(base+'?mode=service&relief=0&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=am#12/0/0',{waitUntil:'domcontentloaded'});
    await page.waitForSelector('body[data-map-ready="true"]');
@@ -73,9 +76,10 @@ export async function checkServiceStatusBrowser(browser,root) {
   // A detail opened with current data must update when that same data expire.
   const until=await page.evaluate(()=>Date.now()/1000+3);
   assert.match(await show({frequency_am:4,frequency_high_am:4,frequency_until:until}),/4\/h\/direction/);
-  await page.clock.runFor(4000);
   await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('Matched frequency profile has expired'));
   assert.match(await detailRow('Evening peak'),/reason is unknown/);
+  await waitUntil(page,()=>statusMap.loaded()&&statusMap.areTilesLoaded()&&!statusMap.isMoving());
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/service-status-expired.png'});
   for(const value of ['failed','legacy','mismatched']){
    metadata=value;await open();
