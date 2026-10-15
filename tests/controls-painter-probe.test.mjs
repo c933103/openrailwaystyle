@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
+import {runInNewContext} from 'node:vm';
 import {guardHiddenTileMasks,installControlsFetchProbe,installControlsPainterProbe,controlsMapIdle} from '../scripts/controls-painter-probe.mjs';
-import {nonemptyMaskTile,nonemptyPainterStyle,comparePixelBytes,controlsPainterManifest} from '../scripts/controls-painter-fixture.mjs';
+import {nonemptyMaskTile,nonemptyPainterStyle,comparePixelBytes,controlsPainterManifest,controlsPainterSourceIdentity} from '../scripts/controls-painter-fixture.mjs';
 const deferred=()=>Promise.withResolvers();
 function scope(fetch=async()=>new Response(new Uint8Array([1,2]))){
  let time=0,timerId=0;const timers=new Map();
@@ -88,6 +89,22 @@ test('pixel comparator rejects missing/truncated buffers and detects even one ch
 });
 test('source/runtime hashes are fixed and a complete diagnostic manifest is available',async()=>{
  const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,false);assert.equal(Object.keys(manifest.sources).length,6);
+});
+test('workflow checkout, declaration and artifact select the PR head or push SHA consistently',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+ const expressions=[/ref: \$\{\{ (.+) \}\}/,/ATLAS_DIAGNOSTIC_REF: \$\{\{ (.+) \}\}/,/name: controls-painter-diagnostic-\$\{\{ (.+) \}\}/].map(pattern=>{const match=workflow.match(pattern);assert.ok(match);return match[1];});
+ for(const expression of expressions){
+  assert.equal(runInNewContext(expression,{github:{event_name:'pull_request',event:{pull_request:{head:{sha:'pr-head'}}},sha:'merge-sha'}}),'pr-head');
+  assert.equal(runInNewContext(expression,{github:{event_name:'push',event:{},sha:'push-sha'}}),'push-sha');
+ }
+});
+test('source identity records the actual checkout, distinguishes event SHA and rejects wrong checkout',()=>{
+ const pr={ATLAS_DIAGNOSTIC_REF:'head',ATLAS_DIAGNOSTIC_HEAD:'head',GITHUB_SHA:'merge'};
+ assert.deepEqual(controlsPainterSourceIdentity('head',pr),{sourceCommit:'head',eventCommit:'merge',pullRequestHead:'head'});
+ assert.throws(()=>controlsPainterSourceIdentity('merge',pr),/Actual checkout/);
+ assert.deepEqual(controlsPainterSourceIdentity('push',{ATLAS_DIAGNOSTIC_REF:'push',GITHUB_SHA:'push'}),{sourceCommit:'push',eventCommit:'push',pullRequestHead:null});
+ assert.throws(()=>controlsPainterSourceIdentity('stale',{ATLAS_DIAGNOSTIC_REF:'push'}),/Actual checkout/);
+ assert.deepEqual(controlsPainterSourceIdentity('local',{}),{sourceCommit:'local',eventCommit:null,pullRequestHead:null});
 });
 test('hosted experiment is isolated, fixture guarded, single-pair, and retains failed artifacts',async()=>{
  const script=await readFile(new URL('../scripts/check-controls-painter-browser.mjs',import.meta.url),'utf8'),workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');

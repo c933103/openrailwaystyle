@@ -49,6 +49,11 @@ The CPU test also verifies source equality with the pinned distribution map.
 Each arm records the original runtime method hash; those hashes must agree.
 Current app, style, request-pool, adapter and diagnostic input hashes accompany
 the result. No new external software or renderer upgrade is introduced.
+Checkout selects the explicit PR head (or event SHA outside a PR). The manifest
+reads the actual Git checkout and rejects a different declared source; the
+GitHub event/merge SHA is recorded separately rather than mislabeled as the
+checkout. A correction-triggered measurement is a distinct run, never averaged
+with or substituted for the first result.
 
 ## One hosted pair
 

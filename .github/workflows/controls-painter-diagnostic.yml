@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -30,6 +32,7 @@ jobs:
       - name: Run one fixture-only baseline and guard pair
         env:
           ATLAS_DIAGNOSTIC_HEAD: ${{ github.event.pull_request.head.sha }}
+          ATLAS_DIAGNOSTIC_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           set -eu
           mkdir -p browser-review
@@ -41,6 +44,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: controls-painter-diagnostic-${{ github.event.pull_request.head.sha }}
+          name: controls-painter-diagnostic-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           path: browser-review/
           retention-days: 30

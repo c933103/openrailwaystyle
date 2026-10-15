@@ -1,5 +1,6 @@
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import vtpbf from 'vt-pbf';
 import {rendererFixture,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
@@ -7,6 +8,11 @@ import {MAPLIBRE_BACKPORT} from '../styles/map-controls.mjs';
 import {depthFixturePng} from './bathymetry-browser-fixture.mjs';
 
 const hash=body=>createHash('sha256').update(body).digest('hex');
+export function controlsPainterSourceIdentity(checkoutSha,env=process.env){
+ const expected=env.ATLAS_DIAGNOSTIC_REF||env.ATLAS_DIAGNOSTIC_HEAD;
+ if(expected)assert.equal(checkoutSha,expected,'Actual checkout must match the declared diagnostic source');
+ return {sourceCommit:checkoutSha,eventCommit:env.GITHUB_SHA||null,pullRequestHead:env.ATLAS_DIAGNOSTIC_HEAD||null};
+}
 export function comparePixelBytes(original,candidate){
  assert.ok(original&&candidate,'Both pixel arms must exist');
  assert.equal(original.length,512*512*4,'Original pixel buffer is complete');
@@ -26,7 +32,8 @@ export async function controlsPainterManifest(){
  for(const [file,expected] of Object.entries(sources))assert.equal(hash(await readFile(file)),expected,file);
  const inputs={};
  for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
- return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',sourceCommit:process.env.GITHUB_SHA||null,pullRequestHead:process.env.ATLAS_DIAGNOSTIC_HEAD||null,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:false};
+ const identity=controlsPainterSourceIdentity(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:2000,maxBuffer:1024}).trim());
+ return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:false};
 }
 
 export const nonemptyMaskTile=Buffer.from(vtpbf.fromGeojsonVt({fixture:{extent:4096,features:[
