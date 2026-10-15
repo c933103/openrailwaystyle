@@ -1,24 +1,25 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261013-detail-rail-reference-3';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261013-detail-rail-reference-3';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261013-detail-rail-reference-3';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261013-detail-rail-reference-3';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261013-detail-rail-reference-3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261013-detail-rail-reference-3';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261015-service-status-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-service-status-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-service-status-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-service-status-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-service-status-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-service-status-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-service-status-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261013-detail-rail-reference-3';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261013-detail-rail-reference-3';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261013-detail-rail-reference-3';
-import {departureItem} from './departures-ui.mjs?v=20261013-detail-rail-reference-3';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261013-detail-rail-reference-3';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261013-detail-rail-reference-3';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261013-detail-rail-reference-3';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261013-detail-rail-reference-3';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261013-detail-rail-reference-3';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261013-detail-rail-reference-3';
-import { installWatchGesture } from './watch-map.mjs?v=20261013-detail-rail-reference-3';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261013-detail-rail-reference-3';
-import { createBundleReader } from './tile-bundles.mjs?v=20261013-detail-rail-reference-3';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261013-detail-rail-reference-3';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-service-status-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-service-status-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-service-status-1';
+import {departureItem} from './departures-ui.mjs?v=20261015-service-status-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-service-status-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-service-status-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-service-status-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-service-status-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-service-status-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-service-status-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261015-service-status-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-service-status-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261015-service-status-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261015-service-status-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -55,7 +56,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261013-detail-rail-reference-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-service-status-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -159,7 +160,7 @@ const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
 // Frequency periods that some applied source covers (frequency-manifest.json);
 // a period no source covers is not offered. Unknown until the manifest loads,
 // or for a snapshot without the list: every period stays available.
-let coveredProfiles=null;
+let coveredProfiles=null,serviceDataStatus={state:'loading'};
 const profileCovered=profile=>!coveredProfiles||coveredProfiles.has(profile);
 const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered('pm'):period==='hour'?HOURLY_PROFILES.some(profileCovered):profileCovered(period);
 // Rare Han glyph slices, loaded for the labels of each tile before it is drawn;
@@ -483,7 +484,7 @@ function renderLegend() {
     const key=textNode('div','','frequency-key');
     key.append(textNode('p',FREQUENCY_LABELS[selectedFrequencyProfile(settings)],'small'));
     for(const rate of [1,6,12,24,30]){const sample=textNode('span','','frequency-sample'),mark=textNode('i');mark.style.height=frequencyWidth(rate)+'px';sample.append(mark,textNode('span',`${rate===30?'30+':rate}/h`));key.append(sample);}
-    key.append(textNode('p','Subdued line: no matched frequency profile. Departure timetables may still be available. Rates are per direction; published headways are estimates.','small'));box.append(key);
+    key.append(textNode('p','Subdued line: frequency is unavailable; open service details for its recorded status. Departure timetables may still be available. Rates are per direction; published headways are estimates.','small'));box.append(key);
   }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
@@ -505,6 +506,13 @@ function renderLegend() {
   help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
   help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
   box.append(help);
+  if(settings.mode==='service'){
+    const dataStatus=textNode('details','','legend-help');dataStatus.id='service-data-status';
+    dataStatus.append(textNode('summary','Service data status'));
+    for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
+    const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;
+    link.target='_blank';link.rel='noopener';dataStatus.append(link);box.append(dataStatus);
+  }
 }
 function saveSettings() {
   writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
@@ -865,7 +873,7 @@ function showServiceDetails(feature) {
   row(dl, 'Operator', p.operator);
   const profiles=[...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered),sources=new Map();
   for(const profile of profiles){
-    row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'No matched frequency profile');
+    row(dl,FREQUENCY_LABELS[profile],frequencyAvailability(p,profile).text);
     if(p[`frequency_${profile}`]===undefined)continue;
     const attribution=frequencyAttribution(p,profile),key=JSON.stringify(attribution);
     if(!sources.has(key))sources.set(key,{...attribution,periods:[]});sources.get(key).periods.push(FREQUENCY_LABELS[profile]);
@@ -1817,10 +1825,11 @@ function applyCoveredPeriods(){
   for(const option of $('frequency-period').options)option.hidden=option.disabled=!periodCovered(option.value);
   if(!periodCovered(settings.frequencyPeriod)){const fallback=['offpeak','peak'].find(periodCovered);if(fallback){settings.frequencyPeriod=fallback;applySettings();}}
 }
-fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).then(r=>r.ok?r.json():null).then(manifest=>{
-  if(!Array.isArray(manifest?.profiles))return;
-  coveredProfiles=new Set(manifest.profiles);applyCoveredPeriods();renderLegend();
-}).catch(()=>{});
+fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).then(r=>{if(!r.ok)throw new Error('Service metadata unavailable');return r.json();}).then(manifest=>{
+  serviceDataStatus={state:'loaded',manifest};
+  if(manifest?.schema===3&&Array.isArray(manifest.profiles)){coveredProfiles=new Set(manifest.profiles);applyCoveredPeriods();}
+  renderLegend();
+}).catch(()=>{serviceDataStatus={state:'failed'};renderLegend();});
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();

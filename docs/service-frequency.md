@@ -87,6 +87,31 @@ timetable or tile provider is contacted by automation.
 API contract: [MOTIS OpenAPI](https://github.com/motis-project/motis/blob/master/openapi.yaml),
 served by [Transitous](https://transitous.org/api/).
 
+## Displayed acquisition and availability status
+
+The Service legend's **Service data status** expands the recorded acquisition
+stages from the same OSM snapshot assembled into the site's service tiles.
+The frequency rebuild copies only compact stage facts and binds them to the
+SHA-256 of its exact compressed OSM table input. Partial acquisition, deferred
+or failed attempts, completed acquisition with unresolved source eligibility,
+completed checks with an empty stage result, and unknown legacy evidence remain
+separate. An earlier accepted snapshot can coexist with an unfinished refresh.
+
+These are snapshot-wide stage outcomes. Broad labels such as “Rest of the world”
+do not establish viewport/country completeness or explain a particular route.
+An empty acquired stage is not evidence that no trains operate. Missing or
+unreadable status metadata is explicitly unknown; a failed browser metadata
+request is reported. No visitor-side acquisition, status polling or wider
+provider requests are introduced.
+
+Service details distinguish an available profile (including a measured zero),
+expired evidence, an explicit unmatched result from the current build, and an
+unknown reason. Expiry updates an already-open detail panel. Legacy absent fields
+remain unknown instead of being retroactively labelled unmatched. A missing
+period on an otherwise matched profile also remains unknown. This does not
+complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
+regression, and departure-board evidence remains independently scoped.
+
 ## Worldwide discovery and updates
 
 The source registry is assembled from **three independently credited inputs**:

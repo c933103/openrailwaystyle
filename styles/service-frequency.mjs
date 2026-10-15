@@ -67,7 +67,14 @@ export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.
   // Unknown peers must retain the source expiry so known routes in a mixed
   // OSM bundle remain usable; unknown width is still the baseline.
   const expiry=Math.min(...records.filter(Boolean).map(r=>r.properties.frequency_until));
-  return profileBundle(records.map(r=>r||{properties:{frequency_until:Number.isFinite(expiry)?expiry:0},profiles:{}}));
+  return profileBundle(records.map((r,i)=>r||{properties:{
+    frequency_until:Number.isFinite(expiry)?expiry:0,
+    // No frequencies are invented. Preserve the reason known at this build;
+    // an absent matched record says nothing about whether trains operate.
+    frequency_status:timetables[i]?
+      Number.isFinite(timetables[i].properties.frequency_until)&&timetables[i].properties.frequency_until*1000<now?'expired':'unknown':
+      'unmatched',
+  },profiles:{}}));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
@@ -100,6 +107,21 @@ export function frequencyDetails(properties,profile,now=Date.now()) {
   const directions=forward!==undefined&&backward!==undefined?`; directions ${format(forward)} / ${format(backward)}; width uses the lower rate`:'';
   const date=frequencyAttribution(properties,profile).frequency_date;
   return `${rate} (${quality}${date?' · '+date:''}${directions})`;
+}
+
+export function frequencyAvailability(properties,profile,now=Date.now()) {
+  if(!FREQUENCY_PROFILES.includes(profile))return {status:'unknown',text:'Frequency status is unknown.'};
+  const rate=properties[`frequency_${profile}`],until=Number(properties.frequency_until);
+  const numeric=typeof rate==='number'&&Number.isFinite(rate)&&rate>=0;
+  if(numeric&&Number.isFinite(until)&&until>0){
+    if(until*1000<now)return {status:'expired',text:'Matched frequency profile has expired; current frequency is unknown.'};
+    return {status:'available',text:frequencyDetails(properties,profile,now)};
+  }
+  if(!numeric&&properties.frequency_status==='expired')
+    return {status:'expired',text:'Matched frequency evidence had expired at this snapshot build; current frequency is unknown.'};
+  if(!numeric&&properties.frequency_status==='unmatched')
+    return {status:'unmatched',text:'No timetable or headway profile matched this map service in this snapshot.'};
+  return {status:'unknown',text:'No usable frequency profile is recorded for this period; the reason is unknown.'};
 }
 
 export function nearestServiceFeature(services, point, project, z, settings, now=Date.now()) {
