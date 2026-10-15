@@ -4,7 +4,7 @@
 export function installBrowserTiming(scope = globalThis) {
   scope.__atlasControlsTiming?.dispose();
   const now = () => scope.performance.now(), interval = 250, limit = 64;
-  let observer, timer, disposed = false, start = now(), last = start;
+  let observer, timer, disposed = false, start = now(), last = start, phase;
   let longTaskSupported = false, heartbeatSupported = false;
   let longTasks, heartbeat;
   const empty = () => ({count: 0, totalMs: 0, maxMs: 0, recent: []});
@@ -34,7 +34,10 @@ export function installBrowserTiming(scope = globalThis) {
   } catch {}
   const copy = stats => ({...stats, recent: stats.recent.map(entry => ({...entry})), truncated: stats.count > limit});
   const api = {
-    begin() {
+    begin(nextPhase) {
+      // Repeated predicate polls belong to the same acceptance deadline.
+      if (nextPhase !== undefined && nextPhase === phase) return;
+      phase = nextPhase;
       observer?.takeRecords(); start = now(); last = start; reset();
     },
     snapshot() {

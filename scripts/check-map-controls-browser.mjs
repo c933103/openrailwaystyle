@@ -63,17 +63,18 @@ const cookie=async()=>JSON.parse(decodeURIComponent((await context.cookies()).fi
 const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList.contains('maplibregl-compact-show')&&e.open);
 // Settling, not speed, is checked here: at the largest More detail scale a
 // small CI runner can take about 15 seconds to load and place everything.
+let settlementPhase=0;
 async function waitForMapIdle(){
-  const start=Date.now();
+  const start=Date.now(),phase=++settlementPhase;
   try{
-  await waitUntil(page,async()=>{
-    globalThis.__atlasControlsTiming?.begin();
+  await waitUntil(page,async phase=>{
+    globalThis.__atlasControlsTiming?.begin(phase);
     const{map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('idle',()=>resolve());map.triggerRepaint();});
     const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
     return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
       && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
-  },null,{timeout:60000});
+  },phase,{timeout:60000});
   }finally{
     const ms=Date.now()-start, pendingCount=pending.size;
     settlements.push({after:results.at(-1)?.name??'startup',ms,pending:pendingCount,timing:await readBrowserTiming(page)});

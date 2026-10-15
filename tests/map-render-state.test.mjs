@@ -86,7 +86,7 @@ test('controls retain real idle, all settlement predicates and the original 60-s
   assert.match(source, /map\.once\('idle',\(\)=>resolve\(\)\);map\.triggerRepaint\(\)/);
   assert.match(source, /map\.loaded\(\)&&map\.areTilesLoaded\(\)&&!map\.isMoving\(\)/);
   assert.match(source, /canvas\.width===Math\.floor\(container\.clientWidth\*ratio\)&&canvas\.height===Math\.floor\(container\.clientHeight\*ratio\)/);
-  assert.match(source, /\},null,\{timeout:60000\}\)/);
+  assert.match(source, /\},phase,\{timeout:60000\}\)/);
   assert.match(source, /map-controls-source-state\.json/);
   assert.doesNotMatch(source, /sourceCaches/);
 });

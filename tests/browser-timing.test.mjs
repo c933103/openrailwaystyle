@@ -37,6 +37,14 @@ test('phase resets exclude old observations and include queued current tasks',()
   assert.equal(state.heartbeat.maxMs,500);assert.equal(f.api.snapshot().longTasks.count,2,'queued records read once');
 });
 
+test('repeated polls retain the whole settlement while a new settlement resets it',()=>{
+  const f=fixture();f.api.begin(1);f.advance(700);f.tick();f.tasks([{startTime:1100,duration:400}]);
+  f.api.begin(1);f.advance(900);f.tick();f.tasks([{startTime:1800,duration:500}]);
+  const state=f.api.snapshot();assert.equal(state.elapsed,1600);assert.equal(state.longTasks.count,2);
+  assert.equal(state.longTasks.totalMs,900);assert.equal(state.heartbeat.totalMs,1100);
+  f.api.begin(2);assert.equal(f.api.snapshot().elapsed,0);assert.equal(f.api.snapshot().longTasks.count,0);
+});
+
 test('bounded copied records retain exact totals and reject invalid timing values',()=>{
   const f=fixture();for(let i=0;i<100;i++){f.advance(300);f.tick();f.tasks([{startTime:1000+i*300,duration:100}]);}
   f.tasks([{startTime:NaN,duration:20},{startTime:1000,duration:-1},{startTime:1000,duration:Infinity}]);
@@ -64,8 +72,11 @@ test('controls record diagnostics per settlement without changing the idle gate'
   const source=await readFile(new URL('../scripts/check-map-controls-browser.mjs',import.meta.url),'utf8');
   assert.match(source,/page\.addInitScript\(installBrowserTiming\)/);
   assert.match(source,/timing:await readBrowserTiming\(page\)/);
+  assert.match(source,/phase=\+\+settlementPhase/);
+  assert.match(source,/__atlasControlsTiming\?\.begin\(phase\)/);
+  assert.doesNotMatch(source,/await page\.evaluate\([^;]*begin/);
   assert.match(source,/map\.once\('idle',\(\)=>resolve\(\)\);map\.triggerRepaint\(\)/);
-  assert.match(source,/\},null,\{timeout:60000\}\)/);
+  assert.match(source,/\},phase,\{timeout:60000\}\)/);
   const helper=await readFile(new URL('../scripts/browser-timing.mjs',import.meta.url),'utf8');
   assert.doesNotMatch(helper,/requestAnimationFrame|triggerRepaint|setData|setTiles|fetch\(/);
 });
