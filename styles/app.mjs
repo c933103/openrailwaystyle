@@ -906,7 +906,7 @@ function serviceSourceRelations(panel, feature) {
   };
   const group = ids(p.group_relation_ids), segment = ids(p.segment_relation_ids);
   const representative = /^relation-([1-9]\d*)$/.exec(p.id || '')?.[1];
-  if (!group || !segment || !group.includes(Number(representative)) || !segment.every(id => group.includes(id))) {
+  if (!group || !segment || Number(representative) !== group[0] || !segment.every(id => group.includes(id))) {
     osmLink(panel, feature);
     panel.append(textNode('p', 'Constituent source relations are unavailable in this tile. The linked representative does not establish which relations contribute to this segment.', 'small'));
     return;

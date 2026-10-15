@@ -1766,6 +1766,18 @@ test('service details expose exact grouped and segment OSM sources, retain them 
   assert.deepEqual(links('segment'),urls([20]),'translated redraw retains provenance');
   doc.getElementById('details-close').click();assert.equal(doc.getElementById('details').hidden,true);
   show({...south,segment_relation_ids:'[30]'});assert.deepEqual(links('segment'),urls([30]),'reopening a branch replaces previous contributors');
+  for(const group of ['[10,20]','[20,10,20]']){
+   show({...south,id:'relation-20',group_relation_ids:group,segment_relation_ids:'[20]'});
+   assert.deepEqual(links('group'),[],'a noncanonical representative invalidates group provenance');
+   assert.deepEqual(links('segment'),[],'a noncanonical representative invalidates segment provenance');
+   assert.match(doc.getElementById('detail-content').textContent,/Constituent source relations are unavailable/);
+   assert.equal(doc.querySelector('#detail-content a').href,'https://www.openstreetmap.org/relation/20');
+   assert.doesNotMatch(doc.getElementById('detail-content').textContent,/display identity/);
+  }
+  show({...south,group_relation_ids:'[20,10,20]',segment_relation_ids:'[20]'});
+  assert.deepEqual(links('group'),urls([10,20]),'the lowest normalized group ID remains canonical');
+  assert.deepEqual(links('segment'),urls([20]),'the canonical relation need not contribute to this segment');
+  assert.match(doc.getElementById('detail-content').textContent,/Relation 10 \(display identity\)/);
   for(const invalid of [undefined,'[999]','["<script>alert(1)</script>"]','[0]','[9007199254740992]','[10,']){
    show({...south,segment_relation_ids:invalid});
    assert.deepEqual(links('group'),[]);assert.deepEqual(links('segment'),[]);
