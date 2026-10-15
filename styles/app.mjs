@@ -20,7 +20,7 @@ import { installWatchGesture } from './watch-map.mjs?v=20261015-station-resilien
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-resilience-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-resilience-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-resilience-1';
-import { addStationFallbackLayers, stationFallbackNamesEnabled, stationFallbackMarkersEnabled } from './station-fallback.mjs?v=20261015-station-resilience-1';
+import { addStationFallbackLayers, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261015-station-resilience-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -581,7 +581,7 @@ async function majorStationName(feature,language){
  return null;
 }
 function updateMajorStations(){
- if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3)return;
+ if(!shouldRefreshCuratedStationSource({ready,stationsEnabled:settings.stations,background:settings.background,zoom:map.getZoom()}))return;
  const source=map.getSource('stationMajor'),language=settings.language;
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!source)return;
