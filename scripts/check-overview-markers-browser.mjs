@@ -41,12 +41,13 @@ const browser=await launchBrowser(),page=await browser.newPage({viewport:{width:
 page.on('pageerror',e=>errors.push(e.message));
 await page.route(library,route=>route.fulfill(assets.get(library)));
 await page.route(style.sources.railBackbone.url,route=>{requests.push({metadata:true,url:route.request().url()});return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:7,tiles:['https://overview-fixture.invalid/railBackbone/{z}/{x}/{y}.pbf']}});});
-await page.route('https://overview-fixture.invalid/**',route=>{
+const serveTiles=(route,fixtureIndexes=indexes)=>{
  const [source,z,x,rawY]=new URL(route.request().url()).pathname.slice(1).split('/'),y=Number(rawY.replace('.pbf',''));
  requests.push({source,z:+z,x:+x,y});const tiles={};
- for(const [key,index] of indexes)if(key.startsWith(source+'/')){const tile=index.getTile(+z,+x,y);if(tile?.features.length)tiles[key.slice(source.length+1)]=tile;}
+ for(const [key,index] of fixtureIndexes)if(key.startsWith(source+'/')){const tile=index.getTile(+z,+x,y);if(tile?.features.length)tiles[key.slice(source.length+1)]=tile;}
  return route.fulfill({contentType:'application/x-protobuf',body:Object.keys(tiles).length?Buffer.from(vtpbf.fromGeojsonVt(tiles)):Buffer.alloc(0)});
-});
+};
+await page.route('https://overview-fixture.invalid/**',route=>serveTiles(route));
 const glyphs=await readFile('tests/fixtures/browser-glyphs/0-255.pbf');
 await page.route('https://glyph-fixture.invalid/**',route=>route.fulfill({contentType:'application/x-protobuf',body:glyphs}));
 await mkdir('browser-review',{recursive:true});
@@ -103,8 +104,18 @@ try{
  // names, while retaining the production circle/icon/text layers and MVT data.
  // Exercise both symbol sources, their handoff, and the previous wrong order.
  const overlapLayers=layers.filter(l=>fixtureCrossings.has(l.id)||(l.id.startsWith('station-')&&l.type==='circle'));
+ // The earlier density fixture deliberately has eight near-coincident stations.
+ // At detail zoom their neighboring strokes can cover the first station's
+ // center. Use one co-located station/crossing here, with a separate URL origin
+ // to prevent MapLibre reusing dense-station tiles from the previous style.
+ const overlapIndexes=new Map([...indexes].map(([key,index])=>[key,key.startsWith('station')
+  ?geojsonvt({type:'FeatureCollection',features:points('overlap').features.slice(0,1)},{maxZoom:12,extent:4096,buffer:64}):index]));
+ const overlapSources=structuredClone(sources);
+ for(const source of Object.values(overlapSources))if(source.tiles)source.tiles=source.tiles.map(url=>url.replace('overview-fixture.invalid','symbol-overlap-fixture.invalid'));
+ overlapSources.stationMajor.data={type:'FeatureCollection',features:points('overlap').features.slice(0,1)};
+ await page.route('https://symbol-overlap-fixture.invalid/**',route=>serveTiles(route,overlapIndexes));
  await page.evaluate(({sources,layers})=>fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,
-  layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]}),{sources,layers:overlapLayers});
+  layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]}),{sources:overlapSources,layers:overlapLayers});
  const overlapSamples=[];
  const pixels=()=>page.evaluate(()=>{
   const map=fixtureMap,canvas=map.getCanvas(),point=map.project([0,0]),ratio=canvas.width/map.getContainer().clientWidth;
