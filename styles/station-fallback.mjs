@@ -1,6 +1,8 @@
 // Independent station fallback presentation using the already-loaded basemap.
 // It neither downloads deeper tiles nor treats mapped POIs as a complete inventory.
 // ORM's individual station circles and labels retain their normal sources.
+// Fall back only on an actual relevant station-source error: double marker
+// locations are not safe to publish when both providers have geometry.
 export const STATION_BASEMAP_POI_FILTER = [
   'all',
   ['==', ['get', 'class'], 'railway'],
@@ -28,8 +30,8 @@ export function stationFallbackLayers(labelExpression) {
       metadata: {'atlas:base-map': false},
     },
     {
-      // These already vetted hubs do not disappear just because the low-zoom
-      // station layers end at z7 or ORM's detailed station source has failed.
+      // These already vetted hubs can be displayed after a station-tile failure
+      // above z7 without duplicating normal ORM station markers.
       id: STATION_FALLBACK_IDS[1], type: 'circle', source: 'stationMajor',
       minzoom: 7, filter: ['all', ['==', ['get', 'feature'], 'station'], ['has', 'tier']],
       paint: {
@@ -77,7 +79,11 @@ export function addStationFallbackLayers(style, {annotateLayers, labelExpression
   return style;
 }
 
-export function stationFallbackNamesEnabled({zoom, stationsEnabled, background, failedSources}) {
-  return zoom >= 8 && stationsEnabled && background !== 'satellite' &&
-    (failedSources?.has?.('stations') === true);
+export function stationFallbackMarkersEnabled({zoom, stationsEnabled, background, failedSources}) {
+  const requiredSource=zoom>=8?'stations':zoom>=7?'stationMed':null;
+  return Boolean(requiredSource && stationsEnabled && background!=='satellite' &&
+    failedSources?.has?.(requiredSource)===true);
+}
+export function stationFallbackNamesEnabled(options) {
+  return options.zoom>=8 && stationFallbackMarkersEnabled(options);
 }
