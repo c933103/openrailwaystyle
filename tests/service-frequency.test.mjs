@@ -50,7 +50,10 @@ test('partial timetable counts take precedence while missing periods retain thei
  assert.match(frequencyDetails(p,'am',now),/scheduled.*2026-10-05/);assert.match(frequencyDetails(p,'offpeak',now),/estimated from/);
  assert.equal(p.frequency_until,timetable.properties.frequency_until);
  const expired={...timetable,properties:{...timetable.properties,frequency_until:now/1000-1}};
- assert.deepEqual(frequencyBundle([route('ISL')],line,catalog,[expired],now),frequencyBundle([route('ISL')],line,catalog,[],now));
+ const expiredFallback=frequencyBundle([route('ISL')],line,catalog,[expired],now);
+ assert.deepEqual(expiredFallback,frequencyBundle([route('ISL')],line,catalog,[],now).map(p=>({...p,frequency_status_h08:'expired'})),
+   'all headway values and layout fields stay unchanged; only the discarded hourly evidence gains status');
+ assert.equal(frequencyAvailability(expiredFallback[0],'h08',now).status,'expired');
  const staleCatalog=structuredClone(catalog);staleCatalog.source.checked='2020-01-01';
  const current=frequencyBundle([route('ISL')],line,staleCatalog,[timetable],now)[0];assert.equal(current.frequency_offpeak,undefined);assert.equal(current.frequency_am,0);assert.equal(current.frequency_until,timetable.properties.frequency_until);
 });

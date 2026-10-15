@@ -18,6 +18,7 @@ import * as rareHanFeatures from '../styles/rare-han.mjs';
 import * as bathymetryModule from '../styles/bathymetry.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
+import * as serviceStatusModule from '../styles/service-status.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
@@ -204,7 +205,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bathymetry = new vm.SyntheticModule(Object.keys(bathymetryModule),function() {
     for (const [key,value] of Object.entries(bathymetryModule)) this.setExport(key,value);
   }, {context});
-  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&key==='frequencyDetails'?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
+  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
+  const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
     for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
   },{context});
@@ -221,7 +223,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -648,7 +650,7 @@ test('service frequency profile is applied on the first frame and controls persi
   } finally {dom.window.close();}
 });
 test('frequency periods no applied source covers are not offered, and a link to one falls back',async()=>{
-  const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
+  const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({schema:3,profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
   const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=overnight',fetcher});
   try {
     assert.equal(errors.length,0);
@@ -674,7 +676,7 @@ test('equal-width service details expire even after the inspected route leaves l
     assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
     stamp=2001;scheduled.fn();
     assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
-    assert.match(doc.getElementById('detail-content').textContent,/No matched frequency profile/);
+    assert.match(doc.getElementById('detail-content').textContent,/Matched frequency profile has expired; current frequency is unknown/);
     assert.equal(errors.length,0);
     window.dispatchEvent(new window.Event('pagehide'));
   }finally{dom.window.close();}

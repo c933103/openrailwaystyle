@@ -11,12 +11,12 @@ export async function checkServiceStatusBrowser(browser,root) {
  const base=root.replace(/\/?$/,'/'),context=await browser.newContext({viewport:{width:1000,height:800}});
  try{
   await installEmptyMapProviders(context,base);
-  const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
+  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
   style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
   style.sources.serviceRoutes={type:'geojson',data:{type:'FeatureCollection',features:[]}};
   for(const layer of style.layers)if(layer.source==='serviceRoutes')delete layer['source-layer'];
   await context.route('**/world.style.json*',route=>route.fulfill({json:style}));
-  const acquisition=JSON.parse(await readFile('tests/fixtures/service-status.json','utf8'));
+  const acquisition=JSON.parse(await readFile(new URL('../tests/fixtures/service-status.json',import.meta.url),'utf8'));
   const sha=createHash('sha256').update('synthetic OSM snapshot').digest('hex');
   const manifest={schema:3,profiles:['am','pm','offpeak','overnight'],osmSnapshotSha256:sha,acquisition:summarizeServiceAcquisition(acquisition,sha)};
   let metadata='available',requests=0;

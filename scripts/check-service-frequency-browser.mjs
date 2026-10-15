@@ -5,7 +5,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {checkServiceStatusBrowser} from './check-service-status-browser.mjs';
+import {checkServiceStatusBrowser} from './service-status-browser-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 const root=process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173';
 const key='12/3344/1785', [z,x,y]=key.split('/').map(Number);
