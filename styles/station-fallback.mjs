@@ -76,6 +76,12 @@ export function createStationFallbackState(map) {
     for (const [key, record] of state.tiles) {
       const selection = selectionFor(source);
       const inventory = record.fromCoordinate ? activeTiles(id, source) : null;
+      if (record.instances) {
+        record.instances = record.instances.filter(tile => (!inventory || inventory.includes(tile)) &&
+          !tile.aborted && !['loaded', 'unloaded'].includes(tile.state));
+        record.tile = record.instances[0];
+        if (!record.instances.length) { state.tiles.delete(key); continue; }
+      }
       const zoom = map.getZoom?.();
       const inactive = record.fromCoordinate && Number.isFinite(zoom) && stationSource(zoom) !== id;
       const obsolete = inactive || (record.fromCoordinate && inventory !== null
@@ -91,12 +97,12 @@ export function createStationFallbackState(map) {
       if (!['stations', 'stationMed'].includes(event?.sourceId) || event.error?.name === 'AbortError') return;
       const c = coordinate(event);
       // An unlocated tile failure is not evidence of a whole-source outage.
-      if ((event.tile || c) && !validCoordinate(c)) return;
+      if (('tile' in event || 'coord' in event) && !validCoordinate(c)) return;
       const source = map.getSource(event.sourceId);
       if (!source) return;
       const state = stateFor(event.sourceId) || {source, url: source.url, metadata: false, tiles: new Map()};
       if (c) {
-        let tile = event.tile;
+        let tile = event.tile, instances;
         const fromCoordinate = !tile;
         const selection = `${event.sourceId}:${c.z}`;
         if (fromCoordinate) {
@@ -110,14 +116,17 @@ export function createStationFallbackState(map) {
               const canonical = candidate.tileID?.canonical;
               return validCoordinate(canonical) && tileKey(canonical) === tileKey(c);
             });
-            tile = matches.find(candidate => !candidate.aborted && !['loaded', 'unloaded'].includes(candidate.state));
+            const eligible = matches.filter(candidate => !candidate.aborted && !['loaded', 'unloaded'].includes(candidate.state));
+            const errored = eligible.filter(candidate => candidate.state === 'errored');
+            instances = errored.length ? errored : eligible;
+            tile = instances[0];
             if (!tile) return true;
           } else {
             const current = selectionFor(source);
             if (current !== null && current !== selection) return true;
           }
         }
-        state.tiles.set(tileKey(c), {coordinate: {...c}, tile, fromCoordinate, selection});
+        state.tiles.set(tileKey(c), {coordinate: {...c}, tile, instances, fromCoordinate, selection});
       } else state.metadata = true;
       failed.set(event.sourceId, state);
       return true;
@@ -128,7 +137,15 @@ export function createStationFallbackState(map) {
       let changed = false;
       if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; changed = true; }
       const c = coordinate(event);
-      if (validCoordinate(c) && event.tile?.state === 'loaded') changed = state.tiles.delete(tileKey(c)) || changed;
+      if (validCoordinate(c) && event.tile?.state === 'loaded') {
+        const record = state.tiles.get(tileKey(c));
+        // An unrelated healthy wrapped copy cannot clear active failed copies.
+        if (record?.instances) {
+          const previous = record.instances.length;
+          record.instances = record.instances.filter(tile => tile !== event.tile);
+          changed = record.instances.length !== previous;
+        } else changed = state.tiles.delete(tileKey(c)) || changed;
+      }
       return !stateFor(event.sourceId) || changed;
     },
     area(zoom) {

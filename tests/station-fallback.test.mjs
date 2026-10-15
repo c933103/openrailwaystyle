@@ -245,3 +245,23 @@ test('pinned renderer exposes active errored-tile inventory rather than renderab
  const style=await readFile(new URL('../node_modules/maplibre-gl/src/style/style.ts',import.meta.url),'utf8');
  assert.match(style,/tileManagers/);
 });
+
+
+test('malformed coordinate-bearing errors never become metadata outages',()=>{
+ const source={},state=createStationFallbackState({getSource:()=>source,getZoom:()=>10});
+ for(const location of [{coord:{}},{coord:null},{coord:undefined},{coord:{canonical:null}},{tile:null},{tile:undefined},
+  {coord:{canonical:{z:10,x:-1,y:352}}},{coord:{canonical:{z:10,x:518,y:NaN}}}]){
+  assert.equal(state.noteError({sourceId:'stations',...location,error:{status:403}}),undefined);
+  assert.equal(state.area(10),null);assert.equal(state.hasSourceFailure('stations'),false);
+ }
+ state.noteError({sourceId:'stations',error:{status:403}});assert.equal(state.area(10),true,'genuine metadata failure remains source-wide');
+});
+test('all failed wrapped instances survive an earlier loading copy and independent successes',()=>{
+ const source={},loading={...failedTile(),state:'loading'},a=failedTile(),b=failedTile();let tiles=[loading,a,b];
+ const manager={getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]};
+ const state=createStationFallbackState({getSource:()=>source,getZoom:()=>11,style:{tileManagers:{stations:manager}}});
+ state.noteError({sourceId:'stations',coord:a.tileID,error:{status:503}});
+ loading.state='loaded';state.noteSourceData({sourceId:'stations',tile:loading});assert.ok(state.area(11));
+ a.state='loaded';state.noteSourceData({sourceId:'stations',tile:a});assert.ok(state.area(11),'second failed copy remains');
+ tiles=[loading,a];assert.equal(state.area(11),null,'last failed copy removed');
+});
