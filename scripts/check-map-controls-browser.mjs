@@ -36,26 +36,26 @@ await page.addInitScript(()=>{
   },FetchSource:class{getKey(){return 'fixture';}},PMTiles:class{}};
 });
 await context.route('**/*',async route=>{
+  const fulfill=async options=>{await route.fulfill(options);requestLifecycle.fulfilled(route.request());};
   const url=new URL(route.request().url()),path=url.pathname;
   const asset=renderer.get(url.href);
-  if(asset)return route.fulfill(asset);
+  if(asset)return fulfill(asset);
   if(url.href.startsWith(base)){
-    if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
-    if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
-    const reference=emptyReferenceFixture(path);if(reference)return route.fulfill(reference);
-    if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});
-    if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
+    if(path.endsWith('/major-stations.geojson'))return fulfill({json:{type:'FeatureCollection',features:[]}});
+    if(path.endsWith('/world.style.json'))return fulfill({json:style});
+    const reference=emptyReferenceFixture(path);if(reference)return fulfill(reference);
+    if(path.includes('/data/polar/'))return fulfill({status:404,body:''});
+    if(path.includes('/data/'))return fulfill({json:{tiles:[],features:[],countries:{}}});
     return route.continue();
   }
-  if(/\.(png|jpg|jpeg)$/.test(path))return route.fulfill({contentType:'image/png',body:png});
+  if(/\.(png|jpg|jpeg)$/.test(path))return fulfill({contentType:'image/png',body:png});
   if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path)){
     const key=`${url.origin}/${path.split('/')[1]}`,stats=fixtureTiles[key]??={started:0,fulfilled:0,peak:0,maxMs:0},start=Date.now();
     stats.started++;stats.peak=Math.max(stats.peak,stats.started-stats.fulfilled);
-    await route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
-    requestLifecycle.fulfilled(route.request());
+    await fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
     stats.fulfilled++;stats.maxMs=Math.max(stats.maxMs,Date.now()-start);return;
   }
-  return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
+  return fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
 });
 const cookie=async()=>JSON.parse(decodeURIComponent((await context.cookies()).find(c=>c.name==='atlas_settings')?.value||'%7B%7D'));
 const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList.contains('maplibregl-compact-show')&&e.open);

@@ -52,3 +52,12 @@ test('a repeated observation does not double-count the same lifecycle event', ()
   assert.equal(trace.snapshot().counts.finished, 1);
   assert.equal(trace.snapshot().recent.length, 1);
 });
+
+
+test('all controls fixture branches record fulfillment through the same boundary', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const source=await readFile(new URL('../scripts/check-map-controls-browser.mjs',import.meta.url),'utf8');
+  assert.equal(source.match(/route\.fulfill\(/g)?.length,1);
+  assert.match(source,/await route\.fulfill\(options\);requestLifecycle\.fulfilled\(route\.request\(\)\)/);
+  assert.equal(source.match(/requestLifecycle\.fulfilled\(/g)?.length,1);
+});
