@@ -5,6 +5,9 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {waitUntil} from './wait-until.mjs';
+import {railReferenceSettled} from './rail-reference-settlement.mjs';
+import {readMapRenderState} from './map-render-state.mjs';
 import {MODES} from '../styles/map-model.mjs';
 
 const base='http://127.0.0.1:4173/';
@@ -26,6 +29,8 @@ const tile=(index,layer,z,x,y)=>{const data=index.getTile(+z,+x,+y);return data?
 const browser=await launchBrowser({headless:true});
 const context=await browser.newContext({viewport:{width:360,height:760}});
 const reports=[],errors=[];let provider='empty',area='mixed';
+let page,currentCase;
+await mkdir('browser-review',{recursive:true});
 try{
  await installEmptyMapProviders(context,base);
  const basemapTiles={mixed:{},urban:{}};
@@ -49,7 +54,7 @@ try{
   pmtiles=patch(window.pmtiles);
   Object.defineProperty(window,'pmtiles',{configurable:true,get:()=>pmtiles,set:value=>{pmtiles=patch(value)}});
  },basemapTiles);
- const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
  style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
  await page.route('**/world.style.json*',route=>route.fulfill({json:style}));
@@ -62,10 +67,11 @@ try{
   return route.fulfill({contentType:'application/x-protobuf',body:data});
  });
  const open=async(mode,background='map',zoom=10.9)=>{
+  currentCase={area,provider,mode,background,zoom};
   await page.goto(`${base}?fixture=${area}&mode=${mode}&background=${background}&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#${zoom}/${center[1]}/${center[0]}`);
   await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
   await page.evaluate(async()=>{window.referenceMap=(await import(document.querySelector('script[type="module"]').src)).map});
-  await page.waitForFunction(()=>window.referenceMap.loaded(),null,{timeout:60000});
+  await waitUntil(page,railReferenceSettled,undefined,{timeout:60000});
   const report=await page.evaluate(mode=>{
    const map=window.referenceMap,hasReference=Boolean(map.getLayer('rail-basemap-reference'));
    return {mode,zoom:map.getZoom(),hasReference,reference:hasReference?map.queryRenderedFeatures({layers:['rail-basemap-reference']}).map(f=>f.properties.id):[],
@@ -112,6 +118,12 @@ try{
  assert.deepEqual(errors,[]);
  await mkdir('browser-review',{recursive:true});
  await page.screenshot({path:'browser-review/shanghai-rail-reference.png'});
- await writeFile('browser-review/shanghai-rail-reference.json',JSON.stringify(reports,null,2));
  console.log('Shanghai rail reference:',reports.length,'real-renderer cases passed');
-}finally{await browser.close()}
+}catch(error){
+ const state=page?await readMapRenderState(page):{unavailable:['page not created']};
+ await writeFile('browser-review/shanghai-rail-reference-failure.json',JSON.stringify({currentCase,reports,errors,state},null,2));
+ throw error;
+}finally{
+ try{await writeFile('browser-review/shanghai-rail-reference.json',JSON.stringify(reports,null,2));}
+ finally{await browser.close()}
+}
