@@ -141,8 +141,41 @@ try{
  await page.screenshot({path:'browser-review/crossing-symbol-overlap-z16.png'});
  await writeFile('browser-review/crossing-symbol-overlap.json',JSON.stringify(overlapSamples,null,2)+'\n');
 
+
+ // The high-zoom crossing is collision-managed. Keep the production place
+ // label priority as well as the circle paint order tested above.
+ const collisionSamples=[];
+ for(const [zoom,kind,placeId] of [[15,'city','place_label_city'],[15,'village','place_label_other'],[16,'village','place_label_other']]){
+  const crossingId='infrastructure-level-crossings';
+  const collisionLayers=style.layers.filter(l=>l.id===placeId||l.id===crossingId).map(l=>{
+   const layer={...l,layout:{...l.layout,visibility:'visible'}};
+   if(layer.id===placeId)delete layer['source-layer'];return layer;
+  });
+  const collisionSources={crossings:sources.crossings,openmaptiles:{type:'geojson',data:{type:'FeatureCollection',features:[{
+   type:'Feature',properties:{class:kind,'name:latin':'Collision','name:nonlatin':''},geometry:{type:'Point',coordinates:[0,0]}
+  }]}}};
+  await page.evaluate(({zoom,sources,layers})=>{
+   fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,layers});
+   fixtureMap.jumpTo({center:[0,0],zoom});
+  },{zoom,sources:collisionSources,layers:collisionLayers});await rendered();
+  const placement=()=>page.evaluate(({placeId,crossingId})=>({
+   place:fixtureMap.queryRenderedFeatures({layers:[placeId]}).length,
+   crossing:fixtureMap.queryRenderedFeatures({layers:[crossingId]}).length
+  }),{placeId,crossingId});
+  const positive=await placement();
+  assert.ok(positive.crossing>0&&positive.place===0,`crossing keeps production collision priority at ${zoom}/${kind}: ${JSON.stringify(positive)}`);
+  await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),crossingId);await rendered();
+  const placeOnly=await placement();assert.ok(placeOnly.place>0,'place label must render when the crossing is absent');
+  await page.evaluate(({placeId,crossingId})=>{fixtureMap.moveLayer(placeId);fixtureMap.setLayoutProperty(crossingId,'visibility','visible');},{placeId,crossingId});await rendered();
+  const wrongOrder=await placement();
+  assert.ok(wrongOrder.place>0&&wrongOrder.crossing===0,'reversed symbol priority must suppress the crossing');
+  await page.evaluate(({placeId,crossingId})=>fixtureMap.moveLayer(placeId,crossingId),{placeId,crossingId});await rendered();
+  const restored=await placement();assert.ok(restored.crossing>0&&restored.place===0,'restoring priority recovers the crossing');
+  collisionSamples.push({zoom,kind,positive,placeOnly,wrongOrder,restored});
+ }
+ await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify(collisionSamples,null,2)+'\n');
  assert.ok(requests.some(r=>r.metadata),'real backbone metadata URL was intercepted');
  assert.deepEqual(await page.evaluate(()=>fixtureErrors),[]);assert.deepEqual(errors,[]);
  await writeFile('browser-review/overview-markers.json',JSON.stringify({scope:'Synthetic cartography; no source completeness claim',samples,requests},null,2)+'\n');
- console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/9/10/12; MapLibre paints stations above both crossing-dot sources at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6; symbol overlaps at z11–16 with pixel and reversed-order controls');
+ console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/9/10/12; MapLibre paints stations above both crossing-dot sources at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6; symbol overlaps at z11–16 with pixel and reversed-order controls; crossing/place collision priority at z15 city and z15–16 village');
 }finally{await browser.close();}

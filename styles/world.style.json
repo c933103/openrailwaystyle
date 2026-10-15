@@ -54557,6 +54557,231 @@
       }
     },
     {
+      "id": "place_label_city",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "city"
+        ]
+      ],
+      "layout": {
+        "text-field": "{name:latin}\n{name:nonlatin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-max-width": 10,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          10,
+          14,
+          12
+        ]
+      },
+      "paint": {
+        "text-color": "#74807d",
+        "text-halo-blur": 0,
+        "text-halo-color": "hsla(0, 0%, 100%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "place_label_other",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "!in",
+          "class",
+          "city",
+          "state",
+          "province",
+          "country",
+          "continent"
+        ]
+      ],
+      "layout": {
+        "text-anchor": "center",
+        "text-field": "{name:latin}\n{name:nonlatin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-max-width": 6,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          10,
+          14,
+          12
+        ],
+        "visibility": "visible",
+        "icon-rotation-alignment": "auto"
+      },
+      "paint": {
+        "text-color": "#74807d",
+        "text-halo-blur": 0,
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": {
+          "stops": [
+            [
+              6,
+              0.5
+            ],
+            [
+              10,
+              1
+            ]
+          ]
+        }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "state_label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "state",
+            "province"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": "{name:latin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          9,
+          8,
+          12
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.08,
+        "text-max-width": 8,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#86938f",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.5,
+        "text-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          1,
+          10,
+          0
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
       "id": "infrastructure-crossing-overview",
       "type": "circle",
       "source": "crossingsOverview",
@@ -56952,231 +57177,6 @@
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
-      }
-    },
-    {
-      "id": "place_label_city",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "place",
-      "minzoom": 5,
-      "maxzoom": 16,
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Point"
-        ],
-        [
-          "==",
-          "class",
-          "city"
-        ]
-      ],
-      "layout": {
-        "text-field": "{name:latin}\n{name:nonlatin}",
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-max-width": 10,
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          10,
-          14,
-          12
-        ]
-      },
-      "paint": {
-        "text-color": "#74807d",
-        "text-halo-blur": 0,
-        "text-halo-color": "hsla(0, 0%, 100%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "basemap",
-        "atlas:category": "place",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": true,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      }
-    },
-    {
-      "id": "place_label_other",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "place",
-      "minzoom": 8,
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Point"
-        ],
-        [
-          "!in",
-          "class",
-          "city",
-          "state",
-          "province",
-          "country",
-          "continent"
-        ]
-      ],
-      "layout": {
-        "text-anchor": "center",
-        "text-field": "{name:latin}\n{name:nonlatin}",
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-max-width": 6,
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          10,
-          14,
-          12
-        ],
-        "visibility": "visible",
-        "icon-rotation-alignment": "auto"
-      },
-      "paint": {
-        "text-color": "#74807d",
-        "text-halo-blur": 0,
-        "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": {
-          "stops": [
-            [
-              6,
-              0.5
-            ],
-            [
-              10,
-              1
-            ]
-          ]
-        }
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "basemap",
-        "atlas:category": "place",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": true,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      }
-    },
-    {
-      "id": "state_label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "place",
-      "minzoom": 4,
-      "maxzoom": 10,
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "match",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "state",
-            "province"
-          ],
-          true,
-          false
-        ]
-      ],
-      "layout": {
-        "text-field": "{name:latin}",
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          9,
-          8,
-          12
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.08,
-        "text-max-width": 8,
-        "text-padding": 4
-      },
-      "paint": {
-        "text-color": "#86938f",
-        "text-halo-color": "rgba(255,255,255,0.8)",
-        "text-halo-width": 1.5,
-        "text-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          1,
-          10,
-          0
-        ]
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "basemap",
-        "atlas:category": "place",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": true,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
       }
     },
     {

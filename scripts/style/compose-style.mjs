@@ -35,9 +35,10 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
-    ...stations.platforms, ...infrastructure.crossings,
-    // Keep station circles above overlapping crossing dots and symbols.
-    ...stations.dots, ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(),
+    ...stations.platforms, ...placeLayers, ...infrastructure.crossings,
+    // Preserve crossing-over-place symbol priority, with station circles
+    // above crossing ink. Circles do not participate in symbol collisions.
+    ...stations.dots, ...powerFacilityLayers(), ...powerMethodLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

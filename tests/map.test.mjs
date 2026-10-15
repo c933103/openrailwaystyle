@@ -198,6 +198,9 @@ test('regional station dots survive name collision and begin before level crossi
   assert.ok(crossingLayers.length===4&&stationDots.length>=6);
   for(const dot of stationDots)for(const crossing of crossingLayers)
     assert.ok(style.layers.indexOf(dot)>style.layers.indexOf(crossing),`${dot.id} must be above ${crossing.id}`);
+  for(const id of ['place_label_city','place_label_other','state_label'])
+    for(const crossing of crossingLayers)
+      assert.ok(style.layers.findIndex(l=>l.id===id)<style.layers.indexOf(crossing),`${crossing.id} retains placement priority over ${id}`);
   assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
   for (const [id,zmin,zmax] of [
     ['station-stationLow-dots',4,6],['station-stationMed-dots',6,8],
