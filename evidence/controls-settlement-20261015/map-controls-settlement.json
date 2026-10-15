@@ -1,0 +1,59 @@
+{
+  "fixtureResponse": {
+    "status": 200,
+    "contentType": "application/x-protobuf",
+    "bytes": 0
+  },
+  "fixtureTiles": {
+    "https://openrailwaymap.app/railway_line_high": {
+      "started": 154,
+      "fulfilled": 154,
+      "peak": 4,
+      "maxMs": 25
+    },
+    "https://openrailwaymap.app/standard_railway_text_stations_med": {
+      "started": 36,
+      "fulfilled": 36,
+      "peak": 4,
+      "maxMs": 16
+    },
+    "https://openrailwaymap.app/standard_railway_text_stations": {
+      "started": 118,
+      "fulfilled": 118,
+      "peak": 4,
+      "maxMs": 18
+    }
+  },
+  "settlements": [
+    {
+      "after": "startup",
+      "ms": 583,
+      "pending": 0
+    },
+    {
+      "after": "desktop position-only safe inset change",
+      "ms": 694,
+      "pending": 0
+    },
+    {
+      "after": "open credits with map",
+      "ms": 526,
+      "pending": 0
+    },
+    {
+      "after": "open credits with map",
+      "ms": 66,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=true, detail=0",
+      "ms": 602,
+      "pending": 0
+    },
+    {
+      "after": "1365x900, menu=true, readout=true, detail=1",
+      "ms": 60000,
+      "pending": 4
+    }
+  ]
+}
