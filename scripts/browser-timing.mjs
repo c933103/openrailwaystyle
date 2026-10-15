@@ -1,15 +1,16 @@
 // Passive long-task observations and a low-frequency event-loop heartbeat.
 // No repaint, source mutation, retry or acceptance decision. The installer is
 // self-contained so Playwright can run it before each document's application.
+// Snapshots never reset observations: late reads after a diagnostic timeout
+// cannot erase unreported stalls. Compare cumulative counts/totals and relative
+// timestamps across snapshots from the same timeOrigin/startedAt.
 export function installBrowserTiming(scope = globalThis) {
   scope.__atlasControlsTiming?.dispose();
-  const now = () => scope.performance.now(), interval = 250, limit = 64;
-  let observer, timer, disposed = false, start = now(), last = start;
+  const now = () => scope.performance.now(), interval = 250, limit = 64, start = now();
+  let observer, timer, disposed = false, last = start;
   let longTaskSupported = false, heartbeatSupported = false;
-  let longTasks, heartbeat;
   const empty = () => ({count: 0, totalMs: 0, maxMs: 0, recent: []});
-  const reset = () => {longTasks = empty(); heartbeat = empty();};
-  reset();
+  const longTasks = empty(), heartbeat = empty();
   const record = (stats, at, duration) => {
     if (!Number.isFinite(at) || !Number.isFinite(duration) || duration < 0) return;
     stats.count++; stats.totalMs += duration; stats.maxMs = Math.max(stats.maxMs, duration);
@@ -17,8 +18,8 @@ export function installBrowserTiming(scope = globalThis) {
     if (stats.recent.length > limit) stats.recent.shift();
   };
   const recordTask = entry => {
-    // An entry can be delivered after a read even though its task began before
-    // that read. Keep the whole overlapping task, with a negative relative at.
+    // Keep a task overlapping installation with its original duration and a
+    // negative relative start. Older completed tasks do not belong to this run.
     if (entry.startTime + entry.duration > start) record(longTasks, entry.startTime, entry.duration);
   };
   try {
@@ -39,16 +40,14 @@ export function installBrowserTiming(scope = globalThis) {
   } catch {}
   const copy = stats => ({...stats, recent: stats.recent.map(entry => ({...entry})), truncated: stats.count > limit});
   const api = {
-    snapshot({resetAfterRead = false} = {}) {
+    snapshot() {
       // Include observer records queued behind a delayed task before reading.
       if (!disposed) for (const entry of observer?.takeRecords() || []) recordTask(entry);
-      const state = {window: 'since-previous-diagnostic-read', elapsed: now() - start,
+      return {window: 'document-lifetime',
+        timeOrigin: Number.isFinite(scope.performance.timeOrigin) ? scope.performance.timeOrigin : null,
+        startedAt: start, elapsed: now() - start,
         interval, longTaskSupported, heartbeatSupported,
         longTasks: copy(longTasks), heartbeat: copy(heartbeat)};
-      // Reset only after collecting the complete interval. Work triggered by a
-      // UI action before the next acceptance poll must remain observable.
-      if (resetAfterRead) {start = now(); last = start; reset();}
-      return state;
     },
     dispose() {
       if (disposed) return;
@@ -65,7 +64,7 @@ export async function readBrowserTiming(page, timeout = 2000) {
   let timer;
   try {
     return await Promise.race([
-      Promise.resolve().then(() => page.evaluate(() => globalThis.__atlasControlsTiming?.snapshot({resetAfterRead: true}) ?? {unavailable: true}))
+      Promise.resolve().then(() => page.evaluate(() => globalThis.__atlasControlsTiming?.snapshot() ?? {unavailable: true}))
         .catch(() => ({unavailable: true})),
       new Promise(resolve => {timer = setTimeout(() => resolve({unavailable: true, timeout}), timeout);}),
     ]);
