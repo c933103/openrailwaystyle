@@ -20,7 +20,7 @@ import { installWatchGesture } from './watch-map.mjs?v=20261015-station-resilien
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-resilience-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-resilience-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-resilience-1';
-import { addStationFallbackLayers, stationFallbackNamesEnabled } from './station-fallback.mjs?v=20261015-station-resilience-1';
+import { addStationFallbackLayers, stationFallbackNamesEnabled, stationFallbackMarkersEnabled } from './station-fallback.mjs?v=20261015-station-resilience-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -672,7 +672,7 @@ function applySettings() {
     if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
     if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer, settings);
-    const enabled = layer.id==='station-basemap-fallback-names' ? false : visible;
+    const enabled = layer.id.includes('-fallback-') && layer.id.startsWith('station-') ? false : visible;
     if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
@@ -683,7 +683,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { applyStationFallbackNameState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  if (ready) { applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -1188,13 +1188,17 @@ function applyUnits() {
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
   map.getSource('seabedContoursClose')?.setTiles(style.sources.seabedContoursClose.tiles);
 }
-function applyStationFallbackNameState() {
+function applyStationFallbackState() {
   if (!ready || !map?.getLayer('station-basemap-fallback-names')) return;
-  const failedSources=new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])]);
-  const visible=stationFallbackNamesEnabled({zoom:map.getZoom(),stationsEnabled:settings.stations,
-    background:settings.background,failedSources})?'visible':'none';
-  if(map.getLayoutProperty('station-basemap-fallback-names','visibility')!==visible)
-    map.setLayoutProperty('station-basemap-fallback-names','visibility',visible);
+  const options={zoom:map.getZoom(),stationsEnabled:settings.stations,background:settings.background,
+    failedSources:new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])])};
+  const showMarkers=stationFallbackMarkersEnabled(options);
+  const showNames=stationFallbackNamesEnabled(options);
+  for (const id of ['station-basemap-fallback-dots','station-curated-fallback-dots','station-basemap-fallback-names']) {
+    const visible=((id.endsWith('-names')?showNames:showMarkers) ? 'visible' : 'none');
+    if (map.getLayoutProperty(id,'visibility')!==visible)
+      map.setLayoutProperty(id,'visibility',visible);
+  }
 }
 const mapErrorMessage = () => {
   const railFailed=railRecovery?.hasFailures();
@@ -1213,7 +1217,7 @@ function updateStatus() {
   for (const [id, error] of errors) {
     if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
   }
-  applyStationFallbackNameState();
+  applyStationFallbackState();
   if (errors.size || railFailed) {
     status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
@@ -1611,7 +1615,7 @@ async function initialize() {
     const visible=layerVisibility(layer, settings);
     // Station fallback names are used only after the ORM station source fails.
     // Avoid flashing fallback names during the first frame of a healthy load.
-    const enabled=layer.id==='station-basemap-fallback-names'?false:visible;
+    const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')?false:visible;
     if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
     if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
