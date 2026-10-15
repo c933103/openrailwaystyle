@@ -33,7 +33,7 @@ test('reconciled catalogue fixtures run inside the isolated PR test process',()=
   const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
   const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
   for(const trigger of [push,pr]){
-    for(const source of ['scripts/frequency_catalogue.py','scripts/frequency_retry.py','scripts/frequency_references.py','scripts/frequency_publication.py','scripts/frequency-reference-schema.json','scripts/frequency-reference-metadata.mjs'])assert.ok(trigger.includes(source));
+    for(const source of ['scripts/frequency_catalogue.py','scripts/frequency_retry.py','scripts/frequency_references.py','scripts/frequency_publication.py','scripts/frequency-reference-schema.json','scripts/frequency-reference-metadata.mjs','scripts/timetable-operator-bindings.mjs','scripts/timetable-operator-bindings.json'])assert.ok(trigger.includes(source));
   }
   assert.ok(pr.includes("'tests/*frequency*'"));
   assert.ok(pr.includes('docs/service-frequency.md'));
