@@ -8,6 +8,7 @@ import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {rendererFixture,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
+import {createRequestLifecycle} from './request-lifecycle.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
@@ -19,10 +20,11 @@ const page=await context.newPage();
 // runner, and page evaluation waits for them.
 page.setDefaultTimeout(30000);
 const errors=[],results=[],pending=new Set(),requestFailures=[];
-const fixtureTiles={},settlements=[];
-page.on('request',r=>pending.add(r));
-page.on('requestfinished',r=>pending.delete(r));
-page.on('requestfailed',r=>{pending.delete(r);requestFailures.push({url:r.url(),error:r.failure()?.errorText});});
+const fixtureTiles={},settlements=[],requestLifecycle=createRequestLifecycle();
+page.on('request',r=>{pending.add(r);requestLifecycle.start(r);});
+page.on('response',r=>requestLifecycle.responded(r));
+page.on('requestfinished',r=>{pending.delete(r);requestLifecycle.finished(r);});
+page.on('requestfailed',r=>{pending.delete(r);requestLifecycle.failed(r);requestFailures.push({url:r.url(),error:r.failure()?.errorText});});
 page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'&&m.text().includes('Map resource error:'))errors.push(m.text());});
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
@@ -50,6 +52,7 @@ await context.route('**/*',async route=>{
     const key=`${url.origin}/${path.split('/')[1]}`,stats=fixtureTiles[key]??={started:0,fulfilled:0,peak:0,maxMs:0},start=Date.now();
     stats.started++;stats.peak=Math.max(stats.peak,stats.started-stats.fulfilled);
     await route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
+    requestLifecycle.fulfilled(route.request());
     stats.fulfilled++;stats.maxMs=Math.max(stats.maxMs,Date.now()-start);return;
   }
   return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
@@ -176,6 +179,7 @@ try{
   console.error('UI_PENDING_REQUESTS',JSON.stringify([...pending].map(r=>r.url())));
   console.error('UI_REQUEST_FAILURES',JSON.stringify(requestFailures));
   console.error('UI_FIXTURE_TILES',JSON.stringify(fixtureTiles));
+  console.error('UI_REQUEST_LIFECYCLE',JSON.stringify(requestLifecycle.snapshot()));
   const sourceState=await readMapRenderState(page);
   console.error('UI_SOURCE_STATE',JSON.stringify(sourceState));
   await mkdir('browser-review',{recursive:true});
@@ -184,5 +188,6 @@ try{
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
   await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));
+  await writeFile('browser-review/map-controls-requests.json',JSON.stringify(requestLifecycle.snapshot(),null,2));
   await writeFile('browser-review/map-controls-settlement.json',JSON.stringify({fixtureResponse:{status:200,contentType:'application/x-protobuf',bytes:0},fixtureTiles,settlements},null,2));await browser.close();
 }
