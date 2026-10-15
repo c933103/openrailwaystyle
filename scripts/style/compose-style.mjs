@@ -25,6 +25,10 @@ export function composeStyle({majorStationData, curatedFilter}) {
   const stations = stationLayers(curatedFilter,curatedStationMarkerFilter(majorStationData)), infrastructure = infrastructureContextLayers();
   const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
   const [background, ...fills] = baseFills;
+  // Identical-layout symbol twins share the pinned renderer's placement bucket.
+  // The first, non-painted twin keeps place collision priority below crossings;
+  // the original layer paints only accepted labels above station circles.
+  const placePlacement=placeLayers.map(layer=>({...layer,id:layer.id+'-placement',paint:{...layer.paint,'text-opacity':0,'icon-opacity':0}}));
   const layers = structuredClone([
     background, ...backgroundLayers, ...fills,
     ...reliefLayers,
@@ -35,10 +39,9 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
-    ...stations.platforms, ...placeLayers, ...infrastructure.crossings,
-    // Preserve crossing-over-place symbol priority, with station circles
-    // above crossing ink. Circles do not participate in symbol collisions.
-    ...stations.dots, ...powerFacilityLayers(), ...powerMethodLayers(),
+    ...stations.platforms, ...placePlacement, ...infrastructure.crossings,
+    // Separate symbol placement priority from the visible paint stack.
+    ...stations.dots, ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

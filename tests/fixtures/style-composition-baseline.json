@@ -1762,30 +1762,30 @@
       "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
-      "id": "place_label_city",
+      "id": "place_label_city-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 5,
       "maxzoom": 16,
-      "sha256": "ff5b0e85ce3c8b8bb48f24a72db7bd53dce55c2428bf3a519ff0b606fe35b999"
+      "sha256": "6d5e0d6e9ab49f4369328bc74789b2c2e8cd16aa41bf0bf8834cb37be26aea3b"
     },
     {
-      "id": "place_label_other",
+      "id": "place_label_other-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 8,
-      "sha256": "0d5e8baa42f40c919998f4f5c4458c6cf3a179691f0fede59c489dc7a3fa8201"
+      "sha256": "6f7337d56a022a6b5929efae4406f38f17eec1b33d4009540a7be51f8d27ecf9"
     },
     {
-      "id": "state_label",
+      "id": "state_label-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 4,
       "maxzoom": 10,
-      "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
+      "sha256": "667351e24dac2623041d90a9a5b7d0e5c87e7d88343ceab037a924f52a521b9f"
     },
     {
       "id": "infrastructure-crossing-overview",
@@ -1872,6 +1872,32 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 12,
       "sha256": "7724bec24aa4403aae5c4ca647c081192175999a034765f37071f410ee872e83"
+    },
+    {
+      "id": "place_label_city",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "sha256": "ff5b0e85ce3c8b8bb48f24a72db7bd53dce55c2428bf3a519ff0b606fe35b999"
+    },
+    {
+      "id": "place_label_other",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 8,
+      "sha256": "0d5e8baa42f40c919998f4f5c4458c6cf3a179691f0fede59c489dc7a3fa8201"
+    },
+    {
+      "id": "state_label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
     },
     {
       "id": "electrification-substation-areas",
@@ -2499,6 +2525,15 @@
       ],
       "sources": [
         "heritageAreas"
+      ]
+    },
+    {
+      "reviewed": "2026-10-15",
+      "reason": "Separate place-label collision placement from paint using identical-layout symbol twins in the pinned MapLibre runtime. Crossings retain collision priority; station circles cover crossing ink; accepted place glyphs retain paint priority over station circles. Actual renderer controls exercise all three constraints.",
+      "addedLayers": [
+        "place_label_city-placement",
+        "place_label_other-placement",
+        "state_label-placement"
       ]
     }
   ]

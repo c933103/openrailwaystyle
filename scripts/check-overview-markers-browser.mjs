@@ -157,10 +157,10 @@ try{
  // label priority as well as the circle paint order tested above.
  const collisionSamples=[];
  for(const [zoom,kind,placeId] of [[15,'city','place_label_city'],[15,'village','place_label_other'],[16,'village','place_label_other']]){
-  const crossingId='infrastructure-level-crossings';
-  const collisionLayers=style.layers.filter(l=>l.id===placeId||l.id===crossingId).map(l=>{
+  const crossingId='infrastructure-level-crossings',placementId=placeId+'-placement';
+  const collisionLayers=style.layers.filter(l=>l.id===placeId||l.id===placementId||l.id===crossingId).map(l=>{
    const layer={...l,layout:{...l.layout,visibility:'visible'}};
-   if(layer.id===placeId)delete layer['source-layer'];return layer;
+   if(layer.id===placeId||layer.id===placementId)delete layer['source-layer'];return layer;
   });
   const collisionSources={crossings:sources.crossings,openmaptiles:{type:'geojson',data:{type:'FeatureCollection',features:[{
    type:'Feature',properties:{class:kind,'name:latin':'Collision','name:nonlatin':''},geometry:{type:'Point',coordinates:[0,0]}
@@ -177,16 +177,112 @@ try{
   assert.ok(positive.crossing>0&&positive.place===0,`crossing keeps production collision priority at ${zoom}/${kind}: ${JSON.stringify(positive)}`);
   await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),crossingId);await rendered();
   const placeOnly=await placement();assert.ok(placeOnly.place>0,'place label must render when the crossing is absent');
-  await page.evaluate(({placeId,crossingId})=>{fixtureMap.moveLayer(placeId);fixtureMap.setLayoutProperty(crossingId,'visibility','visible');},{placeId,crossingId});await rendered();
+  await page.evaluate(({placementId,crossingId})=>{fixtureMap.moveLayer(placementId);fixtureMap.setLayoutProperty(crossingId,'visibility','visible');},{placementId,crossingId});await rendered();
   const wrongOrder=await placement();
   assert.ok(wrongOrder.place>0&&wrongOrder.crossing===0,'reversed symbol priority must suppress the crossing');
-  await page.evaluate(({placeId,crossingId})=>fixtureMap.moveLayer(placeId,crossingId),{placeId,crossingId});await rendered();
+  await page.evaluate(({placementId,crossingId})=>fixtureMap.moveLayer(placementId,crossingId),{placementId,crossingId});await rendered();
   const restored=await placement();assert.ok(restored.crossing>0&&restored.place===0,'restoring priority recovers the crossing');
   collisionSamples.push({zoom,kind,positive,placeOnly,wrongOrder,restored});
  }
  await writeFile('browser-review/crossing-place-collisions.json',JSON.stringify(collisionSamples,null,2)+'\n');
+ // Place labels keep their visible ink above station circles while their
+ // opacity-zero placement twins retain the earlier collision priority.
+ // Keep the production order, layout, paint, filters and zoom windows; only
+ // substitute local GeoJSON sources for this isolated paint-order fixture.
+ const stationPlaceSamples=[];
+ for(const [zoom,kind,placeId,circleId] of [
+  [15,'city','place_label_city','station-stations-dots'],
+  [15,'village','place_label_other','station-stations-dots'],
+  [8,'state','state_label','station-provider-dots'],
+ ]){
+  const placementId=placeId+'-placement',selectedIds=new Set([placementId,circleId,placeId]);
+  const stationPlaceLayers=style.layers.filter(layer=>selectedIds.has(layer.id)).map(original=>{
+   const layer=structuredClone(original);
+   layer.source=layer.id===circleId?'station-place-point':'station-place-labels';
+   delete layer['source-layer'];
+   layer.layout={...layer.layout,visibility:'visible'};
+   return layer;
+  });
+  assert.deepEqual(stationPlaceLayers.map(layer=>layer.id),[placementId,circleId,placeId],
+   'the generated production order must separate place placement from visible ink');
+  const twin=stationPlaceLayers[0],visible=stationPlaceLayers[2];
+  assert.deepEqual(twin.layout,visible.layout,'placement and visible layers must share production layout');
+  assert.deepEqual(twin.filter,visible.filter,'placement and visible layers must share production filtering');
+  assert.equal(twin.paint['text-opacity'],0,'placement twin must not contribute visible ink');
+  const stationPlaceSources={
+   'station-place-labels':{type:'geojson',data:{type:'FeatureCollection',features:[{
+    type:'Feature',id:1,properties:{class:kind,'name:latin':'HH','name:nonlatin':''},
+    geometry:{type:'Point',coordinates:[0,0]},
+   }]}},
+   'station-place-point':{type:'geojson',data:{type:'FeatureCollection',features:[]}},
+  };
+  await page.evaluate(({zoom,sources,layers})=>{
+   fixtureMap.setStyle({version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',sources,
+    layers:[{id:'background',type:'background',paint:{'background-color':'#ffffff'}},...layers]});
+   fixtureMap.jumpTo({center:[0,0],zoom});
+  },{zoom,sources:stationPlaceSources,layers:stationPlaceLayers});await rendered();
+
+  // Locate actual fixture glyph ink, rather than assuming the label anchor
+  // or all nine center pixels intersect the glyph or a small station circle.
+  const ink=await page.evaluate(placeId=>{
+   const map=fixtureMap,canvas=map.getCanvas(),container=map.getContainer(),center=map.project([0,0]);
+   const ratioX=canvas.width/container.clientWidth,ratioY=canvas.height/container.clientHeight;
+   const left=Math.round(center.x*ratioX)-15,top=Math.round(center.y*ratioY)-15;
+   const scratch=document.createElement('canvas');scratch.width=canvas.width;scratch.height=canvas.height;
+   const context=scratch.getContext('2d');context.drawImage(canvas,0,0);
+   const rgba=context.getImageData(left,top,31,31).data,candidates=[];
+   for(let y=0;y<31;y++)for(let x=0;x<31;x++){
+    const i=(y*31+x)*4,pixel=[...rgba.slice(i,i+4)];
+    if(pixel[3]===255&&pixel[0]<190&&pixel[1]<190&&pixel[2]<190)
+     candidates.push({x:left+x,y:top+y,rgba:pixel,ink:pixel[0]+pixel[1]+pixel[2],distance:(x-15)**2+(y-15)**2});
+   }
+   candidates.sort((a,b)=>a.ink-b.ink||a.distance-b.distance);
+   const chosen=candidates[0];
+   if(!chosen)return {candidates:0,place:map.queryRenderedFeatures({layers:[placeId]}).length};
+   const css=[(chosen.x+.5)/ratioX,(chosen.y+.5)/ratioY];
+   return {candidates:candidates.length,patch:{left,top,width:31,height:31},pixel:[chosen.x,chosen.y],
+    rgba:chosen.rgba,css,coordinates:map.unproject(css).toArray(),
+    place:map.queryRenderedFeatures({layers:[placeId]}).length};
+  },placeId);
+  assert.ok(ink.place>0&&ink.candidates>0,
+   `label-only control must contain measured dark glyph ink at ${zoom}/${kind}: ${JSON.stringify(ink)}`);
+
+  const station=structuredClone(points('place-paint').features[0]);station.geometry.coordinates=ink.coordinates;
+  await page.evaluate(station=>fixtureMap.getSource('station-place-point').setData({type:'FeatureCollection',features:[station]}),station);
+  await rendered();
+  const atInk=()=>page.evaluate(({pixel,css,placeId,circleId})=>{
+   const map=fixtureMap,canvas=map.getCanvas(),scratch=document.createElement('canvas');
+   scratch.width=canvas.width;scratch.height=canvas.height;
+   const context=scratch.getContext('2d');context.drawImage(canvas,0,0);
+   return {rgba:[...context.getImageData(pixel[0],pixel[1],1,1).data],
+    place:map.queryRenderedFeatures({layers:[placeId]}).length,
+    station:new Set(map.queryRenderedFeatures(css,{layers:[circleId]}).map(feature=>feature.properties.id)).size,
+    loaded:map.loaded(),tilesLoaded:map.areTilesLoaded()};
+  },{pixel:ink.pixel,css:ink.css,placeId,circleId});
+  const darkGlyph=sample=>sample.rgba[3]===255&&sample.rgba[0]<200&&sample.rgba[1]<200&&sample.rgba[2]<200;
+  const solidOrange=sample=>sample.rgba[0]>240&&sample.rgba[1]>145&&sample.rgba[1]<180&&sample.rgba[2]<70&&sample.rgba[3]===255;
+  const assertLayers=(sample,label)=>{
+   assert.ok(sample.loaded&&sample.tilesLoaded&&sample.place>0&&sample.station===1,
+    `${label} must retain both production layers at ${zoom}/${kind}: ${JSON.stringify(sample)}`);
+  };
+  const positive=await atInk();assertLayers(positive,'positive');
+  assert.ok(darkGlyph(positive),`visible place glyph must remain above the station at ${zoom}/${kind}: ${JSON.stringify({ink,positive})}`);
+
+  // Move only the visible original. The twin, sources, glyphs, feature,
+  // layout, opacity, filters and selected physical pixel remain unchanged.
+  await page.evaluate(({placeId,circleId})=>fixtureMap.moveLayer(placeId,circleId),{placeId,circleId});await rendered();
+  const wrongOrder=await atInk();assertLayers(wrongOrder,'negative control');
+  assert.ok(solidOrange(wrongOrder),
+   `reversed visible paint order must cover the same measured glyph pixel with solid station orange at ${zoom}/${kind}: ${JSON.stringify({ink,positive,wrongOrder})}`);
+  await page.evaluate(placeId=>fixtureMap.moveLayer(placeId),placeId);await rendered();
+  const restored=await atInk();assertLayers(restored,'restored');
+  assert.ok(darkGlyph(restored),`restoring the visible place layer must recover glyph ink at ${zoom}/${kind}: ${JSON.stringify(restored)}`);
+  stationPlaceSamples.push({zoom,kind,placeId,placementId,circleId,ink,positive,wrongOrder,restored});
+ }
+ await writeFile('browser-review/station-place-paint-order.json',JSON.stringify(stationPlaceSamples,null,2)+'\n');
+
  assert.ok(requests.some(r=>r.metadata),'real backbone metadata URL was intercepted');
  assert.deepEqual(await page.evaluate(()=>fixtureErrors),[]);assert.deepEqual(errors,[]);
  await writeFile('browser-review/overview-markers.json',JSON.stringify({scope:'Synthetic cartography; no source completeness claim',samples,requests},null,2)+'\n');
- console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/9/10/12; MapLibre paints stations above both crossing-dot sources at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6; symbol overlaps at z11–16 with pixel and reversed-order controls; crossing/place collision priority at z15 city and z15–16 village');
+ console.log('PASS: independent station markers at z3/4/5/6/7/6/7/8/9/10/12; MapLibre paints stations above both crossing-dot sources at z5–10; exact-identity deduplication and collision-managed names and backbone z4–6; symbol overlaps at z11–16 with pixel and reversed-order controls; crossing/place collision priority at z15 city and z15–16 village; city/village/state glyph ink above station circles with reversed and restored paint controls');
 }finally{await browser.close();}
