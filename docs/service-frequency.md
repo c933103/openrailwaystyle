@@ -87,6 +87,46 @@ timetable or tile provider is contacted by automation.
 API contract: [MOTIS OpenAPI](https://github.com/motis-project/motis/blob/master/openapi.yaml),
 served by [Transitous](https://transitous.org/api/).
 
+## Displayed acquisition and availability status
+
+The Service legend's **Service data status** expands the recorded acquisition
+stages from the same OSM snapshot assembled into the site's service tiles.
+The frequency rebuild copies only compact stage facts and binds them to the
+SHA-256 of its exact compressed OSM table input. Partial acquisition, deferred
+or failed attempts, completed acquisition with unresolved source eligibility,
+completed checks with an empty stage result, and unknown legacy evidence remain
+separate. An earlier accepted snapshot can coexist with an unfinished refresh.
+
+These are snapshot-wide stage outcomes. Broad labels such as “Rest of the world”
+do not establish viewport/country completeness or explain a particular route.
+An empty acquired stage is not evidence that no trains operate. Missing or
+unreadable status metadata is explicitly unknown; a failed browser metadata
+request is reported. No visitor-side acquisition, status polling or wider
+provider requests are introduced.
+
+Service details distinguish an available profile (including a measured zero),
+expired evidence, an explicitly recorded unmatched reason, and an unknown reason.
+An absent binding alone stays unknown: matching may have been unavailable, or a
+previous match may have been withheld for conflict or stale identity. No negative
+matching conclusion is inferred from the current producer's missing rows. Expiry updates an already-open detail panel. Legacy absent fields
+remain unknown instead of being retroactively labelled unmatched. A missing
+period on an otherwise matched profile also remains unknown. Discarded expired
+evidence is recorded per period; AM-only evidence never certifies PM expiry.
+Recorded expired-only hourly or overnight periods remain visible in route details even when the manifest omits them from usable width selectors. No missing hourly period is invented.
+Legacy route-wide expiry labels without per-period evidence remain unknown. This does not
+complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
+regression, and departure-board evidence remains independently scoped.
+
+A separate status-delivery observer runs after successful main-branch service
+builds. For a recorded zero-box run, it reads only the existing GitHub
+service-data manifest and the published Pages frequency manifest, then requests
+a site rebuild if stable displayed stage facts changed. Positive-box runs keep
+the producer's existing dispatch path. Retry timestamps, error text and
+diagnostic counters alone do not dispatch another build. Metadata reads are
+bounded to 8 MiB and 15 seconds each; malformed data fails closed. The observer
+does not change the acquisition trigger or query any provider, and its workflow
+and comparison fixtures are offline-tested.
+
 ## Worldwide discovery and updates
 
 The source registry is assembled from **three independently credited inputs**:

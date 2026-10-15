@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSections} from '../scripts/timetable-frequency.mjs';
 import {addResult,commitStage,toTable,buildTiles as osmTiles,LAYER} from '../scripts/service-routes.mjs';
-import {frequencyDetails,frequencyWidth} from '../styles/service-frequency.mjs';
+import {frequencyDetails,frequencyWidth,frequencyAvailability} from '../styles/service-frequency.mjs';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
 import {now,table,feed} from './fixtures/service-frequency/matching-fixture.mjs';
@@ -266,4 +267,33 @@ test('single-agency unmatched samples use the resolved agency even when the rout
     assert.equal(summary.unmatchedExamples[0].reason,'no_osm_service_identity_candidate');
     assert.equal(summary.unmatchedExamples[0].agency_id,expected);
   }
+});
+
+test('conflicting matches and stale bindings remain unknown in published service tiles',()=>{
+ const catalog=JSON.parse(readFileSync(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
+ const assertUnknown=(t,bound)=>{
+  const rows=features(buildTiles(t,{headways:catalog,timetables:bound.sections}));
+  assert.ok(rows.length>0);
+  for(const p of rows){
+   assert.equal(p.frequency_am,undefined);
+   assert.equal(p.frequency_status,'unknown');
+   assert.equal(frequencyAvailability(p,'am',now).status,'unknown');
+  }
+ };
+ const t=table(),original=apply(t,[feed()]);
+ assert.equal(original.sections.length,3,'positive control has matched sections');
+ assert.ok(features(buildTiles(t,{headways:catalog,timetables:bindTimetableSections(t,original).sections})).every(p=>Number.isFinite(p.frequency_am)));
+ const f=feed();
+ f.routes.push({...f.routes[0],route_id:'other'});
+ f.segments.push(...structuredClone(f.segments).map(s=>({...s,route_id:'other'})));
+ const conflict=apply(t,[f]);
+ assert.equal(conflict.matching.feeds[0].mappedRoutes,2,'both routes matched before conflict withholding');
+ assert.equal(conflict.matching.conflictingSections,3);
+ assert.equal(conflict.sections.length,0);
+ assertUnknown(t,bindTimetableSections(t,conflict));
+ const changed=table();changed.routes.get('r10').evidence.view.ref='H';
+ const stale=bindTimetableSections(changed,original);
+ assert.equal(stale.staleSections,3);
+ assert.equal(stale.sections.size,0);
+ assertUnknown(changed,stale);
 });
