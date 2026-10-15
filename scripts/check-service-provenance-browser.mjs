@@ -54,10 +54,16 @@ try {
   assert.deepEqual(await links('group'), urls([10, 20, 30]));
   assert.match(await page.locator('#detail-content').textContent(), /Relation 10 \(display identity\)/);
   assert.match(await page.locator('#detail-content').textContent(), /does not establish identical stops, timetable matches or frequency/);
-  await page.locator('#settings-open').click();
-  await page.selectOption('#language', 'en');
-  await page.locator('#settings-close').click();
+  // Language is a main-panel control: opening Settings hides that panel.
+  // Change the selection through the visible UI and wait for an actual detail
+  // redraw, rather than accidentally accepting the old links before reload.
+  assert.equal(await page.locator('#language').isVisible(), true);
+  const nextLanguage = (await page.locator('#language').inputValue()) === 'en' ? 'de' : 'en';
+  await page.evaluate(() => window.provenanceDetailBeforeRedraw = document.querySelector('#detail-content').firstElementChild);
+  await page.selectOption('#language', nextLanguage);
+  await waitUntil(page, () => !provenanceDetailBeforeRedraw.isConnected && provenanceMap.loaded() && provenanceMap.areTilesLoaded());
   assert.deepEqual(await links('segment'), urls([20]), 'language redraw keeps the clicked segment');
+  assert.deepEqual(await links('group'), urls([10, 20, 30]), 'language redraw keeps the full group');
   await open([.055, .05], 'A', [30]);
   assert.deepEqual(await links('group'), urls([10, 20, 30]));
   await open([.035, .04], 'A', [10, 20, 30]);
