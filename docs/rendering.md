@@ -319,3 +319,14 @@ Label tiers, nearby coordinates, similar names and shared Wikidata alone do not
 remove another station's dot. At zoom 7 the curated layer ends and the provider
 marker resumes; zooming back below 7 restores the curated ownership. Candidates
 not emitted by the curated selection cannot suppress provider points.
+
+The symbol-overlap fixture also tests the production crossing icon at z11–14
+and crossing text at z15–16 against a single co-located station. It first measures
+the station's solid interior and a crossing-only dark-ink mask, requires a
+nonempty intersection, then requires the entire interior in production order,
+visible occlusion of the measured intersection with reversed order, and full
+restoration. Sampling scales with device-pixel ratio; a wider ink bounding box
+is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs/README.md)
+uses fontnik-compatible FreeType-origin bearings rather than Pillow's
+alphabetic-baseline bearings. This is a fixture correction, not production
+typography evidence.

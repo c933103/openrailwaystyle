@@ -121,9 +121,25 @@ try{
   const map=fixtureMap,canvas=map.getCanvas(),point=map.project([0,0]),ratio=canvas.width/map.getContainer().clientWidth;
   const scratch=document.createElement('canvas');scratch.width=canvas.width;scratch.height=canvas.height;
   const context=scratch.getContext('2d');context.drawImage(canvas,0,0);
-  const rgba=[...context.getImageData(Math.round(point.x*ratio)-1,Math.round(point.y*ratio)-1,3,3).data];
+  const radius=Math.ceil(8*ratio),size=radius*2+1,cx=Math.round(point.x*ratio),cy=Math.round(point.y*ratio);
+  const rgba=[...context.getImageData(cx-radius,cy-radius,size,size).data];
   const orangePixels=rgba.flatMap((_,i)=>i%4===0&&rgba[i]>240&&rgba[i+1]>145&&rgba[i+1]<180&&rgba[i+2]<70&&rgba[i+3]===255?[i/4]:[]);
-  return {rgba,orange:orangePixels.length,orangePixels,
+  const crossingInkPixels=rgba.flatMap((_,i)=>i%4===0&&rgba[i]<170&&rgba[i+1]<130&&rgba[i+2]<120&&rgba[i+3]===255?[i/4]:[]);
+  // Record a wider ink bounding box for diagnosis without accepting ink
+  // outside the measured station interior as an overlap.
+  const wideRadius=Math.ceil(32*ratio),wideSize=wideRadius*2+1;
+  const wide=context.getImageData(cx-wideRadius,cy-wideRadius,wideSize,wideSize).data;
+  const inkBounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity,pixels:0};
+  for(let y=0;y<wideSize;y++)for(let x=0;x<wideSize;x++){
+   const i=(y*wideSize+x)*4;
+   if(wide[i]<170&&wide[i+1]<130&&wide[i+2]<120&&wide[i+3]===255){
+    inkBounds.left=Math.min(inkBounds.left,(x-wideRadius)/ratio);
+    inkBounds.right=Math.max(inkBounds.right,(x-wideRadius)/ratio);
+    inkBounds.top=Math.min(inkBounds.top,(y-wideRadius)/ratio);
+    inkBounds.bottom=Math.max(inkBounds.bottom,(y-wideRadius)/ratio);inkBounds.pixels++;
+   }
+  }
+  return {rgba,patch:{radius,size,ratio,centerPixel:radius*size+radius},wideInk:inkBounds.pixels?inkBounds:null,orange:orangePixels.length,orangePixels,crossingInkPixels,
    overlapping:map.queryRenderedFeatures(point).filter(f=>f.layer.id.startsWith('station-')||f.layer.id.startsWith('infrastructure-crossing-')||f.layer.id==='infrastructure-level-crossings').map(f=>({id:f.layer.id,type:f.layer.type}))};
  });
  const rendered=()=>waitUntil(page,async()=>{await new Promise(resolve=>{fixtureMap.once('idle',resolve);fixtureMap.triggerRepaint();});return fixtureMap.loaded()&&fixtureMap.areTilesLoaded();});
@@ -134,20 +150,30 @@ try{
   assert.ok(positive.overlapping.some(f=>f.id===layer&&f.type==='symbol'),`real crossing symbol must render at zoom ${zoom}`);
   assert.ok(positive.overlapping.some(f=>f.id.startsWith('station-')&&f.type==='circle'),`station circle must render at zoom ${zoom}`);
   // Small production circles have antialiased/stroked edges. Measure their
-  // solid interior with the crossing hidden, rather than assuming all nine
-  // sampled pixels are inside the circle at every zoom.
+  // solid interior with the crossing hidden, rather than assuming every
+  // sampled pixel is inside the circle at every zoom. The 17 CSS px patch spans
+  // the production station footprint; a text glyph need not ink its anchor.
   await page.evaluate(id=>fixtureMap.setLayoutProperty(id,'visibility','none'),layer);await rendered();
   const stationOnly=await pixels();
-  assert.ok(stationOnly.orangePixels.includes(4),`station-only center must be solid orange at zoom ${zoom}: ${JSON.stringify(stationOnly)}`);
+  assert.ok(stationOnly.orangePixels.includes(stationOnly.patch.centerPixel),`station-only center must be solid orange at zoom ${zoom}: ${JSON.stringify(stationOnly)}`);
   const interiorVisible=sample=>stationOnly.orangePixels.filter(pixel=>sample.orangePixels.includes(pixel)).length;
   assert.equal(interiorVisible(positive),stationOnly.orange,`station interior must cover the crossing at zoom ${zoom}: ${JSON.stringify({positive,stationOnly})}`);
-  await page.evaluate(id=>{fixtureMap.moveLayer(id);fixtureMap.setLayoutProperty(id,'visibility','visible');},layer);await rendered();
+  const stationIds=overlapLayers.filter(l=>l.id.startsWith('station-')).map(l=>l.id);
+  await page.evaluate(({layer,stationIds})=>{for(const id of stationIds)fixtureMap.setLayoutProperty(id,'visibility','none');fixtureMap.setLayoutProperty(layer,'visibility','visible');},{layer,stationIds});await rendered();
+  const crossingOnly=await pixels();
+  const inkOverlap=stationOnly.orangePixels.filter(pixel=>crossingOnly.crossingInkPixels.includes(pixel));
+  const diagnostic={zoom,layer,stationOnly,positive,crossingOnly,inkOverlap};
+  await writeFile('browser-review/crossing-symbol-overlap.json',JSON.stringify([...overlapSamples,diagnostic],null,2)+'\n');
+  assert.ok(inkOverlap.length>0,`crossing-only ink must visibly intersect the measured station interior at zoom ${zoom}: ${JSON.stringify({inkOverlap,crossingOnly,stationOnly})}`);
+  await page.evaluate(({layer,stationIds})=>{for(const id of stationIds)fixtureMap.setLayoutProperty(id,'visibility','visible');fixtureMap.moveLayer(layer);},{layer,stationIds});await rendered();
   const wrongOrder=await pixels();
+  diagnostic.wrongOrder=wrongOrder;
+  await writeFile('browser-review/crossing-symbol-overlap.json',JSON.stringify([...overlapSamples,diagnostic],null,2)+'\n');
   assert.ok(wrongOrder.overlapping.some(f=>f.id===layer), 'negative control retains the crossing');
-  assert.ok(interiorVisible(wrongOrder)<stationOnly.orange,`reversed paint order must visibly cover the station interior at zoom ${zoom}: ${JSON.stringify({wrongOrder,stationOnly})}`);
+  assert.ok(inkOverlap.some(pixel=>!wrongOrder.orangePixels.includes(pixel)),`reversed paint order must visibly cover the measured crossing/station ink intersection at zoom ${zoom}: ${JSON.stringify({wrongOrder,stationOnly})}`);
   await page.evaluate(id=>fixtureMap.moveLayer(id,'station-stationLow-dots'),layer);await rendered();
   const restored=await pixels();assert.equal(interiorVisible(restored),stationOnly.orange,'restoring production order recovers the entire measured station interior');
-  overlapSamples.push({zoom,layer,stationOnly,positive,wrongOrder,restored});
+  overlapSamples.push({...diagnostic,restored});
  }
  await page.screenshot({path:'browser-review/crossing-symbol-overlap-z16.png'});
  await writeFile('browser-review/crossing-symbol-overlap.json',JSON.stringify(overlapSamples,null,2)+'\n');
@@ -227,20 +253,22 @@ try{
   const ink=await page.evaluate(placeId=>{
    const map=fixtureMap,canvas=map.getCanvas(),container=map.getContainer(),center=map.project([0,0]);
    const ratioX=canvas.width/container.clientWidth,ratioY=canvas.height/container.clientHeight;
-   const left=Math.round(center.x*ratioX)-15,top=Math.round(center.y*ratioY)-15;
+   const radiusX=Math.ceil(15*ratioX),radiusY=Math.ceil(15*ratioY);
+   const width=radiusX*2+1,height=radiusY*2+1;
+   const left=Math.round(center.x*ratioX)-radiusX,top=Math.round(center.y*ratioY)-radiusY;
    const scratch=document.createElement('canvas');scratch.width=canvas.width;scratch.height=canvas.height;
    const context=scratch.getContext('2d');context.drawImage(canvas,0,0);
-   const rgba=context.getImageData(left,top,31,31).data,candidates=[];
-   for(let y=0;y<31;y++)for(let x=0;x<31;x++){
-    const i=(y*31+x)*4,pixel=[...rgba.slice(i,i+4)];
+   const rgba=context.getImageData(left,top,width,height).data,candidates=[];
+   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const i=(y*width+x)*4,pixel=[...rgba.slice(i,i+4)];
     if(pixel[3]===255&&pixel[0]<190&&pixel[1]<190&&pixel[2]<190)
-     candidates.push({x:left+x,y:top+y,rgba:pixel,ink:pixel[0]+pixel[1]+pixel[2],distance:(x-15)**2+(y-15)**2});
+     candidates.push({x:left+x,y:top+y,rgba:pixel,ink:pixel[0]+pixel[1]+pixel[2],distance:((x-radiusX)/ratioX)**2+((y-radiusY)/ratioY)**2});
    }
    candidates.sort((a,b)=>a.ink-b.ink||a.distance-b.distance);
    const chosen=candidates[0];
    if(!chosen)return {candidates:0,place:map.queryRenderedFeatures({layers:[placeId]}).length};
    const css=[(chosen.x+.5)/ratioX,(chosen.y+.5)/ratioY];
-   return {candidates:candidates.length,patch:{left,top,width:31,height:31},pixel:[chosen.x,chosen.y],
+   return {candidates:candidates.length,patch:{left,top,width,height,ratioX,ratioY},pixel:[chosen.x,chosen.y],
     rgba:chosen.rgba,css,coordinates:map.unproject(css).toArray(),
     place:map.queryRenderedFeatures({layers:[placeId]}).length};
   },placeId);
