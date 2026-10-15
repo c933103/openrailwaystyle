@@ -12,11 +12,19 @@ const read = file => existsSync(root + file) ? readFileSync(root + file, 'utf8')
 const groupsFor = changed => plan(changed, read).groups.map(({group, checks}) => `${group}:${checks.length}`);
 const everything = GROUPS.map(({group, checks}) => `${group}:${checks.length}`);
 
-test('every browser check is either in fixture-safe CI or explicitly local-only', () => {
+test('every browser check is in fixture-safe site/diagnostic CI or explicitly local-only', () => {
   const checks = readdirSync(root + 'scripts').filter(name => /^check-.*-browser\.mjs$/.test(name)).sort();
   const ci=GROUPS.flatMap(g=>g.checks),local=LOCAL_ORM_CHECKS;
-  assert.deepEqual([...ci,...local].sort(),checks);
-  assert.equal(new Set([...ci,...local]).size,checks.length,'each browser test belongs to exactly one set');
+  // This one-shot experiment needs fresh browser processes for both arms,
+  // rather than the site's shared browser runner. It has a separate guarded
+  // pull-request workflow; do not add it to recurring production-site checks.
+  const diagnostic=['check-controls-painter-browser.mjs'];
+  const workflow=read('.github/workflows/controls-painter-diagnostic.yml');
+  assert.match(workflow,/pull_request:/);
+  assert.match(workflow,/node scripts\/check-controls-painter-browser\.mjs/);
+  assert.match(workflow,/if: always\(\)/);
+  assert.deepEqual([...ci,...local,...diagnostic].sort(),checks);
+  assert.equal(new Set([...ci,...local,...diagnostic]).size,checks.length,'each browser test belongs to exactly one set');
   assert.ok(GROUPS.some(g=>g.checks.includes('check-orm-fixture-browser.mjs')));
 });
 
