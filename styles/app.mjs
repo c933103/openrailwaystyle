@@ -13,13 +13,14 @@ import {departureItem} from './departures-ui.mjs?v=20261015-service-relations-1'
 import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-service-relations-1';
 import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-service-relations-1';
 import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-service-relations-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-service-relations-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-service-relations-1';
 import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-service-relations-1';
 import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-service-relations-1';
 import { installWatchGesture } from './watch-map.mjs?v=20261015-service-relations-1';
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-service-relations-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261015-service-relations-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261015-service-relations-1';
+import { addStationFallbackLayers, stationFallbackNamesEnabled } from './station-fallback.mjs?v=20261015-station-resilience-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -580,7 +581,7 @@ async function majorStationName(feature,language){
  return null;
 }
 function updateMajorStations(){
- if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
+ if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=22)return;
  const source=map.getSource('stationMajor'),language=settings.language;
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!source)return;
@@ -594,7 +595,7 @@ function updateMajorStations(){
   const centre=(west+east)/2;
   const visible=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return l>=west&&l<=east&&lat>=south&&lat<=north;});
   const visibleIDs=new Set(visible.map(f=>f.id));
-  const wanted=visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom));
+  const wanted=zoom<7?visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom)):[];
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   // Publish locations immediately, before provider requests or rare-Han fonts
   // settle. Only already-renderable names from this language may be reused.
@@ -603,7 +604,7 @@ function updateMajorStations(){
   majorStationSearchData={type:'FeatureCollection',language,features:points};
   source.setData({type:'FeatureCollection',features:points});
   // Provider metadata and the name adapter are optional for local geometry.
-  if(!stationTileFor||!stationTileURL)return;
+  if(zoom>=7||!stationTileFor||!stationTileURL)return;
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -708,7 +709,7 @@ function updateAttribution() {
   );
 }
 const SIGNAL_SOURCES = ['railwaySignals','railwaySignalSupplement','railwaySignalSupplementOverview'];
-const featurePickRank = f => [...SIGNAL_SOURCES,'stationEntrances','electricFacilities','electricMethods','electricCatenary','electricSubstations'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
+const featurePickRank = f => [...SIGNAL_SOURCES,'stationEntrances','electricFacilities','electricMethods','electricCatenary','electricSubstations'].includes(f.source) ? -1 : (f.source?.startsWith('station') || f.layer?.id.startsWith('station-basemap-fallback-')) ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running','infrastructure-signal-points','infrastructure-signal-references','infrastructure-signal-supplement-overview','infrastructure-signal-supplement-points','infrastructure-signal-supplement-references','infrastructure-entrance-points','infrastructure-entrance-references'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
@@ -797,17 +798,19 @@ function showDetails(feature) {
   if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); frequencyExpiry?.update(); return; }
   const p = feature.properties;
   const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
-  const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
+  const isBasemapStation = feature.layer?.id.startsWith('station-basemap-fallback-');
+  const isStation = feature.source?.startsWith('station') || feature.kind === 'station' || isBasemapStation;
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isPlatform?'RAILWAY PLATFORM':isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
   panel.append(textNode('h2', displayName(p, settings.language) || (isPlatform ? (p.ref ? `Platform ${p.ref}` : 'Platform') : isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
-  row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
-  row(dl, 'Status', p.state || 'present');
+  row(dl, 'Type', p.feature || (isBasemapStation ? p.subclass : p.railway) || (isStation ? 'station' : undefined));
+  row(dl, 'Status', p.state || (isBasemapStation ? 'Not verified by this source' : 'present'));
   row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
   if(isPlatform){row(dl,p.feature==='platform_edge'?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',formatPlatformLength(Number(p.platform_length),settings.units));if(p.length_estimated)panel.append(textNode('p','Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));row(dl,'Platform',p.ref);}
   else if (isStation) {
-    row(dl, 'Station type', p.station);
+    row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
+    if(isBasemapStation) panel.append(textNode('p','Basemap railway POI. Mapping, station identity and current operating status are not independently verified here. Nearby departures, if offered, may refer to another stop.','small'));
     if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
     if (p.station_size&&!p.curated) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
@@ -1555,6 +1558,9 @@ async function initialize() {
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
   const style = await response.json();
+  // Independent fallback uses only existing basemap tiles and vetted hubs.
+  // It is not a complete replacement for a worldwide station inventory.
+  addStationFallbackLayers(style,{annotateLayers,labelExpression});
   // Keep the style's version-matched station copy available during the first
   // upgrade from a worker whose fixed precache does not know the new file.
   // Parsing/rendering its GeoJSON in MapLibre remains deferred to the overview.
