@@ -9,7 +9,12 @@ const place = (name, stopId, fields = {}) => ({name, stopId, tz:'Asia/Tokyo', ar
 const itinerary = {legs:[{mode:'SUBWAY', realTime:false, from:place('Shibuya','origin'),
   intermediateStops:[place('Suehirocho','selected', {scheduledDeparture:at, track:'1'})], to:place('Asakusa','terminus')}]};
 const boardRow = {mode:'SUBWAY', line:'G', headsign:'Asakusa', departure:Date.parse(at), scheduled:Date.parse(at), tripId:'feed_trip&a=1', stopId:'selected', tz:'Asia/Tokyo'};
-const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+const toggleDetails = async (details, open) => {
+  // Native toggle is a queued task, not a promise/microtask or a timer delay.
+  const toggled = new Promise(resolve => details.addEventListener('toggle', resolve, {once:true}));
+  details.open = open;
+  await toggled;
+};
 
 test('complete trip includes origin, preceding stops, selected stop and terminus, and encodes its opaque ID', async () => {
   let request;
@@ -57,21 +62,48 @@ test('bounded loader shares requests, expires cached schedules and recovers afte
   const before=calls;await load('one');assert.equal(calls,before+1,'oldest schedules are evicted');
 });
 
-test('departure expansion is lazy, reuses loaded content and reports missing IDs and retryable failure', async () => {
+test('departure expansion is lazy, reuses loaded content and reports missing IDs and retryable failure', async t => {
   const dom=new JSDOM('<div id="detail-content"><ol></ol></div>'),document=dom.window.document;
-  let calls=0,fail=true;
-  const item=departureItem(document,boardRow,{load:async()=>{calls++;if(fail)throw new Error('outage');return tripStops(itinerary);}});
+  t.after(()=>dom.window.close());
+  let calls=0;
+  const requests=[];
+  const item=departureItem(document,boardRow,{load:()=>{calls++;const request=Promise.withResolvers();requests.push(request);return request.promise;}});
   document.querySelector('ol').append(item);
   assert.equal(calls,0);
-  const details=item.querySelector('details');details.open=true;await settle();
+  const details=item.querySelector('details');await toggleDetails(details,true);
+  assert.equal(calls,1);assert.equal(item.querySelector('.trip-schedule').getAttribute('aria-busy'),'true');
+  await toggleDetails(details,false);await toggleDetails(details,true);assert.equal(calls,1,'pending request is reused');
+  // The app registered its await before these test reactions. Await the same
+  // controlled request, so its catch/render/finally runs before assertions.
+  requests[0].reject(new Error('outage'));await requests[0].promise.catch(()=>{});
   assert.equal(calls,1);assert.ok(item.textContent.includes('could not load'));
-  fail=false;item.querySelector('button').click();await settle();
+  assert.equal(item.querySelector('.trip-schedule').hasAttribute('aria-busy'),false);
+  item.querySelector('button').click();
+  assert.equal(calls,2);assert.equal(item.querySelector('.trip-schedule').getAttribute('aria-busy'),'true');
+  requests[1].resolve(tripStops(itinerary));await requests[1].promise;
   assert.equal(calls,2);assert.equal(item.querySelectorAll('tbody tr').length,3);
-  details.open=false;await settle();details.open=true;await settle();assert.equal(calls,2);
+  assert.equal(item.querySelector('.trip-schedule').hasAttribute('aria-busy'),false);
+  await toggleDetails(details,false);await toggleDetails(details,true);assert.equal(calls,2);
   const missing=departureItem(document,{...boardRow,tripId:''},{load:()=>assert.fail('missing ID')});
-  document.querySelector('ol').append(missing);missing.querySelector('details').open=true;await settle();
+  document.querySelector('ol').append(missing);await toggleDetails(missing.querySelector('details'),true);
   assert.ok(missing.textContent.includes('did not supply a trip ID'));
-  dom.window.close();
+});
+
+test('elapsed timers cannot establish delivery of the native schedule toggle',async t=>{
+  const dom=new JSDOM('<ol></ol>'),document=dom.window.document;
+  t.after(()=>dom.window.close());
+  let calls=0;
+  const item=departureItem(document,boardRow,{load:async()=>{calls++;throw new Error('outage');}});
+  document.querySelector('ol').append(item);
+  // jsdom queues toggle with setImmediate. Advance only the old timer gate:
+  // it can finish before that independent task without changing the app.
+  t.mock.timers.enable({apis:['setTimeout']});
+  const toggled=toggleDetails(item.querySelector('details'),true);
+  const oldSettle=new Promise(resolve=>setTimeout(resolve,20));
+  t.mock.timers.tick(20);await oldSettle;
+  assert.equal(calls,0,'a completed 20 ms delay is not evidence that toggle ran');
+  await toggled;
+  assert.equal(calls,1);assert.ok(item.textContent.includes('could not load'));
 });
 
 test('schedule shows local dates over midnight, dwell, live scheduled times, cancellations and safe text', () => {
