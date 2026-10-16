@@ -84,9 +84,10 @@ the OSM snapshot, unresolved operator aliases and conflicting source structures
 remain gaps under #111. The spatial comparison uses 50 m sampling and a 120 m
 maximum lateral tolerance, requires at least 500 m of supplied path, and rejects
 very long edges, polar paths and antimeridian jumps. It does not certify exact
-physical track identity or a complete station crosswalk. A subdued line means
-**no current matched frequency profile** for that section and period; it can
-still have an independently available departure board.
+physical track identity or a complete station crosswalk. Sections without a current matched frequency profile are subdued; an
+independently available departure board does not establish frequency coverage.
+A measured zero remains an available profile and is drawn as a thin, subdued
+line; unknown is not zero.
 
 Each departure expands its complete trip using the opaque Transitous `tripId`
 retained through within-list and cross-feed reconciliation. Its selected stop
