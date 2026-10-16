@@ -2,7 +2,7 @@
 
 # Railway Atlas documentation
 
-[Project overview](../README.md) · [Open the map](https://c933103.github.io/openrailwaystyle/)
+[Project overview](../README.md) · [Open the map](https://10671435.xyz/)
 
 ## Using the map
 
