@@ -1,0 +1,21 @@
+Independent review: corrected frozen diagnostic candidate v2
+Patch SHA-256: 7ec340f4e3e0095fcd205c6183d27e83c937ae18ce5a63ad6b2168548c78c1ac
+Manifest: frozen-manifest-v2.json
+Decision: no remaining blocking code-review findings in this exact diagnostic-only patch. The acceptance-contract change is suitable for a new fixture-only hosted measurement; it does not make the old failed measurement pass. Exact-head hosted diagnostics and all required CI remain prerequisites to merge.
+
+Resolved finding
+The original symmetric-missing-cache reproduction now returns false from BOTH controlsTerrainBatchesEquivalent and controlsTerrainNaturalEquivalent. All per-frame terrain before/prepared/after states require terrain/source/layer identities, complete ordered cache-coordinate coverage and explicit boolean slot arrays. Dispatch and source-batch envelopes have explicit schemas. Present empty cache slots, empty source-coordinate lists and warm zero-dispatch evidence remain accepted. Independent actual-pinned-renderer cold captures with [] slots pass.
+
+Independent verification
+- Original patch hash and all 10 file hashes verified; original finding retained in independent-review-initial.txt.
+- V2 patch hash and all 10 file SHA-256 / Git blob hashes verified against frozen-manifest-v2.json.
+- node --experimental-vm-modules --test tests/controls-painter-*.test.mjs tests/wait-until.test.mjs: 49 passed, 0 failed, 0 skipped. Log: independent-review-v2-focused.log.
+- Direct replay of the original symmetric-missing-cache reproduction rejects in both predicates.
+- Direct cold-cache positive from the actual pinned renderer accepts explicit empty per-tile slots.
+- The archived report hash, application source commit, both prior/final DEM lists, arrival deltas, terrain/source identities, 360/234 dispatch counts and zero/seven retained-cache identities match the compact checked-in fixture.
+
+Review conclusions
+The source-arrival barrier only wraps the isolated terrain fixture's _render; it does not change the product guard, source payloads, caches or renderer. It defers incomplete requested batches and relies on the pinned normal source-completion _update/triggerRepaint path. Vector/DEM loaders complete without first entering _render. Failed sources, missing/truncated observations and noncompletion cannot become a passing comparison; the existing 60-second external deadline remains binding. The idle subscription and terrain action batch are registered in one browser task. All final natural cache/identity/coordinate-bearing dispatch comparisons, seven exact nonempty pixel comparisons and cold/warm comparisons remain mandatory, with every actual terrain frame additionally compared. Guard-caused cache eviction and equal-count coordinate replacement negative controls execute the pinned terrain/painter path. The frozen patch has no product-code changes or bulky archived evidence.
+
+Limits
+No local browser/WebGL success is claimed. Offline replay establishes control-flow/identity evidence and a sufficient input-history explanation, not original worker timing or timeout causation. A source-batched hosted result is a new measurement; the historic failed natural gate stays failed. This local reconstructed Git database lacks the PR232 commit object, so the assertion that PR232 and main share all base blobs was not independently established from that object here (main base blobs and actual report source identity were verified). Build/aggregate checks are owned by the implementation worker; this review did not duplicate the aggregate run.

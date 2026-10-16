@@ -1,0 +1,71 @@
+{
+  "artifact": "https://github.com/c933103/openrailwaystyle/actions/runs/38907364746/artifacts/12049071433",
+  "sourceCommit": "d0ae45cc984aed44aaac0aa4fd1e742efc6eee5e",
+  "artifactZipSha256": "a022e2000d039c894db4d0051e4758908594e4f926e69d232263098423d1f031",
+  "reportSha256": "365b34f7db8622f4adf21aacce371e91262812f2d4a5281ac149a829dfc4beaa",
+  "patchSha256": "7ec340f4e3e0095fcd205c6183d27e83c937ae18ce5a63ad6b2168548c78c1ac",
+  "actualPinnedPainterRuns": [
+    {
+      "name": "baseline",
+      "guard": false,
+      "dispatch": 360,
+      "retained": [],
+      "coverageErrors": []
+    },
+    {
+      "name": "baseline",
+      "guard": true,
+      "dispatch": 360,
+      "retained": [],
+      "coverageErrors": []
+    },
+    {
+      "name": "hidden-mask-guard",
+      "guard": false,
+      "dispatch": 234,
+      "retained": [
+        "z33",
+        "1733",
+        "y33",
+        "1633",
+        "1f33",
+        "x33",
+        "1533"
+      ],
+      "coverageErrors": []
+    },
+    {
+      "name": "hidden-mask-guard",
+      "guard": true,
+      "dispatch": 234,
+      "retained": [
+        "z33",
+        "1733",
+        "y33",
+        "1633",
+        "1f33",
+        "x33",
+        "1533"
+      ],
+      "coverageErrors": []
+    }
+  ],
+  "claim": "Observed newly visible DEM keys are sufficient to reproduce the exact cache identities and dispatch counts through the pinned invalidation and painter methods with either guard; full historical source-event timing was not recorded.",
+  "browser": "Pinned Playwright executable absent. Installed Chromium fails before application execution at process_singleton_posix.cc socket() EPERM. Hosted exact-head validation required.",
+  "revision": 2,
+  "schemaCorrection": "Both gates validate required complete terrain/source/cache/dispatch schemas and exact cache-coordinate coverage; symmetric missing/malformed evidence fails while explicit zero arrays pass.",
+  "validation": {
+    "focused": {
+      "passed": 48,
+      "failed": 0
+    },
+    "aggregate": {
+      "passed": 2146,
+      "failed": 0
+    },
+    "build": "passed",
+    "styleReproducibility": "passed",
+    "syntaxAndDiff": "passed",
+    "browser": "not run: startup blocked before app execution; hosted exact-head diagnostic required"
+  }
+}
