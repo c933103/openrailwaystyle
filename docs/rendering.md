@@ -123,6 +123,15 @@ and obsolete source/view failures are discarded. Genuine metadata failures
 still reload their source metadata. Access errors such as HTTP 403/404 are
 not treated as transient outages.
 
+An in-flight expired tile can leave the viewport, enter the renderer cache and
+fail there. Returning to that cached tile emits no new error or request. Atlas
+keeps weak evidence tied to the exact tile and source instance, so its scoped
+station fallback, outage status and eligible retries resume when it is active
+again. Offscreen failures do not cause retries or displayed warnings. Successful,
+aborted or unloaded tiles and replaced sources cannot inherit stale evidence;
+healthy neighboring tiles remain unchanged. Idle reconciliation covers cache
+reactivation that happens after the movement event.
+
 Major railway strokes remain a full CSS pixel at the world scale, including
 negative camera zoom. The renderer already clamps negative camera zoom to
 zoom-0 tiles; the regression checks actual geometry at -0.1, 0 and 0.1 in
