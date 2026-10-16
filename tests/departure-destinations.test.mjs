@@ -101,3 +101,115 @@ test('selected stop boards retain both numbered destinations with normal request
     assert.deepEqual(result.stopResults.map(row => row.status), ['fulfilled', 'fulfilled']);
   }
 });
+
+// Destination text is identity evidence too, even when neither name has numbers.
+const lexicalConflicts = [
+  ['Central', 'Central Park'], ['Central', 'CentralPark'], ['York', 'New York'],
+  ['中央', '中央公園'], ['東京', '新東京'], ['さいたま', 'さいたま新都心'],
+  ['서울', '서울숲'], ['Москва', 'Москва Сити'], ['محطة', 'محطة الشمال'],
+  ['Central', 'Central (North)'], ['Central', 'Central / Park'],
+  ['Central', '(North) Central'], ['Central', '(Local Park) Central'],
+  ['中央', '(North) 中央'], ['Central', 'Central (北)'], ['Central', 'Central北'],
+  ['中央', '中央 A'], ['Central', 'Central 北'], ['中央', '中央 North'],
+  ['Central', '中央 Central'], ['Москва', 'Москва Moscow'],
+  ['中央 Central', '中央 Central Park'], ['中央 Central', '中央公園 Central'],
+];
+for (const [a, b] of lexicalConflicts) test(`distinct lexical destinations keep their own train state: ${a} / ${b}`, () => {
+  const first = observation(a, 'a', {place:{departure:at, scheduledDeparture:at, stopId:'stop-a', track:'2'}});
+  const second = observation(b, 'b', {realTime:true, cancelled:true,
+    place:{departure:'2099-01-01T12:04:00Z', scheduledDeparture:at, stopId:'stop-b', track:'9'}});
+  const before = structuredClone([first, second]);
+  const expected = [...rows([[first]]), ...rows([[second]])];
+  for (const lists of orders(first, second)) assert.deepEqual(rows(lists), expected);
+  assert.deepEqual([first, second], before, 'destination checks do not mutate observations');
+});
+
+for (const [a, b] of [
+  ['大宮', '(普通) 大宮'],
+  ['桜木町', '桜木町 Sakuragichō'], ['Sakuragichō', '桜木町 Sakuragichō'],
+  ['桜木町', 'Sakuragichō / 桜木町'], ['桜木町', '(Local) 桜木町 Sakuragichō'],
+  ['桜木町', '（普通 Local） 桜木町 Sakuragichō'],
+]) test(`complete multilingual components and recognized service labels remain compatible: ${a} / ${b}`, () => {
+  const first = observation(a), second = observation(b, 'b', {cancelled:true, realTime:true,
+    place:{departure:'2099-01-01T12:03:00Z', scheduledDeparture:at, stopId:'stop-b', track:'7'}});
+  for (const lists of orders(first, second)) {
+    const result = rows(lists);
+    assert.equal(result.length, 1);
+    assert.deepEqual([result[0].cancelled, result[0].live, result[0].delay, result[0].track], [true, true, 3, '7']);
+  }
+});
+
+test('lexical conflicts cannot remove a competing train from the original ambiguity graph', () => {
+  const first = observation('Central', 'a'), competitor = observation('Central Park', 'b');
+  const other = observation('Central', 'c', {cancelled:true});
+  for (const list of [[first, competitor], [competitor, first]]) for (const lists of [[list, [other]], [[other], list]]) {
+    const result = rows(lists);
+    assert.equal(result.length, 3, 'the veto must not create a formerly ambiguous merge');
+    assert.equal(result.find(row => row.tripId === 'trip-a').cancelled, false);
+  }
+});
+
+const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
+  permutations(items.filter((_, j) => i !== j)).map(rest => [item, ...rest]));
+for (const names of [
+  ['Central', 'Central Park', '(Local) Central Park'],
+  ['中央', '中央 Central', '中央 Central Park'],
+  ['Central', '中央 Central', '中央公園 Central'],
+  ['桜木町', '桜木町 Sakuragichō', '桜木町 Sakuragichō North'],
+  ['Central', 'Central (北)', '(Local) Central (北)'],
+]) test(`a lexical conflict vetoes the entire connected group: ${names.join(' / ')}`, () => {
+  const lists = names.map((name, i) => [observation(name, String(i), {cancelled:i === 2})]);
+  for (const order of permutations(lists)) {
+    const result = rows(order);
+    assert.equal(result.length, 3, 'no safe-looking subgroup may merge after a conflict');
+    assert.deepEqual(result.filter(row => row.cancelled).map(row => row.tripId), ['trip-2']);
+  }
+});
+
+test('selected boards keep lexical destinations separate with normal bounded acquisition', async () => {
+  for (const order of [['a','b'], ['b','a']]) for (const [a, b] of lexicalConflicts) {
+    const requests = [];
+    const fetch = async value => {
+      const url = new URL(value); requests.push(url);
+      const id = url.searchParams.get('stopId');
+      return {ok:true, json:async () => url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
+        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
+          stopTimes:[observation(id === 'a' ? a : b, id, {cancelled:id === 'b'})]}};
+    };
+    const result = await stationDepartures({lat:0, lon:0, names:['Central']}, {fetch});
+    assert.equal(result.rows.length, 2);
+    assert.equal(requests.length, 3);
+    assert.deepEqual(result.stopResults.map(row => row.status), ['fulfilled','fulfilled']);
+  }
+});
+
+
+test('destination veto preserves standalone baseline coercion of malformed headsigns', async () => {
+  // Row validation has a separate correction. This veto must not introduce a
+  // new exception that loses a healthy sibling board on the standalone base.
+  for (const headsign of [123, true, {name:'Central'}]) {
+    const malformed = observation(headsign);
+    const healthy = observation('Harbour', 'b');
+    try {
+      assert.equal(rows([[malformed]]).length, 1);
+      for (const lists of orders(malformed, healthy)) {
+        const result = rows(lists);
+        assert.equal(result.length, 2);
+        assert.equal(result.find(row => row.tripId === 'trip-b').headsign, 'Harbour');
+      }
+    } catch (error) {
+      // The separate consumed-row validator may reject this input explicitly;
+      // a new incidental TypeError from destination matching is never valid.
+      assert.equal(error.message, 'Invalid Transitous stop times response');
+    }
+    const fetch = async value => {
+      const url = new URL(value);
+      return {ok:true, json:async () => url.pathname.endsWith('/reverse-geocode') ? ['a','b'].map(id => ({
+        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
+          stopTimes:[url.searchParams.get('stopId') === 'a' ? malformed : healthy]}};
+    };
+    const result = await stationDepartures({lat:0, lon:0, names:['Central']}, {fetch});
+    assert.equal(result.rows.find(row => row.tripId === 'trip-b').headsign, 'Harbour');
+    assert.equal(result.stopResults.find(row => row.stopId === 'b').status, 'fulfilled');
+  }
+});

@@ -609,3 +609,37 @@ test('world-copy recovery release upgrades cached app and exact recovery bytes o
   assert.match(await(await next.request('./',true)).text(),new RegExp(version));
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+for (const file of ['app.mjs', 'departures.mjs']) test(`destination identity refreshes exact ${file} bytes from its predecessor`, async () => {
+  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/departure-destination-predecessor.json.gz', import.meta.url))));
+  assert.equal(previous.commit, '562ec2f8fb4e987cbf9ca64055ca01d4aa541418');
+  assert.equal(previous.version, '20261016-hidden-tile-masks-1');
+  const previousBytes = previous.files[file].text;
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
+  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);
+  assert.notEqual(currentVersion, previous.version);
+  const path = new URL(file, scope).pathname;
+  const old = startWorker({version:previous.version, assetBodies:new Map([[path, previousBytes]])});
+  await bounded(old.lifecycle('install')); await old.lifecycle('activate');
+  const next = startWorker({version:currentVersion, stores:old.stores, assetBodies:new Map([[path, currentBytes]])});
+  await bounded(next.request('./', true));
+  const served = await (await next.request(`${file}?v=${currentVersion}`)).text();
+  assert.equal(served, currentBytes);
+  next.setOffline();
+  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+  if (file === 'departures.mjs') {
+    const load = text => import(`data:text/javascript;base64,${Buffer.from(text).toString('base64')}`);
+    const at = '2099-01-01T12:00:00Z';
+    const lists = ['Central', 'Central Park'].map((headsign, i) => [{mode:'REGIONAL_RAIL',
+      displayName:'R7', tripId:`trip-${i}`, headsign, cancelled:i === 1,
+      place:{departure:at, scheduledDeparture:at}}]);
+    assert.equal((await load(previousBytes)).departureRows(lists, {now:0}).length, 1, 'the exact cached predecessor reproduces the loss');
+    const rows = (await load(served)).departureRows(lists, {now:0});
+    assert.equal(rows.length, 2, 'the refreshed module keeps both actual trains');
+    assert.equal(rows.find(row => row.tripId === 'trip-0').cancelled, false);
+  }
+});

@@ -96,6 +96,32 @@ const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 const destinationNumbers = text => JSON.stringify([...new Set(
   (text.match(/\p{N}+(?:[\p{Pd}−./／．]\p{N}+)*/gu) || []).map(part => part.normalize('NFKC')),
 )].sort());
+// Substrings and different scripts cannot establish destination identity:
+// Central Park and Central (北) both contain Central. Only explicit leading
+// service tags and the known bilingual pairs in the existing source fixtures
+// are recognized here. Unknown aliases/qualifiers stay distinct, even when
+// they might describe one place; stronger source evidence can extend this list.
+function destinationIdentity(headsign) {
+  const text = String(headsign || '').normalize('NFKC').toLowerCase().trim()
+    .replace(/^\((?:普通(?:\s+local)?|local)\)\s*/u, '');
+  // The pinned Ōji observation in departures.test.mjs supplies this pair.
+  if (text === 'sakuragichō' || /^(?:桜木町(?:\s+|\s*\/\s*)sakuragichō|sakuragichō(?:\s+|\s*\/\s*)桜木町)$/u.test(text)) return '桜木町';
+  // Retain the numbered bilingual contract in departure-destinations.test.mjs.
+  // Both supplied numbers must agree; the separate numeric guard still vetoes
+  // the entire group if any original destination has conflicting components.
+  const terminal = text.match(/^(?:第(\p{Decimal_Number}+)航廈(?:\s+|\s*\/\s*)terminal\s*(\p{Decimal_Number}+)|terminal\s*(\p{Decimal_Number}+)(?:\s+|\s*\/\s*)第(\p{Decimal_Number}+)航廈)$/u);
+  if (terminal) {
+    const first = terminal[1] || terminal[3], second = terminal[2] || terminal[4];
+    if (first === second) return `terminal${first}`;
+  }
+  const nativeTerminal = text.match(/^第(\p{Decimal_Number}+)航廈$/u);
+  return nativeTerminal ? `terminal${nativeTerminal[1]}` : squash(text);
+}
+function conflictingDestinationText(group) {
+  // Check every row against a complete identity, not just overlapping pieces
+  // of the first row: no bilingual bridge can hide another row's qualifier.
+  return new Set(group.map(row => destinationIdentity(row.headsign))).size > 1;
+}
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
@@ -144,8 +170,10 @@ const mergeObservations = group => {
 // seconds. Keep the minute-level candidates for ambiguity checks: narrowing
 // those first could remove a competing train and unlock a previously unsafe
 // merge. Conflicting numeric destination components also reject the whole
-// group at this final stage. Both guards can only reject an existing group;
-// neither removes competitors or creates new subgroup matches.
+// group at this final stage, as do different complete destinations after
+// recognized service tags and source-fixtured bilingual aliases are resolved. These
+// guards only reject an existing group; they never remove competitors or
+// create new subgroup matches. Unknown destination aliases can remain separate.
 // A merged train has
 // the named row's line and colours, real-time state from a live row, and is
 // cancelled if any row is. A row is live when the operator's real-time feed
@@ -203,7 +231,8 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length ||
         !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
-        !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to))) {
+        !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
+        conflictingDestinationText(group)) {
       out.push(...group); continue;
     }
     out.push(mergeObservations(group));
