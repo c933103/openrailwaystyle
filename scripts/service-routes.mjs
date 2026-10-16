@@ -432,7 +432,18 @@ const ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 
 // Joins lines where one ends at the point the next starts (never reversing
 // one, which would put its route on the other side).
 export function joinLines(lines) {
-  const key = ([x, y]) => `${x},${y}`, chains = lines.map(line => [...line]), byStart = new Map();
+  // Order complete directed paths numerically, including interior vertices and
+  // prefix ties. Both branch choices and cycle starts must be independent of
+  // way arrival order, or identical source edges produce different label paths.
+  // Equal paths remain separate so duplicate directed edges are not discarded.
+  const compare = (a, b) => {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      const order = a[i][0] - b[i][0] || a[i][1] - b[i][1];
+      if (order) return order;
+    }
+    return a.length - b.length;
+  };
+  const key = ([x, y]) => `${x},${y}`, chains = lines.map(line => [...line]).sort(compare), byStart = new Map();
   chains.forEach((chain, i) => { const k = key(chain[0]); if (!byStart.has(k)) byStart.set(k, []); byStart.get(k).push(i); });
   const used = new Set(), starts = new Set(chains.map(c => key(c.at(-1))));
   const out = [];

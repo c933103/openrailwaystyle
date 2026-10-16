@@ -23,6 +23,10 @@ export function comparePixelBytes(original,candidate){
 export async function controlsPainterManifest(){
  const sources={
   'node_modules/maplibre-gl/src/render/painter.ts':'bf19980d31838a1e6d32cd940673bcb7b367fb102af426050afd5555abd913c0',
+  'node_modules/maplibre-gl/src/webgl/render_to_texture.ts':'58d9334f309c39452cccb8064a04a94dd6d3a6c5f98f56969599579e61216ac9',
+  'node_modules/maplibre-gl/src/webgl/render_pool.ts':'3c3d58135b22262c0bde1a9796f7c021fd800c511b545f4744cdc1afdb1c4319',
+  'node_modules/maplibre-gl/src/webgl/draw/draw_terrain.ts':'85b3ba1185f2d6268b0d9d3a436672e1be06de117079ad543ff6aacd4f4e98d6',
+  'node_modules/maplibre-gl/src/ui/map.ts':'796a5bb616f87ee26de1241c5375db0569a6a5ce0122954e16ce1c11c574763e',
   'node_modules/maplibre-gl/src/style/style_layer.ts':'6b3730cb2721888003d5d2a00af23ff80506650b0e8197315d7f9f20b5f62fce',
   'node_modules/maplibre-gl/src/tile/tile.ts':'e40cf65d5ff780cc1cbd043196c8e5487814c31268f4fd3386befb0778aa6aab',
   'node_modules/maplibre-gl/dist/maplibre-gl.js':MAPLIBRE_BACKPORT.upstreamSha256,
@@ -33,7 +37,7 @@ export async function controlsPainterManifest(){
  const inputs={};
  for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/map-controls.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
  const identity=controlsPainterSourceIdentity(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:2000,maxBuffer:1024}).trim());
- return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:true};
+ return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,terrainDispatchSampling:'natural trace retained; one synchronous cold frame and one warm frame after settlement',productionChanges:true};
 }
 
 export const nonemptyMaskTile=Buffer.from(vtpbf.fromGeojsonVt({fixture:{extent:4096,features:[

@@ -271,6 +271,30 @@ for (const file of ['app.mjs', 'departures.mjs']) test(`malformed departure-boar
   assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
 });
 
+for (const file of ['departures.mjs']) test(`malformed departure-row isolation refreshes exact ${file} bytes from the immediate predecessor`, async () => {
+  // Exact current-main parser bytes from before consumed-row isolation.
+  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/departure-row-predecessor.json.gz', import.meta.url))));
+  assert.equal(previous.commit, '562ec2f8fb4e987cbf9ca64055ca01d4aa541418');
+  assert.equal(previous.version, '20261016-hidden-tile-masks-1');
+  const previousBytes = previous.files[file].text;
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
+  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);
+  assert.notEqual(currentVersion, previous.version);
+  const path = new URL(file, scope).pathname;
+  const old = startWorker({version: previous.version, assetBodies: new Map([[path, previousBytes]])});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]])});
+  await bounded(next.request('./', true));
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+  next.setOffline();
+  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+});
+
 for (const file of ['app.mjs', 'departures.mjs']) test(`exact departure instants refreshes exact ${file} bytes from the immediate predecessor`, async () => {
   // Exact files from main f9bd326c before the exact-instant correction. Keeping
   // these compressed makes this an upgrade regression, not a synthetic version
@@ -519,6 +543,56 @@ test('hidden-mask release refreshes the app and executable guard through the exi
   let calls=0;const map={painter:{transform:{zoom:9},_renderTileClippingMasks(){calls++;}}};
   installHiddenTileMaskGuard(map);map.painter._renderTileClippingMasks({isHidden:()=>true});assert.equal(calls,0);
   map.painter._renderTileClippingMasks({isHidden:()=>false});assert.equal(calls,1);
+});
+
+test('Power presentation upgrades the exact row-isolation app and module graph together',async()=>{
+  const previous=JSON.parse(gunzipSync(readFileSync(new URL('fixtures/power-presentation-predecessor.json.gz',import.meta.url))));
+  assert.equal(previous.commit,'c45abb0a5da69299f6acc3a60af0fc54d9c2a9ee');
+  assert.equal(previous.version,'20261016-departure-row-isolation-1');
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,previous.version,'changed Power bytes need a fresh cache-first version');
+  const current=new Map(),oldBodies=new Map();let references=0;
+  for(const [file,entry] of Object.entries(previous.files)){
+    assert.equal(createHash('sha256').update(entry.text).digest('hex'),entry.sha256,file);
+    assert.equal(createHash('sha1').update(`blob ${Buffer.byteLength(entry.text)}\0`).update(entry.text).digest('hex'),entry.gitBlob,file);
+    const body=readFileSync(new URL('../styles/'+file,import.meta.url),'utf8');
+    for(const [text,token] of [[entry.text,previous.version],[body,version]])for(const match of text.matchAll(/(?:\.mjs|\.css)\?v=([\w.-]+)/g)){
+      assert.equal(match[1],token,`${file}: entrypoint and transitive modules share one release`);references++;
+    }
+    if(file.endsWith('.mjs')&&file!=='data-check.mjs'){
+      const path=new URL(file,scope).pathname;oldBodies.set(path,entry.text);current.set(path,body);
+    }
+  }
+  assert.ok(references>=60,'covers both exact predecessor and current versioned graphs');
+  assert.equal(current.get(new URL('departures.mjs',scope).pathname),previous.files['departures.mjs'].text,'row-isolation parser bytes are preserved');
+  const old=startWorker({version:previous.version,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const cacheNames=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous.version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const [path,body] of oldBodies){
+    assert.equal(await(await unchanged.request(path+'?v='+previous.version)).text(),body);
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===path).length,0,'reusing a version retains stale cached bytes');
+  }
+  const evaluate=async code=>{const module=new vm.SourceTextModule(code);await module.link(()=>{throw new Error('unexpected Power dependency');});await module.evaluate();return module.namespace;};
+  const stale=await evaluate(await(await unchanged.request('power-facilities.mjs?v='+previous.version)).text());
+  const storage={power_kind:'water_tank',man_made:'storage_tank',content:'water',usage:'railway'};
+  assert.equal(stale.powerFacilityName(storage),'Steam locomotive water tank');
+  assert.equal(stale.powerFacilityEnergyRows,undefined);
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const [path,body] of current){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),body,'new tabs receive exact integrated bytes offline');
+    assert.equal(await(await next.request(path+'?v='+previous.version)).text(),oldBodies.get(path),'older tabs keep their complete predecessor graph');
+    assert.equal(next.requests.filter(url=>url===new URL(path,scope).href+'?v='+version).length,1);
+  }
+  const fixed=await evaluate(await(await next.request('power-facilities.mjs?v='+version)).text());
+  assert.equal(fixed.powerFacilityName(storage),'Railway water tank');
+  assert.deepEqual(Object.fromEntries(fixed.powerFacilityEnergyRows({'fuel:adblue':'yes','plant:source':'solar'})),{'Recorded supplies':'adblue','Fuel tags':'fuel:adblue=yes','Plant energy source':'solar'});
+  assert.deepEqual([...next.stores.keys()],cacheNames,'no cache purge or generation change');
+  assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous.version]);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
 test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
