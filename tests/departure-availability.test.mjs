@@ -71,7 +71,21 @@ test('no matching stops, selected-stop limit, and all-failed behavior remain bou
   }
 });
 
-// Only validate the envelope consumed here, not complete provider row schemas.
+// Validate the consumed row shape as well as its envelope. Unused provider
+// extensions and fields of intentionally excluded modes remain outside it.
+const malformedRows = [
+  ...[null, undefined, false, true, 0, 1, '', 'synthetic private row', []].map((row, i) => [`scalar row ${i}`, row]),
+  ...[false, 0, {}, []].map((mode, i) => [`mode ${i}`, {...observation, mode}]),
+  ...['displayName', 'routeShortName', 'tripShortName', 'routeLongName', 'headsign', 'routeId', 'tripId', 'routeColor', 'routeTextColor']
+    .flatMap(field => [false, 7, [], {private:'synthetic private'}].map((value, i) => [`${field} ${i}`, {...observation, [field]:value}])),
+  ...[false, 7, 'synthetic private', []].map((place, i) => [`place ${i}`, {...observation, place}]),
+  ...['departure', 'arrival', 'scheduledDeparture', 'scheduledArrival', 'tz', 'track', 'scheduledTrack', 'stopId']
+    .flatMap(field => [false, 7, [], {private:'synthetic private'}].map((value, i) => [`place.${field} ${i}`, {...observation, place:{...observation.place, [field]:value}}])),
+  ...[false, 7, 'synthetic private', []].map((tripTo, i) => [`tripTo ${i}`, {...observation, headsign:'', tripTo}]),
+  ...[false, 7, [], {private:'synthetic private'}].map((name, i) => [`tripTo.name ${i}`, {...observation, headsign:'', tripTo:{name}}]),
+  ...['realTime', 'cancelled', 'tripCancelled'].map(field => [field, {...observation, [field]:'true'}]),
+  ['place.cancelled', {...observation, place:{...observation.place, cancelled:'true'}}],
+];
 const malformedBoards = [
   ['null body', null], ['undefined body', undefined], ['array body', []],
   ['false body', false], ['true body', true], ['zero body', 0], ['number body', 1],
@@ -81,6 +95,7 @@ const malformedBoards = [
   ['zero list', {stopTimes: 0}], ['number list', {stopTimes: 1}],
   ['empty string list', {stopTimes: ''}], ['string list', {stopTimes: 'synthetic private provider response'}],
   ['object list', {stopTimes: {private: 'synthetic private provider response'}}],
+  ...malformedRows.map(([label, row]) => [`row ${label}`, {stopTimes:[row]}]),
 ];
 const invalidBoardMessage = 'Invalid Transitous stop times response';
 for (const [label, body] of malformedBoards) test(`malformed board ${label} rejects before settlement and preserves each healthy sibling`, async () => {
@@ -98,6 +113,36 @@ for (const [label, body] of malformedBoards) test(`malformed board ${label} reje
     assert.equal(JSON.stringify(board).includes('synthetic private'), false);
     assert.equal(feed.calls.length, 3, 'same bounded requests, no retries');
     assert.ok(feed.calls.every(call => call.options.signal === signal));
+  }
+});
+
+test('a malformed row rejects its whole board without leaking earlier parsed rows', async () => {
+  for (const rows of [[observation, null], [null, observation]]) for (const order of [['a','b'], ['b','a']]) {
+    const feed = fixture({order, bodies:{a:{stopTimes:[]}, b:{stopTimes:rows}}});
+    const board = await stationDepartures(station, {fetch:feed.fetch});
+    assert.deepEqual(statuses(board), {a:'fulfilled', b:'rejected'});
+    assert.deepEqual(board.rows, []);
+    assert.equal(feed.calls.length, 3);
+    assert.throws(() => departureRows([rows]), {message:invalidBoardMessage});
+  }
+});
+
+test('valid excluded modes, nullable optional fields, and unused extensions do not fail a board', async () => {
+  const optional = Object.fromEntries(['displayName','routeShortName','tripShortName','routeLongName','headsign',
+    'routeId','tripId','routeColor','routeTextColor','realTime','cancelled','tripCancelled','tripTo'].map(field => [field,null]));
+  for (const times of [[], [{mode:null}], [{mode:''}], [{...observation, place:null}], [{...observation, place:undefined}], [{mode:'BUS'}], [{mode:'FERRY', place:'unused', headsign:{unused:true}}],
+    [{mode:'FUTURE_UNSUPPORTED_MODE', extension:{private:'unused'}}],
+    [{...observation, ...optional, place:{...observation.place, track:null, tz:null, cancelled:null}, extension:{ignored:true}}],
+    [{...observation, tripTo:{unused:'synthetic private'}, extension:{toString:{ignored:true}}}],
+    [{...observation, headsign:'', tripTo:{name:'Fallback terminus'}}],
+    [{...observation, place:{...observation.place, departure:'invalid date'}}],
+  ]) {
+    const before = structuredClone(times), feed = fixture({times});
+    const board = await stationDepartures(station, {fetch:feed.fetch});
+    assert.deepEqual(statuses(board), {a:'fulfilled', b:'fulfilled'});
+    assert.deepEqual(board.rows, departureRows([times, times]));
+    assert.deepEqual(times, before);
+    assert.equal(feed.calls.length, 3);
   }
 });
 

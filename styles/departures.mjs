@@ -123,6 +123,26 @@ const mergeObservations = group => {
   if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay});
   return merged;
 };
+// Validate only the JSON fields the board parser consumes. Optional nulls
+// retain their existing fallback meaning; provider extensions are ignored.
+// Excluded or absent modes are still filtered before reading their row fields.
+const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const optionalFields = (value, fields, type) => fields.every(field => value[field] == null || typeof value[field] === type);
+function validateDepartureTime(time) {
+  const invalid = () => { throw new Error('Invalid Transitous stop times response'); };
+  if (!record(time) || (time.mode != null && typeof time.mode !== 'string')) invalid();
+  if (!RAIL_MODES.has(time.mode)) return;
+  if (!optionalFields(time, ['displayName', 'routeShortName', 'tripShortName', 'routeLongName', 'headsign',
+    'routeId', 'tripId', 'routeColor', 'routeTextColor'], 'string') ||
+    !optionalFields(time, ['realTime', 'cancelled', 'tripCancelled'], 'boolean')) invalid();
+  const place = time.place ?? {};
+  if (!record(place) || !optionalFields(place, ['departure', 'arrival', 'scheduledDeparture', 'scheduledArrival',
+      'tz', 'track', 'scheduledTrack', 'stopId'], 'string') ||
+    !optionalFields(place, ['cancelled'], 'boolean')) invalid();
+  if (!time.headsign && time.tripTo != null && (!record(time.tripTo) ||
+    !optionalFields(time.tripTo, ['name'], 'string'))) invalid();
+}
+
 // Board rows from departure lists (one list per stop; merged, earliest first,
 // rail modes only, one row per train). Within one list only an exact repeat is
 // the same train: trip/route identity, names, mode family, resolved destination
@@ -150,9 +170,16 @@ const mergeObservations = group => {
 // the named row's line and colours, real-time state from a live row, and is
 // cancelled if any row is. A row is live when the operator's real-time feed
 // covers that trip; delay in whole minutes.
-export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
-  const rows = [], exact = new Map();
-  for (const [list, times] of lists.entries()) for (const time of times) {
+export function departureRows(lists, options = {}) {
+  return mergeDepartureRows(lists.flatMap((times, list) => parseDepartureList(times, list)), options);
+}
+
+// Keep parsing inside each selected stop's promise. No part of an invalid
+// board can escape as a successful empty or partially populated response.
+function parseDepartureList(times, list) {
+  const observations = [];
+  for (const time of times) {
+    validateDepartureTime(time);
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure ?? place.arrival);
     if (!Number.isFinite(departure)) continue;
@@ -182,6 +209,14 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
       list, to: squash(headsign), minute: Math.floor(scheduled / 60000),
     };
+    observations.push({key, row});
+  }
+  return observations;
+}
+
+function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
+  const rows = [], exact = new Map();
+  for (const {key, row} of observations) {
     if (!exact.has(key)) exact.set(key, []);
     exact.get(key).push(row);
   }
@@ -279,14 +314,14 @@ export async function stationDepartures(station, {signal, fetch: get = fetch} = 
   const stops = pickStops(candidates, station);
   if (!stops.length) return {stops, rows: [], stopResults: []};
   // Each stop's board on its own: one feed failing keeps the other's.
-  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => {
+  const results = await Promise.allSettled(stops.map((s, list) => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => {
     // Reject malformed envelopes inside this stop's promise so another board
     // can still load. Only an explicit array establishes a successful board.
     if (!d || typeof d !== 'object' || Array.isArray(d) || !Array.isArray(d.stopTimes)) throw new Error('Invalid Transitous stop times response');
-    return d.stopTimes;
+    return parseDepartureList(d.stopTimes, list);
   })));
   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   if (!lists.length) throw results[0].reason;
   const stopResults = results.map((result, i) => ({stopId: stops[i].id, status: result.status}));
-  return {stops, rows: departureRows(lists), stopResults};
+  return {stops, rows: mergeDepartureRows(lists.flat()), stopResults};
 }
