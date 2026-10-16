@@ -72,6 +72,8 @@ export function parseCsv(text) {
   if (/^\s*</.test(text)) throw new Error(`Overpass returned an error page: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
   const lines = [];
   for (const line of text.split('\n')) {
+    // Starting a row consumes its preceding record delimiter. Only continuation
+    // lines restore an LF, including trailing LFs in the final tag value.
     if (ROW_START.test(line) || MARKER.test(line)) lines.push(line);
     else if (lines.length && !MARKER.test(lines.at(-1))) lines[lines.length - 1] += `\n${line}`;
     else if (line.trim()) throw new Error(`Unexpected Overpass row: ${line.slice(0, 120)}`);
@@ -80,14 +82,14 @@ export function parseCsv(text) {
   const rows = [];
   let minor = false;
   for (const line of lines) {
-    const [id, lat, lon, railway, ...values] = line.replace(/\n+$/, '').split(SEP);
+    const [id, lat, lon, railway, ...values] = line.split(SEP);
     if (railway?.trim() === 'minor' && !minor) { minor = true; continue; }
     const kind = KINDS[railway?.trim()], position = [Number(id), Number(lat), Number(lon)];
     if (!kind || !position.every(Number.isFinite)) throw new Error(`Unexpected Overpass row: ${line.slice(0, 120)}`);
     let tags = null;
     if (values.length <= TAG_KEYS.length) {
       tags = {};
-      TAG_KEYS.forEach((key, i) => { const value = values[i]?.trim(); if (value) tags[key] = value; });
+      TAG_KEYS.forEach((key, i) => { const value = values[i]; if (value) tags[key] = value; });
     }
     rows.push({id: position[0], lat: position[1], lon: position[2], kind, minor, tags});
   }
