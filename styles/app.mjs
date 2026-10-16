@@ -1,26 +1,26 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261016-power-meaning-2';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261016-power-meaning-2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261016-power-meaning-2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261016-power-meaning-2';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261016-power-meaning-2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261016-power-meaning-2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261016-power-meaning-2';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261016-power-meaning-3';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261016-power-meaning-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261016-power-meaning-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261016-power-meaning-3';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261016-power-meaning-3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261016-power-meaning-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261016-power-meaning-3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261016-power-meaning-2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261016-power-meaning-2';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261016-power-meaning-2';
-import {departureItem} from './departures-ui.mjs?v=20261016-power-meaning-2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261016-power-meaning-2';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261016-power-meaning-2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261016-power-meaning-2';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261016-power-meaning-2';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261016-power-meaning-2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261016-power-meaning-2';
-import { installWatchGesture } from './watch-map.mjs?v=20261016-power-meaning-2';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261016-power-meaning-2';
-import { createBundleReader } from './tile-bundles.mjs?v=20261016-power-meaning-2';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261016-power-meaning-2';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261016-power-meaning-2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261016-power-meaning-3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261016-power-meaning-3';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261016-power-meaning-3';
+import {departureItem} from './departures-ui.mjs?v=20261016-power-meaning-3';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261016-power-meaning-3';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261016-power-meaning-3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261016-power-meaning-3';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261016-power-meaning-3';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261016-power-meaning-3';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261016-power-meaning-3';
+import { installWatchGesture } from './watch-map.mjs?v=20261016-power-meaning-3';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261016-power-meaning-3';
+import { createBundleReader } from './tile-bundles.mjs?v=20261016-power-meaning-3';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261016-power-meaning-3';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261016-power-meaning-3';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -58,7 +58,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261016-power-meaning-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261016-power-meaning-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1206,7 +1206,8 @@ function applyStationFallbackState() {
 }
 const mapErrorMessage = () => {
   const railFailed=railRecovery?.hasFailures();
-  const failed=[...new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[])])];
+  const failed=[...new Set([...errors.keys(),...(railRecovery?.failedSourceIds()||[]),
+    ...['stations','stationMed'].filter(id=>stationFailures?.hasSourceFailure(id))])];
   const stationFailed=failed.some(id=>['stations','stationLow','stationMed'].includes(id));
   const trackFailed=failed.some(id=>['railway','network','speed','electric','control','gaugeLow','ownerLow','ownerRail','axleLow','axleRail','loadingLow'].includes(id));
   if(railFailed||stationFailed||trackFailed){
@@ -1223,7 +1224,7 @@ function updateStatus() {
     else if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
   }
   applyStationFallbackState();
-  if (errors.size || railFailed) {
+  if (errors.size || railFailed || ['stations','stationMed'].some(id=>stationFailures?.hasSourceFailure(id))) {
     status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
   status.classList.remove('error');
@@ -1836,7 +1837,9 @@ async function initialize() {
     const action = pendingView; pendingView = undefined; action?.();
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
-  map.on('idle', updateStatus);
+  // Cached tiles can re-enter the inventory after moveend without a source
+  // event. Recheck retry demand once that render has settled, as well as status.
+  map.on('idle', wakeRailRecovery);
   platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
