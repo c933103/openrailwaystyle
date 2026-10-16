@@ -1,0 +1,117 @@
+{
+  "head": "b9b6e2286877150f29d5523c82afa8509e78c521",
+  "artifact": 12051022879,
+  "artifactSha256": "d6ed2f7fc67f12722933edca6acaff9198ea91a2208d800b87f4de04b4c0aa2f",
+  "comparisons": [
+    {
+      "case": "mercator-hidden",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 2240,
+      "guardedMaskDraws": 2048
+    },
+    {
+      "case": "mercator-shown",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 4480,
+      "guardedMaskDraws": 5120
+    },
+    {
+      "case": "mercator-hidden-again",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 3360,
+      "guardedMaskDraws": 3072
+    },
+    {
+      "case": "mercator-zoom4",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 18674,
+      "guardedMaskDraws": 18122
+    },
+    {
+      "case": "mercator-pitched",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 13722,
+      "guardedMaskDraws": 11402
+    },
+    {
+      "case": "globe",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 25060,
+      "guardedMaskDraws": 21872
+    },
+    {
+      "case": "terrain",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "terrainSamples": [
+        {
+          "cache": "cold",
+          "changedBytes": 0,
+          "identityEqual": true,
+          "dispatchEqual": true
+        },
+        {
+          "cache": "warm",
+          "changedBytes": 0,
+          "identityEqual": true,
+          "dispatchEqual": true
+        }
+      ],
+      "baselineMaskDraws": 1202,
+      "guardedMaskDraws": 1090
+    }
+  ],
+  "naturalVerifiedLocally": true,
+  "batchesVerifiedLocally": true,
+  "stats": [
+    {
+      "name": "baseline",
+      "frames": 2,
+      "batches": 2,
+      "deferred": 20,
+      "lastDispatch": 360,
+      "preparedCached": 0,
+      "pending": 216,
+      "errors": 0,
+      "settled": true
+    },
+    {
+      "name": "hidden-mask-guard",
+      "frames": 2,
+      "batches": 2,
+      "deferred": 14,
+      "lastDispatch": 360,
+      "preparedCached": 0,
+      "pending": 216,
+      "errors": 0,
+      "settled": true
+    }
+  ]
+}
