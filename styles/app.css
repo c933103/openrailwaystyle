@@ -71,6 +71,8 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 
 .swatch.pattern-swatch {width:62px;height:12px;background:none;border:0;flex-shrink:0;overflow:visible}
 .pattern-swatch svg {display:block;width:62px;height:12px}
+/* Long lifecycle patterns need a full row beside an unbroken label. */
+.legend-item:has(.pattern-swatch) {grid-column:1 / -1}
 .swatch.street-running {height:9px;background:#b68f55;border-top:3px solid #d1ba94;border-bottom:3px solid #d1ba94}
 .swatch.level-crossing {background:none;height:18px;text-align:center}
 .swatch.level-crossing::after {content:'×';color:#63332c;font-size:22px;line-height:18px;font-weight:bold}
