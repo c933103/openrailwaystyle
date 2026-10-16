@@ -175,9 +175,23 @@ export function createRailProviderRecovery(map, {
       const aborted = event.error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(String(event.error?.message ?? event.error ?? ''));
       if (!aborted && errorStatus(event.error) >= 400) {
         const evidence = observed.get(event.sourceId), state = failed.get(event.sourceId);
-        if (event.tile && evidence?.source === source && evidence.url === source.url) evidence.tiles.delete(event.tile);
+        let tile = event.tile;
+        if (!tile && c && evidence?.source === source && evidence.url === source.url) {
+          // Coordinate callbacks can replace an earlier error already bound to
+          // a tile. Resolve only a unique, previously observed active instance;
+          // never revoke a cached/replaced tile or an ambiguous world copy.
+          const matches = (activeTiles(event.sourceId, source) || []).filter(candidate =>
+            tileKey(candidate.tileID?.canonical) === tileKey(c) &&
+            ['wrap', 'overscaledZ', 'key'].every(key => event.coord[key] === undefined || event.coord[key] === candidate.tileID[key]));
+          if (matches.length === 1 && evidence.tiles.has(matches[0])) tile = matches[0];
+        }
+        if (tile && evidence?.source === source && evidence.url === source.url) evidence.tiles.delete(tile);
         if (state?.source === source && state.url === source.url) {
-          if (c) state.tiles.get(tileKey(c))?.instances.delete(event.tile ?? null);
+          if (c) {
+            const instances = state.tiles.get(tileKey(c))?.instances;
+            instances?.delete(tile ?? null);
+            if (!event.tile) instances?.delete(null);
+          }
           else state.metadata = false;
         }
         schedule();onChange();

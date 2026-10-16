@@ -158,6 +158,70 @@ test('nonretryable errors on another tile/source cannot retire a cached instance
   } finally { f.recovery.dispose(); }
 });
 
+for (const copiedCoord of [false, true]) test(`coordinate-only 403 retires its active bound retry${copiedCoord ? ' with an equivalent location object' : ''}`, () => {
+  const f = cacheFixture(503, true);
+  try {
+    const coord = copiedCoord ? {...f.tile.tileID, canonical: {...f.tile.tileID.canonical}} : f.tile.tileID;
+    const event = {sourceId: 'stations', coord, error: {status: 403}};
+    f.state.noteError(event);assert.equal(f.recovery.noteError(event), false);
+    assert.ok(f.state.area(10), 'access failure retains fallback');
+    assert.equal(f.recovery.hasFailures(), false);assert.equal(f.timers.size, 0);
+    for (let i = 0; i < 2; i++) {
+      f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), false);assert.equal(f.timers.size, 0);
+    }
+    assert.equal(f.recovery.noteError({...event, error: {status: 503}}), true);
+    assert.equal(f.recovery.hasFailures(), true);assert.equal(f.timers.size, 1);
+    f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), true);
+  } finally { f.recovery.dispose(); }
+});
+
+test('coordinate-only access errors retire only the matching known active world copy', () => {
+  const f = cacheFixture(503, true), sibling = {...f.tile, tileID: {...f.tile.tileID, wrap: 1}};
+  try {
+    f.back([f.tile, sibling]);f.fail(503, sibling);
+    f.recovery.noteError({sourceId: 'stations', coord: {...f.tile.tileID}, error: {status: 403}});
+    assert.equal(f.recovery.hasFailures(), true, 'independent sibling retry survives');
+    f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), false);
+    f.away();f.back(sibling);f.recovery.wake();assert.equal(f.recovery.hasFailures(), true);
+  } finally { f.recovery.dispose(); }
+});
+
+test('unknown, mismatched and ambiguous coordinates cannot retire known retry evidence', () => {
+  const f = cacheFixture(503, true), sibling = {...f.tile, tileID: {...f.tile.tileID, wrap: 1}};
+  try {
+    f.back([f.tile, sibling]);f.fail(503, sibling);
+    for (const coord of [{canonical: f.tile.tileID.canonical}, {...f.tile.tileID, wrap: 2},
+      {...f.tile.tileID, overscaledZ: 11}, {...f.tile.tileID, key: 'unknown'},
+      {...f.tile.tileID, canonical: {...f.tile.tileID.canonical, x: 520}}]) {
+      f.recovery.noteError({sourceId: 'stations', coord, error: {status: 403}});
+    }
+    f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), true);
+    f.away();f.back(sibling);f.recovery.wake();assert.equal(f.recovery.hasFailures(), true);
+  } finally { f.recovery.dispose(); }
+});
+
+test('coordinate-only access errors cannot retire a cached failure through an unobserved replacement', () => {
+  const f = cacheFixture(503, true), replacement = {...f.tile, tileID: {...f.tile.tileID}};
+  try {
+    f.away();f.back(replacement);
+    f.recovery.noteError({sourceId: 'stations', coord: replacement.tileID, error: {status: 403}});
+    assert.equal(f.recovery.hasFailures(), false);
+    f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), true, 'only the previously observed tile retains retry authority');
+  } finally { f.recovery.dispose(); }
+});
+
+test('coordinate-only replacement also retires an unbound marker left by unavailable inventory', () => {
+  const f = cacheFixture(503, true), manager = f.map.style.tileManagers.stations;
+  try {
+    delete f.map.style.tileManagers.stations;
+    f.recovery.noteError({sourceId: 'stations', coord: f.tile.tileID, error: {status: 503}});
+    f.map.style.tileManagers.stations = manager;
+    f.recovery.noteError({sourceId: 'stations', coord: f.tile.tileID, error: {status: 403}});
+    assert.equal(f.recovery.hasFailures(), false);assert.equal(f.timers.size, 0);
+    f.away();f.back();f.recovery.wake();assert.equal(f.recovery.hasFailures(), false);
+  } finally { f.recovery.dispose(); }
+});
+
 test('403 replaces only one of two previously failed world copies at the same coordinate', () => {
   const f = cacheFixture(), other = {...f.tile, tileID: {...f.tile.tileID, wrap: 1}};
   try {
@@ -229,9 +293,9 @@ test('an unknown wrapped copy does not inherit failure from a cached tile at the
   } finally { f.recovery.dispose(); }
 });
 
-for (const [initialStatus, statusCode] of [[403, 403], [503, 503], [503, 403], [403, 503]])
-  test(`actual app restores cached ${initialStatus}→${statusCode} markers and current status after error bookkeeping was retired`, async () => {
-  const f = cacheFixture(initialStatus), dom = new JSDOM('<div id="status"></div>');
+for (const [initialStatus, statusCode, coordinateOnly] of [[403, 403], [503, 503], [503, 403], [403, 503], [503, 403, true], [403, 503, true]])
+  test(`actual app restores cached ${initialStatus}→${statusCode}${coordinateOnly ? ' coordinate-only' : ''} markers and current status after error bookkeeping was retired`, async () => {
+  const f = cacheFixture(initialStatus, coordinateOnly), dom = new JSDOM('<div id="status"></div>');
   try {
     const text = await readFile(new URL('../styles/app.mjs', import.meta.url), 'utf8');
     const source = text.slice(text.indexOf('function applyStationFallbackState()'), text.indexOf('const unwrap ='));
@@ -243,8 +307,13 @@ for (const [initialStatus, statusCode] of [[403, 403], [503, 503], [503, 403], [
       stationFallbackFilter, stationFallbackMarkersEnabled, stationFallbackNamesEnabled,
     });
     update();assert.match(status.textContent, /station data unavailable/);
+    if (coordinateOnly) {
+      const event = {sourceId: 'stations', coord: {...f.tile.tileID}, error: {status: statusCode}};
+      f.state.noteError(event);f.recovery.noteError(event);update();
+      assert.equal(status.textContent.includes('Retrying failed tiles'), statusCode === 503);
+    }
     f.away();update();assert.equal(errors.size, 0);assert.equal(status.classList.contains('error'), false);
-    if (initialStatus !== statusCode) f.fail(statusCode);
+    if (!coordinateOnly && initialStatus !== statusCode) f.fail(statusCode);
     // moveend can precede the renderer's cached-tile reactivation. Exercise
     // the actual app's idle subscription after that earlier wake saw no demand.
     f.recovery.wake();assert.equal(f.timers.size, 0);f.back();
