@@ -6,6 +6,7 @@ import {webcrypto, createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {backportMapLibre524} from '../styles/map-controls.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
+import * as cachedStationCompatibility from './fixtures/cached-station-compatibility.mjs';
 
 const source = readFileSync(new URL('../styles/sw.js', import.meta.url), 'utf8');
 const scope = 'https://atlas.test/openrailwaystyle/';
@@ -607,5 +608,61 @@ test('world-copy recovery release upgrades cached app and exact recovery bytes o
   const versions=await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json();
   assert.deepEqual(versions,[version,previous.version]);
   assert.match(await(await next.request('./',true)).text(),new RegExp(version));
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
+async function cachedStationReturn(fallbackBytes,recoveryBytes){
+  const load=bytes=>import('data:text/javascript;base64,'+Buffer.from(bytes).toString('base64'));
+  const [{createStationFallbackState},{createRailProviderRecovery}]=await Promise.all([load(fallbackBytes),load(recoveryBytes)]);
+  const source={url:'atlasstation://en/https://openrailwaymap.app/standard_railway_text_stations',maxzoom:16};
+  const tile={state:'errored',tileID:{wrap:0,canonical:{z:10,x:518,y:352}}};let tiles=[tile];
+  const map={getSource:()=>source,getZoom:()=>10,style:{tileManagers:{stations:{getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]}}}};
+  const state=createStationFallbackState(map),timers=new Set();
+  const recovery=createRailProviderRecovery(map,{setTimer:fn=>{timers.add(fn);return fn;},clearTimer:fn=>timers.delete(fn)});
+  try{
+    const event={sourceId:'stations',tile,error:{status:503}};state.noteError(event);recovery.noteError(event);
+    assert.ok(state.area(10));assert.equal(recovery.hasFailures(),true);
+    tiles=[];assert.equal(state.area(10),null);recovery.wake();assert.equal(recovery.hasFailures(),false);
+    tiles=[tile];recovery.wake();
+    return {fallback:Boolean(state.area(10)),retry:recovery.hasFailures(),timer:timers.size};
+  }finally{recovery.dispose();}
+}
+
+test('cached station release upgrades executable fallback and retry bytes while preserving old tabs',async()=>{
+  // A minimal executable old-shell model tests the cache compatibility contract;
+  // tests/station-fallback-cache.test.mjs exercises the actual pinned renderer
+  // and current modules. No historical application bundle is shipped here.
+  const previous=cachedStationCompatibility;
+  const version=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8').match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous.version);
+  const paths=['app.mjs','station-fallback.mjs','rail-provider-recovery.mjs'],oldBodies=new Map(),current=new Map();
+  for(const path of paths){
+    oldBodies.set(new URL(path,scope).pathname,previous.files[path]);
+    current.set(new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8'));
+  }
+  const old=startWorker({version:previous.version,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const originalCaches=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous.version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  const get=async(worker,path,token)=>await(await worker.request(path+'?v='+token)).text();
+  for(const path of paths){
+    assert.equal(await get(unchanged,path,previous.version),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===new URL(path,scope).pathname).length,0);
+  }
+  assert.deepEqual(await cachedStationReturn(await get(unchanged,'station-fallback.mjs',previous.version),
+    await get(unchanged,'rail-provider-recovery.mjs',previous.version)),{fallback:false,retry:false,timer:0},'unchanged-token control executes the old-shell compatibility model');
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await get(next,path,version),current.get(new URL(path,scope).pathname));
+    assert.equal(await get(next,path,previous.version),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
+  }
+  assert.deepEqual(await cachedStationReturn(await get(next,'station-fallback.mjs',version),
+    await get(next,'rail-provider-recovery.mjs',version)),{fallback:true,retry:true,timer:1});
+  assert.deepEqual([...next.stores.keys()],originalCaches,'upgrade retains the worker cache generation');
+  const versions=await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json();
+  assert.deepEqual(versions,[version,previous.version]);
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
