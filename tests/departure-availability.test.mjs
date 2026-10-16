@@ -193,15 +193,17 @@ function boardDom(feed) {
     }};
 }
 const partialMessage = 'Some departures could not load. The board may be incomplete.';
-test('DOM keeps numeric destination conflicts separate through cached and translated redraws', async () => {
+test('DOM keeps numeric and lexical destination conflicts separate through cached and translated redraws', async () => {
   for (const order of [['a','b'], ['b','a']]) for (const [a, b] of [
     ['Terminal 1','Terminal 10'], ['Central','Central 2'], ['中央1','中央10'],
+    ['Central','Central Park'], ['York','New York'], ['中央','中央公園'],
+    ['中央','(North) 中央'], ['Central','Central (北)'], ['Central','Central北'],
   ]) {
     const bodies = {a:{stopTimes:[{...observation, tripId:'trip-a', headsign:a}]},
       b:{stopTimes:[{...observation, tripId:'trip-b', headsign:b, cancelled:true}]}};
     const feed = {current:fixture({order, bodies})}, view = boardDom(feed);
     try {
-      const station = {id:'numeric-destinations', name:'Central', 'name:en':'Central', 'name:ja':'中央'};
+      const station = {id:'distinct-destinations', name:'Central', 'name:en':'Central', 'name:ja':'中央'};
       for (const language of ['en','ja','en']) {
         view.language(language); view.show(station); await view.settle();
         assert.deepEqual(new Set([...view.panel.querySelectorAll('.departure-headsign')].map(node => node.textContent)), new Set([a,b]));
@@ -576,4 +578,37 @@ test(`DOM displays wrapped station boards and retains cached availability (${dir
     assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 1);
     assert.equal(view.panel.querySelector('.departure-warning')?.textContent ?? null, failed.length ? partialMessage : null);
   } finally {view.dom.window.close();}
+});
+
+test('distinct lexical destinations open their own trip and highlight only their own stop', async () => {
+  for (const destinations of [['Central','Central Park'], ['York','New York'], ['中央','中央公園'], ['中央','(North) 中央'], ['Central','Central北']]) {
+    const source = destinations.map((headsign, i) => [{...observation, headsign,
+      tripId:`trip-${i}`, place:{...observation.place, stopId:`stop-${i}`, track:String(i + 2)}}]);
+    for (const lists of [source, [...source].reverse()]) {
+      const dom = new JSDOM('<main></main>'), calls = [];
+      try {
+        const rows = departureRows(lists);
+        assert.equal(rows.length, 2);
+        const stops = rows.map(row => ({name:row.headsign, stopId:row.stopId, track:row.track,
+          scheduledArrival:row.scheduled, scheduledDeparture:row.scheduled,
+          arrival:row.departure, departure:row.departure, tz:'UTC'}));
+        for (const row of rows) {
+          const item = departureItem(dom.window.document, row, {load:async id => {calls.push(id); return stops;}});
+          dom.window.document.querySelector('main').append(item);
+          const details = item.querySelector('details');
+          details.open = true;
+          details.dispatchEvent(new dom.window.Event('toggle'));
+          await new Promise(resolve => setImmediate(resolve));
+          assert.equal(item.querySelectorAll('.trip-current-stop').length, 1);
+          assert.equal(item.querySelector('.trip-current-stop th').firstChild.textContent, row.headsign);
+          assert.equal(calls.at(-1), row.tripId);
+          details.open = false; details.open = true;
+          details.dispatchEvent(new dom.window.Event('toggle'));
+          await new Promise(resolve => setImmediate(resolve));
+          assert.equal(calls.filter(id => id === row.tripId).length, 1, 'cached reopening keeps the matching schedule');
+        }
+        assert.deepEqual(new Set(calls), new Set(['trip-0','trip-1']));
+      } finally {dom.window.close();}
+    }
+  }
 });

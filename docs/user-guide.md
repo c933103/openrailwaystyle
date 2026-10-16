@@ -37,7 +37,15 @@ between different boards remain separate. Different numeric destination componen
 the entire candidate group from merging. Bilingual names may repeat the same
 numeric component. Numbers attached to additional service descriptions are not
 guessed away, so this conservative check can retain duplicate-looking rows.
-It does not establish full destination or cross-source train identity.
+Complete destination text must also agree: Central and Central Park, York and
+New York, and 中央 and 中央公園 remain separate. Different scripts alone are
+not evidence of a translation: Central (北), Central北 and (North) 中央 retain
+their qualifiers. The known 桜木町 / Sakuragichō and Terminal N / 第N航廈
+bilingual pairs remain compatible, as do the leading service tags `(Local)`,
+`(普通)` and `(普通 Local)`. Other aliases and unknown tags remain part of the
+destination, so some duplicate-looking rows stay separate until stronger source
+evidence is available. These checks veto the entire group without choosing a
+smaller subgroup. This does not establish full cross-source train identity.
 
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. This includes malformed rows or wrong-typed fields consumed by the
