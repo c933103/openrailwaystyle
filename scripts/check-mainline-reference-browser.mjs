@@ -1,3 +1,4 @@
+import {mainlineOutageVisible} from './mainline-outage-check.mjs';
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -163,7 +164,7 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
     ids:[...new Set(atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
      .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))]}),c.chainIdsByZoom[6])});
   }
-  await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('OpenRailwayMap railway tiles are unavailable'),null,{timeout:30000});
+  await page.waitForFunction(mainlineOutageVisible,null,{timeout:30000});
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
  }finally{await page.evaluate(()=>window.atlasMap?.remove()).catch(()=>{});await browser.close()}
 }

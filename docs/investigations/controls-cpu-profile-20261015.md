@@ -1,5 +1,11 @@
 # First detail-2 controls CPU experiment
 
+Current controls acceptance leaves CPU sampling off unless explicitly requested
+with `ATLAS_CONTROLS_CPU_PROFILE=1`. See the
+[actual-path settlement capture](controls-settlement-boundaries-20261015.md)
+for the later failure and bounded diagnostic change. The original experiment
+below is retained as historical context.
+
 The intermittent 60-second controls settlement failure remains unresolved.
 PR #212 added bounded timing observations, not a runtime repair. Its accepted
 head was `29e06a435020c7e7af24322827b366d873818c95`, merged as

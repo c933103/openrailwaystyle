@@ -8,6 +8,7 @@ test('fixture fulfillment is distinct from browser headers and completed body', 
   const request = {url: () => 'https://user:secret@fixture.invalid/tiles/9/1/2?token=secret#secret'};
   trace.start(request); now += 5; trace.fulfilled(request);
   let state = trace.snapshot();
+  assert.equal(state.timeOrigin,100,'request events align to an explicit Node wall-clock origin');
   assert.equal(state.pendingCount, 1);
   assert.deepEqual(state.pending[0], {id: 1, url: 'https://fixture.invalid/tiles/9/1/2', started: 0, fulfilled: 5});
   assert.equal(state.counts.finished, 0);

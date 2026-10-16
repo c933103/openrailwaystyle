@@ -32,7 +32,7 @@ export function createRequestLifecycle({now = Date.now, limit = 128} = {}) {
     finished: request => mark(request, 'finished'),
     failed: request => mark(request, 'failed'),
     snapshot: () => ({
-      elapsed: at(), counts: {...counts}, pendingCount: active.size,
+      timeOrigin: epoch, elapsed: at(), counts: {...counts}, pendingCount: active.size,
       pending: [...active].slice(0, limit).map(record => ({...record})),
       pendingTruncated: active.size > limit,
       recent: recent.map(record => ({...record})),

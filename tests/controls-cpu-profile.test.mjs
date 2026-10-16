@@ -120,11 +120,13 @@ test('integration profiles exactly the first transition and keeps fixture and ac
   const root = new URL('..', import.meta.url), read = path => existsSync(new URL(path, root)) ? readFileSync(new URL(path, root), 'utf8') : null;
   const source = read('scripts/check-map-controls-browser.mjs');
   assert.match(source, /if\(size.width===1365&&size.height===900&&expanded&&readout&&detail===1\)/);
-  assert.ok(source.indexOf('await cpuProfile.start()') < source.indexOf("await clickVisibleControl(page,'button.atlas-ctrl"));
+  assert.match(source,/const cpuProfileEnabled=process.env.ATLAS_CONTROLS_CPU_PROFILE==='1'/);
+  assert.match(source,/if\(cpuProfileEnabled\)\{await settlementTrace.observe\('cpu-profile-setup',\(\)=>cpuProfile.start\(\)\)/);
+  assert.ok(source.indexOf('()=>cpuProfile.start()') < source.indexOf("()=>clickVisibleControl(page,'button.atlas-ctrl"));
   assert.match(source, /map.once\('idle',\(\)=>resolve\(\)\);map.triggerRepaint\(\)/);
   assert.match(source, /map.loaded\(\)&&map.areTilesLoaded\(\)&&!map.isMoving\(\)/);
   assert.match(source, /canvas.width===Math.floor\(container.clientWidth\*ratio\)&&canvas.height===Math.floor\(container.clientHeight\*ratio\)/);
-  assert.match(source, /\},null,\{timeout:60000\}\)/);
+  assert.match(source, /\},null,\{timeout:60000\}\)\)/);
   assert.match(source, /const ms=Date.now\(\)-start, pendingCount=pending.size;[\s\S]*?cpuProfile.stop\('settlement-finished'\)/);
   assert.match(source, /await readBrowserTiming\(page\)[\s\S]*?if\(profileRead\)await profileRead/);
   assert.match(source, /contentType:'application\/x-protobuf',body:Buffer.alloc\(0\)/);
