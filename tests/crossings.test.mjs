@@ -105,3 +105,45 @@ test('crossing tags: the query asks for every shown tag; tabs and line breaks in
   assert.deepEqual(byId[8], {kind: 'foot', tags_unreadable: true});
   for (const tile of buildTiles(table, OVERVIEW_ZOOM).values()) for (let i = 0, o = layer(tile); i < o.length; i++) assert.deepEqual(Object.keys(o.feature(i).properties).filter(k => k !== 'minor'), ['kind'], 'overview tiles stay tag-free');
 });
+
+test('crossing tags: boundary whitespace survives every tag column, the table and detail tiles', () => {
+  const tags = {...Object.fromEntries(TAG_KEYS.map(key => [key, ` \t${key}\n `])),
+    name: '\tBoundary name\t', description: '\nBoundary description\n',
+    'crossing:bell': '\t', 'crossing:saltire': '\n', access: ' '};
+  const values = [5, 22.4, 114, ' \tlevel_crossing\t ', ...TAG_KEYS.map(key => tags[key])];
+  const rows = parseCsv(csv([], [values]));
+  assert.deepEqual(rows, [{id: 5, lat: 22.4, lon: 114, kind: 'road', minor: true, tags}], 'only structural fields are normalized');
+  const table = new Map();
+  applyChanges(table, rows);
+  const restored = readTable(writeTable(table));
+  assert.deepEqual(restored, table);
+  assert.deepEqual(restored.get(5)[4], tags);
+  const tiles = buildTiles(restored, DETAIL_ZOOM, {detail: true});
+  assert.ok(tiles.size > 0);
+  for (const bytes of tiles.values()) assert.deepEqual(layer(bytes).feature(0).properties, {...tags, kind: 'road', minor: true});
+});
+
+test('crossing tags: final description line breaks stay distinct from row and marker delimiters', () => {
+  assert.equal(TAG_KEYS.at(-1), 'description');
+  const descriptions = ['', 'plain', '\nleading', 'trailing\n', 'trailing\n\n', '\nBoundary description\n', '\n', '\n\n'];
+  const values = descriptions.map((description, i) => [100 + i, 22.4, 114, 'crossing', ...TAG_KEYS.map(key => key === 'description' ? description : '')]);
+  for (let i = 0; i < values.length; i++) {
+    // Each payload precedes another crossing, the minor marker and the end marker.
+    for (const text of [csv([values[i], values[0]]), csv([values[i]]), csv([], [values[i]])]) {
+      for (const response of [text, text.slice(0, -1)]) {
+        const rows = parseCsv(response);
+        assert.deepEqual(rows[0].tags, descriptions[i] ? {description: descriptions[i]} : {}, `final description ${JSON.stringify(descriptions[i])}`);
+      }
+    }
+  }
+  const table = new Map();
+  applyChanges(table, parseCsv(csv(values)));
+  const restored = readTable(writeTable(table));
+  assert.deepEqual(restored, table);
+  const byId = {};
+  for (const bytes of buildTiles(restored, DETAIL_ZOOM, {detail: true}).values()) {
+    const tile = layer(bytes);
+    for (let i = 0; i < tile.length; i++) byId[tile.feature(i).id] = tile.feature(i).properties;
+  }
+  for (let i = 0; i < descriptions.length; i++) assert.deepEqual(byId[100 + i], {kind: 'foot', ...(descriptions[i] ? {description: descriptions[i]} : {})});
+});
