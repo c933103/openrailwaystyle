@@ -1,0 +1,82 @@
+{
+  "sourceCommit": "2d48868f0ee2a126634baeab1b8a95ea4d0d4beb",
+  "tree": "9fd82b0c7fdb25a29923b986fba57c6558a4bdec",
+  "priorSourceCommit": "b9b6e2286877150f29d5523c82afa8509e78c521",
+  "patchSha256": "2da2fceb15907d64c10189052ae61adbbc1354cb053bfddc3e8a04750e3fd192",
+  "deltaSha256": "7f54dc3e0384a5567b08fd98c23bac9d552be6a2ca9dd6eb29e5c824e904ab2c",
+  "archiveSha256": "e5d9a9fbe8361a078a77559a2814eb5d6f4b1b3d1d5bd8cb7abb4e8cb0b4a4d5",
+  "archiveGitBlob": "662cab4447d4ada1efc877c9ab2e47b02504754d",
+  "bytes": 92379,
+  "files": [
+    {
+      "path": "frozen-manifest-v3.json",
+      "sha256": "4f5ed63da485596da558642b8119e35fa7e3f064dfb724cd7f6ac3d9696891d8",
+      "bytes": 3749
+    },
+    {
+      "path": "frozen-v3.patch",
+      "sha256": "2da2fceb15907d64c10189052ae61adbbc1354cb053bfddc3e8a04750e3fd192",
+      "bytes": 59878
+    },
+    {
+      "path": "delta-v3.patch",
+      "sha256": "7f54dc3e0384a5567b08fd98c23bac9d552be6a2ca9dd6eb29e5c824e904ab2c",
+      "bytes": 3136
+    },
+    {
+      "path": "pass-enum-v3-proof.json",
+      "sha256": "9f3cc025200fd8f55a40c798385e583f55aa125f2e4f33af33ea35faeb7f1252",
+      "bytes": 309
+    },
+    {
+      "path": "focused-v3.log",
+      "sha256": "f2d7d53c8504f4be04a0a3b1ae93dea3685ecc7609239fd78a6c6d0284f33a6b",
+      "bytes": 5195
+    },
+    {
+      "path": "focused-v3.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "independent-review-v3.txt",
+      "sha256": "eb24d36ea16b2fbb17585334ecca0a91bde1fc463d403df586718c780b1ae185",
+      "bytes": 1587
+    },
+    {
+      "path": "independent-review-v3-focused.log",
+      "sha256": "ab6176c2f5ea3f593c382d48e8e1f9877d0ebb485d427615086ab65c275714bb",
+      "bytes": 5187
+    },
+    {
+      "path": "aggregate-v3.log",
+      "sha256": "4d3be383621cb3ba54638dfb76f9d04feb4998f5174f1f0777a2f65b88219ef9",
+      "bytes": 222749
+    },
+    {
+      "path": "aggregate-v3.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "build-v3.log",
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "bytes": 209
+    },
+    {
+      "path": "build-v3.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "style-repro-v3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "style-repro-v3.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    }
+  ]
+}
