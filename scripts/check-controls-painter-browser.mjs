@@ -10,7 +10,7 @@ import {createRequestLifecycle} from './request-lifecycle.mjs';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
-import {installControlsFetchProbe,controlsMapIdle} from './controls-painter-probe.mjs';
+import {installControlsFetchProbe,controlsMapIdle,controlsTerrainNaturalEquivalent} from './controls-painter-probe.mjs';
 import {controlsPainterManifest,installControlsPainterFixtures,nonemptyPainterStyle,comparePixelBytes} from './controls-painter-fixture.mjs';
 import {MAPLIBRE_BACKPORT} from '../styles/map-controls.mjs';
 
@@ -21,7 +21,7 @@ assert.equal(process.env.BROWSER_WS_ENDPOINT,undefined,'Each arm needs a fresh, 
 await mkdir('browser-review',{recursive:true});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const manifest=await controlsPainterManifest(),report={manifest,arms:[],comparisons:[],causation:'Original intermittent timeout remains unresolved; a single pair is diagnostic, not a statistical speed claim.'};
-const pixelBuffers=new Map();
+const pixelBuffers=new Map(),terrainPixelBuffers=new Map();
 const save=()=>writeFile('browser-review/controls-painter-comparison.json',JSON.stringify(report,null,2));
 const deadline=setTimeout(()=>{void save().finally(()=>process.exit(1));},12*60*1000);deadline.unref();
 async function boundedRead(page,fn,timeout=2000){let timer;try{return await Promise.race([page.evaluate(fn).catch(()=>({unavailable:true})),new Promise(resolve=>{timer=setTimeout(()=>resolve({unavailable:true,timeout}),timeout);})]);}finally{clearTimeout(timer);}}
@@ -100,23 +100,42 @@ async function pixelChecks(page,guard,arm){
   await idle(page);
   const probe=await boundedRead(page,()=>{controlsProbe.stop();return controlsProbe.snapshot();});
   assert.ok(!probe.unavailable&&!probe.dispatchTruncated,'Pixel-case observations must be complete');
-  const pixels=await page.evaluate(()=>{
-   const canvas=controlsMap.getCanvas(),copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
-   if(copy.width!==512||copy.height!==512)throw new Error('Unexpected bounded pixel dimensions');
-   const ctx=copy.getContext('2d');ctx.drawImage(canvas,0,0);const data=ctx.getImageData(0,0,512,512).data;
-   let ink=0,blue=0,red=0;for(let i=0;i<data.length;i+=4){const[r,g,b,a]=data.slice(i,i+4);if(a&&Math.min(r,g,b)<240)ink++;if(a&&b>r+20&&b>g+20)blue++;if(a&&r>g+30&&r>b+30)red++;}
-   const chunks=[];for(let i=0;i<data.length;i+=8192)chunks.push(String.fromCharCode(...data.subarray(i,i+8192)));
-   return {rgba:btoa(chunks.join('')),ink,blue,red,features:controlsMap.queryRenderedFeatures({layers:['lines']}).length};
-  });
+  const pixels=await readPixels(page);
   const bytes=Buffer.from(pixels.rgba,'base64');delete pixels.rgba;
   assert.equal(bytes.length,512*512*4);assert.ok(pixels.ink>1000&&pixels.features>0,'A blank render cannot establish equivalence');
   if(entry.expectRed)assert.ok(pixels.red>20,'Showing the hidden layer must visibly change the image');
   else if(entry.name.includes('hidden'))assert.equal(pixels.red,0,'Hidden red layer must not paint');
   pixelBuffers.set(`${arm.name}:${entry.name}`,bytes);
   const record={case:entry.name,sha256:digest(bytes),...pixels,probe};arm.pixels.push(record);
+  await save(); // Preserve the natural result even if controlled sampling fails.
+  if(entry.terrain){
+   record.terrainSamples=[];
+   for(const cache of ['cold','warm']){
+    const sampledPixels=await readPixels(page,cache),{sample}=sampledPixels,sampledBytes=Buffer.from(sampledPixels.rgba,'base64');
+    sample.sha256=digest(sampledBytes);sample.naturalChangedBytes=comparePixelBytes(bytes,sampledBytes);
+    terrainPixelBuffers.set(`${arm.name}:${cache}`,sampledBytes);record.terrainSamples.push(sample);
+    await save();
+    assert.equal(sample.naturalChangedBytes,0,`${cache} redraw must preserve the natural terrain image`);
+   }
+  }
   await page.screenshot({path:`browser-review/controls-painter-${arm.name}-${entry.name}.png`});
   await save();
  }
+}
+async function readPixels(page,cache){
+ return page.evaluate(async({base,cache})=>{
+   let sample;
+   if(cache){
+    const {sampleControlsTerrainFrame}=await import(base+'__controls-painter-probe.mjs');
+    sample=sampleControlsTerrainFrame(controlsMap,controlsProbe,{cache});
+   }
+   const canvas=controlsMap.getCanvas(),copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+   if(copy.width!==512||copy.height!==512)throw new Error('Unexpected bounded pixel dimensions');
+   const ctx=copy.getContext('2d');ctx.drawImage(canvas,0,0);const data=ctx.getImageData(0,0,512,512).data;
+   let ink=0,blue=0,red=0;for(let i=0;i<data.length;i+=4){const[r,g,b,a]=data.slice(i,i+4);if(a&&Math.min(r,g,b)<240)ink++;if(a&&b>r+20&&b>g+20)blue++;if(a&&r>g+30&&r>b+30)red++;}
+   const chunks=[];for(let i=0;i<data.length;i+=8192)chunks.push(String.fromCharCode(...data.subarray(i,i+8192)));
+   return {sample,rgba:btoa(chunks.join('')),ink,blue,red,features:controlsMap.queryRenderedFeatures({layers:['lines']}).length};
+  },{base,cache});
 }
 
 try{
@@ -152,8 +171,17 @@ try{
   assert.ok(original&&candidate,`Both arms must complete ${entry.name}`);
   const changedBytes=comparePixelBytes(original,candidate);
   const a=baseline.pixels.find(p=>p.case===entry.name),b=guarded.pixels.find(p=>p.case===entry.name);
-  const dispatchEqual=JSON.stringify(a.probe.lastVisibleDispatch)===JSON.stringify(b.probe.lastVisibleDispatch);
-  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
+  const naturalDispatchEqual=JSON.stringify(a.probe.lastVisibleDispatch)===JSON.stringify(b.probe.lastVisibleDispatch);
+  const terrainSamples=entry.terrain?['cold','warm'].map(cache=>{
+   const x=a.terrainSamples?.find(sample=>sample.cache===cache),y=b.terrainSamples?.find(sample=>sample.cache===cache);
+   assert.ok(x&&y,`Both arms must complete ${cache} terrain sampling`);
+   return {cache,changedBytes:comparePixelBytes(terrainPixelBuffers.get(`baseline:${cache}`),terrainPixelBuffers.get(`hidden-mask-guard:${cache}`)),
+    identityEqual:JSON.stringify(x.identity)===JSON.stringify(y.identity),
+    dispatchEqual:JSON.stringify(x.probe.lastVisibleDispatch)===JSON.stringify(y.probe.lastVisibleDispatch)};
+  }):undefined;
+  const naturalTerrainEqual=!entry.terrain||controlsTerrainNaturalEquivalent(a.probe,b.probe);
+  const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&(!terrainSamples||terrainSamples.every(sample=>sample.changedBytes===0&&sample.identityEqual&&sample.dispatchEqual));
+  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,naturalDispatchEqual,naturalTerrainEqual,terrainSamples,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
  }
  await save();
  assert.ok(report.comparisons.every(c=>c.changedBytes===0&&c.dispatchEqual),'Pixel bytes and visible dispatch must match exactly');

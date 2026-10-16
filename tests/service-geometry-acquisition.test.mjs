@@ -5,7 +5,8 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {addResult, buildTiles, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, partQuery, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
+import {STAGES, quarters} from '../scripts/branch-lines.mjs';
 const points = [[139.70,35.68],[139.71,35.69],[139.72,35.68],[139.73,35.69],[139.74,35.68]];
 const response = (day, coordinates = points) => ({osm3s: {timestamp_osm_base: `2026-10-${day}T00:00:00Z`}, elements: [
   {type:'relation',id:1,version:1,timestamp:'2026-10-01T00:00:00Z',tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
@@ -22,23 +23,152 @@ async function fixture(fn) {
     await mkdir(join(root,'previous'));
     await writeFile(join(root,'mock.mjs'), `import {readFileSync,appendFileSync} from 'node:fs';
 const observations=JSON.parse(readFileSync(process.env.MOCK_PATH,'utf8')); let count=0;
-globalThis.setTimeout=(callback)=>{callback();return 0;};
+globalThis.setTimeout=(callback,ms)=>{appendFileSync(process.env.MOCK_SLEEPS,JSON.stringify(ms)+'\\n');callback();return 0;};
 globalThis.fetch=async(url,options)=>{appendFileSync(process.env.MOCK_LOG,JSON.stringify({url,query:options.body.get('data')})+'\\n');
 const next=observations[count++];if(!next)throw new Error('Unexpected fetch');
 if(next.error)throw new TypeError('fetch failed',{cause:Object.assign(new Error('transport'),{code:next.error})});
-return new Response(next.padding?' '.repeat(next.padding):JSON.stringify(next.body),{status:next.status||200});};`);
+return new Response(next.padding?' '.repeat(next.padding):next.text??JSON.stringify(next.body),{status:next.status||200});};`);
     const run = async (responses, previousState = state(), table = {routes:new Map(),ways:new Map()}, environment = {}) => {
       await writeFile(join(root,'responses.json'),JSON.stringify(responses));
       await writeFile(join(root,'previous/state.json'),JSON.stringify(previousState));
       await writeFile(join(root,'previous/service-routes.ndjson.gz'),gzipSync(writeTable(table)));
       const child = spawnSync(process.execPath,['--import',join(root,'mock.mjs'),join(root,'scripts/build-service-routes.mjs')],{cwd:root,encoding:'utf8',
-        env:{...process.env,PREVIOUS_DATA:join(root,'previous'),OVERPASS_URL:'https://overpass.invalid/test',MOCK_PATH:join(root,'responses.json'),MOCK_LOG:join(root,'requests.ndjson'),GITHUB_OUTPUT:'',...environment}});
+        env:{...process.env,PREVIOUS_DATA:join(root,'previous'),OVERPASS_URL:'https://overpass.invalid/test',MOCK_PATH:join(root,'responses.json'),MOCK_LOG:join(root,'requests.ndjson'),MOCK_SLEEPS:join(root,'sleeps.ndjson'),GITHUB_OUTPUT:join(root,'github-output'),GITHUB_STEP_SUMMARY:join(root,'summary.md'),...environment}});
       assert.equal(child.status,0,child.stderr);
-      return {root,stdout:child.stdout,read:async name => JSON.parse(await readFile(join(root,'service-data',name),'utf8'))};
+      return {root,stdout:child.stdout,stderr:child.stderr,read:async name => JSON.parse(await readFile(join(root,'service-data',name),'utf8')),
+        requests:async()=> (await readFile(join(root,'requests.ndjson'),'utf8')).trim().split('\n').map(JSON.parse),
+        sleeps:async()=> (await readFile(join(root,'sleeps.ndjson'),'utf8')).trim().split('\n').map(JSON.parse)};
     };
     await fn(run);
   } finally { await rm(root,{recursive:true,force:true}); }
 }
+
+// Sanitized diagnostic excerpt from urban acquisition run 38883856813,
+// job 116916739952 (2026-10-16); not a complete archived provider response.
+const capacity = '# 502 Gateway Timeout\nThis Overpass API server is currently at capacity. All query workers are busy and the request queue is full.';
+const japan = STAGES.find(stage=>stage.name==='japan').parts[0];
+const parentQuery = partQuery(japan,japan.box);
+const html = detail=>`<html><head><title>Gateway Timeout</title></head><body>${detail}</body></html>`;
+
+for (const [name,status,text] of [
+  ['observed capacity',502,capacity],
+  ['capacity without worker wording',502,html('This server is at capacity.')],
+  ['busy workers',504,html('All query workers are busy.')],
+  ['full queue',504,html('The request queue is full.')],
+  ['case and whitespace',502,html('THE REQUEST\nQUEUE IS FULL.')],
+  ['diagnostic beyond the log excerpt',502,html(`${'Synthetic preamble. '.repeat(20)}The request queue is full.`)],
+]) {
+  test(`urban acquisition: ${name} retries the same box before Gateway Timeout subdivision`,async()=>fixture(async run=>{
+    const body=response('07'),result=await run([{status,text},{body}]),saved=await result.read('state.json');
+    assert.deepEqual((await result.requests()).map(item=>item.query),[parentQuery,parentQuery]);
+    assert.deepEqual(await result.sleeps(),[0,60000]);
+    assert.equal(saved.stages.japan.lastAttempt.splitBoxes,0);
+    assert.equal(saved.stages.japan.lastAttempt.fetchedBoxes,1);
+    assert.equal(saved.stages.japan.lastAttempt.status,'acquired');
+    assert.equal(saved.stages.japan.pending,null);
+    assert.equal(saved.runs[0].bytes,Buffer.byteLength(text)+Buffer.byteLength(JSON.stringify(body)));
+    const warning=result.stderr.split('\n').find(line=>line.startsWith('Overpass attempt'));
+    assert.ok(warning.length<=240,'provider log excerpts remain bounded');
+    if(name==='diagnostic beyond the log excerpt') assert.doesNotMatch(warning,/queue is full/);
+  }));
+}
+
+test('urban acquisition: five overload attempts preserve accepted data, queue, byte accounting and deferred publication',async()=>fixture(async run=>{
+  const table={routes:new Map(),ways:new Map()};addResult(table,toTable(response('06')),'japan');commitStage(table,'japan');
+  const before=writeTable(table),prior=state();
+  prior.stages.japan.pending=[{part:0,box:[35,139,36,140],depth:2},{part:0,box:[34,138,35,139],depth:2}];
+  prior.stages.japan.started='2026-10-01T00:00:00Z';
+  const result=await run(Array.from({length:5},()=>({status:502,text:capacity})),prior,table);
+  const saved=await result.read('state.json'),attempt=saved.stages.japan.lastAttempt;
+  assert.deepEqual((await result.requests()).map(item=>item.query),Array(5).fill(partQuery(japan,prior.stages.japan.pending[0].box)));
+  assert.deepEqual(await result.sleeps(),[0,60000,120000,180000,240000]);
+  assert.deepEqual(saved.stages.japan.pending,prior.stages.japan.pending);
+  assert.equal(saved.stages.japan.completed,null);
+  assert.equal(attempt.status,'deferred');assert.equal(attempt.fetchedBoxes,0);assert.equal(attempt.splitBoxes,0);
+  assert.equal(attempt.requests,5);assert.equal(attempt.downloadedBytes,5*Buffer.byteLength(capacity));
+  assert.equal(saved.runs[0].bytes,attempt.downloadedBytes);
+  assert.match(attempt.reason,/Overpass stayed unavailable: HTTP 502/);
+  assert.equal(gunzipSync(await readFile(join(result.root,'service-data/service-routes.ndjson.gz'))).toString(),before);
+  assert.equal((await result.read('manifest.json')).run.status,'deferred');
+  assert.equal(await readFile(join(result.root,'github-output'),'utf8'),'publish=true\nredeploy=false\n');
+  assert.match(await readFile(join(result.root,'summary.md'),'utf8'),/0 fetched boxes; 2 pending/);
+}));
+
+test('urban acquisition: overload after progress retains partial geometry and the untouched remaining box',async()=>fixture(async run=>{
+  const prior=state(),boxes=quarters(japan.box).slice(0,2);prior.stages.japan.pending=boxes.map(box=>({part:0,box,depth:1}));
+  prior.stages.japan.started='2026-10-01T00:00:00Z';
+  const body=response('07'),result=await run([{body},...Array.from({length:5},()=>({status:502,text:capacity}))],prior);
+  const saved=await result.read('state.json'),attempt=saved.stages.japan.lastAttempt;
+  assert.deepEqual((await result.requests()).map(item=>item.query),[partQuery(japan,boxes[0]),...Array(5).fill(partQuery(japan,boxes[1]))]);
+  assert.deepEqual(await result.sleeps(),[0,15000,60000,120000,180000,240000]);
+  assert.deepEqual(saved.stages.japan.pending,[prior.stages.japan.pending[1]]);
+  assert.equal(saved.stages.japan.completed,null);
+  assert.equal(attempt.status,'partial');assert.equal(attempt.fetchedBoxes,1);assert.equal(attempt.splitBoxes,0);assert.equal(attempt.requests,6);
+  assert.equal(attempt.downloadedBytes,Buffer.byteLength(JSON.stringify(body))+5*Buffer.byteLength(capacity));
+  assert.equal(saved.runs[0].bytes,attempt.downloadedBytes);
+  const persisted=readTable(gunzipSync(await readFile(join(result.root,'service-data/service-routes.ndjson.gz'))).toString());
+  assert.equal(persisted.routes.size,1);assert.equal(persisted.ways.size,1);
+  assert.equal(persisted.ways.get(10).nextGeometry.japan.snapshot,'2026-10-07T00:00:00Z');
+  const manifest=await result.read('manifest.json');assert.equal(manifest.run.status,'partial');assert.equal(manifest.routes,1);assert.ok(manifest.tiles>0);
+  assert.equal(await readFile(join(result.root,'github-output'),'utf8'),'publish=true\nredeploy=true\n');
+}));
+
+for (const [name,failure] of [
+  ['genuine HTTP timeout',{status:504,text:html('runtime error: Query timed out in query at line 1 after 181 seconds.')}],
+  ['JSON query timeout',{body:{remark:'runtime error: Query timed out in query at line 1 after 181 seconds.'}}],
+  ['query memory exhaustion',{body:{remark:'runtime error: Query run out of memory using about 2048 MB of RAM.'}}],
+  ['truncated JSON',{text:'{"elements":['}],
+]) {
+  test(`urban acquisition: ${name} retains spatial subdivision and ordinary request spacing`,async()=>fixture(async run=>{
+    const result=await run([failure,...quarters(japan.box).map(()=>({body:response('07')}))]);
+    assert.deepEqual((await result.requests()).map(item=>item.query),[parentQuery,...quarters(japan.box).map(box=>partQuery(japan,box))]);
+    assert.deepEqual(await result.sleeps(),[0,15000,15000,15000,15000]);
+    const saved=await result.read('state.json');assert.equal(saved.stages.japan.lastAttempt.splitBoxes,1);
+    assert.equal(saved.stages.japan.lastAttempt.fetchedBoxes,4);assert.equal(saved.stages.japan.pending,null);
+  }));
+}
+
+test('urban acquisition: repeated genuine timeouts retain the depth-six split limit and pending leaf',async()=>fixture(async run=>{
+  const result=await run(Array.from({length:7},()=>({status:504,text:'Query timed out after 181 seconds.'})));
+  const expected=[];let box=japan.box;
+  for(let depth=0;depth<=6;depth++){expected.push(partQuery(japan,box));box=quarters(box)[0];}
+  assert.deepEqual((await result.requests()).map(item=>item.query),expected);
+  assert.deepEqual(await result.sleeps(),[0,...Array(6).fill(15000)]);
+  const saved=await result.read('state.json');assert.equal(saved.stages.japan.lastAttempt.splitBoxes,6);
+  assert.equal(saved.stages.japan.pending.length,19);assert.equal(saved.stages.japan.pending[0].depth,6);
+  assert.equal(saved.stages.japan.completed,null);assert.match(saved.stages.japan.lastAttempt.reason,/could not fetch region/);
+}));
+
+for (const [name,status,text] of [
+  ['Dispatcher timeout',504,'Dispatcher_Client::request_read_and_idx::timeout'],
+  ['rate limit',429,'Gateway Timeout'],
+  ['service unavailable',503,'Gateway Timeout'],
+  ['generic gateway failure',502,'Bad Gateway'],
+]) {
+  test(`urban acquisition: ${name} retains five bounded retries without subdivision`,async()=>fixture(async run=>{
+    const result=await run(Array.from({length:5},()=>({status,text}))),saved=await result.read('state.json');
+    assert.deepEqual((await result.requests()).map(item=>item.query),Array(5).fill(parentQuery));
+    assert.deepEqual(await result.sleeps(),[0,60000,120000,180000,240000]);
+    assert.equal(saved.stages.japan.lastAttempt.splitBoxes,0);assert.equal(saved.stages.japan.lastAttempt.status,'deferred');
+    assert.equal(saved.stages.japan.pending.length,1);assert.equal(saved.stages.japan.completed,null);
+  }));
+}
+
+test('urban acquisition: default 50 MB run budget stops after an oversized response and retains the split queue',async()=>fixture(async run=>{
+  const result=await run([{padding:50_000_001}]),saved=await result.read('state.json');
+  assert.deepEqual((await result.requests()).map(item=>item.query),[parentQuery]);
+  assert.equal(saved.stages.japan.lastAttempt.downloadedBytes,50_000_001);assert.equal(saved.runs[0].bytes,50_000_001);
+  assert.equal(saved.stages.japan.lastAttempt.splitBoxes,1);assert.equal(saved.stages.japan.pending.length,4);
+  assert.equal(saved.stages.japan.completed,null);assert.match(saved.stages.japan.lastAttempt.reason,/download budget reached/);
+}));
+
+test('urban acquisition: default 100 MB daily allowance counts recent failed-response bytes',async()=>fixture(async run=>{
+  const prior=state();prior.runs=[{at:new Date().toISOString(),bytes:85_000_000}];
+  const result=await run([{padding:15_000_001}],prior),saved=await result.read('state.json');
+  assert.equal((await result.requests()).length,1);assert.equal(saved.stages.japan.lastAttempt.downloadedBytes,15_000_001);
+  assert.equal(saved.runs.reduce((sum,item)=>sum+item.bytes,0),100_000_001);
+  assert.equal(saved.stages.japan.completed,null);assert.match(saved.stages.japan.lastAttempt.reason,/download budget reached/);
+}));
 
 test('zero-byte transport outage persists a deferred attempt, unchanged geometry and an unfinished queue',async () => fixture(async run => {
   const table={routes:new Map(),ways:new Map()};addResult(table,toTable(response('06')),'japan');commitStage(table,'japan');

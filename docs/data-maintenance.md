@@ -177,6 +177,13 @@ Storage was measured against [published service-data commit `ba3ffbb`](https://g
 - The table records which stage found each route and each way's routes by stage; a stage's refresh replaces only its own part, so routes another stage found on a shared way stay.
 - Each tile feature is one route on one way, with its place (`i` of `n`) among the routes on that way, so the style draws routes sharing a track side by side; ways run west to east so that a route keeps its side from one way to the next.
 - Regions are fetched in the branch lines' stages and with the same mechanics (splitting, refresh every two weeks, the 20% guard), every six hours at minute 11, each run capped at 50 MB and no run once 100 MB were downloaded in 24 hours, so with the branch lines (up to 900 MB) the public server's guidance of about 1 GB a day holds.
+- Capacity, busy-worker and full-queue diagnostics retry the same box, even when
+  the error page also says "Gateway Timeout". Classification uses the full
+  diagnostic while logs stay bounded. The existing five attempts, 1/2/3/4-minute
+  retry waits and 15-second spacing between boxes remain unchanged. Exhausted
+  retries preserve the pending queue and fetched partial data, recording failed
+  response bytes in the same budgets; genuine query time/memory limits and
+  incomplete JSON still use bounded spatial subdivision.
 
 Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL table `service-routes.ndjson.gz` into `styles/data/service-routes/`; until the first run publishes, the Service view shows the tracks only.
 
