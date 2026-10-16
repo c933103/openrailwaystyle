@@ -65,6 +65,40 @@ test('expired same-list competitors remain ambiguity witnesses before time and d
   }
 });
 
+test('expired competitors cannot erase an upcoming ambiguity edge and unlock cancellation', () => {
+  const live = delayed('u'), competitor = observation('d');
+  for (const vetoed of [
+    delayed('v', {}, {scheduledDeparture:'2026-10-16T12:00:30Z'}),
+    delayed('v', {headsign:'Central Park'}),
+    delayed('v', {headsign:'Central 2'}),
+  ]) for (const flag of ['cancelled','tripCancelled','place.cancelled']) {
+    const expected = rows([[live], [vetoed]]);
+    assert.equal(expected.length, 2);
+    for (const lists of listOrders([[live], [vetoed, competitor], [cancellation(flag)]])) {
+      assert.deepEqual(rows(lists), expected);
+    }
+  }
+});
+
+test('expired competitors cannot hide another known line from a wildcard cancellation', () => {
+  const live = delayed('u', {displayName:'R1'}), other = delayed('v', {displayName:'R2'});
+  const competitor = observation('d', {displayName:'R2'});
+  const expired = observation('c', {displayName:'', cancelled:true});
+  const expected = rows([[live], [other]]);
+  for (const lists of listOrders([[live], [other, competitor], [expired]])) assert.deepEqual(rows(lists), expected);
+});
+
+test('expired-only witnesses also survive added same-list competition', () => {
+  const live = delayed('u'), competitor = observation('d'), cancelled = cancellation('cancelled');
+  for (const vetoed of [
+    observation('e', {}, {scheduledDeparture:'2026-10-16T12:00:30Z'}),
+    observation('e', {headsign:'Central Park'}),
+    observation('e', {headsign:'Central 2'}),
+  ]) for (const lists of listOrders([[live], [vetoed, competitor], [cancelled]])) {
+    assert.deepEqual(rows(lists), rows([[live]]));
+  }
+});
+
 test('upcoming same-list competition and different same-feed identities cannot borrow cancellation', () => {
   const cancelled = cancellation('cancelled'), live = delayed('b'), competitor = delayed('c');
   for (const lists of listOrders([[cancelled], [live, competitor]])) assert.deepEqual(rows(lists), rows([[live, competitor]]));

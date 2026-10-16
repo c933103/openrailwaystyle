@@ -255,10 +255,12 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
   // feed. Keep upcoming grouping unchanged: adding an old unnamed row must not
   // bridge distinct live trains. Reuse every ambiguity and identity guard over
   // all observations, including expired competitors, before borrowing its flag.
+  // Preserve every potential edge in that evidence graph: a new competitor
+  // must not erase an ambiguity witness and unlock a previously vetoed subgroup.
   // A wildcard must not bridge different known lines in that evidence either.
   const expanded = new Map();
   if (rows.some(row => !upcoming.has(row) && row.cancelled)) {
-    for (const group of departureGroups(rows)) for (const row of group) expanded.set(row, group);
+    for (const group of departureGroups(rows, {allCandidates:true})) for (const row of group) expanded.set(row, group);
   }
   const out = groups.map(group => {
     const row = mergeObservations(group), candidate = expanded.get(group[0]);
@@ -274,13 +276,13 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
   return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, ...row}) => row);
 }
 
-function departureGroups(rows) {
+function departureGroups(rows, {allCandidates = false} = {}) {
   const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
     (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)
-    if (compatible(rows[i], rows[j]) && only(rows[i], rows[j].list) && only(rows[j], rows[i].list)) parent[find(j)] = find(i);
+    if (compatible(rows[i], rows[j]) && (allCandidates || only(rows[i], rows[j].list) && only(rows[j], rows[i].list))) parent[find(j)] = find(i);
   const groups = new Map();
   rows.forEach((row, i) => { const g = find(i); groups.set(g, [...(groups.get(g) || []), row]); });
   const out = [];
