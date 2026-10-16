@@ -1,0 +1,125 @@
+{
+  "candidate_commit": "33123c8444f1341eb2b7a7250ec1a3e0d1b25526",
+  "candidate_tree": "eb56d7a2256b1e28a7212dd09798d94722293daf",
+  "base_commit": "96d0073383fe2b780e598663d0650fff0b42e816",
+  "previous_candidate": "170ba997cadd5ab932d242866fe0c7859f5553db",
+  "verified_remote_blobs": 770,
+  "node": "v24.19.0",
+  "logs": [
+    {
+      "log": "logs/codex-regression-red.log.gz",
+      "command": "node --experimental-vm-modules --test tests/departure-expired-cancellation.test.mjs",
+      "context": "previous parser plus the first two new regression tests",
+      "exit_code": 1,
+      "summary": {
+        "tests": 16,
+        "pass": 14,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "5f48c2b595305039464947340728ad8a863c0f990e6c9ccd51bd4cd5ae2c8878",
+      "gzip_sha256": "eaa25c3c2985a536d90bdfc9bd5e99a2c7da3ff48db5492ba90beb4bca782d09",
+      "uncompressed_bytes": 6388
+    },
+    {
+      "log": "logs/codex-regression-green.log.gz",
+      "command": "node --experimental-vm-modules --test tests/departure-expired-cancellation.test.mjs",
+      "context": "frozen revision",
+      "exit_code": 0,
+      "summary": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "9b613d819c8221b1186e0913bb96afa9c43290f9777e9cb991c6a3117fc6eca1",
+      "gzip_sha256": "054493d6d7910339524bbb5834d7c6194bf72626825ab6aa17a8a638d8f2b120",
+      "uncompressed_bytes": 1759
+    },
+    {
+      "log": "logs/revision-2-focused.log.gz",
+      "command": "node --experimental-vm-modules --test tests/departure*.test.mjs tests/train-schedule.test.mjs",
+      "context": "frozen revision",
+      "exit_code": 0,
+      "summary": {
+        "tests": 387,
+        "pass": 387,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "5b2f182d8dce2aa97c66457f2adf36b9346d800da7b40d5eb2323ce954c279ed",
+      "gzip_sha256": "23c1f6c9f3c58cac6357c004b523db498cae1b277e7de1f7662c5833e426ef5c",
+      "uncompressed_bytes": 39449
+    },
+    {
+      "log": "logs/revision-2-build.log.gz",
+      "command": "npm run build && git diff --exit-code -- styles/world.style.json styles/stations.geojson && node --check styles/departures.mjs && node --check scripts/check-departures-browser.mjs && git diff --check",
+      "context": "frozen revision",
+      "exit_code": 0,
+      "summary": {},
+      "uncompressed_sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "gzip_sha256": "35c78d6ada4ed8fa6c138fe435394677972875620d0c07357c96643709457f04",
+      "uncompressed_bytes": 209
+    },
+    {
+      "log": "logs/revision-2-aggregate-interrupted.log.gz",
+      "command": "node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/*.test.mjs",
+      "context": "interrupted by executor recovery, no exit status",
+      "exit_code": null,
+      "summary": {},
+      "uncompressed_sha256": "c4f490564bbf88515082ab2dd6023b8dba7d3d58336c9437c21a3e5808240cc3",
+      "gzip_sha256": "b7f929c30909f2d739793be731f046deac55ed93c678151a51498719c4254fb4",
+      "uncompressed_bytes": 140465
+    },
+    {
+      "log": "logs/revision-2-aggregate-serial.log.gz",
+      "command": "node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/*.test.mjs",
+      "context": "frozen revision",
+      "exit_code": 0,
+      "summary": {
+        "tests": 2164,
+        "pass": 2164,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "5a980e44c8272fdfd85e20a95df553082e56a7eafb37479cddb1961dd836523b",
+      "gzip_sha256": "6806923ddfd66c3a35aea8f3201f244ac92e545e2299180ad4511c5ecd91b74f",
+      "uncompressed_bytes": 517737
+    },
+    {
+      "log": "logs/independent-revision-targeted.log.gz",
+      "command": "node --test tests/departure-expired-cancellation.test.mjs tests/departure-identity.test.mjs tests/departure-instant.test.mjs tests/departure-platform.test.mjs tests/departure-destinations.test.mjs tests/departure-labels.test.mjs",
+      "context": "independent review",
+      "exit_code": 0,
+      "summary": {
+        "tests": 145,
+        "pass": 145,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "61c3739a97c539ee0fe6941c4031e3bdcedf3cfa09610a6af65b292d05b8667c",
+      "gzip_sha256": "1c6b040537d863c00f92c3940e0a0138397207b8f050808e7f3c6422c3f793a9",
+      "uncompressed_bytes": 14730
+    },
+    {
+      "log": "logs/independent-revision-ambiguity.log.gz",
+      "command": "local node --input-type=module synthetic driver; see independent-review.md",
+      "context": "independent review",
+      "exit_code": 0,
+      "summary": {},
+      "uncompressed_sha256": "b21d2dc720434da748f22c4b3e94a109bc821cb87f2f8126c6906840de5e45c6",
+      "gzip_sha256": "be40e5b72df2fb20287428ee90b9ba472e13e5aa9857e317a9984293c1cbdbaa",
+      "uncompressed_bytes": 427
+    }
+  ]
+}
