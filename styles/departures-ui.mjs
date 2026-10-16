@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261015-station-mask-lifecycle-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261016-hidden-tile-masks-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

@@ -1,3 +1,21 @@
+// MapLibre 5.24.0 prepares tile clipping before renderLayer rejects hidden
+// layers. Skip that work with the very same visibility predicate, before any
+// stencil state changes. Keep the immutable vendor distribution/prototype
+// untouched; visibility and zoom are read afresh for every frame/style.
+const hiddenTileMaskGuards = new WeakMap();
+export function installHiddenTileMaskGuard(map) {
+  const painter = map?.painter, original = painter?._renderTileClippingMasks;
+  if (typeof original !== 'function' || !Number.isFinite(painter?.transform?.zoom))
+    throw new Error('Pinned MapLibre tile-mask boundary unavailable');
+  if (hiddenTileMaskGuards.get(painter) === original) return;
+  const guarded = function(layer, ...args) {
+    if (layer.isHidden(this.transform.zoom)) return;
+    return original.call(this, layer, ...args);
+  };
+  painter._renderTileClippingMasks = guarded;
+  hiddenTileMaskGuards.set(painter, guarded);
+}
+
 // DOM layout for the map's controls. All measurements are in visible CSS
 // pixels: More detail scales the map and counter-scales its control container.
 export function installControlLayout({frame, mapElement, panel, status, readout, details}) {

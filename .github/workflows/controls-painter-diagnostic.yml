@@ -7,6 +7,8 @@ on:
       - 'scripts/controls-painter-*.mjs'
       - 'scripts/diagnose-controls-painter.mjs'
       - 'tests/controls-painter-*.test.mjs'
+      - 'styles/map-controls.mjs'
+      - 'styles/app.mjs'
 permissions:
   contents: read
 concurrency:

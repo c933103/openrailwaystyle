@@ -30,6 +30,10 @@ The exact source edit is `Array.from(elem.attributes)` in the attribute-removal
 loop, matching the upstream commit. Its compiled counterpart is changed once;
 the stale source-map URL is removed. No other renderer bytes are rewritten.
 
+The separate [hidden-layer clipping guard](rendering.md#hidden-layer-tile-clipping)
+is installed by the application on its own painter instance. It does not change
+this attribution-only distribution, its integrity pins or cached-library recovery.
+
 The shared `backportMapLibre524` helper checks both hashes and the unique
 replacement count. Unknown, altered, truncated, already patched or unexpected
 output fails closed. The result is deterministic and is not an opaque checked-in

@@ -23,6 +23,34 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## Hidden-layer tile clipping
+
+The pinned MapLibre 5.24.0 painter prepares clipping masks before its layer
+dispatcher checks visibility. Atlas installs an instance-local guard from
+`styles/map-controls.mjs` immediately after constructing the map. It uses the
+same `layer.isHidden(transform.zoom)` predicate before any stencil mutation;
+visible calls retain their original receiver, arguments and return value.
+Every call rechecks current zoom/layout, including after style replacement.
+MapLibre creates a fresh painter after WebGL context restoration; the same
+guard is reinstalled on its synchronous public `webglcontextrestored` event
+before the next scheduled frame. Normal context recovery is left intact.
+The immutable vendor bytes and shared painter prototype remain unchanged.
+
+This relies on a pinned private renderer boundary. A missing method or transform
+fails explicitly during startup and requires compatibility review when upgrading
+MapLibre. The guard is idempotent on the same painter. Its already-precached
+module and all versioned shell imports advance together; existing workers fetch
+the new complete shell on navigation while older tabs retain their own version.
+
+Decision regressions execute the actual pinned painter with synthetic GPU
+submission and compare visible dispatch and abstract stencil coverage. The
+fixture-only painter check selects the original method or the actual production
+installer for one measured transition and seven exact nonempty pixel comparisons,
+including visibility/zoom, source switches, stencil resets, globe and terrain.
+Both arms prepare with the current app. This is bounded compatibility evidence,
+not a historical schedule replay or a statistical performance claim. The normal
+controls check retains its real-idle predicate and 60-second deadline.
+
 ## Station, crossing and place-label priority
 
 Station circles paint above crossing dots and × marks. Accepted city,

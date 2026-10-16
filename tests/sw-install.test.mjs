@@ -496,6 +496,31 @@ test('station crossing release replaces cached style bytes while previous tabs s
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
+test('hidden-mask release refreshes the app and executable guard through the existing worker',async()=>{
+  const previous='20261015-station-mask-lifecycle-1';
+  const version=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8').match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous);
+  const paths=['app.mjs','map-controls.mjs'];
+  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
+  const oldBodies=new Map(paths.map(path=>[new URL(path,scope).pathname,'previous cached '+path]));
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  assert.equal(await(await unchanged.request('map-controls.mjs?v='+previous)).text(),oldBodies.get(new URL('map-controls.mjs',scope).pathname),'unchanged-token sensitivity control retains the old guard module');
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
+  }
+  const cached=await(await next.request('map-controls.mjs?v='+version)).text();
+  const {installHiddenTileMaskGuard}=await import('data:text/javascript;base64,'+Buffer.from(cached).toString('base64'));
+  let calls=0;const map={painter:{transform:{zoom:9},_renderTileClippingMasks(){calls++;}}};
+  installHiddenTileMaskGuard(map);map.painter._renderTileClippingMasks({isHidden:()=>true});assert.equal(calls,0);
+  map.painter._renderTileClippingMasks({isHidden:()=>false});assert.equal(calls,1);
+});
+
 test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
   const root=new URL('../styles/',import.meta.url),html=readFileSync(new URL('index.html',root),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];

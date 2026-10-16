@@ -7,7 +7,7 @@ import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
 import {readSettings} from '../styles/map-model.mjs';
-import {guardHiddenTileMasks} from './controls-painter-probe.mjs';
+import {installHiddenTileMaskGuard} from '../styles/map-controls.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const mapPath='node_modules/maplibre-gl/dist/maplibre-gl.js.map';
@@ -60,7 +60,8 @@ export function painterDecisionRun({zoom=9,skipHiddenMasks=false,layerSpecs=rawS
    }
    paint.push({frame,pass:painter.renderPass,layer:layer?.id||type,coverage});
   }]))});
- const masks=skipHiddenMasks?guardHiddenTileMasks(Painter.prototype._renderTileClippingMasks):Painter.prototype._renderTileClippingMasks;
+ if(skipHiddenMasks)installHiddenTileMaskGuard({painter});
+ const masks=painter._renderTileClippingMasks;
  painter._renderTileClippingMasks=function(layer,...args){
   this._observedLayer=layer;
   return masks.call(this,layer,...args);
