@@ -88,7 +88,7 @@ test('pixel comparator rejects missing/truncated buffers and detects even one ch
  assert.throws(()=>comparePixelBytes(a,undefined));assert.throws(()=>comparePixelBytes(a,b.subarray(0,10)));assert.throws(()=>comparePixelBytes(a.subarray(0,10),b.subarray(0,10)));
 });
 test('source/runtime hashes are fixed and a complete diagnostic manifest is available',async()=>{
- const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,true);assert.equal(Object.keys(manifest.sources).length,10);assert.ok(manifest.inputs['styles/map-controls.mjs']);
+ const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,true);assert.equal(Object.keys(manifest.sources).length,14);assert.ok(manifest.inputs['styles/map-controls.mjs']);
 });
 test('workflow checkout, declaration and artifact select the PR head or push SHA consistently',async()=>{
  const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');

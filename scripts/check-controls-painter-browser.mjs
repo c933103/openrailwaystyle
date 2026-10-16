@@ -10,7 +10,7 @@ import {createRequestLifecycle} from './request-lifecycle.mjs';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
-import {installControlsFetchProbe,controlsMapIdle,controlsTerrainNaturalEquivalent} from './controls-painter-probe.mjs';
+import {installControlsFetchProbe,controlsMapIdle,controlsTerrainNaturalEquivalent,controlsTerrainBatchesEquivalent} from './controls-painter-probe.mjs';
 import {controlsPainterManifest,installControlsPainterFixtures,nonemptyPainterStyle,comparePixelBytes} from './controls-painter-fixture.mjs';
 import {MAPLIBRE_BACKPORT} from '../styles/map-controls.mjs';
 
@@ -96,9 +96,32 @@ async function pixelChecks(page,guard,arm){
  if(arm.transition.originalMaskSha256)assert.equal(methodHash,arm.transition.originalMaskSha256,'Both maps use the same original pinned painter');
  arm.pixelOriginalMaskSha256=methodHash;
  for(const entry of pixelCases){
-  await page.evaluate(entry=>{controlsProbe.arm();if(entry.toggle)controlsMap.setLayoutProperty('hidden-toggle','visibility',entry.toggle);if(entry.projection)controlsMap.setProjection({type:entry.projection});if(entry.terrain)controlsMap.setTerrain({source:'dem',exaggeration:1.5});if(entry.view)controlsMap.jumpTo(entry.view);},entry);
-  await idle(page);
-  const probe=await boundedRead(page,()=>{controlsProbe.stop();return controlsProbe.snapshot();});
+  await page.evaluate(async({base,entry})=>{
+   if(entry.terrain){
+    const {installControlsTerrainBatchBarrier,controlsMapIdle}=await import(base+'__controls-painter-probe.mjs');
+    globalThis.controlsTerrainBatch=installControlsTerrainBatchBarrier(controlsMap);
+    controlsProbe.arm();
+    // Register before the synchronous action batch, so IPC latency cannot add
+    // a different post-settlement repaint to just one arm.
+    globalThis.controlsTerrainSettlement=controlsMapIdle(controlsMap);
+   }else controlsProbe.arm();
+   if(entry.toggle)controlsMap.setLayoutProperty('hidden-toggle','visibility',entry.toggle);
+   if(entry.projection)controlsMap.setProjection({type:entry.projection});
+   if(entry.terrain)controlsMap.setTerrain({source:'dem',exaggeration:1.5});
+   if(entry.view)controlsMap.jumpTo(entry.view);
+  },{base,entry});
+  let terrainCapture;
+  try{
+   if(entry.terrain)await waitUntil(page,()=>controlsTerrainSettlement,undefined,{timeout:60000});
+   else await idle(page);
+  }finally{if(entry.terrain){
+   terrainCapture=await boundedRead(page,()=>{
+    controlsProbe.stop();const result={sourceBatch:controlsTerrainBatch.snapshot(),probe:controlsProbe.snapshot()};
+    controlsTerrainBatch.dispose();return result;
+   });
+   arm.terrainCapture=terrainCapture;await save();
+  }}
+  const probe=entry.terrain?(terrainCapture?.probe??{unavailable:true}):await boundedRead(page,()=>{controlsProbe.stop();return controlsProbe.snapshot();});
   assert.ok(!probe.unavailable&&!probe.dispatchTruncated,'Pixel-case observations must be complete');
   const pixels=await readPixels(page);
   const bytes=Buffer.from(pixels.rgba,'base64');delete pixels.rgba;
@@ -106,7 +129,7 @@ async function pixelChecks(page,guard,arm){
   if(entry.expectRed)assert.ok(pixels.red>20,'Showing the hidden layer must visibly change the image');
   else if(entry.name.includes('hidden'))assert.equal(pixels.red,0,'Hidden red layer must not paint');
   pixelBuffers.set(`${arm.name}:${entry.name}`,bytes);
-  const record={case:entry.name,sha256:digest(bytes),...pixels,probe};arm.pixels.push(record);
+  const record={case:entry.name,sha256:digest(bytes),...pixels,probe};if(entry.terrain){record.sourceBatch=terrainCapture.sourceBatch;delete arm.terrainCapture;}arm.pixels.push(record);
   await save(); // Preserve the natural result even if controlled sampling fails.
   if(entry.terrain){
    record.terrainSamples=[];
@@ -180,8 +203,9 @@ try{
     dispatchEqual:JSON.stringify(x.probe.lastVisibleDispatch)===JSON.stringify(y.probe.lastVisibleDispatch)};
   }):undefined;
   const naturalTerrainEqual=!entry.terrain||controlsTerrainNaturalEquivalent(a.probe,b.probe);
-  const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&(!terrainSamples||terrainSamples.every(sample=>sample.changedBytes===0&&sample.identityEqual&&sample.dispatchEqual));
-  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,naturalDispatchEqual,naturalTerrainEqual,terrainSamples,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
+  const naturalSourceBatchEqual=!entry.terrain||controlsTerrainBatchesEquivalent(a,b);
+  const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&naturalSourceBatchEqual&&(!terrainSamples||terrainSamples.every(sample=>sample.changedBytes===0&&sample.identityEqual&&sample.dispatchEqual));
+  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,naturalDispatchEqual,naturalTerrainEqual,naturalSourceBatchEqual,terrainSamples,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
  }
  await save();
  assert.ok(report.comparisons.every(c=>c.changedBytes===0&&c.dispatchEqual),'Pixel bytes and visible dispatch must match exactly');

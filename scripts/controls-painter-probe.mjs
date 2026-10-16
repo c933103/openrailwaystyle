@@ -87,7 +87,7 @@ export function installControlsPainterProbe(map,{guard=false,scope=globalThis}={
   frame={start:now(),maskDraws:0,maskMs:0};dispatch=[];dispatchRecords=[];dispatchTruncated=false;
   observeTerrain(painter.renderToTexture);
   try{return original.apply(this,args);}
-  finally{if(frame.terrain)frame.terrain.after=readControlsTerrainState(map,painter.renderToTexture);frame.end=now();frameCount++;frames.push(frame);if(frames.length>limit)frames.shift();frame=null;}
+  finally{if(frame.terrain){frame.terrain.after=readControlsTerrainState(map,painter.renderToTexture);frame.terrain.dispatch=[...dispatch];frame.terrain.dispatchTruncated=dispatchTruncated;frame.terrain.records=dispatchRecords.map(record=>({...record,coords:[...record.coords]}));}frame.end=now();frameCount++;frames.push(frame);if(frames.length>limit)frames.shift();frame=null;}
  });
  const api={
   originalMaskSource,
@@ -157,11 +157,105 @@ export function readControlsTerrainState(map,rtt=map.painter.renderToTexture){
  },cache:tiles.map(tile=>({tile:tile.tileID.key,slots:tile.rtt.map(slot=>!!slot&&rtt.pool.getObjectForId(slot.id)?.stamp===slot.stamp)}))};
 }
 
+// Equality is meaningful only for complete observations. In particular, [] is
+// valid cold-cache evidence; an absent cache/slot/source field is never evidence.
+const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const text=value=>typeof value==='string'&&value.length>0;
+const count=value=>Number.isSafeInteger(value)&&value>=0;
+const strings=value=>Array.isArray(value)&&[...value].every(text)&&new Set(value).size===value.length;
+const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function terrainStateComplete(state){
+ const identity=state?.identity;
+ if(!object(state)||!object(identity)||!strings(identity.terrain)||!identity.terrain.length||!strings(identity.layers)||!identity.layers.length)return false;
+ if(!Array.isArray(identity.sources)||!identity.sources.length||![...identity.sources].every(source=>object(source)&&text(source.id)&&count(source.revision)&&strings(source.coords)))return false;
+ if(new Set(identity.sources.map(source=>source.id)).size!==identity.sources.length)return false;
+ return Array.isArray(state.cache)&&state.cache.length===identity.terrain.length&&[...state.cache].every((entry,index)=>
+  object(entry)&&entry.tile===identity.terrain[index]&&Array.isArray(entry.slots)&&[...entry.slots].every(slot=>typeof slot==='boolean'));
+}
+function dispatchComplete(dispatch,records,layers){
+ return Array.isArray(dispatch)&&Array.isArray(records)&&dispatch.length===records.length&&dispatch.length<=2048&&[...records].every((record,index)=>
+  object(record)&&text(record.pass)&&text(record.layer)&&layers.includes(record.layer)&&strings(record.coords)&&typeof record.toTexture==='boolean'&&dispatch[index]===`${record.pass}:${record.layer}`);
+}
+function terrainFrameComplete(terrain){
+ return object(terrain)&&['before','prepared','after'].every(stage=>terrainStateComplete(terrain[stage]))
+  &&equal(terrain.prepared.identity,terrain.after.identity)&&terrain.dispatchTruncated===false
+  &&dispatchComplete(terrain.dispatch,terrain.records,terrain.prepared.identity.layers);
+}
+function terrainProbeComplete(probe){
+ return object(probe)&&!probe.unavailable&&probe.active===false&&count(probe.frameCount)&&probe.frameCount>0&&probe.frameCount<=128
+  &&probe.framesTruncated===false&&probe.dispatchTruncated===false&&Array.isArray(probe.frames)&&probe.frames.length===probe.frameCount
+  &&[...probe.frames].every(frame=>object(frame)&&terrainFrameComplete(frame.terrain))&&terrainFrameComplete(probe.lastTerrain)
+  &&equal(probe.lastTerrain,probe.frames.at(-1).terrain)
+  &&dispatchComplete(probe.lastVisibleDispatch,probe.lastVisibleDispatchRecords,probe.lastTerrain.prepared.identity.layers)
+  &&equal(probe.lastVisibleDispatch,probe.lastTerrain.dispatch)&&equal(probe.lastVisibleDispatchRecords,probe.lastTerrain.records);
+}
+
 export function controlsTerrainNaturalEquivalent(a,b){
- for(const probe of [a,b]){
-  if(!probe||probe.unavailable||probe.frameCount<1||probe.framesTruncated||probe.dispatchTruncated||!probe.lastTerrain?.prepared||!probe.lastTerrain?.after||!probe.lastVisibleDispatchRecords)return false;
-  if(!probe.lastTerrain.prepared.identity.terrain.length||probe.lastVisibleDispatchRecords.length!==probe.lastVisibleDispatch.length||JSON.stringify(probe.lastTerrain.prepared.identity)!==JSON.stringify(probe.lastTerrain.after.identity))return false;
- }
+ if(!terrainProbeComplete(a)||!terrainProbeComplete(b))return false;
  const equivalent=probe=>({prepared:probe.lastTerrain.prepared,after:probe.lastTerrain.after,dispatch:probe.lastVisibleDispatch,records:probe.lastVisibleDispatchRecords});
+ return equal(equivalent(a),equivalent(b));
+}
+
+
+// This fixture-only scheduler waits for the current source-request batch before
+// entering the real renderer. It does not change requests, tiles, cache entries,
+// fingerprints, render inputs, or the renderer itself. Completion events already
+// call triggerRepaint(); no added timer, redraw, retry, or cache reset is needed.
+export function readControlsSourceBatch(map){
+ if(!map.style?.tileManagers)throw new Error('Terrain source batch: managers unavailable');
+ return Object.entries(map.style.tileManagers).map(([id,manager])=>{
+  const source=manager.getSource?.(),tiles=manager._inViewTiles?.getAllTiles?.();
+  if(!source||typeof source.loaded!=='function'||!Array.isArray(tiles)||typeof manager.getState!=='function')throw new Error('Terrain source batch: pinned source boundary unavailable');
+  if(manager._sourceErrored||tiles.some(tile=>tile.state==='errored'))throw new Error('Terrain source batch: failed fixture source/tile');
+  return {id,loaded:source.loaded(),revision:manager.getState().revision,
+   used:!!manager.used,usedForTerrain:!!manager.usedForTerrain,
+   tiles:tiles.map(tile=>({key:tile.tileID.key,state:tile.state})).sort((a,b)=>a.key.localeCompare(b.key))};
+ });
+}
+
+export function installControlsTerrainBatchBarrier(map){
+ if(!map.loaded()||!map.areTilesLoaded()||map.isMoving()||map._frameRequest)throw new Error('Terrain source batch: install only at an idle boundary');
+ const original=map._render,limit=128,frames=[],deferred=[];
+ let frameCount=0,deferredCount=0,failure=null,disposed=false;
+ const clone=value=>JSON.parse(JSON.stringify(value));
+ const wrapped=function(...args){
+  let before;
+  try{before=readControlsSourceBatch(map);}catch(error){failure=String(error.message);throw error;}
+  if(before.some(source=>!source.loaded||source.tiles.some(tile=>tile.state!=='loaded'))){
+   deferredCount++;if(deferred.length<limit)deferred.push(before);
+   return;
+  }
+  const frame={before};frameCount++;if(frames.length<limit)frames.push(frame);
+  try{return original.apply(this,args);}
+  catch(error){failure=String(error.message);throw error;}
+  finally{try{frame.after=readControlsSourceBatch(map);}catch(error){failure=String(error.message);throw error;}}
+ };
+ map._render=wrapped;
+ return {
+  snapshot(){return {kind:'complete-source-batches',frameCount,deferredCount,truncated:frameCount>limit||deferredCount>limit,failure,frames:clone(frames),deferred:clone(deferred)};},
+  dispose(){if(disposed)return;disposed=true;if(map._render===wrapped)map._render=original;},
+ };
+}
+
+function sourceBatchComplete(sources){
+ if(!Array.isArray(sources)||!sources.length||![...sources].every(source=>object(source)&&text(source.id)&&typeof source.loaded==='boolean'&&count(source.revision)
+  &&typeof source.used==='boolean'&&typeof source.usedForTerrain==='boolean'&&Array.isArray(source.tiles)&&[...source.tiles].every(tile=>object(tile)&&text(tile.key)&&['loading','loaded','reloading','expired','unloaded'].includes(tile.state))
+  &&new Set(source.tiles.map(tile=>tile.key)).size===source.tiles.length))return false;
+ return new Set(sources.map(source=>source.id)).size===sources.length;
+}
+const sourceBatchReady=sources=>sources.every(source=>source.loaded&&source.tiles.every(tile=>tile.state==='loaded'));
+
+export function controlsTerrainBatchesEquivalent(a,b){
+ for(const record of [a,b]){
+  const batch=record?.sourceBatch,probe=record?.probe;
+  if(!object(batch)||batch.kind!=='complete-source-batches'||batch.failure!==null||batch.truncated!==false||!count(batch.frameCount)||batch.frameCount<1||batch.frameCount>128||!count(batch.deferredCount)||batch.deferredCount>128
+   ||!Array.isArray(batch.frames)||batch.frames.length!==batch.frameCount||!Array.isArray(batch.deferred)||batch.deferred.length!==batch.deferredCount||!terrainProbeComplete(probe)||batch.frameCount!==probe.frameCount)return false;
+  if(![...batch.frames].every(frame=>object(frame)&&sourceBatchComplete(frame.before)&&sourceBatchReady(frame.before)&&sourceBatchComplete(frame.after)))return false;
+  if(![...batch.deferred].every(sources=>sourceBatchComplete(sources)&&!sourceBatchReady(sources)))return false;
+ }
+ // Waiting observations remain diagnostic: their timing and completion order may
+ // differ. Every actual renderer invocation must have identical complete inputs,
+ // cache populations, coordinate-bearing dispatches, and resulting cache state.
+ const equivalent=record=>({batches:record.sourceBatch.frames,terrain:record.probe.frames.map(frame=>frame.terrain)});
  return JSON.stringify(equivalent(a))===JSON.stringify(equivalent(b));
 }
