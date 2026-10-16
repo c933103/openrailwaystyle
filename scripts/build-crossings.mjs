@@ -21,12 +21,17 @@ async function overpass(box, since) {
     // A quiet interval between requests, growing after each failure.
     await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 10000 : 0));
     requests++;
+    let failureText;
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(240000),
         headers: {'User-Agent': 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
       const text = await response.text();
       downloaded += Buffer.byteLength(text);
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
+      if (!response.ok) {
+        // Keep the whole diagnostic for classification, but keep logs compact.
+        failureText = `HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')}`;
+        throw new Error(failureText.slice(0, 210));
+      }
       const rows = parseCsv(text);
       console.log(since ? 'Changes' : 'Region', box.join(','), rows.length, 'crossings;', downloaded, 'bytes this run');
       return rows;
@@ -35,8 +40,11 @@ async function overpass(box, since) {
       if (downloaded > 200_000_000) throw new Error('Download budget exceeded');
       // A busy server calls for waiting, never for more (smaller) requests;
       // a query that ran out of time or memory calls for a smaller area.
-      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
-      if (/timed? ?out|timeout|memory|no end marker|HTTP 504/i.test(error.message)) return null;
+      // A capacity page can also say "Gateway Timeout". Check admission
+      // failures first, including wording after the shortened log excerpt.
+      const message = failureText || error.message;
+      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
+      if (/timed? ?out|timeout|memory|no end marker|HTTP 504/i.test(message)) return null;
     }
   }
   throw new Error(`Overpass stayed unavailable for region ${box}`);

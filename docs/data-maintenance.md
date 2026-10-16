@@ -48,6 +48,7 @@ The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwi
 
 - The first run fetches every region (about 45 MB, somewhat more with the tags). A table from an older format (`version` in `regions.json` below 3: before the minor flag or the tags) is fetched anew the same way, since a change query cannot fill these in for unchanged crossings.
 - The weekly run (Sunday 04:17 UTC) fetches the crossings changed since the previous run, then refreshes in full the regions checked longest ago, about 5 MB, which removes deleted and retagged crossings.
+- HTTP capacity and queue-full responses retry the same region, even when their heading says “Gateway Timeout”. The builder makes at most five attempts, waiting 1, 2, 3 and 4 minutes before retries; persistent overload fails the build without subdividing the region or replacing the last snapshot. Query timeout, memory and incomplete-response failures retain the bounded subdivision path.
 - A table under 900,000 crossings, or more than 5% smaller than the last, is not published; the last snapshot stays.
 
 Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
