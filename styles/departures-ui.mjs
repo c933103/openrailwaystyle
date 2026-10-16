@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261016-hidden-tile-masks-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261016-power-meaning-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

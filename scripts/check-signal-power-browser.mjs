@@ -38,11 +38,11 @@ const datasets = {
 };
 const supplies=powerFacilitiesGeoJSON({elements:[
   {type:'node',id:9401,lon:.00025,lat:.00095,tags:{name:'Test traction substation',power:'substation',substation:'traction',voltage:'25000',frequency:'50'}},
-  {type:'node',id:9402,lon:.0007,lat:.00095,tags:{name:'Test railway power station',power:'plant',usage:'railway','plant:source':'hydro'}},
-  {type:'node',id:9403,lon:.00105,lat:.00095,tags:{name:'Test locomotive diesel supply',railway:'fuel',fuel:'diesel'}},
+  {type:'node',id:9402,lon:.0007,lat:.00095,tags:{name:'Test railway power station',power:'plant',usage:'railway','plant:source':'hydro','generator:source':'solar'}},
+  {type:'node',id:9403,lon:.00105,lat:.00095,tags:{name:'Test locomotive diesel supply',railway:'fuel',fuel:'diesel','fuel:adblue':'yes','fuel:hydrogen':'yes'}},
   {type:'node',id:9404,lon:.00025,lat:.00073,tags:{name:'Test coaling facility',railway:'coaling_facility'}},
   {type:'node',id:9405,lon:.0007,lat:.00073,tags:{name:'Test steam water tank',railway:'water_tank',capacity:'100 m³'}},
-  {type:'node',id:9406,lon:.00105,lat:.00073,tags:{name:'Test disused water tower','disused:railway':'water_tower'}},
+  {type:'node',id:9406,lon:.00105,lat:.00073,tags:{name:'Test disused water tower','disused:man_made':'water_tower',usage:'railway'}},
   {type:'node',id:9499,lon:.0007,lat:-.0007,tags:{name:'Ordinary roadside fuel station',amenity:'fuel'}},
 ]});
 assert.equal(supplies.features.length,6,'a roadside fuel station is not a railway supply');
@@ -251,13 +251,29 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
       await clickCoordinates(supply.geometry.coordinates);await page.waitForSelector('#details:not([hidden])');
       assert.match(await page.locator('#detail-content').innerText(),/RAILWAY ENERGY SUPPLY/);
       assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${supply.properties.osm_id}"]`).count(),1);
-      if(supply.properties.fuel)assert.match(await page.locator('#detail-content').innerText(),/diesel/);
+      const detailRows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
+      if(supply.properties.fuel){assert.equal(detailRows.Type,'Train refuelling point');assert.equal(detailRows['Recorded supplies'],'diesel, adblue, hydrogen');}
+      if(supply.properties.power_kind==='coaling_facility')assert.equal(detailRows.Type,'Steam engine coaling');
+      if(supply.properties['plant:source']){assert.equal(detailRows['Plant energy source'],'hydro');assert.equal(detailRows['Generator energy source'],'solar');assert.equal(detailRows['Recorded supplies'],undefined);}
+      if(supply.properties.power_kind==='plant')await page.locator('#details').screenshot({path:`browser-review/power-generation-details-${kind}.png`});
+      if(supply.properties.power_kind==='fuel')await page.locator('#details').screenshot({path:`browser-review/power-refuelling-details-${kind}.png`});
       if(supply.properties.capacity)assert.match(await page.locator('#detail-content').innerText(),/100 m³/);
       await page.locator('#details-close').click();
     }
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
+    await openControls();await page.locator('#about-open').click();
+    const powerHelp=await page.locator('#help-power').innerText();
+    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water'])assert.ok(powerHelp.includes(label));
+    assert.match(powerHelp,/whole electricity grid.*not yet/);
+    await page.locator('#help-power').scrollIntoViewIfNeeded();
+    await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
+    await page.locator('#about-close').click();await closeControls();
     await openSettings();await page.locator('#inactive').check();
     await visible('electrification-former-supply-points');
+    await closeControls();await clickCoordinates([.00105,.00073]);
+    assert.match(await page.locator('#detail-content').innerText(),/Railway water tower/);
+    assert.doesNotMatch(await page.locator('#detail-content').innerText(),/Steam locomotive water tower/);
+    await page.locator('#details-close').click();
     await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>window.reviewMap.getLayoutProperty('electrification-supply-names','visibility')==='none'&&window.reviewMap.getLayoutProperty('electrification-supply-points','visibility')==='visible'));
