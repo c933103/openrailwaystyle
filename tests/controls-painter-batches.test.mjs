@@ -159,6 +159,24 @@ test('symmetric missing or malformed coordinate-bearing dispatch records fail cl
  }
 });
 
+test('dispatch schemas accept only pinned render passes even with matching symmetric dispatch strings',()=>{
+ const valid=deliver(make(),topology.arms[1].arrivals);
+ for(const pass of ['offscreen','opaque','translucent','nonsense','Opaque','',null,0,{},new String('opaque')]){
+  const a=structuredClone(valid),b=structuredClone(valid);
+  for(const observation of [a,b]){
+   for(const terrain of new Set([...observation.probe.frames.map(frame=>frame.terrain),observation.probe.lastTerrain])){
+    terrain.records[0].pass=pass;terrain.dispatch[0]=`${pass}:${terrain.records[0].layer}`;
+   }
+   observation.probe.lastVisibleDispatchRecords[0].pass=pass;
+   observation.probe.lastVisibleDispatch[0]=`${pass}:${observation.probe.lastVisibleDispatchRecords[0].layer}`;
+  }
+  assert.deepEqual(a,b,'both arms contain the same pass and matching dispatch string');
+  const accepted=['offscreen','opaque','translucent'].includes(pass);
+  assert.equal(controlsTerrainNaturalEquivalent(a.probe,b.probe),accepted);
+  assert.equal(controlsTerrainBatchesEquivalent(a,b),accepted);
+ }
+});
+
 test('batch source schemas reject symmetric missing revision, usage, tile and envelope fields',()=>{
  const valid=deliver(make(),topology.arms[1].arrivals);
  const sourceMutations=[source=>{delete source.id;},source=>{delete source.revision;},source=>{source.revision=null;},source=>{source.revision=-1;},source=>{delete source.used;},source=>{delete source.usedForTerrain;},source=>{source.used='true';},source=>{source.usedForTerrain=0;},source=>{delete source.loaded;},source=>{source.loaded=1;},source=>{delete source.tiles;},source=>{source.tiles={};},source=>{source.tiles=[null];},source=>{delete source.tiles[0].key;},source=>{delete source.tiles[0].state;},source=>{source.tiles[0].state='guessed';},source=>{source.tiles[1]=structuredClone(source.tiles[0]);}];
