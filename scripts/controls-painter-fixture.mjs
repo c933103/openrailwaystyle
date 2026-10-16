@@ -28,6 +28,10 @@ export async function controlsPainterManifest(){
   'node_modules/maplibre-gl/src/webgl/draw/draw_terrain.ts':'85b3ba1185f2d6268b0d9d3a436672e1be06de117079ad543ff6aacd4f4e98d6',
   'node_modules/maplibre-gl/src/ui/map.ts':'796a5bb616f87ee26de1241c5375db0569a6a5ce0122954e16ce1c11c574763e',
   'node_modules/maplibre-gl/src/style/style_layer.ts':'6b3730cb2721888003d5d2a00af23ff80506650b0e8197315d7f9f20b5f62fce',
+  'node_modules/maplibre-gl/src/tile/tile_manager.ts':'85eb7378a8e127d8d99c931899c2c87a49dd388f0c538ff74647a2972ee326ce',
+  'node_modules/maplibre-gl/src/tile/tile_manager_in_view_tiles.ts':'23af271fbcf75b2f5fa424a0bba8ed64cc58382d3865726aa5a7129575fd4aca',
+  'node_modules/maplibre-gl/src/tile/terrain_tile_manager.ts':'4dc6cbaf5604164234be1de77032deda5d15894a270272937abd28343b955b3b',
+  'node_modules/maplibre-gl/src/tile/tile_id.ts':'e264e6c5141aa7980b82ab9de6d379f991f8f72521b49f18a5f1ebfe01d87f24',
   'node_modules/maplibre-gl/src/tile/tile.ts':'e40cf65d5ff780cc1cbd043196c8e5487814c31268f4fd3386befb0778aa6aab',
   'node_modules/maplibre-gl/dist/maplibre-gl.js':MAPLIBRE_BACKPORT.upstreamSha256,
   'node_modules/maplibre-gl/dist/maplibre-gl.js.map':'a09ebdfe7d8a259b7c67a470caa2d4e57d31262bc99020ec41983d3325fa9901',
@@ -37,7 +41,7 @@ export async function controlsPainterManifest(){
  const inputs={};
  for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/map-controls.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
  const identity=controlsPainterSourceIdentity(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:2000,maxBuffer:1024}).trim());
- return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,terrainDispatchSampling:'natural trace retained; one synchronous cold frame and one warm frame after settlement',productionChanges:true};
+ return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,terrainDispatchSampling:'complete source batches before terrain rendering; all natural cache/dispatch frames retained and compared; one synchronous cold frame and one warm frame after settlement',productionChanges:true};
 }
 
 export const nonemptyMaskTile=Buffer.from(vtpbf.fromGeojsonVt({fixture:{extent:4096,features:[
