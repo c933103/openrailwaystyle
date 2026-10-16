@@ -116,3 +116,20 @@ test('the original natural dispatch gate remains mandatory alongside richer cach
  assert.match(s,/const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&/);
  assert.match(s,/controlsTerrainNaturalEquivalent\(a.probe,b.probe\)/);
 });
+
+test('archived PR232 arrival batches reproduce exact 360/234 dispatch and cache identities with either guard',async()=>{
+ const topology=JSON.parse(await readFile(new URL('./fixtures/controls-painter-dem-arrivals.json',import.meta.url)));
+ for(const arm of topology.arms){
+  const observations=[];
+  for(const guard of [false,true]){
+   const f=fixture({topology,warm:20,guard});
+   for(const key of arm.arrivals)f.sourceData(key);
+   const observed=f.capture();observations.push(observed);
+   assert.equal(observed.dispatch.length,arm.dispatchCount);
+   assert.deepEqual(observed.probe.lastTerrain.prepared.cache.filter(tile=>tile.slots.length).map(tile=>tile.tile),arm.retained);
+   assert.deepEqual(observed.coverageErrors,[]);
+  }
+  assert.equal(controlsTerrainNaturalEquivalent(...observations.map(o=>o.probe)),true);
+  assert.deepEqual(observations[0].composite,observations[1].composite);
+ }
+});

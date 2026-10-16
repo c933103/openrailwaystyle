@@ -277,6 +277,29 @@ calls with the guard disabled in both arms and identical ordered tile composites
 This establishes a cache-state confound, not the historical cause of any particular
 failure. An existing failed artifact remains a failed measurement.
 
+The independent terrain pixel case now schedules a renderer frame only after
+all source tiles requested by the preceding frame have completed loading and
+worker decoding. Pending callbacks are recorded and deferred until a normal
+source-data event schedules another frame. This isolated fixture barrier changes
+arrival/render interleaving; it does not change the original application controls
+transition, source responses, worker concurrency, cache entries, fingerprints or
+the renderer. No polling timer, redraw, retry or cache invalidation is added.
+
+The [PR232 arrival analysis](investigations/controls-terrain-arrivals-20261016.md)
+replays the actual failed artifact's newly visible DEM IDs through the pinned
+terrain manager and painter. They reproduce the exact 360/234 dispatch and
+zero/seven retained-cache identities with either guard setting. This supplies
+a concrete confound for that artifact; it does not make its failed gate pass.
+The new source-batched experiment is a separately identified measurement.
+
+Every actual terrain frame must receive identical complete source batches in
+both arms. The comparison additionally requires equal per-frame terrain
+preparation inputs, cache populations, ordered layer/coordinate dispatch and
+resulting cache state. Deferred callback counts and partial arrival order are
+retained as diagnostics; they are not renderer invocations. Missing, failed or
+truncated batch evidence fails. A guard-caused cache eviction or equal-count
+coordinate substitution still fails, even if the final image is unchanged.
+
 After natural terrain settlement, the checker records two explicit samples:
 one synchronous public `map.redraw()` with all currently renderable terrain
 texture slots invalidated, then one warm redraw with every slot verified cached.
