@@ -1,0 +1,319 @@
+{
+  "candidate_commit": "170ba997cadd5ab932d242866fe0c7859f5553db",
+  "candidate_tree": "45dc83e7c0f37b29d8bb5c92a9d392ee0d49080c",
+  "base_commit": "96d0073383fe2b780e598663d0650fff0b42e816",
+  "verified_remote_blobs": 770,
+  "node": "v24.19.0",
+  "logs": [
+    {
+      "log": "logs/aggregate-final.log.gz",
+      "command": "npm test",
+      "exit_code": 0,
+      "summary": {
+        "tests": 2161,
+        "pass": 2161,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "681767cf09bdd57f7b2028dabc89b54a0d4204556dd582cdc3d597b91f0e9a8b",
+      "gzip_sha256": "5769298aa592b01b31a3ab26f222f7d9a66e19fe671d15e1077c444216a680da",
+      "uncompressed_bytes": 224138
+    },
+    {
+      "log": "logs/aggregate-versioned-bounded.log.gz",
+      "command": "node --experimental-vm-modules --test --test-concurrency=2 --test-reporter=tap tests/*.test.mjs",
+      "exit_code": 1,
+      "summary": {
+        "tests": 2161,
+        "pass": 2160,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "30137cfd1993510b2927563eb998aa2bc1cdf5eb67baa98ccb5ad0398d1434fb",
+      "gzip_sha256": "f9c5fe1d3212e1eebcc19782fefec11ea09fd18b34287c7be1b59bfd5d073fdc",
+      "uncompressed_bytes": 517658
+    },
+    {
+      "log": "logs/aggregate-versioned-serial.log.gz",
+      "command": "node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/*.test.mjs",
+      "exit_code": 0,
+      "summary": {
+        "tests": 2161,
+        "pass": 2161,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "259ad24d93fde54b3913b62919d2b078bdde07819d3b80ee3844a4ded66c10df",
+      "gzip_sha256": "3e7fd43829c7ece1486b7e4d5e12dcef9ee4e1f0c4919fe9300d7fbb6c7846db",
+      "uncompressed_bytes": 516979
+    },
+    {
+      "log": "logs/aggregate-versioned.log.gz",
+      "command": "npm test",
+      "exit_code": 1,
+      "summary": {
+        "tests": 2155,
+        "pass": 2154,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "6034083c851f4e5dea2e444e0e13e408e8852f7a1a9a58a71dab4ef2646cc5e8",
+      "gzip_sha256": "533c725922576ed779c56c9e91b0e4d28740570cf46877faa66e7e1fcbcc8555",
+      "uncompressed_bytes": 224546
+    },
+    {
+      "log": "logs/aggregate.log.gz",
+      "command": "npm test",
+      "exit_code": 1,
+      "summary": {
+        "tests": 2159,
+        "pass": 2158,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "09cf7b7425f6adabdcf0ac2b5d72b6b560cfd25d63c5d0c3dd05b5a330fe926f",
+      "gzip_sha256": "0e56dd84fc5e3e9bb9fdc9d7165ac395c9099b6a1391f3ef57896c117f307dc7",
+      "uncompressed_bytes": 224659
+    },
+    {
+      "log": "logs/browser.log.gz",
+      "command": "node scripts/check-departures-browser.mjs",
+      "exit_code": 1,
+      "summary": {},
+      "uncompressed_sha256": "7cc7dd73a68cc2e3c77a1c20cf228e87a79bd69f8a28d09af99db0fbacf6c5bb",
+      "gzip_sha256": "979754daf5b0e10ceb73cb36383365abb8500d21b1958c40fc5c3bbc2c3f4c58",
+      "uncompressed_bytes": 1429
+    },
+    {
+      "log": "logs/build-final.log.gz",
+      "command": "npm run build",
+      "exit_code": 0,
+      "summary": {},
+      "uncompressed_sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "gzip_sha256": "35c78d6ada4ed8fa6c138fe435394677972875620d0c07357c96643709457f04",
+      "uncompressed_bytes": 209
+    },
+    {
+      "log": "logs/build-versioned.log.gz",
+      "command": "npm run build",
+      "exit_code": 0,
+      "summary": {},
+      "uncompressed_sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "gzip_sha256": "35c78d6ada4ed8fa6c138fe435394677972875620d0c07357c96643709457f04",
+      "uncompressed_bytes": 209
+    },
+    {
+      "log": "logs/build.log.gz",
+      "command": "npm run build",
+      "exit_code": 0,
+      "summary": {},
+      "uncompressed_sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94",
+      "gzip_sha256": "35c78d6ada4ed8fa6c138fe435394677972875620d0c07357c96643709457f04",
+      "uncompressed_bytes": 209
+    },
+    {
+      "log": "logs/focused-final.log.gz",
+      "command": "node --test tests/departure-*.test.mjs tests/departures.test.mjs tests/train-schedule.test.mjs",
+      "exit_code": 0,
+      "summary": {
+        "tests": 383,
+        "pass": 383,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "f413e89ac373aecad3c0dac48322c08c7cf685bff99fc9995ea0bfd974d2e685",
+      "gzip_sha256": "42fd25c1faaedca9ace3beb54bd4cfc6e245ff334eb97dc1645d227adbe8bcdc",
+      "uncompressed_bytes": 39052
+    },
+    {
+      "log": "logs/focused.log.gz",
+      "command": "node --test tests/departure-expired-cancellation.test.mjs tests/departure-*.test.mjs tests/departures.test.mjs",
+      "exit_code": 0,
+      "summary": {
+        "tests": 370,
+        "pass": 370,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "6974fd3aa63087ccd15c823b5eb3aa3ead7a18e23ce0a2000cdf20ae12856d4c",
+      "gzip_sha256": "89c0d140c721c29655788bdac3d95d7c7a2e2998ca15aac31e770765cd8a1cb3",
+      "uncompressed_bytes": 37654
+    },
+    {
+      "log": "logs/globe-isolated.log.gz",
+      "command": "node --test --test-name-pattern='dragging the globe' tests/map.test.mjs",
+      "exit_code": 0,
+      "summary": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "7f2022954807ba89539a4d600dc1900846c76ee3e40a2e86c08bb72892755a64",
+      "gzip_sha256": "5bea46bf370d1c39add90667d5115f96adee958edc69dc597a0967790896a063",
+      "uncompressed_bytes": 216
+    },
+    {
+      "log": "logs/independent-sw-install.log.gz",
+      "command": null,
+      "exit_code": null,
+      "summary": {
+        "tests": 39,
+        "pass": 39,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "8f91a2aa80e2634a2df91910b1e6a4ac0e14061cee64d883ffd1d2ef8a6f0347",
+      "gzip_sha256": "4751d77a1ba524f8777ca11647804b6170c7d81c619f6d357634cc98b8333ebc",
+      "uncompressed_bytes": 4716
+    },
+    {
+      "log": "logs/independent-targeted.log.gz",
+      "command": null,
+      "exit_code": null,
+      "summary": {
+        "tests": 142,
+        "pass": 142,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "9c1537f77e9a79f27c9479f10ccc747683ac280f852728e3ae7ffd20b417bd60",
+      "gzip_sha256": "78a2d0016ec86f3c14c498b4288fc7cf695f23334a1c28bbf76c381a60e1e583",
+      "uncompressed_bytes": 14455
+    },
+    {
+      "log": "logs/independent-version-coherence.log.gz",
+      "command": null,
+      "exit_code": null,
+      "summary": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "ece90dbb633d5b6d7a4a3cc631dc7aab030df65ce7379bbe2ec9706f3d676722",
+      "gzip_sha256": "467cfe29cd755ec99e3cc74f6e53935e96f8b38efc5ab5136cec8b22548c89ad",
+      "uncompressed_bytes": 630
+    },
+    {
+      "log": "logs/red-focused-final.log.gz",
+      "command": "final targeted tests against the unchanged baseline parser",
+      "exit_code": 1,
+      "summary": {
+        "tests": 14,
+        "pass": 7,
+        "fail": 7,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "b7115f8395b98be96cc9e6303df9ff372184cfcde534d5469ce45041c51ce490",
+      "gzip_sha256": "2e5085262e28edff6742b8923e021c8f60bda7363fed1d2d4526ccfa54d40f9c",
+      "uncompressed_bytes": 12175
+    },
+    {
+      "log": "logs/red-focused.log.gz",
+      "command": "new targeted tests against the unchanged baseline parser",
+      "exit_code": 1,
+      "summary": {
+        "tests": 12,
+        "pass": 6,
+        "fail": 6,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "da7af66656a53480b2a4ea875b61cc66263fe95725e94072997e722b78148130",
+      "gzip_sha256": "fc59ad81e03ab4e821296ce438eab520965e078fe8c27c2596c2def4f04a7426",
+      "uncompressed_bytes": 10698
+    },
+    {
+      "log": "logs/red-naive-final.log.gz",
+      "command": "final targeted tests against the diagnostic filter-at-end mutation",
+      "exit_code": 1,
+      "summary": {
+        "tests": 14,
+        "pass": 6,
+        "fail": 8,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "29487b783af15ae04f9515d4f7f270469ea5b748ec78f67a8fcaeada579932d5",
+      "gzip_sha256": "27cee1c4a3c4a020a94b49525f9c6d28648ef4e28151f7618350a59c69321671",
+      "uncompressed_bytes": 16544
+    },
+    {
+      "log": "logs/red-naive.log.gz",
+      "command": "targeted tests against the diagnostic filter-at-end mutation",
+      "exit_code": 1,
+      "summary": {
+        "tests": 13,
+        "pass": 6,
+        "fail": 7,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "ad30674b29b8c71265a7658aec275d8ca2b38c26d845d35e4f09b584382da73b",
+      "gzip_sha256": "a73ababb94688e5957f1537254eb096eed47aec60b8ce374a4e33dcaa898299d",
+      "uncompressed_bytes": 14651
+    },
+    {
+      "log": "logs/targeted-final.log.gz",
+      "command": "node --test tests/departure-expired-cancellation.test.mjs",
+      "exit_code": 0,
+      "summary": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "782d348e59d2ee7c93d09fdd82b169319c8e86331584e501015fa029cd606f0d",
+      "gzip_sha256": "a80789f91d084eabf87be085d71ff237eda70a79a97395d80a078af00137cd6d",
+      "uncompressed_bytes": 1480
+    },
+    {
+      "log": "logs/version-upgrade.log.gz",
+      "command": "node --experimental-vm-modules --test tests/sw-install.test.mjs tests/startup.test.mjs",
+      "exit_code": 1,
+      "summary": {
+        "tests": 154,
+        "pass": 153,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "uncompressed_sha256": "462e090bd2f1a650cc862006f9f8d77db30fe8fc640a706791f17dec50e9b407",
+      "gzip_sha256": "9066a105d5c6aa00fe0deb4fd891a19f56c5ea3510397178a7ad3b5a365a540a",
+      "uncompressed_bytes": 24622
+    }
+  ],
+  "generated_or_historical_source_archives_included": false,
+  "browser_limit": "Pinned Chromium executable absent; hosted Chromium and WebKit checks remain required."
+}

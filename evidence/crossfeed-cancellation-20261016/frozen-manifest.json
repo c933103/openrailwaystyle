@@ -1,0 +1,28 @@
+{
+  "base_commit": "96d0073383fe2b780e598663d0650fff0b42e816",
+  "base_tree": "15998e71168d16ec6407be5e19b8017fa5682b79",
+  "patch_sha256": "64b34cabc8f6659ef7bb46cb27aecce1ea50c5ba30d35cf7c603f422437c4dd8",
+  "files": [
+    {
+      "path": "scripts/check-departures-browser.mjs",
+      "base_blob": "a742adf5778dee892ecdb9995f1890bef4c25350",
+      "blob": "762ef9af534a270697d74bdb9f1c1fc129e9a820",
+      "sha256": "394decec21b9623b80445cdf8311080805de7cae49b20d5adfd9718172236ff7",
+      "bytes": 34528
+    },
+    {
+      "path": "styles/departures.mjs",
+      "base_blob": "8501b868bcb0def2c8633fd8a19611ffe2422e84",
+      "blob": "faa3931fb32d7d003c58c27b6db75aab4b279d08",
+      "sha256": "2567be1460032204bbf53ead054da94d212fc61984b763b6baf475bc0ec7626b",
+      "bytes": 25131
+    },
+    {
+      "path": "tests/departure-expired-cancellation.test.mjs",
+      "base_blob": null,
+      "blob": "8a4bcc1b85fa881f08b3db40e9d18e92c1860398",
+      "sha256": "6b06f276880420c0c6e30eb1997a9061240cc8b7ddafff2c2b73003f849789f1",
+      "bytes": 10115
+    }
+  ]
+}
