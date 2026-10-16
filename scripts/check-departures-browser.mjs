@@ -128,6 +128,44 @@ try {
         document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
       const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
         realTime:false, place:stop('Central','a',{arrival:'2099-01-01T12:00:00Z',departure:'2099-01-01T12:00:00Z'})};
+      // A scheduled cancellation can be old while another feed still predicts
+      // the same train ahead. Exercise the production parser, board and cache.
+      const expiredAt = new Date(await page.evaluate(() => Date.now() - 600_000)).toISOString();
+      const delayedAt = new Date(Date.parse(expiredAt) + 840_000).toISOString();
+      const scheduledClock = new Intl.DateTimeFormat('en-GB', {hour:'2-digit', minute:'2-digit', timeZone:'UTC'}).format(Date.parse(expiredAt));
+      for (const order of [['a','b'], ['b','a']]) for (const flag of ['cancelled','tripCancelled','place.cancelled']) {
+        boardName = `Expired cancellation ${order.join('')} ${flag}`; boardOrder = order; boardFailed = [];
+        const expired = {...row, tripId:'expired-trip', routeId:'expired-route',
+          ...(flag !== 'place.cancelled' ? {[flag]:true} : {}),
+          place:{...row.place, stopId:'a', tz:'UTC', scheduledDeparture:expiredAt, departure:expiredAt,
+            ...(flag === 'place.cancelled' ? {cancelled:true} : {})}};
+        const delayed = {...row, tripId:'delayed-trip', routeId:'delayed-route', realTime:true,
+          place:{...row.place, stopId:'b', tz:'UTC', scheduledDeparture:expiredAt, departure:delayedAt, track:'4'}};
+        boardBodies = {a:{stopTimes:[expired]}, b:{stopTimes:[delayed]}};
+        const before = boardRequests.length;
+        for (let reopen = 0; reopen < 2; reopen++) {
+          await openStation(boardName); await waitBoard();
+          assert.equal(await page.locator('.departure-list > li').count(), 1);
+          assert.equal(await page.locator('.departure-status').textContent(), 'Cancelled');
+          assert.equal(await page.locator('.departure-time.cancelled').textContent(), scheduledClock);
+          assert.equal(await page.locator('.departure-track').textContent(), 'Pl. 4');
+          assert.match(await page.locator('.departures').textContent(), /Live times for 1 of 1 departures/);
+          assert.equal(boardRequests.length - before, 3, 'reopening retains cancellation without another board or trip request');
+          await page.locator('#details-close').click();
+        }
+        // A distinct expired service in the same feed remains a competitor.
+        boardName += ' ambiguous';
+        boardBodies.a.stopTimes.push({...expired, cancelled:false, tripCancelled:false,
+          tripId:'competing-trip', routeId:'competing-route', place:{...expired.place, cancelled:false}});
+        await openStation(boardName); await waitBoard();
+        assert.equal(await page.locator('.departure-list > li').count(), 1);
+        assert.equal(await page.locator('.departure-status').textContent(), '+14 min');
+        assert.equal(await page.locator('.departure-time.cancelled').count(), 0);
+        assert.equal(boardRequests.length - before, 6);
+        await page.locator('#details-close').click();
+      }
+      boardBodies = {};
+      console.log(`${engine}: all three expired cross-feed cancellation flags, live platform/time state, ambiguity and cached reopening passed in both board orders.`);
       // A nearer substring name cannot take a board slot or supply the journey
       // origin/destination. Exercise the production click, matching and renderer.
       const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
