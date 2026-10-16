@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261016-cached-station-failures-1';
+import {SEARCH_API} from './map-model.mjs?v=20261016-departure-row-isolation-2';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

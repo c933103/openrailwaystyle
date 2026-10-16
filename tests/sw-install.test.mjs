@@ -272,6 +272,70 @@ for (const file of ['app.mjs', 'departures.mjs']) test(`malformed departure-boar
   assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
 });
 
+// A small compatibility model, not an archived provider parser. Its only
+// contract is the old failure mode: malformed rows are read after boards load.
+const cachedUnisolatedDepartureParser = `
+export async function stationDepartures(station, {fetch: get}) {
+  const stops = await (await get('https://api.transitous.org/api/v1/reverse-geocode')).json();
+  const boards = await Promise.all(stops.map(async stop =>
+    (await get('https://api.transitous.org/api/v1/stoptimes?stopId=' + stop.id)).json()));
+  return {stops, rows: boards.flatMap(board => board.stopTimes).filter(row => row.mode === 'REGIONAL_RAIL')};
+}`;
+async function cachedDepartureBoard(parserBytes, badFirst = false) {
+  const {stationDepartures} = await import('data:text/javascript;base64,' + Buffer.from(parserBytes).toString('base64'));
+  const ids = badFirst ? ['bad', 'good'] : ['good', 'bad'], calls = [];
+  const departure = new Date(Date.now() + 600000).toISOString();
+  const get = async address => {
+    const url = new URL(address);
+    assert.equal(url.origin, 'https://api.transitous.org');
+    if (url.pathname === '/api/v1/reverse-geocode') {
+      calls.push('lookup');
+      return {ok: true, json: async () => ids.map(id => ({id, type: 'STOP', name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']}))};
+    }
+    assert.equal(url.pathname, '/api/v1/stoptimes');
+    const id = url.searchParams.get('stopId');
+    assert.ok(ids.includes(id));calls.push(id);
+    return {ok: true, json: async () => ({stopTimes: id === 'bad' ? [null] : [{mode: 'REGIONAL_RAIL', displayName: 'R',
+      headsign: 'Terminus', tripId: 'healthy', place: {departure, scheduledDeparture: departure}}]})};
+  };
+  try {
+    const board = await stationDepartures({lat: 0, lon: 0, names: ['Central']}, {fetch: get});
+    return {trips: board.rows.map(row => row.tripId), results: board.stopResults};
+  } finally {
+    assert.deepEqual(calls, ['lookup', ...ids], 'the cached parser uses one lookup and two fixture boards');
+  }
+}
+
+test('row-isolation release upgrades executable parser offline while old tabs retain their cached behavior', async () => {
+  const previousVersion = '20261016-cached-station-failures-1';
+  const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);assert.notEqual(currentVersion, previousVersion);
+  const path = new URL('departures.mjs', scope).pathname;
+  const old = startWorker({version: previousVersion, assetBodies: new Map([[path, cachedUnisolatedDepartureParser]]), rejectExternal: true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const get = async (worker, version) => await (await worker.request('departures.mjs?v=' + version)).text();
+  const unchanged = startWorker({version: previousVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]]), rejectExternal: true});
+  await bounded(unchanged.request('./', true));
+  assert.equal(await get(unchanged, previousVersion), cachedUnisolatedDepartureParser);
+  await assert.rejects(cachedDepartureBoard(await get(unchanged, previousVersion)), TypeError,
+    'an unchanged release token must expose the old cached failure, not execute network bytes');
+  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]]), rejectExternal: true});
+  await bounded(next.request('./', true));next.setOffline();
+  assert.equal(await get(next, currentVersion), currentBytes);
+  for (const badFirst of [false, true]) {
+    const ids = badFirst ? ['bad', 'good'] : ['good', 'bad'];
+    assert.deepEqual(await cachedDepartureBoard(await get(next, currentVersion), badFirst), {
+      trips: ['healthy'], results: ids.map(stopId => ({stopId, status: stopId === 'bad' ? 'rejected' : 'fulfilled'}))
+    });
+  }
+  assert.equal(await get(next, previousVersion), cachedUnisolatedDepartureParser);
+  await assert.rejects(cachedDepartureBoard(await get(next, previousVersion)), TypeError);
+  assert.equal(next.requests.filter(url => url === scope + 'departures.mjs?v=' + currentVersion).length, 1);
+  assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
+});
+
 for (const file of ['app.mjs', 'departures.mjs']) test(`exact departure instants refreshes exact ${file} bytes from the immediate predecessor`, async () => {
   // Exact files from main f9bd326c before the exact-instant correction. Keeping
   // these compressed makes this an upgrade regression, not a synthetic version
