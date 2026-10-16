@@ -4,6 +4,7 @@ import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import assert from 'node:assert/strict';
+import {assertLegendFits,assertLegacyLegendOverflows} from './legend-layout.mjs';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
@@ -154,19 +155,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
           lines:[...range.getClientRects()].map(({left,right,width,height})=>({left,right,width,height}))};
       })};
   });
-  const assertLegendFits=layout=>{
-    assert.equal(layout.panel.scrollLeft,0,'legend is readable without horizontal panning');
-    assert.ok(layout.panel.scrollWidth<=layout.panel.clientWidth,'panel has no horizontal overflow');
-    assert.ok(layout.grid.scrollWidth<=layout.grid.clientWidth,'legend content stays inside its grid');
-    assert.ok(layout.rows.length>0,'legend measurements are nonempty');
-    for(const {label,row,text,lines} of layout.rows){
-      assert.ok(row.width>0&&text.width>0,`${label}: row and text are visible`);
-      assert.ok(row.left>=layout.grid.left&&row.right<=layout.grid.right,`${label}: row fits the grid`);
-      assert.ok(text.left>=row.left&&text.right<=row.right,`${label}: full text box fits its row`);
-      assert.ok(lines.length>0&&lines.every(line=>line.width>0&&line.height>0),`${label}: rendered text is nonempty`);
-      assert.ok(lines.every(line=>line.left>=text.left&&line.right<=text.right),`${label}: text is not clipped or overflowing`);
-    }
-  };
+
 
   const powerLegend = async former => {
     await openControls();
@@ -220,7 +209,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
           const previous=await page.addStyleTag({content:'#legend .legend-item:has(.pattern-swatch){grid-column:auto}'});
           try {
             const broken=await legendLayout();
-            assert.throws(()=>assertLegendFits(broken),/overflow|fits/,'restoring the preceding lifecycle placement must fail the same geometry checks');
+            assertLegacyLegendOverflows(broken);
             layouts.push({constrained,negativeControl:true,...broken});
           } finally {await previous.evaluate(node=>node.remove());}
           assertLegendFits(await legendLayout());
