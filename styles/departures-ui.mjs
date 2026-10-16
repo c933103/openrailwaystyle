@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261016-departure-destination-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261016-legend-layout-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

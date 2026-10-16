@@ -502,6 +502,26 @@ test('actual first-party worker migration serves fixed bytes to delayed old tabs
   assert.equal((await next.request('vendor/maplibre-gl-5.24.0.js')).type,'error','modified legacy first-party bytes must not execute');
 });
 
+test('legend overflow release replaces cached CSS while keeping the preceding page coherent',async()=>{
+  const previous='20261016-departure-destination-2';
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous,'changed layout requires a fresh cache-first asset version');
+  const path=new URL('app.css',scope).pathname;
+  const css=readFileSync(new URL('../styles/app.css',import.meta.url),'utf8');
+  const oldCss='/* synthetic preceding cached layout */';
+  const old=startWorker({version:previous,assetBodies:new Map([[path,oldCss]]),rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:new Map([[path,css]]),rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  assert.equal(await(await unchanged.request(`app.css?v=${previous}`)).text(),oldCss,'reusing the old token really retains the preceding CSS');
+  const next=startWorker({version,stores:old.stores,assetBodies:new Map([[path,css]]),rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  assert.equal(await(await next.request(`app.css?v=${version}`)).text(),css);
+  assert.equal(await(await next.request(`app.css?v=${previous}`)).text(),oldCss,'older open pages keep their own CSS');
+  assert.ok(next.requests.includes(`${scope}app.css?v=${version}`));
+});
+
 // The preceding release already cached app/CSS/module bytes under this token.
 // New point samples must reach installed users without reusing those line keys.
 test('Power legend release upgrades the cached app, CSS and facility metadata together',async()=>{

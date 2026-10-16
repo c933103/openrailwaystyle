@@ -1,7 +1,7 @@
 import {installEmptyMapProviders,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
-import {readFile, mkdir} from 'node:fs/promises';
+import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
@@ -144,6 +144,30 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const clickCoordinates=async coordinates=>{const point=await page.evaluate(coordinates=>{const point=window.reviewMap.project(coordinates);return{x:point.x,y:point.y};},coordinates);await page.locator('#map canvas').click({position:point});};
   const sharedBands=async prefix=>{for(const id of [prefix,`${prefix}-system-2`,`${prefix}-system-3`])await visible(id);assert.deepEqual(await page.evaluate(prefix=>[prefix,`${prefix}-system-2`,`${prefix}-system-3`].map(id=>window.reviewMap.getLayoutProperty(id,'visibility')),prefix),['visible','visible','visible']);};
 
+  const legendLayout=()=>page.evaluate(()=>{
+    const panel=document.querySelector('.panel'),grid=document.querySelector('#legend .legend-grid');
+    const bounds=node=>{const {left,right,width}=node.getBoundingClientRect();return {left,right,width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth};};
+    return {viewport:{width:innerWidth,height:innerHeight},panel:{...bounds(panel),scrollLeft:panel.scrollLeft},grid:bounds(grid),
+      rows:[...grid.children].map(row=>{
+        const label=row.lastElementChild,range=document.createRange();range.selectNodeContents(label);
+        return {label:label.textContent,row:bounds(row),text:bounds(label),
+          lines:[...range.getClientRects()].map(({left,right,width,height})=>({left,right,width,height}))};
+      })};
+  });
+  const assertLegendFits=layout=>{
+    assert.equal(layout.panel.scrollLeft,0,'legend is readable without horizontal panning');
+    assert.ok(layout.panel.scrollWidth<=layout.panel.clientWidth,'panel has no horizontal overflow');
+    assert.ok(layout.grid.scrollWidth<=layout.grid.clientWidth,'legend content stays inside its grid');
+    assert.ok(layout.rows.length>0,'legend measurements are nonempty');
+    for(const {label,row,text,lines} of layout.rows){
+      assert.ok(row.width>0&&text.width>0,`${label}: row and text are visible`);
+      assert.ok(row.left>=layout.grid.left&&row.right<=layout.grid.right,`${label}: row fits the grid`);
+      assert.ok(text.left>=row.left&&text.right<=row.right,`${label}: full text box fits its row`);
+      assert.ok(lines.length>0&&lines.every(line=>line.width>0&&line.height>0),`${label}: rendered text is nonempty`);
+      assert.ok(lines.every(line=>line.left>=text.left&&line.right<=text.right),`${label}: text is not clipped or overflowing`);
+    }
+  };
+
   const powerLegend = async former => {
     await openControls();
     if (await page.locator('#settings-view').isVisible()) await page.locator('#settings-close').click();
@@ -182,6 +206,36 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     const accessible=await page.locator('#legend').ariaSnapshot();
     assert.ok(accessible.includes('Train refuelling point (fuel type where mapped)'));
     assert.ok(!/^\s*- text: [EFCW]$/m.test(accessible),'decorative letters do not duplicate accessible labels');
+    const layouts=[];
+    for(const constrained of [false,true]){
+      // The observed desktop panel had a 257px content box after its classic
+      // scrollbar and padding. Check that width as well as each browser's
+      // natural layout; overlay scrollbars must not hide the regression.
+      const narrow=constrained?await page.addStyleTag({content:'#legend{max-width:257px}'}):null;
+      try {
+        await page.locator('.panel').evaluate(panel=>{panel.scrollLeft=0;});
+        const measured=await legendLayout();
+        layouts.push({constrained,...measured});assertLegendFits(measured);
+        if(former&&constrained){
+          const previous=await page.addStyleTag({content:'#legend .legend-item:has(.pattern-swatch){grid-column:auto}'});
+          try {
+            const broken=await legendLayout();
+            assert.throws(()=>assertLegendFits(broken),/overflow|fits/,'restoring the preceding lifecycle placement must fail the same geometry checks');
+            layouts.push({constrained,negativeControl:true,...broken});
+          } finally {await previous.evaluate(node=>node.remove());}
+          assertLegendFits(await legendLayout());
+        }
+      } finally {if(narrow)await narrow.evaluate(node=>node.remove());}
+    }
+    await writeFile(`browser-review/power-legend-layout-${former?'former':'active'}-${kind}.json`,JSON.stringify(layouts,null,2)+'\n');
+    const last=page.locator('#legend .legend-item').last();
+    await last.scrollIntoViewIfNeeded();
+    assertLegendFits(await legendLayout());
+    assert.equal(await last.evaluate(row=>{
+      const panel=row.closest('.panel'),box=panel.getBoundingClientRect(),item=row.getBoundingClientRect();
+      return item.top>=box.top+panel.clientTop&&item.bottom<=box.top+panel.clientTop+panel.clientHeight;
+    }),true,'the final legend row remains reachable by vertical scrolling');
+    await page.screenshot({path:`browser-review/power-legend-viewport-${former?'former':'active'}-${kind}.png`});
     await page.locator('#legend').screenshot({path:`browser-review/power-legend-${former?'former':'active'}-${kind}.png`});
     await closeControls();
   };
