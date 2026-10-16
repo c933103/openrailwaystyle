@@ -6,6 +6,7 @@ import {webcrypto, createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {backportMapLibre524} from '../styles/map-controls.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
+import * as cachedStationCompatibility from './fixtures/cached-station-compatibility.mjs';
 
 const source = readFileSync(new URL('../styles/sw.js', import.meta.url), 'utf8');
 const scope = 'https://atlas.test/openrailwaystyle/';
@@ -271,6 +272,70 @@ for (const file of ['app.mjs', 'departures.mjs']) test(`malformed departure-boar
   assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
 });
 
+// A small compatibility model, not an archived provider parser. Its only
+// contract is the old failure mode: malformed rows are read after boards load.
+const cachedUnisolatedDepartureParser = `
+export async function stationDepartures(station, {fetch: get}) {
+  const stops = await (await get('https://api.transitous.org/api/v1/reverse-geocode')).json();
+  const boards = await Promise.all(stops.map(async stop =>
+    (await get('https://api.transitous.org/api/v1/stoptimes?stopId=' + stop.id)).json()));
+  return {stops, rows: boards.flatMap(board => board.stopTimes).filter(row => row.mode === 'REGIONAL_RAIL')};
+}`;
+async function cachedDepartureBoard(parserBytes, badFirst = false) {
+  const {stationDepartures} = await import('data:text/javascript;base64,' + Buffer.from(parserBytes).toString('base64'));
+  const ids = badFirst ? ['bad', 'good'] : ['good', 'bad'], calls = [];
+  const departure = new Date(Date.now() + 600000).toISOString();
+  const get = async address => {
+    const url = new URL(address);
+    assert.equal(url.origin, 'https://api.transitous.org');
+    if (url.pathname === '/api/v1/reverse-geocode') {
+      calls.push('lookup');
+      return {ok: true, json: async () => ids.map(id => ({id, type: 'STOP', name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']}))};
+    }
+    assert.equal(url.pathname, '/api/v1/stoptimes');
+    const id = url.searchParams.get('stopId');
+    assert.ok(ids.includes(id));calls.push(id);
+    return {ok: true, json: async () => ({stopTimes: id === 'bad' ? [null] : [{mode: 'REGIONAL_RAIL', displayName: 'R',
+      headsign: 'Terminus', tripId: 'healthy', place: {departure, scheduledDeparture: departure}}]})};
+  };
+  try {
+    const board = await stationDepartures({lat: 0, lon: 0, names: ['Central']}, {fetch: get});
+    return {trips: board.rows.map(row => row.tripId), results: board.stopResults};
+  } finally {
+    assert.deepEqual(calls, ['lookup', ...ids], 'the cached parser uses one lookup and two fixture boards');
+  }
+}
+
+test('row-isolation release upgrades executable parser offline while old tabs retain their cached behavior', async () => {
+  const previousVersion = '20261016-cached-station-failures-1';
+  const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);assert.notEqual(currentVersion, previousVersion);
+  const path = new URL('departures.mjs', scope).pathname;
+  const old = startWorker({version: previousVersion, assetBodies: new Map([[path, cachedUnisolatedDepartureParser]]), rejectExternal: true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const get = async (worker, version) => await (await worker.request('departures.mjs?v=' + version)).text();
+  const unchanged = startWorker({version: previousVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]]), rejectExternal: true});
+  await bounded(unchanged.request('./', true));
+  assert.equal(await get(unchanged, previousVersion), cachedUnisolatedDepartureParser);
+  await assert.rejects(cachedDepartureBoard(await get(unchanged, previousVersion)), TypeError,
+    'an unchanged release token must expose the old cached failure, not execute network bytes');
+  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]]), rejectExternal: true});
+  await bounded(next.request('./', true));next.setOffline();
+  assert.equal(await get(next, currentVersion), currentBytes);
+  for (const badFirst of [false, true]) {
+    const ids = badFirst ? ['bad', 'good'] : ['good', 'bad'];
+    assert.deepEqual(await cachedDepartureBoard(await get(next, currentVersion), badFirst), {
+      trips: ['healthy'], results: ids.map(stopId => ({stopId, status: stopId === 'bad' ? 'rejected' : 'fulfilled'}))
+    });
+  }
+  assert.equal(await get(next, previousVersion), cachedUnisolatedDepartureParser);
+  await assert.rejects(cachedDepartureBoard(await get(next, previousVersion)), TypeError);
+  assert.equal(next.requests.filter(url => url === scope + 'departures.mjs?v=' + currentVersion).length, 1);
+  assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
+});
+
 for (const file of ['app.mjs', 'departures.mjs']) test(`exact departure instants refreshes exact ${file} bytes from the immediate predecessor`, async () => {
   // Exact files from main f9bd326c before the exact-instant correction. Keeping
   // these compressed makes this an upgrade regression, not a synthetic version
@@ -521,6 +586,77 @@ test('hidden-mask release refreshes the app and executable guard through the exi
   map.painter._renderTileClippingMasks({isHidden:()=>false});assert.equal(calls,1);
 });
 
+test('Power presentation upgrades a compact old module graph without mixing cached releases',async()=>{
+  // These are deliberately synthetic compatibility responses, not archived
+  // application sources. Exact historical bytes remain in immutable Git refs.
+  const previous='20261016-departure-row-isolation-2';
+  const paths=['app.mjs','cjk-font.mjs','departures-ui.mjs','departures.mjs','elevation.mjs','layer-semantics.mjs','map-model.mjs','power-facilities.mjs'];
+  const oldBodies=new Map(paths.map(file=>[new URL(file,scope).pathname,`export const previousModule=${JSON.stringify(file)};`]));
+  oldBodies.set(new URL('app.mjs',scope).pathname,`export {powerFacilityName} from './power-facilities.mjs?v=${previous}'; export {previousModule} from './departures.mjs?v=${previous}';`);
+  oldBodies.set(new URL('power-facilities.mjs',scope).pathname,'export function powerFacilityName(){return "Steam locomotive water tank";}');
+  assert.ok([...oldBodies.values()].join('').length<1024,'keep the old compatibility graph focused');
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,previous,'changed Power bytes need a fresh cache-first version');
+  const current=new Map(paths.map(file=>[new URL(file,scope).pathname,readFileSync(new URL('../styles/'+file,import.meta.url),'utf8')]));
+  let references=0;
+  for(const file of ['index.html','data-check.html','data-check.mjs',...paths]){
+    const body=readFileSync(new URL('../styles/'+file,import.meta.url),'utf8');
+    for(const match of body.matchAll(/(?:\.mjs|\.css)\?v=([\w.-]+)/g)){
+      assert.equal(match[1],version,`${file}: entrypoint and transitive modules share one release`);references++;
+    }
+  }
+  assert.ok(references>=30,'covers the current versioned module graph');
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const cacheNames=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const [path,body] of oldBodies){
+    assert.equal(await(await unchanged.request(path+'?v='+previous)).text(),body);
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===path).length,0,'reusing a version retains stale cached bytes');
+  }
+  const evaluate=async code=>{const module=new vm.SourceTextModule(code);await module.link(()=>{throw new Error('unexpected module dependency');});await module.evaluate();return module.namespace;};
+  const storage={power_kind:'water_tank',man_made:'storage_tank',content:'water',usage:'railway'};
+  const stale=await evaluate(await(await unchanged.request('power-facilities.mjs?v='+previous)).text());
+  assert.equal(stale.powerFacilityName(storage),'Steam locomotive water tank');
+  assert.equal(stale.powerFacilityEnergyRows,undefined);
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const [path,body] of current){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),body,'new tabs receive exact current bytes offline');
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(path),'older tabs retain their own saved modules');
+    assert.equal(next.requests.filter(url=>url===new URL(path,scope).href+'?v='+version).length,1);
+  }
+  // Execute the old entrypoint and its transitive imports after the upgrade.
+  const modules=new Map();
+  const oldModule=async url=>{
+    const parsed=new URL(url,scope);assert.equal(parsed.searchParams.get('v'),previous);
+    assert.ok(oldBodies.has(parsed.pathname),'the old entrypoint cannot import an unrelated module');
+    if(!modules.has(parsed.href))modules.set(parsed.href,new vm.SourceTextModule(await(await next.request(parsed.href)).text(),{identifier:parsed.href}));
+    return modules.get(parsed.href);
+  };
+  const oldApp=await oldModule('app.mjs?v='+previous);
+  await oldApp.link((specifier,referrer)=>oldModule(new URL(specifier,referrer.identifier).href));await oldApp.evaluate();
+  assert.equal(oldApp.namespace.powerFacilityName(storage),'Steam locomotive water tank');
+  assert.equal(oldApp.namespace.previousModule,'departures.mjs');
+  const fixed=await evaluate(await(await next.request('power-facilities.mjs?v='+version)).text());
+  assert.equal(fixed.powerFacilityName(storage),'Railway water tank');
+  assert.deepEqual(Object.fromEntries(fixed.powerFacilityEnergyRows({'fuel:adblue':'yes','plant:source':'solar'})),{'Recorded supplies':'adblue','Fuel tags':'fuel:adblue=yes','Plant energy source':'solar'});
+  // Exercise the actual cached parser with a malformed sibling, not a dated
+  // source hash: future compatible parser improvements must remain allowed.
+  const departures=await evaluate(await(await next.request('departures.mjs?v='+version)).text());
+  const observation={mode:'REGIONAL_RAIL',displayName:'R7',headsign:'Harbour',place:{departure:'2099-01-01T12:00:00Z'}};
+  const board=await departures.stationDepartures({lat:0,lon:0,names:['Central']},{fetch:async url=>({ok:true,json:async()=>url.includes('/reverse-geocode')
+    ? ['a','b'].map(id=>({type:'STOP',id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']}))
+    : {stopTimes:new URL(url).searchParams.get('stopId')==='a'?[observation]:[null]}})});
+  assert.deepEqual(Object.fromEntries(board.stopResults.map(result=>[result.stopId,result.status])),{a:'fulfilled',b:'rejected'});
+  assert.equal(board.rows.length,1);assert.equal(board.rows[0].line,'R7');
+  assert.deepEqual([...next.stores.keys()],cacheNames,'no cache purge or generation change');
+  assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous]);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
 test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
   const root=new URL('../styles/',import.meta.url),html=readFileSync(new URL('index.html',root),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
@@ -610,36 +746,126 @@ test('world-copy recovery release upgrades cached app and exact recovery bytes o
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
-for (const file of ['app.mjs', 'departures.mjs']) test(`destination identity refreshes exact ${file} bytes from its predecessor`, async () => {
-  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/departure-destination-predecessor.json.gz', import.meta.url))));
-  assert.equal(previous.commit, '562ec2f8fb4e987cbf9ca64055ca01d4aa541418');
-  assert.equal(previous.version, '20261016-hidden-tile-masks-1');
-  const previousBytes = previous.files[file].text;
-  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
-  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
-  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
-  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
-  assert.ok(currentVersion);
-  assert.notEqual(currentVersion, previous.version);
-  const path = new URL(file, scope).pathname;
-  const old = startWorker({version:previous.version, assetBodies:new Map([[path, previousBytes]])});
-  await bounded(old.lifecycle('install')); await old.lifecycle('activate');
-  const next = startWorker({version:currentVersion, stores:old.stores, assetBodies:new Map([[path, currentBytes]])});
-  await bounded(next.request('./', true));
-  const served = await (await next.request(`${file}?v=${currentVersion}`)).text();
-  assert.equal(served, currentBytes);
-  next.setOffline();
-  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
-  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
-  if (file === 'departures.mjs') {
-    const load = text => import(`data:text/javascript;base64,${Buffer.from(text).toString('base64')}`);
-    const at = '2099-01-01T12:00:00Z';
-    const lists = ['Central', 'Central Park'].map((headsign, i) => [{mode:'REGIONAL_RAIL',
-      displayName:'R7', tripId:`trip-${i}`, headsign, cancelled:i === 1,
-      place:{departure:at, scheduledDeparture:at}}]);
-    assert.equal((await load(previousBytes)).departureRows(lists, {now:0}).length, 1, 'the exact cached predecessor reproduces the loss');
-    const rows = (await load(served)).departureRows(lists, {now:0});
-    assert.equal(rows.length, 2, 'the refreshed module keeps both actual trains');
-    assert.equal(rows.find(row => row.tripId === 'trip-0').cancelled, false);
+async function cachedStationReturn(fallbackBytes,recoveryBytes){
+  const load=bytes=>import('data:text/javascript;base64,'+Buffer.from(bytes).toString('base64'));
+  const [{createStationFallbackState},{createRailProviderRecovery}]=await Promise.all([load(fallbackBytes),load(recoveryBytes)]);
+  const source={url:'atlasstation://en/https://openrailwaymap.app/standard_railway_text_stations',maxzoom:16};
+  const tile={state:'errored',tileID:{wrap:0,canonical:{z:10,x:518,y:352}}};let tiles=[tile];
+  const map={getSource:()=>source,getZoom:()=>10,style:{tileManagers:{stations:{getSource:()=>source,getIds:()=>tiles.map((_,i)=>i),getTileByID:i=>tiles[i]}}}};
+  const state=createStationFallbackState(map),timers=new Set();
+  const recovery=createRailProviderRecovery(map,{setTimer:fn=>{timers.add(fn);return fn;},clearTimer:fn=>timers.delete(fn)});
+  try{
+    const event={sourceId:'stations',tile,error:{status:503}};state.noteError(event);recovery.noteError(event);
+    assert.ok(state.area(10));assert.equal(recovery.hasFailures(),true);
+    tiles=[];assert.equal(state.area(10),null);recovery.wake();assert.equal(recovery.hasFailures(),false);
+    tiles=[tile];recovery.wake();
+    return {fallback:Boolean(state.area(10)),retry:recovery.hasFailures(),timer:timers.size};
+  }finally{recovery.dispose();}
+}
+
+test('cached station release upgrades executable fallback and retry bytes while preserving old tabs',async()=>{
+  // A minimal executable old-shell model tests the cache compatibility contract;
+  // tests/station-fallback-cache.test.mjs exercises the actual pinned renderer
+  // and current modules. No historical application bundle is shipped here.
+  const previous=cachedStationCompatibility;
+  const version=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8').match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous.version);
+  const paths=['app.mjs','station-fallback.mjs','rail-provider-recovery.mjs'],oldBodies=new Map(),current=new Map();
+  for(const path of paths){
+    oldBodies.set(new URL(path,scope).pathname,previous.files[path]);
+    current.set(new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8'));
   }
+  const old=startWorker({version:previous.version,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const originalCaches=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous.version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  const get=async(worker,path,token)=>await(await worker.request(path+'?v='+token)).text();
+  for(const path of paths){
+    assert.equal(await get(unchanged,path,previous.version),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===new URL(path,scope).pathname).length,0);
+  }
+  assert.deepEqual(await cachedStationReturn(await get(unchanged,'station-fallback.mjs',previous.version),
+    await get(unchanged,'rail-provider-recovery.mjs',previous.version)),{fallback:false,retry:false,timer:0},'unchanged-token control executes the old-shell compatibility model');
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await get(next,path,version),current.get(new URL(path,scope).pathname));
+    assert.equal(await get(next,path,previous.version),oldBodies.get(new URL(path,scope).pathname));
+    assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
+  }
+  assert.deepEqual(await cachedStationReturn(await get(next,'station-fallback.mjs',version),
+    await get(next,'rail-provider-recovery.mjs',version)),{fallback:true,retry:true,timer:1});
+  assert.deepEqual([...next.stores.keys()],originalCaches,'upgrade retains the worker cache generation');
+  const versions=await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json();
+  assert.deepEqual(versions,[version,previous.version]);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
+test('destination identity upgrades a compact old module graph and keeps current row ownership offline',async()=>{
+  // Synthetic compatibility responses model the old token's cached graph;
+  // they are not archived production source or historical-behavior evidence.
+  const previous='20261016-power-meaning-3';
+  const paths=['app.mjs','cjk-font.mjs','departures-ui.mjs','departures.mjs','elevation.mjs','layer-semantics.mjs','map-model.mjs','power-facilities.mjs'];
+  const oldBodies=new Map(paths.map(file=>[new URL(file,scope).pathname,`export const previousModule=${JSON.stringify(file)};`]));
+  oldBodies.set(new URL('app.mjs',scope).pathname,`export {previousModule as departures} from './departures.mjs?v=${previous}'; export {previousModule as power} from './power-facilities.mjs?v=${previous}';`);
+  assert.ok([...oldBodies.values()].join('').length<1024,'keep the synthetic compatibility graph focused');
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,previous,'changed destination bytes require a new cache-first release');
+  const current=new Map(paths.map(file=>[new URL(file,scope).pathname,readFileSync(new URL('../styles/'+file,import.meta.url),'utf8')]));
+  let references=0;
+  for(const file of ['index.html','data-check.html','data-check.mjs',...paths]){
+    const body=readFileSync(new URL('../styles/'+file,import.meta.url),'utf8');
+    for(const match of body.matchAll(/(?:\.mjs|\.css)\?v=([\w.-]+)/g)){
+      assert.equal(match[1],version,`${file}: entrypoint and transitive imports use the current release`);references++;
+    }
+  }
+  assert.ok(references>=30,'covers the current versioned module graph');
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const cacheNames=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const [path,body] of oldBodies){
+    assert.equal(await(await unchanged.request(path+'?v='+previous)).text(),body);
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===path).length,0,'token reuse retains stale cached responses');
+  }
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const [path,body] of current){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),body,'new tabs receive exact current bytes offline');
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(path),'older tabs retain their own saved module graph');
+    assert.equal(next.requests.filter(url=>url===new URL(path,scope).href+'?v='+version).length,1);
+  }
+  const modules=new Map();
+  const oldModule=async url=>{
+    const parsed=new URL(url,scope);assert.equal(parsed.searchParams.get('v'),previous);
+    assert.ok(oldBodies.has(parsed.pathname),'old entrypoint dependencies must stay within its saved graph');
+    if(!modules.has(parsed.href))modules.set(parsed.href,new vm.SourceTextModule(await(await next.request(parsed.href)).text(),{identifier:parsed.href}));
+    return modules.get(parsed.href);
+  };
+  const oldApp=await oldModule('app.mjs?v='+previous);
+  await oldApp.link((specifier,referrer)=>oldModule(new URL(specifier,referrer.identifier).href));await oldApp.evaluate();
+  assert.equal(oldApp.namespace.departures,'departures.mjs');assert.equal(oldApp.namespace.power,'power-facilities.mjs');
+  const evaluate=async code=>{const module=new vm.SourceTextModule(code);await module.link(()=>{throw new Error('unexpected module dependency');});await module.evaluate();return module.namespace;};
+  // Execute actual current code returned by the worker. The destination pair
+  // must retain independent trip, stop, platform and cancellation ownership.
+  const fixed=await evaluate(await(await next.request('departures.mjs?v='+version)).text());
+  const at='2099-01-01T12:00:00Z';
+  const lists=['Central','Central Park'].map((headsign,i)=>[{mode:'REGIONAL_RAIL',displayName:'R7',
+    tripId:`trip-${i}`,headsign,cancelled:i===1,place:{departure:at,scheduledDeparture:at,stopId:`stop-${i}`,track:String(i+2)}}]);
+  const rows=fixed.departureRows(lists,{now:0});assert.equal(rows.length,2);
+  assert.deepEqual(Array.from(rows,row=>[row.tripId,row.stopId,row.track,row.cancelled]),[['trip-0','stop-0','2',false],['trip-1','stop-1','3',true]]);
+  const fetch=async value=>{const url=new URL(value);return {ok:true,json:async()=>url.pathname.endsWith('/reverse-geocode')?['a','b'].map(id=>({
+    type:'STOP',id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']})):{stopTimes:url.searchParams.get('stopId')==='a'?[{...lists[0][0],headsign:{invalid:true}}]:lists[1]}};};
+  const board=await fixed.stationDepartures({lat:0,lon:0,names:['Central']},{fetch});
+  assert.equal(board.rows.length,1);assert.equal(board.rows[0].tripId,'trip-1');
+  assert.deepEqual(Object.fromEntries(board.stopResults.map(result=>[result.stopId,result.status])),{a:'rejected',b:'fulfilled'});
+  const power=await evaluate(await(await next.request('power-facilities.mjs?v='+version)).text());
+  assert.equal(power.powerFacilityName({power_kind:'water_tank',man_made:'storage_tank',content:'water',usage:'railway'}),'Railway water tank');
+  assert.deepEqual(Object.fromEntries(power.powerFacilityEnergyRows({'fuel:adblue':'yes','plant:source':'solar'})),{'Recorded supplies':'adblue','Fuel tags':'fuel:adblue=yes','Plant energy source':'solar'});
+  assert.deepEqual([...next.stores.keys()],cacheNames,'no cache generation change or purge');
+  assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous]);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });

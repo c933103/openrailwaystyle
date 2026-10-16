@@ -1,6 +1,7 @@
 // Railway energy supplies. Tag-based selection keeps roadside fuel stations,
 // municipal water tanks and ordinary utility substations out of the Power view.
 // The maintenance builder uses these same rules for the worldwide snapshot.
+const SERVICING_LABELS = Object.freeze({fuel:'Train refuelling point', coal:'Steam engine coaling', water:'Steam engine water'});
 export const POWER_FACILITY_KINDS = Object.freeze({
   substation: {label:'Traction substation', group:'electricity', color:'#b77d00', mark:'E', minzoom:11},
   plant: {label:'Railway power station', group:'electricity', color:'#b77d00', mark:'E', minzoom:10},
@@ -11,9 +12,9 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   power_supply: {label:'Railway power supply', group:'electricity', color:'#b77d00', mark:'E', minzoom:13},
   preheating: {label:'Train preheating supply', group:'electricity', color:'#b77d00', mark:'E', minzoom:13},
   charging_station: {label:'Battery train charging facility', group:'charging', color:'#008a83', mark:'B', minzoom:12},
-  fuel: {label:'Locomotive fuel supply', group:'fuel', color:'#906532', mark:'F', minzoom:13},
+  fuel: {label:SERVICING_LABELS.fuel, group:'fuel', color:'#906532', mark:'F', minzoom:13},
   fuel_tank: {label:'Railway fuel tank', group:'fuel', color:'#906532', mark:'F', minzoom:13},
-  coaling_facility: {label:'Locomotive coaling facility', group:'coal', color:'#4b4c50', mark:'C', minzoom:13},
+  coaling_facility: {label:SERVICING_LABELS.coal, group:'coal', color:'#4b4c50', mark:'C', minzoom:13},
   water_tower: {label:'Steam locomotive water tower', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
@@ -24,13 +25,17 @@ export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5,
 export const POWER_FACILITY_LEGEND = Object.freeze([
   ['substation','Electricity supply'],
   ['charging_station','Battery train charging'],
-  ['fuel','Train refuelling point (fuel type where mapped)'],
-  ['coaling_facility','Steam engine coaling'],
-  ['water_tank','Steam engine water'],
+  ['fuel',`${SERVICING_LABELS.fuel} (fuel type where mapped)`],
+  ['coaling_facility',SERVICING_LABELS.coal],
+  ['water_tank',SERVICING_LABELS.water],
 ].map(([kind,label]) => {
   const {color,mark} = POWER_FACILITY_KINDS[kind];
   return Object.freeze({symbol:'point',color,mark,label});
 }));
+// Both the help page and legend explanation use the actual marker categories.
+// Storage and generation are evidence about a supply, not proof of servicing.
+export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
+export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -83,11 +88,35 @@ export function powerFacility(tags = {}) {
 }
 
 export function powerFacilityName(properties = {}) {
-  if (properties.power_kind) return POWER_FACILITY_KINDS[properties.power_kind]?.label || 'Railway energy supply';
   // Direct provider supply points encode the category in feature, not type:
   // type is merely "facility" or "equipment".
-  const kind = String(properties.feature || '').replace(/^general\//,'');
-  return POWER_FACILITY_KINDS[kind]?.label || (properties.power === 'substation' ? 'Traction substation' : 'Railway energy supply');
+  const kind = properties.power_kind || String(properties.feature || '').replace(/^general\//,'');
+  const storage=has(lifecycleValue(properties,'man_made').value,['storage_tank','water_tower']);
+  const steam=['',...STATES.map(state=>`${state}:`)].some(prefix=>has(properties[`${prefix}railway`],['water_tower','water_tank','water_crane']));
+  if (['water_tower','water_tank'].includes(kind) && storage && !steam) return kind==='water_tower'?'Railway water tower':'Railway water tank';
+  return POWER_FACILITY_KINDS[kind]?.label || (!properties.power_kind && properties.power === 'substation' ? 'Traction substation' : 'Railway energy supply');
+}
+
+// Keep independent source attributes independent. A generating source (solar,
+// hydro, wind or a combustible input) is not fuel offered to trains, and stored
+// contents do not prove a refuelling point. Preserve raw fuel:* declarations,
+// including negative/unknown values, so a positive tag never conceals a conflict.
+// fuel:* also records non-fuel supplies such as AdBlue; never promote every
+// positive key into a fuel claim or require a fixed vocabulary of supply types.
+export function powerFacilityEnergyRows(properties = {}) {
+  const p=properties;
+  const fuelTags=Object.entries(p).filter(([key,value])=>key.startsWith('fuel:')&&key.length>5&&value!=null&&String(value).trim()).sort(([a],[b])=>a.localeCompare(b));
+  const direct=String(p.fuel??'').split(';').map(value=>value.trim()).filter(Boolean);
+  const types=[...new Set([...direct.filter(value=>!/^(yes|no|unknown)$/i.test(value)),...fuelTags.filter(([key,value])=>/^fuel:[^:]+$/.test(key)&&String(value).trim().toLowerCase()==='yes').map(([key])=>key.slice(5))])];
+  const refuelling=p.power_kind==='fuel'||String(p.feature||'').replace(/^general\//,'')==='fuel'||has(lifecycleValue(p,'railway').value,['fuel']);
+  return [
+    ['Recorded supplies',types.join(', ')||(refuelling?'Not recorded':undefined)],
+    ['Fuel tag',p.fuel],
+    ['Fuel tags',fuelTags.map(([key,value])=>`${key}=${value}`).join('; ')],
+    ['Plant energy source',p['plant:source']],
+    ['Generator energy source',p['generator:source']],
+    ['Stored contents',p.content],
+  ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 
 // The dataset is downloaded only once the Power view needs it. Visitors read

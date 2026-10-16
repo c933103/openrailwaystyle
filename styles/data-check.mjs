@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261016-departure-destination-1';
+import {SEARCH_API} from './map-model.mjs?v=20261016-departure-destination-2';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

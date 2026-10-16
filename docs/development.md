@@ -262,6 +262,46 @@ relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
 browser checks against the published map.
 
+## Controls painter diagnostic sampling
+
+The fixture-only painter A/B diagnostic retains its single natural transition,
+60-second settlement/capture bound, 12-minute experiment deadline, and seven
+nonempty exact RGBA comparisons. It does not retry a failed transition. Its raw
+natural per-frame trace and final dispatch sequence remain in the artifact.
+
+Terrain textures are cached per tile in the pinned MapLibre renderer. A cached
+tile is composited without calling the layer painter again, so the last natural
+frame's physical layer-call count is not a comparable input across fresh browser
+processes. The offline actual-source regression reproduces 360 versus 144 layer
+calls with the guard disabled in both arms and identical ordered tile composites.
+This establishes a cache-state confound, not the historical cause of any particular
+failure. An existing failed artifact remains a failed measurement.
+
+After natural terrain settlement, the checker records two explicit samples:
+one synchronous public `map.redraw()` with all currently renderable terrain
+texture slots invalidated, then one warm redraw with every slot verified cached.
+It requires one complete frame each, unchanged settled tile/source/layer identity,
+all ordered fixture layers for every cold tile, and no repeated layer work warm.
+The original natural ordered-dispatch equality remains mandatory. The probe also
+records each terrain frame's pre/post preparation and post-render cache population,
+source/tile/layer identities and coordinate-bearing dispatch records. The final
+natural frame's prepared and resulting cache populations, identities and detailed
+dispatch must match across arms; missing/truncated evidence fails. A legitimate
+timing-dependent mismatch remains an explicit failure for investigation, never
+an automatically accepted explanation. Cold/warm redraws cannot waive it.
+
+Natural, cold and warm pixels must be byte-identical within each arm. Both arms
+must also have exactly equal cold and warm identities, dispatch sequences and pixels;
+there is no deduplication, tolerance, skipped case, or relaxed output equality.
+The cache operations occur only in the synthetic pixel diagnostic, never the app.
+
+`tests/controls-painter-terrain.test.mjs` executes the actual pinned painter,
+render-to-texture, pool, terrain-composition and public redraw methods with
+synthetic GPU resources. It covers cache histories, missing/reordered layers,
+missing tiles, visible-mask defects and failed sampling boundaries. This is CPU
+control-flow/coverage evidence, not a WebGL pixel or timing claim. The hosted
+fixture-only diagnostic remains required for the final patch.
+
 ## Served code version
 
 Expand the map's bottom-right information button to see the executing asset build and a link to its source commit. Carto keeps this attribution open. The commit and its repository URL are embedded into the existing cached label-code bundle by `scripts/build-browser.mjs` from CI's `GITHUB_SHA`, `GITHUB_REPOSITORY` and `GITHUB_SERVER_URL`; they are not fetched from the latest branch head. Fork builds link to their own repository. An older cached page therefore reports its own build. A mixed cached bundle reports both asset versions. Local builds without `GITHUB_SHA` say “Development build”; a commit supplied without a repository is shown without a link.

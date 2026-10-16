@@ -37,7 +37,15 @@ const tilePolygon = c => {
 // scheduling. A healthy neighboring tile cannot clear another tile's failure or
 // acquire fallback markers. Metadata failure is the only source-wide fallback.
 export function createStationFallbackState(map) {
-  const failed = new Map();
+  const failed = new Map(), observed = new Map();
+  function remember(id, source, tile) {
+    if (!tile) return;
+    let evidence = observed.get(id);
+    if (!evidence || evidence.source !== source || evidence.url !== source.url) {
+      evidence = {source, url: source.url, tiles: new WeakSet()};observed.set(id, evidence);
+    }
+    evidence.tiles.add(tile);
+  }
   function onScreen(c) {
     if (!c || !map.getBounds) return true;
     const bounds = map.getBounds();
@@ -73,11 +81,27 @@ export function createStationFallbackState(map) {
     return manager.getIds().map(key => manager.getTileByID(key)).filter(Boolean);
   }
   function stateFor(id) {
-    const state = failed.get(id);
-    if (!state) return null;
     const source = map.getSource(id);
-    if (state.source !== source || state.url !== source?.url) { failed.delete(id); return null; }
+    let state = failed.get(id), evidence = observed.get(id);
+    if (state && (state.source !== source || state.url !== source?.url)) { failed.delete(id);state = null; }
+    if (evidence && (evidence.source !== source || evidence.url !== source?.url)) { observed.delete(id);evidence = null; }
+    if (!state && !evidence) return null;
     const selection = selectionFor(source), inventory = activeTiles(id, source);
+    // An expired retry can enter MapLibre's out-of-view cache and fail there.
+    // Reusing that object emits no new error event. Keep weak identity evidence,
+    // but restore presentation only while the same unresolved tile is active.
+    if (evidence && stationSource(map.getZoom?.()) === id) for (const tile of inventory || []) {
+      if (!evidence.tiles.has(tile)) continue;
+      if (tile.aborted || ['loaded', 'unloaded'].includes(tile.state)) { evidence.tiles.delete(tile);continue; }
+      const c = tile.tileID?.canonical;
+      if (!validCoordinate(c) || !onScreen(c)) continue;
+      if (!state) { state = {source, url: source.url, metadata: false, tiles: new Map()};failed.set(id, state); }
+      const key = tileKey(c), previous = state.tiles.get(key);
+      const instances = [...new Set([...(previous?.instances || (previous?.tile ? [previous.tile] : [])), tile])];
+      state.tiles.set(key, {coordinate: {...c}, fromCoordinate: true, selection: `${id}:${c.z}`,
+        ...previous, tile: instances[0], instances});
+    }
+    if (!state) return null;
     for (const [key, record] of state.tiles) {
       if (record.instances) {
         record.instances = record.instances.filter(tile => (!inventory || inventory.includes(tile)) &&
@@ -103,6 +127,7 @@ export function createStationFallbackState(map) {
       if (('tile' in event || 'coord' in event) && !validCoordinate(c)) return;
       const source = map.getSource(event.sourceId);
       if (!source) return;
+      if (c) remember(event.sourceId, source, event.tile);
       const state = stateFor(event.sourceId) || {source, url: source.url, metadata: false, tiles: new Map()};
       if (c) {
         let tile = event.tile, instances;
@@ -135,6 +160,7 @@ export function createStationFallbackState(map) {
           // already retrying in expired/reloading states on other world copies.
           instances = [...new Set([...(previous?.instances || (previous?.tile ? [previous.tile] : [])), ...(instances || [tile])])];
           tile = instances[0];
+          for (const instance of instances) remember(event.sourceId, source, instance);
         }
         state.tiles.set(tileKey(c), {coordinate: {...c}, tile, instances, fromCoordinate, selection});
       } else state.metadata = true;
@@ -142,6 +168,8 @@ export function createStationFallbackState(map) {
       return true;
     },
     noteSourceData(event) {
+      if (event?.tile && (event.tile.aborted || ['loaded', 'unloaded'].includes(event.tile.state)))
+        observed.get(event.sourceId)?.tiles.delete(event.tile);
       const state = failed.get(event?.sourceId);
       if (!state) return false;
       let changed = false;

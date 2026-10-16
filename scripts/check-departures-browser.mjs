@@ -316,6 +316,11 @@ try {
         ['null', null], ['array', []], ['scalar', 'synthetic private provider response'],
         ['missing-list', {}], ['false-list', {stopTimes:false}],
         ['string-list', {stopTimes:'synthetic private provider response'}], ['object-list', {stopTimes:{}}],
+        ['null-row', {stopTimes:[null]}], ['scalar-row', {stopTimes:[false]}],
+        ['headsign-object', {stopTimes:[{...row, headsign:{private:'synthetic private'}}]}],
+        ['place-array', {stopTimes:[{...row, place:[]}]}],
+        ['track-object', {stopTimes:[{...row, place:{...row.place, track:{private:'synthetic private'}}}]}],
+        ['mixed-rows', {stopTimes:[row, null]}],
       ];
       lookupResponse = undefined; boardFailed = [];
       const beforeMalformed = boardRequests.length;
@@ -342,9 +347,10 @@ try {
         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
         if (!withRows) assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
       }
-      for (const order of [['a','b'], ['b','a']]) {
-        boardName = `All boards malformed ${order.join('')}`; boardOrder = order;
-        boardBodies = {a:{}, b:{stopTimes:{error:'synthetic private provider response'}}};
+      for (const malformedRows of [false, true]) for (const order of [['a','b'], ['b','a']]) {
+        boardName = `All boards malformed ${malformedRows ? 'rows' : 'envelopes'} ${order.join('')}`; boardOrder = order;
+        boardBodies = malformedRows ? {a:{stopTimes:[null]}, b:{stopTimes:[{...row, headsign:{private:'synthetic private'}}]}} :
+          {a:{}, b:{stopTimes:{error:'synthetic private provider response'}}};
         const before = boardRequests.length;
         await openStation(boardName); await waitBoard();
         assert.equal(await page.locator('.departures').textContent(), 'DeparturesDepartures could not load. Try again later.');

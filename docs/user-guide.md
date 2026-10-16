@@ -48,7 +48,11 @@ evidence is available. These checks veto the entire group without choosing a
 smaller subgroup. This does not establish full cross-source train identity.
 
 An invalid departure-board response counts as a loading failure, not an empty
-timetable. If a selected stop’s departure board fails while another loads, usable departures
+timetable. This includes malformed rows or wrong-typed fields consumed by the
+board. Each selected board is parsed independently; one invalid row rejects that
+board rather than presenting an incomplete subset as successfully loaded. Optional
+null values retain their existing fallback/filtering behavior, and unused provider
+extensions and excluded travel modes do not need rail-row fields. If a selected stop’s departure board fails while another loads, usable departures
 remain visible with an incomplete-load warning. The same warning appears when the
 successful boards return no upcoming rail departures; this is not a complete empty
 result. Reopening or redrawing a station within the existing one-minute cache keeps
