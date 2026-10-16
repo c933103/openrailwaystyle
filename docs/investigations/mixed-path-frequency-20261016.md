@@ -17,8 +17,8 @@ provider request is needed.
 
 ## Correction
 
-Use one indexed, cached geometric partition for supplied shapes and verified
-railway paths before accumulating trips. Retain the existing 15 cm collinearity
+Use an indexed, cached geometric partition for each route’s supplied shapes and
+verified railway paths before accumulating trips. Retain the existing 15 cm collinearity
 threshold, distinct parallel tracks, every traversal, both directions and each
 original preceding served-stop anchor. Counts are accumulated by the existing
 route/calendar/profile logic. No route matching, cross-feed duplicate rule,
@@ -34,7 +34,7 @@ Compiler-source hashes already invalidate the compiled-feed cache. Aggregate
 revision 4 lets the existing main-only maintenance process request a refreshed
 snapshot. Code publication alone does not prove refreshed data or deployment.
 
-## Verification
+## Original patch verification
 
 Commands run from the repository root on Node 24.19.0 and Python 3.12:
 
@@ -65,3 +65,72 @@ This fixes one verified mixed-path aggregation defect. It does not establish
 worldwide completeness, resolve unknown source overlaps or replace the remaining
 verified stop/service identity work in #111. No new timetable source or provider
 fetch is added. Keep #111 and its broader acceptance work open.
+
+## Review correction: near-collinear endpoints
+
+Codex identified a remaining endpoint mismatch on head
+`e0a0f3ba3e78dad945140f862df6269fcd6bfa7c`: a graph path offset by about 5.6 cm
+retained endpoint tuples different from its supplied shape. An inserted off-line
+interior vertex could also reverse the following interval's lexicographic
+direction. The new near-offset end-to-end regression reproduces 4/h instead of
+8/h on that head; the compiler regression suite produces 11 failing subcases,
+including a direct direction assertion.
+
+The correction reconciles compatible endpoint clusters first, projects interior
+vertices onto those intervals, and assigns deterministic shared coordinates
+before splitting. Each coordinate cluster and displacement is bounded to 15 cm.
+The 16.7 cm parallel-track control stays separate. Both travel directions,
+input ordering and latitude-aware positive/negative distances are covered.
+
+A further review fixture supplies a central full path with interior short paths
+11 cm to either side. Choosing one side by coordinate order, or inserting two
+raw vertices at the same progress value, invents lateral/diagonal edges. The
+regression fails in all four order/direction combinations on the intermediate
+candidate. Incompatible neighbourhoods now retain their source coordinates;
+interior cuts are projected onto their own interval and zero-progress edges
+are never emitted. The 0/11/22 cm control also keeps all three tracks rather than
+choosing an arbitrary pair. Dense vertices along one line remain usable.
+
+Where ownership is ambiguous, an affected active pattern uses the existing
+route-scoped incomplete-geometry gate: geometry remains auditable but rates
+are unknown. Reconciliation itself is now partitioned by route and actual contributing
+eligibility, rather than applying that scope only to the final unknown flag.
+The existing contribution function determines eligibility, including calendar
+exceptions, inactive weekdays, headway windows and prior-day extended-hour trips.
+Other partitions can supply projected cuts but cannot move a current working or
+create its ambiguity. Explicit source-edge ownership preserves a source
+polyline's dense slight bends; only served portions of supplied shapes enter the
+partition. Two longitudinal samples from one source cannot establish competing
+tracks merely because another path shares a nearby coordinate. Graph ownership
+is tied to each normalized path, not its rail mode: distinct same-mode tracks
+remain independent evidence, while shared full/short path vertices retain
+continuity. Adjacent graph workings may also retain continuity at an actual local
+degree-two graph vertex; distant connections and junctions do not supply that
+proof. The exact route-isolation, expired/future, removed-service, weekday,
+prior-day and dense-bend review cases are retained as regression tests.
+
+A noncontributing interval can reuse a unique existing contributor interval when
+both corresponding endpoints stay within 15 cm of its original source. This is
+one-way: current coordinates do not change and no new connecting edge is created.
+The hour-only and hour-plus-AM end-to-end cases retain the same selected-hour
+coverage. Final checks use unrounded served-extent witnesses and distance to the
+original supporting edge, independently of output-coordinate rounding. Both
+bounds apply to reconciliation and one-way alignment: clipping an oblique shape
+at stops must not compound its initial rounding with another 15 cm allowance.
+An affected interval retains bounded source geometry and is withheld. World-copy
+shifts use exact multiples of 360°, avoiding rounded
+midpoint shifts and missing endpoint keys. Projection lookup grids are released
+before reconciliation. These compact offline cases are not a nationwide timing
+or memory benchmark.
+
+An end-to-end equal-rate fixture proves genuinely ambiguous unknowns survive
+publication and MVT binding without changing OSM geometry or Equal mode.
+
+Final local correction validation is recorded in the exact-head PR receipt.
+Earlier intermediate candidates passed 2,150 and 2,151 tests at concurrency 4. A default
+aggregate and isolated unchanged DOM retry received SIGKILL; those failures
+are retained. These earlier results do not validate the final scoped correction.
+
+Exact-head hosted checks and Codex re-review remain required. The earlier head's
+successful Chromium/WebKit mixed-path runs do not establish the correction's
+acceptance. Final results belong in the PR's exact-head validation receipt.

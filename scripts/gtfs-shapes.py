@@ -79,94 +79,333 @@ class ShapePaths:
                         self.rejected['missing_or_unusable_shape'] -= 1
                 if not self.rejected['missing_or_unusable_shape']:
                     del self.rejected['missing_or_unusable_shape']
-        # Projection indices are no longer needed once every pattern is fixed.
-        # Free them before building the shared-edge split index.
         for shape in self.shapes.values():
             shape.pop('lookup', None)
-        # Every stop/vertex from every pattern is a split candidate. This also
-        # handles express trips skipping stops and unequal vertex densities.
-        # Vertices are indexed in one world copy: shapes unwrapped from
-        # opposite sides of the antimeridian still split each other.
-        grid, vertices = defaultdict(set), set()
-        for shape in self.shapes.values():
-            coords = shape['points'] + list(shape['anchors'].values())
-            for p in coords:
-                p = self.canonical(p)
-                if p not in vertices:
-                    vertices.add(p); grid[self.cell(p)].add(p)
-        # Both supplied shapes and verified graph paths must use the same
-        # partition before counts are accumulated. Otherwise a full A-C shape
-        # and an A-B graph working remain overlapping, independent measurements.
-        for matcher in self.rail.values():
-            for path in matcher.patterns.values():
-                for a, b, _ in path or ():
-                    for p in (a, b):
-                        p = self.canonical(p)
-                        if p not in vertices:
-                            vertices.add(p); grid[self.cell(p)].add(p)
-        split_cache = {}
-        def split(a, b):
-            key = tuple(sorted((a, b)))
-            if key not in split_cache:
-                lo, hi = key
-                cuts = [(0, lo), (1, hi)]
-                # The segment in the canonical copy (and its neighbours,
-                # when it reaches past ±180°) for the vertex lookup.
-                middle = (lo[0]+hi[0])/2
-                shift = self.canonical((middle, 0))[0]-middle
-                radius_x,_ = self.radii((0,max(abs(a[1]),abs(b[1]))),.15)
-                cells = set()
-                for turn in (-360, 0, 360):
-                    s0, s1 = (lo[0]+shift+turn, lo[1]), (hi[0]+shift+turn, hi[1])
-                    if max(s0[0], s1[0]) < -181 or min(s0[0], s1[0]) > 181:
+        # Index only served paths. Source-edge identity prevents a dense
+        # polyline's own vertices from becoming competing track evidence.
+        raw, eligible, shape_owners, rail_owners = {}, set(), {}, {}
+        for trip_id, trip in sorted(trips.items()):
+            sequence = sorted(times.get(trip_id, []), key=lambda r: int(r['stop_sequence']))
+            key = self.pattern_key(trip, sequence)
+            if trip_id in config.get('eligible_trip_ids', trips):
+                eligible.add(key)
+            if key in raw or self.patterns[key] is None:
+                continue
+            if key in self.rail_patterns:
+                kind = self.rail_patterns[key]
+                matcher = self.rail[kind]
+                path = matcher.patterns[matcher.pattern_key(trip, sequence)]
+                identity = tuple(self.canonical(a) for a, _, _ in path) + (self.canonical(path[-1][1]),)
+                identity = kind, min(identity, tuple(reversed(identity)))
+                owner = ('rail', kind, rail_owners.setdefault(identity, len(rail_owners)))
+                def rail_path(path=path, owner=owner):
+                    for a, b, anchor in path:
+                        yield a, b, anchor, (owner, tuple(sorted((self.canonical(a), self.canonical(b)))))
+                raw[key] = rail_path
+                continue
+            shape = self.shapes[trip['shape_id']]
+            positions = self.patterns[key]
+            if 'owner' not in shape:
+                identity = tuple(self.canonical(p) for p in shape['points'])
+                identity = min(identity, tuple(reversed(identity)))
+                shape['owner'] = ('shape', shape_owners.setdefault(identity, len(shape_owners)))
+            def shape_path(shape=shape, positions=positions, sequence_length=len(sequence)):
+                points, lengths = shape['points'], shape['lengths']
+                first = max(0, bisect_right(lengths, positions[0])-1)
+                last = min(len(points)-1, bisect_right(lengths, positions[-1]))
+                for i in range(first, last):
+                    a, b = points[i:i+2]
+                    begin, end = max(lengths[i], positions[0]), min(lengths[i+1], positions[-1])
+                    if end <= begin:
                         continue
-                    x0, y0 = self.cell(s0); x1, y1 = self.cell(s1)
-                    # Query cells along the segment, not a large diagonal box.
-                    steps = max(abs(x1-x0), abs(y1-y0), 1)
-                    for step in range(steps+1):
-                        c = self.cell((s0[0]+(s1[0]-s0[0])*step/steps, s0[1]+(s1[1]-s0[1])*step/steps))
-                        if radius_x<=256:
-                            cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
-                candidates=vertices if radius_x>256 else {p for cell in cells for p in grid.get(cell, ())}
-                for p in candidates:
-                    # Back into this segment's (unwrapped) world copy.
-                    p = (round(p[0] + 360*round((middle-p[0])/360), 6), p[1])
+                    cuts = sorted({begin, end, *(v for v in positions if begin < v < end)})
+                    support = (shape['owner'], tuple(sorted((self.canonical(a), self.canonical(b)))))
+                    def point(value):
+                        t = (value-lengths[i])/(lengths[i+1]-lengths[i])
+                        return (round(a[0]+t*(b[0]-a[0]), 6), round(a[1]+t*(b[1]-a[1]), 6))
+                    for lo, hi in zip(cuts, cuts[1:]):
+                        anchor = max(0, min(sequence_length-2, bisect_right(positions, (lo+hi)/2)-1))
+                        p, q = point(lo), point(hi)
+                        if p != q:
+                            yield p, q, anchor, support
+            raw[key] = shape_path
+        # A non-contributing pattern may supply an interval boundary, but cannot
+        # move a current working or create its competing-track ambiguity.
+        boundaries, groups = defaultdict(lambda: defaultdict(set)), defaultdict(dict)
+        for key, path in raw.items():
+            groups[(key[0], key in eligible)][key] = path
+            for a, b, _, support in path():
+                boundaries[key[0]][self.canonical(a)].add(support)
+                boundaries[key[0]][self.canonical(b)].add(support)
+        self.edge_paths, self.ambiguous_patterns = {}, set()
+        for (route, _), paths in groups.items():
+            edges, ambiguous = self.reconcile(paths, boundaries[route])
+            self.edge_paths.update(edges)
+            self.ambiguous_patterns.update(ambiguous)
+        for route, current in groups:
+            if current or (route, True) not in groups:
+                continue
+            self.edge_paths.update(self.align_noncontributing(
+                {key: self.edge_paths[key] for key in groups[(route, False)]},
+                {key: self.edge_paths[key] for key in groups[(route, True)]}))
+
+    def align_noncontributing(self, paths, contributors):
+        """Reuse existing current intervals without changing their geometry."""
+        reference, grid = set(), defaultdict(set)
+        for path in contributors.values():
+            for a, b, _, _ in path():
+                reference.add(tuple(sorted((self.canonical(a), self.canonical(b)))))
+        for edge in reference:
+            for point in edge:
+                grid[self.cell(point)].add(edge)
+        def distance(a, b):
+            return self.distance(a, (b[0]+360*round((a[0]-b[0])/360), b[1]))
+        cache = {}
+        def align(a, b, support):
+            edge_key = tuple(sorted((self.canonical(a), self.canonical(b))))
+            key = edge_key, support[1], support[2]
+            original = support[2] if self.canonical(a) == edge_key[0] else tuple(reversed(support[2]))
+            if key not in cache:
+                lo, hi = edge_key
+                radius, _ = self.radii(lo, .15)
+                candidates = set()
+                if radius > 256:
+                    candidates = reference
+                else:
+                    for turn in (-360, 0, 360):
+                        x, y = self.cell((lo[0]+turn, lo[1]))
+                        for dx in range(-radius, radius+1):
+                            for dy in (-1, 0, 1):
+                                candidates.update(grid.get((x+dx, y+dy), ()))
+                matches = {}
+                for edge in candidates:
+                    orientations = []
+                    for left, right in (edge, tuple(reversed(edge))):
+                        first, last = distance(lo, left), distance(hi, right)
+                        if max(first, last, distance(original[0], left), distance(original[1], right),
+                               self.source_error(left, support), self.source_error(right, support)) <= .15:
+                            orientations.append((first+last, left, right))
+                    if orientations:
+                        orientations.sort()
+                        matches[edge] = (orientations[0][1:] if len(orientations) == 1 or
+                                         orientations[1][0]-orientations[0][0] > 1e-9 else None)
+                cache[key] = next(iter(matches.values())) if len(matches) == 1 else None
+            chosen = cache[key]
+            if chosen is None:
+                return a, b
+            if self.canonical(a) != edge_key[0]:
+                chosen = tuple(reversed(chosen))
+            return tuple((round(q[0]+360*round((p[0]-q[0])/360), 6), q[1]) for p, q in zip((a, b), chosen))
+        result = {}
+        for key, path in paths.items():
+            def mapped(path=path):
+                for a, b, anchor, support in path():
+                    a, b = align(a, b, support)
+                    yield a, b, anchor, support
+            result[key] = mapped
+        return result
+
+    def reconcile(self, paths, boundaries):
+        """Partition one route's equally eligible, explicitly owned paths."""
+        grid, supports, source_edges = defaultdict(set), defaultdict(set), defaultdict(set)
+        for path in paths.values():
+            for a, b, _, support in path():
+                for p in (a, b):
+                    p = self.canonical(p)
+                    supports[p].add(support); grid[self.cell(p)].add(p)
+                middle = (a[0]+b[0])/2
+                shift = -360*math.floor((middle+180)/360)
+                edge = tuple(sorted(((round(a[0]+shift, 6), a[1]), (round(b[0]+shift, 6), b[1]))))
+                source_edges[edge].add(support)
+        vertices = set(supports)
+        def nearby(a, b, points, lookup):
+            middle = (a[0]+b[0])/2
+            shift = -360*math.floor((middle+180)/360)
+            radius_x, _ = self.radii((0, max(abs(a[1]), abs(b[1]))), .15)
+            cells = set()
+            for turn in (-360, 0, 360):
+                s0, s1 = (a[0]+shift+turn, a[1]), (b[0]+shift+turn, b[1])
+                if max(s0[0], s1[0]) < -181 or min(s0[0], s1[0]) > 181:
+                    continue
+                x0, y0 = self.cell(s0); x1, y1 = self.cell(s1)
+                steps = max(abs(x1-x0), abs(y1-y0), 1)
+                for step in range(steps+1):
+                    c = self.cell((s0[0]+(s1[0]-s0[0])*step/steps, s0[1]+(s1[1]-s0[1])*step/steps))
+                    if radius_x <= 256:
+                        cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x, radius_x+1) for dy in (-1, 0, 1))
+            candidates = points if radius_x > 256 else {p for cell in cells for p in lookup.get(cell, ())}
+            return [(round(p[0]+360*round((middle-p[0])/360), 6), p[1]) for p in candidates]
+        def separation(a, b):
+            return self.distance(a, (b[0]+360*round((a[0]-b[0])/360), b[1]))
+        def off_line(p, a, b):
+            sx = self.sx*math.cos(math.radians(p[1]))
+            dx, dy = (b[0]-a[0])*sx, (b[1]-a[1])*self.sy
+            length = math.hypot(dx, dy)
+            return abs(dx*(p[1]-a[1])*self.sy-dy*(p[0]-a[0])*sx)/length if length else 0
+        def owners(point, metadata):
+            return {support[0] for support in metadata[self.canonical(point)]}
+        def compatible(a, b, centre, metadata):
+            if owners(a, metadata) & owners(b, metadata):
+                return True
+            # Separate trip extents may meet at one ordered graph bend. Only
+            # the actual local degree-two vertex proves that continuity; a
+            # distant connection or a junction cannot equate parallel paths.
+            centre = self.canonical(centre)
+            for left in metadata[self.canonical(a)]:
+                if left[0][0] != 'rail' or centre not in left[1]:
+                    continue
+                graph = self.rail[left[0][1]].graph
+                degree = max(len(graph.get((centre[0]+turn, centre[1]), ())) for turn in (-360, 0, 360))
+                if degree != 2:
+                    continue
+                if any(right[0][:2] == left[0][:2] and centre in right[1]
+                       for right in metadata[self.canonical(b)]):
+                    return True
+            return False
+        def cluster(metadata, protected=(), ambiguous=()):
+            lookup = defaultdict(set)
+            for p in metadata:
+                lookup[self.cell(p)].add(p)
+            protected, ambiguous = set(protected), set(ambiguous)
+            for point in sorted(metadata):
+                neighbours = {self.canonical(p) for p in nearby(point, point, metadata, lookup)
+                              if separation(point, p) <= .15}
+                if any(separation(a, b) > .15 for a in neighbours for b in neighbours):
+                    protected.update(neighbours)
+                    # Longitudinal samples from one source are not two tracks,
+                    # even when another path shares some of those coordinates.
+                    if any(separation(a, b) > .15 and not compatible(a, b, point, metadata)
+                           for a in neighbours for b in neighbours):
+                        ambiguous.update(neighbours)
+            result = {p: p for p in protected}
+            for point in sorted(metadata):
+                if point in result:
+                    continue
+                members = [point]
+                for p in sorted({self.canonical(p) for p in nearby(point, point, metadata, lookup)}):
+                    if p == point or p in result or separation(point, p) > .15:
+                        continue
+                    # Distinct vertices from one source polyline keep their
+                    # order and geometry; only different paths can reconcile.
+                    if any(owners(p, metadata) & owners(other, metadata) for other in members):
+                        continue
+                    if all(separation(p, other) <= .15 for other in members):
+                        members.append(p)
+                for p in members:
+                    result[p] = point
+            return result, protected, ambiguous
+        def reconciled(p, mapping):
+            q = mapping[self.canonical(p)]
+            return (round(q[0]+360*round((p[0]-q[0])/360), 6), q[1])
+        def relevant(p, a, b, edge_supports, metadata):
+            related = metadata[self.canonical(p)]
+            same_owner = {v[0] for v in related} & {v[0] for v in edge_supports}
+            return not same_owner or bool(related & edge_supports) or off_line(p, a, b) <= 1e-6
+
+        endpoints, protected, ambiguous = cluster(supports)
+        candidates = defaultdict(set)
+        for p, values in supports.items():
+            candidates[endpoints[p]].update(values)
+        for (a, b), edge_supports in source_edges.items():
+            a, b = reconciled(a, endpoints), reconciled(b, endpoints)
+            for p in nearby(a, b, vertices, grid):
+                if not relevant(p, a, b, edge_supports, supports):
+                    continue
+                t, error = self.project_segment(p, a, b)
+                if error <= .15:
+                    q = (round(a[0]+t*(b[0]-a[0]), 6), round(a[1]+t*(b[1]-a[1]), 6))
+                    if self.distance(p, q) <= .15:
+                        candidates[self.canonical(q)].update(edge_supports)
+        representatives, protected, ambiguous = cluster(candidates, protected, ambiguous)
+        metadata = defaultdict(set)
+        for p, representative in representatives.items():
+            metadata[representative].update(candidates[p])
+        vertices, grid = set(metadata), defaultdict(set)
+        for p in vertices:
+            grid[self.cell(p)].add(p)
+        extra_grid = defaultdict(set)
+        for p in boundaries:
+            extra_grid[self.cell(p)].add(p)
+        split_cache = {}
+        def split(a, b, support):
+            key = tuple(sorted((a, b))), support
+            if key not in split_cache:
+                lo, hi = key[0]
+                near = [p for p in nearby(lo, hi, vertices, grid)
+                        if relevant(p, lo, hi, {support}, metadata)]
+                protected_edge = any(self.canonical(p) in protected and
+                    self.project_segment(p, lo, hi)[1] <= .15 and off_line(p, lo, hi) > 1e-6 for p in near)
+                uncertain = any(self.canonical(p) in ambiguous and
+                    self.project_segment(p, lo, hi)[1] <= .15 and off_line(p, lo, hi) > 1e-6 for p in near)
+                if not protected_edge:
+                    lo = reconciled(reconciled(lo, endpoints), representatives)
+                    hi = reconciled(reconciled(hi, endpoints), representatives)
+                cuts = {(0, lo), (1, hi)}
+                near = [p for p in nearby(lo, hi, vertices, grid)
+                        if relevant(p, lo, hi, {support}, metadata)]
+                near += [p for p in nearby(lo, hi, boundaries, extra_grid)
+                         if self.canonical(p) not in supports and relevant(p, lo, hi, {support}, boundaries)]
+                for p in near:
                     t, error = self.project_segment(p, lo, hi)
                     if 1e-8 < t < 1-1e-8 and error <= .15:
-                        cuts.append((t, p))
-                cuts.sort()
-                split_cache[key] = cuts
-            cuts = split_cache[key]
-            if a != key[0]:
-                cuts = [(1-t, p) for t,p in reversed(cuts)]
-            return cuts
-
-        for shape in self.shapes.values():
-            edges = []
-            for i, (a, b) in enumerate(zip(shape['points'], shape['points'][1:])):
-                cuts = split(a, b)
-                length = shape['lengths'][i+1]-shape['lengths'][i]
-                for (t0,p0),(t1,p1) in zip(cuts,cuts[1:]):
-                    if p0 != p1:
-                        edges.append((shape['lengths'][i]+t0*length, shape['lengths'][i]+t1*length, p0,p1))
-            shape['edges'] = edges
-        # Keep every traversal and its original upstream-stop anchor, including
-        # repeated edges. Only the geometric interval boundaries are shared.
-        for matcher in self.rail.values():
-            for key, path in matcher.patterns.items():
-                if path is None:
-                    continue
-                edges = []
-                for a, b, anchor in path:
-                    cuts = split(a, b)
-                    edges.extend((p0, p1, anchor) for (_, p0), (_, p1)
-                                 in zip(cuts, cuts[1:]) if p0 != p1)
-                matcher.patterns[key] = edges
+                        q = (round(lo[0]+t*(hi[0]-lo[0]), 6), round(lo[1]+t*(hi[1]-lo[1]), 6))
+                        if not protected_edge and self.canonical(q) in representatives:
+                            q = reconciled(q, representatives)
+                        t, _ = self.project_segment(q, lo, hi)
+                        cuts.add((t, q))
+                original_lo, original_hi = key[0]
+                def original_point(t):
+                    return (original_lo[0]+t*(original_hi[0]-original_lo[0]),
+                            original_lo[1]+t*(original_hi[1]-original_lo[1]))
+                # Endpoint and projection passes may each be bounded yet drift
+                # in composition. Check the final point against its original
+                # served interval AND its supporting edge. Clipping the served
+                # endpoints has already rounded them once; that rounding must
+                # not add another allowance to the original source bound.
+                if any(max(self.distance(p, original_point(t)), self.source_error(p, support)) > .15
+                       for t, p in cuts):
+                    uncertain = True
+                    source_cuts = {(0, original_lo), (1, original_hi)}
+                    for _, p in cuts:
+                        t, _ = self.project_segment(p, original_lo, original_hi)
+                        if 1e-8 < t < 1-1e-8:
+                            q = tuple(round(value, 6) for value in original_point(t))
+                            if self.source_error(q, support) <= .15:
+                                source_cuts.add((t, q))
+                    cuts = source_cuts
+                split_cache[key] = sorted(cuts), uncertain
+            cuts, uncertain = split_cache[key]
+            if a != key[0][0]:
+                cuts = [(1-t, p) for t, p in reversed(cuts)]
+            return cuts, uncertain
+        result, ambiguous_paths = {}, set()
+        for key, path in paths.items():
+            for a, b, _, support in path():
+                if split(a, b, support)[1]:
+                    ambiguous_paths.add(key)
+            # Keep the shared split cache, not a copied full path per pattern.
+            def mapped(path=path):
+                for a, b, anchor, support in path():
+                    cuts, _ = split(a, b, support)
+                    for (t0, p0), (t1, p1) in zip(cuts, cuts[1:]):
+                        if p0 != p1 and t1-t0 > 1e-8:
+                            def original_point(t):
+                                return (a[0]+t*(b[0]-a[0]), a[1]+t*(b[1]-a[1]))
+                            yield p0, p1, anchor, (*support, (original_point(t0), original_point(t1)))
+            result[key] = mapped
+        return result, ambiguous_paths
 
     @staticmethod
     def canonical(p):
         """A point's longitude in -180 <= lon < 180."""
         return (round((p[0]+180) % 360 - 180, 6), p[1])
+
+    def source_error(self, point, support):
+        """Distance to the original supporting edge in the point's world copy."""
+        a, b = support[1]
+        a = (a[0]+360*round((point[0]-a[0])/360), a[1])
+        b = (b[0]+360*round((a[0]-b[0])/360), b[1])
+        return self.project_segment(point, a, b)[1]
 
     def xy(self, p):
         return p[0]*self.sx, p[1]*self.sy
@@ -254,22 +493,12 @@ class ShapePaths:
         return positions if positions[-1] > positions[0]+.15 else None
 
     def segments(self, trip, sequence):
-        key = self.pattern_key(trip, sequence)
-        if key in self.rail_patterns:
-            return self.rail[self.rail_patterns[key]].segments(trip, sequence)
-        positions = self.patterns.get(key)
-        if positions is None:
-            return []
-        shape = self.shapes[trip['shape_id']]
         out = []
-        for begin,end,a,b in shape['edges']:
-            middle = (begin+end)/2
-            if middle < positions[0]-.001 or middle >= positions[-1]-.001:
-                continue
-            anchor = max(0,min(len(sequence)-2,bisect_right(positions,middle)-1))
-            for p,q in self.normalized(a,b):
-                lo,hi = sorted((p,q))
-                out.append(((trip['route_id'],lo,hi),0 if p==lo else 1,sequence[anchor], [lo,hi]))
+        path = self.edge_paths.get(self.pattern_key(trip, sequence))
+        for a, b, anchor, _ in path() if path else ():
+            for p, q in self.normalized(a, b):
+                lo, hi = sorted((p, q))
+                out.append(((trip['route_id'], lo, hi), 0 if p == lo else 1, sequence[anchor], [lo, hi]))
         return out
 
     @staticmethod

@@ -169,7 +169,7 @@ test('curved timetable sections keep the whole OSM line orientation and their or
 });
 
 
-for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
+for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal','mixed-near','mixed-ambiguous','mixed-window','mixed-window-am'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
  const {mkdtemp,mkdir,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
  const {spawnSync}=await import('node:child_process'),{gzipSync,gunzipSync}=await import('node:zlib');
  const {assemble}=await import('../scripts/assemble-global-frequency.mjs'),{writeTable}=await import('../scripts/service-routes.mjs');
@@ -185,10 +185,30 @@ for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal']
   assert.equal(manifest.applied_profiles.sections,3);assert.equal(manifest.tiles,0,'no standalone GTFS tiles');
   const artifact=JSON.parse(gunzipSync(await readFile(join(root,'profiles.json.gz'))));
   const rendered=features(buildTiles(t,{timetables:bindTimetableSections(t,artifact).sections}));
-  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,variant==='mixed-equal'?8:6]);
+  if(variant.startsWith('mixed-window')){
+   assert.deepEqual([...new Set(rendered.map(p=>p.frequency_h08))].sort((a,b)=>a-b),[0,8]);
+   const bound=bindTimetableSections(t,artifact).sections;
+   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.h08.rate===(way===1?8:0)));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(features(buildTiles(t)).map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+   assert.deepEqual(f.source.geometry_audit.routes_with_incomplete_active_geometry,[]);
+   if(variant==='mixed-window')assert.ok(rendered.every(p=>p.frequency_am===undefined));
+   return;
+  }
+  if(variant==='mixed-ambiguous'){
+   assert.deepEqual(f.source.geometry_audit.routes_with_incomplete_active_geometry,['ginza']);
+   assert.ok(f.segments.every(s=>s.profiles.am.display_tph===null));
+   assert.ok(artifact.records.every(r=>Object.keys(r.profiles).length===0));
+   assert.equal(artifact.matching.feeds[0].routesWithProfiles,0);
+   assert.ok(rendered.every(p=>p.frequency_am===undefined&&p.frequency_overnight===undefined));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(features(buildTiles(t)).map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+   return;
+  }
+  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,variant==='mixed-equal'||variant==='mixed-near'?8:6]);
   if(variant.startsWith('mixed-')){
    const bound=bindTimetableSections(t,artifact).sections;
-   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.am.rate===(way===1?(variant==='mixed-equal'?8:6):4)));
+   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.am.rate===(way===1?(variant==='mixed-paths'?6:8):4)));
    assert.equal(f.source.geometry_audit.matched_railway_patterns,2);
    const baseline=features(buildTiles(t));
    assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(baseline.map(p=>p.id))]);

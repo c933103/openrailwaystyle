@@ -1,3 +1,4 @@
+from collections import defaultdict
 import csv
 import gzip
 import importlib.util
@@ -419,7 +420,7 @@ sys.exit(module.compile_one(sys.argv[2], sys.argv[3]))
         return path
 
     def mixed_paths_feed(self, patterns, supplied, lines, *, trip_fields=None,
-                         exceptions=None, points=None, profiles=None):
+                         exceptions=None, points=None, profiles=None, calendar_rows=None):
         path = self.feed(patterns, patterns, exceptions=exceptions)
         with zipfile.ZipFile(path) as z:
             files = {name: z.read(name) for name in z.namelist()}
@@ -432,9 +433,14 @@ sys.exit(module.compile_one(sys.argv[2], sys.argv[3]))
                             'C': (24, 60.02), 'D': (24.01, 60.01)}
         table('stops.txt', [{'stop_id': key, 'stop_name': key, 'stop_lon': p[0],
                              'stop_lat': p[1]} for key, p in points.items()])
+        route_ids = {'R'} | {fields.get('route_id', 'R') for fields in (trip_fields or {}).values()}
+        table('routes.txt', [{'route_id': key, 'route_type': '1', 'agency_id': 'A',
+                              'route_short_name': key} for key in sorted(route_ids)])
         table('trips.txt', [{'trip_id': name, 'route_id': 'R', 'service_id': 'W',
                              'shape_id': name if name in supplied else '',
                              **(trip_fields or {}).get(name, {})} for name in patterns])
+        if calendar_rows:
+            table('calendar.txt', calendar_rows)
         if supplied:
             table('shapes.txt', [{'shape_id': name, 'shape_pt_sequence': i,
                                   'shape_pt_lon': p[0], 'shape_pt_lat': p[1]}
@@ -502,6 +508,455 @@ sys.exit(module.compile_one(sys.argv[2], sys.argv[3]))
         rows = {tuple(map(tuple, s['geometry'])): s for s in result['segments']}
         self.assertEqual(rows[(a, b)]['profiles']['h08']['display_tph'], 1)
         self.assertEqual(rows[(b, c)]['profiles']['h08']['display_tph'], 0)
+
+    def test_noncontributing_near_paths_reuse_current_intervals_across_output_windows(self):
+        a, b, c = (24, 60), (24, 60.01), (24, 60.02)
+        patterns = {'shape': [('A', '07:59:00'), ('C', '08:20:00')],
+                    'graph': [('A', '08:10:00'), ('B', '08:20:00')]}
+        for with_am in [False, True]:
+            with self.subTest(with_am=with_am):
+                profiles = {'h08': {'start': '08:00:00', 'end': '09:00:00'}}
+                if with_am: profiles['am'] = {'start': '07:00:00', 'end': '09:00:00'}
+                result = self.mixed_paths_feed(patterns, {'shape': [a, c]},
+                    [[(24.000001, 60), (24.000001, 60.02)]], profiles=profiles)
+                self.assertEqual(len(result['segments']), 2)
+                for row in result['segments']:
+                    expected = 1 if row['geometry'][0][1] == 60 else 0
+                    self.assertEqual(row['profiles']['h08']['display_tph'], expected)
+                self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_composed_reconciliation_cannot_drift_beyond_source_tolerance(self):
+        points = {'C0': (23.999998, 60), 'C1': (23.999998, 60.010002),
+                  'T0': (24.000002, 60), 'T1': (24, 60.010002),
+                  'L0': (23.999997, 60), 'L1': (23.999997, 60.009998)}
+        for reverse in [False, True]:
+            with self.subTest(reverse=reverse):
+                stops = {'center': ['C0', 'C1'], 'tilted': ['T0', 'T1'], 'left': ['L0', 'L1']}
+                if reverse: stops = {key: list(reversed(value)) for key, value in stops.items()}
+                patterns = {key: [(stop, f'08:{i*20:02}:00') for i, stop in enumerate(value)]
+                            for key, value in stops.items()}
+                result = self.mixed_paths_feed(patterns,
+                    {key: [points[stop] for stop in value] for key, value in stops.items()}, [], points=points)
+                self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], ['R'])
+                self.assertTrue(all(row['profiles']['am']['display_tph'] is None for row in result['segments']))
+                tilted = [row['geometry'] for row in result['segments'] if points['T0'] in row['geometry']]
+                self.assertEqual(len(tilted), 1)
+                self.assertTrue(all(point[0] >= 24 for point in tilted[0]),
+                                'the tilted source must not be moved onto the left track')
+                spec = importlib.util.spec_from_file_location('bounded_shapes', Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+                module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+                lines = {key: [points[stop] for stop in value] for key, value in stops.items()}
+                shape_rows = [{'shape_id': key, 'shape_pt_sequence': i, 'shape_pt_lon': point[0], 'shape_pt_lat': point[1]}
+                              for key, line in lines.items() for i, point in enumerate(line)]
+                trips = {key: {'route_id': 'R', 'shape_id': key} for key in lines}
+                stop_rows = {key: {'stop_lon': point[0], 'stop_lat': point[1]} for key, point in points.items()}
+                times = {key: [{'stop_id': stop, 'stop_sequence': i} for i, stop in enumerate(value)] for key, value in stops.items()}
+                paths = module.ShapePaths(shape_rows, trips, times, stop_rows, {})
+                for key, line in lines.items():
+                    for _, _, _, geometry in paths.segments(trips[key], times[key]):
+                        self.assertTrue(all(paths.project_segment(point, *line)[1] <= .15 for point in geometry))
+
+    def test_diagonal_source_bounds_use_unrounded_witnesses(self):
+        spec = importlib.util.spec_from_file_location('diagonal_shapes', Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        starts = [(23.999998, 59.999998), (24.000002, 59.999998), (24.000001, 59.999999)]
+        for ends in [[(24.009996, 60.004996), (24.010002, 60.004997), (24.010001, 60.004998)],
+                     [(24.000996, 60.000496), (24.001002, 60.000497), (24.001001, 60.000498)]]:
+            for reverse in [False, True]:
+                with self.subTest(ends=ends, reverse=reverse):
+                    lines = {f's{i}': ([end, start] if reverse else [start, end])
+                             for i, (start, end) in enumerate(zip(starts, ends))}
+                    points = {key+str(i): point for key, line in lines.items() for i, point in enumerate(line)}
+                    patterns = {key: [(key+'0', '08:00:00'), (key+'1', '08:20:00')] for key in lines}
+                    result = self.mixed_paths_feed(patterns, lines, [], points=points)
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], ['R'])
+                    self.assertTrue(all(row['profiles']['am']['display_tph'] is None for row in result['segments']))
+                    rows = [{'shape_id': key, 'shape_pt_sequence': i, 'shape_pt_lon': point[0], 'shape_pt_lat': point[1]}
+                            for key, line in lines.items() for i, point in enumerate(line)]
+                    trips = {key: {'route_id': 'R', 'shape_id': key} for key in lines}
+                    stops = {key: {'stop_lon': point[0], 'stop_lat': point[1]} for key, point in points.items()}
+                    times = {key: [{'stop_id': key+str(i), 'stop_sequence': i} for i in (0, 1)] for key in lines}
+                    paths = module.ShapePaths(rows, trips, times, stops, {})
+                    for key, line in lines.items():
+                        segments = paths.segments(trips[key], times[key])
+                        self.assertTrue(segments)
+                        self.assertTrue(all(paths.project_segment(point, *line)[1] <= .15
+                                            for _, _, _, geometry in segments for point in geometry))
+
+    def test_clipped_diagonal_paths_remain_within_original_supporting_edges(self):
+        spec = importlib.util.spec_from_file_location('clipped_shapes', Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        source = {'0': [(24.000003, 60.000001), (24.001004, 60.000503)],
+                  '1': [(23.999998, 60), (24.000995, 60.000501)],
+                  '2': [(24, 60.000002), (24.001001, 60.000502)],
+                  '3': [(24.000002, 60.000001), (24.001003, 60.000502)]}
+        served = {'0': [(24.000140, 60.000070), (24.000901, 60.000451)],
+                  '1': [(24.000135, 60.000069), (24.000892, 60.000449)],
+                  '2': [(24.000137, 60.000070), (24.000898, 60.000450)],
+                  '3': [(24.000139, 60.000070), (24.000900, 60.000450)]}
+        for reverse in [False, True]:
+            for reverse_order in [False, True]:
+                with self.subTest(reverse=reverse, reverse_order=reverse_order):
+                    keys = list(reversed(source)) if reverse_order else list(source)
+                    lines = {key: list(reversed(source[key])) if reverse else source[key] for key in keys}
+                    points = {key+str(i): point for key in keys
+                              for i, point in enumerate(reversed(served[key]) if reverse else served[key])}
+                    rows = [{'shape_id': key, 'shape_pt_sequence': i, 'shape_pt_lon': p[0], 'shape_pt_lat': p[1]}
+                            for key, line in lines.items() for i, p in enumerate(line)]
+                    trips = {key: {'route_id': 'R', 'shape_id': key} for key in keys}
+                    stops = {key: {'stop_lon': p[0], 'stop_lat': p[1]} for key, p in points.items()}
+                    times = {key: [{'stop_id': key+str(i), 'stop_sequence': i} for i in (0, 1)] for key in keys}
+                    paths = module.ShapePaths(rows, trips, times, stops, {'eligible_trip_ids': {'0', '2'}})
+                    for key, line in lines.items():
+                        segments = paths.segments(trips[key], times[key])
+                        self.assertTrue(segments)
+                        self.assertTrue(all(paths.project_segment(p, *line)[1] <= .15
+                                            for _, _, _, geometry in segments for p in geometry), key)
+                    # Exercise actual contributor eligibility too, including
+                    # the noncontributing alignment that exposed the drift.
+                    patterns = {key: [(key+'0', '08:00:00' if key in {'0', '2'} else '10:00:00'),
+                                      (key+'1', '08:20:00' if key in {'0', '2'} else '10:20:00')] for key in keys}
+                    result = self.mixed_paths_feed(patterns, lines, [], points=points)
+                    expected = defaultdict(float)
+                    for key in keys:
+                        for _, _, _, geometry in paths.segments(trips[key], times[key]):
+                            expected[tuple(geometry)] += .5 if key in {'0', '2'} else 0
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+                    self.assertEqual({tuple(row['geometry']): row['profiles']['am']['display_tph']
+                                      for row in result['segments']}, expected)
+    def test_original_supporting_edge_uses_short_dateline_world_copy(self):
+        spec = importlib.util.spec_from_file_location('dateline_shapes', Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        paths = module.ShapePaths([], {}, {}, {}, {})
+        # Canonical support endpoints across the dateline are a short edge,
+        # not a chord through the opposite side of the world.
+        support = (('shape', 0), ((-179.999, 60), (179.999, 60)))
+        self.assertLess(paths.source_error((180, 60), support), 1e-6)
+        self.assertGreater(paths.source_error((0, 60), support), 1_000_000)
+
+    def test_noncontributing_alignment_checks_original_edge_and_scopes_its_cache(self):
+        spec = importlib.util.spec_from_file_location('alignment_shapes', Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        paths = module.ShapePaths([], {}, {}, {}, {})
+        a, b = (24.000139, 60.000070), (24.000900, 60.000450)
+        candidate = (24.000138, 60.000071)
+        original_edge = ((24.000002, 60.000001), (24.001003, 60.000502))
+        self.assertLess(paths.distance(a, candidate), .15)
+        self.assertGreater(paths.project_segment(candidate, *original_edge)[1], .15)
+        def path(support, first=a):
+            return lambda: iter([(first, b, 0, support)])
+        # Same rounded interval and served witnesses, but distinct supporting
+        # edges: an accepted result for the first must not poison the second.
+        compatible = (('shape', 0), (candidate, b), (a, b))
+        incompatible = (('shape', 1), original_edge, (a, b))
+        mapped = paths.align_noncontributing(
+            {'compatible': path(compatible), 'incompatible': path(incompatible)},
+            {'current': path(compatible, candidate)})
+        self.assertEqual(list(mapped['compatible']())[0][:2], (candidate, b))
+        self.assertEqual(list(mapped['incompatible']())[0][:2], (a, b))
+
+    def test_half_microdegree_longitude_midpoints_never_shift_source_vertices(self):
+        for longitude in [23.999998, 24, -24.000002, -24]:
+            for reverse in [False, True]:
+                with self.subTest(longitude=longitude, reverse=reverse):
+                    points = {'A': (longitude, 60.000002), 'B': (round(longitude+.000001, 6), 60.001003)}
+                    order = ['B', 'A'] if reverse else ['A', 'B']
+                    result = self.mixed_paths_feed({'shape': [(order[0], '08:00:00'), (order[1], '08:20:00')]},
+                        {'shape': [points[key] for key in order]}, [], points=points)
+                    self.assertEqual([row['geometry'] for row in result['segments']], [[points['A'], points['B']]])
+                    self.assertEqual(result['segments'][0]['profiles']['am']['display_tph'], .5)
+                    self.assertEqual(result['segments'][0]['expected_directions'], [int(reverse)])
+
+    def test_mixed_paths_reconcile_near_collinear_endpoints_and_keep_direction(self):
+        a, b, c = (24, 60), (24, 60.01), (24, 60.02)
+        for offset in [-.000002, -.000001, .000001, .000002]:
+            for reverse in [False, True]:
+                with self.subTest(offset=offset, reverse=reverse):
+                    seq = ['C', 'A'] if reverse else ['A', 'C']
+                    short = ['B', 'A'] if reverse else ['A', 'B']
+                    patterns = {'shape': [(s, f'08:{i*20:02}:00') for i, s in enumerate(seq)],
+                                'graph': [(s, f'08:{i*20:02}:00') for i, s in enumerate(short)]}
+                    result = self.mixed_paths_feed(patterns,
+                        {'shape': [c, a] if reverse else [a, c]},
+                        [[(24+offset, 60), (24+offset, 60.02)]])
+                    self.assertEqual(len(result['segments']), 2)
+                    rows = sorted(result['segments'], key=lambda row: min(p[1] for p in row['geometry']))
+                    self.assertEqual([r['profiles']['am']['display_tph'] for r in rows], [1, .5])
+                    self.assertTrue(all(r['expected_directions'] == [int(reverse)] for r in rows))
+                    for row in rows:
+                        # Canonical coordinates never shift a source vertex past 15 cm.
+                        self.assertTrue(all(abs(p[0]-24)*111320*.5 <= .15 for p in row['geometry']))
+
+    def test_mixed_paths_keep_sixteen_centimetre_parallel_tracks_separate(self):
+        a, c = (24, 60), (24, 60.02)
+        result = self.mixed_paths_feed(
+            {'shape': [('A', '08:00:00'), ('C', '08:20:00')],
+             'graph': [('A', '08:10:00'), ('B', '08:20:00')]},
+            {'shape': [a, c]}, [[(24.000003, 60), (24.000003, 60.02)]])
+        self.assertEqual(len(result['segments']), 2)
+        self.assertTrue(all(r['profiles']['am']['display_tph'] == .5 for r in result['segments']))
+        self.assertTrue(all(r['expected_directions'] == [0] for r in result['segments']))
+        self.assertEqual({tuple(p[0] for p in r['geometry']) for r in result['segments']},
+                         {(24, 24), (24.000003, 24.000003)})
+
+    def test_near_collinear_cut_does_not_reverse_supplied_shape_direction(self):
+        result = self.mixed_paths_feed(
+            {'shape': [('A', '08:00:00'), ('C', '08:20:00')],
+             'graph': [('A', '08:10:00'), ('B', '08:20:00')]},
+            {'shape': [(24, 60), (24, 60.02)]}, [[(24.000001, 60), (24.000001, 60.02)]])
+        self.assertTrue(all(row['expected_directions'] == [0] for row in result['segments']))
+
+    def test_near_collinear_partition_does_not_chain_across_parallel_tracks(self):
+        a, b, c = (24, 60), (24, 60.01), (24, 60.02)
+        e, f = (24.000002, 60), (24.000002, 60.02)
+        patterns = {'shape': [('A', '08:00:00'), ('C', '08:20:00')],
+                    'shape2': [('E', '08:00:00'), ('F', '08:20:00')],
+                    'graph': [('A', '08:10:00'), ('B', '08:20:00')]}
+        supplied = {'shape': [a, c], 'shape2': [e, f]}
+        def compile(reverse):
+            return self.mixed_paths_feed(dict(reversed(list(patterns.items()))) if reverse else patterns,
+                dict(reversed(list(supplied.items()))) if reverse else supplied,
+                [[(24.000004, 60), (24.000004, 60.02)]],
+                points={'A': a, 'B': b, 'C': c, 'E': e, 'F': f})
+        first, reordered = compile(False), compile(True)
+        self.assertEqual(first['segments'], reordered['segments'])
+        self.assertEqual(len(first['segments']), 4)
+        # The middle track has two incompatible neighbours. No arbitrary pair
+        # is chosen, no transitive snapping occurs, and the route stays unknown.
+        rows = {tuple(map(tuple, row['geometry'])): row for row in first['segments']}
+        middle = (24.000002, 60.01)
+        self.assertEqual(set(rows), {(a, c), (e, middle), (middle, f), ((24.000004, 60), (24.000004, 60.01))})
+        self.assertTrue(all(row['profiles']['am']['display_tph'] is None for row in rows.values()))
+        self.assertTrue(all(row['expected_directions'] == [0] for row in rows.values()))
+
+    def test_ambiguous_interior_neighbours_never_invent_cross_track_geometry(self):
+        points = {'A': (24, 60), 'B': (24, 60.01), 'C': (24, 60.02),
+                  'D': (24, 60.03), 'E': (23.999998, 60.01), 'F': (23.999998, 60.02)}
+        for reverse in [False, True]:
+            for reorder in [False, True]:
+                with self.subTest(reverse=reverse, reorder=reorder):
+                    stops = {'full': ['A', 'D'], 'left': ['E', 'F'], 'graph': ['B', 'C']}
+                    if reverse: stops = {key: list(reversed(value)) for key, value in stops.items()}
+                    patterns = {key: [(stop, f'08:{i*20:02}:00') for i, stop in enumerate(value)]
+                                for key, value in stops.items()}
+                    supplied = {key: [points[stop] for stop in stops[key]] for key in ['full', 'left']}
+                    if reorder:
+                        patterns = dict(reversed(list(patterns.items())))
+                        supplied = dict(reversed(list(supplied.items())))
+                    result = self.mixed_paths_feed(patterns, supplied,
+                        [[(24.000002, 60), (24.000002, 60.03)]], points=points)
+                    for row in result['segments']:
+                        a, b = row['geometry']
+                        self.assertEqual(a[0], b[0], 'never connect separate tracks at equal progress')
+                        self.assertLess(a[1], b[1], 'each interval makes positive progress')
+                        self.assertEqual(row['expected_directions'], [int(reverse)])
+                    rows = {tuple(map(tuple, row['geometry'])) for row in result['segments']}
+                    self.assertIn(((24.000002, 60.01), (24.000002, 60.02)), rows)
+                    self.assertIn((points['E'], points['F']), rows)
+                    self.assertTrue(all(row['profiles']['am']['display_tph'] is None for row in result['segments']),
+                                    'ambiguous shared ownership must not publish a known rate')
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], ['R'])
+
+    def test_distinct_graph_paths_cannot_share_a_mode_wide_geometry_owner(self):
+        points = {'A': (24, 60), 'D': (24, 60.03),
+                  'E': (23.999998, 60.01), 'F': (23.999998, 60.02),
+                  'G': (24.000002, 60.01), 'H': (24.000002, 60.02)}
+        expected = {((24, 60), (24, 60.01)), ((24, 60.01), (24, 60.02)),
+                    ((24, 60.02), (24, 60.03)), (points['E'], points['F']), (points['G'], points['H'])}
+        for reverse in [False, True]:
+            for reorder in [False, True]:
+                with self.subTest(reverse=reverse, reorder=reorder):
+                    stops = {'full': ['A', 'D'], 'left': ['E', 'F'], 'right': ['G', 'H']}
+                    if reverse: stops = {key: list(reversed(value)) for key, value in stops.items()}
+                    patterns = {key: [(stop, f'08:{i*20:02}:00') for i, stop in enumerate(value)]
+                                for key, value in stops.items()}
+                    if reorder: patterns = dict(reversed(list(patterns.items())))
+                    result = self.mixed_paths_feed(patterns,
+                        {'full': [points[stop] for stop in stops['full']]},
+                        [[points['E'], points['F']], [points['G'], points['H']]], points=points)
+                    rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+                    self.assertEqual(set(rows), expected)
+                    self.assertTrue(all(row['expected_directions'] == [int(reverse)] for row in rows.values()))
+                    self.assertTrue(all(row['profiles']['am']['display_tph'] is None for row in rows.values()))
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], ['R'])
+                    self.assertEqual(result['source']['geometry_audit']['withheld_trips']['ambiguous_shared_geometry'], 3)
+
+    def test_full_and_short_graph_paths_keep_dense_source_continuity(self):
+        points = {'A': (24, 60), 'B': (24, 60.01), 'C': (24, 60.000002)}
+        line = [points['A'], (24.000001, 60.000001), points['C'], points['B']]
+        expected = {tuple(sorted(edge)) for edge in zip(line, line[1:])}
+        for reverse in [False, True]:
+            with self.subTest(reverse=reverse):
+                stops = {'full': ['A', 'B'], 'short': ['A', 'C']}
+                if reverse: stops = {key: list(reversed(value)) for key, value in stops.items()}
+                patterns = {key: [(stop, f'08:{i*20:02}:00') for i, stop in enumerate(value)]
+                            for key, value in stops.items()}
+                result = self.mixed_paths_feed(patterns, {}, [line], points=points)
+                rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+                self.assertEqual(set(rows), expected)
+                for edge, row in rows.items():
+                    self.assertEqual(row['profiles']['am']['display_tph'],
+                        .5 if edge == (points['C'], points['B']) else 1)
+                self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_adjacent_graph_workings_preserve_a_shared_degree_two_bend(self):
+        points = {'A': (24, 59.99), 'M': (24.000001, 60.000001), 'B': (24, 60.01)}
+        line = [points['A'], (24, 60), points['M'], (24, 60.000002), points['B']]
+        expected = {tuple(sorted(edge)) for edge in zip(line, line[1:])}
+        for reverse in [False, True]:
+            for reorder in [False, True]:
+                with self.subTest(reverse=reverse, reorder=reorder):
+                    stops = {'before': ['A', 'M'], 'after': ['M', 'B']}
+                    if reverse: stops = {key: list(reversed(value)) for key, value in stops.items()}
+                    patterns = {key: [(stop, f'08:{i*20:02}:00') for i, stop in enumerate(value)]
+                                for key, value in stops.items()}
+                    if reorder: patterns = dict(reversed(list(patterns.items())))
+                    result = self.mixed_paths_feed(patterns, {}, [line], points=points)
+                    rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+                    self.assertEqual(set(rows), expected)
+                    self.assertTrue(all(row['profiles']['am']['display_tph'] == .5 for row in rows.values()))
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_ambiguous_geometry_withholding_is_active_pattern_and_route_scoped(self):
+        points = {'A': (24, 60), 'B': (24, 60.01), 'C': (24, 60.02),
+                  'D': (24, 60.03), 'E': (23.999998, 60.01), 'F': (23.999998, 60.02),
+                  'G': (25, 60), 'H': (25, 60.01), 'I': (26, 60), 'J': (26, 60.01)}
+        patterns = {key: [(a, '08:00:00'), (b, '08:20:00')] for key, a, b in
+                    [('full', 'A', 'D'), ('left', 'E', 'F'), ('graph', 'B', 'C'),
+                     ('same-route', 'G', 'H'), ('other-route', 'I', 'J')]}
+        supplied = {key: [points[a], points[b]] for key, a, b in
+                    [('full', 'A', 'D'), ('left', 'E', 'F'), ('same-route', 'G', 'H'), ('other-route', 'I', 'J')]}
+        for inactive_date in [None, '20261002', '20261101']:
+            with self.subTest(inactive_date=inactive_date):
+                fields = {'other-route': {'route_id': 'Q'}}
+                if inactive_date:
+                    fields.update({key: {'service_id': 'other'} for key in ['full', 'left', 'graph']})
+                result = self.mixed_paths_feed(patterns, supplied,
+                    [[(24.000002, 60), (24.000002, 60.03)]], points=points,
+                    trip_fields=fields, exceptions=([{'service_id': 'other', 'date': inactive_date,
+                                                      'exception_type': '1'}] if inactive_date else None))
+                rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+                self.assertEqual(rows[(points['I'], points['J'])]['profiles']['am']['display_tph'], .5)
+                self.assertEqual(rows[(points['G'], points['H'])]['profiles']['am']['display_tph'], .5 if inactive_date else None)
+                audit = result['source']['geometry_audit']
+                self.assertEqual(audit['routes_with_incomplete_active_geometry'], [] if inactive_date else ['R'])
+                self.assertEqual(audit['withheld_trips'].get('ambiguous_shared_geometry', 0), 0 if inactive_date else 3)
+
+    def test_dense_collinear_vertices_are_not_ambiguous_parallel_tracks(self):
+        points = {'A': (24, 60), 'B': (24, 60.01)}
+        dense = [(24, 60+i*.000001) for i in range(4)] + [points['B']]
+        result = self.mixed_paths_feed({'shape': [('A', '08:00:00'), ('B', '08:20:00')]},
+            {'shape': dense}, [], points=points)
+        self.assertTrue(result['segments'])
+        self.assertTrue(all(row['profiles']['am']['display_tph'] == .5 for row in result['segments']))
+        self.assertTrue(all(row['geometry'][0][0] == row['geometry'][1][0] == 24 for row in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_competing_paths_are_scoped_to_route_and_contributing_calendar(self):
+        points = {'A': (24, 60), 'B': (24, 60.01), 'C': (24, 60.02),
+                  'D': (24, 60.03), 'E': (23.999998, 60.01), 'F': (23.999998, 60.02)}
+        patterns = {'full': [('A', '08:00:00'), ('D', '08:30:00')],
+                    'left': [('E', '08:00:00'), ('F', '08:20:00')],
+                    'graph': [('B', '08:00:00'), ('C', '08:20:00')]}
+        supplied = {'full': [points['A'], points['D']], 'left': [points['E'], points['F']]}
+        calendar = {'start_date': '20260101', 'end_date': '20261231',
+                    **{day: '1' for day in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']}}
+        cases = [('other-route', {'trip_fields': {'left': {'route_id': 'Q'}, 'graph': {'route_id': 'Q'}}})]
+        for date in ['20261002', '20261101']:
+            cases.append((date, {'trip_fields': {key: {'service_id': 'other'} for key in ['left', 'graph']},
+                'exceptions': [{'service_id': 'other', 'date': date, 'exception_type': '1'}]}))
+        for removed in [False, True]:
+            cases.append(('removed' if removed else 'inactive-weekday', {
+                'trip_fields': {key: {'service_id': 'other'} for key in ['left', 'graph']},
+                'calendar_rows': [{'service_id': 'W', **calendar}, {'service_id': 'other', **calendar,
+                                  'monday': '1' if removed else '0'}],
+                'exceptions': [{'service_id': 'other', 'date': '20261005', 'exception_type': '2'}] if removed else None}))
+        for label, options in cases:
+            with self.subTest(case=label):
+                result = self.mixed_paths_feed(patterns, supplied,
+                    [[(24.000002, 60), (24.000002, 60.03)]], points=points, **options)
+                current = [row for row in result['segments'] if all(p[0] == 24 for p in row['geometry'])]
+                self.assertTrue(current)
+                self.assertTrue(all(row['route_id'] == 'R' and row['profiles']['am']['display_tph'] == .5 for row in current))
+                self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+                self.assertNotIn('ambiguous_shared_geometry', result['source']['geometry_audit']['withheld_trips'])
+        # Sunday's 25-hour workings are still current contributors even when
+        # Monday's service is removed; ordinary calendar-day filtering is wrong.
+        overnight = {'full': [('A', '01:00:00'), ('D', '01:30:00')],
+                     'left': [('E', '25:00:00'), ('F', '25:20:00')],
+                     'graph': [('B', '25:00:00'), ('C', '25:20:00')]}
+        result = self.mixed_paths_feed(overnight, supplied,
+            [[(24.000002, 60), (24.000002, 60.03)]], points=points,
+            trip_fields={key: {'service_id': 'other'} for key in ['left', 'graph']},
+            calendar_rows=[{'service_id': key, **calendar} for key in ['W', 'other']],
+            exceptions=[{'service_id': 'other', 'date': '20261005', 'exception_type': '2'}],
+            profiles={'overnight': {'start': '00:00:00', 'end': '02:00:00'}})
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], ['R'])
+        self.assertTrue(all(row['profiles']['overnight']['display_tph'] is None for row in result['segments']))
+
+    def test_one_dense_bending_polyline_retains_its_geometry_and_known_counts(self):
+        points = {'A': (24, 60), 'B': (24, 60.01)}
+        line = [(24, 60), (24.000001, 60.000001), (24, 60.000002), (24, 60.01)]
+        for reverse in [False, True]:
+            shape = list(reversed(line)) if reverse else line
+            result = self.mixed_paths_feed({'shape': [('B' if reverse else 'A', '08:00:00'),
+                                                     ('A' if reverse else 'B', '08:20:00')]},
+                {'shape': shape}, [], points=points)
+            expected = {tuple(sorted((a, b))): int(a > b) for a, b in zip(shape, shape[1:])}
+            rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+            self.assertEqual(set(rows), set(expected))
+            for edge, row in rows.items():
+                self.assertEqual(row['profiles']['am']['display_tph'], .5)
+                self.assertEqual(row['expected_directions'], [expected[edge]])
+            self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_dense_source_sampling_does_not_make_a_second_path_ambiguous(self):
+        points = {'A': (24, 60), 'B': (24, 60.01)}
+        line = [(24, 60), (24.000001, 60.000001), (24, 60.000002), (24, 60.01)]
+        expected = {tuple(sorted(edge)) for edge in zip(line, line[1:])}
+        expected.update({((24, 60), (24, 60.000001)), ((24, 60.000001), (24, 60.000002))})
+        for reverse in [False, True]:
+            for graph_first in [False, True]:
+                with self.subTest(reverse=reverse, graph_first=graph_first):
+                    sequence = [('B' if reverse else 'A', '08:00:00'),
+                                ('A' if reverse else 'B', '08:20:00')]
+                    patterns = {key: sequence for key in (['graph', 'shape'] if graph_first else ['shape', 'graph'])}
+                    result = self.mixed_paths_feed(patterns, {'shape': list(reversed(line)) if reverse else line},
+                        [[points['A'], points['B']]], points=points)
+                    rows = {tuple(map(tuple, row['geometry'])): row for row in result['segments']}
+                    self.assertEqual(set(rows), expected)
+                    for edge, row in rows.items():
+                        # The real bend is retained; only the common remainder
+                        # can be one shared geometric measurement.
+                        self.assertEqual(row['profiles']['am']['display_tph'],
+                            1 if edge == ((24, 60.000002), (24, 60.01)) else .5)
+                    self.assertEqual(rows[((24, 60.000002), (24, 60.01))]['expected_directions'], [int(reverse)])
+                    self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_unused_shape_tail_cannot_manufacture_competing_workings(self):
+        points = {'A': (24, 60), 'B': (24, 60.01), 'C': (24, 60.02),
+                  'D': (24, 60.03), 'E': (23.999998, 60.02), 'F': (23.999998, 60.03)}
+        result = self.mixed_paths_feed(
+            {'short': [('A', '08:00:00'), ('B', '08:10:00')],
+             'left': [('E', '08:00:00'), ('F', '08:10:00')],
+             'graph': [('C', '08:00:00'), ('D', '08:10:00')]},
+            {'short': [points['A'], points['D']], 'left': [points['E'], points['F']]},
+            [[(24.000002, 60), (24.000002, 60.03)]], points=points)
+        self.assertTrue(all(row['profiles']['am']['display_tph'] == .5 for row in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'], [])
+
+    def test_near_collinear_partition_threshold_uses_local_latitude(self):
+        a, b, c = (24, 80), (24, 80.01), (24, 80.02)
+        patterns = {'shape': [('A', '08:00:00'), ('C', '08:20:00')],
+                    'graph': [('A', '08:10:00'), ('B', '08:20:00')]}
+        for offset, shared in [(.000005, True), (.000008, False)]:
+            with self.subTest(offset=offset):
+                result = self.mixed_paths_feed(patterns, {'shape': [a, c]},
+                    [[(24+offset, 80), (24+offset, 80.02)]], points={'A': a, 'B': b, 'C': c})
+                self.assertEqual(len(result['segments']), 2)
+                rates = sorted(row['profiles']['am']['display_tph'] for row in result['segments'])
+                self.assertEqual(rates, [.5, 1] if shared else [.5, .5])
+                self.assertTrue(all(row['expected_directions'] == [0] for row in result['segments']))
 
     def test_mixed_paths_keep_inactive_calendar_variants_out_of_current_counts(self):
         a, b, c = (24, 60), (24, 60.01), (24, 60.02)

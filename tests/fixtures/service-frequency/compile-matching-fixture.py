@@ -5,24 +5,33 @@ spec=importlib.util.spec_from_file_location('compiler',Path(__file__).resolve().
 compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
 def csv_bytes(fields,rows):
     out=io.StringIO();w=csv.DictWriter(out,fieldnames=fields);w.writeheader();w.writerows(rows);return out.getvalue()
-mixed='--mixed-paths' in sys.argv[2:] or '--mixed-equal' in sys.argv[2:]
-equal='--mixed-equal' in sys.argv[2:]
+window='--mixed-window' in sys.argv[2:] or '--mixed-window-am' in sys.argv[2:]
+ambiguous='--mixed-ambiguous' in sys.argv[2:]
+near='--mixed-near' in sys.argv[2:] or ambiguous or window
+mixed='--mixed-paths' in sys.argv[2:] or '--mixed-equal' in sys.argv[2:] or near
+equal='--mixed-equal' in sys.argv[2:] or near
 points=[(139.70,35.68),(139.71,35.68),(139.72,35.68),(139.73,35.68)]
 trips=[];times=[];shapes=[]
 for direction in (0,1):
     order=list(range(4))[::1 if direction==0 else -1]
     for i,k in enumerate(order[::3] if mixed else order):shapes.append(dict(shape_id=str(direction),shape_pt_sequence=i,shape_pt_lon=points[k][0],shape_pt_lat=points[k][1]))
-    # Four full trips per hour, plus two short workings serving just A-B.
+    if ambiguous:
+        for i,k in enumerate(([0,1] if direction==0 else [1,0])):shapes.append(dict(shape_id=f'{direction}-left',shape_pt_sequence=i,shape_pt_lon=points[k][0],shape_pt_lat=points[k][1]-.000001))
+    # Four full trips per hour; short workings add two, or four for equal-rate tests.
     for j in range(16 if equal else 12):
         ident=f'{direction}-{j}';short=j>=8
         served=([0,1] if direction==0 else [1,0]) if short else (order[::3] if mixed else order)
         trips.append(dict(trip_id=ident,route_id='ginza',service_id='W',shape_id='' if mixed and short else str(direction)))
+        if ambiguous and short:trips.append(dict(trip_id=f'{ident}-left',route_id='ginza',service_id='W',shape_id=f'{direction}-left'))
         minute=([0,10,20,30,40,50,60,90][j%8] if not short or equal else (j-8)*30)
         for i,k in enumerate(served):
-            total=7*3600+minute*60+i*120
+            total=((8*3600+10*60 if short else 7*3600+59*60) if window else 7*3600+minute*60)+i*120
             value=f'{total//3600:02}:{total//60%60:02}:{total%60:02}'
             times.append(dict(trip_id=ident,stop_id=chr(65+k),stop_sequence=i,arrival_time=value,departure_time=value))
+            if ambiguous and short:times.append(dict(trip_id=f'{ident}-left',stop_id=chr(65+k),stop_sequence=i,arrival_time=value,departure_time=value))
 config={'source':{'id':'jp-metro','name':'Offline Metro fixture','checked':'2026-10-10','retrieved':'2026-10-10','license':'CC0','attribution':'Synthetic test timetable','terms_url':'https://example.test/terms'},'profiles':{'am':{'start':'07:00:00','end':'09:00:00'},'h08':{'start':'08:00:00','end':'09:00:00'},'overnight':{'start':'00:00:00','end':'05:00:00'}}}
+if window:
+    config['profiles']={key: value for key,value in config['profiles'].items() if key=='h08' or key=='am' and '--mixed-window-am' in sys.argv[2:]}
 tables={
  'agency.txt':(['agency_id','agency_name','agency_timezone','agency_url'],[dict(agency_id='metro',agency_name='Fixture Metro Brand' if '--operator-binding' in sys.argv[2:] else '東京メトロ Tokyo Metro',agency_timezone='Asia/Tokyo',agency_url='https://operator.example.test/')]),
  'routes.txt':(['route_id','agency_id','route_type','route_short_name','route_long_name'],[dict(route_id='ginza',agency_id='metro',route_type=1,route_short_name='G',route_long_name='銀座線')]),
@@ -37,7 +46,7 @@ with tempfile.TemporaryDirectory() as temp:
         for name,(fields,rows) in tables.items():z.writestr(name,csv_bytes(fields,rows))
     if mixed:
         graph=Path(temp)/'graph.ndjson'
-        graph.write_text(json.dumps({'type':'Feature','properties':{'feature':'subway'},'geometry':{'type':'LineString','coordinates':[points[0],points[-1]]}})+'\n')
+        graph.write_text(json.dumps({'type':'Feature','properties':{'feature':'subway'},'geometry':{'type':'LineString','coordinates':[(x,y+.000001 if near else y) for x,y in [points[0],points[-1]]]}})+'\n')
         config['rail_graph']=str(graph)
     result=compiler.compile_feed(path,config,'2026-10-12',geometry=True)
     Path(sys.argv[1]).write_text(json.dumps(result),encoding='utf8')
