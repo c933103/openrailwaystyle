@@ -80,6 +80,7 @@ async function overpass(query) {
     // A quiet interval between requests, growing after each failure.
     await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
     requests++;
+    let failureText;
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-service-routes/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
@@ -98,15 +99,22 @@ async function overpass(query) {
       }
       if (over) { await response.body.cancel().catch(() => {}); return fresh ? null : BUDGET; }
       const text = Buffer.concat(chunks).toString();
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
+      if (!response.ok) {
+        // Classify the whole diagnostic, while keeping logged errors compact.
+        failureText = `HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')}`;
+        throw new Error(failureText.slice(0, 210));
+      }
       return toTable(JSON.parse(text), {endpoint: api, acquired: new Date().toISOString(), stage: stage.name, pass: current.started, query: createHash('sha256').update(query).digest('hex')});
     } catch (error) {
       lastFailure = describeOverpassError(error);
       console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
-      // A busy server calls for waiting; a query that ran out of time or
-      // memory calls for a smaller area (null); anything else, try again.
-      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
-      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
+      // Admission failures can also say "Gateway Timeout". Wait on the same
+      // box before considering smaller areas, even when the capacity wording
+      // follows the shortened log excerpt. Genuine query time/memory limits
+      // and incomplete JSON still call for a smaller area (null).
+      const message = failureText || error.message;
+      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
+      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(message)) return null;
     }
   }
   throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
