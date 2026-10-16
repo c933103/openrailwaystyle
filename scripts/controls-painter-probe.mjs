@@ -174,7 +174,7 @@ function terrainStateComplete(state){
 }
 function dispatchComplete(dispatch,records,layers){
  return Array.isArray(dispatch)&&Array.isArray(records)&&dispatch.length===records.length&&dispatch.length<=2048&&[...records].every((record,index)=>
-  object(record)&&text(record.pass)&&text(record.layer)&&layers.includes(record.layer)&&strings(record.coords)&&typeof record.toTexture==='boolean'&&dispatch[index]===`${record.pass}:${record.layer}`);
+  object(record)&&['offscreen','opaque','translucent'].includes(record.pass)&&text(record.layer)&&layers.includes(record.layer)&&strings(record.coords)&&typeof record.toTexture==='boolean'&&dispatch[index]===`${record.pass}:${record.layer}`);
 }
 function terrainFrameComplete(terrain){
  return object(terrain)&&['before','prepared','after'].every(stage=>terrainStateComplete(terrain[stage]))
