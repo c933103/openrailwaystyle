@@ -443,6 +443,12 @@ kept separate. Station snap errors, disconnected graphs, excessive detours and
 near-equivalent alternative paths are withheld. The existing snapshot is not a
 complete mainline graph; matching therefore cannot fill every shapeless feed.
 Matched OSM geometry retains its ODbL licence/attribution.
+Supplied-shape and verified graph-fallback paths share the same geometric interval
+partition before counting. A short working therefore adds to its shared section
+without replacing a full working's count or leaking onto the remainder. This
+uses the same 15 cm collinearity rule and retains each traversal's direction and
+preceding served-stop time; it does not merge nearby parallel tracks, invent
+intermediate stop times, or deduplicate distinct trips with equal counts.
 Shape distances and snap searches use local latitude, so unrelated equatorial
 and northern shapes cannot alter each other's 200 m acceptance threshold.
 

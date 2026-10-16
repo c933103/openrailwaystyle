@@ -94,48 +94,74 @@ class ShapePaths:
                 p = self.canonical(p)
                 if p not in vertices:
                     vertices.add(p); grid[self.cell(p)].add(p)
+        # Both supplied shapes and verified graph paths must use the same
+        # partition before counts are accumulated. Otherwise a full A-C shape
+        # and an A-B graph working remain overlapping, independent measurements.
+        for matcher in self.rail.values():
+            for path in matcher.patterns.values():
+                for a, b, _ in path or ():
+                    for p in (a, b):
+                        p = self.canonical(p)
+                        if p not in vertices:
+                            vertices.add(p); grid[self.cell(p)].add(p)
         split_cache = {}
+        def split(a, b):
+            key = tuple(sorted((a, b)))
+            if key not in split_cache:
+                lo, hi = key
+                cuts = [(0, lo), (1, hi)]
+                # The segment in the canonical copy (and its neighbours,
+                # when it reaches past ±180°) for the vertex lookup.
+                middle = (lo[0]+hi[0])/2
+                shift = self.canonical((middle, 0))[0]-middle
+                radius_x,_ = self.radii((0,max(abs(a[1]),abs(b[1]))),.15)
+                cells = set()
+                for turn in (-360, 0, 360):
+                    s0, s1 = (lo[0]+shift+turn, lo[1]), (hi[0]+shift+turn, hi[1])
+                    if max(s0[0], s1[0]) < -181 or min(s0[0], s1[0]) > 181:
+                        continue
+                    x0, y0 = self.cell(s0); x1, y1 = self.cell(s1)
+                    # Query cells along the segment, not a large diagonal box.
+                    steps = max(abs(x1-x0), abs(y1-y0), 1)
+                    for step in range(steps+1):
+                        c = self.cell((s0[0]+(s1[0]-s0[0])*step/steps, s0[1]+(s1[1]-s0[1])*step/steps))
+                        if radius_x<=256:
+                            cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
+                candidates=vertices if radius_x>256 else {p for cell in cells for p in grid.get(cell, ())}
+                for p in candidates:
+                    # Back into this segment's (unwrapped) world copy.
+                    p = (round(p[0] + 360*round((middle-p[0])/360), 6), p[1])
+                    t, error = self.project_segment(p, lo, hi)
+                    if 1e-8 < t < 1-1e-8 and error <= .15:
+                        cuts.append((t, p))
+                cuts.sort()
+                split_cache[key] = cuts
+            cuts = split_cache[key]
+            if a != key[0]:
+                cuts = [(1-t, p) for t,p in reversed(cuts)]
+            return cuts
+
         for shape in self.shapes.values():
             edges = []
             for i, (a, b) in enumerate(zip(shape['points'], shape['points'][1:])):
-                key = tuple(sorted((a, b)))
-                if key not in split_cache:
-                    lo, hi = key
-                    cuts = [(0, lo), (1, hi)]
-                    # The segment in the canonical copy (and its neighbours,
-                    # when it reaches past ±180°) for the vertex lookup.
-                    middle = (lo[0]+hi[0])/2
-                    shift = self.canonical((middle, 0))[0]-middle
-                    radius_x,_ = self.radii((0,max(abs(a[1]),abs(b[1]))),.15)
-                    cells = set()
-                    for turn in (-360, 0, 360):
-                        s0, s1 = (lo[0]+shift+turn, lo[1]), (hi[0]+shift+turn, hi[1])
-                        if max(s0[0], s1[0]) < -181 or min(s0[0], s1[0]) > 181:
-                            continue
-                        x0, y0 = self.cell(s0); x1, y1 = self.cell(s1)
-                        # Query cells along the segment, not a large diagonal box.
-                        steps = max(abs(x1-x0), abs(y1-y0), 1)
-                        for step in range(steps+1):
-                            c = self.cell((s0[0]+(s1[0]-s0[0])*step/steps, s0[1]+(s1[1]-s0[1])*step/steps))
-                            if radius_x<=256:
-                                cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
-                    candidates=vertices if radius_x>256 else {p for cell in cells for p in grid.get(cell, ())}
-                    for p in candidates:
-                        # Back into this segment's (unwrapped) world copy.
-                        p = (round(p[0] + 360*round((middle-p[0])/360), 6), p[1])
-                        t, error = self.project_segment(p, lo, hi)
-                        if 1e-8 < t < 1-1e-8 and error <= .15:
-                            cuts.append((t, p))
-                    cuts.sort()
-                    split_cache[key] = cuts
-                cuts = split_cache[key]
-                if a != key[0]:
-                    cuts = [(1-t, p) for t,p in reversed(cuts)]
+                cuts = split(a, b)
                 length = shape['lengths'][i+1]-shape['lengths'][i]
                 for (t0,p0),(t1,p1) in zip(cuts,cuts[1:]):
                     if p0 != p1:
                         edges.append((shape['lengths'][i]+t0*length, shape['lengths'][i]+t1*length, p0,p1))
             shape['edges'] = edges
+        # Keep every traversal and its original upstream-stop anchor, including
+        # repeated edges. Only the geometric interval boundaries are shared.
+        for matcher in self.rail.values():
+            for key, path in matcher.patterns.items():
+                if path is None:
+                    continue
+                edges = []
+                for a, b, anchor in path:
+                    cuts = split(a, b)
+                    edges.extend((p0, p1, anchor) for (_, p0), (_, p1)
+                                 in zip(cuts, cuts[1:]) if p0 != p1)
+                matcher.patterns[key] = edges
 
     @staticmethod
     def canonical(p):

@@ -5,17 +5,19 @@ spec=importlib.util.spec_from_file_location('compiler',Path(__file__).resolve().
 compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
 def csv_bytes(fields,rows):
     out=io.StringIO();w=csv.DictWriter(out,fieldnames=fields);w.writeheader();w.writerows(rows);return out.getvalue()
+mixed='--mixed-paths' in sys.argv[2:] or '--mixed-equal' in sys.argv[2:]
+equal='--mixed-equal' in sys.argv[2:]
 points=[(139.70,35.68),(139.71,35.68),(139.72,35.68),(139.73,35.68)]
 trips=[];times=[];shapes=[]
 for direction in (0,1):
     order=list(range(4))[::1 if direction==0 else -1]
-    for i,k in enumerate(order):shapes.append(dict(shape_id=str(direction),shape_pt_sequence=i,shape_pt_lon=points[k][0],shape_pt_lat=points[k][1]))
+    for i,k in enumerate(order[::3] if mixed else order):shapes.append(dict(shape_id=str(direction),shape_pt_sequence=i,shape_pt_lon=points[k][0],shape_pt_lat=points[k][1]))
     # Four full trips per hour, plus two short workings serving just A-B.
-    for j in range(12):
+    for j in range(16 if equal else 12):
         ident=f'{direction}-{j}';short=j>=8
-        served=([0,1] if direction==0 else [1,0]) if short else order
-        trips.append(dict(trip_id=ident,route_id='ginza',service_id='W',shape_id=str(direction)))
-        minute=([0,10,20,30,40,50,60,90][j] if not short else (j-8)*30)
+        served=([0,1] if direction==0 else [1,0]) if short else (order[::3] if mixed else order)
+        trips.append(dict(trip_id=ident,route_id='ginza',service_id='W',shape_id='' if mixed and short else str(direction)))
+        minute=([0,10,20,30,40,50,60,90][j%8] if not short or equal else (j-8)*30)
         for i,k in enumerate(served):
             total=7*3600+minute*60+i*120
             value=f'{total//3600:02}:{total//60%60:02}:{total%60:02}'
@@ -33,5 +35,9 @@ with tempfile.TemporaryDirectory() as temp:
     path=Path(temp)/'fixture.zip'
     with zipfile.ZipFile(path,'w') as z:
         for name,(fields,rows) in tables.items():z.writestr(name,csv_bytes(fields,rows))
+    if mixed:
+        graph=Path(temp)/'graph.ndjson'
+        graph.write_text(json.dumps({'type':'Feature','properties':{'feature':'subway'},'geometry':{'type':'LineString','coordinates':[points[0],points[-1]]}})+'\n')
+        config['rail_graph']=str(graph)
     result=compiler.compile_feed(path,config,'2026-10-12',geometry=True)
     Path(sys.argv[1]).write_text(json.dumps(result),encoding='utf8')

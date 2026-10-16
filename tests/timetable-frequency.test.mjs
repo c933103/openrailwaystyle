@@ -169,13 +169,13 @@ test('curved timetable sections keep the whole OSM line orientation and their or
 });
 
 
-for(const variant of ['declared','operator-binding'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
+for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
  const {mkdtemp,mkdir,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
  const {spawnSync}=await import('node:child_process'),{gzipSync,gunzipSync}=await import('node:zlib');
  const {assemble}=await import('../scripts/assemble-global-frequency.mjs'),{writeTable}=await import('../scripts/service-routes.mjs');
  const root=await mkdtemp(join(tmpdir(),'atlas-matched-frequency-'));
  try{
-  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='operator-binding'?['--operator-binding']:[])],{encoding:'utf8'});
+  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='declared'?[]:[`--${variant}`])],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   const f=JSON.parse(await readFile(output,'utf8')),t=table();
   await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds','jp-metro.json.gz'),gzipSync(JSON.stringify(f)));
@@ -185,7 +185,15 @@ for(const variant of ['declared','operator-binding'])test(`full GTFS ${variant} 
   assert.equal(manifest.applied_profiles.sections,3);assert.equal(manifest.tiles,0,'no standalone GTFS tiles');
   const artifact=JSON.parse(gunzipSync(await readFile(join(root,'profiles.json.gz'))));
   const rendered=features(buildTiles(t,{timetables:bindTimetableSections(t,artifact).sections}));
-  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,6]);
+  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,variant==='mixed-equal'?8:6]);
+  if(variant.startsWith('mixed-')){
+   const bound=bindTimetableSections(t,artifact).sections;
+   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.am.rate===(way===1?(variant==='mixed-equal'?8:6):4)));
+   assert.equal(f.source.geometry_audit.matched_railway_patterns,2);
+   const baseline=features(buildTiles(t));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(baseline.map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+  }
   assert.ok(rendered.every(p=>p.frequency_overnight===0));
   assert.ok(rendered.every(p=>p.frequency_source==='Offline Metro fixture'));
   if(variant==='operator-binding')assert.ok(rendered.every(p=>p.frequency_operator_binding==='fixture-operator'));
