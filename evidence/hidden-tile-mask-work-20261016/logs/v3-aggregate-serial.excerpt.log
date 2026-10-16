@@ -1,0 +1,33 @@
+Source: evidence-v3/full-serial.log
+Full log SHA-256: b60baf4c014772f7d8af353465d2c9166c3587e88885b974fa55ffc9da6e6bf7
+Full log lines: 11498
+This is a labelled excerpt, not the full log.
+
+1: TAP version 13
+2: # Subtest: axle loads distinguish reference categories, restricted variants and non-load classes
+3: ok 1 - axle loads distinguish reference categories, restricted variants and non-load classes
+4:   ---
+5:   duration_ms: 4.118812
+6:   type: 'test'
+7:   ...
+8: # Subtest: explicit limits take precedence, units convert and malformed values stay unknown
+9: ok 2 - explicit limits take precedence, units convert and malformed values stay unknown
+10:   ---
+11:   duration_ms: 36.171572
+12:   type: 'test'
+11483:   ...
+11484: # Subtest: actual browser sampler uses one city-centred source and rendered-line observation
+11485: ok 1893 - actual browser sampler uses one city-centred source and rendered-line observation
+11486:   ---
+11487:   duration_ms: 7.740817
+11488:   type: 'test'
+11489:   ...
+11490: 1..1893
+11491: # tests 1895
+11492: # suites 0
+11493: # pass 1895
+11494: # fail 0
+11495: # cancelled 0
+11496: # skipped 0
+11497: # todo 0
+11498: # duration_ms 295731.016528

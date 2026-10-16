@@ -1,0 +1,30 @@
+(node:12) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ application guards each replacement painter after WebGL context restoration (477.21998ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1956.187331
+
+✖ failing tests:
+
+test at tests/startup.test.mjs:243:1
+✖ application guards each replacement painter after WebGL context restoration (477.21998ms)
+  AssertionError [ERR_ASSERTION]: replacement painter retains the guard
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v2/tests/startup.test.mjs:254:11)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,50 @@
+(node:16) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ startup network guard rejects native fetch, HTTP and socket fallbacks (9.518671ms)
+Conductor rails and railway charging unavailable: Startup harness blocked unmocked network: https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+✖ startup native-realm loaders use each window fixture without external fetch (558.589403ms)
+✖ /workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v3/tests/startup.test.mjs (1.767753ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2450.984689
+
+✖ failing tests:
+
+test at tests/startup.test.mjs:264:1
+✖ startup native-realm loaders use each window fixture without external fetch (558.589403ms)
+  TypeError: Cannot read properties of undefined (reading 'features')
+      at TestContext.<anonymous> (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v3/tests/startup.test.mjs:274:62)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at tests/startup.test.mjs:44:6
+✖ /workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v3/tests/startup.test.mjs (1.767753ms)
+  AssertionError [ERR_ASSERTION]: every startup request must use an explicit fixture
+  + actual - expected
+  
+  + [
+  +   'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v3/tests/startup.test.mjs:44:23)
+      at TestHook.runInAsyncScope (node:async_hooks:227:14)
+      at TestHook.run (node:internal/test_runner/test:1382:25)
+      at TestHook.run (node:internal/test_runner/test:1726:18)
+      at TestHook.run (node:internal/util:581:20)
+      at Test.runHook (node:internal/test_runner/test:1269:20)
+      at after (node:internal/test_runner/test:1322:20)
+      at Test.run (node:internal/test_runner/test:1408:13) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

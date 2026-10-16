@@ -1,0 +1,12 @@
+(node:12) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ application guards each replacement painter after WebGL context restoration (311.131266ms)
+✔ application installs the hidden-mask guard before the first renderer frame (151.673208ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1392.781388

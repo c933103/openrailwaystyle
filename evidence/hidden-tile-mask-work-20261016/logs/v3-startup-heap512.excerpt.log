@@ -1,0 +1,88 @@
+Source: evidence-v3/startup-offline-heap512.log
+Full log SHA-256: caa0b439bbb6fef154456165d7498e2de6d115a6cdb4f709434090bc9402f80f
+Full log lines: 380
+This is a labelled excerpt, not the full log.
+
+[... excerpt gap ...]
+1: TAP version 13
+2: # (node:13) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+3: # (Use `node --trace-warnings ...` to show where the warning was created)
+4: # Subtest: startup network guard rejects native fetch, HTTP and socket fallbacks
+5: ok 1 - startup network guard rejects native fetch, HTTP and socket fallbacks
+6:   ---
+7:   duration_ms: 4.819401
+8:   type: 'test'
+9:   ...
+10: # Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+11: # Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+12: # Subtest: startup native-realm loaders use each window fixture without external fetch
+[... excerpt gap ...]
+310: # Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+311: # Subtest: descendant removed immediately restores installed station fallback masks without idle
+312: ok 45 - descendant removed immediately restores installed station fallback masks without idle
+313:   ---
+314:   duration_ms: 552.591297
+315:   type: 'test'
+316:   ...
+317: # Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+318: # <--- Last few GCs --->
+319: # [13:0xd636000]    27247 ms: Mark-Compact 509.2 (515.9) -> 508.6 (517.1) MB, pooled: 0 MB, 956.71 / 0.00 ms  (average mu = 0.097, current mu = 0.007) allocation failure; scavenge might not succeed
+320: # FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+321: # ----- Native stack trace -----
+322: #  1: 0x75356c node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+323: #  2: 0xc52cd0  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+324: #  3: 0xc52dbf  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+325: #  4: 0xef6695  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+326: #  5: 0xf07ffc  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+327: #  6: 0xedd4b3  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+328: #  7: 0xeb2604  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+329: #  8: 0xe9d4f8  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+330: #  9: 0xead167  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+331: # 10: 0x128accb  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+332: # 11: 0x128fcf6  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+333: # 12: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+334: # 13: 0x129209c  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+335: # 14: 0x128fb98  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+336: # 15: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+337: # 16: 0x129209c  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+338: # 17: 0x128fb98  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+339: # 18: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+340: # 19: 0x1290a08  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+341: # 20: 0x1291858  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+342: # 21: 0x128fe1d  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+343: # 22: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+344: # 23: 0x1290a08  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+345: # 24: 0x1291858  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+346: # 25: 0x128fe1d  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+347: # 26: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+348: # 27: 0x129209c  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+349: # 28: 0x128fb98  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+[... excerpt gap ...]
+353: # 32: 0x128fe1d  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+354: # 33: 0x12900af  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+355: # 34: 0x129244b  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+356: # 35: 0xc5ec79 v8::ValueDeserializer::ReadValue(v8::Local<v8::Context>) [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+357: # 36: 0x9871af node::worker::Message::Deserialize(node::Environment*, v8::Local<v8::Context>, v8::Local<v8::Value>*) [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+358: # 37: 0x98a651  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+359: # 38: 0x1a0c08d  [/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node]
+360: # Subtest: tests/startup.test.mjs
+361: not ok 1 - tests/startup.test.mjs
+362:   ---
+363:   duration_ms: 27449.244365
+364:   type: 'test'
+365:   location: '/workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v3/tests/startup.test.mjs:1:1'
+366:   failureType: 'testCodeFailure'
+367:   exitCode: ~
+368:   signal: 'SIGABRT'
+369:   error: 'test failed'
+370:   code: 'ERR_TEST_FAILURE'
+371:   ...
+372: 1..46
+373: # tests 48
+374: # suites 0
+375: # pass 47
+376: # fail 1
+377: # cancelled 0
+378: # skipped 0
+379: # todo 0
+380: # duration_ms 27473.092417

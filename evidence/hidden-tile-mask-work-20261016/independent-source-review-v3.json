@@ -1,0 +1,32 @@
+{
+  "verdict": "Frozen revision-3 offline harness delta passes independent source review and its four targeted tests. No additional source-level blocker found; prior production-source review applies because those bytes are unchanged.",
+  "patchSha256": "2ab698bd6572289310a3431edae034c36eb688f06909e320ea777df389c8237a",
+  "manifestSha256": "853611dbd3f30f8a8f52a252cfbe30a58b193f1fa806936f47193a67c8d781ae",
+  "startupSha256": "95f9733fc33cb5bdfe02040fcbec9ba767e039dcc784625f036797d4c7fcdb2e",
+  "verifiedCandidatePaths": 20,
+  "changedSinceRevision2": [
+    "tests/startup.test.mjs"
+  ],
+  "resolvedReceiptFinding": "The initial v3 manifest retained v2 patch/reason metadata. The original manifest was preserved, and patchSha256, supersedesPatchSha256 and reason are now corrected and verified.",
+  "checks": [
+    "Native fetch, HTTP and socket denial implementations never call their originals.",
+    "Unmocked attempt records fail after-hook and exit even when application handlers catch the error.",
+    "Per-window fixture injection preserves explicit fetchers and runs real native factory implementations.",
+    "The two-window regression exercises actual electricMethods publication and checks request count/options.",
+    "The offline regression before fixture injection failed, including the after-hook, establishing meaningful sensitivity.",
+    "No existing assertions, production files, provider budgets, pixel equality checks or idle deadline were weakened."
+  ],
+  "command": "node --experimental-vm-modules --test --test-concurrency=1 --test-name-pattern='startup (network guard|native-realm)|application (guards|installs)' tests/startup.test.mjs",
+  "result": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "log": "independent-review-offline.log"
+  },
+  "limits": [
+    "This validates the targeted startup harness correction, not the full suite.",
+    "Revision-2 SIGKILL and revision-3 diagnostic 512MiB heap OOM remain preserved failures; no claim they are repaired.",
+    "Final revision-3 aggregate and hosted real WebGL/real-idle checks remain pending."
+  ]
+}

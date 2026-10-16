@@ -1,0 +1,81 @@
+Source: evidence-v2/full-serial.log
+Full log SHA-256: 9067ce408395697b00d90b6136f2bbdf33b5fdff8e4bc1c51842c650238a9318
+Full log lines: 11493
+This is a labelled excerpt, not the full log.
+
+[... excerpt gap ...]
+1: TAP version 13
+2: # Subtest: axle loads distinguish reference categories, restricted variants and non-load classes
+3: ok 1 - axle loads distinguish reference categories, restricted variants and non-load classes
+4:   ---
+5:   duration_ms: 1.875672
+6:   type: 'test'
+7:   ...
+8: # Subtest: explicit limits take precedence, units convert and malformed values stay unknown
+9: ok 2 - explicit limits take precedence, units convert and malformed values stay unknown
+10:   ---
+11:   duration_ms: 18.701531
+12:   type: 'test'
+[... excerpt gap ...]
+9518: # Subtest: Power legend shows facility point letters and preserves track samples across setting and view changes
+9519: ok 1565 - Power legend shows facility point letters and preserves track samples across setting and view changes
+9520:   ---
+9521:   duration_ms: 263.670416
+9522:   type: 'test'
+9523:   ...
+9524: # Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+9525: # Subtest: tests/startup.test.mjs
+9526: not ok 122 - tests/startup.test.mjs
+9527:   ---
+9528:   duration_ms: 21203.668868
+9529:   type: 'test'
+9530:   location: '/workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v2/tests/startup.test.mjs:1:1'
+9531:   failureType: 'testCodeFailure'
+9532:   exitCode: ~
+9533:   signal: 'SIGKILL'
+9534:   error: 'test failed'
+9535:   code: 'ERR_TEST_FAILURE'
+9536:   ...
+9537: # Subtest: world region coverage is a nonoverlapping exhaustive partition
+9538: ok 1567 - world region coverage is a nonoverlapping exhaustive partition
+9539:   ---
+9540:   duration_ms: 3.89431
+9541:   type: 'test'
+9542:   ...
+9543: # Subtest: station acquisition query targets exactly stations with rail-mode evidence
+9544: ok 1568 - station acquisition query targets exactly stations with rail-mode evidence
+9545:   ---
+9546:   duration_ms: 1.599723
+9547:   type: 'test'
+9548:   ...
+9549: # Subtest: verified regional responses checkpoint only their contained stations
+9550: ok 1569 - verified regional responses checkpoint only their contained stations
+9551:   ---
+9552:   duration_ms: 11.364632
+9553:   type: 'test'
+9554:   ...
+9555: # Subtest: higher-version OSM station updates reconcile across overlapping region queries
+9556: ok 1570 - higher-version OSM station updates reconcile across overlapping region queries
+9557:   ---
+9558:   duration_ms: 1.52458
+9559:   type: 'test'
+9560:   ...
+9561: # Subtest: timed-out region subdivision preserves complete world topology and data
+9562: ok 1571 - timed-out region subdivision preserves complete world topology and data
+[... excerpt gap ...]
+11478:   ...
+11479: # Subtest: actual browser sampler uses one city-centred source and rendered-line observation
+11480: ok 1890 - actual browser sampler uses one city-centred source and rendered-line observation
+11481:   ---
+11482:   duration_ms: 6.768723
+11483:   type: 'test'
+11484:   ...
+11485: 1..1890
+11486: # tests 1892
+11487: # suites 0
+11488: # pass 1891
+11489: # fail 1
+11490: # cancelled 0
+11491: # skipped 0
+11492: # todo 0
+11493: # duration_ms 377633.279953

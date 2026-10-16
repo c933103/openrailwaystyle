@@ -1,0 +1,16 @@
+(node:13) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ startup network guard rejects native fetch, HTTP and socket fallbacks (7.120797ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+✔ startup native-realm loaders use each window fixture without external fetch (922.24039ms)
+✔ application guards each replacement painter after WebGL context restoration (170.87681ms)
+✔ application installs the hidden-mask guard before the first renderer frame (266.929229ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2571.467634

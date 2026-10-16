@@ -1,0 +1,22 @@
+(node:14) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+OFFLINE_FETCH_INTERCEPT {"url":"https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson","method":"GET","cache":"no-cache","headers":null,"body":null,"signal":true} Error: offline request origin
+    at globalThis.fetch (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/evidence-v3/deny-network-trace.mjs:14:7)
+    at file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v2/styles/power-facilities.mjs:122:30
+    at refresh (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v2/styles/power-facilities.mjs:128:7)
+    at applySettings (vm:module(2):686:170)
+    at Object.styleReady [as style.load] (vm:module(2):1833:5)
+    at TestContext.<anonymous> (file:///workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo-v2/tests/startup.test.mjs:1472:49)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+Conductor rails and railway charging unavailable: Offline test: native fetch disabled
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261016-hidden-tile-masks-1
+✔ Power facilities inspect their supply type and source object without train speed or timetable fields (500.094524ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1673.190884

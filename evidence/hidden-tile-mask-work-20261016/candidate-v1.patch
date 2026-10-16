@@ -1,0 +1,501 @@
+diff --git a/.github/workflows/controls-painter-diagnostic.yml b/.github/workflows/controls-painter-diagnostic.yml
+index 12b0680..c1bc92d 100644
+--- a/.github/workflows/controls-painter-diagnostic.yml
++++ b/.github/workflows/controls-painter-diagnostic.yml
+@@ -7,6 +7,8 @@ on:
+       - 'scripts/controls-painter-*.mjs'
+       - 'scripts/diagnose-controls-painter.mjs'
+       - 'tests/controls-painter-*.test.mjs'
++      - 'styles/map-controls.mjs'
++      - 'styles/app.mjs'
+ permissions:
+   contents: read
+ concurrency:
+diff --git a/docs/maplibre-backport.md b/docs/maplibre-backport.md
+index 03d80a3..eec1b69 100644
+--- a/docs/maplibre-backport.md
++++ b/docs/maplibre-backport.md
+@@ -30,6 +30,10 @@ The exact source edit is `Array.from(elem.attributes)` in the attribute-removal
+ loop, matching the upstream commit. Its compiled counterpart is changed once;
+ the stale source-map URL is removed. No other renderer bytes are rewritten.
+ 
++The separate [hidden-layer clipping guard](rendering.md#hidden-layer-tile-clipping)
++is installed by the application on its own painter instance. It does not change
++this attribution-only distribution, its integrity pins or cached-library recovery.
++
+ The shared `backportMapLibre524` helper checks both hashes and the unique
+ replacement count. Unknown, altered, truncated, already patched or unexpected
+ output fails closed. The result is deterministic and is not an opaque checked-in
+diff --git a/docs/rendering.md b/docs/rendering.md
+index 27342ca..79f91a8 100644
+--- a/docs/rendering.md
++++ b/docs/rendering.md
+@@ -23,6 +23,31 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
+ 
+ The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
+ 
++## Hidden-layer tile clipping
++
++The pinned MapLibre 5.24.0 painter prepares clipping masks before its layer
++dispatcher checks visibility. Atlas installs an instance-local guard from
++`styles/map-controls.mjs` immediately after constructing the map. It uses the
++same `layer.isHidden(transform.zoom)` predicate before any stencil mutation;
++visible calls retain their original receiver, arguments and return value.
++Every call rechecks current zoom/layout, including after style replacement.
++The immutable vendor bytes and shared painter prototype remain unchanged.
++
++This relies on a pinned private renderer boundary. A missing method or transform
++fails explicitly during startup and requires compatibility review when upgrading
++MapLibre. The guard is idempotent on the same painter. Its already-precached
++module and all versioned shell imports advance together; existing workers fetch
++the new complete shell on navigation while older tabs retain their own version.
++
++Decision regressions execute the actual pinned painter with synthetic GPU
++submission and compare visible dispatch and abstract stencil coverage. The
++fixture-only painter check selects the original method or the actual production
++installer for one measured transition and seven exact nonempty pixel comparisons,
++including visibility/zoom, source switches, stencil resets, globe and terrain.
++Both arms prepare with the current app. This is bounded compatibility evidence,
++not a historical schedule replay or a statistical performance claim. The normal
++controls check retains its real-idle predicate and 60-second deadline.
++
+ ## Station, crossing and place-label priority
+ 
+ Station circles paint above crossing dots and × marks. Accepted city,
+diff --git a/scripts/check-controls-painter-browser.mjs b/scripts/check-controls-painter-browser.mjs
+index e1eabc5..fa4fb13 100644
+--- a/scripts/check-controls-painter-browser.mjs
++++ b/scripts/check-controls-painter-browser.mjs
+@@ -1,5 +1,6 @@
+-// One controlled pair, never retried. This diagnostic does not change the
+-// accepted controls checker, production renderer, provider budget or deadline.
++// One controlled pair, never retried. Compare the pinned original painter
++// with the actual application guard; keep the accepted controls checker,
++// provider budget and deadline unchanged.
+ import assert from 'node:assert/strict';
+ import {mkdir,writeFile} from 'node:fs/promises';
+ import {createHash} from 'node:crypto';
+@@ -27,7 +28,20 @@ async function boundedRead(page,fn,timeout=2000){let timer;try{return await Prom
+ async function idle(page){return waitUntil(page,controlsMapIdle,undefined,{timeout:60000});}
+ async function attachMap(page){await page.evaluate(async()=>{globalThis.controlsMap=(await import(document.querySelector('script[type="module"]').src)).map;});}
+ async function ready(page){await page.waitForSelector('body[data-map-ready="true"]');await page.locator('.maplibregl-ctrl-scale').waitFor();await attachMap(page);await idle(page);}
+-async function installProbe(page,guard){return page.evaluate(async({base,guard})=>{const{installControlsPainterProbe}=await import(base+'__controls-painter-probe.mjs');globalThis.controlsProbe=installControlsPainterProbe(globalThis.controlsMap,{guard});return controlsProbe.originalMaskSource;},{base,guard});}
++async function installProbe(page,guard){return page.evaluate(async({base,guard})=>{
++ const {installControlsPainterProbe}=await import(base+'__controls-painter-probe.mjs');
++ const {installHiddenTileMaskGuard}=await import(base+'map-controls.mjs');
++ const painter=controlsMap.painter,original=Object.getPrototypeOf(painter)._renderTileClippingMasks;
++ if(typeof original!=='function')throw new Error('Pinned original painter unavailable');
++ // Only this diagnostic removes the app's instance wrapper for its baseline.
++ // Both arms use the same original method and the candidate uses the real
++ // production installer, not the historical experimental wrapper.
++ painter._renderTileClippingMasks=original;
++ if(guard)installHiddenTileMaskGuard(controlsMap);
++ const observation=installControlsPainterProbe(controlsMap,{guard:false});
++ globalThis.controlsProbe={...observation,snapshot:()=>({...observation.snapshot(),productionGuard:guard})};
++ return original.toString();
++},{base,guard});}
+ async function detail(page,next){
+  await clickVisibleControl(page,'button.atlas-ctrl[title^="More detail:"]');
+  await waitUntil(page,expected=>{const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;return level===expected&&button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);},next,{timeout:20000});
+@@ -35,8 +49,9 @@ async function detail(page,next){
+ }
+ async function longStatus(page){await page.evaluate(()=>{document.querySelector('#map-status').textContent='Some map data could not load. Check your connection or reload to retry. A longer status message must wrap without covering the ruler or coordinates.';});}
+ async function originalTransition(page,guard,result){
+- // Same original startup/background/reload/settings action prefix, with no
+- // CPU sampling. It is not a claim to reproduce historical scheduling.
++ // Same startup/background/reload/settings actions in each arm, using the
++ // current application during preparation. Only the measured transition
++ // selects original versus guarded masks; historical scheduling is not replayed.
+  await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129',{waitUntil:'domcontentloaded'});await ready(page);
+  await page.evaluate(()=>document.documentElement.style.setProperty('--map-safe-bottom','24px'));
+  let info=page.locator('.maplibregl-ctrl-attrib-button');await info.click();
+@@ -50,6 +65,8 @@ async function originalTransition(page,guard,result){
+  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
+  await page.locator('#readout').evaluate(e=>{e.checked=true;e.dispatchEvent(new Event('change',{bubbles:true}));});
+  await idle(page);await longStatus(page);await detail(page,1);await idle(page);await longStatus(page);
++ result.productionGuardInstalled=await page.evaluate(()=>controlsMap.painter._renderTileClippingMasks!==Object.getPrototypeOf(controlsMap.painter)._renderTileClippingMasks);
++ assert.equal(result.productionGuardInstalled,true,'The real application must install its instance guard');
+  result.originalMaskSha256=digest(await installProbe(page,guard));
+  await page.evaluate(()=>controlsProbe.arm());const start=Date.now();
+  try{await detail(page,2);await idle(page);result.settled=true;}
+diff --git a/scripts/controls-painter-fixture.mjs b/scripts/controls-painter-fixture.mjs
+index 47dd03a..b32d7a7 100644
+--- a/scripts/controls-painter-fixture.mjs
++++ b/scripts/controls-painter-fixture.mjs
+@@ -31,9 +31,9 @@ export async function controlsPainterManifest(){
+  };
+  for(const [file,expected] of Object.entries(sources))assert.equal(hash(await readFile(file)),expected,file);
+  const inputs={};
+- for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
++ for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/map-controls.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
+  const identity=controlsPainterSourceIdentity(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:2000,maxBuffer:1024}).trim());
+- return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:false};
++ return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:true};
+ }
+ 
+ export const nonemptyMaskTile=Buffer.from(vtpbf.fromGeojsonVt({fixture:{extent:4096,features:[
+diff --git a/scripts/diagnose-controls-painter.mjs b/scripts/diagnose-controls-painter.mjs
+index 2998552..9f82d62 100644
+--- a/scripts/diagnose-controls-painter.mjs
++++ b/scripts/diagnose-controls-painter.mjs
+@@ -7,7 +7,7 @@ import {build} from 'esbuild';
+ import {JSDOM} from 'jsdom';
+ import {layerVisibility} from '../styles/layer-semantics.mjs';
+ import {readSettings} from '../styles/map-model.mjs';
+-import {guardHiddenTileMasks} from './controls-painter-probe.mjs';
++import {installHiddenTileMaskGuard} from '../styles/map-controls.mjs';
+ 
+ const root=fileURLToPath(new URL('../',import.meta.url));
+ const mapPath='node_modules/maplibre-gl/dist/maplibre-gl.js.map';
+@@ -60,7 +60,8 @@ export function painterDecisionRun({zoom=9,skipHiddenMasks=false,layerSpecs=rawS
+    }
+    paint.push({frame,pass:painter.renderPass,layer:layer?.id||type,coverage});
+   }]))});
+- const masks=skipHiddenMasks?guardHiddenTileMasks(Painter.prototype._renderTileClippingMasks):Painter.prototype._renderTileClippingMasks;
++ if(skipHiddenMasks)installHiddenTileMaskGuard({painter});
++ const masks=painter._renderTileClippingMasks;
+  painter._renderTileClippingMasks=function(layer,...args){
+   this._observedLayer=layer;
+   return masks.call(this,layer,...args);
+diff --git a/styles/app.mjs b/styles/app.mjs
+index 5435c24..eda5304 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,26 +1,26 @@
+-import {serviceCoverageMessages} from './service-status.mjs?v=20261015-station-mask-lifecycle-1';
+-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261015-station-mask-lifecycle-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261015-station-mask-lifecycle-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261015-station-mask-lifecycle-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261015-station-mask-lifecycle-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261015-station-mask-lifecycle-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261015-station-mask-lifecycle-1';
++import {serviceCoverageMessages} from './service-status.mjs?v=20261016-hidden-tile-masks-1';
++import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261016-hidden-tile-masks-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261016-hidden-tile-masks-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261016-hidden-tile-masks-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261016-hidden-tile-masks-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261016-hidden-tile-masks-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261016-hidden-tile-masks-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261015-station-mask-lifecycle-1';
+-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261015-station-mask-lifecycle-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261015-station-mask-lifecycle-1';
+-import {departureItem} from './departures-ui.mjs?v=20261015-station-mask-lifecycle-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261015-station-mask-lifecycle-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261015-station-mask-lifecycle-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261015-station-mask-lifecycle-1';
+-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261015-station-mask-lifecycle-1';
+-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261015-station-mask-lifecycle-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261015-station-mask-lifecycle-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261015-station-mask-lifecycle-1';
+-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261015-station-mask-lifecycle-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261015-station-mask-lifecycle-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261015-station-mask-lifecycle-1';
+-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261015-station-mask-lifecycle-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261016-hidden-tile-masks-1';
++import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261016-hidden-tile-masks-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261016-hidden-tile-masks-1';
++import {departureItem} from './departures-ui.mjs?v=20261016-hidden-tile-masks-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261016-hidden-tile-masks-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261016-hidden-tile-masks-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261016-hidden-tile-masks-1';
++import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261016-hidden-tile-masks-1';
++import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261016-hidden-tile-masks-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261016-hidden-tile-masks-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261016-hidden-tile-masks-1';
++import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261016-hidden-tile-masks-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261016-hidden-tile-masks-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261016-hidden-tile-masks-1';
++import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261016-hidden-tile-masks-1';
+ 
+ const $ = id => document.getElementById(id);
+ // The controls work as soon as this small module runs; the map libraries and
+@@ -57,7 +57,7 @@ let platformLengths,frequencyExpiry;
+ let powerFacilities, powerMethods;
+ let railRecovery, stationFailures, wakeRailRecovery = () => {};
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261015-station-mask-lifecycle-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261016-hidden-tile-masks-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -1638,6 +1638,7 @@ async function initialize() {
+     center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+     renderWorldCopies: true, attributionControl: false,
+   });
++  installHiddenTileMaskGuard(map);
+   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
+     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
+     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 779a4c6..202bf34 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261015-station-mask-lifecycle-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261016-hidden-tile-masks-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index d991194..1805001 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261015-station-mask-lifecycle-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261016-hidden-tile-masks-1"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index b6b3b70..8d597b6 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261015-station-mask-lifecycle-1';
++import {SEARCH_API} from './map-model.mjs?v=20261016-hidden-tile-masks-1';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index db5b4af..a7d4152 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261015-station-mask-lifecycle-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261016-hidden-tile-masks-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 223d090..9b415f2 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,7 +4,7 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261015-station-mask-lifecycle-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261016-hidden-tile-masks-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index 03328a4..f7ce6d9 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261015-station-mask-lifecycle-1" rel="stylesheet">
++  <link href="app.css?v=20261016-hidden-tile-masks-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -220,6 +220,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261015-station-mask-lifecycle-1"></script>
++  <script type="module" src="app.mjs?v=20261016-hidden-tile-masks-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 0175076..da7874a 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261015-station-mask-lifecycle-1';
++import { MODES } from './map-model.mjs?v=20261016-hidden-tile-masks-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-controls.mjs b/styles/map-controls.mjs
+index 825385c..7f0c3c9 100644
+--- a/styles/map-controls.mjs
++++ b/styles/map-controls.mjs
+@@ -1,3 +1,21 @@
++// MapLibre 5.24.0 prepares tile clipping before renderLayer rejects hidden
++// layers. Skip that work with the very same visibility predicate, before any
++// stencil state changes. Keep the immutable vendor distribution/prototype
++// untouched; visibility and zoom are read afresh for every frame/style.
++const hiddenTileMaskGuards = new WeakMap();
++export function installHiddenTileMaskGuard(map) {
++  const painter = map?.painter, original = painter?._renderTileClippingMasks;
++  if (typeof original !== 'function' || !Number.isFinite(painter?.transform?.zoom))
++    throw new Error('Pinned MapLibre tile-mask boundary unavailable');
++  if (hiddenTileMaskGuards.get(painter) === original) return;
++  const guarded = function(layer, ...args) {
++    if (layer.isHidden(this.transform.zoom)) return;
++    return original.call(this, layer, ...args);
++  };
++  painter._renderTileClippingMasks = guarded;
++  hiddenTileMaskGuards.set(painter, guarded);
++}
++
+ // DOM layout for the map's controls. All measurements are in visible CSS
+ // pixels: More detail scales the map and counter-scales its control container.
+ export function installControlLayout({frame, mapElement, panel, status, readout, details}) {
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 8f20533..81e8279 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261015-station-mask-lifecycle-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261015-station-mask-lifecycle-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261016-hidden-tile-masks-1';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261016-hidden-tile-masks-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261015-station-mask-lifecycle-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261016-hidden-tile-masks-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/tests/controls-painter-probe.test.mjs b/tests/controls-painter-probe.test.mjs
+index a196389..9a6f1dc 100644
+--- a/tests/controls-painter-probe.test.mjs
++++ b/tests/controls-painter-probe.test.mjs
+@@ -88,7 +88,7 @@ test('pixel comparator rejects missing/truncated buffers and detects even one ch
+  assert.throws(()=>comparePixelBytes(a,undefined));assert.throws(()=>comparePixelBytes(a,b.subarray(0,10)));assert.throws(()=>comparePixelBytes(a.subarray(0,10),b.subarray(0,10)));
+ });
+ test('source/runtime hashes are fixed and a complete diagnostic manifest is available',async()=>{
+- const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,false);assert.equal(Object.keys(manifest.sources).length,6);
++ const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,true);assert.equal(Object.keys(manifest.sources).length,6);assert.ok(manifest.inputs['styles/map-controls.mjs']);
+ });
+ test('workflow checkout, declaration and artifact select the PR head or push SHA consistently',async()=>{
+  const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+@@ -112,6 +112,9 @@ test('hosted experiment is isolated, fixture guarded, single-pair, and retains f
+  assert.match(workflow,/if: always\(\)/);assert.doesNotMatch(workflow,/rerun|retry|workflow_dispatch/);assert.match(workflow,/contents: read/);
+  const fixture=await readFile(new URL('../scripts/controls-painter-fixture.mjs',import.meta.url),'utf8');assert.doesNotMatch(fixture,/route\.fetch\(/);assert.match(script,/This experiment is loopback-only/);
+  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');assert.doesNotMatch(app,/controls-painter/);
++ assert.match(script,/if\(guard\)installHiddenTileMaskGuard\(controlsMap\)/);
++ assert.match(script,/painter\._renderTileClippingMasks=original/);
++ assert.match(script,/productionGuardInstalled,true/);
+ });
+ 
+ // The event SHA stays available to the measurement manifest; only the build
+diff --git a/tests/hidden-tile-masks.test.mjs b/tests/hidden-tile-masks.test.mjs
+new file mode 100644
+index 0000000..c910f89
+--- /dev/null
++++ b/tests/hidden-tile-masks.test.mjs
+@@ -0,0 +1,43 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as controls from '../styles/map-controls.mjs';
++
++function fixture() {
++ const calls=[];
++ const painter={transform:{zoom:9},currentStencilSource:'visible',nextStencilID:250,
++  _renderTileClippingMasks(...args){calls.push({self:this,args});this.currentStencilSource=args[0].source;this.nextStencilID++;return 42;}};
++ return {map:{painter},painter,calls,original:painter._renderTileClippingMasks};
++}
++
++test('hidden layer returns before stencil mutation or GPU work; visible arguments and result survive',()=>{
++ const {map,painter,calls}=fixture();controls.installHiddenTileMaskGuard(map);
++ const layer={source:'hidden',isHidden:zoom=>zoom===9},tiles=[{key:'9/1/2'}];
++ assert.equal(painter._renderTileClippingMasks(layer,tiles,true),undefined);
++ assert.equal(calls.length,0);assert.equal(painter.currentStencilSource,'visible');assert.equal(painter.nextStencilID,250);
++ painter.transform.zoom=10;
++ assert.equal(painter._renderTileClippingMasks(layer,tiles,true),42);
++ assert.equal(calls.length,1);assert.equal(calls[0].self,painter);assert.deepEqual(calls[0].args,[layer,tiles,true]);
++});
++
++test('visibility is evaluated afresh on each call, including after a style replacement',()=>{
++ const {map,painter,calls}=fixture();controls.installHiddenTileMaskGuard(map);
++ let hidden=true;const layer={source:'A',isHidden:()=>hidden};
++ for(const value of [true,false,true,false]){hidden=value;painter._renderTileClippingMasks(layer,[],false);}
++ assert.equal(calls.length,2);
++ painter._renderTileClippingMasks({source:'new-style',isHidden:()=>false},[],true);
++ assert.equal(calls.length,3);
++});
++
++test('installation is instance-local and idempotent without changing the pinned prototype',()=>{
++ const {painter,original}=fixture(),map={painter:Object.create(painter)};
++ controls.installHiddenTileMaskGuard(map);const installed=map.painter._renderTileClippingMasks;
++ controls.installHiddenTileMaskGuard(map);
++ assert.equal(map.painter._renderTileClippingMasks,installed);assert.equal(painter._renderTileClippingMasks,original);
++ let checks=0;map.painter._renderTileClippingMasks({isHidden:()=>{checks++;return false;}},[],false);
++ assert.equal(checks,1);
++});
++
++test('an unexpected private renderer boundary fails explicitly without mutation',()=>{
++ for(const map of [{},{painter:{}},{painter:{_renderTileClippingMasks:42}},{painter:{_renderTileClippingMasks(){}}}])
++  assert.throws(()=>controls.installHiddenTileMaskGuard(map),/Pinned MapLibre tile-mask boundary unavailable/);
++});
+diff --git a/tests/startup.test.mjs b/tests/startup.test.mjs
+index 15beed1..83198f4 100644
+--- a/tests/startup.test.mjs
++++ b/tests/startup.test.mjs
+@@ -65,6 +65,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels =
+     constructor(options) {
+       if (failWebGL) throw new Error('Failed to initialize WebGL');
+       this.options = options; this.handlers = {}; this.visibility = {};
++      this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
+       maps.push(this);
+     }
+     once(name,handler) {this.handlers[name]=handler;}
+@@ -112,7 +113,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels =
+     getPitch() { return 0; }
+     unproject() { return {lng:0, lat:0}; }
+   }
+-  // This is the MapLibre 5 public surface used by the app. In particular,
++  // This is the MapLibre 5 surface used by the app, including the pinned
++  // instance-local painter boundary. In particular,
+   // supported() is absent: older Mapbox examples must not gate startup.
+   const libraries = {};
+   maps.protocols = {};
+@@ -238,6 +240,18 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels =
+ 
+ const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+ 
++test('application installs the hidden-mask guard before the first renderer frame',async()=>{
++ const {dom,maps,errors}=await start();
++ try {
++  assert.deepEqual(errors,[]);assert.equal(maps.length,1);
++  const painter=maps[0].painter;
++  painter._renderTileClippingMasks({isHidden:()=>true},[],false);
++  assert.equal(painter.maskCalls,0,'hidden layers must not reach the original painter');
++  painter._renderTileClippingMasks({isHidden:()=>false},[],false);
++  assert.equal(painter.maskCalls,1,'visible layers still reach the original painter');
++ } finally {dom.window.close();}
++});
++
+ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
+   const [oldSource,newSource]=await Promise.all([
+     readFile(new URL(`fixtures/${previous}`,import.meta.url),'utf8'),
+diff --git a/tests/sw-install.test.mjs b/tests/sw-install.test.mjs
+index b742ce0..bed8fb7 100644
+--- a/tests/sw-install.test.mjs
++++ b/tests/sw-install.test.mjs
+@@ -496,6 +496,31 @@ test('station crossing release replaces cached style bytes while previous tabs s
+   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+ });
+ 
++test('hidden-mask release refreshes the app and executable guard through the existing worker',async()=>{
++  const previous='20261015-station-mask-lifecycle-1';
++  const version=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8').match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
++  assert.notEqual(version,previous);
++  const paths=['app.mjs','map-controls.mjs'];
++  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
++  const oldBodies=new Map(paths.map(path=>[new URL(path,scope).pathname,'previous cached '+path]));
++  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
++  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
++  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
++  await bounded(unchanged.request('./',true));
++  assert.equal(await(await unchanged.request('map-controls.mjs?v='+previous)).text(),oldBodies.get(new URL('map-controls.mjs',scope).pathname),'unchanged-token sensitivity control retains the old guard module');
++  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
++  await bounded(next.request('./',true));next.setOffline();
++  for(const path of paths){
++    assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
++    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
++  }
++  const cached=await(await next.request('map-controls.mjs?v='+version)).text();
++  const {installHiddenTileMaskGuard}=await import('data:text/javascript;base64,'+Buffer.from(cached).toString('base64'));
++  let calls=0;const map={painter:{transform:{zoom:9},_renderTileClippingMasks(){calls++;}}};
++  installHiddenTileMaskGuard(map);map.painter._renderTileClippingMasks({isHidden:()=>true});assert.equal(calls,0);
++  map.painter._renderTileClippingMasks({isHidden:()=>false});assert.equal(calls,1);
++});
++
+ test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
+   const root=new URL('../styles/',import.meta.url),html=readFileSync(new URL('index.html',root),'utf8');
+   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];

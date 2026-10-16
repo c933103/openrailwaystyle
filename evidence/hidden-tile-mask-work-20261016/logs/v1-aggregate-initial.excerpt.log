@@ -1,0 +1,35 @@
+Source: evidence/full-suite.log
+Full log SHA-256: 81779cfa836e26c1a5418570ce47c55bc334d3f20cc5cab31390b6485413a968
+Full log lines: 1824
+This is a labelled excerpt, not the full log.
+
+[... excerpt gap ...]
+1: npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+2: 
+3: > test
+4: > node --experimental-vm-modules --test tests/*.test.mjs
+5: 
+6: ✔ axle loads distinguish reference categories, restricted variants and non-load classes (6.781979ms)
+7: ✔ explicit limits take precedence, units convert and malformed values stay unknown (64.074595ms)
+8: ✔ axle lookup is lazy, annotates detailed and overview tiles and is shared with branch tiles (19.654904ms)
+9: ✔ map line labels preserve native kg/lb units and convert only the other system (6.678759ms)
+10: ✔ axle extraction rejects partial, duplicate and malformed CSV while accepting empty regions (3.189246ms)
+11: ✔ axle display preserves matching raw units and converts only between unit systems (1.769418ms)
+12: ✔ an incomplete axle part is never cached; a validated part survives a later failed query and is reused (7.803876ms)
+[... excerpt gap ...]
+1809: ℹ duration_ms 103615.01665
+1810: 
+1811: ✖ failing tests:
+1812: 
+1813: test at tests/departure-availability.test.mjs:1:1
+1814: ✖ tests/departure-availability.test.mjs (6724.144763ms)
+1815:   'test failed'
+1816: 
+1817: test at tests/startup.test.mjs:1:1
+1818: ✖ tests/startup.test.mjs (6799.544105ms)
+1819:   'test failed'
+1820: npm notice
+1821: npm notice New major version of npm available! 11.9.0 -> 12.2.0
+1822: npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+1823: npm notice To update run: npm install -g npm@12.2.0
+1824: npm notice

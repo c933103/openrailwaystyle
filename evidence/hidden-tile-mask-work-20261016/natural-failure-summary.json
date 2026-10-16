@@ -1,0 +1,36 @@
+{
+  "source": "66aa30018560aa6ca6c4cbca7e7ead4d0c2dc63b",
+  "run": 38861819797,
+  "artifact": 12029967820,
+  "clock": "document performance.now milliseconds; no cross-clock subtraction",
+  "frames": 63,
+  "frameMs": 56273.59999999998,
+  "maskMs": 54924.20000000027,
+  "maskDraws": 663438,
+  "hiddenMaskCalls": 25956,
+  "completeStationFetches": 70,
+  "slowStationBodiesOver500Ms": 41,
+  "medianSlowBodyMs": 1204.1000000000058,
+  "medianSlowBodyFrameCoverage": 0.9960601431213129,
+  "lastFrame": {
+    "start": 72546.1,
+    "maskDraws": 11616,
+    "maskMs": 1222.8999999999942,
+    "end": 73781.29999999999
+  },
+  "lastStationFetch": {
+    "id": 158,
+    "url": "https://openrailwaymap.app/standard_railway_text_stations/9/443/207",
+    "start": 71299.1,
+    "headers": 72545.70000000001,
+    "status": 200,
+    "bodyStart": 72545.70000000001,
+    "bodyEnd": 73787.70000000001,
+    "bytes": 0
+  },
+  "limitations": [
+    "Mask measurements are synchronous JavaScript/native call durations, not GPU completion.",
+    "Trace demonstrates main-thread occupation and scheduling alignment, not a controlled proof the candidate eliminates every timeout.",
+    "Body completions can be observed after capture stop for fetches begun in the window."
+  ]
+}

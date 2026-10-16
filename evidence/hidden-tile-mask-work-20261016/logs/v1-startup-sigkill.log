@@ -1,0 +1,73 @@
+TAP version 13
+# (node:12) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: application installs the hidden-mask guard before the first renderer frame
+ok 1 - application installs the hidden-mask guard before the first renderer frame
+  ---
+  duration_ms: 516.757023
+  type: 'test'
+  ...
+# Subtest: actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries
+ok 2 - actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries
+  ---
+  duration_ms: 640.78157
+  type: 'test'
+  ...
+# Subtest: actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries
+ok 3 - actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries
+  ---
+  duration_ms: 593.409476
+  type: 'test'
+  ...
+# Subtest: new app recovers verified already-patched first-party cache bytes without a second patch
+ok 4 - new app recovers verified already-patched first-party cache bytes without a second patch
+  ---
+  duration_ms: 222.235725
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery ignores unrelated caches and non-JavaScript saved responses
+ok 5 - legacy startup recovery ignores unrelated caches and non-JavaScript saved responses
+  ---
+  duration_ms: 217.978897
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME
+ok 6 - legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME
+  ---
+  duration_ms: 193.36237
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME
+ok 7 - legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME
+  ---
+  duration_ms: 446.119144
+  type: 'test'
+  ...
+# Subtest: installation help works before renderer libraries load and after WebGL initialization fails
+    # Subtest: {"delayLibraries":true}
+    ok 1 - {"delayLibraries":true}
+      ---
+      duration_ms: 322.939031
+      type: 'test'
+      ...
+# Subtest: tests/startup.test.mjs
+not ok 1 - tests/startup.test.mjs
+  ---
+  duration_ms: 5353.208522
+  type: 'test'
+  location: '/workspace/scratch/bbca2890f602/station-mask-cost-20261016/repo/tests/startup.test.mjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: ~
+  signal: 'SIGKILL'
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..8
+# tests 9
+# suites 0
+# pass 8
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5372.764808
