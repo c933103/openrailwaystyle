@@ -1538,7 +1538,7 @@ test('Power facilities inspect their supply type and source object without train
       assert.ok(detail.textContent.includes(powerFacilities.POWER_FACILITY_KINDS[kind].label));
       assert.equal(detail.querySelector(`a[href="https://www.openstreetmap.org/${type}/${id}"]`)?.textContent,`Open this ${type} on OpenStreetMap ↗`);
       assert.doesNotMatch(detail.textContent,/Speed label|Train protection|Departures|RAILWAY INFRASTRUCTURE/);
-      if(tags.fuel)assert.match(detail.textContent,/Fueldiesel/);
+      if(tags.fuel)assert.match(detail.textContent,/Recorded suppliesdiesel/);
       if(tags.capacity)assert.match(detail.textContent,/Capacity100 m³/);
       if(tags['plant:output:electricity'])assert.match(detail.textContent,/Output20 MW/);
     }
@@ -1547,6 +1547,47 @@ test('Power facilities inspect their supply type and source object without train
     assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
     assert.equal(errors.length,0);
   } finally {dom.window.close();}
+});
+
+test('Power details keep train fuel, storage and generation sources distinct',async t=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=electrification'});
+ try{
+  const map=maps[0];map.handlers['style.load']();map.zoom=18;
+  const cases=[
+   ['fuel',{fuel:'diesel','fuel:hydrogen':'yes'}, {'Type':'Train refuelling point','Recorded supplies':'diesel, hydrogen'}],
+   ['fuel',{fuel:'yes','fuel:diesel':'yes'}, {'Recorded supplies':'diesel','Fuel tag':'yes'}],
+   ['fuel',{fuel:'no','fuel:diesel':'yes','fuel:hydrogen':'no'}, {'Recorded supplies':'diesel','Fuel tag':'no','Fuel tags':'fuel:diesel=yes; fuel:hydrogen=no'}],
+   ['fuel',{}, {'Type':'Train refuelling point','Recorded supplies':'Not recorded'}],
+   ['fuel_tank',{content:'diesel'}, {'Type':'Railway fuel tank','Stored contents':'diesel'}],
+   ['water_tank',{man_made:'storage_tank',content:'water',usage:'railway'}, {'Type':'Railway water tank','Stored contents':'water'}],
+   ['water_tower',{'disused:man_made':'water_tower',usage:'railway'}, {'Type':'Railway water tower'}],
+   ['plant',{'plant:source':'hydro','generator:source':'solar'}, {'Plant energy source':'hydro','Generator energy source':'solar'}],
+   ['generator',{'generator:source':'wind'}, {'Generator energy source':'wind'}],
+   ['coaling_facility',{}, {'Type':'Steam engine coaling'}],
+  ];
+  for(const [kind,tags,expected] of cases)await t.test(`${kind}: ${JSON.stringify(tags)}`,()=>{
+   map.rendered=[{source:'electricFacilities',layer:{id:'electrification-supply-points'},properties:{...tags,power_kind:kind,power_state:'present',osm_type:'node',osm_id:'91'},geometry:{type:'Point',coordinates:[0,0]}}];
+   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   const detail=window.document.getElementById('detail-content');
+   const rows=Object.fromEntries([...detail.querySelectorAll('dt')].map(term=>[term.textContent,term.nextElementSibling.textContent]));
+   for(const [key,value] of Object.entries(expected))assert.equal(rows[key],value,`${kind}: ${key}`);
+   if(['plant','generator','fuel_tank'].includes(kind))assert.equal(rows['Recorded supplies'],undefined,'energy source or stored contents do not establish refuelling fuel');
+   assert.doesNotMatch(detail.textContent,/Fuel(?:hydro|solar|wind)/);
+   window.document.getElementById('details-close').click();
+   assert.equal(window.document.getElementById('details').hidden,true);
+  });
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('Power help names all point categories and retains the implemented coverage limits',async()=>{
+ const {dom,window}=await start();
+ try{
+  const help=window.document.getElementById('about').textContent;
+  for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water'])assert.ok(help.includes(label),label);
+  assert.match(help,/whole electricity grid.*not yet/i);
+  assert.match(help,/storage.*refuelling/i);
+ }finally{dom.window.close();}
 });
 
 test('close infrastructure details follow the mode, labels and background on the initial frame and after switching',async()=>{

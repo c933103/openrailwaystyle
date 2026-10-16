@@ -1,29 +1,60 @@
 # Railway energy supply facilities
 
-The Power view adds electricity supply facilities, locomotive fuel and coal
-supplies, and water supplies for steam locomotives. They follow the recorded
-OpenStreetMap use of each facility. A roadside filling station, utility
-substation or municipal water tank is not classified as a railway supply just
-because it is near a track. Fuel facilities are labelled as locomotive fuel
-unless a fuel type is actually recorded; diesel is not assumed.
+Power is intended to represent the whole electricity grid and the railway fuel
+supply chain, including train servicing. The current implementation covers the
+railway-related facilities selected below; the whole-grid and wider production,
+storage and rail-connected transfer coverage required by
+[issue #114](https://github.com/c933103/openrailwaystyle/issues/114) is not yet
+implemented. Missing markers do not establish that supplies are absent.
+
+The current snapshot follows recorded OpenStreetMap attributes. Proximity alone
+is not proof of railway use, a siding connection or train servicing. These
+selection limits are implementation limits, not the intended domain boundary.
+A facility marker is not a live availability report or proof that it is usable.
 
 At regional zoom, railway power plants appear from zoom 10 and traction
-substations from 11. Generators and converters appear from 12. Locomotive fuel,
-coal and water facilities appear from 13, and traction feeding points from 14.
-The markers use **E** for electricity, **F** for liquid fuel, **C** for coal and
-**W** for steam water. Selecting a marker shows its recorded type, status,
+substations from 11. Generators and converters appear from 12. Train refuelling,
+fuel storage, coaling and water facilities appear from 13, and traction feeding
+points from 14.
+The markers use **E** for electricity, **B** for battery train charging,
+**F** for train refuelling and railway fuel storage, **C** for steam engine
+coaling and **W** for steam engine water and railway water storage. Selecting a
+marker shows its recorded type, status,
 operator, voltage, frequency, contents and output where available. Former and
 planned supplies follow the existing planned/former infrastructure setting;
 former supplies have hollow markers. Text references follow the Labels setting.
 
-The legend uses the same circular E/F/C/W symbols, colours and lifecycle
+The legend uses the same circular E/B/F/C/W symbols, colours and lifecycle
 appearance as the map. With planned/former infrastructure enabled, a hollow
 sample appears beside each filled sample; the existing track-line keys remain
 separate. Its servicing labels are “Train refuelling point (fuel type where
 mapped)”, “Steam engine coaling” and “Steam engine water”. These legend categories
-share marker metadata with the mapped facilities; they do not establish a fuel
-or confirm that a facility is usable. The wider selection, wording and
+share marker metadata with the mapped facilities. The same category list supplies
+the legend labels and help paragraph, which share their storage and coverage limits. F and W also represent stored
+fuel and water; storage alone does not establish a train servicing point. The
+infobox retains the specific facility type, such as Railway fuel tank. The wider
+selection, wording and
 presentation audit remains open in [issue #115](https://github.com/c933103/openrailwaystyle/issues/115).
+
+Supply details preserve independent source attributes. Named `fuel` values and
+positive `fuel:*` declarations are displayed together as **Recorded supplies**.
+These can include additives such as AdBlue, so this row does not claim that every
+item is a fuel. The original `fuel` value is retained as **Fuel tag**, and the
+original `fuel:*` declarations as **Fuel tags**, including negative or conflicting
+values. Generic `fuel=yes`, `no` or `unknown` values do not establish a supply
+type. Missing types at a mapped train refuelling point read **Not recorded**;
+diesel is never inferred. Nested `fuel:*:*` attributes remain raw declarations
+rather than separate supply types.
+
+`plant:source` and `generator:source` have separate energy-source rows, and
+`content` remains **Stored contents**. Hydro, solar or wind generation is not
+presented as train fuel; fuel storage is not evidence of a refuelling point.
+Water tanks/towers recorded only as railway-use storage have neutral **Railway
+water tank/tower** names. An explicit `railway=water_tank`, `water_tower` or
+`water_crane` servicing tag, including lifecycle prefixes, retains the steam
+servicing classification. Existing category-only snapshots and provider facility
+classifications remain readable. These source declarations do not certify present
+availability.
 
 The OpenRailwayMap `electrification_substation` source supplies traction
 substation footprints from zoom 13. Its import accepts polygon ways tagged
@@ -42,10 +73,10 @@ The supplementary selection includes:
 - Water towers and storage tanks explicitly tagged for railway use; storage
   tanks also need recorded water or fuel contents.
 
-General-grid generation whose railway customers are not recorded in OSM cannot
-be identified from the tags. Facilities missing the railway use tags do not
-appear as railway supplies. The map shows mapped supplies, not a live power
-network, operating status feed or proof that a steam facility remains usable.
+The current selection omits general-grid facilities without one of these
+railway-use hints; this does not imply that the electricity grid serves no
+trains, nor satisfy the whole-grid requirement. The map shows mapped supplies,
+not a live power network, operating status feed or proof that a steam facility remains usable.
 
 `scripts/build-power-facilities.mjs` queries every world quadrant, preserving
 completed raw responses and splitting resource-limited regions. The snapshot

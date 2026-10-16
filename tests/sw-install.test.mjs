@@ -586,6 +586,77 @@ test('hidden-mask release refreshes the app and executable guard through the exi
   map.painter._renderTileClippingMasks({isHidden:()=>false});assert.equal(calls,1);
 });
 
+test('Power presentation upgrades a compact old module graph without mixing cached releases',async()=>{
+  // These are deliberately synthetic compatibility responses, not archived
+  // application sources. Exact historical bytes remain in immutable Git refs.
+  const previous='20261016-departure-row-isolation-2';
+  const paths=['app.mjs','cjk-font.mjs','departures-ui.mjs','departures.mjs','elevation.mjs','layer-semantics.mjs','map-model.mjs','power-facilities.mjs'];
+  const oldBodies=new Map(paths.map(file=>[new URL(file,scope).pathname,`export const previousModule=${JSON.stringify(file)};`]));
+  oldBodies.set(new URL('app.mjs',scope).pathname,`export {powerFacilityName} from './power-facilities.mjs?v=${previous}'; export {previousModule} from './departures.mjs?v=${previous}';`);
+  oldBodies.set(new URL('power-facilities.mjs',scope).pathname,'export function powerFacilityName(){return "Steam locomotive water tank";}');
+  assert.ok([...oldBodies.values()].join('').length<1024,'keep the old compatibility graph focused');
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);assert.notEqual(version,previous,'changed Power bytes need a fresh cache-first version');
+  const current=new Map(paths.map(file=>[new URL(file,scope).pathname,readFileSync(new URL('../styles/'+file,import.meta.url),'utf8')]));
+  let references=0;
+  for(const file of ['index.html','data-check.html','data-check.mjs',...paths]){
+    const body=readFileSync(new URL('../styles/'+file,import.meta.url),'utf8');
+    for(const match of body.matchAll(/(?:\.mjs|\.css)\?v=([\w.-]+)/g)){
+      assert.equal(match[1],version,`${file}: entrypoint and transitive modules share one release`);references++;
+    }
+  }
+  assert.ok(references>=30,'covers the current versioned module graph');
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const cacheNames=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  for(const [path,body] of oldBodies){
+    assert.equal(await(await unchanged.request(path+'?v='+previous)).text(),body);
+    assert.equal(unchanged.requests.filter(url=>new URL(url).pathname===path).length,0,'reusing a version retains stale cached bytes');
+  }
+  const evaluate=async code=>{const module=new vm.SourceTextModule(code);await module.link(()=>{throw new Error('unexpected module dependency');});await module.evaluate();return module.namespace;};
+  const storage={power_kind:'water_tank',man_made:'storage_tank',content:'water',usage:'railway'};
+  const stale=await evaluate(await(await unchanged.request('power-facilities.mjs?v='+previous)).text());
+  assert.equal(stale.powerFacilityName(storage),'Steam locomotive water tank');
+  assert.equal(stale.powerFacilityEnergyRows,undefined);
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const [path,body] of current){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),body,'new tabs receive exact current bytes offline');
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(path),'older tabs retain their own saved modules');
+    assert.equal(next.requests.filter(url=>url===new URL(path,scope).href+'?v='+version).length,1);
+  }
+  // Execute the old entrypoint and its transitive imports after the upgrade.
+  const modules=new Map();
+  const oldModule=async url=>{
+    const parsed=new URL(url,scope);assert.equal(parsed.searchParams.get('v'),previous);
+    assert.ok(oldBodies.has(parsed.pathname),'the old entrypoint cannot import an unrelated module');
+    if(!modules.has(parsed.href))modules.set(parsed.href,new vm.SourceTextModule(await(await next.request(parsed.href)).text(),{identifier:parsed.href}));
+    return modules.get(parsed.href);
+  };
+  const oldApp=await oldModule('app.mjs?v='+previous);
+  await oldApp.link((specifier,referrer)=>oldModule(new URL(specifier,referrer.identifier).href));await oldApp.evaluate();
+  assert.equal(oldApp.namespace.powerFacilityName(storage),'Steam locomotive water tank');
+  assert.equal(oldApp.namespace.previousModule,'departures.mjs');
+  const fixed=await evaluate(await(await next.request('power-facilities.mjs?v='+version)).text());
+  assert.equal(fixed.powerFacilityName(storage),'Railway water tank');
+  assert.deepEqual(Object.fromEntries(fixed.powerFacilityEnergyRows({'fuel:adblue':'yes','plant:source':'solar'})),{'Recorded supplies':'adblue','Fuel tags':'fuel:adblue=yes','Plant energy source':'solar'});
+  // Exercise the actual cached parser with a malformed sibling, not a dated
+  // source hash: future compatible parser improvements must remain allowed.
+  const departures=await evaluate(await(await next.request('departures.mjs?v='+version)).text());
+  const observation={mode:'REGIONAL_RAIL',displayName:'R7',headsign:'Harbour',place:{departure:'2099-01-01T12:00:00Z'}};
+  const board=await departures.stationDepartures({lat:0,lon:0,names:['Central']},{fetch:async url=>({ok:true,json:async()=>url.includes('/reverse-geocode')
+    ? ['a','b'].map(id=>({type:'STOP',id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']}))
+    : {stopTimes:new URL(url).searchParams.get('stopId')==='a'?[observation]:[null]}})});
+  assert.deepEqual(Object.fromEntries(board.stopResults.map(result=>[result.stopId,result.status])),{a:'fulfilled',b:'rejected'});
+  assert.equal(board.rows.length,1);assert.equal(board.rows[0].line,'R7');
+  assert.deepEqual([...next.stores.keys()],cacheNames,'no cache purge or generation change');
+  assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous]);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
 test('world-copy recovery release coordinates entrypoint and transitive module versions',()=>{
   const root=new URL('../styles/',import.meta.url),html=readFileSync(new URL('index.html',root),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
