@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import * as crossings from '../scripts/crossing-data.mjs';
+import * as checkpoint from '../scripts/crossing-checkpoint.mjs';
 
 const source = await readFile(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
 const regions = crossings.startRegions();
@@ -47,6 +48,7 @@ async function run(reply, {byteLength} = {}) {
     'node:fs/promises':Object.fromEntries(['mkdir', 'readFile', 'writeFile', 'rm'].map(name => [name, forbid(name)])),
     'node:zlib':{gzipSync:() => assert.fail('unexpected compression'), gunzipSync:() => assert.fail('unexpected decompression')},
     './crossing-data.mjs':crossings,
+    './crossing-checkpoint.mjs':checkpoint,
   };
   const module = new vm.SourceTextModule(source, {
     context, initializeImportMeta:meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; },

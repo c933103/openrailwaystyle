@@ -8,12 +8,14 @@
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, startRegions, writeTable} from './crossing-data.mjs';
+import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
 const out = new URL('../crossing-data/', import.meta.url);
 const refreshBytes = Number(process.env.REFRESH_BYTES || 5_000_000);
 let downloaded = 0, requests = 0;
+let checkpoint = null, lastObservation;
 
 async function overpass(box, since) {
   const query = regionQuery(box, since);
@@ -23,6 +25,7 @@ async function overpass(box, since) {
     requests++;
     let failureText;
     try {
+      const requestStartedAt = new Date().toISOString();
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(240000),
         headers: {'User-Agent': 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
       const text = await response.text();
@@ -33,6 +36,7 @@ async function overpass(box, since) {
         throw new Error(failureText.slice(0, 210));
       }
       const rows = parseCsv(text);
+      lastObservation = {requestStartedAt, observedAt: new Date().toISOString()};
       console.log(since ? 'Changes' : 'Region', box.join(','), rows.length, 'crossings;', downloaded, 'bytes this run');
       return rows;
     } catch (error) {
@@ -52,12 +56,15 @@ async function overpass(box, since) {
 // Fetches a region in full (since unset) or its changes; a region too big for
 // one request is replaced by its quarters. Returns the leaf regions fetched.
 async function fetchRegion(table, region, since, depth = 0) {
-  const rows = await overpass(region.box, since);
+  const cached = checkpoint ? await checkpoint.get(region.box) : null;
+  const rows = cached?.kind === 'leaf' ? cached.rows : cached?.kind === 'split' ? null : await overpass(region.box, since);
   if (rows) {
+    if (checkpoint && !cached) await checkpoint.leaf(region.box, rows, lastObservation);
     if (since) applyChanges(table, rows); else replaceRegion(table, region.box, rows);
     return [{box: region.box, fetched: startedAt}];
   }
   if (depth >= 5) throw new Error(`Could not fetch region ${region.box}`);
+  if (checkpoint && !cached) await checkpoint.split(region.box);
   const leaves = [];
   for (const box of quarters(region.box)) leaves.push(...await fetchRegion(table, {box}, since, depth + 1));
   return leaves;
@@ -65,7 +72,7 @@ async function fetchRegion(table, region, since, depth = 0) {
 
 // Overpass timestamps: the change query covers from a little before the
 // previous run began, so nothing edited while it ran is missed.
-const startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/, 'Z');
+let startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/, 'Z');
 // Table format version: 2 adds the minor-track flag and 3 the crossing tags,
 // which a change query cannot fill in for unchanged crossings, so an older
 // table is fetched anew.
@@ -82,7 +89,16 @@ if (previous) {
 }
 const before = table.size;
 if (!since) {
-  // First run: everything.
+  // Full rebuild only: validated staging survives an ordinary failed run.
+  // Keep the original epoch's watermark when replaying older observations.
+  if (process.env.CROSSING_CHECKPOINT_DIR) {
+    checkpoint = await openCrossingCheckpoint({directory: process.env.CROSSING_CHECKPOINT_DIR,
+      source: api, parentSnapshot: process.env.PREVIOUS_SNAPSHOT_ID, tableVersion: VERSION});
+    startedAt = checkpoint.watermark;
+    regions = startRegions();
+    if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, 'checkpoint=true\n', {flag: 'a'});
+    console.log('Full-rebuild acquisition epoch', checkpoint.epoch);
+  }
   const leaves = [];
   for (const region of regions) leaves.push(...await fetchRegion(table, region));
   regions = leaves;
@@ -104,7 +120,8 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: startedAt, regions}));
+await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: startedAt, regions,
+  ...(checkpoint ? {acquisition: checkpoint.summary()} : {})}));
 const index = [];
 let bytes = 0;
 for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
@@ -122,6 +139,7 @@ const counts = {road: 0, foot: 0, minor: 0};
 for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
 // tags: the detail tiles carry the crossing tags (tables from version 3).
 const manifest = {generated: new Date().toISOString(), changesSince: since || null, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
+  ...(checkpoint ? {tableVersion: VERSION, acquisition: checkpoint.summary()} : {}),
   tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: downloaded, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};

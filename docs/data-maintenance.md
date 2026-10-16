@@ -51,6 +51,54 @@ The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwi
 - HTTP capacity and queue-full responses retry the same region, even when their heading says “Gateway Timeout”. The builder makes at most five attempts, waiting 1, 2, 3 and 4 minutes before retries; persistent overload fails the build without subdividing the region or replacing the last snapshot. Query timeout, memory and incomplete-response failures retain the bounded subdivision path.
 - A table under 900,000 crossings, or more than 5% smaller than the last, is not published; the last snapshot stays.
 
+Full rebuilds stage each successfully parsed leaf (including empty leaves) and
+each subdivision decision in the separate `crossing-rebuild-work` branch. The
+workflow saves validated staging after ordinary acquisition failures, using the
+existing `contents: write` permission; the existing `actions: write` permission
+remains for site deployment. This follows the facilities workflow's failure-time
+preservation and the station workflow's separate work-branch pattern. The website
+never reads staging. Incremental changes and rolling refreshes do not use it.
+
+The checkpoint binds the exact endpoint, query, parser/tag-source hashes, table
+version, bbox topology, acquisition traversal prefix and payload checksums to the previous published
+`crossing-data` commit (or its verified absence). A changed published commit
+invalidates the old epoch, so a successfully published acquisition cannot be
+relabelled as new data. Restoring validates every leaf before provider requests.
+Owned corrupt, stale or incompatible generations are discarded as a whole;
+unrecognized ownership, malformed state files and unexpected paths fail closed
+without replacing their content. Branch writes use the exact restored commit as
+a force-with-lease and reconcile uncertain pushes against the exact new commit.
+
+An epoch expires 14 days after its original start, covering the next weekly
+Sunday run with a week's margin. A resumed build may therefore contain a
+multi-day observation window; it is not a simultaneous worldwide observation.
+The original one-hour-overlap `since` watermark remains unchanged, and
+`acquisition.startedAt`, `observationStartedAt` and `observationCompletedAt` record
+the acquisition window. `manifest.generated` records the current build time;
+`version`/`tableVersion` describe the table schema. These are separate concepts.
+Observation timestamps are local request/response times: this CSV supplies no
+pinned OSM database/source revision, so schema v3 and build time do not establish
+source freshness.
+The next incremental update still starts from the original watermark.
+
+Staging has hard limits: 4 MiB state, 4,096 leaf/split records, 16 MiB compressed
+per leaf, 128 MiB compressed total, 128 MiB decoded per leaf and 512 MiB decoded
+total, with bounded decompression. The failed October 16 acquisition logged
+about 56 MB of cumulative provider downloads, including retries/errors; that is
+not a recovered payload-size measurement. Parsed JSON can be larger than CSV,
+so decoded limits allow expansion while individual Git blobs stay below 16 MiB.
+Only one epoch is reachable at the work-branch tip; Git may retain old unreachable
+objects. Source branches contain code, compact tests and this contract, not
+downloaded payloads or bulky run logs.
+
+Each local payload and state file uses a temporary-file rename. Durable remote
+progress is flushed only by the post-acquisition workflow step: cancellation,
+hard timeout, abrupt runner loss or a failed checkpoint push can still lose work
+since the last durable checkpoint. No older missing responses are reconstructed.
+The count guards and success-only atomic `crossing-data` branch publication stay
+in place. Merging changes to these scripts or their workflow into `main` triggers
+the existing real acquisition workflow; an eventual merge is not offline-only.
+
 Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
 
 ## Historic-area snapshot
