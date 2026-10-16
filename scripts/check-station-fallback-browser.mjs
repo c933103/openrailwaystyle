@@ -157,6 +157,7 @@ try{
  reports.push({...currentCase,...await sample()});
  // Returning to the failed tile restores its scoped fallback; only successful
  // recovery of that tile removes it while the healthy neighbor stays intact.
+ currentCase={provider,action:'return to failed tile'};
  await page.evaluate(()=>window.stationMap.jumpTo({center:[2.45,48.8809],zoom:10}));
  await ready({fallback:true});provider='healthy';currentCase={provider,action:'mixed tile recovery'};
  await page.evaluate(()=>{const source=window.stationMap.getSource('stations');source.setTiles([...source.tiles]);});
@@ -173,7 +174,13 @@ try{
  assert.ok(requests.some(r=>r.provider==='healthy'&&r.layer==='standard_railway_text_stations'),'healthy fixture source exercised');
  assert.deepEqual(errors,[]);console.log(`Paris station fallback: ${reports.length} real-renderer cases passed`);
 }catch(error){
- let diagnostic;try{diagnostic=page?await page.evaluate(()=>({status:document.querySelector('#map-status')?.textContent,zoom:window.stationMap?.getZoom(),layers:window.stationMap?.getStyle()?.layers.filter(l=>l.id.includes('fallback')).map(l=>({id:l.id,layout:l.layout})),sources:window.stationMap?.getStyle()?.sources})):null;}catch{}
+ let diagnostic;try{diagnostic=page?await page.evaluate(()=>{
+  const map=window.stationMap,manager=map?.style?.tileManagers?.stations;
+  return {status:document.querySelector('#map-status')?.textContent,zoom:map?.getZoom(),
+   styleLoaded:map?.isStyleLoaded(),tilesLoaded:map?.areTilesLoaded(),
+   stationTiles:manager?.getIds().map(id=>{const tile=manager.getTileByID(id);return {state:tile.state,aborted:Boolean(tile.aborted),wrap:tile.tileID.wrap,...tile.tileID.canonical};}),
+   layers:map?.getStyle()?.layers.filter(l=>l.id.includes('fallback')).map(l=>({id:l.id,layout:l.layout})),sources:map?.getStyle()?.sources};
+ }):null;}catch{}
  await writeFile('browser-review/paris-station-fallback-failure.json',JSON.stringify({currentCase,error:String(error),diagnostic,errors,requests,reports},null,2));throw error;
 }finally{
  await writeFile('browser-review/paris-station-fallback.json',JSON.stringify({reports,errors,requests},null,2));

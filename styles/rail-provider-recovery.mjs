@@ -1,11 +1,12 @@
 // Recovery is demand-driven. A failed tile does not justify clearing every
 // healthy tile in its source, or sending a separate TileJSON health probe.
 const RETRY_DELAYS = [5_000, 15_000, 45_000, 120_000, 300_000];
+const errorStatus = error => Number(error?.status || /(?:returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(String(error?.message ?? error ?? ''))?.[1]);
 export function isRetryableRailError(error) {
   const message = String(error?.message ?? error ?? '');
   if (error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(message)) return false;
   if (error?.name === 'ProviderDataError' || /provider returned an invalid vector tile/i.test(message)) return true;
-  const status = Number(error?.status || /(?:returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(message)?.[1]);
+  const status = errorStatus(error);
   if (status >= 400) return status === 408 || status === 429 || status >= 500;
   return error?.name === 'TimeoutError' || /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout/i.test(message);
 }
@@ -22,8 +23,15 @@ export function createRailProviderRecovery(map, {
   setTimer = (callback, delay) => setTimeout(callback, delay),
   clearTimer = id => clearTimeout(id), onChange = () => {},
 } = {}) {
-  const failed = new Map(), origin = new URL(provider).origin;
+  const failed = new Map(), observed = new Map(), origin = new URL(provider).origin;
   let timer = null, attempts = 0, disposed = false;
+  function remember(id, source, tile) {
+    let evidence = observed.get(id);
+    if (!evidence || evidence.source !== source || evidence.url !== source.url) {
+      evidence = {source, url: source.url, tiles: new WeakSet()};observed.set(id, evidence);
+    }
+    evidence.tiles.add(tile);
+  }
   function sourceFor(id) {
     const source = id && map.getSource(id), text = source?.url || '';
     const at = text.indexOf('https://');
@@ -68,8 +76,29 @@ export function createRailProviderRecovery(map, {
     return Math.ceil((start - right) / 360) <= Math.floor((start + width - left) / 360);
   }
   function prune() {
+    // MapLibre can cache an expired retry before it fails. Returning that exact
+    // tile does not emit another error, so resume demand from weak evidence of
+    // its original retryable failure, never from an arbitrary errored tile.
+    for (const [id, evidence] of observed) {
+      const source = sourceFor(id);
+      if (source !== evidence.source || source?.url !== evidence.url) { observed.delete(id);continue; }
+      for (const tile of activeTiles(id, source) || []) {
+        if (!evidence.tiles.has(tile)) continue;
+        if (tile.aborted || ['loaded', 'unloaded'].includes(tile.state)) { evidence.tiles.delete(tile);continue; }
+        const c = tile.tileID?.canonical;
+        if (!validCoordinate(c) || !onScreen(c)) continue;
+        let state = failed.get(id);
+        if (!state || state.source !== source || state.url !== source.url) {
+          state = {source, url: source.url, metadata: false, tiles: new Map()};failed.set(id, state);
+        }
+        const key = tileKey(c);
+        let record = state.tiles.get(key);
+        if (!record) { record = {coordinate: {z: c.z, x: c.x, y: c.y}, instances: new Set()};state.tiles.set(key, record); }
+        record.instances.add(tile);
+      }
+    }
     for (const [id, state] of failed) {
-      if (sourceFor(id) !== state.source) { failed.delete(id); continue; }
+      if (sourceFor(id) !== state.source || state.source.url !== state.url) { failed.delete(id); continue; }
       const inventory = activeTiles(id, state.source);
       for (const [key, record] of state.tiles) {
         // Bind coordinate-only evidence to unresolved active copies when the
@@ -77,7 +106,9 @@ export function createRailProviderRecovery(map, {
         if (inventory !== null && record.instances.delete(null)) {
           for (const tile of inventory) {
             if (!tile.aborted && !['loaded', 'unloaded'].includes(tile.state) &&
-                validCoordinate(tile.tileID?.canonical) && tileKey(tile.tileID.canonical) === key) record.instances.add(tile);
+                validCoordinate(tile.tileID?.canonical) && tileKey(tile.tileID.canonical) === key) {
+              record.instances.add(tile);remember(id, state.source, tile);
+            }
           }
         }
         for (const tile of record.instances) {
@@ -130,15 +161,34 @@ export function createRailProviderRecovery(map, {
     onChange(); schedule();
   }
   function noteError(event) {
-    if (disposed || !event?.sourceId || !isRetryableRailError(event.error)) return false;
+    if (disposed || !event?.sourceId) return false;
     const c = coordinate(event);
     // An explicitly supplied but invalid location is not a metadata outage.
     // Reject it before creating or changing any existing recovery state.
     if (('tile' in event || 'coord' in event) && !validCoordinate(c)) return false;
     const source = sourceFor(event.sourceId);
     if (!source) return false;
+    if (!isRetryableRailError(event.error)) {
+      // A later access/nonretryable HTTP response supersedes that instance's
+      // earlier outage, including while it is cached offscreen. It remains a
+      // presentation failure, but cannot retain authority to retry the request.
+      const aborted = event.error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(String(event.error?.message ?? event.error ?? ''));
+      if (!aborted && errorStatus(event.error) >= 400) {
+        const evidence = observed.get(event.sourceId), state = failed.get(event.sourceId);
+        if (event.tile && evidence?.source === source && evidence.url === source.url) evidence.tiles.delete(event.tile);
+        if (state?.source === source && state.url === source.url) {
+          if (c) state.tiles.get(tileKey(c))?.instances.delete(event.tile ?? null);
+          else state.metadata = false;
+        }
+        schedule();onChange();
+      }
+      return false;
+    }
+    if (c && event.tile) remember(event.sourceId, source, event.tile);
     let state = failed.get(event.sourceId);
-    if (!state || state.source !== source) { state = {source, metadata: false, tiles: new Map()}; failed.set(event.sourceId, state); }
+    if (!state || state.source !== source || state.url !== source.url) {
+      state = {source, url: source.url, metadata: false, tiles: new Map()}; failed.set(event.sourceId, state);
+    }
     if (c) {
       const key = tileKey(c);
       let record = state.tiles.get(key);
@@ -152,6 +202,8 @@ export function createRailProviderRecovery(map, {
     if (disposed || !event?.sourceId) return false;
     const c = coordinate(event), located = 'tile' in event || 'coord' in event;
     if (located && !validCoordinate(c)) return false;
+    if (event.tile && (event.tile.aborted || ['loaded', 'unloaded'].includes(event.tile.state)))
+      observed.get(event.sourceId)?.tiles.delete(event.tile);
     const state = failed.get(event?.sourceId);
     if (!state) return false;
     let recovered = false;
@@ -171,7 +223,7 @@ export function createRailProviderRecovery(map, {
   }
   // Movement rechecks demand without postponing an already scheduled retry.
   function wake() { schedule(); }
-  function dispose() { disposed = true; stopTimer(); failed.clear(); }
+  function dispose() { disposed = true; stopTimer(); failed.clear(); observed.clear(); }
   return {noteError, noteSourceData, wake, dispose,
     hasFailures: () => { if (disposed) return false; prune(); return [...failed.keys()].some(visible); },
     failedSourceIds: () => [...failed.keys()],
