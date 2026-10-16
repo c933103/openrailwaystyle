@@ -95,3 +95,40 @@ export async function controlsMapIdle(map=globalThis.controlsMap) {
  return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
   &&canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
 }
+
+// A settled terrain frame may reuse any number of previously rendered textures.
+// Compare explicitly cold and warm samples, retaining the natural trace separately.
+// Map.redraw() is synchronous in the pinned renderer; no polling/retry is introduced.
+export function sampleControlsTerrainFrame(map,probe,{cache}={}) {
+ const fail=message=>{throw new Error(`Terrain sample: ${message}`);};
+ if(cache!=='cold'&&cache!=='warm')fail('explicit cold/warm cache state required');
+ const settled=()=>{
+  const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
+  return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
+   &&canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
+ };
+ if(!settled())fail('map must already satisfy the original settlement predicates');
+ const rtt=map.painter?.renderToTexture,manager=rtt?.terrain?.tileManager;
+ if(!manager||typeof map.redraw!=='function')fail('pinned terrain/redraw boundary unavailable');
+ const read=()=>{
+  const tiles=manager.getRenderableTiles();
+  if(!tiles.length)fail('nonempty terrain required');
+  return {tiles,identity:{
+   terrain:tiles.map(tile=>tile.tileID.key),
+   sources:Object.entries(map.style.tileManagers).map(([id,source])=>({id,revision:source.getState().revision,coords:source.getVisibleCoordinates().map(coord=>coord.key)})),
+   layers:map.style._order.filter(id=>!map.style._layers[id].isHidden(map.painter.transform.zoom)),
+  },cache:tiles.map(tile=>({tile:tile.tileID.key,valid:tile.rtt.length>0&&tile.rtt.every(slot=>slot&&rtt.pool.getObjectForId(slot.id)?.stamp===slot.stamp)}))};
+ };
+ const before=read();
+ if(cache==='warm'&&!before.cache.every(tile=>tile.valid))fail('warm sample requires every terrain texture to be cached');
+ if(cache==='cold')for(const tile of before.tiles)tile.rtt=[];
+ probe.arm();
+ try{map.redraw();}finally{probe.stop(`controlled-${cache}-terrain-frame`);}
+ const observation=probe.snapshot(),after=read();
+ if(!settled()||JSON.stringify(before.identity)!==JSON.stringify(after.identity))fail('settled tile/source/layer identity changed during redraw');
+ if(observation.frameCount!==1||observation.framesTruncated||observation.dispatchTruncated)fail('exactly one complete render frame required');
+ if(!after.cache.every(tile=>tile.valid))fail('redraw did not populate every terrain texture');
+ const expected=cache==='cold'?after.identity.terrain.flatMap(()=>after.identity.layers.map(id=>`translucent:${id}`)):[];
+ if(JSON.stringify(observation.lastVisibleDispatch)!==JSON.stringify(expected))fail('fixture must redraw every ordered layer/tile cold and reuse every texture warm');
+ return {cache,identity:after.identity,cacheBefore:before.cache,cacheAfter:after.cache,probe:observation};
+}
