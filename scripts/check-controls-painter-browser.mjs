@@ -1,5 +1,6 @@
-// One controlled pair, never retried. This diagnostic does not change the
-// accepted controls checker, production renderer, provider budget or deadline.
+// One controlled pair, never retried. Compare the pinned original painter
+// with the actual application guard; keep the accepted controls checker,
+// provider budget and deadline unchanged.
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -27,7 +28,20 @@ async function boundedRead(page,fn,timeout=2000){let timer;try{return await Prom
 async function idle(page){return waitUntil(page,controlsMapIdle,undefined,{timeout:60000});}
 async function attachMap(page){await page.evaluate(async()=>{globalThis.controlsMap=(await import(document.querySelector('script[type="module"]').src)).map;});}
 async function ready(page){await page.waitForSelector('body[data-map-ready="true"]');await page.locator('.maplibregl-ctrl-scale').waitFor();await attachMap(page);await idle(page);}
-async function installProbe(page,guard){return page.evaluate(async({base,guard})=>{const{installControlsPainterProbe}=await import(base+'__controls-painter-probe.mjs');globalThis.controlsProbe=installControlsPainterProbe(globalThis.controlsMap,{guard});return controlsProbe.originalMaskSource;},{base,guard});}
+async function installProbe(page,guard){return page.evaluate(async({base,guard})=>{
+ const {installControlsPainterProbe}=await import(base+'__controls-painter-probe.mjs');
+ const {installHiddenTileMaskGuard}=await import(base+'map-controls.mjs');
+ const painter=controlsMap.painter,original=Object.getPrototypeOf(painter)._renderTileClippingMasks;
+ if(typeof original!=='function')throw new Error('Pinned original painter unavailable');
+ // Only this diagnostic removes the app's instance wrapper for its baseline.
+ // Both arms use the same original method and the candidate uses the real
+ // production installer, not the historical experimental wrapper.
+ painter._renderTileClippingMasks=original;
+ if(guard)installHiddenTileMaskGuard(controlsMap);
+ const observation=installControlsPainterProbe(controlsMap,{guard:false});
+ globalThis.controlsProbe={...observation,snapshot:()=>({...observation.snapshot(),productionGuard:guard})};
+ return original.toString();
+},{base,guard});}
 async function detail(page,next){
  await clickVisibleControl(page,'button.atlas-ctrl[title^="More detail:"]');
  await waitUntil(page,expected=>{const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;return level===expected&&button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);},next,{timeout:20000});
@@ -35,8 +49,9 @@ async function detail(page,next){
 }
 async function longStatus(page){await page.evaluate(()=>{document.querySelector('#map-status').textContent='Some map data could not load. Check your connection or reload to retry. A longer status message must wrap without covering the ruler or coordinates.';});}
 async function originalTransition(page,guard,result){
- // Same original startup/background/reload/settings action prefix, with no
- // CPU sampling. It is not a claim to reproduce historical scheduling.
+ // Same startup/background/reload/settings actions in each arm, using the
+ // current application during preparation. Only the measured transition
+ // selects original versus guarded masks; historical scheduling is not replayed.
  await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129',{waitUntil:'domcontentloaded'});await ready(page);
  await page.evaluate(()=>document.documentElement.style.setProperty('--map-safe-bottom','24px'));
  let info=page.locator('.maplibregl-ctrl-attrib-button');await info.click();
@@ -50,6 +65,8 @@ async function originalTransition(page,guard,result){
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.locator('#readout').evaluate(e=>{e.checked=true;e.dispatchEvent(new Event('change',{bubbles:true}));});
  await idle(page);await longStatus(page);await detail(page,1);await idle(page);await longStatus(page);
+ result.productionGuardInstalled=await page.evaluate(()=>controlsMap.painter._renderTileClippingMasks!==Object.getPrototypeOf(controlsMap.painter)._renderTileClippingMasks);
+ assert.equal(result.productionGuardInstalled,true,'The real application must install its instance guard');
  result.originalMaskSha256=digest(await installProbe(page,guard));
  await page.evaluate(()=>controlsProbe.arm());const start=Date.now();
  try{await detail(page,2);await idle(page);result.settled=true;}

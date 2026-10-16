@@ -88,7 +88,7 @@ test('pixel comparator rejects missing/truncated buffers and detects even one ch
  assert.throws(()=>comparePixelBytes(a,undefined));assert.throws(()=>comparePixelBytes(a,b.subarray(0,10)));assert.throws(()=>comparePixelBytes(a.subarray(0,10),b.subarray(0,10)));
 });
 test('source/runtime hashes are fixed and a complete diagnostic manifest is available',async()=>{
- const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,false);assert.equal(Object.keys(manifest.sources).length,6);
+ const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,true);assert.equal(Object.keys(manifest.sources).length,6);assert.ok(manifest.inputs['styles/map-controls.mjs']);
 });
 test('workflow checkout, declaration and artifact select the PR head or push SHA consistently',async()=>{
  const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
@@ -112,6 +112,9 @@ test('hosted experiment is isolated, fixture guarded, single-pair, and retains f
  assert.match(workflow,/if: always\(\)/);assert.doesNotMatch(workflow,/rerun|retry|workflow_dispatch/);assert.match(workflow,/contents: read/);
  const fixture=await readFile(new URL('../scripts/controls-painter-fixture.mjs',import.meta.url),'utf8');assert.doesNotMatch(fixture,/route\.fetch\(/);assert.match(script,/This experiment is loopback-only/);
  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');assert.doesNotMatch(app,/controls-painter/);
+ assert.match(script,/if\(guard\)installHiddenTileMaskGuard\(controlsMap\)/);
+ assert.match(script,/painter\._renderTileClippingMasks=original/);
+ assert.match(script,/productionGuardInstalled,true/);
 });
 
 // The event SHA stays available to the measurement manifest; only the build

@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
+import net from 'node:net';
+import http from 'node:http';
+import https from 'node:https';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
@@ -29,6 +32,17 @@ import * as referenceModule from '../styles/mainline-reference.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
+
+// SyntheticModule exports keep their native Node realm, so window.fetch alone
+// cannot isolate default fetch arguments in imported helpers. Never delegate
+// unmocked requests to the network, even when application code catches errors.
+const unmockedRequests=[];
+const denyNetwork=target=>{unmockedRequests.push(target);throw new Error(`Startup harness blocked unmocked network: ${target}`);};
+globalThis.fetch=async input=>denyNetwork(String(input?.url||input));
+net.Socket.prototype.connect=()=>denyNetwork('socket');
+http.request=http.get=https.request=https.get=()=>denyNetwork('HTTP');
+test.after(()=>assert.deepEqual(unmockedRequests,[],'every startup request must use an explicit fixture'));
+process.on('exit',()=>{if(unmockedRequests.length)process.exitCode=1;});
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -65,6 +79,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     constructor(options) {
       if (failWebGL) throw new Error('Failed to initialize WebGL');
       this.options = options; this.handlers = {}; this.visibility = {};
+      this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
       maps.push(this);
     }
     once(name,handler) {this.handlers[name]=handler;}
@@ -112,7 +127,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getPitch() { return 0; }
     unproject() { return {lng:0, lat:0}; }
   }
-  // This is the MapLibre 5 public surface used by the app. In particular,
+  // This is the MapLibre 5 surface used by the app, including the pinned
+  // instance-local painter boundary. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
   maps.protocols = {};
@@ -161,11 +177,16 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
       }
     };
   } else if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
+  window.fetch = fetcher || (async input => ({ok:true,json:async()=>String(input).includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)}));
+  // Native imported factories must receive this window's mock explicitly;
+  // their default parameters otherwise resolve Node's global fetch.
+  const fixtureOptions=options=>({...options,fetcher:options?.fetcher??window.fetch});
   window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
-    for (const [key,value] of Object.entries(model)) this.setExport(key,key==='createPlatformTileGeometry'&&platformGeometryOptions?options=>{platformGeometryOptions(options);return value(options);}:value);
+    for (const [key,value] of Object.entries(model)) this.setExport(key,
+      key==='createPlatformTileGeometry'?options=>{platformGeometryOptions?.(options);return value(fixtureOptions(options));}:
+      key==='createPlatformLengths'?(map,options)=>value(map,fixtureOptions(options)):value);
   }, {context});
   const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
@@ -213,7 +234,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
-    for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
+    for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,key==='createPowerFacilityLoader'?(map,options)=>value(map,fixtureOptions(options)):value);
   },{context});
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
@@ -221,8 +242,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const mapControls = controlSource ? new vm.SourceTextModule(controlSource, {context}) : new vm.SyntheticModule(Object.keys(controlFunctions), function() {
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
-  const reference = new vm.SyntheticModule(Object.keys(referenceModule),function(){for(const [key,value] of Object.entries(referenceModule))this.setExport(key,value);},{context});
-  const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
+  const reference = new vm.SyntheticModule(Object.keys(referenceModule),function(){for(const [key,value] of Object.entries(referenceModule))this.setExport(key,key==='createReferenceReader'?options=>value(fixtureOptions(options)):value);},{context});
+  const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,key==='createBundleReader'?options=>value(fixtureOptions(options)):value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
   const stationFallback = new vm.SyntheticModule(Object.keys(stationFallbackModule),function(){for(const [key,value] of Object.entries(stationFallbackModule))this.setExport(key,value);},{context});
@@ -236,7 +257,76 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
 
+test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
+ const before=unmockedRequests.length;
+ await assert.rejects(globalThis.fetch('https://example.org/offline-sentinel'),/blocked unmocked network/);
+ assert.throws(()=>https.request('https://example.org/offline-sentinel'),/blocked unmocked network/);
+ const socket=new net.Socket();
+ try {assert.throws(()=>socket.connect(443,'example.org'),/blocked unmocked network/);}
+ finally {socket.destroy();}
+ assert.deepEqual(unmockedRequests.splice(before),['https://example.org/offline-sentinel','HTTP','socket']);
+});
+
+test('startup native-realm loaders use each window fixture without external fetch',async()=>{
+ const states=[],requests=[[],[]];
+ try {
+  for(let index=0;index<2;index++){
+   const state=await start({search:'?mode=electrification',fetcher:async (input,options)=>{
+    const url=String(input);requests[index].push({url,options});
+    return {ok:true,json:async()=>url.includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)};
+   }});
+   states.push(state);state.maps[0].handlers['style.load']();
+   for(let tick=0;tick<3;tick++)await new Promise(resolve=>setTimeout(resolve,0));
+   assert.ok(state.maps[0].sourceData?.electricMethods,'the fixture must actually reach the native loader');
+   assert.deepEqual(state.maps[0].sourceData.electricMethods.features,[]);
+  }
+  for(const calls of requests){
+   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson'));
+   assert.equal(methods.length,1,'each native-realm loader uses its own window mock');
+   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson');
+   assert.equal(methods[0].options.cache,'no-cache');
+   assert.equal(methods[0].options.body,undefined);
+   assert.equal(methods[0].options.headers,undefined);
+   assert.equal(methods[0].options.signal.aborted,false);
+  }
+ } finally {for(const {dom} of states)dom.window.close();}
+});
+
 const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+
+test('application guards each replacement painter after WebGL context restoration',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+  assert.deepEqual(errors,[]);const map=maps[0];
+  const originalPainter=map.painter;
+  for(let restoration=0;restoration<2;restoration++){
+   // Pinned MapLibre _contextRestored calls _setupPainter, then fires this
+   // public event synchronously before its requested next frame can run.
+   map.painter={transform:{zoom:9+restoration},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
+   map.handlers.webglcontextrestored?.({type:'webglcontextrestored'});
+   map.painter._renderTileClippingMasks({isHidden:()=>true},[],false);
+   assert.equal(map.painter.maskCalls,0,'replacement painter retains the guard');
+   map.painter._renderTileClippingMasks({isHidden:()=>false},[],true);
+   assert.equal(map.painter.maskCalls,1,'visible restoration draws retain normal behavior');
+   const installed=map.painter._renderTileClippingMasks;
+   map.handlers.webglcontextrestored?.({type:'webglcontextrestored'});
+   assert.equal(map.painter._renderTileClippingMasks,installed,'duplicate event does not stack guards');
+  }
+  assert.equal(originalPainter.maskCalls,0,'restoration leaves the discarded painter alone');
+ } finally {dom.window.close();}
+});
+
+test('application installs the hidden-mask guard before the first renderer frame',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+  assert.deepEqual(errors,[]);assert.equal(maps.length,1);
+  const painter=maps[0].painter;
+  painter._renderTileClippingMasks({isHidden:()=>true},[],false);
+  assert.equal(painter.maskCalls,0,'hidden layers must not reach the original painter');
+  painter._renderTileClippingMasks({isHidden:()=>false},[],false);
+  assert.equal(painter.maskCalls,1,'visible layers still reach the original painter');
+ } finally {dom.window.close();}
+});
 
 for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
   const [oldSource,newSource]=await Promise.all([

@@ -31,9 +31,9 @@ export async function controlsPainterManifest(){
  };
  for(const [file,expected] of Object.entries(sources))assert.equal(hash(await readFile(file)),expected,file);
  const inputs={};
- for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
+ for(const file of ['scripts/controls-painter-probe.mjs','scripts/controls-painter-fixture.mjs','scripts/check-controls-painter-browser.mjs','styles/app.mjs','styles/map-controls.mjs','styles/world.style.json','styles/request-pool.mjs','styles/tile-labels.mjs'])inputs[file]=hash(await readFile(file));
  const identity=controlsPainterSourceIdentity(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:2000,maxBuffer:1024}).trim());
- return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:false};
+ return {renderer:'MapLibre 5.24.0 atlas.1 attribution-only backport',applicationGuard:'installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved',...identity,sources,inputs,settlementDeadlineMs:60000,arms:['baseline','hidden-mask-guard'],repetitionsPerArm:1,productionChanges:true};
 }
 
 export const nonemptyMaskTile=Buffer.from(vtpbf.fromGeojsonVt({fixture:{extent:4096,features:[
