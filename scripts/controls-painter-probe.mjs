@@ -50,7 +50,8 @@ export function installControlsFetchProbe(scope=globalThis) {
 export function installControlsPainterProbe(map,{guard=false,scope=globalThis}={}) {
  const painter=map.painter,now=()=>scope.performance.now(),restore=[],limit=128;
  if(!painter||typeof painter._renderTileClippingMasks!=='function'||typeof painter._renderTileMasks!=='function')throw new Error('Pinned renderer boundary unavailable');
- let active=false,started=0,ended=0,frame=null,frames=[],frameCount=0,draws=0,hiddenMaskCalls=0,clearCount=0,dispatch=[],dispatchTruncated=false,timer,stopReason;
+ let active=false,started=0,ended=0,frame=null,frames=[],frameCount=0,draws=0,hiddenMaskCalls=0,clearCount=0,dispatch=[],dispatchRecords=[],dispatchTruncated=false,timer,stopReason;
+ const terrainObservers=new WeakSet();
  const originalMaskSource=painter._renderTileClippingMasks.toString();
  function wrap(object,name,decorate){const original=object[name],replacement=decorate(original);object[name]=replacement;restore.push(()=>{if(object[name]===replacement)object[name]=original;});}
  if(guard)wrap(painter,'_renderTileClippingMasks',guardHiddenTileMasks);
@@ -67,21 +68,32 @@ export function installControlsPainterProbe(map,{guard=false,scope=globalThis}={
  wrap(painter,'clearStencil',original=>function(...args){if(active)clearCount++;return original.apply(this,args);});
  wrap(painter,'renderLayer',original=>function(p,manager,layer,coords,...args){
   if(active&&!layer.isHidden(this.transform.zoom)&&(layer.type==='background'||layer.type==='custom'||coords?.length)){
-   if(dispatch.length<2048)dispatch.push(`${this.renderPass}:${layer.id}`);else dispatchTruncated=true;
+   if(dispatch.length<2048){dispatch.push(`${this.renderPass}:${layer.id}`);if(this.renderToTexture)dispatchRecords.push({pass:this.renderPass,layer:layer.id,coords:(coords||[]).map(coord=>coord.key),toTexture:!!args[0]?.isRenderingToTexture});}else dispatchTruncated=true;
   }
   return original.call(this,p,manager,layer,coords,...args);
  });
+ function observeTerrain(rtt){
+  if(!rtt||terrainObservers.has(rtt))return;terrainObservers.add(rtt);
+  wrap(rtt,'prepareForRender',original=>function(...args){
+   if(!active||!frame)return original.apply(this,args);
+   const before=readControlsTerrainState(map,this);
+   const result=original.apply(this,args);
+   frame.terrain={before,prepared:readControlsTerrainState(map,this)};
+   return result;
+  });
+ }
  wrap(map,'_render',original=>function(...args){
   if(!active)return original.apply(this,args);
-  frame={start:now(),maskDraws:0,maskMs:0};dispatch=[];dispatchTruncated=false;
+  frame={start:now(),maskDraws:0,maskMs:0};dispatch=[];dispatchRecords=[];dispatchTruncated=false;
+  observeTerrain(painter.renderToTexture);
   try{return original.apply(this,args);}
-  finally{frame.end=now();frameCount++;frames.push(frame);if(frames.length>limit)frames.shift();frame=null;}
+  finally{if(frame.terrain)frame.terrain.after=readControlsTerrainState(map,painter.renderToTexture);frame.end=now();frameCount++;frames.push(frame);if(frames.length>limit)frames.shift();frame=null;}
  });
  const api={
   originalMaskSource,
-  arm(){if(active)throw new Error('Capture already active');active=true;started=now();ended=0;stopReason=null;frames=[];frameCount=draws=hiddenMaskCalls=clearCount=0;dispatch=[];scope.__atlasControlsFetchProbe?.arm();timer=scope.setTimeout(()=>api.stop('capture-limit'),60000);},
+  arm(){if(active)throw new Error('Capture already active');active=true;started=now();ended=0;stopReason=null;frames=[];frameCount=draws=hiddenMaskCalls=clearCount=0;dispatch=[];dispatchRecords=[];scope.__atlasControlsFetchProbe?.arm();timer=scope.setTimeout(()=>api.stop('capture-limit'),60000);},
   stop(reason='settlement-finished'){if(active){ended=now();active=false;stopReason=reason;scope.clearTimeout(timer);scope.__atlasControlsFetchProbe?.stop();}},
-  snapshot(){return {clock:'document performance.now milliseconds',timeOrigin:scope.performance.timeOrigin,started,ended,active,guard,stopReason,captureLimitMs:60000,frameCount,frames:frames.map(f=>({...f})),framesTruncated:frameCount>limit,maskDraws:draws,hiddenMaskCalls,stencilClears:clearCount,lastVisibleDispatch:[...dispatch],dispatchTruncated,fetch:scope.__atlasControlsFetchProbe?.snapshot()??{unavailable:true}};},
+  snapshot(){return {clock:'document performance.now milliseconds',timeOrigin:scope.performance.timeOrigin,started,ended,active,guard,stopReason,captureLimitMs:60000,frameCount,frames:frames.map(f=>({...f})),framesTruncated:frameCount>limit,maskDraws:draws,hiddenMaskCalls,stencilClears:clearCount,lastVisibleDispatch:[...dispatch],lastVisibleDispatchRecords:dispatchRecords.map(record=>({...record,coords:[...record.coords]})),lastTerrain:frames.at(-1)?.terrain??null,dispatchTruncated,fetch:scope.__atlasControlsFetchProbe?.snapshot()??{unavailable:true}};},
   dispose(){api.stop();for(const undo of restore.reverse())undo();},
  };
  return api;
@@ -131,4 +143,25 @@ export function sampleControlsTerrainFrame(map,probe,{cache}={}) {
  const expected=cache==='cold'?after.identity.terrain.flatMap(()=>after.identity.layers.map(id=>`translucent:${id}`)):[];
  if(JSON.stringify(observation.lastVisibleDispatch)!==JSON.stringify(expected))fail('fixture must redraw every ordered layer/tile cold and reuse every texture warm');
  return {cache,identity:after.identity,cacheBefore:before.cache,cacheAfter:after.cache,probe:observation};
+}
+
+
+// Observe actual terrain cache inputs/outputs; never infer equivalence from counts.
+export function readControlsTerrainState(map,rtt=map.painter.renderToTexture){
+ if(!rtt?.terrain?.tileManager)throw new Error('Terrain observation boundary unavailable');
+ const tiles=rtt.terrain.tileManager.getRenderableTiles();
+ return {identity:{
+  terrain:tiles.map(tile=>tile.tileID.key),
+  sources:Object.entries(map.style.tileManagers).map(([id,source])=>({id,revision:source.getState().revision,coords:source.getVisibleCoordinates().map(coord=>coord.key)})),
+  layers:map.style._order.filter(id=>!map.style._layers[id].isHidden(map.painter.transform.zoom)),
+ },cache:tiles.map(tile=>({tile:tile.tileID.key,slots:tile.rtt.map(slot=>!!slot&&rtt.pool.getObjectForId(slot.id)?.stamp===slot.stamp)}))};
+}
+
+export function controlsTerrainNaturalEquivalent(a,b){
+ for(const probe of [a,b]){
+  if(!probe||probe.unavailable||probe.frameCount<1||probe.framesTruncated||probe.dispatchTruncated||!probe.lastTerrain?.prepared||!probe.lastTerrain?.after||!probe.lastVisibleDispatchRecords)return false;
+  if(!probe.lastTerrain.prepared.identity.terrain.length||probe.lastVisibleDispatchRecords.length!==probe.lastVisibleDispatch.length||JSON.stringify(probe.lastTerrain.prepared.identity)!==JSON.stringify(probe.lastTerrain.after.identity))return false;
+ }
+ const equivalent=probe=>({prepared:probe.lastTerrain.prepared,after:probe.lastTerrain.after,dispatch:probe.lastVisibleDispatch,records:probe.lastVisibleDispatchRecords});
+ return JSON.stringify(equivalent(a))===JSON.stringify(equivalent(b));
 }

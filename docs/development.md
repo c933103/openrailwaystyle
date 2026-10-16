@@ -282,8 +282,16 @@ one synchronous public `map.redraw()` with all currently renderable terrain
 texture slots invalidated, then one warm redraw with every slot verified cached.
 It requires one complete frame each, unchanged settled tile/source/layer identity,
 all ordered fixture layers for every cold tile, and no repeated layer work warm.
+The original natural ordered-dispatch equality remains mandatory. The probe also
+records each terrain frame's pre/post preparation and post-render cache population,
+source/tile/layer identities and coordinate-bearing dispatch records. The final
+natural frame's prepared and resulting cache populations, identities and detailed
+dispatch must match across arms; missing/truncated evidence fails. A legitimate
+timing-dependent mismatch remains an explicit failure for investigation, never
+an automatically accepted explanation. Cold/warm redraws cannot waive it.
+
 Natural, cold and warm pixels must be byte-identical within each arm. Both arms
-must have exactly equal cold and warm identities, dispatch sequences and pixels;
+must also have exactly equal cold and warm identities, dispatch sequences and pixels;
 there is no deduplication, tolerance, skipped case, or relaxed output equality.
 The cache operations occur only in the synthetic pixel diagnostic, never the app.
 

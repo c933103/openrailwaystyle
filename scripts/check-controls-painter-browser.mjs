@@ -10,7 +10,7 @@ import {createRequestLifecycle} from './request-lifecycle.mjs';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
-import {installControlsFetchProbe,controlsMapIdle} from './controls-painter-probe.mjs';
+import {installControlsFetchProbe,controlsMapIdle,controlsTerrainNaturalEquivalent} from './controls-painter-probe.mjs';
 import {controlsPainterManifest,installControlsPainterFixtures,nonemptyPainterStyle,comparePixelBytes} from './controls-painter-fixture.mjs';
 import {MAPLIBRE_BACKPORT} from '../styles/map-controls.mjs';
 
@@ -179,8 +179,9 @@ try{
     identityEqual:JSON.stringify(x.identity)===JSON.stringify(y.identity),
     dispatchEqual:JSON.stringify(x.probe.lastVisibleDispatch)===JSON.stringify(y.probe.lastVisibleDispatch)};
   }):undefined;
-  const dispatchEqual=terrainSamples?terrainSamples.every(sample=>sample.changedBytes===0&&sample.identityEqual&&sample.dispatchEqual):naturalDispatchEqual;
-  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,naturalDispatchEqual,terrainSamples,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
+  const naturalTerrainEqual=!entry.terrain||controlsTerrainNaturalEquivalent(a.probe,b.probe);
+  const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&(!terrainSamples||terrainSamples.every(sample=>sample.changedBytes===0&&sample.identityEqual&&sample.dispatchEqual));
+  report.comparisons.push({case:entry.name,changedBytes,dispatchEqual,naturalDispatchEqual,naturalTerrainEqual,terrainSamples,baselineMaskDraws:a.probe.maskDraws,guardedMaskDraws:b.probe.maskDraws});
  }
  await save();
  assert.ok(report.comparisons.every(c=>c.changedBytes===0&&c.dispatchEqual),'Pixel bytes and visible dispatch must match exactly');

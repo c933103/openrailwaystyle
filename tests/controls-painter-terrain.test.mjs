@@ -1,6 +1,7 @@
 import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {controlsTerrainNaturalEquivalent} from '../scripts/controls-painter-probe.mjs';
 import {terrainDecisionFixture as fixture,closeTerrainReplay} from '../scripts/controls-painter-terrain-replay.mjs';
 after(closeTerrainReplay);
 
@@ -81,4 +82,37 @@ test('browser gate retains natural pixels/traces and requires both cold and warm
  assert.match(s,/for\(const cache of \['cold','warm'\]\)/);
  assert.match(s,/const record=\{case:entry.name,sha256:digest\(bytes\),\.\.\.pixels,probe\}/);
  assert.match(s,/12\*60\*1000/);assert.match(s,/timeout:60000/);
+});
+
+
+test('natural cache-population changes remain failures even when cold/warm redraws would erase them',()=>{
+ const a=fixture({warm:12}),b=fixture({guard:true,warm:12,mutateNaturalCache:true});
+ const original=a.capture(),changed=b.capture();
+ assert.deepEqual(original.composite,changed.composite,'pixels alone need not expose extra cache redraw work');
+ assert.equal(original.dispatch.length,144);assert.equal(changed.dispatch.length,162);
+ assert.equal(controlsTerrainNaturalEquivalent(original.probe,changed.probe),false);
+ for(const cache of ['cold','warm']){
+  const x=a.sample(cache),y=b.sample(cache);
+  assert.deepEqual(x.sample.probe.lastVisibleDispatch,y.sample.probe.lastVisibleDispatch);
+  assert.deepEqual(x.composite,y.composite);
+ }
+ assert.equal(controlsTerrainNaturalEquivalent(original.probe,changed.probe),false,'later controlled samples never convert the natural failure to success');
+});
+
+test('natural cache evidence rejects equal-count tile swaps and missing or altered observations',()=>{
+ const clearCacheTiles=[12,13,14,15,16,17,18,19];
+ const a=fixture({warm:20,clearCacheTiles}).capture(),same=fixture({guard:true,warm:20,clearCacheTiles}).capture(),swapped=fixture({warm:20,clearCacheTiles:[11,13,14,15,16,17,18,19]}).capture();
+ assert.equal(controlsTerrainNaturalEquivalent(a.probe,same.probe),true);
+ assert.deepEqual(a.dispatch,swapped.dispatch,'the old layer-only sequence cannot identify which tiles were cached');
+ assert.equal(controlsTerrainNaturalEquivalent(a.probe,swapped.probe),false,'per-tile cache population and dispatched coordinate identity must agree');
+ for(const mutate of [p=>{p.lastTerrain=null;},p=>{p.lastVisibleDispatchRecords=null;},p=>{p.lastVisibleDispatchRecords=[];},p=>{p.lastTerrain.after.identity.terrain=[];},p=>{p.framesTruncated=true;},p=>{p.dispatchTruncated=true;},p=>{p.lastTerrain.prepared.cache[0].slots=[false];},p=>{p.lastTerrain.after.cache[0].slots=[];},p=>{p.lastVisibleDispatchRecords[0].coords=['changed'];}]){
+  const changed=structuredClone(same.probe);mutate(changed);
+  assert.equal(controlsTerrainNaturalEquivalent(a.probe,changed),false);
+ }
+});
+
+test('the original natural dispatch gate remains mandatory alongside richer cache evidence',async()=>{
+ const s=await readFile(new URL('../scripts/check-controls-painter-browser.mjs',import.meta.url),'utf8');
+ assert.match(s,/const dispatchEqual=naturalDispatchEqual&&naturalTerrainEqual&&/);
+ assert.match(s,/controlsTerrainNaturalEquivalent\(a.probe,b.probe\)/);
 });

@@ -24,7 +24,7 @@ const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(compiled.out
 const {Painter,RenderToTexture,createStyleLayer,EvaluationParameters,MapLibreMap}=dom.window.replay;
 const noop=()=>{};
 const normal=value=>JSON.parse(JSON.stringify(value));
-export function terrainDecisionFixture({guard=false,warm=0,dropLayer=false,reverseLayers=false,dropTile=false,skipVisibleMasks=false}={}){
+export function terrainDecisionFixture({guard=false,warm=0,clearCacheTiles=[],mutateNaturalCache=false,dropLayer=false,reverseLayers=false,dropTile=false,skipVisibleMasks=false}={}){
  const raw=nonemptyPainterStyle('http://127.0.0.1:4173/');
  if(dropLayer)raw.layers=raw.layers.filter(x=>x.id!=='fill-7');
  if(reverseLayers){const a=raw.layers.findIndex(x=>x.id==='fill-6'),b=raw.layers.findIndex(x=>x.id==='fill-7');[raw.layers[a],raw.layers[b]]=[raw.layers[b],raw.layers[a]];}
@@ -64,11 +64,19 @@ export function terrainDecisionFixture({guard=false,warm=0,dropLayer=false,rever
  if(skipVisibleMasks){const orig=painter._renderTileClippingMasks;painter._renderTileClippingMasks=function(layer,...args){if(layer.id==='fill-7')return;return orig.call(this,layer,...args);};}
  if(warm){renderable=tiles.slice(0,warm);map._render();}
  renderable=dropTile?tiles.slice(0,-1):tiles;
+ for(const index of clearCacheTiles)tiles[index].rtt=[];
  const probe=installControlsPainterProbe(map,{scope:scopes});
+ if(mutateNaturalCache){
+  const original=painter._renderTileClippingMasks;let changed=false;
+  painter._renderTileClippingMasks=function(layer,...args){
+   if(!changed&&layer.isHidden(this.transform.zoom)){tiles[0].rtt=[];changed=true;}
+   return original.call(this,layer,...args);
+  };
+ }
  function capture({invalidate=false}={}){
   if(invalidate)for(const tile of renderable)tile.rtt=[];
   composite=[];coverageErrors=[];probe.arm();map._render();probe.stop();
-  const snapshot=probe.snapshot();return {dispatch:snapshot.lastVisibleDispatch,composite:normal(composite),coverageErrors:normal(coverageErrors),maskDraws:snapshot.maskDraws,frameCount:snapshot.frameCount};
+  const snapshot=probe.snapshot();return {probe:snapshot,dispatch:snapshot.lastVisibleDispatch,composite:normal(composite),coverageErrors:normal(coverageErrors),maskDraws:snapshot.maskDraws,frameCount:snapshot.frameCount};
  }
  function sample(cache){composite=[];coverageErrors=[];const sampled=sampleControlsTerrainFrame(map,probe,{cache});return {sample:sampled,composite:normal(composite),coverageErrors:normal(coverageErrors)};}
  return {capture,sample,tiles,probe,map};
