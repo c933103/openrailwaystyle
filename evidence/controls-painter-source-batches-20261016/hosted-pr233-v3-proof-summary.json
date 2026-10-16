@@ -1,0 +1,127 @@
+{
+  "head": "2d48868f0ee2a126634baeab1b8a95ea4d0d4beb",
+  "tree": "9fd82b0c7fdb25a29923b986fba57c6558a4bdec",
+  "run": 38914378681,
+  "artifact": 12051971837,
+  "artifactSha256": "b0612e12379a57b2a115efed5737c3496fb1e9eaa7dd30c171e0ca16eca3b174",
+  "manifestInputs": {
+    "scripts/controls-painter-probe.mjs": "d247425f19ab670b833ea0b6ec543df723c6282b6633572d34f93acef8a9ee31",
+    "scripts/controls-painter-fixture.mjs": "90e9aba8cff63e9d8d66bc1145f099b2788f3419f332def1812f4746700a7007",
+    "scripts/check-controls-painter-browser.mjs": "737c9be93746d76b16ac47dd750b3a3f402c44998b2299d009139f20aca1e9c1",
+    "styles/app.mjs": "3973fb85c7d6a4debb095591288760dad2315e4043170b62bd4a62c6ede6fe94",
+    "styles/map-controls.mjs": "66734f550f0f6e690aabc5097ed8135ed35c1c7895db9a911030a5cd457432e7",
+    "styles/world.style.json": "515ea4b228543282f1a24d4859dadcf15dc93faeadaa4b72295e2362caacb32c",
+    "styles/request-pool.mjs": "bcc0d05d30d96c034b34634d89054179314839f3b87f535334a02dbaf4ebd0d2",
+    "styles/tile-labels.mjs": "95bbd98f2a5a47f90b82cc996016a44c873be79587fc89d35656a25db2456104"
+  },
+  "comparisons": [
+    {
+      "case": "mercator-hidden",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 2240,
+      "guardedMaskDraws": 1024
+    },
+    {
+      "case": "mercator-shown",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 4480,
+      "guardedMaskDraws": 3072
+    },
+    {
+      "case": "mercator-hidden-again",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 4480,
+      "guardedMaskDraws": 4096
+    },
+    {
+      "case": "mercator-zoom4",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 18374,
+      "guardedMaskDraws": 15688
+    },
+    {
+      "case": "mercator-pitched",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 13838,
+      "guardedMaskDraws": 11400
+    },
+    {
+      "case": "globe",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "baselineMaskDraws": 25620,
+      "guardedMaskDraws": 22368
+    },
+    {
+      "case": "terrain",
+      "changedBytes": 0,
+      "dispatchEqual": true,
+      "naturalDispatchEqual": true,
+      "naturalTerrainEqual": true,
+      "naturalSourceBatchEqual": true,
+      "terrainSamples": [
+        {
+          "cache": "cold",
+          "changedBytes": 0,
+          "identityEqual": true,
+          "dispatchEqual": true
+        },
+        {
+          "cache": "warm",
+          "changedBytes": 0,
+          "identityEqual": true,
+          "dispatchEqual": true
+        }
+      ],
+      "baselineMaskDraws": 1202,
+      "guardedMaskDraws": 1090
+    }
+  ],
+  "independentNaturalPredicate": true,
+  "independentBatchPredicate": true,
+  "stats": [
+    {
+      "name": "baseline",
+      "frames": 2,
+      "batches": 2,
+      "deferred": 17,
+      "dispatch": 360,
+      "preparedCached": 0,
+      "settled": true,
+      "errors": []
+    },
+    {
+      "name": "hidden-mask-guard",
+      "frames": 2,
+      "batches": 2,
+      "deferred": 13,
+      "dispatch": 360,
+      "preparedCached": 0,
+      "settled": true,
+      "errors": []
+    }
+  ]
+}
