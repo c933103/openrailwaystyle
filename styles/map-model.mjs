@@ -125,19 +125,27 @@ const searchCoordinate = (value, limit, strings = false) => {
   if (strings && typeof value === 'string' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) value = Number(value);
   return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
 };
+const searchOptionalText = value => value == null || typeof value === 'string';
+const searchNameFields = new Set(['name','localized_name','atlas_name','int_name','label','ref']);
+const searchFacilityText = row => Object.entries(row).every(([key, value]) =>
+  !(searchNameFields.has(key) || key.startsWith('name:') || ['railway_ref','railway:ref','station','feature','railway'].includes(key)) || searchOptionalText(value)) &&
+  (searchOptionalText(row.operator) || (Array.isArray(row.operator) && row.operator.every(value => typeof value === 'string')));
 export function searchResponse(rows, source) {
   const items = [];
   for (const row of rows) {
     if (!searchRecord(row)) continue;
     if (source === 'facility') {
-      if (searchCoordinate(row.latitude, 90) === null || searchCoordinate(row.longitude, 180) === null) continue;
+      if (searchCoordinate(row.latitude, 90) === null || searchCoordinate(row.longitude, 180) === null || !searchFacilityText(row)) continue;
       items.push(row);
     } else {
       if (searchCoordinate(row.lat, 90, true) === null || searchCoordinate(row.lon, 180, true) === null) continue;
       if (['name','display_name','category','type','addresstype'].some(key => row[key] != null && typeof row[key] !== 'string')) continue;
-      if (['namedetails','extratags'].some(key => row[key] != null && !searchRecord(row[key]))) continue;
+      if (['namedetails','extratags'].some(key => row[key] != null &&
+        (!searchRecord(row[key]) || !Object.values(row[key]).every(searchOptionalText)))) continue;
       const {boundingbox, ...item} = row;
       // A bad optional extent falls back to the valid point when selected.
+      // Keep both longitude orders: MapLibre wraps west > east across the
+      // antimeridian; -180..180 and zero-width longitude are valid extents.
       if (Array.isArray(boundingbox) && boundingbox.length === 4) {
         const bounds = boundingbox.map((value, i) => searchCoordinate(value, i < 2 ? 90 : 180, true));
         if (bounds.every(value => value !== null) && bounds[1] > bounds[0]) item.boundingbox = bounds;

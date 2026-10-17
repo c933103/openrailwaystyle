@@ -24,9 +24,16 @@ The initial regression run reproduced 26 failing checks, with 20 controls passin
 - Require finite numeric facility coordinates. Accept finite decimal-string or
   numeric geocoder coordinates in latitude ±90 and longitude ±180. Null, blank,
   booleans, arrays and nondecimal coercions do not become map locations.
-- Check geocoder fields consumed as strings or objects. Unknown categories remain
+- Check facility display fields and nested geocoder name/tag dictionaries as
+  strings (or absent/null), including string-only facility operator lists. Invalid
+  nested names cannot override a usable outer name with an object. Unknown categories remain
   ordinary places rather than indexing inherited object members.
-- Invalid optional bounding boxes fall back to a valid point. Drawn local stations
+- Invalid optional bounding boxes fall back to a valid point. Both longitude
+  orders remain supported: pinned MapLibre 5.24.0 adjusts west > east across the
+  antimeridian. Normal bounds, zero-width longitude and the geocoder's documented
+  -180..180 dateline extent remain valid. See [Nominatim output notes](https://nominatim.org/release-docs/latest/api/Output/#boundingbox) and
+  `maplibre-gl/src/geo/lng_lat_bounds.ts` / `src/ui/camera.ts` in the pinned dependency.
+  Drawn local stations
   retain valid world-copy longitudes; remote coordinate validation does not remove
   this existing map behavior.
 - Do not cache partial-invalid geocoder responses. Recovery happens only on a
