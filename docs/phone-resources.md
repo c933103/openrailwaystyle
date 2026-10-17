@@ -59,3 +59,14 @@ The merged per-station counting implementation requests 27 neighbouring inputs p
 | One of two consumers cancels the same count | Count continues | Count continues for the remaining consumer |
 
 Only completed results enter the 64-entry LRU cache; unfinished jobs remain shared and are not evicted into duplicate work. Worker copies still transfer ownership without detaching cached originals. Rendering, pixel ratio, terrain and contour defaults remain unchanged. Unit regressions cover actual protocol cancellation, shared consumers, worker restart, queued work and intact inputs. Physical-phone frame time, GPU memory and live installed-app verification remain outstanding.
+
+## Elevation-profile cache follow-up
+
+The [elevation cache investigation](investigations/elevation-pending-cache-20261017.md)
+reproduces duplicate unfinished tile loads when a profile exceeds the 64-entry
+cache. Pending downloads/repairs now stay shared separately from the bounded
+completed caches. The controlled 201-sample out-and-back fixture needs 101
+distinct fine tiles: loader calls fall from 138 to 101, with identical heights.
+These are synthetic loader-call counts, not measured network bytes, physical
+phone performance or general CPU/memory savings. Failed fine tiles remain
+retryable and missing reference tiles preserve the existing repair behavior.

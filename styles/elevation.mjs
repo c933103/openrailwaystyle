@@ -4,7 +4,7 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261017-source-trip-identity-1';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261017-elevation-pending-cache-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -41,38 +41,45 @@ async function loadPixels(url, signal) {
 // heights(points): a promise of the height in metres at each [lng, lat]
 // (null where a tile could not load). Tiles are shared between calls.
 export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels} = {}) {
-  const tiles = new Map();
-  const fetchTile = (z, x, y) => {
-    const key = `${z}/${x}/${y}`;
-    if (tiles.has(key)) { const t = tiles.get(key); tiles.delete(key); tiles.set(key, t); return t; }
-    const promise = load(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)).catch(() => { tiles.delete(key); return null; });
-    tiles.set(key, promise);
-    while (tiles.size > CACHE) tiles.delete(tiles.keys().next().value);
-    return promise;
-  };
-  // A tile with its bad pixels repaired against the coarser tile.
-  const repaired = new Map();
-  const tile = (x, y) => {
-    const key = `${x}/${y}`;
-    if (repaired.has(key)) return repaired.get(key);
-    const promise = (async () => {
-      const pixels = await fetchTile(zoom, x, y);
-      if (!pixels || zoom < REPAIR_FROM) return pixels;
-      const coarser = referenceTile(zoom, x, y), ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y) : null;
-      const data = Uint8ClampedArray.from(pixels.data);
-      repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
-      const witness = witnessTiles(data, pixels.size, zoom, x, y);
-      if (witness.tiles.length) {
-        const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await fetchTile(witness.z, tx, ty)])));
-        repairFromWitness(data, pixels.size, zoom, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.size === pixels.size ? p.data : null; });
+  // A profile can need more than CACHE tiles before any response settles.
+  // Keep active work shared independently of the bounded completed LRU:
+  // evicting an unfinished promise would start duplicate downloads/repairs.
+  function sharedTiles(loadTile) {
+    const pending = new Map(), completed = new Map();
+    return (...coordinates) => {
+      const key = coordinates.join('/');
+      if (completed.has(key)) {
+        const pixels = completed.get(key); completed.delete(key); completed.set(key, pixels);
+        return Promise.resolve(pixels);
       }
-      return {data, size: pixels.size};
-    })();
-    repaired.set(key, promise);
-    promise.then(pixels => { if (!pixels) repaired.delete(key); });
-    while (repaired.size > CACHE) repaired.delete(repaired.keys().next().value);
-    return promise;
-  };
+      if (pending.has(key)) return pending.get(key);
+      const promise = Promise.resolve().then(() => loadTile(...coordinates)).then(pixels => {
+        if (pixels) {
+          completed.set(key, pixels);
+          while (completed.size > CACHE) completed.delete(completed.keys().next().value);
+        }
+        return pixels;
+      }).finally(() => pending.delete(key));
+      pending.set(key, promise);
+      return promise;
+    };
+  }
+  const fetchTile = sharedTiles((z, x, y) =>
+    load(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)).catch(() => null));
+  // A tile with its bad pixels repaired against the coarser tile.
+  const tile = sharedTiles(async (x, y) => {
+    const pixels = await fetchTile(zoom, x, y);
+    if (!pixels || zoom < REPAIR_FROM) return pixels;
+    const coarser = referenceTile(zoom, x, y), ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y) : null;
+    const data = Uint8ClampedArray.from(pixels.data);
+    repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
+    const witness = witnessTiles(data, pixels.size, zoom, x, y);
+    if (witness.tiles.length) {
+      const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await fetchTile(witness.z, tx, ty)])));
+      repairFromWitness(data, pixels.size, zoom, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.size === pixels.size ? p.data : null; });
+    }
+    return {data, size: pixels.size};
+  });
   return {
     heights: points => Promise.all(points.map(async ([lng, lat]) => {
       const {x, y, px, py} = tilePixel(lng, lat, zoom), pixels = await tile(x, y);
