@@ -1,0 +1,162 @@
+{
+  "observed_at": "2026-10-17T06:51:59Z",
+  "repository": "c933103/openrailwaystyle",
+  "pr": 238,
+  "head_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+  "application_tree_sha": "df77d1c9123cb937f58e0447c82cd5df83520a29",
+  "base_sha": "3a80f5f75d3ceab72b8b50c0dbe96a8dd8850401",
+  "runs": [
+    {
+      "id": 39009813758,
+      "head_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758",
+      "created_at": "2026-10-17T06:24:51Z",
+      "updated_at": "2026-10-17T06:51:43Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 39009813949,
+      "head_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813949",
+      "created_at": "2026-10-17T06:24:52Z",
+      "updated_at": "2026-10-17T06:30:54Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 39009813828,
+      "head_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813828",
+      "created_at": "2026-10-17T06:24:51Z",
+      "updated_at": "2026-10-17T06:28:14Z",
+      "run_attempt": 1
+    }
+  ],
+  "site_jobs": [
+    {
+      "id": 117329748776,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117329748776"
+    },
+    {
+      "id": 117329748876,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117329748876"
+    },
+    {
+      "id": 117329749034,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117329749034"
+    },
+    {
+      "id": 117331002566,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117331002566"
+    },
+    {
+      "id": 117332105737,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105737"
+    },
+    {
+      "id": 117332105739,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105739"
+    },
+    {
+      "id": 117332105757,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105757"
+    },
+    {
+      "id": 117332105770,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105770"
+    },
+    {
+      "id": 117332105773,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105773"
+    },
+    {
+      "id": 117332105812,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105812"
+    },
+    {
+      "id": 117334685555,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117334685555"
+    },
+    {
+      "id": 117334699109,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117334699109"
+    },
+    {
+      "id": 117334699921,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117334699921"
+    }
+  ],
+  "aggregate": {
+    "runner_node": "22",
+    "tests": 2229,
+    "passed": 2229,
+    "failed": 0,
+    "skipped": 0,
+    "offline_station_checker": {
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "codex_review": {
+    "url": "https://github.com/c933103/openrailwaystyle/pull/238#issuecomment-6230687986",
+    "code_review": {
+      "commit_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    },
+    "security_review": {
+      "commit_sha": "5b4422cd32e75762e4eedf02bed1a566905e8b06",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    }
+  },
+  "review_threads": []
+}

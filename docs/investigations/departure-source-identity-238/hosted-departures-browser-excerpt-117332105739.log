@@ -1,0 +1,22 @@
+# Selected output from successful controls browser job 117332105739, run 39009813758.
+# Exact application head: 5b4422cd32e75762e4eedf02bed1a566905e8b06
+# Full source: https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117332105739
+2026-10-17T06:41:37.3415996Z [departures] chromium: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-17T06:41:38.7924533Z [departures] chromium: all three expired cross-feed cancellation flags, live platform/time state, ambiguity and cached reopening passed in both board orders.
+2026-10-17T06:41:39.9427397Z [departures] chromium: same-source trip conflicts, same-instance/cross-source duplicates, expired cancellation isolation and cached reopening passed in both board orders.
+2026-10-17T06:41:46.2915249Z [departures] chromium: distinct numbered and lexical destinations, isolated cancellations/platforms and cached reopening passed in both board orders.
+2026-10-17T06:41:46.2916040Z [departures] chromium: numeric, Latin and native-script substring collisions excluded in all 18 candidate orders, both journey links and cached reopening passed.
+2026-10-17T06:41:46.2916744Z [departures] chromium: same-script slash/parenthesized aliases, absent-alias negative controls, both journey links and cached reopening passed in all 24 candidate orders.
+2026-10-17T06:41:56.6150647Z [departures] chromium: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 272 intercepted board fixture requests.
+2026-10-17T06:42:02.6679944Z [departures] chromium: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 336 intercepted board fixture requests.
+2026-10-17T06:42:02.8308769Z [departures] chromium: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-17T06:42:05.1192736Z [departures] webkit: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-17T06:42:05.9032809Z [departures] webkit: all three expired cross-feed cancellation flags, live platform/time state, ambiguity and cached reopening passed in both board orders.
+2026-10-17T06:42:06.5467969Z [departures] webkit: same-source trip conflicts, same-instance/cross-source duplicates, expired cancellation isolation and cached reopening passed in both board orders.
+2026-10-17T06:42:10.2940638Z [departures] webkit: distinct numbered and lexical destinations, isolated cancellations/platforms and cached reopening passed in both board orders.
+2026-10-17T06:42:10.2941809Z [departures] webkit: numeric, Latin and native-script substring collisions excluded in all 18 candidate orders, both journey links and cached reopening passed.
+2026-10-17T06:42:10.2943023Z [departures] webkit: same-script slash/parenthesized aliases, absent-alias negative controls, both journey links and cached reopening passed in all 24 candidate orders.
+2026-10-17T06:42:14.1603457Z [departures] webkit: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 272 intercepted board fixture requests.
+2026-10-17T06:42:18.4115630Z [departures] webkit: malformed-board envelopes with healthy empty/populated siblings in both orders, cached partial status, expiry, and all-malformed eviction/recovery passed; 336 intercepted board fixture requests.
+2026-10-17T06:42:18.5418909Z [departures] webkit: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-17T06:42:18.6548999Z PASS check-departures-browser.mjs in 44.5 s

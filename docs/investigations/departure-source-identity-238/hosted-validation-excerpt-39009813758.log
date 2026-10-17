@@ -1,0 +1,65 @@
+# Selected output from successful validation job 117331002566, run 39009813758.
+# Exact application head: 5b4422cd32e75762e4eedf02bed1a566905e8b06
+# Full source: https://github.com/c933103/openrailwaystyle/actions/runs/39009813758/job/117331002566
+2026-10-17T06:31:29.9403569Z   node-version: 22
+2026-10-17T06:31:37.3959395Z ##[group]Run npm test
+2026-10-17T06:31:58.6328695Z # Subtest: same-source conflicting trip instances stay distinct: 20990101_11:00_feed_two
+2026-10-17T06:31:58.6329290Z ok 590 - same-source conflicting trip instances stay distinct: 20990101_11:00_feed_two
+2026-10-17T06:31:58.6330660Z # Subtest: same-source conflicting trip instances stay distinct: 20990101_11:05_feed_one
+2026-10-17T06:31:58.6331254Z ok 591 - same-source conflicting trip instances stay distinct: 20990101_11:05_feed_one
+2026-10-17T06:31:58.6332658Z # Subtest: same-source conflicting trip instances stay distinct: 20981231_35:00_feed_one
+2026-10-17T06:31:58.6333240Z ok 592 - same-source conflicting trip instances stay distinct: 20981231_35:00_feed_one
+2026-10-17T06:31:58.6334781Z # Subtest: same-source conflicting trip instances stay distinct: 20990101_11:00_feed-name__原始_+&other
+2026-10-17T06:31:58.6335527Z ok 593 - same-source conflicting trip instances stay distinct: 20990101_11:00_feed-name__原始_+&other
+2026-10-17T06:31:58.6337037Z # Subtest: same-source same-instance observations still merge across boards
+2026-10-17T06:31:58.6337553Z ok 594 - same-source same-instance observations still merge across boards
+2026-10-17T06:31:58.6340678Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: ""
+2026-10-17T06:31:58.6341187Z ok 596 - unrecognized or absent trip ID supplies no dataset identity: ""
+2026-10-17T06:31:58.6343281Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "opaque-trip"
+2026-10-17T06:31:58.6344410Z ok 597 - unrecognized or absent trip ID supplies no dataset identity: "opaque-trip"
+2026-10-17T06:31:58.6346054Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "feed_trip"
+2026-10-17T06:31:58.6346627Z ok 598 - unrecognized or absent trip ID supplies no dataset identity: "feed_trip"
+2026-10-17T06:31:58.6348036Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20990101_feed_trip"
+2026-10-17T06:31:58.6348722Z ok 599 - unrecognized or absent trip ID supplies no dataset identity: "20990101_feed_trip"
+2026-10-17T06:31:58.6350089Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00__trip"
+2026-10-17T06:31:58.6350701Z ok 600 - unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00__trip"
+2026-10-17T06:31:58.6352053Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00_feed_"
+2026-10-17T06:31:58.6352650Z ok 601 - unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00_feed_"
+2026-10-17T06:31:58.6354027Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20990101_11:99_feed_trip"
+2026-10-17T06:31:58.6354667Z ok 602 - unrecognized or absent trip ID supplies no dataset identity: "20990101_11:99_feed_trip"
+2026-10-17T06:31:58.6356233Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "date_11:00_feed_trip"
+2026-10-17T06:31:58.6356853Z ok 603 - unrecognized or absent trip ID supplies no dataset identity: "date_11:00_feed_trip"
+2026-10-17T06:31:58.6358275Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20990230_11:00_feed_trip"
+2026-10-17T06:31:58.6358912Z ok 604 - unrecognized or absent trip ID supplies no dataset identity: "20990230_11:00_feed_trip"
+2026-10-17T06:31:58.6360341Z # Subtest: unrecognized or absent trip ID supplies no dataset identity: "20991301_11:00_feed_trip"
+2026-10-17T06:31:58.6360973Z ok 605 - unrecognized or absent trip ID supplies no dataset identity: "20991301_11:00_feed_trip"
+2026-10-17T06:31:58.6362347Z # Subtest: source conflicts remain ambiguity witnesses instead of unlocking another match
+2026-10-17T06:31:58.6362949Z ok 606 - source conflicts remain ambiguity witnesses instead of unlocking another match
+2026-10-17T06:31:58.6364336Z # Subtest: a same-source conflict rejects the entire connected group without subgroup merging
+2026-10-17T06:31:58.6365058Z ok 607 - a same-source conflict rejects the entire connected group without subgroup merging
+2026-10-17T06:31:58.6366554Z # Subtest: expired same-source cancellation cannot cancel a distinct delayed trip
+2026-10-17T06:31:58.6367111Z ok 608 - expired same-source cancellation cannot cancel a distinct delayed trip
+2026-10-17T06:31:58.6368438Z # Subtest: same-source exact repeats within one board retain observation merging
+2026-10-17T06:31:58.6369057Z ok 609 - same-source exact repeats within one board retain observation merging
+2026-10-17T06:31:58.6370440Z # Subtest: selected boards preserve same-source trains, request limits and separate schedule links
+2026-10-17T06:31:58.6371095Z ok 610 - selected boards preserve same-source trains, request limits and separate schedule links
+2026-10-17T06:33:24.3996643Z # Subtest: same-source historical mutations are spatially rejected on every actual terminal chord, including plausible OSM identities
+2026-10-17T06:33:24.3997110Z ok 1579 - same-source historical mutations are spatially rejected on every actual terminal chord, including plausible OSM identities
+2026-10-17T06:33:24.4477656Z # Subtest: same-source URL replacement clears active as well as cached retry evidence
+2026-10-17T06:33:24.4477941Z ok 1912 - same-source URL replacement clears active as well as cached retry evidence
+2026-10-17T06:33:24.4765310Z # Subtest: old-only station mappings withhold stale while unused same-source mappings remain irrelevant
+2026-10-17T06:33:24.4765729Z ok 2186 - old-only station mappings withhold stale while unused same-source mappings remain irrelevant
+2026-10-17T06:33:24.4797674Z # tests 2229
+2026-10-17T06:33:24.4797847Z # pass 2229
+2026-10-17T06:33:24.4797924Z # fail 0
+2026-10-17T06:33:24.4798016Z # cancelled 0
+2026-10-17T06:33:24.4798106Z # skipped 0
+2026-10-17T06:33:24.4798183Z # todo 0
+2026-10-17T06:33:24.4798292Z # duration_ms 106718.976246
+2026-10-17T06:33:24.6554048Z # tests 4
+2026-10-17T06:33:24.6554990Z # pass 4
+2026-10-17T06:33:24.6555448Z # fail 0
+2026-10-17T06:33:24.6566980Z # cancelled 0
+2026-10-17T06:33:24.6567262Z # skipped 0
+2026-10-17T06:33:24.6567543Z # todo 0
+2026-10-17T06:33:24.6567796Z # duration_ms 93.853096
