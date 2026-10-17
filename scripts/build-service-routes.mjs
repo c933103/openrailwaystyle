@@ -84,12 +84,11 @@ async function overpass(query) {
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-service-routes/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-      // Read within the run's budget: a response that would pass it is cut
-      // off (its bytes still count). Cut off before any region is done this run, the
-      // region is too large for any run and is split; later, the run stops
-      // and the region is fetched first in the next run.
-      // Fresh: no region fetched or split yet this run (bytes of earlier
-      // error responses do not count).
+      // Stop at the remaining allowance, counting every received byte. A fresh
+      // region is oversized only if this successful response alone exceeds a
+      // full run's allowance. HTTP error bodies, earlier failed-response bytes
+      // and a reduced daily balance cannot establish that; defer the same box.
+      // After any fetched/split region, also defer until the next eligible run.
       const chunks = [], fresh = fetchedBoxes + splitBoxes === 0;
       let received = 0, over = false;
       for await (const chunk of response.body) {
@@ -97,7 +96,10 @@ async function overpass(query) {
         if (downloaded > BUDGET_BYTES) { over = true; break; }
         chunks.push(chunk);
       }
-      if (over) { await response.body.cancel().catch(() => {}); return fresh ? null : BUDGET; }
+      if (over) {
+        await response.body.cancel().catch(() => {});
+        return response.ok && fresh && received > RUN_BUDGET ? null : BUDGET;
+      }
       const text = Buffer.concat(chunks).toString();
       if (!response.ok) {
         // Classify the whole diagnostic, while keeping logged errors compact.
