@@ -1,26 +1,26 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261017-search-row-isolation-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261017-search-row-isolation-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261017-search-row-isolation-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261017-search-row-isolation-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261017-search-row-isolation-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261017-search-row-isolation-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261017-search-row-isolation-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261017-elevation-profile-gaps-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261017-elevation-profile-gaps-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261017-elevation-profile-gaps-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261017-elevation-profile-gaps-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261017-elevation-profile-gaps-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261017-elevation-profile-gaps-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261017-elevation-profile-gaps-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261017-search-row-isolation-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261017-search-row-isolation-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261017-search-row-isolation-1';
-import {departureItem} from './departures-ui.mjs?v=20261017-search-row-isolation-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261017-search-row-isolation-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261017-search-row-isolation-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261017-search-row-isolation-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261017-search-row-isolation-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261017-search-row-isolation-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261017-search-row-isolation-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261017-search-row-isolation-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261017-search-row-isolation-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261017-search-row-isolation-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261017-search-row-isolation-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261017-search-row-isolation-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261017-elevation-profile-gaps-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261017-elevation-profile-gaps-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261017-elevation-profile-gaps-1';
+import {departureItem} from './departures-ui.mjs?v=20261017-elevation-profile-gaps-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261017-elevation-profile-gaps-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261017-elevation-profile-gaps-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261017-elevation-profile-gaps-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261017-elevation-profile-gaps-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261017-elevation-profile-gaps-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261017-elevation-profile-gaps-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261017-elevation-profile-gaps-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261017-elevation-profile-gaps-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261017-elevation-profile-gaps-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261017-elevation-profile-gaps-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261017-elevation-profile-gaps-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -58,7 +58,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261017-search-row-isolation-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261017-elevation-profile-gaps-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -2010,26 +2010,33 @@ async function showProfile(feature) {
   if (!stats) { panel.append(textNode('p', 'The terrain tiles could not load here.', 'small')); return; }
   const height = h => units === 'imperial' ? `${Math.round(h * 3.28084).toLocaleString('en')} ft` : `${Math.round(h).toLocaleString('en')} m`;
   const ends = climb(profile[0].height, profile.at(-1).height, km);
+  const incomplete = profile.some(p => !Number.isFinite(p.height));
+  if (incomplete) panel.append(textNode('p', 'Incomplete elevation profile: some terrain heights are unavailable. Gaps are left blank; statistics cover only the available samples and connected stretches.', 'small'));
   const dl = document.createElement('dl');
   row(dl, 'Length', formatLength(km, units)); row(dl, 'Lowest', height(stats.min)); row(dl, 'Highest', height(stats.max));
-  row(dl, 'Ascent / descent', `${height(stats.ascent)} / ${height(stats.descent)}`);
+  row(dl, incomplete ? 'Ascent / descent (known stretches)' : 'Ascent / descent', stats.ascent === null ? 'Unavailable' : `${height(stats.ascent)} / ${height(stats.descent)}`);
   if (ends) row(dl, 'End to end', formatClimb(ends, units));
-  row(dl, 'Steepest', `${(stats.steepest * 100).toFixed(1)}% (${(stats.steepest * 1000).toFixed(0)}‰) over ${formatLength(stats.over, units)}`);
+  row(dl, incomplete ? 'Steepest (known stretches)' : 'Steepest', stats.steepest === null ? 'Unavailable: no continuous height samples over the required distance' : `${(stats.steepest * 100).toFixed(1)}% (${(stats.steepest * 1000).toFixed(0)}‰) over ${formatLength(stats.over, units)}`);
   panel.append(profileChart(profile, km, units), dl, textNode('p', 'Heights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.', 'small'));
 }
 function profileChart(profile, km, units) {
   const W = 280, H = 150, L = 44, R = 8, T = 10, B = 24, ns = 'http://www.w3.org/2000/svg';
   const k = units === 'imperial' ? 3.28084 : 1, unit = units === 'imperial' ? 'ft' : 'm';
-  const known = profile.filter(p => p.height !== null), values = known.map(p => p.height * k);
+  const segments = profileSegments(profile), known = segments.flat(), values = known.map(p => p.height * k);
   let lo = Math.min(...values), hi = Math.max(...values);
   if (hi - lo < 10) { const mid = (hi + lo) / 2; lo = mid - 5; hi = mid + 5; }
-  const x = at => L + (W - L - R) * at / km, y = h => T + (H - T - B) * (1 - (h * k - lo) / (hi - lo));
+  const x = at => L + (W - L - R) * (km > 0 ? at / km : 0), y = h => T + (H - T - B) * (1 - (h * k - lo) / (hi - lo));
   const el = (name, attrs, text) => { const e = document.createElementNS(ns, name); for (const [a, v] of Object.entries(attrs)) e.setAttribute(a, v); if (text !== undefined) e.textContent = text; return e; };
   const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, class: 'profile-chart', role: 'img', 'aria-label': 'Elevation along the line'});
-  const line = known.map(p => `${x(p.at).toFixed(1)},${y(p.height).toFixed(1)}`).join(' ');
+  for (const segment of segments) {
+    const line = segment.map(p => `${x(p.at).toFixed(1)},${y(p.height).toFixed(1)}`).join(' ');
+    if (segment.length === 1) {
+      svg.append(el('circle', {cx: x(segment[0].at), cy: y(segment[0].height), r: 1.5, class: 'profile-line'}));
+    } else svg.append(
+      el('polygon', {points: `${x(segment[0].at).toFixed(1)},${H - B} ${line} ${x(segment.at(-1).at).toFixed(1)},${H - B}`, class: 'profile-area'}),
+      el('polyline', {points: line, class: 'profile-line'}));
+  }
   svg.append(
-    el('polygon', {points: `${x(known[0].at).toFixed(1)},${H - B} ${line} ${x(known.at(-1).at).toFixed(1)},${H - B}`, class: 'profile-area'}),
-    el('polyline', {points: line, class: 'profile-line'}),
     el('line', {x1: L, y1: H - B, x2: W - R, y2: H - B, class: 'profile-axis'}), el('line', {x1: L, y1: T, x2: L, y2: H - B, class: 'profile-axis'}),
     el('text', {x: L - 4, y: T + 4, 'text-anchor': 'end'}, `${Math.round(hi)} ${unit}`), el('text', {x: L - 4, y: H - B, 'text-anchor': 'end'}, `${Math.round(lo)} ${unit}`),
     el('text', {x: L, y: H - 8}, '0'), el('text', {x: W - R, y: H - 8, 'text-anchor': 'end'}, formatLength(km, units)));
@@ -2037,9 +2044,9 @@ function profileChart(profile, km, units) {
   svg.append(cursor, readout);
   svg.addEventListener('pointermove', event => {
     const box = svg.getBoundingClientRect(), at = Math.max(0, Math.min(km, ((event.clientX - box.left) / box.width * W - L) / (W - L - R) * km));
-    const p = known.reduce((a, b) => Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a);
+    const p = profile.reduce((a, b) => Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a);
     cursor.setAttribute('x1', x(p.at)); cursor.setAttribute('x2', x(p.at)); cursor.setAttribute('visibility', 'visible');
-    readout.textContent = `${formatLength(p.at, units)} · ${Math.round(p.height * k)} ${unit}`;
+    readout.textContent = `${formatLength(p.at, units)} · ${Number.isFinite(p.height) ? `${Math.round(p.height * k)} ${unit}` : 'Height unavailable'}`;
     profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
     profileMarker.setLngLat(p.point).addTo(map);
   });

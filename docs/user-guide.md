@@ -121,6 +121,11 @@ circle through three or more points clicked along a curve.
 With the drawing tools closed, click a drawn line for its elevation profile:
 heights about every 10 m along it, with lowest and highest points, ascent,
 descent and the steepest stretch; hovering the chart marks the place on the map.
+If some terrain heights fail to load, the profile is marked incomplete and leaves
+those stretches blank. Its statistics cover only the available samples; ascent,
+descent and steepest gradient never bridge a missing sample. A gradient is
+unavailable when no connected stretch has enough height samples. Hovering a gap
+reports that its height is unavailable.
 Heights come from the terrain tiles (ground or seabed, not track level on
 bridges or in tunnels). The tiles' known faults (isolated pixels far below the
 ground around them, and a band along 120° E in the Taiwan Strait) are repaired
