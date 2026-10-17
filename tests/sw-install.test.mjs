@@ -889,3 +889,42 @@ test('destination identity upgrades a compact old module graph and keeps current
   assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous]);
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+test('search row-isolation release updates cached app/model together and retains old tabs',async()=>{
+  const previous='20261017-platform-measure-zoom-1';
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous,'the changed search parser requires a fresh release token');
+  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs'];
+  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
+  // Compact preceding-cache payloads exercise version isolation, not historical
+  // source reconstruction. New module bytes are exact current build inputs.
+  const oldBodies=new Map(paths.map(path=>[new URL(path,scope).pathname,'previous cached '+path]));
+  const old=startWorker({version:previous,assetBodies:oldBodies,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const caches=[...old.stores.keys()];
+  const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(unchanged.request('./',true));
+  assert.equal(await(await unchanged.request('map-model.mjs?v='+previous)).text(),oldBodies.get(new URL('map-model.mjs',scope).pathname),'unchanged token retains the stale parser');
+  const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of paths){
+    assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
+    assert.equal(await(await next.request(path+'?v='+previous)).text(),oldBodies.get(new URL(path,scope).pathname));
+  }
+  const modules=new Map();
+  async function load(url){
+    const parsed=new URL(url,scope);assert.equal(parsed.origin,new URL(scope).origin);
+    if(!modules.has(parsed.href))modules.set(parsed.href,new vm.SourceTextModule(await(await next.request(parsed.href)).text(),{identifier:parsed.href}));
+    return modules.get(parsed.href);
+  }
+  const model=await load('map-model.mjs?v='+version);
+  await model.link((path,parent)=>load(new URL(path,parent.identifier).href));await model.evaluate();
+  const {searchResponse,searchResults}=model.namespace;
+  const station={name:'Synthetic station',latitude:51.5,longitude:-.1};
+  assert.equal(searchResponse([null,station],'facility').invalid,1);
+  assert.equal(searchResults([null,station],[{name:'Unknown location',lat:null,lon:''}]).rail.length,1);
+  assert.equal(searchResults([],[{name:'Unknown location',lat:null,lon:''}]).places.length,0);
+  assert.deepEqual([...next.stores.keys()],caches,'normal navigation updates within the same cache generation');
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});

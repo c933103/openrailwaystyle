@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261017-platform-measure-zoom-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261017-search-row-isolation-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
