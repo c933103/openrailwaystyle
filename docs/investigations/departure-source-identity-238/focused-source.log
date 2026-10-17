@@ -1,0 +1,29 @@
+✔ same-source conflicting trip instances stay distinct: 20990101_11:00_feed_two (11.117792ms)
+✔ same-source conflicting trip instances stay distinct: 20990101_11:05_feed_one (0.905258ms)
+✔ same-source conflicting trip instances stay distinct: 20981231_35:00_feed_one (0.452153ms)
+✔ same-source conflicting trip instances stay distinct: 20990101_11:00_feed-name__原始_+&other (1.15893ms)
+✔ same-source same-instance observations still merge across boards (0.691694ms)
+✔ distinct source tags preserve the existing cross-feed reconciliation (0.641747ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "" (0.695046ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "opaque-trip" (0.217999ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "feed_trip" (0.513459ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_feed_trip" (0.580998ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00__trip" (0.32541ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00_feed_" (0.159366ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:99_feed_trip" (0.131164ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "date_11:00_feed_trip" (0.265712ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990230_11:00_feed_trip" (0.431947ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20991301_11:00_feed_trip" (0.227183ms)
+✔ source conflicts remain ambiguity witnesses instead of unlocking another match (0.830716ms)
+✔ a same-source conflict rejects the entire connected group without subgroup merging (1.029269ms)
+✔ expired same-source cancellation cannot cancel a distinct delayed trip (1.333641ms)
+✔ same-source exact repeats within one board retain observation merging (0.417621ms)
+✔ selected boards preserve same-source trains, request limits and separate schedule links (250.686089ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1170.884335

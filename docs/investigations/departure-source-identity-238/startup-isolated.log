@@ -1,0 +1,240 @@
+TAP version 13
+# (node:12) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: startup network guard rejects native fetch, HTTP and socket fallbacks
+ok 1 - startup network guard rejects native fetch, HTTP and socket fallbacks
+  ---
+  duration_ms: 8.89376
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: startup native-realm loaders use each window fixture without external fetch
+ok 2 - startup native-realm loaders use each window fixture without external fetch
+  ---
+  duration_ms: 830.277482
+  type: 'test'
+  ...
+# Subtest: application guards each replacement painter after WebGL context restoration
+ok 3 - application guards each replacement painter after WebGL context restoration
+  ---
+  duration_ms: 207.242995
+  type: 'test'
+  ...
+# Subtest: application installs the hidden-mask guard before the first renderer frame
+ok 4 - application installs the hidden-mask guard before the first renderer frame
+  ---
+  duration_ms: 164.957842
+  type: 'test'
+  ...
+# Subtest: actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries
+ok 5 - actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries
+  ---
+  duration_ms: 525.093325
+  type: 'test'
+  ...
+# Subtest: actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries
+ok 6 - actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries
+  ---
+  duration_ms: 380.94662
+  type: 'test'
+  ...
+# Subtest: new app recovers verified already-patched first-party cache bytes without a second patch
+ok 7 - new app recovers verified already-patched first-party cache bytes without a second patch
+  ---
+  duration_ms: 258.644784
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery ignores unrelated caches and non-JavaScript saved responses
+ok 8 - legacy startup recovery ignores unrelated caches and non-JavaScript saved responses
+  ---
+  duration_ms: 153.130184
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME
+ok 9 - legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME
+  ---
+  duration_ms: 164.178371
+  type: 'test'
+  ...
+# Subtest: legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME
+ok 10 - legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME
+  ---
+  duration_ms: 131.043986
+  type: 'test'
+  ...
+# Subtest: installation help works before renderer libraries load and after WebGL initialization fails
+    # Subtest: {"delayLibraries":true}
+    ok 1 - {"delayLibraries":true}
+      ---
+      duration_ms: 453.441017
+      type: 'test'
+      ...
+    # Subtest: {"failWebGL":true}
+    ok 2 - {"failWebGL":true}
+      ---
+      duration_ms: 231.112166
+      type: 'test'
+      ...
+    1..2
+ok 11 - installation help works before renderer libraries load and after WebGL initialization fails
+  ---
+  duration_ms: 686.002357
+  type: 'test'
+  ...
+# Subtest: a complete installed Chinese font is used without any download
+ok 12 - a complete installed Chinese font is used without any download
+  ---
+  duration_ms: 1389.261462
+  type: 'test'
+  ...
+# Subtest: a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script
+ok 13 - a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script
+  ---
+  duration_ms: 2986.360248
+  type: 'test'
+  ...
+# Subtest: a failed packaged Chinese font download waits before trying again, and retries when back online
+ok 14 - a failed packaged Chinese font download waits before trying again, and retries when back online
+  ---
+  duration_ms: 1381.217189
+  type: 'test'
+  ...
+# Subtest: Japanese labels keep the installed Japanese font even when it is partial
+ok 15 - Japanese labels keep the installed Japanese font even when it is partial
+  ---
+  duration_ms: 159.70511
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: unavailable Chinese font preserves a working map and system fallback
+ok 16 - unavailable Chinese font preserves a working map and system fallback
+  ---
+  duration_ms: 265.347517
+  type: 'test'
+  ...
+# Conductor rails and railway charging unavailable: Invalid railway energy supply snapshot
+# Subtest: clicked station, service, entrance, power and context details share the selected regional font
+ok 17 - clicked station, service, entrance, power and context details share the selected regional font
+  ---
+  duration_ms: 430.927735
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: English and local infoboxes scope script languages to CJK runs and preserve English text
+ok 18 - English and local infoboxes scope script languages to CJK runs and preserve English text
+  ---
+  duration_ms: 962.405923
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: infobox Han text requests the packaged font after probing without requiring map glyph drawing
+ok 19 - infobox Han text requests the packaged font after probing without requiring map glyph drawing
+  ---
+  duration_ms: 241.985634
+  type: 'test'
+  ...
+# Subtest: an open infobox follows language and font changes while map style loading is delayed
+ok 20 - an open infobox follows language and font changes while map style loading is delayed
+  ---
+  duration_ms: 138.67243
+  type: 'test'
+  ...
+# Subtest: rare Han in infobox body values and later departure text loads only the displayed slices
+ok 21 - rare Han in infobox body values and later departure text loads only the displayed slices
+  ---
+  duration_ms: 223.199053
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: service frequency profile is applied on the first frame and controls persist independently
+ok 22 - service frequency profile is applied on the first frame and controls persist independently
+  ---
+  duration_ms: 422.491056
+  type: 'test'
+  ...
+# Subtest: frequency periods no applied source covers are not offered, and a link to one falls back
+ok 23 - frequency periods no applied source covers are not offered, and a link to one falls back
+  ---
+  duration_ms: 157.11247
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: equal-width service details expire even after the inspected route leaves loaded tiles
+ok 24 - equal-width service details expire even after the inspected route leaves loaded tiles
+  ---
+  duration_ms: 166.82312
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: mixed timetable and headway details name each source, period definition and terms link
+ok 25 - mixed timetable and headway details name each source, period definition and terms link
+  ---
+  duration_ms: 192.992147
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: app starts with the MapLibre 5 API and enables map controls
+ok 26 - app starts with the MapLibre 5 API and enables map controls
+  ---
+  duration_ms: 404.454054
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: controls work while the map is still loading, and settings take effect once it loads
+ok 27 - controls work while the map is still loading, and settings take effect once it loads
+  ---
+  duration_ms: 162.578597
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: more detail cycles: the next zoom level at half size, two levels at a quarter, then normal
+ok 28 - more detail cycles: the next zoom level at half size, two levels at a quarter, then normal
+  ---
+  duration_ms: 117.938782
+  type: 'test'
+  ...
+# Subtest: settings are remembered in a cookie; a shared link applies once and leaves the address
+ok 29 - settings are remembered in a cookie; a shared link applies once and leaves the address
+  ---
+  duration_ms: 469.96341
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests
+ok 30 - curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests
+  ---
+  duration_ms: 102.90548
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: curated hub names with rare Han wait for their slices before reaching the map
+ok 31 - curated hub names with rare Han wait for their slices before reaching the map
+  ---
+  duration_ms: 118.08865
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261017-source-trip-identity-1
+# Subtest: tests/startup.test.mjs
+not ok 1 - tests/startup.test.mjs
+  ---
+  duration_ms: 16505.582503
+  type: 'test'
+  location: '/workspace/shared/atlas-stop-identity-20261017/source/tests/startup.test.mjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: ~
+  signal: 'SIGKILL'
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..32
+# tests 34
+# suites 0
+# pass 33
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16524.076447

@@ -1,0 +1,179 @@
+✖ same-source conflicting trip instances stay distinct: 20990101_11:00_feed_two (11.006354ms)
+✖ same-source conflicting trip instances stay distinct: 20990101_11:05_feed_one (0.94074ms)
+✖ same-source conflicting trip instances stay distinct: 20981231_35:00_feed_one (0.813271ms)
+✖ same-source conflicting trip instances stay distinct: 20990101_11:00_feed-name__原始_+&other (0.86352ms)
+✔ same-source same-instance observations still merge across boards (2.574963ms)
+✔ distinct source tags preserve the existing cross-feed reconciliation (1.35208ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "" (1.245187ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "opaque-trip" (0.870589ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "feed_trip" (1.508878ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_feed_trip" (0.807491ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00__trip" (0.693705ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:00_feed_" (0.953005ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "20990101_11:99_feed_trip" (0.504921ms)
+✔ unrecognized or absent trip ID supplies no dataset identity: "date_11:00_feed_trip" (0.570939ms)
+✔ source conflicts remain ambiguity witnesses instead of unlocking another match (1.242398ms)
+✖ a same-source conflict rejects the entire connected group without subgroup merging (1.001809ms)
+✖ expired same-source cancellation cannot cancel a distinct delayed trip (2.210758ms)
+✔ same-source exact repeats within one board retain observation merging (1.224087ms)
+✖ selected boards preserve same-source trains, request limits and separate schedule links (8.945012ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 12
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1933.620055
+
+✖ failing tests:
+
+test at tests/departure-source-identity.test.mjs:21:4
+✖ same-source conflicting trip instances stay distinct: 20990101_11:00_feed_two (11.006354ms)
+  AssertionError [ERR_ASSERTION]: one stop-board list is not necessarily one feed
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:27:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:21:4
+✖ same-source conflicting trip instances stay distinct: 20990101_11:05_feed_one (0.94074ms)
+  AssertionError [ERR_ASSERTION]: one stop-board list is not necessarily one feed
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:27:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:21:4
+✖ same-source conflicting trip instances stay distinct: 20981231_35:00_feed_one (0.813271ms)
+  AssertionError [ERR_ASSERTION]: one stop-board list is not necessarily one feed
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:27:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:21:4
+✖ same-source conflicting trip instances stay distinct: 20990101_11:00_feed-name__原始_+&other (0.86352ms)
+  AssertionError [ERR_ASSERTION]: one stop-board list is not necessarily one feed
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:27:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:70:1
+✖ a same-source conflict rejects the entire connected group without subgroup merging (1.001809ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 3
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:75:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:80:1
+✖ expired same-source cancellation cannot cancel a distinct delayed trip (2.210758ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      {
+  +     cancelled: true,
+  -     cancelled: false,
+        color: null,
+        delay: 14,
+        departure: 4070952840000,
+        headsign: 'Central',
+        line: 'R',
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:84:56)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { departure: 4070952840000, scheduled: 4070952000000, tz: 'UTC', line: 'R', headsign: 'Central', tripId: '20990101_11:00_feed_two', stopId: 'stop-20990101_11:00_feed_two', tripScheduled: 4070952000000, tripEvent: 'departure', color: null, textColor: null, track: '4', live: true, delay: 14, cancelled: true, mode: 'REGIONAL_RAIL' } ],
+    expected: [ { departure: 4070952840000, scheduled: 4070952000000, tz: 'UTC', line: 'R', headsign: 'Central', tripId: '20990101_11:00_feed_two', stopId: 'stop-20990101_11:00_feed_two', tripScheduled: 4070952000000, tripEvent: 'departure', color: null, textColor: null, track: '4', live: true, delay: 14, cancelled: false, mode: 'REGIONAL_RAIL' } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/departure-source-identity.test.mjs:101:1
+✖ selected boards preserve same-source trains, request limits and separate schedule links (8.945012ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-stop-identity-20261017/source/tests/departure-source-identity.test.mjs:113:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

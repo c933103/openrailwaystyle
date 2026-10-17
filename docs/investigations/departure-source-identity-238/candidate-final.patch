@@ -1,0 +1,511 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index 3a311bd..df0d304 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -45,7 +45,11 @@ bilingual pairs remain compatible, as do the leading service tags `(Local)`,
+ `(普通)` and `(普通 Local)`. Other aliases and unknown tags remain part of the
+ destination, so some duplicate-looking rows stay separate until stronger source
+ evidence is available. These checks veto the entire group without choosing a
+-smaller subgroup. This does not establish full cross-source train identity.
++smaller subgroup. If recognized MOTIS trip IDs identify different trip instances
++within the same dataset, those rows also remain separate, even across different
++stop boards. A cancellation from one instance cannot cancel another. Unrecognized
++or missing IDs supply no dataset identity; route and agency labels are not used
++to infer it. This does not establish full cross-source train identity.
+ 
+ An invalid departure-board response counts as a loading failure, not an empty
+ timetable. This includes malformed rows or wrong-typed fields consumed by the
+diff --git a/scripts/check-departures-browser.mjs b/scripts/check-departures-browser.mjs
+index 762ef9a..80fd249 100644
+--- a/scripts/check-departures-browser.mjs
++++ b/scripts/check-departures-browser.mjs
+@@ -166,6 +166,46 @@ try {
+       }
+       boardBodies = {};
+       console.log(`${engine}: all three expired cross-feed cancellation flags, live platform/time state, ambiguity and cached reopening passed in both board orders.`);
++      // Distinct stop boards can contain trips from the same dataset. The
++      // provider's dated trip-ID envelope, not the board index, identifies it.
++      for (const order of [['a','b'], ['b','a']]) for (const identity of ['distinct', 'same', 'other-source']) {
++        boardName = `Source identity ${order.join('')} ${identity}`; boardOrder = order; boardFailed = [];
++        const firstId = '20990101_11:00_fixture_one';
++        const secondId = identity === 'same' ? firstId : identity === 'other-source' ?
++          '20990101_11:00_other_two' : '20990101_11:00_fixture_two';
++        boardBodies = {a:{stopTimes:[{...row, tripId:firstId, place:{...row.place, track:'2'}}]},
++          b:{stopTimes:[{...row, tripId:secondId, cancelled:true, realTime:true,
++            place:{...row.place, stopId:'b', track:'9', scheduledDeparture:row.place.departure, departure:'2099-01-01T12:04:00Z'}}]}};
++        const before = boardRequests.length;
++        for (let reopen = 0; reopen < 2; reopen++) {
++          await openStation(boardName); await waitBoard();
++          assert.equal(await page.locator('.departure-list > li').count(), identity === 'distinct' ? 2 : 1);
++          assert.equal(await page.locator('.departure-time.cancelled').count(), 1);
++          const platforms = await page.locator('.departure-track').allTextContents();
++          assert.deepEqual(platforms, identity === 'distinct' ? ['Pl. 2', 'Pl. 9'] : ['Pl. 9']);
++          assert.equal(boardRequests.length - before, 3, 'source-aware rows survive cached reopening without additional requests');
++          await page.locator('#details-close').click();
++        }
++      }
++      for (const order of [['a','b'], ['b','a']]) {
++        boardName = `Expired same-source conflict ${order.join('')}`; boardOrder = order;
++        const date = expiredAt.slice(0, 10).replaceAll('-', '');
++        boardBodies = {a:{stopTimes:[{...row, tripId:`${date}_11:00_fixture_one`, cancelled:true,
++          place:{...row.place, scheduledDeparture:expiredAt, departure:expiredAt}}]},
++          b:{stopTimes:[{...row, tripId:`${date}_11:00_fixture_two`, realTime:true,
++            place:{...row.place, scheduledDeparture:expiredAt, departure:delayedAt, track:'4'}}]}};
++        const before = boardRequests.length;
++        for (let reopen = 0; reopen < 2; reopen++) {
++          await openStation(boardName); await waitBoard();
++          assert.equal(await page.locator('.departure-list > li').count(), 1);
++          assert.equal(await page.locator('.departure-status').textContent(), '+14 min');
++          assert.equal(await page.locator('.departure-time.cancelled').count(), 0);
++          assert.equal(boardRequests.length - before, 3);
++          await page.locator('#details-close').click();
++        }
++      }
++      boardBodies = {};
++      console.log(`${engine}: same-source trip conflicts, same-instance/cross-source duplicates, expired cancellation isolation and cached reopening passed in both board orders.`);
+       // A nearer substring name cannot take a board slot or supply the journey
+       // origin/destination. Exercise the production click, matching and renderer.
+       const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
+diff --git a/styles/app.mjs b/styles/app.mjs
+index b80f12a..1af7c3d 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,26 +1,26 @@
+-import {serviceCoverageMessages} from './service-status.mjs?v=20261016-crossfeed-cancellation-1';
+-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261016-crossfeed-cancellation-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261016-crossfeed-cancellation-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261016-crossfeed-cancellation-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261016-crossfeed-cancellation-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261016-crossfeed-cancellation-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261016-crossfeed-cancellation-1';
++import {serviceCoverageMessages} from './service-status.mjs?v=20261017-source-trip-identity-1';
++import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261017-source-trip-identity-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261017-source-trip-identity-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261017-source-trip-identity-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261017-source-trip-identity-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261017-source-trip-identity-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261017-source-trip-identity-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261016-crossfeed-cancellation-1';
+-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261016-crossfeed-cancellation-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261016-crossfeed-cancellation-1';
+-import {departureItem} from './departures-ui.mjs?v=20261016-crossfeed-cancellation-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261016-crossfeed-cancellation-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261016-crossfeed-cancellation-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261016-crossfeed-cancellation-1';
+-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261016-crossfeed-cancellation-1';
+-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261016-crossfeed-cancellation-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261016-crossfeed-cancellation-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261016-crossfeed-cancellation-1';
+-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261016-crossfeed-cancellation-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261016-crossfeed-cancellation-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261016-crossfeed-cancellation-1';
+-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261016-crossfeed-cancellation-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261017-source-trip-identity-1';
++import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261017-source-trip-identity-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261017-source-trip-identity-1';
++import {departureItem} from './departures-ui.mjs?v=20261017-source-trip-identity-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261017-source-trip-identity-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261017-source-trip-identity-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261017-source-trip-identity-1';
++import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261017-source-trip-identity-1';
++import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261017-source-trip-identity-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261017-source-trip-identity-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261017-source-trip-identity-1';
++import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261017-source-trip-identity-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261017-source-trip-identity-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261017-source-trip-identity-1';
++import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261017-source-trip-identity-1';
+ 
+ const $ = id => document.getElementById(id);
+ $('help-power').textContent = POWER_FACILITY_EXPLANATION;
+@@ -58,7 +58,7 @@ let platformLengths,frequencyExpiry;
+ let powerFacilities, powerMethods;
+ let railRecovery, stationFailures, wakeRailRecovery = () => {};
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261016-crossfeed-cancellation-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261017-source-trip-identity-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index b76f5f3..8f95bf9 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261016-crossfeed-cancellation-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261017-source-trip-identity-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index cb39b3a..1d0d0ad 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261016-crossfeed-cancellation-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261017-source-trip-identity-1"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index 97ffaa9..533e993 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261016-crossfeed-cancellation-1';
++import {SEARCH_API} from './map-model.mjs?v=20261017-source-trip-identity-1';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index 20c0cbc..33b3e42 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261016-crossfeed-cancellation-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261017-source-trip-identity-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/departures.mjs b/styles/departures.mjs
+index 6522f7a..6cd6898 100644
+--- a/styles/departures.mjs
++++ b/styles/departures.mjs
+@@ -122,6 +122,23 @@ function conflictingDestinationText(group) {
+   // of the first row: no bilingual bridge can hide another row's qualifier.
+   return new Set(group.map(row => destinationIdentity(row.headsign))).size > 1;
+ }
++function conflictingSourceTrips(group) {
++  // MOTIS tag_lookup encodes date_start-time_dataset-tag_original-trip-id.
++  // Dataset tags cannot contain '_'; original trip IDs can. Only recognize
++  // this provider-defined envelope, never route/agency names or stop lists.
++  // Unknown formats keep the existing ambiguity rules and supply no source.
++  const bySource = new Map();
++  for (const {tripId} of group) {
++    const match = tripId.match(/^(\d{4})(\d{2})(\d{2})_\d{2,}:[0-5]\d_([^_]+)_[\s\S]+$/);
++    if (!match) continue;
++    const date = `${match[1]}-${match[2]}-${match[3]}`, stamp = Date.parse(`${date}T00:00:00Z`);
++    if (!Number.isFinite(stamp) || new Date(stamp).toISOString().slice(0, 10) !== date) continue;
++    const source = match[4];
++    if (bySource.has(source) && bySource.get(source) !== tripId) return true;
++    bySource.set(source, tripId);
++  }
++  return false;
++}
+ const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+ // Stable presentation ties must not depend on either feed or observation order.
+ const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
+@@ -192,6 +209,8 @@ function validateDepartureTime(time) {
+ // merge. Conflicting numeric destination components also reject the whole
+ // group at this final stage, as do different complete destinations after
+ // recognized service tags and source-fixtured bilingual aliases are resolved. These
++// Distinct trip instances with the same recognized MOTIS dataset tag also
++// veto a group: separate stop-board lists do not prove separate feeds. These
+ // guards only reject an existing group; they never remove competitors or
+ // create new subgroup matches. Unknown destination aliases can remain separate.
+ // A merged train has
+@@ -290,7 +309,7 @@ function departureGroups(rows, {allCandidates = false} = {}) {
+     if (new Set(group.map(r => r.list)).size < group.length ||
+         !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
+         !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
+-        conflictingDestinationText(group)) {
++        conflictingDestinationText(group) || conflictingSourceTrips(group)) {
+       out.push(...group.map(row => [row])); continue;
+     }
+     out.push(group);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index a0797fd..406149c 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,7 +4,7 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261016-crossfeed-cancellation-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261017-source-trip-identity-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index e42cad6..65c15b0 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261016-crossfeed-cancellation-1" rel="stylesheet">
++  <link href="app.css?v=20261017-source-trip-identity-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -221,6 +221,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261016-crossfeed-cancellation-1"></script>
++  <script type="module" src="app.mjs?v=20261017-source-trip-identity-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 1c33185..2eefa83 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261016-crossfeed-cancellation-1';
++import { MODES } from './map-model.mjs?v=20261017-source-trip-identity-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 6411235..94ae405 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261016-crossfeed-cancellation-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261016-crossfeed-cancellation-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261017-source-trip-identity-1';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261017-source-trip-identity-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261016-crossfeed-cancellation-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261017-source-trip-identity-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/styles/sw.js b/styles/sw.js
+index 767054a..b951aad 100644
+--- a/styles/sw.js
++++ b/styles/sw.js
+@@ -11,7 +11,7 @@
+ // Their filenames pin the library version, so cached old/new app versions
+ // cannot overwrite one another's dependency bytes. Map tiles and data files
+ // are not handled here.
+-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}33`, KEEP_VERSIONS = 2;
++const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}34`, KEEP_VERSIONS = 2;
+ const FONT_CACHE='atlas-label-fonts-v1';
+ // Shell 25 includes the full-train schedule renderer. The hash-pinned
+ // MapLibre attribution backport keeps older open tabs working without
+diff --git a/tests/sw-install.test.mjs b/tests/sw-install.test.mjs
+index 0f55de7..12ac4c2 100644
+--- a/tests/sw-install.test.mjs
++++ b/tests/sw-install.test.mjs
+@@ -165,7 +165,7 @@ test('a complete replacement keeps the previous version and revised icons availa
+   assert.deepEqual(versions, ['new', 'old']);
+ });
+ 
+-for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1', '20261012-search-availability-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
++for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1', '20261012-search-availability-1', '20261016-crossfeed-cancellation-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
+   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+   assert.ok(currentVersion, 'the actual page declares its asset version');
+diff --git a/tests/departure-source-identity.test.mjs b/tests/departure-source-identity.test.mjs
+new file mode 100644
+index 0000000..2abc6ef
+--- /dev/null
++++ b/tests/departure-source-identity.test.mjs
+@@ -0,0 +1,133 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {departureRows, stationDepartures} from '../styles/departures.mjs';
++import {departureItem} from '../styles/departures-ui.mjs';
++import {JSDOM} from 'jsdom';
++
++const at = '2099-01-01T12:00:00Z', now = Date.parse(at) - 600_000;
++const trip = (source, id, date = '20990101', time = '11:00') => `${date}_${time}_${source}_${id}`;
++const observation = (tripId, extra = {}, place = {}) => ({mode:'REGIONAL_RAIL', displayName:'R',
++  headsign:'Central', tripId, routeId:'unrelated_route', ...extra,
++  place:{departure:at, scheduledDeparture:at, stopId:`stop-${tripId}`, tz:'UTC', ...place}});
++const rows = (lists, options = {}) => departureRows(lists, {now, count:100, ...options});
++const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
++  permutations(items.filter((_, j) => j !== i)).map(rest => [item, ...rest]));
++
++for (const [first, second] of [
++  [trip('feed', 'one'), trip('feed', 'two')],
++  [trip('feed', 'one'), trip('feed', 'one', '20990101', '11:05')],
++  [trip('feed', 'one'), trip('feed', 'one', '20981231', '35:00')],
++  [trip('feed-name', '_原始_+&trip'), trip('feed-name', '_原始_+&other')],
++]) test(`same-source conflicting trip instances stay distinct: ${second}`, () => {
++  const a = observation(first), b = observation(second, {realTime:true, cancelled:true},
++    {departure:'2099-01-01T12:04:00Z', track:'9'});
++  const input = [[a], [b]], before = structuredClone(input);
++  for (const order of permutations(input)) {
++    const actual = rows(order);
++    assert.equal(actual.length, 2, 'one stop-board list is not necessarily one feed');
++    assert.deepEqual(actual, rows([[a, b]]), 'no cancellation, platform, prediction or trip link crosses identities');
++  }
++  assert.deepEqual(input, before);
++});
++
++test('same-source same-instance observations still merge across boards', () => {
++  const id = trip('feed', '_one_more'), a = observation(id), b = observation(id, {realTime:true, cancelled:true},
++    {departure:'2099-01-01T12:04:00Z', track:'9'});
++  for (const order of permutations([[a], [b]])) {
++    const actual = rows(order);
++    assert.equal(actual.length, 1);
++    assert.deepEqual([actual[0].tripId, actual[0].live, actual[0].cancelled, actual[0].delay, actual[0].track],
++      [id, true, true, 4, '9']);
++  }
++});
++
++test('distinct source tags preserve the existing cross-feed reconciliation', () => {
++  const a = observation(trip('feed-a', 'same'), {agencyName:'One agency'});
++  const b = observation(trip('feed-b', 'same'), {agencyName:'One agency', cancelled:true});
++  for (const order of permutations([[a], [b]])) {
++    assert.equal(rows(order).length, 1, 'matching route/agency labels do not imply one dataset');
++    assert.equal(rows(order)[0].cancelled, true);
++  }
++});
++
++for (const id of ['', 'opaque-trip', 'feed_trip', '20990101_feed_trip', '20990101_11:00__trip',
++  '20990101_11:00_feed_', '20990101_11:99_feed_trip', 'date_11:00_feed_trip',
++  '20990230_11:00_feed_trip', '20991301_11:00_feed_trip'])
++  test(`unrecognized or absent trip ID supplies no dataset identity: ${JSON.stringify(id)}`, () => {
++    const a = observation(id), b = observation(trip('feed', 'other'));
++    for (const order of permutations([[a], [b]])) assert.equal(rows(order).length, 1);
++  });
++
++test('source conflicts remain ambiguity witnesses instead of unlocking another match', () => {
++  const a = observation(trip('feed', 'one')), conflict = observation(trip('feed', 'two'));
++  const duplicate = observation(trip('different-feed', 'one'), {cancelled:true});
++  for (const left of permutations([conflict, duplicate])) for (const order of permutations([[a], left])) {
++    const actual = rows(order);
++    assert.equal(actual.length, 3);
++    assert.equal(actual.find(row => row.tripId === a.tripId).cancelled, false);
++  }
++});
++
++test('a same-source conflict rejects the entire connected group without subgroup merging', () => {
++  const a = observation(trip('feed', 'one')), b = observation(trip('other', 'one'), {cancelled:true});
++  const c = observation(trip('feed', 'two'));
++  for (const order of permutations([[a], [b], [c]])) {
++    const actual = rows(order);
++    assert.equal(actual.length, 3);
++    assert.equal(actual.filter(row => row.cancelled).length, 1);
++  }
++});
++
++test('expired same-source cancellation cannot cancel a distinct delayed trip', () => {
++  const a = observation(trip('feed', 'one'), {cancelled:true});
++  const b = observation(trip('feed', 'two'), {realTime:true}, {departure:'2099-01-01T12:14:00Z', track:'4'});
++  const later = {now:Date.parse('2099-01-01T12:10:00Z')};
++  for (const order of permutations([[a], [b]])) assert.deepEqual(rows(order, later), rows([[b]], later));
++  for (const cancelledId of [b.tripId, trip('other', 'one')]) {
++    const cancelled = {...a, tripId:cancelledId};
++    for (const order of permutations([[cancelled], [b]])) {
++      assert.deepEqual(rows(order, later), rows([[b]], later).map(row => ({...row, cancelled:true})));
++    }
++  }
++});
++
++test('same-source exact repeats within one board retain observation merging', () => {
++  const a = observation(trip('feed', 'one')), b = {...a, cancelled:true};
++  for (const order of permutations([a, b])) {
++    assert.equal(rows([order]).length, 1);
++    assert.equal(rows([order])[0].cancelled, true);
++  }
++});
++
++test('selected boards preserve same-source trains, request limits and separate schedule links', async () => {
++  const a = observation(trip('feed', 'one')), b = observation(trip('feed', 'two'), {cancelled:true}, {track:'9'});
++  for (const order of permutations(['a', 'b'])) {
++    const requests = [], signal = new AbortController().signal;
++    const fetch = async (value, options) => {
++      const url = new URL(value); requests.push({url, options});
++      const body = url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
++        type:'STOP', id:`feed_${id}`, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) :
++        {stopTimes:[url.searchParams.get('stopId') === 'feed_a' ? a : b]};
++      return {ok:true, json:async () => body};
++    };
++    const result = await stationDepartures({lat:0, lon:0, names:['Central']}, {fetch, signal});
++    assert.equal(result.rows.length, 2);
++    assert.equal(requests.length, 3);
++    assert.ok(requests.every(request => request.options.signal === signal));
++    assert.ok(requests.slice(1).every(request => request.url.searchParams.get('n') === '30'));
++    assert.deepEqual(result.stopResults.map(item => item.status), ['fulfilled', 'fulfilled']);
++    const dom = new JSDOM('<!doctype html><body></body>'), tripRequests = [];
++    for (const row of result.rows) dom.window.document.body.append(departureItem(dom.window.document, row, {
++      load:async tripId => {tripRequests.push(tripId); throw new Error('Fixture schedule unavailable');},
++    }));
++    assert.equal(dom.window.document.querySelectorAll('.departure-trip').length, 2);
++    assert.equal(dom.window.document.querySelectorAll('.cancelled').length, 1);
++    for (const details of dom.window.document.querySelectorAll('.departure-trip')) {
++      details.open = true;
++      details.dispatchEvent(new dom.window.Event('toggle'));
++    }
++    await new Promise(resolve => setTimeout(resolve, 20));
++    assert.deepEqual(new Set(tripRequests), new Set([a.tripId, b.tripId]));
++    dom.window.close();
++  }
++});
+diff --git a/docs/investigations/departure-source-identity-20261017.md b/docs/investigations/departure-source-identity-20261017.md
+new file mode 100644
+index 0000000..368aa2f
+--- /dev/null
++++ b/docs/investigations/departure-source-identity-20261017.md
+@@ -0,0 +1,67 @@
++# Preserve distinct same-source trip instances
++
++Related to #113 and #129. Their broader source identity, coverage and public-ref
++requirements remain open.
++
++## Reproduction and contract
++
++On base `3a80f5f75d3ceab72b8b50c0dbe96a8dd8850401`, two selected stop boards can
++contain different trips from the same dataset, with identical line, destination
++and scheduled instant. `departureGroups` treats the board-list index as its only
++source distinction. It merges these distinct trips, losing one schedule link and
++transferring cancellation/platform/prediction state. An expired cancellation can
++also cancel the other delayed trip. These are controlled provider-shaped fixture
++reproductions, not a claim of a specific live station incident.
++
++MOTIS v2.10.2's [tag lookup implementation](https://github.com/motis-project/motis/blob/v2.10.2/src/tag_lookup.cc)
++defines the trip ID envelope as date, start time, dataset tag, and original trip
++ID, separated by underscores. `split_trip_id` preserves underscores in the
++original ID; `id_fragments` uses a YYYYMMDD date and a minimum-two-digit hour
++followed by minutes. The [configuration contract](https://github.com/motis-project/motis/blob/v2.10.2/docs/setup.md)
++forbids underscores in dataset tags. The [stop-time endpoint](https://github.com/motis-project/motis/blob/v2.10.2/src/endpoints/stop_times.cc)
++emits that trip ID for each row. It does not guarantee that two separately
++requested stop boards represent different feeds.
++
++## Correction and risk
++
++- Recognize only that dated MOTIS envelope, validating the calendar date and
++  minute component while allowing extended GTFS hours and arbitrary original IDs.
++- Reject a whole final group containing different trip-instance IDs for the same
++  recognized dataset tag. Apply the same guard to expired cancellation evidence.
++- Keep the original candidate/ambiguity graph. Do not remove competing rows or
++  create smaller groups after a veto.
++- Preserve exact same-instance observations, different-source reconciliation,
++  unknown-format behavior, request limits, cache lifetimes and source labels.
++- Keep publication asset versions coherent and update the user guide.
++
++This is conservative negative identity evidence. Same-source duplicate-looking
++trips can remain separate; missing/unrecognized IDs do not establish identity.
++No agency/route label or stop-board name is treated as a source ID. Cross-source
++equivalence still follows the existing bounded rules, not a worldwide proof.
++
++## Validation receipt
++
++Node 24.19.0, temporary source checkout verified against the base Git tree;
++dependencies reuse the pinned existing installation. Offline fixtures only.
++
++- Final 21-case focused suite: 21 pass. Against the unchanged base parser, the
++  same final tests produce 7 intended failures and 14 passing controls.
++- Cases cover distinct original IDs, service dates/start times, underscores and
++  Unicode, exact repeats, different datasets, malformed/unknown envelopes,
++  preserved ambiguity witnesses, whole-group veto, expired cancellation,
++  selected-board requests and distinct full-schedule links in the DOM.
++- Independent source/contract review found no concrete defect; independently
++  reran 21 tests and 36 additional dataset-tag/original-ID/extended-hour controls.
++- Build, style/station reproducibility, syntax and whitespace checks pass.
++- The first broader focused run ended 505/506 with the startup-test subprocess
++  killed; an isolated TAP rerun confirmed SIGKILL, not an assertion failure.
++  Aggregate validation remains pending at publication.
++- The new production-browser fixture covers both board orders, same/different
++  instances, different sources, expired cancellation and cached reopening.
++  Local execution is blocked: the default Playwright browser is absent; the
++  installed system Chromium fails because Unix-domain sockets are denied. No
++  bypass was attempted. Hosted Chromium/WebKit checks remain required.
++
++Final commands, exact-head review/CI outcomes and immutable bulky-evidence links
++are recorded in the PR receipt. This document does not claim merge, deployment,
++live-provider availability or physical-device acceptance.
