@@ -1,0 +1,70 @@
+{
+  "source_commit": "f3ab73701401cf8a8c5312d07d3e3c028b084cb7",
+  "base_commit": "7defb0ffdd6d6dddb570407369227b9c27f0e657",
+  "files": {
+    "receipt.md": {
+      "bytes": 3769,
+      "sha256": "accbe048dead458113a9d256bc6e8a81ebe8b00dcf7c84b164b93a9cbaa8aef0"
+    },
+    "receipt.json": {
+      "bytes": 1632,
+      "sha256": "445de32f89e020c9fa5e4eebd045f0e29f47abc87ec8e381d2f0020a416932f4"
+    },
+    "source-verification.json": {
+      "bytes": 14276,
+      "sha256": "b86d40614979ecd00f44253e655d2cb38c2e4548464dfb54cd4aaf21a3f2df05"
+    },
+    "candidate.patch": {
+      "bytes": 16420,
+      "sha256": "e7f03ce45fe071d8d6a09eb742bcba7a2612ac64a9e8c569fb10baa9e7ffcef1"
+    },
+    "negative-final.log": {
+      "bytes": 13655,
+      "sha256": "cab211664f18af87c2715f276d1fa73082bb42e451d58b5f38dc34b0ba0ea12b"
+    },
+    "focused-expanded.log": {
+      "bytes": 6873,
+      "sha256": "3439ccd4014ce8caf4da9236b5ed41ef94b253f34c05be72322e640e1adaed5f"
+    },
+    "full-suite.log": {
+      "bytes": 229331,
+      "sha256": "38e40d3431a82b05b114d03b364460844c9c7d44b3ebf25c6fcfad4249c841cc"
+    },
+    "build.log": {
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    "independent-focused.log": {
+      "bytes": 7781,
+      "sha256": "cc906fe222bf819596f4ddf0fd42459ded590ff03d953b0c882930c0611ff690"
+    },
+    "focused.log": {
+      "bytes": 7753,
+      "sha256": "a8279e868105f025837057ef7c696e31c8e2785a4c479a6012f86b89cead13a1"
+    },
+    "independent/review.json": {
+      "bytes": 3318,
+      "sha256": "de56a890a86bdbef517046f979987afcfdaeadb9c0e62b14b3846da38829a2ac"
+    },
+    "independent/chunked-budget.test.mjs": {
+      "bytes": 12560,
+      "sha256": "45380903d7371030349c36b4cbab9a4b867ef14b37f2aa77a12632555a8a6926"
+    },
+    "independent/chunked.log": {
+      "bytes": 4659,
+      "sha256": "521aa6c2ffe4ba0cf256c2d5e964a631e5c11a4cc95dfee8be73c926694bd7c2"
+    },
+    "independent/exact-error-limit.test.mjs": {
+      "bytes": 7545,
+      "sha256": "1911c94dfabd12f0ee9a5b25da293cbecfe66feaa8456f2b8153dbfa0b0ca18b"
+    },
+    "independent/exact-error-base.log": {
+      "bytes": 863,
+      "sha256": "7a9262cac253e9525d9bfad97ec27714bbf45c070cf7d48022e616518adad0b5"
+    },
+    "independent/exact-error-current.log": {
+      "bytes": 863,
+      "sha256": "28b65d8bf778a49643d83df18645c5958cde0118bf5dcefff728131f0f20e31d"
+    }
+  }
+}
