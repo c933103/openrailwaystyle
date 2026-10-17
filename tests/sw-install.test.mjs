@@ -165,7 +165,7 @@ test('a complete replacement keeps the previous version and revised icons availa
   assert.deepEqual(versions, ['new', 'old']);
 });
 
-for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1', '20261012-search-availability-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
+for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1', '20261012-search-availability-1', '20261016-crossfeed-cancellation-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
   assert.ok(currentVersion, 'the actual page declares its asset version');

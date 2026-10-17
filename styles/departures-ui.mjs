@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261016-crossfeed-cancellation-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261017-source-trip-identity-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

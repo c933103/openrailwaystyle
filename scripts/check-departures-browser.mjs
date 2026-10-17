@@ -166,6 +166,46 @@ try {
       }
       boardBodies = {};
       console.log(`${engine}: all three expired cross-feed cancellation flags, live platform/time state, ambiguity and cached reopening passed in both board orders.`);
+      // Distinct stop boards can contain trips from the same dataset. The
+      // provider's dated trip-ID envelope, not the board index, identifies it.
+      for (const order of [['a','b'], ['b','a']]) for (const identity of ['distinct', 'same', 'other-source']) {
+        boardName = `Source identity ${order.join('')} ${identity}`; boardOrder = order; boardFailed = [];
+        const firstId = '20990101_11:00_fixture_one';
+        const secondId = identity === 'same' ? firstId : identity === 'other-source' ?
+          '20990101_11:00_other_two' : '20990101_11:00_fixture_two';
+        boardBodies = {a:{stopTimes:[{...row, tripId:firstId, place:{...row.place, track:'2'}}]},
+          b:{stopTimes:[{...row, tripId:secondId, cancelled:true, realTime:true,
+            place:{...row.place, stopId:'b', track:'9', scheduledDeparture:row.place.departure, departure:'2099-01-01T12:04:00Z'}}]}};
+        const before = boardRequests.length;
+        for (let reopen = 0; reopen < 2; reopen++) {
+          await openStation(boardName); await waitBoard();
+          assert.equal(await page.locator('.departure-list > li').count(), identity === 'distinct' ? 2 : 1);
+          assert.equal(await page.locator('.departure-time.cancelled').count(), 1);
+          const platforms = await page.locator('.departure-track').allTextContents();
+          assert.deepEqual(platforms, identity === 'distinct' ? ['Pl. 2', 'Pl. 9'] : ['Pl. 9']);
+          assert.equal(boardRequests.length - before, 3, 'source-aware rows survive cached reopening without additional requests');
+          await page.locator('#details-close').click();
+        }
+      }
+      for (const order of [['a','b'], ['b','a']]) {
+        boardName = `Expired same-source conflict ${order.join('')}`; boardOrder = order;
+        const date = expiredAt.slice(0, 10).replaceAll('-', '');
+        boardBodies = {a:{stopTimes:[{...row, tripId:`${date}_11:00_fixture_one`, cancelled:true,
+          place:{...row.place, scheduledDeparture:expiredAt, departure:expiredAt}}]},
+          b:{stopTimes:[{...row, tripId:`${date}_11:00_fixture_two`, realTime:true,
+            place:{...row.place, scheduledDeparture:expiredAt, departure:delayedAt, track:'4'}}]}};
+        const before = boardRequests.length;
+        for (let reopen = 0; reopen < 2; reopen++) {
+          await openStation(boardName); await waitBoard();
+          assert.equal(await page.locator('.departure-list > li').count(), 1);
+          assert.equal(await page.locator('.departure-status').textContent(), '+14 min');
+          assert.equal(await page.locator('.departure-time.cancelled').count(), 0);
+          assert.equal(boardRequests.length - before, 3);
+          await page.locator('#details-close').click();
+        }
+      }
+      boardBodies = {};
+      console.log(`${engine}: same-source trip conflicts, same-instance/cross-source duplicates, expired cancellation isolation and cached reopening passed in both board orders.`);
       // A nearer substring name cannot take a board slot or supply the journey
       // origin/destination. Exercise the production click, matching and renderer.
       const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>

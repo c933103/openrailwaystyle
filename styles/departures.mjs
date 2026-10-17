@@ -122,6 +122,23 @@ function conflictingDestinationText(group) {
   // of the first row: no bilingual bridge can hide another row's qualifier.
   return new Set(group.map(row => destinationIdentity(row.headsign))).size > 1;
 }
+function conflictingSourceTrips(group) {
+  // MOTIS tag_lookup encodes date_start-time_dataset-tag_original-trip-id.
+  // Dataset tags cannot contain '_'; original trip IDs can. Only recognize
+  // this provider-defined envelope, never route/agency names or stop lists.
+  // Unknown formats keep the existing ambiguity rules and supply no source.
+  const bySource = new Map();
+  for (const {tripId} of group) {
+    const match = tripId.match(/^(\d{4})(\d{2})(\d{2})_\d{2,}:[0-5]\d_([^_]+)_[\s\S]+$/);
+    if (!match) continue;
+    const date = `${match[1]}-${match[2]}-${match[3]}`, stamp = Date.parse(`${date}T00:00:00Z`);
+    if (!Number.isFinite(stamp) || new Date(stamp).toISOString().slice(0, 10) !== date) continue;
+    const source = match[4];
+    if (bySource.has(source) && bySource.get(source) !== tripId) return true;
+    bySource.set(source, tripId);
+  }
+  return false;
+}
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
@@ -192,6 +209,8 @@ function validateDepartureTime(time) {
 // merge. Conflicting numeric destination components also reject the whole
 // group at this final stage, as do different complete destinations after
 // recognized service tags and source-fixtured bilingual aliases are resolved. These
+// Distinct trip instances with the same recognized MOTIS dataset tag also
+// veto a group: separate stop-board lists do not prove separate feeds. These
 // guards only reject an existing group; they never remove competitors or
 // create new subgroup matches. Unknown destination aliases can remain separate.
 // A merged train has
@@ -290,7 +309,7 @@ function departureGroups(rows, {allCandidates = false} = {}) {
     if (new Set(group.map(r => r.list)).size < group.length ||
         !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
         !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
-        conflictingDestinationText(group)) {
+        conflictingDestinationText(group) || conflictingSourceTrips(group)) {
       out.push(...group.map(row => [row])); continue;
     }
     out.push(group);
