@@ -443,6 +443,29 @@ kept separate. Station snap errors, disconnected graphs, excessive detours and
 near-equivalent alternative paths are withheld. The existing snapshot is not a
 complete mainline graph; matching therefore cannot fill every shapeless feed.
 Matched OSM geometry retains its ODbL licence/attribution.
+Supplied-shape and verified graph-fallback paths share the same geometric interval
+partition before counting. A short working therefore adds to its shared section
+without replacing a full working's count or leaking onto the remainder. This
+uses the same 15 cm collinearity rule: nearby endpoints are reconciled first,
+then interior stops are projected onto those intervals before shared keys are
+formed. Each complete coordinate cluster stays within 15 cm. A middle point
+near two mutually incompatible tracks cannot choose either one by source order:
+those coordinates remain separate, and cuts are projected onto their own path,
+never connected laterally at equal progress. If a served active pattern has this
+ambiguous geometry, the existing route-scoped incomplete-geometry gate makes its
+mapped frequency unknown. Reconciliation is scoped to the route and to workings
+which can contribute to the selected windows, using the same calendar/headway
+calculation as counting (including prior-day extended-hour trips). Other routes,
+calendar-removed or out-of-window workings cannot move a current path or create
+its ambiguity. They may supply projected interval boundaries and reuse a unique
+already-established contributor interval for a zero/inactive measurement, without
+moving the contributor. Final coordinates are checked against the original
+served interval and its original supporting edge so clipping and successive
+reconciliation steps cannot compound beyond 15 cm.
+Explicit source edge ownership preserves a polyline's own dense bends; unused shape tails are
+excluded. Each traversal keeps its direction and preceding served-stop time.
+This does not invent intermediate stop times or deduplicate distinct trips with
+equal counts.
 Shape distances and snap searches use local latitude, so unrelated equatorial
 and northern shapes cannot alter each other's 200 m acceptance threshold.
 

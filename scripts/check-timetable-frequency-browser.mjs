@@ -14,8 +14,8 @@ import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 const temp=await mkdtemp(join(tmpdir(),'atlas-frequency-browser-')),server=await serveAtlasAppFixture();
 try{
  const cases=[];
- for(const variant of ['declared','operator-binding']){
-  const output=join(temp,variant+'.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='operator-binding'?['--operator-binding']:[])],{encoding:'utf8'});
+ for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal']){
+  const output=join(temp,variant+'.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='declared'?[]:[`--${variant}`])],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   const feed=JSON.parse(await readFile(output,'utf8')),osm=table(),matcher=createTimetableMatcher(osm,{now,...(variant==='operator-binding'?{operatorBindings:operatorBindingsFor(feed)}:{})});matcher.addFeed(feed);
   const artifact=matcher.finish();assert.equal(artifact.sections.length,3);
@@ -39,8 +39,8 @@ try{
     return data?route.fulfill({body:gzipSync(data),contentType:'application/octet-stream'}):route.fulfill({status:404});
    });
    await page.clock.install({time:new Date(now)});
-   const profiles=[['am','frequencyPeriod=peak&peakPhase=am',[4,6]],['h08','frequencyPeriod=hour&frequencyHour=8',[2,4]],['overnight','frequencyPeriod=overnight',[0]],['equal','frequencyPeriod=peak',[]]];
-   for(const [profile,query,rates] of variant==='declared'?profiles:profiles.slice(0,1)){
+   const profiles=[['am','frequencyPeriod=peak&peakPhase=am',[4,variant==='mixed-equal'?8:6]],['h08','frequencyPeriod=hour&frequencyHour=8',[2,4]],['overnight','frequencyPeriod=overnight',[0]],['equal','frequencyPeriod=peak',[]]];
+   for(const [profile,query,rates] of variant==='operator-binding'?profiles.slice(0,1):profiles){
     await page.goto(base+`?mode=service&serviceWidth=${profile==='equal'?'equal':'frequency'}&${query}&relief=0&transport=0#12/35.68/139.715`,{waitUntil:'domcontentloaded'});
     await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
     await page.evaluate(async()=>window.testMap=(await import(document.querySelector('script[type="module"]').src)).map);
@@ -50,7 +50,7 @@ try{
     if(profile!=='equal')assert.deepEqual([...new Set(actual.map(f=>f.rate))].sort((a,b)=>a-b),rates);
     if(variant==='operator-binding')assert.ok(actual.every(f=>f.binding==='fixture-operator'));
     for(const f of actual)assert.ok(Math.abs(f.width-f.expected)<1e-5,`${engine} ${profile}: actual renderer width ${f.width} follows ${f.expected}`);
-    await page.screenshot({path:`browser-review/timetable-frequency-${engine}-${profile}${variant==='declared'?'':'-operator-binding'}.png`});
+    await page.screenshot({path:`browser-review/timetable-frequency-${engine}-${profile}${variant==='declared'?'':'-'+variant}.png`});
    }
    assert.deepEqual(errors,[]);await context.close();console.log(`${engine} ${variant}: compiled GTFS counts drive actual map widths`);
    }
