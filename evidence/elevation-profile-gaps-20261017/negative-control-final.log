@@ -1,0 +1,189 @@
+✖ missing heights separate observed stretches rather than manufacturing a slope (1.787904ms)
+✖ partial profiles retain genuine ascent, descent and qualifying slopes on both sides (1.182031ms)
+✖ flat known stretches remain 0%, but isolated samples and zero distance are unknown (0.674992ms)
+✖ actual profile UI leaves internal gaps blank in metric (159.1262ms)
+✖ actual profile UI leaves internal gaps blank in imperial (13.545746ms)
+✖ isolated successful samples stay visible without a false slope or connecting fill (21.407055ms)
+✖ unknown ends are not filled or presented as an end-to-end gradient (15.591081ms)
+✔ complete flat profiles keep their normal continuous chart and honest zero gradient (17.134631ms)
+✔ all failed heights remain an unavailable profile with no invented statistics (14.170413ms)
+✖ a repeated profile can recover from a partial response (13.337508ms)
+✖ actual terrain tile rejection reaches the UI as a gap and recovers on retry (15.226254ms)
+✔ late incomplete heights cannot replace dismiss (10.754269ms)
+✔ late incomplete heights cannot replace newer profile (12.242229ms)
+✔ late incomplete heights cannot replace other details (10.522247ms)
+✖ a zero-length line has finite chart positions and no asserted gradient (13.70508ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 5
+ℹ fail 10
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1165.490102
+
+✖ failing tests:
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:8:1
+✖ missing heights separate observed stretches rather than manufacturing a slope (1.787904ms)
+  TypeError: profileSegments is not a function
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:10:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:14:1
+✖ partial profiles retain genuine ascent, descent and qualifying slopes on both sides (1.182031ms)
+  AssertionError [ERR_ASSERTION]: neither the height jump nor the missing span is measured
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:18:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:21:1
+✖ flat known stretches remain 0%, but isolated samples and zero distance are unknown (0.674992ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== null
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:23:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:27:45
+✖ actual profile UI leaves internal gaps blank in metric (159.1262ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Incomplete elevation profile/. Input:
+  
+  'DRAWN LINESynthetic line22 m0 m0222 mLength222 mLowest0 mHighest22 mAscent / descent10 m / 0 mEnd to end+22 m · +9.89% (98.9‰)Steepest0.0% (0‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:31:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'DRAWN LINESynthetic line22 m0 m0222 mLength222 mLowest0 mHighest22 mAscent / descent10 m / 0 mEnd to end+22 m · +9.89% (98.9‰)Steepest0.0% (0‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.',
+    expected: /Incomplete elevation profile/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:27:45
+✖ actual profile UI leaves internal gaps blank in imperial (13.545746ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Incomplete elevation profile/. Input:
+  
+  'DRAWN LINESynthetic line72 ft0 ft00.14 miLength0.14 miLowest0 ftHighest72 ftAscent / descent33 ft / 0 ftEnd to end+72 ft · +9.89% (98.9‰)Steepest0.0% (0‰) over 328 ftHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:31:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'DRAWN LINESynthetic line72 ft0 ft00.14 miLength0.14 miLowest0 ftHighest72 ftAscent / descent33 ft / 0 ftEnd to end+72 ft · +9.89% (98.9‰)Steepest0.0% (0‰) over 328 ftHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.',
+    expected: /Incomplete elevation profile/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:52:1
+✖ isolated successful samples stay visible without a false slope or connecting fill (21.407055ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:56:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:63:1
+✖ unknown ends are not filled or presented as an end-to-end gradient (15.591081ms)
+  AssertionError [ERR_ASSERTION]: The "string" argument must be of type string. Received type undefined (undefined)
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:70:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /^0\.0%/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:87:1
+✖ a repeated profile can recover from a partial response (13.337508ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Incomplete/. Input:
+  
+  'DRAWN LINESynthetic line22 m0 m0222 mLength222 mLowest0 mHighest22 mAscent / descent20 m / 0 mEnd to end+22 m · +9.89% (98.9‰)Steepest9.9% (99‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:90:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'DRAWN LINESynthetic line22 m0 m0222 mLength222 mLowest0 mHighest22 mAscent / descent20 m / 0 mEnd to end+22 m · +9.89% (98.9‰)Steepest9.9% (99‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.',
+    expected: /Incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:92:1
+✖ actual terrain tile rejection reaches the UI as a gap and recovers on retry (15.226254ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Incomplete elevation profile/. Input:
+  
+  'DRAWN LINEThree tile profile15 m5 m011,959 kmLength11,959 kmLowest10 mHighest10 mAscent / descent0 m / 0 mEnd to end±0 m · ±0% (0.0‰)Steepest0.0% (0‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:103:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'DRAWN LINEThree tile profile15 m5 m011,959 kmLength11,959 kmLowest10 mHighest10 mAscent / descent0 m / 0 mEnd to end±0 m · ±0% (0.0‰)Steepest0.0% (0‰) over 100 mHeights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.',
+    expected: /Incomplete elevation profile/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at negative-source/tests/elevation-profile-gaps.test.mjs:126:1
+✖ a zero-length line has finite chart positions and no asserted gradient (13.70508ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /NaN|Infinity/. Input:
+  
+  '<svg viewBox="0 0 280 150" class="profile-chart" role="img" aria-label="Elevation along the line"><polygon points="NaN,126 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,126" class="profile-area"></polygon><polyline points="NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0" class="profile-line"></polyline><line x1="44" y1="126" x2="272" y2="126" class="profile-axis"></line><line x1="44" y1="10" x2="44" y2="126" class="profile-axis"></line><text x="40" y="14" text-anchor="end">15 m</text><text x="40" y="126" text-anchor="end">5 m</text><text x="44" y="142">0</text><text x="272" y="142" text-anchor="end">0 m</text><line y1="10" y2="126" class="profile-cursor" visibility="hidden"></line><text x="48" y="20" class="profile-readout"></text></svg>'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-profile-gaps-Jqm17Fzv/negative-source/tests/elevation-profile-gaps.test.mjs:128:61)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<svg viewBox="0 0 280 150" class="profile-chart" role="img" aria-label="Elevation along the line"><polygon points="NaN,126 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,126" class="profile-area"></polygon><polyline points="NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0 NaN,68.0" class="profile-line"></polyline><line x1="44" y1="126" x2="272" y2="126" class="profile-axis"></line><line x1="44" y1="10" x2="44" y2="126" class="profile-axis"></line><text x="40" y="14" text-anchor="end">15 m</text><text x="40" y="126" text-anchor="end">5 m</text><text x="44" y="142">0</text><text x="272" y="142" text-anchor="end">0 m</text><line y1="10" y2="126" class="profile-cursor" visibility="hidden"></line><text x="48" y="20" class="profile-readout"></text></svg>',
+    expected: /NaN|Infinity/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }

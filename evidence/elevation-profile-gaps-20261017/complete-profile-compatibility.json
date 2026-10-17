@@ -1,0 +1,6 @@
+{
+  "completeProfilesCompared": 500,
+  "exactSummaryMatches": 500,
+  "randomSeed": 17012026,
+  "exclusions": "zero-length profiles explicitly change to unknown gradient; incomplete profiles intentionally change"
+}

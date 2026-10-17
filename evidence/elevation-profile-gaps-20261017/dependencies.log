@@ -1,0 +1,95 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+openrailwaystyle-world@ /workspace/shared/atlas-profile-gaps-Jqm17Fzv/source
+├── @asamuzakjp/css-color@7.1.4 extraneous -> ./../../atlas-relation-provenance/node_modules/@asamuzakjp/css-color
+├── @asamuzakjp/dom-selector@9.2.4 extraneous -> ./../../atlas-relation-provenance/node_modules/@asamuzakjp/dom-selector
+├── @bramus/specificity@2.4.3 extraneous -> ./../../atlas-relation-provenance/node_modules/@bramus/specificity
+├── @csstools/color-helpers@6.1.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/color-helpers
+├── @csstools/css-calc@3.4.3 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/css-calc
+├── @csstools/css-color-parser@4.2.6 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/css-color-parser
+├── @csstools/css-parser-algorithms@4.0.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/css-parser-algorithms
+├── @csstools/css-syntax-patches-for-csstree@1.1.15 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/css-syntax-patches-for-csstree
+├── @csstools/css-tokenizer@4.0.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@csstools/css-tokenizer
+├── @esbuild/linux-x64@0.28.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@esbuild/linux-x64
+├── @exodus/bytes@1.16.0 extraneous -> ./../../atlas-relation-provenance/node_modules/@exodus/bytes
+├── @mapbox/jsonlint-lines-primitives@2.0.3 extraneous -> ./../../atlas-relation-provenance/node_modules/@mapbox/jsonlint-lines-primitives
+├── @mapbox/point-geometry@0.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/@mapbox/point-geometry
+├── @mapbox/tiny-sdf@2.3.0 extraneous -> ./../../atlas-relation-provenance/node_modules/@mapbox/tiny-sdf
+├── @mapbox/unitbezier@0.0.1 extraneous -> ./../../atlas-relation-provenance/node_modules/@mapbox/unitbezier
+├── @mapbox/vector-tile@1.3.1 -> ./../../atlas-relation-provenance/node_modules/@mapbox/vector-tile
+├── @mapbox/whoots-js@3.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/@mapbox/whoots-js
+├── @maplibre/geojson-vt@6.1.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@maplibre/geojson-vt
+├── @maplibre/maplibre-gl-style-spec@23.1.0 -> ./../../atlas-relation-provenance/node_modules/@maplibre/maplibre-gl-style-spec
+├── @maplibre/mlt@1.3.0 extraneous -> ./../../atlas-relation-provenance/node_modules/@maplibre/mlt
+├── @maplibre/vt-pbf@4.3.2 extraneous -> ./../../atlas-relation-provenance/node_modules/@maplibre/vt-pbf
+├── @types/geojson@7946.0.16 extraneous -> ./../../atlas-relation-provenance/node_modules/@types/geojson
+├── array-source@0.0.4 extraneous -> ./../../atlas-relation-provenance/node_modules/array-source
+├── bidi-js@1.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/bidi-js
+├── buffer-from@1.1.2 extraneous -> ./../../atlas-relation-provenance/node_modules/buffer-from
+├── commander@2.20.3 extraneous -> ./../../atlas-relation-provenance/node_modules/commander
+├── concat-stream@2.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/concat-stream
+├── css-tree@3.2.1 extraneous -> ./../../atlas-relation-provenance/node_modules/css-tree
+├── data-urls@8.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/data-urls
+├── decimal.js@10.6.0 extraneous -> ./../../atlas-relation-provenance/node_modules/decimal.js
+├── earcut@3.2.3 -> ./../../atlas-relation-provenance/node_modules/earcut
+├── entities@8.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/entities
+├── esbuild@0.28.2 -> ./../../atlas-relation-provenance/node_modules/esbuild
+├── fflate@0.8.3 extraneous -> ./../../atlas-relation-provenance/node_modules/fflate
+├── file-source@0.6.1 extraneous -> ./../../atlas-relation-provenance/node_modules/file-source
+├── geobuf@3.0.2 -> ./../../atlas-relation-provenance/node_modules/geobuf
+├── geojson-vt@4.0.2 -> ./../../atlas-relation-provenance/node_modules/geojson-vt
+├── gl-matrix@3.4.4 extraneous -> ./../../atlas-relation-provenance/node_modules/gl-matrix
+├── html-encoding-sniffer@7.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/html-encoding-sniffer
+├── ieee754@1.2.1 extraneous -> ./../../atlas-relation-provenance/node_modules/ieee754
+├── inherits@2.0.4 extraneous -> ./../../atlas-relation-provenance/node_modules/inherits
+├── is-potential-custom-element-name@1.0.1 extraneous -> ./../../atlas-relation-provenance/node_modules/is-potential-custom-element-name
+├── jsdom@30.1.2 -> ./../../atlas-relation-provenance/node_modules/jsdom
+├── json-stringify-pretty-compact@4.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/json-stringify-pretty-compact
+├── kdbush@4.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/kdbush
+├── lru-cache@11.5.3 extraneous -> ./../../atlas-relation-provenance/node_modules/lru-cache
+├── maplibre-contour@0.1.0 -> ./../../atlas-relation-provenance/node_modules/maplibre-contour
+├── maplibre-gl@5.24.0 -> ./../../atlas-relation-provenance/node_modules/maplibre-gl
+├── mdn-data@2.27.1 extraneous -> ./../../atlas-relation-provenance/node_modules/mdn-data
+├── minimist@1.2.8 extraneous -> ./../../atlas-relation-provenance/node_modules/minimist
+├── murmurhash-js@1.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/murmurhash-js
+├── node_modules@ extraneous -> ./../../atlas-relation-provenance/node_modules
+├── parse5@8.0.1 extraneous -> ./../../atlas-relation-provenance/node_modules/parse5
+├── path-source@0.1.3 extraneous -> ./../../atlas-relation-provenance/node_modules/path-source
+├── pbf@3.3.0 -> ./../../atlas-relation-provenance/node_modules/pbf
+├── playwright-core@1.56.1 extraneous -> ./../../atlas-relation-provenance/node_modules/playwright-core
+├── playwright@1.56.1 -> ./../../atlas-relation-provenance/node_modules/playwright
+├── pmtiles@4.2.1 -> ./../../atlas-relation-provenance/node_modules/pmtiles
+├── polygon-clipping@0.15.7 -> ./../../atlas-relation-provenance/node_modules/polygon-clipping
+├── potpack@2.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/potpack
+├── protocol-buffers-schema@3.6.1 extraneous -> ./../../atlas-relation-provenance/node_modules/protocol-buffers-schema
+├── punycode@2.3.1 extraneous -> ./../../atlas-relation-provenance/node_modules/punycode
+├── quickselect@3.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/quickselect
+├── readable-stream@3.6.2 extraneous -> ./../../atlas-relation-provenance/node_modules/readable-stream
+├── require-from-string@2.0.2 extraneous -> ./../../atlas-relation-provenance/node_modules/require-from-string
+├── resolve-protobuf-schema@2.1.0 extraneous -> ./../../atlas-relation-provenance/node_modules/resolve-protobuf-schema
+├── robust-predicates@3.0.3 extraneous -> ./../../atlas-relation-provenance/node_modules/robust-predicates
+├── rw@1.3.3 extraneous -> ./../../atlas-relation-provenance/node_modules/rw
+├── safe-buffer@5.2.1 extraneous -> ./../../atlas-relation-provenance/node_modules/safe-buffer
+├── saxes@6.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/saxes
+├── shapefile@0.6.6 extraneous -> ./../../atlas-relation-provenance/node_modules/shapefile
+├── slice-source@0.4.1 extraneous -> ./../../atlas-relation-provenance/node_modules/slice-source
+├── source-map-js@1.2.2 extraneous -> ./../../atlas-relation-provenance/node_modules/source-map-js
+├── splaytree@3.2.3 extraneous -> ./../../atlas-relation-provenance/node_modules/splaytree
+├── stream-source@0.3.5 extraneous -> ./../../atlas-relation-provenance/node_modules/stream-source
+├── string_decoder@1.3.0 extraneous -> ./../../atlas-relation-provenance/node_modules/string_decoder
+├── text-encoding@0.6.4 extraneous -> ./../../atlas-relation-provenance/node_modules/text-encoding
+├── tinyqueue@3.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/tinyqueue
+├── tldts-core@7.4.18 extraneous -> ./../../atlas-relation-provenance/node_modules/tldts-core
+├── tldts@7.4.18 extraneous -> ./../../atlas-relation-provenance/node_modules/tldts
+├── tough-cookie@6.0.2 extraneous -> ./../../atlas-relation-provenance/node_modules/tough-cookie
+├── tr46@7.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/tr46
+├── typedarray@0.0.6 extraneous -> ./../../atlas-relation-provenance/node_modules/typedarray
+├── undici@8.11.2 extraneous -> ./../../atlas-relation-provenance/node_modules/undici
+├── util-deprecate@1.0.2 extraneous -> ./../../atlas-relation-provenance/node_modules/util-deprecate
+├── vt-pbf@3.1.3 -> ./../../atlas-relation-provenance/node_modules/vt-pbf
+├── w3c-xmlserializer@6.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/w3c-xmlserializer
+├── webidl-conversions@8.0.1 extraneous -> ./../../atlas-relation-provenance/node_modules/webidl-conversions
+├── whatwg-mimetype@5.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/whatwg-mimetype
+├── whatwg-url@17.2.0 extraneous -> ./../../atlas-relation-provenance/node_modules/whatwg-url
+├── xml-name-validator@5.0.0 extraneous -> ./../../atlas-relation-provenance/node_modules/xml-name-validator
+└── xmlchars@2.2.0 extraneous -> ./../../atlas-relation-provenance/node_modules/xmlchars
+

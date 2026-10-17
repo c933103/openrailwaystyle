@@ -1,0 +1,66 @@
+{
+  "commit": "84c0258018e5223f852cd273feaa1264efa2a7e0",
+  "changedFiles": [
+    {
+      "path": "docs/investigations/elevation-profile-gaps-20261017.md",
+      "sha": "1b9934e6ffc55c81436a93d59acab05d800e51fe"
+    },
+    {
+      "path": "docs/user-guide.md",
+      "sha": "5c6a80e82bfcdad8628db7dd6ed9d79479c7e6c7"
+    },
+    {
+      "path": "styles/app.mjs",
+      "sha": "82c0c295c725b85878076b532927aedf072f94f5"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "sha": "a7066fea6572ef166f3303389ab5362081bf8723"
+    },
+    {
+      "path": "styles/data-check.html",
+      "sha": "163e02e1e8b75a971d41df94ef6cd9e81fcb9731"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "sha": "176b89cd819f6364c415e53a915221c5f5c43e70"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "sha": "d68ef31c990898c67c946bbef31091327894b80a"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "sha": "752a6c64819fe738a66a356d420a7c39e4d73d1e"
+    },
+    {
+      "path": "styles/index.html",
+      "sha": "c28b743cd3ec3e4a1556306abf4234552ba98ed0"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "sha": "169d58774561171c4fb0aa4fd9e5a280ddf2be66"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "sha": "ab22ae0aa2571179ec7f5f161ad7eb83bafaff70"
+    },
+    {
+      "path": "styles/sw.js",
+      "sha": "5b806c0896f2287c55c6057f38c9fcf639c9c0b3"
+    },
+    {
+      "path": "tests/elevation-profile-gaps.test.mjs",
+      "sha": "adbf33a25e2f5b45140a88cc88c7c82da49e88f0"
+    },
+    {
+      "path": "tests/helpers/profile-ui-harness.mjs",
+      "sha": "ac95b6cc2b0f0850a95286840e3cb23338fac452"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "sha": "4a58bb44fd3e216b6abdc6355e2a0396004888bf"
+    }
+  ],
+  "removed": 0
+}

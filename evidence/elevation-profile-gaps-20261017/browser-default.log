@@ -1,0 +1,19 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+browserType.launch: Executable doesn't exist at /home/agent/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+    at launchBrowser (/workspace/shared/atlas-profile-gaps-Jqm17Fzv/source/scripts/browser.mjs:36:22)
+    at /workspace/shared/atlas-profile-gaps-Jqm17Fzv/source/[eval1]:1:68 {
+  name: 'Error'
+}
+
+Node.js v24.19.0

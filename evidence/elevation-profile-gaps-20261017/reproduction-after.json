@@ -1,0 +1,40 @@
+{
+  "source": "84c0258018e5223f852cd273feaa1264efa2a7e0",
+  "profile": [
+    {
+      "at": 0,
+      "height": 0,
+      "point": [
+        0,
+        0
+      ]
+    },
+    {
+      "at": 0.05,
+      "height": null,
+      "point": [
+        0.001,
+        0
+      ]
+    },
+    {
+      "at": 0.1,
+      "height": 100,
+      "point": [
+        0.002,
+        0
+      ]
+    }
+  ],
+  "stats": {
+    "min": 0,
+    "max": 100,
+    "ascent": null,
+    "descent": null,
+    "steepest": null,
+    "over": 0.1
+  },
+  "lines": [],
+  "areaCount": 0,
+  "isolatedPoints": 2
+}

@@ -1,0 +1,96 @@
+{
+  "base": "b194d78cd32496489ebfa94ee774620a33f27617",
+  "files": [
+    {
+      "path": "docs/investigations/elevation-profile-gaps-20261017.md",
+      "bytes": 2878,
+      "sha256": "302e81d5418960e494bc93008d170f4d1b745d111d08638e8d8c2423ca2da813",
+      "gitBlobSha": "1b9934e6ffc55c81436a93d59acab05d800e51fe"
+    },
+    {
+      "path": "docs/user-guide.md",
+      "bytes": 17087,
+      "sha256": "2a076e76c98f01e3ff5f074ec181632b61bd07155250aaa82b1662690b5da204",
+      "gitBlobSha": "5c6a80e82bfcdad8628db7dd6ed9d79479c7e6c7"
+    },
+    {
+      "path": "styles/app.mjs",
+      "bytes": 167781,
+      "sha256": "91c231282f8461ee6da9b7a7b3f0e315be407b5169eba38ebd6edfb716502496",
+      "gitBlobSha": "82c0c295c725b85878076b532927aedf072f94f5"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "bytes": 4086,
+      "sha256": "0cd7be8f7ebb0b6f44a9c1a3ed1911fdc6545ddeb3d8367b23500d168a8a85ee",
+      "gitBlobSha": "a7066fea6572ef166f3303389ab5362081bf8723"
+    },
+    {
+      "path": "styles/data-check.html",
+      "bytes": 1408,
+      "sha256": "c853cea6037f9213d9e022d8efa155934889fc2510cdff1a1a13dafad4f67665",
+      "gitBlobSha": "163e02e1e8b75a971d41df94ef6cd9e81fcb9731"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "bytes": 3843,
+      "sha256": "2e94d82e0f9f1115d9f8b114eb9df56493cb0933216af98914334eb8b473e2a3",
+      "gitBlobSha": "176b89cd819f6364c415e53a915221c5f5c43e70"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "bytes": 6982,
+      "sha256": "b8b19bcefec3c9824b0d3b5f697ac19539d4e976ff334ecdb82b73defc0b0d44",
+      "gitBlobSha": "d68ef31c990898c67c946bbef31091327894b80a"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "bytes": 7745,
+      "sha256": "cf125a4b13dea0b9b1ba811eb2d8b7864cb91e4563f63714cc29e63dbebe0f89",
+      "gitBlobSha": "752a6c64819fe738a66a356d420a7c39e4d73d1e"
+    },
+    {
+      "path": "styles/index.html",
+      "bytes": 46961,
+      "sha256": "daea9742842787ca6ad594d65de48da554aac8d6d625b7ddda4a8ed4a8254a43",
+      "gitBlobSha": "c28b743cd3ec3e4a1556306abf4234552ba98ed0"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "bytes": 6080,
+      "sha256": "df9567de99d60a259a9d8e2a72e0bac81062556014f6cad783cde5c55bee6ba0",
+      "gitBlobSha": "169d58774561171c4fb0aa4fd9e5a280ddf2be66"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "bytes": 62073,
+      "sha256": "80264b554adc6480a69bdbb90e1613589d2e06b192aebb7ed2d81ecb60de3db8",
+      "gitBlobSha": "ab22ae0aa2571179ec7f5f161ad7eb83bafaff70"
+    },
+    {
+      "path": "styles/sw.js",
+      "bytes": 14898,
+      "sha256": "ef149b9c1c7fdcf2bd582f68188b4073eb9db8916f67557c9dbcb909ec738bd7",
+      "gitBlobSha": "5b806c0896f2287c55c6057f38c9fcf639c9c0b3"
+    },
+    {
+      "path": "tests/elevation-profile-gaps.test.mjs",
+      "bytes": 8447,
+      "sha256": "8b2e78e14ecd3b8565b873507015c8467cad35aecfda6082ba16449485a1b0a3",
+      "gitBlobSha": "adbf33a25e2f5b45140a88cc88c7c82da49e88f0"
+    },
+    {
+      "path": "tests/helpers/profile-ui-harness.mjs",
+      "bytes": 2316,
+      "sha256": "49316c902b590116eae101084a6acbccb0a06f2fb393fc1205bc434349af4364",
+      "gitBlobSha": "ac95b6cc2b0f0850a95286840e3cb23338fac452"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "bytes": 66165,
+      "sha256": "f88b8ffb079e241ff5a566391cf355b2cbeb318688891e6b68f795aa72033f9d",
+      "gitBlobSha": "4a58bb44fd3e216b6abdc6355e2a0396004888bf"
+    }
+  ],
+  "sourceCommit": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+}
