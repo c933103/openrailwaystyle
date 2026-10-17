@@ -45,7 +45,11 @@ bilingual pairs remain compatible, as do the leading service tags `(Local)`,
 `(普通)` and `(普通 Local)`. Other aliases and unknown tags remain part of the
 destination, so some duplicate-looking rows stay separate until stronger source
 evidence is available. These checks veto the entire group without choosing a
-smaller subgroup. This does not establish full cross-source train identity.
+smaller subgroup. If recognized MOTIS trip IDs identify different trip instances
+within the same dataset, those rows also remain separate, even across different
+stop boards. A cancellation from one instance cannot cancel another. Unrecognized
+or missing IDs supply no dataset identity; route and agency labels are not used
+to infer it. This does not establish full cross-source train identity.
 
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. This includes malformed rows or wrong-typed fields consumed by the
