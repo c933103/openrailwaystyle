@@ -1,0 +1,150 @@
+{
+  "source": "71c4c312058509d377af8d97c21e82fae09fa766",
+  "base": "6aa700ac4ed39647c5026a4bad96e46d63e4e1a6",
+  "environment": {
+    "node": "24.19.0",
+    "os": "Linux x64"
+  },
+  "results": {
+    "predecessorRegression": {
+      "pass": 20,
+      "fail": 26
+    },
+    "focusedFinal": {
+      "pass": 210,
+      "fail": 0
+    },
+    "fullAppSearchFocused": {
+      "pass": 5,
+      "fail": 0
+    },
+    "aggregate": {
+      "pass": 2303,
+      "fail": 1,
+      "limit": "startup child process; isolated replay signal SIGKILL"
+    },
+    "isolatedStartup": {
+      "pass": 116,
+      "fail": 1,
+      "signal": "SIGKILL"
+    },
+    "browser": "installed Chromium local process socket denied: Operation not permitted",
+    "build": "passed",
+    "styleEquality": "passed",
+    "syntax": "passed",
+    "diffCheck": "passed"
+  },
+  "commands": [
+    "node --experimental-vm-modules --test tests/search-row-isolation.test.mjs tests/search-availability.test.mjs tests/search-numeric-names.test.mjs tests/station-antimeridian.test.mjs tests/map.test.mjs tests/sw-install.test.mjs",
+    "NODE_OPTIONS=--max-old-space-size=1536 node --experimental-vm-modules --test --test-concurrency=1 tests/*.test.mjs",
+    "node --experimental-vm-modules --max-old-space-size=1536 --test --test-reporter=tap tests/startup.test.mjs",
+    "node --experimental-vm-modules --test --test-name-pattern='search|every versioned file|executing cached asset|mismatched cached bundle' tests/startup.test.mjs",
+    "npm run build",
+    "git diff --exit-code -- styles/world.style.json styles/major-stations.geojson",
+    "node --check styles/app.mjs",
+    "node --check styles/map-model.mjs",
+    "git diff --check"
+  ],
+  "files": [
+    {
+      "name": "baseline-verification.json",
+      "bytes": 419,
+      "sha256": "ab6ec587cc2fb583dea1c07865832685fff9006f24a762922dae7703520454e8"
+    },
+    {
+      "name": "browser-availability.log",
+      "bytes": 4794,
+      "sha256": "d901fc2fc93bdf0daac4bd728b75d42f57859594514e9af4ae8ff0288a9b0c4b"
+    },
+    {
+      "name": "browser-permitted-launch.log",
+      "bytes": 4647,
+      "sha256": "f63b57dc1691e2f57fb6a51dc96762fff29b2ff528d52621756d7ee06d8d6843"
+    },
+    {
+      "name": "build-final.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "name": "build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "name": "cache-upgrade.log",
+      "bytes": 7590,
+      "sha256": "35b417395611d81ebf353833e6b440536d693d622bde49c2048dab4821569ca4"
+    },
+    {
+      "name": "focused-expanded.log",
+      "bytes": 12590,
+      "sha256": "590a7481e1607eb1a546f94724d3157a1486505efb3de1ddb4ae93b2b4b58013"
+    },
+    {
+      "name": "focused-final.log",
+      "bytes": 20234,
+      "sha256": "a6fec1a049b53ea26150f4a0007cc78bc5c68760b26fa7d463466048e1f3ff76"
+    },
+    {
+      "name": "focused-initial.log",
+      "bytes": 11332,
+      "sha256": "02a571b5905418d4c2730c2d9b202f360f60307758e562bfb310088a8b5ff154"
+    },
+    {
+      "name": "focused-selection-first.log",
+      "bytes": 21018,
+      "sha256": "ccfabc25ec653d921a9076926c7c99f91cdaa16dc0dd1c5bd044e1c3c8ed42e0"
+    },
+    {
+      "name": "full-suite.log",
+      "bytes": 237063,
+      "sha256": "b849509495fdea0e95dcdf2a1fd522a956f28e5dce688632b8e130ba98ed15bd"
+    },
+    {
+      "name": "negative-control.log",
+      "bytes": 33960,
+      "sha256": "0c322f7cf5a4c6be89e878ef024c599571c227e81f2eb8df00ffb993c7917bc3"
+    },
+    {
+      "name": "negative-replayed.log",
+      "bytes": 34709,
+      "sha256": "e530fdc4817e822530f2c04729f1bb20cd7616648c2d43f734393006f1b79920"
+    },
+    {
+      "name": "predecessor-regressions.test.mjs",
+      "bytes": 4196,
+      "sha256": "5674289c175c3180ec305a62e9bd1ddec6f8a471b790bf8ee8389762997cf1ac"
+    },
+    {
+      "name": "publication-source.json",
+      "bytes": 1819,
+      "sha256": "ba09d7124b1486def3012eb425b2ea5d4832d93dbb45fa8dd9a5b0c8c27b2236"
+    },
+    {
+      "name": "source-manifest.json",
+      "bytes": 3172,
+      "sha256": "394d4936d487b0a6fde1ea58a3b6fef07aa9e3b18a2241ec6e8cfb651baf4aad"
+    },
+    {
+      "name": "source.patch",
+      "bytes": 37729,
+      "sha256": "414e3102f0bc7e95ff5dabffc9ed1440d2b9284f539b7d57867d411483aaff4b"
+    },
+    {
+      "name": "startup-isolated.log",
+      "bytes": 35919,
+      "sha256": "72025de05b4211a31eb08b0e52e3f364de09794f14b16051248e237a76a91322"
+    },
+    {
+      "name": "startup-search-focused.log",
+      "bytes": 779,
+      "sha256": "e0c20b7bea5064c7f1aeb43cebd6630592a63794c0d9f5af3948dd7286972b19"
+    }
+  ],
+  "archive": {
+    "name": "acceptance-evidence.zip",
+    "bytes": 121131,
+    "sha256": "0053d3bfb35fe744a3239af70d9231943023c4c3800fba8c07b42b212868bfd3"
+  }
+}

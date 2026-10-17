@@ -1,9 +1,0 @@
-{
-  "node": "v24.19.0",
-  "baselineSha256": "f2075dfc0bdb58e444d80d7b3517e75d1855aa8c7837d216ef2f25750bb34338",
-  "candidateSha256": "52338c2e1a57c1c45c31f13e1e16c747b7b8b84af336de077d38eaeaee8940f2",
-  "trials": 12000,
-  "oldMergedGroups": 8267,
-  "candidateMergedGroups": 2664,
-  "newlyFormedGroupExamples": []
-}
