@@ -1,0 +1,121 @@
+{
+  "source": "90bbbd6801af6db1886eee2d3d25336c61990d1a",
+  "predecessor": "71c4c312058509d377af8d97c21e82fae09fa766",
+  "environment": {
+    "node": "24.19.0",
+    "os": "Linux x64"
+  },
+  "results": {
+    "fieldNegative": {
+      "pass": 5,
+      "fail": 26
+    },
+    "focusedFinal": {
+      "pass": 241,
+      "fail": 0
+    },
+    "fullAppSearchVersion": {
+      "pass": 5,
+      "fail": 0
+    },
+    "aggregate": {
+      "pass": 2338,
+      "fail": 1,
+      "failedFile": "tests/startup.test.mjs"
+    },
+    "isolatedStartup": {
+      "pass": 110,
+      "fail": 1,
+      "signal": "SIGABRT",
+      "heapMiB": 1024
+    },
+    "build": "passed",
+    "styleEquality": "passed",
+    "syntax": "passed",
+    "diffCheck": "passed",
+    "browser": "prior installed Chromium process socket denied; no real-browser acceptance claimed"
+  },
+  "commands": [
+    "node --experimental-vm-modules --test tests/search-field-validation.test.mjs tests/search-row-isolation.test.mjs tests/search-availability.test.mjs tests/search-numeric-names.test.mjs tests/station-antimeridian.test.mjs tests/map.test.mjs tests/sw-install.test.mjs",
+    "NODE_OPTIONS=--max-old-space-size=1024 node --experimental-vm-modules --test --test-concurrency=1 tests/*.test.mjs",
+    "node --experimental-vm-modules --max-old-space-size=1024 --test --test-reporter=tap tests/startup.test.mjs",
+    "node --experimental-vm-modules --test --test-name-pattern='search|every versioned file|executing cached asset|mismatched cached bundle' tests/startup.test.mjs",
+    "npm run build",
+    "git diff --exit-code -- styles/world.style.json styles/major-stations.geojson",
+    "node --check styles/map-model.mjs",
+    "node --check styles/app.mjs",
+    "git diff --check"
+  ],
+  "files": [
+    {
+      "name": "build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "name": "display-after.json",
+      "bytes": 1164,
+      "sha256": "f7ed5df79579847f0f74f43c740754f2ece38aeb584d5b432ce4a425745bae46"
+    },
+    {
+      "name": "display-before.json",
+      "bytes": 1083,
+      "sha256": "ecf11e0c9a5772f5f9f848cfa2e1645739d8a5d5e986ecde83b79240efaae65d"
+    },
+    {
+      "name": "field-negative-control.log",
+      "bytes": 26506,
+      "sha256": "eabe538b08867fa328308c9f2175fef79c08ea71894a3f75f80b48b6c0229ec9"
+    },
+    {
+      "name": "focused-final.log",
+      "bytes": 22992,
+      "sha256": "3cc952fa3c7ff2ccf95a6ad00936a8fcaed02dc9bc164e0212bd613880ca4cf4"
+    },
+    {
+      "name": "full-suite.log",
+      "bytes": 242011,
+      "sha256": "a1b5f09dda1d6877c94bdde8abcf25baa6a3fc85072c817f07f1338195c2df79"
+    },
+    {
+      "name": "predecessor-field-regressions.test.mjs",
+      "bytes": 4368,
+      "sha256": "1eab0493bf952b4614de4066a036550c4a09307f02abde09ccc6527c87c79e6e"
+    },
+    {
+      "name": "probe-display-fields.mjs",
+      "bytes": 847,
+      "sha256": "ae850c27b2b68d55db25c01d0bb468b3e9a791503990b6e2332365daf0afe703"
+    },
+    {
+      "name": "publication-source.json",
+      "bytes": 1956,
+      "sha256": "946a13534dd1ce078e8c2438e7b734b7a000d2b5a25fa6b4848e1ab682d98c20"
+    },
+    {
+      "name": "review-correction.patch",
+      "bytes": 4372,
+      "sha256": "578d5a4dbe30238a14eba4062c2eb0babb25e1fa53ab25b4f0f7613b21c934f1"
+    },
+    {
+      "name": "source-manifest.json",
+      "bytes": 3406,
+      "sha256": "70540e161432d9764ec33162bfd67c9592d2b3b1b091af4f457d9a6a5fb4e405"
+    },
+    {
+      "name": "startup-isolated.log",
+      "bytes": 35335,
+      "sha256": "453dbabaeb9fcda37fe2d5c3cc9bd4d880c954b489b08c2efc1ec7e01705bef0"
+    },
+    {
+      "name": "startup-search-focused.log",
+      "bytes": 780,
+      "sha256": "1c31a02c97a7d7271e47a44ea982be838c897dd6834222fbd30282602580eb54"
+    }
+  ],
+  "archive": {
+    "name": "acceptance-evidence.zip",
+    "bytes": 91781,
+    "sha256": "a76a2380d64e0bcea5a5d48c526461ab51d9c7c231b7da02a0f579ac2fc063c9"
+  }
+}
