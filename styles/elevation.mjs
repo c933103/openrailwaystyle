@@ -4,7 +4,7 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261017-search-row-isolation-1';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261017-elevation-profile-gaps-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -107,25 +107,41 @@ export function alongLine(coordinates, count, lengthKm) {
   return out;
 }
 
-// Summary of a profile [{at, height}]: lowest, highest, total ascent and
-// descent, and the steepest gradient over any stretch of at least `over` km
-// (shorter spans mostly show the terrain data's noise).
-export function profileStats(profile, over = 0.1) {
-  const heights = profile.map(p => p.height).filter(h => h !== null);
-  if (!heights.length) return null;
-  let ascent = 0, descent = 0, steepest = 0;
-  const total = profile.at(-1).at - profile[0].at, span = Math.min(over, total);
-  for (let i = 1; i < profile.length; i++) {
-    const [a, b] = [profile[i - 1], profile[i]];
-    if (a.height === null || b.height === null) continue;
-    const rise = b.height - a.height;
-    if (rise > 0) ascent += rise; else descent -= rise;
+// Contiguous observed stretches. Missing samples must remain gaps in both the
+// chart and the summary; two valid endpoints do not establish the terrain
+// between them when an intermediate tile could not be read.
+export function profileSegments(profile) {
+  const segments = [];
+  let current;
+  for (const sample of profile) {
+    if (!Number.isFinite(sample.height)) { current = null; continue; }
+    if (!current) { current = []; segments.push(current); }
+    current.push(sample);
   }
-  for (let i = 0, j = 0; i < profile.length; i++) {
-    while (j < profile.length && profile[j].at - profile[i].at < span - 1e-9) j++;
-    if (j === profile.length) break;
-    const [a, b] = [profile[i], profile[j]];
-    if (a.height !== null && b.height !== null && b.at > a.at) steepest = Math.max(steepest, Math.abs(b.height - a.height) / ((b.at - a.at) * 1000));
+  return segments;
+}
+
+// Summary of the observed stretches: lowest, highest, total ascent and
+// descent, and the steepest gradient over a contiguous stretch of at least
+// `over` km (shorter spans mostly show the terrain data's noise). A missing
+// eligible stretch yields null, not an invented flat gradient.
+export function profileStats(profile, over = 0.1) {
+  const segments = profileSegments(profile), heights = segments.flat().map(p => p.height);
+  if (!heights.length) return null;
+  let ascent = null, descent = null, steepest = null;
+  const total = profile.at(-1).at - profile[0].at, span = Math.min(over, total);
+  for (const segment of segments) {
+    for (let i = 1; i < segment.length; i++) {
+      const rise = segment[i].height - segment[i - 1].height;
+      ascent = (ascent ?? 0) + Math.max(0, rise);
+      descent = (descent ?? 0) + Math.max(0, -rise);
+    }
+    for (let i = 0, j = 0; i < segment.length; i++) {
+      while (j < segment.length && segment[j].at - segment[i].at < span - 1e-9) j++;
+      if (j === segment.length) break;
+      const [a, b] = [segment[i], segment[j]];
+      if (b.at > a.at) steepest = Math.max(steepest ?? 0, Math.abs(b.height - a.height) / ((b.at - a.at) * 1000));
+    }
   }
   return {min: Math.min(...heights), max: Math.max(...heights), ascent, descent, steepest, over: span};
 }
