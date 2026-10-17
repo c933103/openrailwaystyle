@@ -1,26 +1,26 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261017-platform-measure-zoom-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261017-platform-measure-zoom-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261017-platform-measure-zoom-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261017-platform-measure-zoom-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261017-platform-measure-zoom-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261017-platform-measure-zoom-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261017-platform-measure-zoom-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261017-search-row-isolation-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261017-search-row-isolation-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261017-search-row-isolation-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261017-search-row-isolation-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261017-search-row-isolation-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261017-search-row-isolation-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261017-search-row-isolation-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261017-platform-measure-zoom-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261017-platform-measure-zoom-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261017-platform-measure-zoom-1';
-import {departureItem} from './departures-ui.mjs?v=20261017-platform-measure-zoom-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261017-platform-measure-zoom-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261017-platform-measure-zoom-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261017-platform-measure-zoom-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261017-platform-measure-zoom-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261017-platform-measure-zoom-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261017-platform-measure-zoom-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261017-platform-measure-zoom-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261017-platform-measure-zoom-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261017-platform-measure-zoom-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261017-platform-measure-zoom-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261017-platform-measure-zoom-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261017-search-row-isolation-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261017-search-row-isolation-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261017-search-row-isolation-1';
+import {departureItem} from './departures-ui.mjs?v=20261017-search-row-isolation-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261017-search-row-isolation-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261017-search-row-isolation-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261017-search-row-isolation-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261017-search-row-isolation-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261017-search-row-isolation-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261017-search-row-isolation-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261017-search-row-isolation-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261017-search-row-isolation-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261017-search-row-isolation-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261017-search-row-isolation-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261017-search-row-isolation-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -58,7 +58,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261017-platform-measure-zoom-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261017-search-row-isolation-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -2094,7 +2094,7 @@ async function placeSearch(url, json, signal) {
   if (signal?.aborted) throw new Error('Search replaced');
   placeNext = Date.now() + 1000;
   const items = await json(url);
-  placeCache.set(key, items);
+  if (!items.invalid) placeCache.set(key, items);
   while (placeCache.size > 50) placeCache.delete(placeCache.keys().next().value);
   return items;
 }
@@ -2122,7 +2122,7 @@ $('search-form').addEventListener('submit', async e => {
     if (response.status === 429 && url.href.startsWith(SEARCH_API)) searchPausedUntil = Date.now() + 10 * 60_000;
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
     const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
-    return items;
+    return searchResponse(items, url.href.startsWith(SEARCH_API) ? 'facility' : 'place');
   };
   try {
     // Search must work while map labels are still downloading. The small
@@ -2154,9 +2154,9 @@ $('search-form').addEventListener('submit', async e => {
     const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
       source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
         : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
-    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
+    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value?.items || []) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
-    const {rail, places: other} = searchResults([...(facilities.value || []), ...local], places.value || []);
+    const {rail, places: other} = searchResults([...(facilities.value?.items || []), ...local], places.value?.items || []);
     const results = $('search-results'); results.replaceChildren();
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {
@@ -2190,11 +2190,13 @@ $('search-form').addEventListener('submit', async e => {
     const count = rail.length + other.length;
     results.hidden = !count;
     const unavailable = [facilities.status === 'rejected' && 'station search', places.status === 'rejected' && 'place search'].filter(Boolean);
+    const invalid = [facilities.value?.invalid && 'station search', places.value?.invalid && 'place search'].filter(Boolean);
+    const incomplete = [unavailable.length && `${unavailable.join(' and ')} unavailable`, ...invalid.map(source => `${source} returned invalid results`)].filter(Boolean);
     // An empty healthy sibling does not establish a completed no-match search.
     // Keep usable rows, but make their incomplete source coverage explicit too.
     $('search-status').textContent = (count ? `${rail.length} railway ${rail.length === 1 ? 'result' : 'results'}, ${other.length} ${other.length === 1 ? 'place' : 'places'}`
-      : unavailable.length ? 'No matches from the available sources.' : 'No matching facility or place found. Try a local name or railway code.')
-      + (unavailable.length ? `${count ? '.' : ''} Search incomplete: ${unavailable.join(' and ')} unavailable.` : '');
+      : incomplete.length ? 'No matches from the available sources.' : 'No matching facility or place found. Try a local name or railway code.')
+      + (incomplete.length ? `${count ? '.' : ''} Search incomplete: ${incomplete.join('; ')}.` : '');
   } catch (error) {
     if (controller !== searchController) return;
     $('search-status').textContent = 'Search is unavailable. Try again, or browse by panning and zooming.';

@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261017-platform-measure-zoom-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261017-platform-measure-zoom-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261017-search-row-isolation-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261017-search-row-isolation-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261017-platform-measure-zoom-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261017-search-row-isolation-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -35,7 +35,7 @@ const RAIL_PLACES = {railway: ['station', 'halt', 'tram_stop'], building: ['trai
 // object) is a railway station only with rail evidence among its tags
 // (asked for with extratags=1); bus, coach and ferry stations are places.
 const RAIL_MODES = ['train', 'subway', 'light_rail', 'monorail', 'tram'];
-const isRailPlace = place => RAIL_PLACES[place.category]?.includes(place.type) ||
+const isRailPlace = place => (Object.hasOwn(RAIL_PLACES, place.category) && RAIL_PLACES[place.category].includes(place.type)) ||
   (place.category === 'public_transport' && place.type === 'station' &&
     (['station', 'halt', 'tram_stop'].includes(place.extratags?.railway) || RAIL_MODES.some(mode => place.extratags?.[mode] === 'yes')));
 // Two station names are the same when equal, or when one is the other plus
@@ -117,17 +117,47 @@ export function drawnStationQueries(layers, zoom) {
   }
   return [...queries.values()].map(({source, sourceLayer, filters}) => ({source, sourceLayer, filter: ['any', ...filters]}));
 }
+// A successful HTTP array can contain unusable rows. Validate each source row
+// before reconciliation or caching, keeping good siblings and the rejected count.
+// Nominatim uses decimal strings; an absent/blank value is never coordinate zero.
+const searchRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const searchCoordinate = (value, limit, strings = false) => {
+  if (strings && typeof value === 'string' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) value = Number(value);
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
+};
+export function searchResponse(rows, source) {
+  const items = [];
+  for (const row of rows) {
+    if (!searchRecord(row)) continue;
+    if (source === 'facility') {
+      if (searchCoordinate(row.latitude, 90) === null || searchCoordinate(row.longitude, 180) === null) continue;
+      items.push(row);
+    } else {
+      if (searchCoordinate(row.lat, 90, true) === null || searchCoordinate(row.lon, 180, true) === null) continue;
+      if (['name','display_name','category','type','addresstype'].some(key => row[key] != null && typeof row[key] !== 'string')) continue;
+      if (['namedetails','extratags'].some(key => row[key] != null && !searchRecord(row[key]))) continue;
+      const {boundingbox, ...item} = row;
+      // A bad optional extent falls back to the valid point when selected.
+      if (Array.isArray(boundingbox) && boundingbox.length === 4) {
+        const bounds = boundingbox.map((value, i) => searchCoordinate(value, i < 2 ? 90 : 180, true));
+        if (bounds.every(value => value !== null) && bounds[1] > bounds[0]) item.boundingbox = bounds;
+      }
+      items.push(item);
+    }
+  }
+  return {items, invalid: rows.length - items.length};
+}
 export function searchResults(facilities, places) {
-  const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
-  const rail = facilities.filter(located), others = [];
+  // Remote facility rows are validated at the response boundary. Drawn local
+  // stations may legitimately use a wrapped-world longitude outside ±180.
+  const rail = facilities.filter(item => searchRecord(item) && Number.isFinite(item.longitude) && Number.isFinite(item.latitude)), others = [];
   const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   const names = item => new Set(Object.entries(item).filter(([key, value]) => (key === 'name' || key.startsWith('name:')) && typeof value === 'string').map(([, value]) => value.toLowerCase()));
-  for (const place of places) {
+  for (const place of searchResponse(places, 'place').items) {
     const details = place.namedetails || {};
     const item = {...details, name: details.name || place.name || String(place.display_name || '').split(',')[0], latitude: Number(place.lat), longitude: Number(place.lon),
       osm_id: place.osm_id, osm_type: place.osm_type, area: String(place.display_name || '').split(',').slice(1).join(',').trim(),
       ...(Array.isArray(place.boundingbox) && {boundingbox: place.boundingbox.map(Number)})};
-    if (!located(item)) continue;
     if (isRailPlace(place)) {
       const own = names(item);
       const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));

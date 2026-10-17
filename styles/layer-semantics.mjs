@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261017-platform-measure-zoom-1';
+import { MODES } from './map-model.mjs?v=20261017-search-row-isolation-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
