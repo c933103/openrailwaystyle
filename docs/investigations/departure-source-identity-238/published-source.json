@@ -1,0 +1,43 @@
+{
+  "observed_at": "2026-10-17T07:33:51.370591+00:00",
+  "deployment_run": 39011496112,
+  "expected_merge_commit": "395f8bc749a555e29b399a4a3cf941692f53517a",
+  "expected_asset_version": "20261017-source-trip-identity-1",
+  "first_party_assets": [
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/",
+      "http_status": 200,
+      "bytes": 46693,
+      "sha256": "a8a07f5fedd5b6f0e0cb04192ed7a897c346f5e92562fd69dce3b966f90eaa47",
+      "verification": "exact source bytes"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/app.mjs?v=20261017-source-trip-identity-1",
+      "http_status": 200,
+      "bytes": 166482,
+      "sha256": "a777a37488bfcfc75db31667de303be2669b5038cd01cdf3823a10b781a8e263",
+      "verification": "exact source bytes"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/departures.mjs?v=20261017-source-trip-identity-1",
+      "http_status": 200,
+      "bytes": 26431,
+      "sha256": "93f40a87dad36e8bd2280d45d7eb90fa875d1507244bb7683d4b719f34787f7b",
+      "verification": "exact source bytes"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/sw.js",
+      "http_status": 200,
+      "bytes": 14898,
+      "sha256": "6d161216ebb0f826e549f442dd34362cef1c03ac8b49ee78dce25f70aef653ae",
+      "verification": "exact source bytes"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/tile-labels.js?v=20261017-source-trip-identity-1",
+      "http_status": 200,
+      "bytes": 367940,
+      "sha256": "f8e169acec2cb564e0c538f0068f414cce3ecb443ba621478f283791a3585934",
+      "verification": "embedded merge commit, source URL and asset version"
+    }
+  ]
+}
