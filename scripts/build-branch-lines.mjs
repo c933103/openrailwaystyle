@@ -69,6 +69,9 @@ const BUDGET = Symbol('budget');
 async function overpass(query) {
   let lastFailure;
   for (let attempt = 0; attempt < 5; attempt++) {
+    // A complete error body can consume the allowance exactly. Do not wait
+    // for or start another request once its bytes have exhausted this run.
+    if (downloaded >= BUDGET_BYTES) return BUDGET;
     // A quiet interval between requests, growing after each failure.
     await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
     requests++;

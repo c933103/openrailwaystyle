@@ -34,7 +34,7 @@ async function fixture(pipeline, fn) {
     await mkdir(join(root, 'previous'));
     await writeFile(join(root, 'mock.mjs'), `import {readFileSync, appendFileSync} from 'node:fs';
 const observations = JSON.parse(readFileSync(process.env.MOCK_PATH, 'utf8')); let count = 0;
-globalThis.setTimeout = callback => {callback(); return 0;};
+globalThis.setTimeout = (callback, ms) => {appendFileSync(process.env.MOCK_SLEEPS, JSON.stringify(ms) + '\\n'); callback(); return 0;};
 globalThis.fetch = async (url, options) => {
   appendFileSync(process.env.MOCK_LOG, JSON.stringify({url, query: options.body.get('data')}) + '\\n');
   const next = observations[count++]; if (!next) throw new Error('Unexpected fixture request');
@@ -49,17 +49,19 @@ globalThis.fetch = async (url, options) => {
       await writeFile(join(root, 'previous/state.json'), JSON.stringify(prior));
       await writeFile(join(root, 'previous', pipeline.tableFile), gzipSync(previous));
       await writeFile(join(root, 'requests.ndjson'), '');
+      await writeFile(join(root, 'sleeps.ndjson'), '');
       await writeFile(join(root, 'github-output'), '');
       const child = spawnSync(process.execPath, ['--import', join(root, 'mock.mjs'), join(root, 'scripts', pipeline.script)], {
         cwd: root, encoding: 'utf8', timeout: 30_000, env: {...process.env,
           PREVIOUS_DATA: join(root, 'previous'), OVERPASS_URL: 'https://overpass.invalid/test',
           BUDGET_BYTES: '20000000', DAY_BUDGET_BYTES: '30000000',
-          MOCK_PATH: join(root, 'responses.json'), MOCK_LOG: join(root, 'requests.ndjson'), GITHUB_OUTPUT: join(root, 'github-output')},
+          MOCK_PATH: join(root, 'responses.json'), MOCK_LOG: join(root, 'requests.ndjson'), MOCK_SLEEPS: join(root, 'sleeps.ndjson'), GITHUB_OUTPUT: join(root, 'github-output')},
       });
       assert.equal(child.status, 0, `${child.error ?? ''}\n${child.stderr}`);
       const saved = JSON.parse(await readFile(join(root, pipeline.folder, 'state.json'), 'utf8'));
       return {saved, attempt: saved.stages.japan.lastAttempt,
         requests: (await readFile(join(root, 'requests.ndjson'), 'utf8')).trim().split('\n').map(JSON.parse),
+        sleeps: (await readFile(join(root, 'sleeps.ndjson'), 'utf8')).trim().split('\n').map(JSON.parse),
         table: gunzipSync(await readFile(join(root, pipeline.folder, pipeline.tableFile))).toString(),
         output: await readFile(join(root, 'github-output'), 'utf8')};
     };
@@ -132,5 +134,50 @@ for (const pipeline of pipelines) {
     assert.equal(result.attempt.downloadedBytes, Buffer.byteLength(JSON.stringify(body)) + 20_000_001);
     assert.equal(result.requests.length, 2); assert.equal(result.attempt.status, 'partial');
     assert.deepEqual(result.saved.stages.japan.pending, [queue[1]]);
+  }));
+}
+
+for (const pipeline of pipelines) {
+  for (const status of [429, 500, 502, 503]) {
+    test(`${pipeline.name} retry budget: a complete HTTP ${status} error at the full allowance starts no retry`, async () => fixture(pipeline, async (run, initial) => {
+      const result = await run([{status, text: 'Service unavailable', bytes: 20_000_000}, {body}]);
+      deferred(result, initial, 20_000_000, 1);
+      assert.deepEqual(result.sleeps, [0], 'do not wait for a retry that cannot be made');
+      assert.equal(result.saved.runs.at(-1).bytes, 20_000_000);
+    }));
+  }
+  test(`${pipeline.name} retry budget: a complete error at the reduced daily allowance starts no retry`, async () => fixture(pipeline, async (run, initial) => {
+    const result = await run([{status: 503, text: 'Service unavailable', bytes: 10_000_000}, {body}],
+      {runs: [{at: new Date().toISOString(), bytes: 20_000_000}]});
+    deferred(result, initial, 10_000_000, 1);
+    assert.deepEqual(result.sleeps, [0]);
+    assert.equal(result.saved.runs.reduce((sum, item) => sum + item.bytes, 0), 30_000_000);
+    const state = structuredClone(result.saved);
+    for (const item of state.runs) item.at = '2000-01-01T00:00:00Z';
+    const resumed = await run([{body}, {body}], {state, previous: result.table});
+    assert.equal(resumed.requests[0].query, result.requests[0].query);
+    assert.equal(resumed.requests.length, 2); assert.equal(resumed.attempt.fetchedBoxes, 2);
+    assert.equal(resumed.saved.stages.japan.pending, null);
+  }));
+  test(`${pipeline.name} retry budget: cumulative failed bodies exhaust the allowance before the next sleep or request`, async () => fixture(pipeline, async (run, initial) => {
+    const result = await run([
+      {status: 503, text: 'Service unavailable', bytes: 7_000_000},
+      {status: 503, text: 'Service unavailable', bytes: 13_000_000}, {body},
+    ]);
+    deferred(result, initial, 20_000_000, 2);
+    assert.deepEqual(result.sleeps, [0, 60000]);
+  }));
+  test(`${pipeline.name} retry budget: one byte of remaining allowance still permits the existing bounded retry`, async () => fixture(pipeline, async (run, initial) => {
+    const result = await run([{status: 503, text: 'Service unavailable', bytes: 19_999_999}, {body}]);
+    deferred(result, initial, 19_999_999 + Buffer.byteLength(JSON.stringify(body)), 2);
+    assert.deepEqual(result.sleeps, [0, 60000]);
+  }));
+  test(`${pipeline.name} retry budget: ordinary retries with available bytes still complete both queued boxes`, async () => fixture(pipeline, async run => {
+    const result = await run([{status: 503, text: 'Service unavailable', bytes: 1_000_000}, {body}, {body}]);
+    assert.equal(result.requests.length, 3); assert.equal(result.attempt.fetchedBoxes, 2);
+    assert.equal(result.attempt.splitBoxes, 0); assert.equal(result.attempt.status, 'acquired');
+    assert.equal(result.attempt.downloadedBytes, 1_000_000 + 2 * Buffer.byteLength(JSON.stringify(body)));
+    assert.deepEqual(result.sleeps, [0, 60000, 15000]);
+    assert.equal(result.saved.stages.japan.pending, null);
   }));
 }
