@@ -1,0 +1,97 @@
+{
+  "source": "3364ed3956167a7d2940a7ad3ba14c4f38aebcb4",
+  "tree": "70c4c7b9330a345324ada58e1da26ca90c07ba0c",
+  "runtime": "Node 24.19.0",
+  "archive": {
+    "path": "logs.zip",
+    "bytes": 106357,
+    "sha256": "f1762a8161e85b51832f6215f698ed93bcb3312fbf3287e07dee6ce452eebd87"
+  },
+  "files": [
+    {
+      "path": "build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "path": "checks-final.log",
+      "bytes": 226,
+      "sha256": "81b670abd95cc97b3e95354c65e9b5332f78b8fdf4c02a0b5a77d70cdd795b1e"
+    },
+    {
+      "path": "focused-initial.log",
+      "bytes": 6333,
+      "sha256": "4657a6ce06e701dc84244d334b4aff662b95b12a0a31b492310e2d6c709a1ded"
+    },
+    {
+      "path": "focused-candidate.log",
+      "bytes": 594,
+      "sha256": "1e9b654b949ef8c11e647da31cd11706c1af2ae7e56f87cd16c5a1d0981ab886"
+    },
+    {
+      "path": "focused-final.log",
+      "bytes": 30149,
+      "sha256": "2e438a6d110f4e9332a4bc9f569f0e2591008fbeda772d787832f95d16c8db18"
+    },
+    {
+      "path": "focused-release.log",
+      "bytes": 13112,
+      "sha256": "3104238f3b2fc048e90d3d1b16b93e55f6d3eae68981fe8686280855429900ef"
+    },
+    {
+      "path": "negative-control.log",
+      "bytes": 2798,
+      "sha256": "97253e952e68346a01fe956ebd735ea50df785e244ed2cca7f3abab39612a61f"
+    },
+    {
+      "path": "full-suite-serial.log",
+      "bytes": 232032,
+      "sha256": "5d8f764370f64d33723a83b0479f8abd2e843e0eef34d5eb08ac486524b7d26e"
+    },
+    {
+      "path": "isolated-lifecycle-tap.log",
+      "bytes": 59842,
+      "sha256": "bbd140d53c48da328d0dfb97d8759fb133bb1ddc2d2def93d92553e2716533bc"
+    },
+    {
+      "path": "startup-1024-tap.log",
+      "bytes": 35191,
+      "sha256": "f4ef13f0b5727bbc7de78f47595f6f048e4ad0cb3e0fb4bfd1e30d9ac61c57a9"
+    },
+    {
+      "path": "startup-1536-tap.log",
+      "bytes": 38536,
+      "sha256": "677ca0895c75a3c30b37df16054ee107019ea490a543978c6101dd8aed71a6bf"
+    },
+    {
+      "path": "browser-availability.log",
+      "bytes": 1357,
+      "sha256": "329d33de97b47571f97f35bf4108902b7a0f977499f0ae0221ac4c4101ef8e00"
+    },
+    {
+      "path": "browser-system-availability.log",
+      "bytes": 4796,
+      "sha256": "e7e0fe2fc18afe40579ee20283bad11691436e69663f03dd27320036fb65eecd"
+    },
+    {
+      "path": "reproduction-before.json",
+      "bytes": 371,
+      "sha256": "45251001294b8f69cba8a17c58317fe48c8898b3713db47d5867c52d34e49e12"
+    },
+    {
+      "path": "reproduction-after.json",
+      "bytes": 189,
+      "sha256": "719e08aca6965363edd2fb2386c7c21ad43904cd9ed288cfa38e1f383e260431"
+    },
+    {
+      "path": "publication-source-receipt.json",
+      "bytes": 2152,
+      "sha256": "c153744fe0a019f0d766b42c7a7ec796f28c50d196c798a21fe349f16bc41daa"
+    },
+    {
+      "path": "probe-platform-zoom.mjs",
+      "bytes": 1782,
+      "sha256": "097fe785d9e8b347358357764b5f0325032a9646ab1018e3213e0ef956b2cb23"
+    }
+  ]
+}
