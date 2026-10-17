@@ -1,0 +1,26 @@
+2026-10-17T20:03:26.2596144Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:03:27.3985330Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:03:28.0022035Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:03:31.3544622Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:03:50.5564325Z SHA256 digest of downloaded artifact is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:03:50.5565992Z Artifact download completed successfully.
+2026-10-17T20:03:50.6137161Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:04:08.6934492Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:04:14.0090535Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:05:27.2027834Z [platform-stations] PASS: desktop busan, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:06:08.3924697Z [platform-stations] PASS: desktop shin-osaka, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:07:17.5549035Z [platform-stations] PASS: desktop washington, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:07:25.8797348Z [platform-stations] PASS: desktop both packaged CJK fonts load without blocking startup
+2026-10-17T20:08:32.0147271Z [platform-stations] PASS: mobile busan, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:09:32.8691522Z [platform-stations] PASS: mobile shin-osaka, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:10:34.7681841Z [platform-stations] PASS: mobile washington, complete area lengths, recorded numbers and visible end labels at zoom 22
+2026-10-17T20:10:48.0551300Z [platform-stations] PASS: mobile both packaged CJK fonts load without blocking startup
+2026-10-17T20:10:48.2378608Z PASS check-platform-stations-browser.mjs in 393.6 s
+2026-10-17T20:10:50.2857345Z   pass    393.6 s  check-platform-stations-browser.mjs
+2026-10-17T20:10:50.3349139Z   CHECKS: check-platform-stations-browser.mjs
+2026-10-17T20:10:50.5182685Z Artifact name is valid!
+2026-10-17T20:10:51.0905838Z SHA256 digest of uploaded artifact zip is ccee4a7b69ae0efac579d8b68eb473b724e1ff5b75911ade0999fcaef3432f80
+2026-10-17T20:10:51.3040787Z Artifact browser-review-platforms.zip successfully finalized. Artifact ID 12113021795
+2026-10-17T20:10:51.3042655Z Artifact browser-review-platforms has been successfully uploaded! Final size is 714415 bytes. Artifact ID is 12113021795
+2026-10-17T20:10:51.3048975Z Artifact download URL: https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12113021795
+

@@ -1,0 +1,15 @@
+2026-10-17T19:59:21.3550309Z # tests 2370
+2026-10-17T19:59:21.3550472Z # pass 2370
+2026-10-17T19:59:21.3550549Z # fail 0
+2026-10-17T19:59:21.3550721Z # skipped 0
+2026-10-17T19:59:21.3551023Z # duration_ms 108093.676443
+2026-10-17T19:59:21.5520428Z # tests 4
+2026-10-17T19:59:21.5522093Z # pass 4
+2026-10-17T19:59:21.5522889Z # fail 0
+2026-10-17T19:59:21.5524708Z # skipped 0
+2026-10-17T19:59:21.5526475Z # duration_ms 101.411472
+2026-10-17T19:59:36.7412578Z PASS: complete versioned world reference {"generation":"8b430e70e32c08a25a1c4aac","ways":1420252,"tiles":906,"tileBytes":20505773,"downloadedBytes":85528380471,"buildSeconds":198.442581767,"peakRssBytes":5246672896}
+2026-10-17T20:03:18.7235948Z SHA256 digest of uploaded artifact zip is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:03:19.0094099Z Artifact railway-world-site.zip successfully finalized. Artifact ID 12112827471
+2026-10-17T20:03:19.0095122Z Artifact railway-world-site has been successfully uploaded! Final size is 632303438 bytes. Artifact ID is 12112827471
+

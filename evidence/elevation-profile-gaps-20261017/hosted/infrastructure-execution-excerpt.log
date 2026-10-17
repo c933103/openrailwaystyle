@@ -1,0 +1,30 @@
+2026-10-17T20:03:27.0534221Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:03:28.6365700Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:03:29.0526648Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:03:31.3368011Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:03:50.9290231Z SHA256 digest of downloaded artifact is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:03:50.9291376Z Artifact download completed successfully.
+2026-10-17T20:03:51.0561921Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:04:11.6645864Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:04:16.6834319Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:06:54.9757342Z [signal-power] PASS: desktop simultaneous protection color bands, compact hover/tap descriptions, shared directed/undirected signals, electricity/diesel/coal/steam-water supplies, view gating and noninteractive cultural POIs
+2026-10-17T20:07:50.9303035Z [signal-power] PASS: mobile simultaneous protection color bands, compact hover/tap descriptions, shared directed/undirected signals, electricity/diesel/coal/steam-water supplies, view gating and noninteractive cultural POIs
+2026-10-17T20:07:50.9560423Z PASS check-signal-power-browser.mjs in 213.7 s
+2026-10-17T20:08:13.0585050Z [platform] PASS: desktop platform reference, length, unit conversion/cache and threshold
+2026-10-17T20:08:24.7764079Z [platform] PASS: desktop kg/lb axle legend updates immediately
+2026-10-17T20:08:51.3075264Z [platform] PASS: mobile platform reference, length, unit conversion/cache and threshold
+2026-10-17T20:09:04.9427704Z [platform] PASS: mobile kg/lb axle legend updates immediately
+2026-10-17T20:09:05.0219968Z PASS check-platform-browser.mjs in 74.1 s
+2026-10-17T20:09:38.4511746Z [infrastructure] PASS: desktop real vector rendering, typed platform references, full lengths, mapped point links, labels and view switching
+2026-10-17T20:10:09.4259961Z [infrastructure] PASS: mobile real vector rendering, typed platform references, full lengths, mapped point links, labels and view switching
+2026-10-17T20:10:09.5255428Z PASS check-infrastructure-browser.mjs in 64.5 s
+2026-10-17T20:10:12.4198738Z   pass    213.7 s  check-signal-power-browser.mjs
+2026-10-17T20:10:12.4199142Z   pass     74.1 s  check-platform-browser.mjs
+2026-10-17T20:10:12.4199600Z   pass     64.5 s  check-infrastructure-browser.mjs
+2026-10-17T20:10:12.4672674Z   CHECKS: check-signal-power-browser.mjs check-platform-browser.mjs check-infrastructure-browser.mjs
+2026-10-17T20:10:12.6121604Z Artifact name is valid!
+2026-10-17T20:10:13.7805237Z SHA256 digest of uploaded artifact zip is 01581a8a886d292153bcacf8301a2848bfd9ffbfe2fb937b94c13f673f3af8f0
+2026-10-17T20:10:14.0635275Z Artifact browser-review-infrastructure.zip successfully finalized. Artifact ID 12112713750
+2026-10-17T20:10:14.0636080Z Artifact browser-review-infrastructure has been successfully uploaded! Final size is 4344840 bytes. Artifact ID is 12112713750
+2026-10-17T20:10:14.0641437Z Artifact download URL: https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112713750
+

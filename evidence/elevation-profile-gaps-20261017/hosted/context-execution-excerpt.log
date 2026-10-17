@@ -1,0 +1,30 @@
+2026-10-17T20:03:27.1918040Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:03:29.0179034Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:03:29.5659299Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:03:32.4118322Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:04:01.1819136Z SHA256 digest of downloaded artifact is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:04:01.1822151Z Artifact download completed successfully.
+2026-10-17T20:04:01.2194554Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:04:20.2173102Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:04:25.2356775Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:04:46.7501053Z [bathymetry] PASS: synthetic coastal depth tiles, drawn in the depth worker, contain distinct shallow/deep colours {"mask":{"island":[0,0,0,0],"overlap":[128,183,207,255],"sea":[128,183,207,255]},"tiles":[{"key":"10/982/478","shallow":30660,"deep":31032,"clear":3844},{"key":"10/837/479","shallow":30660,"deep":31032,"clear":3844}],"inland":{"width":1,"height":1,"demRequests":0}}
+2026-10-17T20:05:30.8541962Z [bathymetry] PASS: coastline holes, WebGL rendering, mobile resize and depth-layer visibility
+2026-10-17T20:05:30.8958768Z PASS check-bathymetry-browser.mjs in 65 s
+2026-10-17T20:05:47.3322554Z [globe] PASS mouse: north pole crossing
+2026-10-17T20:05:54.4397124Z [globe] PASS mouse: south pole crossing
+2026-10-17T20:06:13.6115280Z [globe] PASS touch: north pole crossing
+2026-10-17T20:06:32.8902050Z [globe] PASS touch: south pole crossing
+2026-10-17T20:06:33.3893545Z PASS check-globe-browser.mjs in 62.5 s
+2026-10-17T20:06:37.8225802Z [polar] PASS south: coarse-only railway views, Carto detail pixels/labels, feet, cancellation and old snapshot
+2026-10-17T20:06:40.5534481Z [polar] PASS north: coarse-only railway views, Carto detail pixels/labels, feet, cancellation and old snapshot
+2026-10-17T20:06:40.6019630Z PASS check-polar-browser.mjs in 7.2 s
+2026-10-17T20:06:40.8451263Z   pass       65 s  check-bathymetry-browser.mjs
+2026-10-17T20:06:40.8451852Z   pass     62.5 s  check-globe-browser.mjs
+2026-10-17T20:06:40.8452534Z   pass      7.2 s  check-polar-browser.mjs
+2026-10-17T20:06:40.8637545Z   CHECKS: check-bathymetry-browser.mjs check-globe-browser.mjs check-polar-browser.mjs
+2026-10-17T20:06:41.0464399Z Artifact name is valid!
+2026-10-17T20:06:41.7552920Z SHA256 digest of uploaded artifact zip is 6426436ad3cd489bea09e8843d1fb968523cec1763550e77154e8dfa1a95f860
+2026-10-17T20:06:42.0146895Z Artifact browser-review-context.zip successfully finalized. Artifact ID 12112892693
+2026-10-17T20:06:42.0148638Z Artifact browser-review-context has been successfully uploaded! Final size is 33327 bytes. Artifact ID is 12112892693
+2026-10-17T20:06:42.0155303Z Artifact download URL: https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112892693
+

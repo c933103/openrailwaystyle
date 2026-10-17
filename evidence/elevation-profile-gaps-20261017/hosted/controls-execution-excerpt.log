@@ -1,0 +1,48 @@
+2026-10-17T20:03:26.0647192Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:03:27.2812687Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:03:27.6874272Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:03:29.4965131Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:03:45.4111455Z SHA256 digest of downloaded artifact is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:03:45.4112283Z Artifact download completed successfully.
+2026-10-17T20:03:45.4571220Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:04:01.7130911Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:04:22.0683551Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:04:27.0807574Z ##[group]Run node scripts/check-pwa-install-browser.mjs
+2026-10-17T20:04:27.0807819Z [36;1mnode scripts/check-pwa-install-browser.mjs[0m
+2026-10-17T20:04:27.0860155Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:04:33.4883620Z PASS (webkit): iPhone, desktop-UA iPad, browser prompt wiring, standalone UI and legacy dialog fallback with failed renderer
+2026-10-17T20:04:33.5301954Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:04:34.1591946Z [network-guard] PASS: first-party bytes are fetched; fixtures work; unmocked page, context, fetch, URL-rewriting fallback, redirect and worker requests are blocked before provider egress
+2026-10-17T20:04:34.3305128Z PASS check-network-guard-browser.mjs in 0.5 s
+2026-10-17T20:06:07.6211103Z [map-controls] PASS: 83 real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles
+2026-10-17T20:06:07.6539552Z PASS check-map-controls-browser.mjs in 93.3 s
+2026-10-17T20:06:13.5274821Z [build] PASS build info desktop {"version":"20261017-elevation-profile-gaps-1","commit":"193b1b53b9ed9ca35270eae64157cbae9a23873e","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/193b1b53b9ed9ca35270eae64157cbae9a23873e"}
+2026-10-17T20:06:24.8727293Z [build] PASS build info mobile {"version":"20261017-elevation-profile-gaps-1","commit":"193b1b53b9ed9ca35270eae64157cbae9a23873e","sourceUrl":"https://github.com/c933103/openrailwaystyle/commit/193b1b53b9ed9ca35270eae64157cbae9a23873e"}
+2026-10-17T20:06:24.9177110Z PASS check-build-browser.mjs in 17.3 s
+2026-10-17T20:06:36.8797291Z PASS check-watch-browser.mjs in 12 s
+2026-10-17T20:07:03.8601104Z [service-frequency] PASS: service stage partial/deferred/unresolved/empty/failed/unknown; metadata failure and snapshot binding; zero/expired/unmatched/unknown details and live expiry
+2026-10-17T20:07:03.9409508Z PASS check-service-frequency-browser.mjs in 27.1 s
+2026-10-17T20:07:28.6141332Z [service-provenance] PASS: generated MVTs, direction and branch details, shared-track picking, unrelated service, close/reopen and language redraw
+2026-10-17T20:07:28.6708185Z PASS check-service-provenance-browser.mjs in 24.7 s
+2026-10-17T20:07:35.2852626Z [first-party-assets] PASS: real MapLibre, stylesheet and PMTiles load from root/project URLs with public code CDNs blocked; zero CDN requests
+2026-10-17T20:07:35.2859531Z [first-party-assets] PASS: native Web Crypto accepts exact cached upstream JS/CSS and rejects correct-MIME tampering or unavailable crypto without a CDN request
+2026-10-17T20:07:35.3045704Z PASS check-first-party-assets-browser.mjs in 6.6 s
+2026-10-17T20:07:39.0959923Z [pwa-install] PASS (chromium): iPhone, desktop-UA iPad, browser prompt wiring, standalone UI and legacy dialog fallback with failed renderer
+2026-10-17T20:07:39.1119456Z PASS check-pwa-install-browser.mjs in 3.8 s
+2026-10-17T20:08:19.6745831Z PASS check-departures-browser.mjs in 40.6 s
+2026-10-17T20:08:19.7049787Z   pass      0.5 s  check-network-guard-browser.mjs
+2026-10-17T20:08:19.7050193Z   pass     93.3 s  check-map-controls-browser.mjs
+2026-10-17T20:08:19.7050503Z   pass     17.3 s  check-build-browser.mjs
+2026-10-17T20:08:19.7050743Z   pass       12 s  check-watch-browser.mjs
+2026-10-17T20:08:19.7050972Z   pass     27.1 s  check-service-frequency-browser.mjs
+2026-10-17T20:08:19.7051318Z   pass     24.7 s  check-service-provenance-browser.mjs
+2026-10-17T20:08:19.7051870Z   pass      6.6 s  check-first-party-assets-browser.mjs
+2026-10-17T20:08:19.7052124Z   pass      3.8 s  check-pwa-install-browser.mjs
+2026-10-17T20:08:19.7052463Z   pass     40.6 s  check-departures-browser.mjs
+2026-10-17T20:08:19.7454019Z   CHECKS: check-network-guard-browser.mjs check-map-controls-browser.mjs check-build-browser.mjs check-watch-browser.mjs check-service-frequency-browser.mjs check-service-provenance-browser.mjs check-first-party-assets-browser.mjs check-pwa-install-browser.mjs check-departures-browser.mjs
+2026-10-17T20:08:19.8620805Z Artifact name is valid!
+2026-10-17T20:08:20.7820989Z SHA256 digest of uploaded artifact zip is b9d66106d93ec2f45ee63683a8f1cb309cd079fc6e81debaf840e8d4e7e24331
+2026-10-17T20:08:21.0252881Z Artifact browser-review-controls.zip successfully finalized. Artifact ID 12112623898
+2026-10-17T20:08:21.0253660Z Artifact browser-review-controls has been successfully uploaded! Final size is 5481813 bytes. Artifact ID is 12112623898
+2026-10-17T20:08:21.0258341Z Artifact download URL: https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112623898
+

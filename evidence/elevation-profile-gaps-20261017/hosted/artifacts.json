@@ -1,0 +1,185 @@
+{
+  "observedAt": "2026-10-17T20:19:37.817Z",
+  "artifacts": [
+    {
+      "id": 12113595421,
+      "name": "browser-review-rail-fixture",
+      "size_in_bytes": 4764011,
+      "digest": "sha256:fc665541ae249c0db96edff325bcc1b9039545b161ec29b6f919c3eda551c241",
+      "created_at": "2026-10-17T20:15:28Z",
+      "updated_at": "2026-10-17T20:15:28Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12113595421"
+    },
+    {
+      "id": 12113400776,
+      "name": "browser-review-frequency",
+      "size_in_bytes": 13994619,
+      "digest": "sha256:e97f409909001b0d29b53ec25fb364b53bb46b2b3d133bccfbcc91c88eb34028",
+      "created_at": "2026-10-17T20:09:06Z",
+      "updated_at": "2026-10-17T20:09:06Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12113400776"
+    },
+    {
+      "id": 12113021795,
+      "name": "browser-review-platforms",
+      "size_in_bytes": 714415,
+      "digest": "sha256:ccee4a7b69ae0efac579d8b68eb473b724e1ff5b75911ade0999fcaef3432f80",
+      "created_at": "2026-10-17T20:10:51Z",
+      "updated_at": "2026-10-17T20:10:51Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12113021795"
+    },
+    {
+      "id": 12112892693,
+      "name": "browser-review-context",
+      "size_in_bytes": 33327,
+      "digest": "sha256:6426436ad3cd489bea09e8843d1fb968523cec1763550e77154e8dfa1a95f860",
+      "created_at": "2026-10-17T20:06:41Z",
+      "updated_at": "2026-10-17T20:06:41Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112892693"
+    },
+    {
+      "id": 12112827471,
+      "name": "railway-world-site",
+      "size_in_bytes": 632303438,
+      "digest": "sha256:a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62",
+      "created_at": "2026-10-17T20:03:18Z",
+      "updated_at": "2026-10-17T20:03:18Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112827471"
+    },
+    {
+      "id": 12112713750,
+      "name": "browser-review-infrastructure",
+      "size_in_bytes": 4344840,
+      "digest": "sha256:01581a8a886d292153bcacf8301a2848bfd9ffbfe2fb937b94c13f673f3af8f0",
+      "created_at": "2026-10-17T20:10:13Z",
+      "updated_at": "2026-10-17T20:10:13Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112713750"
+    },
+    {
+      "id": 12112623898,
+      "name": "browser-review-controls",
+      "size_in_bytes": 5481813,
+      "digest": "sha256:b9d66106d93ec2f45ee63683a8f1cb309cd079fc6e81debaf840e8d4e7e24331",
+      "created_at": "2026-10-17T20:08:20Z",
+      "updated_at": "2026-10-17T20:08:20Z",
+      "expires_at": "2027-01-15T19:47:51Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992027,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12112623898"
+    },
+    {
+      "id": 12113060955,
+      "name": "mainline-reference-2026-10-11-16b1aa0e31937ebc148d5a1d76b2a5058c125b468fad423c84bb0db239f4031d",
+      "size_in_bytes": 279238131,
+      "digest": "sha256:d45d8521f0facb8bf82b4e8d91248022c2348c7786f15882386e61295fa60776",
+      "created_at": "2026-10-17T19:55:49Z",
+      "updated_at": "2026-10-17T19:55:49Z",
+      "expires_at": "2026-10-31T19:55:45Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063991985,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063991985/artifacts/12113060955"
+    },
+    {
+      "id": 12112951267,
+      "name": "mainline-reference-diagnostics",
+      "size_in_bytes": 240795,
+      "digest": "sha256:8f385163afa4863b2a0959c1f9552fb422dd00e6141b5c0a5946fb0705622dee",
+      "created_at": "2026-10-17T19:55:44Z",
+      "updated_at": "2026-10-17T19:55:44Z",
+      "expires_at": "2026-10-31T19:55:43Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063991985,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063991985/artifacts/12112951267"
+    },
+    {
+      "id": 12112761144,
+      "name": "controls-painter-diagnostic-84c0258018e5223f852cd273feaa1264efa2a7e0",
+      "size_in_bytes": 311912,
+      "digest": "sha256:44d4e317e6820c6109a1ca5b3b0376b7960bbf39600698dc701bd00eaf7f55b0",
+      "created_at": "2026-10-17T19:50:17Z",
+      "updated_at": "2026-10-17T19:50:17Z",
+      "expires_at": "2026-11-16T19:50:16Z",
+      "expired": false,
+      "workflow_run": {
+        "id": 39063992119,
+        "repository_id": 1379787229,
+        "head_repository_id": 1379787229,
+        "head_branch": "fix/elevation-profile-gaps",
+        "head_sha": "84c0258018e5223f852cd273feaa1264efa2a7e0"
+      },
+      "githubArtifactUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/39063992119/artifacts/12112761144"
+    }
+  ]
+}

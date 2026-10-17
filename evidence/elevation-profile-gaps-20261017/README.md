@@ -1,5 +1,9 @@
 # Elevation-profile gap correction: validation receipt
 
+**Update:** all hosted PR checks subsequently passed. See the [hosted validation
+addendum](hosted/README.md) for exact terminal results, source identity, artifacts
+and remaining boundaries. The initial local-only receipt below is preserved.
+
 Application source: `84c0258018e5223f852cd273feaa1264efa2a7e0`.
 Baseline: `b194d78cd32496489ebfa94ee774620a33f27617`.
 Related scope: #136, #112 and #106. Broader terrain/source acceptance remains open.

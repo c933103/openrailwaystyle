@@ -1,0 +1,174 @@
+{
+  "sourceCommit": "84c0258018e5223f852cd273feaa1264efa2a7e0",
+  "scope": "28 matrix check scripts; separate WebKit installation help check also passed in the controls job. Synthetic external providers; actual Chromium/MapLibre; selected WebKit checks. No live coverage claim.",
+  "checks": [
+    {
+      "group": "infrastructure",
+      "check": "check-signal-power-browser.mjs",
+      "code": 0,
+      "seconds": 213.7
+    },
+    {
+      "group": "infrastructure",
+      "check": "check-platform-browser.mjs",
+      "code": 0,
+      "seconds": 74.1
+    },
+    {
+      "group": "infrastructure",
+      "check": "check-infrastructure-browser.mjs",
+      "code": 0,
+      "seconds": 64.5
+    },
+    {
+      "group": "controls",
+      "check": "check-network-guard-browser.mjs",
+      "code": 0,
+      "seconds": 0.5
+    },
+    {
+      "group": "controls",
+      "check": "check-map-controls-browser.mjs",
+      "code": 0,
+      "seconds": 93.3
+    },
+    {
+      "group": "controls",
+      "check": "check-build-browser.mjs",
+      "code": 0,
+      "seconds": 17.3
+    },
+    {
+      "group": "controls",
+      "check": "check-watch-browser.mjs",
+      "code": 0,
+      "seconds": 12
+    },
+    {
+      "group": "controls",
+      "check": "check-service-frequency-browser.mjs",
+      "code": 0,
+      "seconds": 27.1
+    },
+    {
+      "group": "controls",
+      "check": "check-service-provenance-browser.mjs",
+      "code": 0,
+      "seconds": 24.7
+    },
+    {
+      "group": "controls",
+      "check": "check-first-party-assets-browser.mjs",
+      "code": 0,
+      "seconds": 6.6
+    },
+    {
+      "group": "controls",
+      "check": "check-pwa-install-browser.mjs",
+      "code": 0,
+      "seconds": 3.8
+    },
+    {
+      "group": "controls",
+      "check": "check-departures-browser.mjs",
+      "code": 0,
+      "seconds": 40.6
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-deployed-fixture-browser.mjs",
+      "code": 0,
+      "seconds": 99.5
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-orm-fixture-browser.mjs",
+      "code": 0,
+      "seconds": 42.7
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-rail-overview-browser.mjs",
+      "code": 0,
+      "seconds": 6.2
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-overview-markers-browser.mjs",
+      "code": 0,
+      "seconds": 34
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-mainline-reference-browser.mjs",
+      "code": 0,
+      "seconds": 182
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-rail-reference-browser.mjs",
+      "code": 0,
+      "seconds": 133.1
+    },
+    {
+      "group": "rail-fixture",
+      "check": "check-station-fallback-browser.mjs",
+      "code": 0,
+      "seconds": 140.3
+    },
+    {
+      "group": "context",
+      "check": "check-bathymetry-browser.mjs",
+      "code": 0,
+      "seconds": 65
+    },
+    {
+      "group": "context",
+      "check": "check-globe-browser.mjs",
+      "code": 0,
+      "seconds": 62.5
+    },
+    {
+      "group": "context",
+      "check": "check-polar-browser.mjs",
+      "code": 0,
+      "seconds": 7.2
+    },
+    {
+      "group": "frequency",
+      "check": "check-world-frequency-browser.mjs",
+      "code": 0,
+      "seconds": 36.7
+    },
+    {
+      "group": "frequency",
+      "check": "check-service-geometry-browser.mjs",
+      "code": 0,
+      "seconds": 10
+    },
+    {
+      "group": "frequency",
+      "check": "check-paris-service-geometry-browser.mjs",
+      "code": 0,
+      "seconds": 31.7
+    },
+    {
+      "group": "frequency",
+      "check": "check-normandy-service-geometry-browser.mjs",
+      "code": 0,
+      "seconds": 32.3
+    },
+    {
+      "group": "frequency",
+      "check": "check-timetable-frequency-browser.mjs",
+      "code": 0,
+      "seconds": 89.3
+    },
+    {
+      "group": "platforms",
+      "check": "check-platform-stations-browser.mjs",
+      "code": 0,
+      "seconds": 393.6
+    }
+  ]
+}

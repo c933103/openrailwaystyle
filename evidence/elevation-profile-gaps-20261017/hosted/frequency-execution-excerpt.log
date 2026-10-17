@@ -1,0 +1,28 @@
+2026-10-17T20:03:25.9905014Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:03:27.2263057Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:03:27.5995866Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:03:29.3858076Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:03:44.4402606Z SHA256 digest of downloaded artifact is a790593b973959a3e19f82b2a484654682615ec4071a3a0861ddbbd8bc907b62
+2026-10-17T20:03:44.4403690Z Artifact download completed successfully.
+2026-10-17T20:03:44.4851910Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:04:01.8824074Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:04:23.7381766Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:04:28.7560513Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:05:44.4753213Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:06:21.4462876Z PASS check-world-frequency-browser.mjs in 36.7 s
+2026-10-17T20:06:31.4403102Z PASS check-service-geometry-browser.mjs in 10 s
+2026-10-17T20:07:03.0985491Z PASS check-paris-service-geometry-browser.mjs in 31.7 s
+2026-10-17T20:07:35.3993871Z PASS check-normandy-service-geometry-browser.mjs in 32.3 s
+2026-10-17T20:09:04.7459045Z PASS check-timetable-frequency-browser.mjs in 89.3 s
+2026-10-17T20:09:04.7724790Z   pass     36.7 s  check-world-frequency-browser.mjs
+2026-10-17T20:09:04.7725133Z   pass       10 s  check-service-geometry-browser.mjs
+2026-10-17T20:09:04.7725498Z   pass     31.7 s  check-paris-service-geometry-browser.mjs
+2026-10-17T20:09:04.7726190Z   pass     32.3 s  check-normandy-service-geometry-browser.mjs
+2026-10-17T20:09:04.7726500Z   pass     89.3 s  check-timetable-frequency-browser.mjs
+2026-10-17T20:09:04.7873384Z   CHECKS: check-world-frequency-browser.mjs check-service-geometry-browser.mjs check-paris-service-geometry-browser.mjs check-normandy-service-geometry-browser.mjs check-timetable-frequency-browser.mjs
+2026-10-17T20:09:04.9114866Z Artifact name is valid!
+2026-10-17T20:09:05.9582876Z SHA256 digest of uploaded artifact zip is e97f409909001b0d29b53ec25fb364b53bb46b2b3d133bccfbcc91c88eb34028
+2026-10-17T20:09:06.2002293Z Artifact browser-review-frequency.zip successfully finalized. Artifact ID 12113400776
+2026-10-17T20:09:06.2003030Z Artifact browser-review-frequency has been successfully uploaded! Final size is 13994619 bytes. Artifact ID is 12113400776
+2026-10-17T20:09:06.2006631Z Artifact download URL: https://github.com/c933103/openrailwaystyle/actions/runs/39063992027/artifacts/12113400776
+

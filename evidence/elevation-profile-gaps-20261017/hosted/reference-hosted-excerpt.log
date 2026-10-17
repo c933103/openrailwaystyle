@@ -1,0 +1,12 @@
+2026-10-17T19:48:16.3600295Z PASS: complete versioned world reference {"generation":"8b430e70e32c08a25a1c4aac","ways":1420252,"tiles":906,"tileBytes":20505773,"downloadedBytes":85528380471,"buildSeconds":198.442581767,"peakRssBytes":5246672896}
+2026-10-17T19:48:17.2414623Z PASS: complete versioned world reference {"generation":"8b430e70e32c08a25a1c4aac","ways":1420252,"tiles":906,"tileBytes":20505773,"downloadedBytes":85528380471,"buildSeconds":198.442581767,"peakRssBytes":5246672896}
+2026-10-17T19:55:37.4712464Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":346,"p95Ms":1321},"generation":"8b430e70e32c08a25a1c4aac"}
+2026-10-17T19:55:37.5715151Z PASS: retained actual OSM renderer acceptance {"complete":true,"path":"generations/8b430e70e32c08a25a1c4aac/renderer-acceptance-d1363d3adf8ae2e80250dd9687529f4021b93a8fcc2b2db01cabd89353286169.json","sha256":"d1363d3adf8ae2e80250dd9687529f4021b93a8fcc2b2db01cabd89353286169","inputSha256":"16b1aa0e31937ebc148d5a1d76b2a5058c125b468fad423c84bb0db239f4031d","samples":840,"appSamples":18,"assetRequests":1077,"assetBytes":62166431,"timing":{"medianMs":346,"p95Ms":1321}}
+2026-10-17T19:55:38.4059442Z PASS: complete versioned world reference {"generation":"8b430e70e32c08a25a1c4aac","ways":1420252,"tiles":906,"tileBytes":20505773,"downloadedBytes":85528380471,"buildSeconds":198.442581767,"peakRssBytes":5246672896}
+2026-10-17T19:55:44.6729099Z SHA256 digest of uploaded artifact zip is 8f385163afa4863b2a0959c1f9552fb422dd00e6141b5c0a5946fb0705622dee
+2026-10-17T19:55:44.9557067Z Artifact mainline-reference-diagnostics.zip successfully finalized. Artifact ID 12112951267
+2026-10-17T19:55:44.9559056Z Artifact mainline-reference-diagnostics has been successfully uploaded! Final size is 240795 bytes. Artifact ID is 12112951267
+2026-10-17T19:55:49.7137265Z SHA256 digest of uploaded artifact zip is d45d8521f0facb8bf82b4e8d91248022c2348c7786f15882386e61295fa60776
+2026-10-17T19:55:50.0021387Z Artifact mainline-reference-2026-10-11-16b1aa0e31937ebc148d5a1d76b2a5058c125b468fad423c84bb0db239f4031d.zip successfully finalized. Artifact ID 12113060955
+2026-10-17T19:55:50.0024637Z Artifact mainline-reference-2026-10-11-16b1aa0e31937ebc148d5a1d76b2a5058c125b468fad423c84bb0db239f4031d has been successfully uploaded! Final size is 279238131 bytes. Artifact ID is 12113060955
+

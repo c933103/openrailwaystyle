@@ -1,0 +1,264 @@
+{
+  "scope": "All JSON/log/text result members from the six downloaded and SHA-256-verified browser artifacts; screenshots remain in the original CI artifacts.",
+  "members": [
+    {
+      "artifactArchive": "browser-review-context.zip",
+      "archiveMember": "timings-context.json",
+      "durableMember": "browser-review-context/timings-context.json",
+      "bytes": 257,
+      "sha256": "ef614399f6ff8cd72ec1c2c483c913de5b5e377f88813eb4ebd56301d0591dd0"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "first-party-assets.json",
+      "durableMember": "browser-review-controls/first-party-assets.json",
+      "bytes": 15661,
+      "sha256": "3896624ee65a1eec70ae8646ec1b4bb1312d49c2499689bc22c847e4ae661916"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "map-controls-cpu-profile.json",
+      "durableMember": "browser-review-controls/map-controls-cpu-profile.json",
+      "bytes": 180,
+      "sha256": "ebda1602bb9100f812dbf9b51c2c96965456582a4700f6d534cdfe390f404a8a"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "map-controls-requests.json",
+      "durableMember": "browser-review-controls/map-controls-requests.json",
+      "bytes": 29908,
+      "sha256": "a05f35f8651d2527d47a068fe4b2f614364384ea666d545a4611bc243e5752d1"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "map-controls-settlement.json",
+      "durableMember": "browser-review-controls/map-controls-settlement.json",
+      "bytes": 607299,
+      "sha256": "8401d6eeb0d7d60d281b5485193b31860248dd818faa6e56d41caee73c350456"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "map-controls-transition.json",
+      "durableMember": "browser-review-controls/map-controls-transition.json",
+      "bytes": 96911,
+      "sha256": "60c831a45989eeab9bd225cabf9927e33899551521cd4fee9dca13d310467be1"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "map-controls.json",
+      "durableMember": "browser-review-controls/map-controls.json",
+      "bytes": 76829,
+      "sha256": "99d04985badc88c99b23c928ef91604eea3822ab5e7fd1a0d1806723946bdd8b"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "pwa-install-chromium.json",
+      "durableMember": "browser-review-controls/pwa-install-chromium.json",
+      "bytes": 2165,
+      "sha256": "6b55c538b1cb2e348faae0c945f1ac627c7202618256c5dfe6bf513d902f9ff2"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "pwa-install-webkit.json",
+      "durableMember": "browser-review-controls/pwa-install-webkit.json",
+      "bytes": 2155,
+      "sha256": "a210a8f3513a1ba99a2b707aea17e58647d78c2f4a8570ce3db1787c46552828"
+    },
+    {
+      "artifactArchive": "browser-review-controls.zip",
+      "archiveMember": "timings-controls.json",
+      "durableMember": "browser-review-controls/timings-controls.json",
+      "bytes": 818,
+      "sha256": "7b330f8b25141232ebceaf6c60ed06247fa199553d4f116529279c740fa71b5b"
+    },
+    {
+      "artifactArchive": "browser-review-frequency.zip",
+      "archiveMember": "normandy-service-geometry-results.json",
+      "durableMember": "browser-review-frequency/normandy-service-geometry-results.json",
+      "bytes": 1336772,
+      "sha256": "683f77ff4215635e1c84a783962125e5e20b58e87c23448457286eb4c757df93"
+    },
+    {
+      "artifactArchive": "browser-review-frequency.zip",
+      "archiveMember": "paris-service-geometry-results.json",
+      "durableMember": "browser-review-frequency/paris-service-geometry-results.json",
+      "bytes": 957811,
+      "sha256": "b078bd468978884fbec6dc2fb23df51279e580099c3fcafaad04f91d748335bf"
+    },
+    {
+      "artifactArchive": "browser-review-frequency.zip",
+      "archiveMember": "service-geometry-results.json",
+      "durableMember": "browser-review-frequency/service-geometry-results.json",
+      "bytes": 813401,
+      "sha256": "553fec04a45aad53e00c04ef8d27e9ac50d202f47e400c5c00f4e8f7d92063f8"
+    },
+    {
+      "artifactArchive": "browser-review-frequency.zip",
+      "archiveMember": "timings-frequency.json",
+      "durableMember": "browser-review-frequency/timings-frequency.json",
+      "bytes": 493,
+      "sha256": "642c7c91d90f4ce33b9ce15b383801cf5883964e71d5150231cf6729ee749142"
+    },
+    {
+      "artifactArchive": "browser-review-infrastructure.zip",
+      "archiveMember": "power-legend-layout-active-desktop.json",
+      "durableMember": "browser-review-infrastructure/power-legend-layout-active-desktop.json",
+      "bytes": 15310,
+      "sha256": "0c871d77dfc66042513ab8f2b7cabc9ed4d4a52d5e8210931bfa46b106512818"
+    },
+    {
+      "artifactArchive": "browser-review-infrastructure.zip",
+      "archiveMember": "power-legend-layout-active-mobile.json",
+      "durableMember": "browser-review-infrastructure/power-legend-layout-active-mobile.json",
+      "bytes": 15180,
+      "sha256": "d64971281c412abc5b96834489fdebb0954a1268e10235f5590ceee956d619a3"
+    },
+    {
+      "artifactArchive": "browser-review-infrastructure.zip",
+      "archiveMember": "power-legend-layout-former-desktop.json",
+      "durableMember": "browser-review-infrastructure/power-legend-layout-former-desktop.json",
+      "bytes": 30318,
+      "sha256": "1711b5bbd1cb5bc120698d97ec6c9e2de20c40530257bf685baf85f8815e665c"
+    },
+    {
+      "artifactArchive": "browser-review-infrastructure.zip",
+      "archiveMember": "power-legend-layout-former-mobile.json",
+      "durableMember": "browser-review-infrastructure/power-legend-layout-former-mobile.json",
+      "bytes": 30005,
+      "sha256": "ba9e2c6b6f3d51e75f3aa8c9b22810012a779427715613032c5f44b110150600"
+    },
+    {
+      "artifactArchive": "browser-review-infrastructure.zip",
+      "archiveMember": "timings-infrastructure.json",
+      "durableMember": "browser-review-infrastructure/timings-infrastructure.json",
+      "bytes": 275,
+      "sha256": "da6e44df9558845004950be38bbee21f593dd677eb3664f9d5a13090580d65fb"
+    },
+    {
+      "artifactArchive": "browser-review-platforms.zip",
+      "archiveMember": "timings-platforms.json",
+      "durableMember": "browser-review-platforms/timings-platforms.json",
+      "bytes": 100,
+      "sha256": "aebc8b2bb3c0453953bc98a8e553e634e91ae1e25e29f2234854f16903907ca9"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "crossing-place-collisions.json",
+      "durableMember": "browser-review-rail-fixture/crossing-place-collisions.json",
+      "bytes": 1470,
+      "sha256": "294843ae4489813582d7f408f1488be7fe30782caaee39917ff07267091f6aa1"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "crossing-symbol-overlap.json",
+      "durableMember": "browser-review-rail-fixture/crossing-symbol-overlap.json",
+      "bytes": 501977,
+      "sha256": "c720474dd7939ac376f99a2eff84842265b72edb8bf392ee0d90cf7ee449ffaa"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "deployed-missing-css/orm-network-ledger.json",
+      "durableMember": "browser-review-rail-fixture/deployed-missing-css/orm-network-ledger.json",
+      "bytes": 9540,
+      "sha256": "dc9e3f5f3ac0a84a3528d2e48c5fe58b248050b3c812270fa418ab6abc5cdf9f"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "deployed-project/orm-fixture-evidence.json",
+      "durableMember": "browser-review-rail-fixture/deployed-project/orm-fixture-evidence.json",
+      "bytes": 186105,
+      "sha256": "86b6ffb758f3c7ae8e280f71be0499a09ad940eebe6ec2b7333a1efadc2e4ccf"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "deployed-project/orm-network-ledger.json",
+      "durableMember": "browser-review-rail-fixture/deployed-project/orm-network-ledger.json",
+      "bytes": 158674,
+      "sha256": "a7a211f5020a9f7c686edebd2bf8b22ee5bb806dbd502029ffb3e268e93d9011"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "deployed-root/orm-fixture-evidence.json",
+      "durableMember": "browser-review-rail-fixture/deployed-root/orm-fixture-evidence.json",
+      "bytes": 180907,
+      "sha256": "c3078326a26acd22ec444f5273ffd6b59e01fed70ff74bc49741e294724e1457"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "deployed-root/orm-network-ledger.json",
+      "durableMember": "browser-review-rail-fixture/deployed-root/orm-network-ledger.json",
+      "bytes": 153617,
+      "sha256": "e8b8d81060c59b455014a59c199f228fa77e0aba74ca9b7a446bd790a4a5b141"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "mainline-reference.json",
+      "durableMember": "browser-review-rail-fixture/mainline-reference.json",
+      "bytes": 199036,
+      "sha256": "4f9dfb35364e9c994a85b8ee9713a0a5461a0ad594dfedba857efa1b022fd40f"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "orm-fixture-evidence.json",
+      "durableMember": "browser-review-rail-fixture/orm-fixture-evidence.json",
+      "bytes": 129733,
+      "sha256": "87b4ec3a5a0a8095d98cb56aa84bb2ab0f766b7891824c8bce3485d38d03deca"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "orm-network-ledger.json",
+      "durableMember": "browser-review-rail-fixture/orm-network-ledger.json",
+      "bytes": 106525,
+      "sha256": "a6dc5c882dafc48aa3bbc1c74cdc1a40af19b81707ac21b8048d61f475228a15"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "overview-markers.json",
+      "durableMember": "browser-review-rail-fixture/overview-markers.json",
+      "bytes": 33049,
+      "sha256": "6512cc80b5af4c4547a1f4474a9253accae3a45a1269e47ab5ecfacadd7c2840"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "paris-station-fallback.json",
+      "durableMember": "browser-review-rail-fixture/paris-station-fallback.json",
+      "bytes": 612311,
+      "sha256": "46e1df6b405ec5fc7679cab84dc53bcaaf7e5355d65d03fa3a66e8b5df164ea1"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "rail-overview-negative-zoom.json",
+      "durableMember": "browser-review-rail-fixture/rail-overview-negative-zoom.json",
+      "bytes": 14270,
+      "sha256": "6dd3c933a6f74188d50092533050fb5259a92d81c39b9ac0445dd5539e75b9e4"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "shanghai-rail-reference.json",
+      "durableMember": "browser-review-rail-fixture/shanghai-rail-reference.json",
+      "bytes": 33297,
+      "sha256": "e61667b1e44cf4083fa07ee6a70d7525ff8d7845fbcc2ddd7c71b1b7dc79fb4b"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "station-place-paint-order.json",
+      "durableMember": "browser-review-rail-fixture/station-place-paint-order.json",
+      "bytes": 3655,
+      "sha256": "659ac30468667b6619679b2de9b03b3ceb3e972ff4ff8ab5be7f16e6dfee2210"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "timings-rail-fixture.json",
+      "durableMember": "browser-review-rail-fixture/timings-rail-fixture.json",
+      "bytes": 658,
+      "sha256": "2dccfb93b566fd9918e731ecc256fe38c57bcac8f9532ac8c9f8ce60e9a8d40d"
+    },
+    {
+      "artifactArchive": "browser-review-rail-fixture.zip",
+      "archiveMember": "wuhan-z7-fixture.json",
+      "durableMember": "browser-review-rail-fixture/wuhan-z7-fixture.json",
+      "bytes": 168,
+      "sha256": "18bbe208f2be140b5c0e65b00e42120a9202873157628966ec936a1ef94f4f8e"
+    }
+  ]
+}
