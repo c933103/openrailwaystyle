@@ -1,0 +1,150 @@
+{
+  "source": "c9b70df212e65ab2c88c3aa4f542ae8c40c88388",
+  "tree": "1a706ce75f032ba53877b6314db64b3b5ae344ab",
+  "base": "7d80b87b9db0f1baa02e9e9f911b9d7554a2b0db",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "git_blob_sha1": "23de14c43ab9b66dadcd764bc10ae85e44272a38"
+    },
+    {
+      "path": "styles/app.mjs",
+      "git_blob_sha1": "2d603346ec4607eb8bf30128cd1310f808f5a2b0"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "git_blob_sha1": "51cd8f582103c452559b44aaf9c4f177e3a65ca7"
+    },
+    {
+      "path": "styles/data-check.html",
+      "git_blob_sha1": "9485c918b2d3322da1af23ceaeb3f08d5b698378"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "git_blob_sha1": "b8fd5047b41317ed744b51b7b3b90a285d096910"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "git_blob_sha1": "f4c149b471da92f3dccf08625848659cf9d72e37"
+    },
+    {
+      "path": "styles/draw.mjs",
+      "git_blob_sha1": "fa4d86fcb0a986fa3748788e0973ce1dc390c0ee"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "git_blob_sha1": "cfb7be325a5bc20136e0f85360d81aac66dc7911"
+    },
+    {
+      "path": "styles/index.html",
+      "git_blob_sha1": "9cad1ed3f8258e10e44e3554092de27b96e504ed"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "git_blob_sha1": "6f9484238d8e65159843f04a434ff1c2968276d0"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "git_blob_sha1": "509e492966642709513a4a131881afa6fc183433"
+    },
+    {
+      "path": "tests/startup.test.mjs",
+      "git_blob_sha1": "108281e4d89a53b254ba257900d1aada6c954589"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "git_blob_sha1": "f7b615933f9ea2d43eaea5afcfa0fca27d6d9e47"
+    },
+    {
+      "path": "tests/measure-height-state.test.mjs",
+      "git_blob_sha1": "53ecf6c354721ce1ceb3573be748f4295c2982d4"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "aggregate.log",
+      "bytes": 251621,
+      "sha256": "cdf85080f6269229c03c18b2c728fcfdf37a86aa1204d0a2cdef8fd1bbdd3432"
+    },
+    {
+      "file": "baseline-measure-height-state.test.mjs",
+      "bytes": 6810,
+      "sha256": "dc2804c63e239e12d2271e267ad4a316b5faa41e3d1c6ee2b154ee6d8857c548"
+    },
+    {
+      "file": "baseline-tests.log",
+      "bytes": 18641,
+      "sha256": "102989dff719754e592d9f51b723ba9d318ae2d86b0a7a740157e9dc6b5bb6a5"
+    },
+    {
+      "file": "before-reproduction.log",
+      "bytes": 280,
+      "sha256": "fbb3b9cb26a7afb65a97365728ac4e45f245bf23eced8b1398cd79b64088da49"
+    },
+    {
+      "file": "browser-availability.log",
+      "bytes": 1149,
+      "sha256": "2cb52085aae6392f2e3bb6d28987b4dee78ba38f7384367d598f8d77b6cf7ce2"
+    },
+    {
+      "file": "browser-system-launch.log",
+      "bytes": 4375,
+      "sha256": "73ef2ed527ac0c5adaa71b73e6b55c17087505ed617c573f5deccb41062ed57a"
+    },
+    {
+      "file": "build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "file": "compare-healthy.mjs",
+      "bytes": 1565,
+      "sha256": "c92d9d031c1fa78dbfae8ec8813e10bbe4900ba4f5d58591599b206ef4f7fb36"
+    },
+    {
+      "file": "final-aggregate.log",
+      "bytes": 251871,
+      "sha256": "c7da81372d544fd514f00b065f249ea8b3ace3db88e86d1d6951b053ac5970ba"
+    },
+    {
+      "file": "final-focused.log",
+      "bytes": 17609,
+      "sha256": "af9906c0eecbf28a2e53937ed9a7c1ff1bd2d7588cb7586680ac91145ef83666"
+    },
+    {
+      "file": "focused-tests.log",
+      "bytes": 3481,
+      "sha256": "a7c14f2d73ce10b2548b77881683b3ea18afa2e5b8c0b72a36ad302ac52867ee"
+    },
+    {
+      "file": "healthy-comparison.json",
+      "bytes": 2390,
+      "sha256": "8761639c24cb2bdd594dfd6b8840c959abf5b1aae3212cd2139e850b01c87283"
+    },
+    {
+      "file": "initial-install-failure.log",
+      "bytes": 86807,
+      "sha256": "c7e9c9c54ac8a0ccc057f830362e1a08497f64f8eb0243f7e8518a2170303523"
+    },
+    {
+      "file": "retried-install.log",
+      "bytes": 394,
+      "sha256": "a8e22da05a8a99fff1710aa330c8708cb7966418692c272ce993e42ed2b1b2ae"
+    },
+    {
+      "file": "static-checks.log",
+      "bytes": 55,
+      "sha256": "8e66b30c161feb87dc5ddbe1db07587574e430400b8b97fd86ad9c6afc768b01"
+    },
+    {
+      "file": "toolbar-test.log",
+      "bytes": 497,
+      "sha256": "1341bf399e5b7fd4eb1b6fe317ce57d9c5fa547b676dbeafe7f2e932a4a646f8"
+    }
+  ],
+  "archive": {
+    "file": "logs.zip",
+    "bytes": 170105,
+    "sha256": "0606601a7d5012728b23f97e2128d9b35094191c31922e2afdae294b80c02469"
+  }
+}

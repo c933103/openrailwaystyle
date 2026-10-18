@@ -1,0 +1,80 @@
+{
+  "base": "7d80b87b9db0f1baa02e9e9f911b9d7554a2b0db",
+  "head": "c9b70df212e65ab2c88c3aa4f542ae8c40c88388",
+  "beforeSha256": "d32dd3f56ee84744a2f1b13e84ca2d95befea1c00628e3342751fb6ca7dea344",
+  "afterSha256": "fc9b58bad56ac658d63bc053d081d78a477b8f6d200bf6eeeadd16b45a3cddff",
+  "observations": [
+    {
+      "units": "metric",
+      "heights": [
+        100,
+        112
+      ],
+      "exactEqual": true,
+      "status": "Distance: 1,000 m over 1 segment. End to end: +12 m · +1.2% (12.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "metric",
+      "heights": [
+        0,
+        0
+      ],
+      "exactEqual": true,
+      "status": "Distance: 1,000 m over 1 segment. End to end: ±0 m · ±0% (0.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "metric",
+      "heights": [
+        -20,
+        -10
+      ],
+      "exactEqual": true,
+      "status": "Distance: 1,000 m over 1 segment. End to end: +10 m · +1% (10.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "metric",
+      "heights": [
+        112,
+        100
+      ],
+      "exactEqual": true,
+      "status": "Distance: 1,000 m over 1 segment. End to end: −12 m · −1.2% (12.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "imperial",
+      "heights": [
+        100,
+        112
+      ],
+      "exactEqual": true,
+      "status": "Distance: 0.62 mi over 1 segment. End to end: +39 ft · +1.2% (12.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "imperial",
+      "heights": [
+        0,
+        0
+      ],
+      "exactEqual": true,
+      "status": "Distance: 0.62 mi over 1 segment. End to end: ±0 ft · ±0% (0.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "imperial",
+      "heights": [
+        -20,
+        -10
+      ],
+      "exactEqual": true,
+      "status": "Distance: 0.62 mi over 1 segment. End to end: +33 ft · +1% (10.0‰). Click a point to select it; drag a point to move it."
+    },
+    {
+      "units": "imperial",
+      "heights": [
+        112,
+        100
+      ],
+      "exactEqual": true,
+      "status": "Distance: 0.62 mi over 1 segment. End to end: −39 ft · −1.2% (12.0‰). Click a point to select it; drag a point to move it."
+    }
+  ]
+}
