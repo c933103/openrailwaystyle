@@ -32,7 +32,7 @@ const root=new URL('./data/station-points/',base);
 const manifest={complete:true,schema:1,license:'ODbL-1.0',minzoom:3,maxzoom:7,stations:8,
  tiles:parent.length,bundles:1,polar:0,pendingRegions:0,completedRegions:32};
 const index={zoom:3,bundles:['4/3']}; // At latitude 15°N the z3 tile is 4/3.
-const browser=await launchBrowser(),page=await browser.newPage({viewport:{width:860,height:620}}),
+const browser=await launchBrowser({engine:process.env.ATLAS_TEST_ENGINE==='webkit'?'webkit':'chromium'}),page=await browser.newPage({viewport:{width:860,height:620}}),
  calls=[],errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 await page.route(new URL('station-world-browser-fixture.html',base).href,route=>
