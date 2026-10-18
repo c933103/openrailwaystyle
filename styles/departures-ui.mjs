@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261018-measure-height-state-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261018-drawing-clear-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

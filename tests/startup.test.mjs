@@ -267,6 +267,38 @@ test('startup network guard rejects native fetch, HTTP and socket fallbacks',asy
  assert.deepEqual(unmockedRequests.splice(before),['https://example.org/offline-sentinel','HTTP','socket']);
 });
 
+test('drawing toolbar clears a first unfinished shape only after confirmation and accepts fresh input', async () => {
+  const {dom, window, maps, errors} = await start();
+  try {
+    const map = maps[0], doc = window.document, prompts = [];
+    let accepted = false;
+    window.confirm = message => { prompts.push(message); return accepted; };
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Drawing tools').click();
+    assert.equal(doc.getElementById('draw-toolbar').hidden, false);
+    doc.querySelector('[data-draw="line"]').click();
+    const click = (lng, lat) => map.handlers.click({point: {x: lng * 100, y: lat * 100}, lngLat: {lng, lat}});
+    click(0, 0); click(1, 1);
+    assert.equal(map.sourceData['atlas-drawing'].features.length, 0);
+    const before = structuredClone(map.sourceData['atlas-drawing-draft']);
+    assert.equal(before.features.length, 1);
+    doc.getElementById('draw-clear').click();
+    assert.deepEqual(prompts, ['Delete all drawings?']);
+    assert.deepEqual(map.sourceData['atlas-drawing-draft'], before, 'declining retains the unfinished shape');
+    accepted = true; doc.getElementById('draw-clear').click();
+    assert.equal(prompts.length, 2);
+    for (const id of ['atlas-drawing', 'atlas-drawing-draft', 'atlas-drawing-handles']) assert.equal(map.sourceData[id].features.length, 0, id);
+    assert.equal(doc.querySelector('[data-draw="line"]').getAttribute('aria-pressed'), 'true');
+    doc.getElementById('draw-finish').click();
+    assert.equal(map.sourceData['atlas-drawing'].features.length, 0, 'Finish cannot restore the cleared draft');
+    doc.getElementById('draw-clear').click(); assert.equal(prompts.length, 2, 'empty Clear does not ask again');
+    click(2, 2); click(3, 3); doc.getElementById('draw-finish').click();
+    assert.deepEqual(map.sourceData['atlas-drawing'].features[0].geometry.coordinates, [[2, 2], [3, 3]]);
+    doc.getElementById('draw-close').click(); assert.equal(doc.getElementById('draw-toolbar').hidden, true);
+    assert.deepEqual(errors, []);
+  } finally { dom.window.close(); }
+});
+
 test('measurement toolbar settles unavailable endpoint heights and recovers on an explicit repeat', async () => {
   let failing = true, requests = 0;
   const {dom, window, maps, errors} = await start({elevationOptions: {zoom: 2, load: async () => {
