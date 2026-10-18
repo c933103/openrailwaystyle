@@ -11,10 +11,11 @@
       "sha256": "e61a6f14c843a48c9d87bb96c57f143ac19eec04c5c1b6cb38bd720b28568acb",
       "git_blob_sha1": "f9564380c5fd53fd333f843a08ab9234139e1d54"
     },
-    "pr244-reference-diagnostics.zip": {
+    "reference-diagnostics.zip": {
       "bytes": 240811,
       "sha256": "e6bf1bd3f7b5cb5ca9749c54f9017904f59978517723caf8a85ea0713da65fd0",
       "git_blob_sha1": "cc4e637c8d3ff9e8a628b6ad2c50c7db3096027b"
     }
   }
 }
+
