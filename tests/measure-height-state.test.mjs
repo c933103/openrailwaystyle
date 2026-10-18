@@ -117,3 +117,31 @@ test('clearing before the endpoint task begins does not start obsolete work', as
   assert.equal(calls, 0); assert.equal(h.total(), undefined);
   assert.doesNotMatch(h.status(), /Finding heights|unavailable|End to end/);
 });
+
+test('explicit height retry keeps rendered endpoint selection and the finished geometry', async () => {
+  const pending = [], h = harness(() => new Promise(resolve => pending.push(resolve)));
+  h.finish(); await flush(); pending[0]([null, null]); await flush();
+  const map = h.measure.map;
+  map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
+  map.queryRenderedFeatures = () => [{properties: {index: 0}}];
+  h.measure.click({lng: 0, lat: 0}, {x: 0, y: 0});
+  assert.equal(h.measure.selected, 0, 'clicking an existing endpoint still selects it for editing');
+  assert.equal(h.measure.ended, true); assert.equal(h.measure.canRetryHeights, true);
+  const before = h.measure.collection();
+  h.measure.retryHeights(); h.measure.retryHeights(); await flush();
+  assert.equal(pending.length, 2, 'repeated retry actions coalesce while pending');
+  assert.equal(h.measure.canRetryHeights, false); assert.match(h.status(), /Finding heights/);
+  assert.deepEqual(h.measure.collection(), before); assert.equal(h.measure.selected, 0);
+  pending[1]([100, 112]); await flush();
+  assert.match(h.status(), /End to end: \+12 m/); assert.equal(h.measure.canRetryHeights, false);
+  h.measure.retryHeights(); await flush(); assert.equal(pending.length, 2, 'healthy heights are not retried');
+});
+
+test('a failed explicit retry returns to unavailable and a cleared measurement cannot retry', async () => {
+  let calls = 0;
+  const h = harness(async () => { calls++; throw new Error('synthetic failure'); });
+  h.finish(); await flush(); unavailable(h); assert.equal(h.measure.canRetryHeights, true);
+  h.measure.retryHeights(); await flush(); unavailable(h); assert.equal(calls, 2);
+  h.measure.clear(); assert.equal(h.measure.canRetryHeights, false);
+  h.measure.retryHeights(); await flush(); assert.equal(calls, 2);
+});

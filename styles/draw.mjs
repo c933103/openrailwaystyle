@@ -614,20 +614,28 @@ export class Measure {
   }
   // The finished distance's ends, as a key for its heights.
   climbFor() { return this.mode === 'distance' && this.points.length >= 2 ? JSON.stringify([this.points[0], this.points.at(-1), lengthKm(this.points)]) : null; }
-  // Heights of a finished distance's ends, fetched once per pair of ends.
+  get canRetryHeights() { return Boolean(this.ended && this.heights && this.climb?.key === this.climbFor() && !this.climb.pending && this.climb.value === null); }
+  // Retrying the finished endpoints is explicit: clicking their handles
+  // must remain an edit selection rather than silently starting over.
+  retryHeights() {
+    if (!this.canRetryHeights) return;
+    this.climb = null; this.refresh();
+  }
+  // Heights for this finished distance, shared until explicitly retried.
   updateClimb() {
     const key = this.ended ? this.climbFor() : null;
     // A new/edited measurement owns its own request, even if it returns to
     // the same endpoints. Redraws of one finished measurement never retry.
-    if (!key || !this.heights) { this.climb = null; return; }
+    if (!key || !this.heights) { if (this.climb) { this.climb = null; this.changed(); } return; }
     if (this.climb?.key === key) return;
     const request = this.climb = {key, pending: true, value: null};
+    this.changed();
     const km = lengthKm(this.points);
     const points = [this.points[0], this.points.at(-1)].map(p => [...p]);
     const complete = value => {
       if (this.climb !== request) return;
       request.pending = false; request.value = value;
-      this.refresh();
+      this.refresh(); this.changed();
     };
     Promise.resolve().then(() => this.climb === request ? this.heights(points) : null).then(values => {
       complete(Array.isArray(values) ? climb(values[0], values[1], km) : null);
@@ -641,7 +649,7 @@ export class Measure {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
       const climbed = this.ended && this.climb?.key === this.climbFor() ? this.climb.value : null;
       const heights = !this.ended || !this.heights ? '' : climbed ? ` End to end: ${formatClimb(climbed, units)}.`
-        : this.climb?.pending ? ' Finding heights…' : ' End-to-end heights unavailable. Measure again to retry.';
+        : this.climb?.pending ? ' Finding heights…' : ' End-to-end heights unavailable. Use Retry heights to try again.';
       this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${heights}${hint}` : `Click points to measure; double-click to end.${hint}`);
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);

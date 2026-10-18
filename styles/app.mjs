@@ -1405,6 +1405,7 @@ function updateDrawing() {
     $('node-extend').hidden = !selected.canExtend;
   }
   $('measure-delete').hidden = measuring?.selected === null || measuring?.selected === undefined;
+  if ($('measure-retry')) $('measure-retry').hidden = !measuring?.canRetryHeights;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
 // Drawing and measuring are exclusive: opening one closes the other.
@@ -1423,6 +1424,7 @@ $('measure-close').addEventListener('click', () => openTools(null));
 document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
 $('measure-undo').addEventListener('click', () => measuring?.undo());
 $('measure-clear').addEventListener('click', () => measuring?.clear());
+$('measure-retry')?.addEventListener('click', () => measuring?.retryHeights());
 // Selected points: delete after confirmation.
 $('measure-delete').addEventListener('click', () => { if (confirm('Delete this point?')) measuring?.deleteSelected(); });
 $('node-delete').addEventListener('click', () => { if (confirm('Delete this point?')) drawing?.deleteSelected(); });

@@ -288,11 +288,47 @@ test('measurement toolbar settles unavailable endpoint heights and recovers on a
     finish(); assert.match(status(), /Finding heights/); await settle();
     assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
     assert.doesNotMatch(status(), /Finding heights/); assert.equal(requests, 2);
-    failing = false; finish(); await settle();
+    failing = false; finish(); assert.equal(doc.getElementById('measure-retry').hidden, true); await settle();
     assert.match(status(), /End to end: ±0 m/); assert.equal(requests, 4);
     const label = map.sourceData['atlas-measure'].features.find(feature => feature.properties.kind === 'total').properties.label;
     assert.equal(label, '111 km\n±0 m · ±0% (0.0‰)');
     doc.getElementById('measure-close').click(); assert.equal(doc.getElementById('measure-toolbar').hidden, true);
+    assert.equal(status(), ''); assert.equal(errors.length, 0);
+  } finally { dom.window.close(); }
+});
+
+test('measurement toolbar retries heights with existing point handles without losing editing', async () => {
+  let failing = true, requests = 0;
+  const {dom, window, maps, errors} = await start({elevationOptions: {zoom: 2, load: async () => {
+    requests++; if (failing) throw new Error('synthetic endpoint failure');
+    return {size: 1, data: Uint8ClampedArray.from([128, 10, 0, 255])};
+  }}});
+  try {
+    const map = maps[0], doc = window.document;
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
+    doc.querySelector('[data-measure="distance"]').click();
+    const retry = doc.getElementById('measure-retry');
+    assert.ok(retry, 'the toolbar exposes an explicit endpoint-height retry');
+    assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
+    assert.equal(retry.hidden, true);
+    const status = () => doc.getElementById('measure-status').textContent;
+    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
+    map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
+    await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
+    map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
+    map.rendered = [{layer: {id: 'measure-point-targets'}, properties: {index: 0}}];
+    map.handlers.click({point: {x: 0, y: 0}, lngLat: {lng: 0, lat: 0}});
+    assert.equal(doc.getElementById('measure-delete').hidden, false, 'rendered endpoint remains selectable');
+    const geometry = map.sourceData['atlas-measure'].features.map(feature => feature.geometry);
+    failing = false; retry.click(); retry.click();
+    assert.equal(retry.hidden, true); assert.match(status(), /Finding heights/); await settle();
+    assert.equal(requests, 4, 'only one explicit two-endpoint retry');
+    assert.match(status(), /End to end: ±0 m/); assert.equal(retry.hidden, true);
+    assert.deepEqual(map.sourceData['atlas-measure'].features.map(feature => feature.geometry), geometry);
+    assert.equal(doc.getElementById('measure-delete').hidden, false);
+    doc.getElementById('measure-close').click(); assert.equal(retry.hidden, true);
     assert.equal(status(), ''); assert.equal(errors.length, 0);
   } finally { dom.window.close(); }
 });
