@@ -29,3 +29,8 @@ jobs:
           npx playwright install --with-deps chromium
           node scripts/serve.mjs &
           node scripts/check-station-world-browser.mjs
+      - name: Verify real WebKit station layer and gzip-bundle support
+        run: |
+          npx playwright install --with-deps webkit
+          node scripts/serve.mjs &
+          ATLAS_TEST_ENGINE=webkit node scripts/check-station-world-browser.mjs
