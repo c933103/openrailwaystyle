@@ -1807,6 +1807,8 @@ async function initialize() {
     // Any failed complete-snapshot tile returns to the original station dots,
     // rather than making its geographic region blank or misreporting coverage.
     if(e.sourceId===WORLD_STATION_SOURCE) {
+      // A cancelled offscreen or superseded tile is not a station data failure.
+      if(e.error?.name==='AbortError' || /aborterror|operation was aborted/i.test(e.error?.message || '')) return;
       if(stationWorldActive){stationWorldActive=false;if(ready)applySettings();}
       console.warn('Worldwide station-point source unavailable; previous sources restored:',e.error?.message);
       return;
