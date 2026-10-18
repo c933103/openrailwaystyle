@@ -928,3 +928,41 @@ test('search row-isolation release updates cached app/model together and retains
   assert.deepEqual([...next.stores.keys()],caches,'normal navigation updates within the same cache generation');
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+test('measurement height-state release upgrades cached drawing code and keeps old tabs isolated', async () => {
+  const previous = '20261018-drawing-import-1';
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const version = page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version, previous);
+  const paths = ['app.mjs', 'draw.mjs'];
+  const current = new Map(paths.map(path => [new URL(path, scope).pathname, readFileSync(new URL('../styles/' + path, import.meta.url), 'utf8')]));
+  // Small compatibility bodies test cache isolation; historical source is
+  // not copied into this release. Current executable bytes are exact source.
+  const prior = new Map(paths.map(path => [new URL(path, scope).pathname, `export const oldModule = '${path}';`]));
+  const old = startWorker({version: previous, assetBodies: prior, rejectExternal: true});
+  await bounded(old.lifecycle('install')); await old.lifecycle('activate');
+  const caches = [...old.stores.keys()];
+  const unchanged = startWorker({version: previous, stores: old.stores, assetBodies: current, rejectExternal: true});
+  await bounded(unchanged.request('./', true));
+  assert.equal(await (await unchanged.request('draw.mjs?v=' + previous)).text(), prior.get(new URL('draw.mjs', scope).pathname));
+  const next = startWorker({version, stores: old.stores, assetBodies: current, rejectExternal: true});
+  await bounded(next.request('./', true)); next.setOffline();
+  for (const path of paths) {
+    assert.equal(await (await next.request(path + '?v=' + version)).text(), current.get(new URL(path, scope).pathname));
+    assert.equal(await (await next.request(path + '?v=' + previous)).text(), prior.get(new URL(path, scope).pathname));
+  }
+  const module = new vm.SourceTextModule(await (await next.request('draw.mjs?v=' + version)).text());
+  await module.link(() => { throw new Error('unexpected drawing dependency'); }); await module.evaluate();
+  const map = {on() {}, getSource() {}, getCanvas: () => ({style: {}}), doubleClickZoom: {enable() {}, disable() {}}};
+  let status, calls = 0, failing = true;
+  const measure = new module.namespace.Measure(map, {status: value => { status = value; }, heights: async () => { calls++; return failing ? [null, null] : [100, 112]; }});
+  measure.setMode('distance');
+  const finish = () => { measure.click({lng: 0, lat: 0}); measure.click({lng: 0, lat: 1}); measure.end(); };
+  finish(); for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.match(status, /End-to-end heights unavailable/); assert.doesNotMatch(status, /Finding heights/);
+  measure.refresh(); assert.equal(calls, 1);
+  failing = false; finish(); for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.match(status, /End to end: \+12 m/); assert.equal(calls, 2);
+  assert.deepEqual([...next.stores.keys()], caches, 'no shell-generation change or purge');
+  assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
+});

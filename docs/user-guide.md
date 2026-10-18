@@ -124,6 +124,11 @@ multi-segment distances, with the height difference and gradient (% and ‰)
 between the first and last points, and curve radius, using a least-squares
 circle through three or more points clicked along a curve.
 
+If either endpoint height cannot be loaded, the finished distance remains
+available and reports that its end-to-end heights are unavailable. It stops
+showing a loading message and does not invent a gradient or retry on redraw.
+Finish a new measurement to try again, including one with the same endpoints.
+
 With the drawing tools closed, click a drawn line for its elevation profile:
 heights about every 10 m along it, with lowest and highest points, ascent,
 descent and the steepest stretch; hovering the chart marks the place on the map.

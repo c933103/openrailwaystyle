@@ -55,7 +55,7 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -208,7 +208,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
-    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
+    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,key === 'createElevation' && elevationOptions ? url => value(url,elevationOptions) : value);
   }, {context});
   // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
@@ -265,6 +265,36 @@ test('startup network guard rejects native fetch, HTTP and socket fallbacks',asy
  try {assert.throws(()=>socket.connect(443,'example.org'),/blocked unmocked network/);}
  finally {socket.destroy();}
  assert.deepEqual(unmockedRequests.splice(before),['https://example.org/offline-sentinel','HTTP','socket']);
+});
+
+test('measurement toolbar settles unavailable endpoint heights and recovers on an explicit repeat', async () => {
+  let failing = true, requests = 0;
+  const {dom, window, maps, errors} = await start({elevationOptions: {zoom: 2, load: async () => {
+    requests++; if (failing) throw new Error('synthetic endpoint failure');
+    return {size: 1, data: Uint8ClampedArray.from([128, 10, 0, 255])};
+  }}});
+  try {
+    const map = maps[0], doc = window.document;
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
+    assert.equal(doc.getElementById('measure-toolbar').hidden, false);
+    doc.querySelector('[data-measure="distance"]').click();
+    const finish = () => {
+      for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
+      map.handlers.dblclick({preventDefault() {}});
+    };
+    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const status = () => doc.getElementById('measure-status').textContent;
+    finish(); assert.match(status(), /Finding heights/); await settle();
+    assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
+    assert.doesNotMatch(status(), /Finding heights/); assert.equal(requests, 2);
+    failing = false; finish(); await settle();
+    assert.match(status(), /End to end: ±0 m/); assert.equal(requests, 4);
+    const label = map.sourceData['atlas-measure'].features.find(feature => feature.properties.kind === 'total').properties.label;
+    assert.equal(label, '111 km\n±0 m · ±0% (0.0‰)');
+    doc.getElementById('measure-close').click(); assert.equal(doc.getElementById('measure-toolbar').hidden, true);
+    assert.equal(status(), ''); assert.equal(errors.length, 0);
+  } finally { dom.window.close(); }
 });
 
 test('startup native-realm loaders use each window fixture without external fetch',async()=>{
