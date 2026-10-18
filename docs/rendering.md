@@ -51,6 +51,30 @@ Both arms prepare with the current app. This is bounded compatibility evidence,
 not a historical schedule replay or a statistical performance claim. The normal
 controls check retains its real-idle predicate and 60-second deadline.
 
+## Completed worldwide OSM station-marker source
+
+The independent station-point acquisition is published in two distinct
+branches. `station-points-work` can contain incomplete data and is never
+imported by the website. Only the `station-points-data` release with a
+verified complete 32-region-or-more topology, a matching z3 bundle index and
+nonzero inventory is eligible for the map.
+
+Before that release exists, all original curated/provider/basemap station
+marker layers remain active. Once verified, `stationWorld` supplies independent
+circle markers for every station in that OSM source from zoom 3 through 11,
+including overzooming the published z7 tiles. Collision-selected station
+**names** remain in the existing provider/curated layers. The new markers
+paint above level crossings, but below accepted place-name paint, as required
+by the station/crossing ordering contract. The old low-zoom dots and
+error-fallback circles are then suppressed to avoid duplicate markers; detailed
+provider dots remain from zoom 12.
+
+If the independent tile source fails, the application restores the previous
+markers rather than inventing a completed geographic result. All points in
+this source are mapped features, not verified operating services. Extreme polar
+locations beyond Web Mercator need their own native rendering before an
+exhaustive source can claim completion.
+
 ## Station, crossing and place-label priority
 
 Station circles paint above crossing dots and × marks. Accepted city,
