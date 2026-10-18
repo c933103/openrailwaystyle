@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261017-elevation-profile-gaps-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261018-drawing-import-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
