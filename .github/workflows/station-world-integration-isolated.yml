@@ -32,5 +32,4 @@ jobs:
       - name: Verify real WebKit station layer and gzip-bundle support
         run: |
           npx playwright install --with-deps webkit
-          node scripts/serve.mjs &
           ATLAS_TEST_ENGINE=webkit node scripts/check-station-world-browser.mjs
