@@ -1,0 +1,106 @@
+{
+  "base": "7d80b87b9db0f1baa02e9e9f911b9d7554a2b0db",
+  "previous": "d10f5ee8138c77f69945fb73827f1b29f4e71d52",
+  "source": "82495d1bdc2d113c8fef740e1346db123e8ff2c4",
+  "tree": "e2a746da4ccfff8588a61a507cdfd390e10d98d9",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "git_blob_sha1": "aa96e05e14b66290a26af1d24192a1e9cbde5f67"
+    },
+    {
+      "path": "styles/app.mjs",
+      "git_blob_sha1": "d15122f2cc4fd0705000a2ba119062b8967bd778"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "git_blob_sha1": "2ced9fe75b2c98eeecdfd822382e0cf164bb7632"
+    },
+    {
+      "path": "styles/data-check.html",
+      "git_blob_sha1": "c6e7319b83caca89360ec2a3a0e0c13fb13bbdfa"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "git_blob_sha1": "b1a3fa027b3b65a72fa83b4516629b4a4b59c861"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "git_blob_sha1": "63c2402de7235a9af345f8f120a1ea27dc9a30f2"
+    },
+    {
+      "path": "styles/draw.mjs",
+      "git_blob_sha1": "fd474383fe5e8f73b10a717f1722cd8115687747"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "git_blob_sha1": "bdfd809adeaccf33d1a3d6bc2689dcc81635596b"
+    },
+    {
+      "path": "styles/index.html",
+      "git_blob_sha1": "d4e8ecd9a985e6e9da4851c4b2d98556e5980d19"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "git_blob_sha1": "14fd8f0644710679548c41bfafee681e63646968"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "git_blob_sha1": "4a2915378f857933ddb5d50fd90d7c50b963122e"
+    },
+    {
+      "path": "tests/startup.test.mjs",
+      "git_blob_sha1": "ae91dd6ff453153ae7b3fd673889603e877c9699"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "git_blob_sha1": "19cdb9cc3c64dd45fa6dc49a52aec7dcb64f5ffc"
+    },
+    {
+      "path": "tests/measure-height-state.test.mjs",
+      "git_blob_sha1": "410d7225170d8247e6a9a536387aabdc53b4772d"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "compare-token-healthy.mjs",
+      "bytes": 1565,
+      "sha256": "50c29c28410535d8d3e4d7ba331dbdae6af6fe3c29e35a38dda07732e1566c4d"
+    },
+    {
+      "file": "token-build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "file": "token-final-aggregate.log",
+      "bytes": 252402,
+      "sha256": "3c2c7c68f4a6d65ebe3a244353fab6790ddffb40965a6817ce0ce19c4e2c9020"
+    },
+    {
+      "file": "token-focused.log",
+      "bytes": 17941,
+      "sha256": "63d653892c1e0c6d743181deb8b6bcbafca1aa9abe3f4bff5908ed4c7a4f7ec1"
+    },
+    {
+      "file": "token-healthy-comparison.json",
+      "bytes": 2390,
+      "sha256": "da1bc5097ab0c1ac015b597f1e8ea93582240b60b805b251fcfa339ed94c682f"
+    },
+    {
+      "file": "token-negative.log",
+      "bytes": 1093,
+      "sha256": "90ba8e6482815bd6c7dda134ae9c3b6744ddec82f2fb2c98efce98802171a25d"
+    },
+    {
+      "file": "token-toolbar.log",
+      "bytes": 703,
+      "sha256": "349f7da5f5b0c3ac7ef394bf604362fd44d0198be5f5dc472d30e15093f10e54"
+    }
+  ],
+  "archive": {
+    "file": "logs.zip",
+    "bytes": 79506,
+    "sha256": "9b17c6d078bc86cd97d23f17a31f77b11c5d59bfa4c7c27dc7d09f9a6c226139"
+  }
+}
