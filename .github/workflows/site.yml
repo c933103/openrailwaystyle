@@ -279,7 +279,7 @@ jobs:
           assert.equal(new Set(index.bundles).size,index.bundles.length);
           let bytes=0;
           for(const key of index.bundles){
-            assert.match(key,/^[0-7]\\/[0-7]$/);
+            assert.match(key,new RegExp('^[0-7]/[0-7]$'));
             const size=(await stat(join(dir,'3',key+'.bundle.gz'))).size;
             assert.ok(size>16&&size<20*1024*1024,'Bad station tile bundle: '+key);
             bytes+=size;
