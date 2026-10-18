@@ -1,0 +1,28 @@
+✔ Clear confirms and removes single-point through the actual toolbar handler (166.815004ms)
+✔ declining Clear preserves single-point and its saved/rendered state (12.660065ms)
+✔ Clear confirms and removes line through the actual toolbar handler (10.489483ms)
+✔ declining Clear preserves line and its saved/rendered state (10.142139ms)
+✔ Clear confirms and removes area through the actual toolbar handler (11.03034ms)
+✔ declining Clear preserves area and its saved/rendered state (17.182216ms)
+✔ Clear confirms and removes curve through the actual toolbar handler (23.007714ms)
+✔ declining Clear preserves curve and its saved/rendered state (24.143976ms)
+✔ Clear confirms and removes paused through the actual toolbar handler (21.106362ms)
+✔ declining Clear preserves paused and its saved/rendered state (21.179585ms)
+✔ Clear confirms and removes saved through the actual toolbar handler (21.12478ms)
+✔ declining Clear preserves saved and its saved/rendered state (43.294005ms)
+✔ Clear confirms and removes saved-and-draft through the actual toolbar handler (12.565476ms)
+✔ declining Clear preserves saved-and-draft and its saved/rendered state (11.386536ms)
+✔ Clear confirms and removes extension through the actual toolbar handler (12.719073ms)
+✔ declining Clear preserves extension and its saved/rendered state (9.662491ms)
+✔ Clear confirms and removes extension-without-points through the actual toolbar handler (9.598989ms)
+✔ declining Clear preserves extension-without-points and its saved/rendered state (12.510334ms)
+✔ Clear ignores empty/cursor-only state and remains usable for a later drawing (15.448081ms)
+✔ Clear before drawing initialization remains a no-op (10.335836ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1453.61013

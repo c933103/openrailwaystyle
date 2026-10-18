@@ -1,0 +1,399 @@
+✖ Clear confirms and removes single-point through the actual toolbar handler (196.127321ms)
+✖ declining Clear preserves single-point and its saved/rendered state (13.336675ms)
+✖ Clear confirms and removes line through the actual toolbar handler (14.678189ms)
+✖ declining Clear preserves line and its saved/rendered state (9.625967ms)
+✖ Clear confirms and removes area through the actual toolbar handler (8.893998ms)
+✖ declining Clear preserves area and its saved/rendered state (8.827229ms)
+✖ Clear confirms and removes curve through the actual toolbar handler (10.0415ms)
+✖ declining Clear preserves curve and its saved/rendered state (14.71272ms)
+✖ Clear confirms and removes paused through the actual toolbar handler (18.944431ms)
+✖ declining Clear preserves paused and its saved/rendered state (16.659236ms)
+✔ Clear confirms and removes saved through the actual toolbar handler (19.215305ms)
+✔ declining Clear preserves saved and its saved/rendered state (14.966305ms)
+✔ Clear confirms and removes saved-and-draft through the actual toolbar handler (16.847047ms)
+✔ declining Clear preserves saved-and-draft and its saved/rendered state (20.469661ms)
+✖ Clear confirms and removes extension through the actual toolbar handler (15.311933ms)
+✖ declining Clear preserves extension and its saved/rendered state (13.920751ms)
+✖ Clear confirms and removes extension-without-points through the actual toolbar handler (28.875227ms)
+✖ declining Clear preserves extension-without-points and its saved/rendered state (9.258425ms)
+✖ Clear ignores empty/cursor-only state and remains usable for a later drawing (8.047869ms)
+✔ Clear before drawing initialization remains a no-op (8.272461ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 5
+ℹ fail 15
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1602.538502
+
+✖ failing tests:
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes single-point through the actual toolbar handler (196.127321ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves single-point and its saved/rendered state (13.336675ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes line through the actual toolbar handler (14.678189ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves line and its saved/rendered state (9.625967ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes area through the actual toolbar handler (8.893998ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves area and its saved/rendered state (8.827229ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes curve through the actual toolbar handler (10.0415ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves curve and its saved/rendered state (14.71272ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes paused through the actual toolbar handler (18.944431ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves paused and its saved/rendered state (16.659236ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes extension through the actual toolbar handler (15.311933ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves extension and its saved/rendered state (13.920751ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:64:3
+✖ Clear confirms and removes extension-without-points through the actual toolbar handler (28.875227ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:69:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:82:3
+✖ declining Clear preserves extension-without-points and its saved/rendered state (9.258425ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'Delete all drawings?'
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:91:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'Delete all drawings?' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/drawing-clear.test.mjs:101:1
+✖ Clear ignores empty/cursor-only state and remains usable for a later drawing (8.047869ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-drawing-clear-20261018/tests/drawing-clear.test.mjs:107:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

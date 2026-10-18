@@ -1,0 +1,91 @@
+{
+  "base": "891e97ade75a4f156cc7b752375673e7a6e849aa",
+  "head": "54c98b616b659259ad5149a6b2cbe02c7c068824",
+  "tree": "481555d1d93e8785da068e7c55d398865f9f37fe",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "bytes": 18176,
+      "sha256": "2f894c19d91f0dd88fb31e8841621f63f7f02a5825714b3d4274d5b848dd3b7b",
+      "gitBlob": "b30063a86872edd50f664f575ef1690e286ea233"
+    },
+    {
+      "path": "styles/app.mjs",
+      "bytes": 167944,
+      "sha256": "60f3611f53f45e95ef589a7c0216bfc82e45d72c8958c605e5802e954a61e47f",
+      "gitBlob": "738c0b8bca7ada9f464e8a3d7248eefadb3d7c33"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "bytes": 4077,
+      "sha256": "2d885b58ce836fc112bf233953565e0f7d81cb999c1495fb136051b7c52a69f0",
+      "gitBlob": "dbaa117e932cc97f4ea251024503a2bb5ce8fd1a"
+    },
+    {
+      "path": "styles/data-check.html",
+      "bytes": 1399,
+      "sha256": "8e727316b9dbfd210042f7ab6ed1532ec502ad4cb6c34d5a27b5fc67697fc56a",
+      "gitBlob": "6e4bee6b5e8f06916c3762382a9be5686c360976"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "bytes": 3834,
+      "sha256": "df06d80a9c18d5f79e4a490444b007363ce0dbb91bb3c29c914ca1f3f03c4884",
+      "gitBlob": "706d1681d2d2d66160caf8ac3dbfc402ef03a004"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "bytes": 6973,
+      "sha256": "4168ef42cf0224e2c39249a1cdd0312ebd3fa283211d2533cd4b9d077b665409",
+      "gitBlob": "456c703e9fc8dc9dbf84dc2bee6aa42144d9bab5"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "bytes": 7736,
+      "sha256": "c20c69fe48bb5425fab32b55f83c6cc8876d7fd33148e5b8a6cae8c6f484d58d",
+      "gitBlob": "c6879853aa212ed3ed9bb6fc108f01da7bcf837f"
+    },
+    {
+      "path": "styles/index.html",
+      "bytes": 47004,
+      "sha256": "c03907d73562962f446be42ecba328a8b1f2c0920f8b41f791c2caefc6658bb6",
+      "gitBlob": "a859e7b2b635cdb2f524a48c9f121f3cb41f7f9c"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "bytes": 6071,
+      "sha256": "015e176dacb99cd1316667ba7ac36071de93dccc72f9cfb033d6a3cb41ea1c90",
+      "gitBlob": "cf3f7559f0c2475090a03d5ad58b8d9ea2efa1a1"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "bytes": 62046,
+      "sha256": "821b601bcf47f9923d3d4ebb4f24ed33c76963d11ead90cedaf7e56143c8635f",
+      "gitBlob": "272ab6ac78d55cfd08899f581f26df0982e8e2f4"
+    },
+    {
+      "path": "tests/startup.test.mjs",
+      "bytes": 171137,
+      "sha256": "e65bd92e43b52ebcae42c7cc365355700d97337a5c1a846f6ef263471fd68585",
+      "gitBlob": "dda56eae753dcac61015d54662f29736e7cf53e4"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "bytes": 71628,
+      "sha256": "5b4bb86ecc38c60770fcc32ed3256024c79cf4b115b56634eb744b9e5193ed45",
+      "gitBlob": "2f13ff4ac60950882f2cd4abe1cb31a6b7d2d10a"
+    },
+    {
+      "path": "docs/investigations/drawing-clear-20261018.md",
+      "bytes": 2994,
+      "sha256": "ef8f911dcd81d0fc6dea28790f64a98bd59fcb9de47fd628c0ca157a64657da5",
+      "gitBlob": "827aca33530b4b4855aa198a1150fd4538d5f70f"
+    },
+    {
+      "path": "tests/drawing-clear.test.mjs",
+      "bytes": 6566,
+      "sha256": "596f2d3aa337556b67c0b436ff45a4e10cceed9ee3e4d9715ca8a397cca7ba76",
+      "gitBlob": "94a7fc97db026c1c677204f2994f482e6d5961c1"
+    }
+  ]
+}
