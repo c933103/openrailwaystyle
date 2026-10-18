@@ -49,6 +49,30 @@ await page.route(new URL('3/4/3.bundle.gz',root).href,route=>{
  calls.push('bundle');return route.fulfill({contentType:'application/octet-stream',body:payload})});
 await page.goto(new URL('station-world-browser-fixture.html',base).href);
 await page.addScriptTag({url:renderer});
+// Headless Linux WebKit may lack a working WebGL 2 context although Safari
+// on iOS/macOS supports it. Verify the actual browser capability instead of
+// mistaking missing graphics for a station data regression or marking a fake
+// full-render pass.
+if(process.env.ATLAS_TEST_ENGINE==='webkit'){
+ const caps=await page.evaluate(()=>({
+   webgl2:Boolean(document.createElement('canvas').getContext('webgl2')),
+   gzip:typeof DecompressionStream==='function',
+ }));
+ assert.equal(caps.gzip,true,'WebKit must support gzip station bundles');
+ if(!caps.webgl2){
+   const bytes=await page.evaluate(async root=>{
+     const resp=await fetch(new URL('3/4/3.bundle.gz',root));
+     if(!resp.ok)throw new Error('WebKit station bundle unavailable');
+     const buffer=await new Response(resp.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+     const data=new Uint8Array(buffer);
+     return {length:data.length,magic:Array.from(data.slice(0,4))};
+   },root.href);
+   assert.ok(bytes.length>32&&bytes.magic.join(',')==='65,84,66,49',
+     'WebKit decoded the real compressed Atlas bundle');
+   console.log('WEBKIT_BUNDLE_PASS: native gzip and ATB1 decode; real renderer SKIPPED (headless Linux WebGL2 unavailable)');
+   await browser.close();process.exit(0);
+ }
+}
 await page.evaluate(({center})=>{
   window.fixtureMap=new maplibregl.Map({
     container:'map',center,zoom:3,attributionControl:false,fadeDuration:0,
