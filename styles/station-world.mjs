@@ -39,7 +39,8 @@ export function worldStationLayer() {
     'source-layer': 'atlas_station_points', minzoom: 3, maxzoom: 12,
     filter: ['all', ['==',['get','state'],'present'],
       ['match',['get','feature'],['station','halt','tram_stop'],true,false]],
-    layout: {'circle-sort-key':['match',['get','feature'],'station',2,'halt',1,0]},
+    layout: {'circle-sort-key':['match',['get','feature'],'station',2,'halt',1,0],
+      'visibility':'none'},
     paint: {
       'circle-color':'#ffa323','circle-stroke-color':'#123e52',
       'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.55,7,1.05,12,1.45],
