@@ -246,6 +246,54 @@ jobs:
         run: |
           mkdir -p styles/data/street-running
           cp -r street-snapshot/12 street-snapshot/index.json street-snapshot/manifest.json street-snapshot/street-running.geojson.gz styles/data/street-running/
+      # Complete OSM station points only. An in-progress crawl is not
+      # published as a worldwide map inventory. The app requires the matching
+      # complete manifest and bundle index before activating any of these tiles.
+      - name: Stage independently verified station-point overview
+        run: |
+          set -eu
+          mkdir -p styles/data/station-points
+          status=0
+          git ls-remote --exit-code --heads origin station-points-data >/dev/null || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin station-points-data
+            git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz
+            node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile,stat} from 'node:fs/promises';
+          import {join} from 'node:path';
+          const dir='styles/data/station-points';
+          const manifest=JSON.parse(await readFile(join(dir,'manifest.json'),'utf8'));
+          const index=JSON.parse(await readFile(join(dir,'index.json'),'utf8'));
+          assert.equal(manifest.complete,true);
+          assert.equal(manifest.schema,1);
+          assert.equal(manifest.license,'ODbL-1.0');
+          assert.equal(manifest.pendingRegions,0);
+          assert.equal(manifest.polar,0);
+          assert.equal(manifest.minzoom,3);
+          assert.equal(manifest.maxzoom,7);
+          assert.ok(Number.isSafeInteger(manifest.stations)&&manifest.stations>0);
+          assert.ok(Number.isSafeInteger(manifest.completedRegions)&&manifest.completedRegions>=32);
+          assert.equal(index.zoom,3);
+          assert.ok(Array.isArray(index.bundles)&&index.bundles.length===manifest.bundles);
+          assert.equal(new Set(index.bundles).size,index.bundles.length);
+          let bytes=0;
+          for(const key of index.bundles){
+            assert.match(key,/^[0-7]\\/[0-7]$/);
+            const size=(await stat(join(dir,'3',key+'.bundle.gz'))).size;
+            assert.ok(size>16&&size<20*1024*1024,'Bad station tile bundle: '+key);
+            bytes+=size;
+          }
+          assert.ok(bytes>0&&bytes<=300*1024*1024,'Station snapshot exceeds hosting budget');
+          console.log('Verified station snapshot',manifest.stations,'points',index.bundles.length,'bundles',bytes,'bytes');
+          JS
+          elif [ "$status" = 2 ]; then
+            echo '{"complete":false,"schema":1,"reason":"Worldwide OSM acquisition still in progress"}' > styles/data/station-points/manifest.json
+            echo '{"tiles":[]}' > styles/data/station-points/index.json
+          else
+            echo "Could not check station release ref (git status $status)" >&2
+            exit "$status"
+          fi
       # Worldwide level crossings (crossings.yml). Until its first snapshot is
       # published the site deploys without them; the map then shows crossings
       # from zoom 15 only.
