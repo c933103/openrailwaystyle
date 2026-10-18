@@ -21,6 +21,7 @@ import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261
 import { createBundleReader } from './tile-bundles.mjs?v=20261018-drawing-clear-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261018-drawing-clear-1';
 import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261018-drawing-clear-1';
+import {prepareWorldStationOverlay, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261018-drawing-clear-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -57,6 +58,7 @@ let legendHelpOpen = false, serviceStatusOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
+let stationWorldActive = false, stationWorldTask;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261018-drawing-clear-1';
 // An old active worker can save this new page before its replacement has
@@ -673,11 +675,17 @@ function applySettings() {
     if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
     if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer, settings);
-    const enabled = layer.id.includes('-fallback-') && layer.id.startsWith('station-') ? false : visible;
+    // The verified, complete source replaces selective dots at z3–11. The
+    // corresponding provider/curated name symbols stay eligible; the normal
+    // high-detail dots still begin at z12. An incomplete snapshot changes none.
+    const replaced = stationWorldActive && WORLD_STATION_SUPERSEDED_DOTS.includes(layer.id);
+    const enabled = replaced || (layer.id === WORLD_STATION_DOTS && !stationWorldActive)
+      || (layer.id.includes('-fallback-') && layer.id.startsWith('station-'))
+      ? false : visible;
     if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
-    if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
+    if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   // Clear the previous view's values before drawing the legend: if the new
   // view has nothing in view, the in-view list never changes and the legend
@@ -813,6 +821,7 @@ function showDetails(feature) {
   else if (isStation) {
     row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
     if(isBasemapStation) panel.append(textNode('p','Station location from basemap POI data. Its operating status and identity match with timetable stops have not been verified; departures are unavailable for this fallback marker.','small'));
+    if (feature.source===WORLD_STATION_SOURCE) panel.append(textNode('p','Independent worldwide OpenStreetMap station-point snapshot. This marker does not establish that trains currently stop here or that a timetable match exists.','small'));
     if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
     if (p.station_size&&!p.curated) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
@@ -1194,7 +1203,7 @@ function applyStationFallbackState() {
   const area=stationFailures?.area(map.getZoom());
   const options={zoom:map.getZoom(),stationsEnabled:settings.stations,background:settings.background,
     failedSources:new Set(area?[map.getZoom()>=8?'stations':'stationMed']:[])};
-  const showMarkers=stationFallbackMarkersEnabled(options);
+  const showMarkers=!stationWorldActive && stationFallbackMarkersEnabled(options);
   const showNames=stationFallbackNamesEnabled(options);
   for (const id of ['station-basemap-fallback-dots','station-curated-fallback-dots','station-basemap-fallback-names']) {
     const filter=stationFallbackFilter(id,area);
@@ -1755,6 +1764,23 @@ async function initialize() {
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
+  // Do not install or request the optional point tiles until the complete
+  // release manifest and bundle index are verified against each other. A
+  // partial/unpublished OSM crawl leaves the existing dot layers untouched.
+  map.on('style.load', () => {
+    if (stationWorldTask) return;
+    const instance=map;
+    stationWorldTask=(async()=>{
+      const overlay=await prepareWorldStationOverlay({
+        root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
+      });
+      if(!overlay||map!==instance)return;
+      overlay.register(maplibregl);
+      overlay.install(instance);
+      stationWorldActive=true;
+      if(ready)applySettings();
+    })().catch(error=>console.warn('World station snapshot not activated:',error.message));
+  });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
@@ -1778,6 +1804,13 @@ async function initialize() {
   map.on('moveend', wakeRailRecovery);
   map.on('remove', () => {recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
+    // Any failed complete-snapshot tile returns to the original station dots,
+    // rather than making its geographic region blank or misreporting coverage.
+    if(e.sourceId===WORLD_STATION_SOURCE) {
+      if(stationWorldActive){stationWorldActive=false;if(ready)applySettings();}
+      console.warn('Worldwide station-point source unavailable; previous sources restored:',e.error?.message);
+      return;
+    }
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
     // Log text as well as the object: errors passed back from map workers
