@@ -1,0 +1,131 @@
+{
+  "base": "7d80b87b9db0f1baa02e9e9f911b9d7554a2b0db",
+  "previous": "c9b70df212e65ab2c88c3aa4f542ae8c40c88388",
+  "source": "d10f5ee8138c77f69945fb73827f1b29f4e71d52",
+  "tree": "5283ad904068b805479e397f3ede645f9afea1f7",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "git_blob_sha1": "aa96e05e14b66290a26af1d24192a1e9cbde5f67"
+    },
+    {
+      "path": "styles/app.mjs",
+      "git_blob_sha1": "4699f5e893f267f1699207ab260452aee7509900"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "git_blob_sha1": "51cd8f582103c452559b44aaf9c4f177e3a65ca7"
+    },
+    {
+      "path": "styles/data-check.html",
+      "git_blob_sha1": "9485c918b2d3322da1af23ceaeb3f08d5b698378"
+    },
+    {
+      "path": "styles/data-check.mjs",
+      "git_blob_sha1": "b8fd5047b41317ed744b51b7b3b90a285d096910"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "git_blob_sha1": "f4c149b471da92f3dccf08625848659cf9d72e37"
+    },
+    {
+      "path": "styles/draw.mjs",
+      "git_blob_sha1": "fd474383fe5e8f73b10a717f1722cd8115687747"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "git_blob_sha1": "cfb7be325a5bc20136e0f85360d81aac66dc7911"
+    },
+    {
+      "path": "styles/index.html",
+      "git_blob_sha1": "65ae966d92d8ae69f0753f43152bf5ea6d07bfaa"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "git_blob_sha1": "6f9484238d8e65159843f04a434ff1c2968276d0"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "git_blob_sha1": "509e492966642709513a4a131881afa6fc183433"
+    },
+    {
+      "path": "tests/startup.test.mjs",
+      "git_blob_sha1": "ae91dd6ff453153ae7b3fd673889603e877c9699"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "git_blob_sha1": "f7b615933f9ea2d43eaea5afcfa0fca27d6d9e47"
+    },
+    {
+      "path": "tests/measure-height-state.test.mjs",
+      "git_blob_sha1": "410d7225170d8247e6a9a536387aabdc53b4772d"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "compare-review-healthy.mjs",
+      "bytes": 1565,
+      "sha256": "ae616d398f1a2f54bf89aa095b41343b1f3abf7eb6c7340c5fa3e2ff84b93f10"
+    },
+    {
+      "file": "review-aggregate.log",
+      "bytes": 252290,
+      "sha256": "7bbc18f8dcf94cd43d21a0d83463b8161c53d5e7fc843db44725c5f7d56ef87e"
+    },
+    {
+      "file": "review-build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "file": "review-final-aggregate.log",
+      "bytes": 252267,
+      "sha256": "c717cb0e1361f6a04a5c29677e13d195ac1a6469d8d91977eb193e47e09f6a65"
+    },
+    {
+      "file": "review-final-build.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "file": "review-focused-final.log",
+      "bytes": 17813,
+      "sha256": "8cc5b8b2d500383112759f59898e57b0c99b0e431b16a5744ef09fe35f4666be"
+    },
+    {
+      "file": "review-focused.log",
+      "bytes": 17812,
+      "sha256": "0cd269a19e175bedcb262670ebbb774e619e618dbb2341b83879d4b8a5ec7597"
+    },
+    {
+      "file": "review-healthy-comparison.json",
+      "bytes": 2390,
+      "sha256": "289a593d74bada6f64335ea3a157fc25c81325d9cf4eaaa0118ec095c8f4f404"
+    },
+    {
+      "file": "review-negative.log",
+      "bytes": 2691,
+      "sha256": "d5e02ca0f537f6db883b05b38bc8ddaeff464f6490f843912a8b23f47caef2ea"
+    },
+    {
+      "file": "review-toolbar-final-layout.log",
+      "bytes": 703,
+      "sha256": "e2803df3a5d648974b1bb1d5b10010d1d99c95b452ef1cd23f73d2cf6724c620"
+    },
+    {
+      "file": "review-toolbar-final.log",
+      "bytes": 703,
+      "sha256": "a69b62da61ae8464944f42faae36fb4756a6748d46178b55094c8bfe45c00779"
+    },
+    {
+      "file": "review-toolbar.log",
+      "bytes": 703,
+      "sha256": "d5a07fb59bad10435913b3569aff4c1fa04035a6499f045a78b1310c91cb3783"
+    }
+  ],
+  "archive": {
+    "file": "logs.zip",
+    "bytes": 157570,
+    "sha256": "0c259b93f0ebce8edff96ded0f8da97434e12d899c729f1c36bbeab9cab8f052"
+  }
+}
