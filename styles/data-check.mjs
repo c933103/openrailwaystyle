@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261018-measure-height-state-2';
+import {SEARCH_API} from './map-model.mjs?v=20261018-drawing-clear-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

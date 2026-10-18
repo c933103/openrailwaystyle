@@ -150,6 +150,9 @@ tools, the small dot in the middle of each segment adds a point there (click it,
 or drag it to where the point should go). A selected point
 can be deleted after confirmation or switched between corner and curve point.
 Selecting an endpoint of a finished line lets you extend the line.
+**Clear** asks before removing all drawings, including an unfinished shape or
+a line being extended. Declining keeps both the saved drawings and the work in
+progress; accepting leaves the chosen drawing tool ready for a new drawing.
 
 ## Understand the limits
 

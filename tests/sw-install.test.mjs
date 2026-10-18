@@ -929,6 +929,38 @@ test('search row-isolation release updates cached app/model together and retains
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
+test('drawing Clear release updates the cached toolbar while preserving old tabs', async () => {
+  const previous = '20261018-measure-height-state-2';
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const version = page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version, previous, 'the toolbar correction needs a fresh cache key');
+  const path = new URL('app.mjs', scope).pathname;
+  const current = new Map([[path, readFileSync(new URL('../styles/app.mjs', import.meta.url), 'utf8')]]);
+  const prior = new Map([[path, 'previous cached toolbar']]);
+  const old = startWorker({version: previous, assetBodies: prior, rejectExternal: true});
+  await bounded(old.lifecycle('install')); await old.lifecycle('activate');
+  const caches = [...old.stores.keys()];
+  const next = startWorker({version, stores: old.stores, assetBodies: current, rejectExternal: true});
+  await bounded(next.request('./', true)); next.setOffline();
+  const saved = await (await next.request('app.mjs?v=' + version)).text();
+  assert.equal(saved, current.get(path));
+  assert.equal(await (await next.request('app.mjs?v=' + previous)).text(), prior.get(path));
+  const begin = saved.indexOf("$('draw-clear').addEventListener('click'");
+  const end = saved.indexOf("\n$('draw-save').addEventListener", begin);
+  assert.ok(begin >= 0 && end > begin);
+  for (const state of [{features: [], draft: [[0, 0]], extending: null},
+    {features: [], draft: [], extending: {feature: {}}}]) {
+    let click, prompts = 0, cleared = 0;
+    vm.runInNewContext(saved.slice(begin, end), {
+      $: () => ({addEventListener: (_, fn) => { click = fn; }}),
+      drawing: {...state, clear: () => cleared++}, confirm: () => { prompts++; return true; },
+    });
+    click(); assert.equal(prompts, 1); assert.equal(cleared, 1);
+  }
+  assert.deepEqual([...next.stores.keys()], caches, 'no shell-generation change or purge');
+  assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
+});
+
 for (const previous of ['20261018-drawing-import-1', '20261018-measure-height-state-1']) test(`measurement height-state release upgrades ${previous} and keeps old tabs isolated`, async () => {
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const version = page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
