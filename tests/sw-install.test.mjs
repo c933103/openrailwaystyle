@@ -929,8 +929,7 @@ test('search row-isolation release updates cached app/model together and retains
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
-test('measurement height-state release upgrades cached drawing code and keeps old tabs isolated', async () => {
-  const previous = '20261018-drawing-import-1';
+for (const previous of ['20261018-drawing-import-1', '20261018-measure-height-state-1']) test(`measurement height-state release upgrades ${previous} and keeps old tabs isolated`, async () => {
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const version = page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.notEqual(version, previous);
@@ -963,6 +962,11 @@ test('measurement height-state release upgrades cached drawing code and keeps ol
   measure.refresh(); assert.equal(calls, 1);
   failing = false; finish(); for (let i = 0; i < 20; i++) await Promise.resolve();
   assert.match(status, /End to end: \+12 m/); assert.equal(calls, 2);
+  failing = true; measure.clear(); finish(); for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(measure.canRetryHeights, true);
+  failing = false; measure.retryHeights(); measure.retryHeights();
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.match(status, /End to end: \+12 m/); assert.equal(calls, 4, 'offline current bytes expose the explicit retry and coalesce repeated clicks');
   assert.deepEqual([...next.stores.keys()], caches, 'no shell-generation change or purge');
   assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
 });
