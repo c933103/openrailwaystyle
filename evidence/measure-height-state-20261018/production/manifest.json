@@ -1,0 +1,26 @@
+{
+  "source": "891e97ade75a4f156cc7b752375673e7a6e849aa",
+  "tree": "e2a746da4ccfff8588a61a507cdfd390e10d98d9",
+  "files": {
+    "README.md": {
+      "bytes": 4347,
+      "sha256": "b1aa4dc58f0f36cb4174fa958fb625c20661c0f87d96148ceb3bcb8f5015e3d3",
+      "git_blob_sha1": "3aa563dbecbe6b5857c059585318dd805af36648"
+    },
+    "production-logs.zip": {
+      "bytes": 1209050,
+      "sha256": "ce448000b7ae814d3cd329b3c11753f9a390e33c3b325114f6ed99818be8e625",
+      "git_blob_sha1": "d9e31fcaca3b4765031ac289f965f991fc806c20"
+    },
+    "published-first.zip": {
+      "bytes": 1857655,
+      "sha256": "4c40d66db0d3f0c2ad123ea3578b3931d40912b39f692ee53e94c41ff050fd17",
+      "git_blob_sha1": "a4029fec9da48b0fd8d845c2adfcbf8f5571e625"
+    },
+    "published-final.zip": {
+      "bytes": 1876705,
+      "sha256": "97c3e5b4fa24ae75cb11360c3098c0f21a8746e6b18f497059f708e5c8b03a17",
+      "git_blob_sha1": "f4ff4e9b7af36e4744d688609d4de327eca84d51"
+    }
+  }
+}
