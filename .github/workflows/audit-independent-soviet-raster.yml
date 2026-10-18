@@ -1,0 +1,57 @@
+name: Bounded Soviet topographic raster availability audit
+on:
+  push:
+    branches: [investigate/indianopenmaps-soviet-topo-20261019]
+    paths: ['.github/workflows/audit-independent-soviet-raster.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Sample only twelve historical tiles; no mass download
+        run: |
+          node --input-type=module <<'JS'
+          const sites=[
+            ['France',2.35,48.85],['Japan',139.77,35.68],
+            ['India',72.88,19.07],['Canada',-79.38,43.65],
+            ['Australia',151.21,-33.87],['Ocean',-140,-20],
+          ];
+          const layers=['1m','500k'],host='https://indianopenmaps.com';
+          let fetched=0;
+          const results=[];
+          for(const layer of layers)for(const [name,lon,lat] of sites){
+            const z=5,n=2**z,x=Math.floor((lon+180)/360*n),
+              y=Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
+            const url=`${host}/world/topo/russian/${layer}/gs/${z}/${x}/${y}.webp`;
+            try {
+              // Requests are sequential, deliberately conservative for a
+              // community-owned open map tile host, one per view and source.
+              if(fetched)await new Promise(r=>setTimeout(r,400));
+              const response=await fetch(url,{
+                redirect:'error',signal:AbortSignal.timeout(12000),
+                headers:{'User-Agent':'RailwayAtlas-source-probe/1.0 (+https://github.com/c933103/openrailwaystyle)'},
+              });
+              fetched++;
+              const contentLength=Number(response.headers.get('content-length'))||0;
+              if(contentLength>1_000_000)throw Error('Unexpected tile >1MB');
+              const chunks=[];let sum=0;
+              for await (const chunk of response.body||[]){sum+=chunk.length;if(sum>1_000_000){await response.body.cancel().catch(()=>{});throw Error('Oversized tile');}chunks.push(chunk);}
+              const bytes=Buffer.concat(chunks);
+              const isWebP=bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
+              const result={layer,name,status:response.status,bytes:sum,
+                type:response.headers.get('content-type'),
+                cors:response.headers.get('access-control-allow-origin'),
+                cache:response.headers.get('cache-control'),isWebP,
+                hash:(await import('node:crypto')).createHash('sha256').update(bytes).digest('hex')};
+              results.push(result);
+              console.log('SOVIET_RASTER',JSON.stringify(result));
+            }catch(e){fetched++;console.log('SOVIET_RASTER_ERROR',JSON.stringify({layer,name,message:e.message.slice(0,160)}));}
+          }
+          console.log('AUDIT_DONE',results.length,'observed responses; <=12 sampled requests');
+          JS
