@@ -131,13 +131,17 @@ export function drawingStyle(properties = {}) {
 export function readDrawing(json) {
   const features = json?.type === 'FeatureCollection' ? json.features : json?.type === 'Feature' ? [json] : [];
   const out = [];
-  for (const f of features || []) {
+  const list = value => Array.isArray(value) ? value : [];
+  // A line or ring is connected geometry. Dropping a bad vertex would draw
+  // a new segment across its gap; reject that component instead. Independent
+  // points and components can still survive beside it.
+  const line = c => Array.isArray(c) && c.every(finite) ? c.map(p => p.slice(0, 2)) : [];
+  for (const f of list(features)) {
     const g = f?.geometry, name = typeof f?.properties?.name === 'string' ? f.properties.name : undefined;
     const properties = {...(name ? {name} : {}), ...drawingStyle(f?.properties || {})};
     const add = geometry => out.push({type:'Feature', properties:{...properties}, geometry});
-    const line = c => (c || []).filter(finite).map(p => p.slice(0, 2));
     if (g?.type === 'Point' && finite(g.coordinates)) add({type:'Point', coordinates:g.coordinates.slice(0, 2)});
-    else if (g?.type === 'MultiPoint') { for (const p of line(g.coordinates)) add({type:'Point', coordinates:p}); }
+    else if (g?.type === 'MultiPoint') { for (const p of list(g.coordinates)) if (finite(p)) add({type:'Point', coordinates:p.slice(0, 2)}); }
     else if (g?.type === 'LineString') {
       // Lines drawn here keep their points and which of them are curve
       // points (line_points, curved); curve_points is the older form, all
@@ -150,9 +154,9 @@ export function readDrawing(json) {
         if (nodes.length >= 2 && Array.isArray(curved) && curved.length === nodes.length) Object.assign(out.at(-1).properties, {line_points: nodes, curved: curved.map(v => v ? 1 : 0)});
       }
     }
-    else if (g?.type === 'MultiLineString') { for (const l of g.coordinates || []) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
-    else if (g?.type === 'Polygon') { const c = line(g.coordinates?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
-    else if (g?.type === 'MultiPolygon') { for (const poly of g.coordinates || []) { const c = line(poly?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); } }
+    else if (g?.type === 'MultiLineString') { for (const l of list(g.coordinates)) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
+    else if (g?.type === 'Polygon') { const c = line(list(g.coordinates)[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
+    else if (g?.type === 'MultiPolygon') { for (const poly of list(g.coordinates)) { const c = line(list(poly)[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); } }
   }
   return out;
 }

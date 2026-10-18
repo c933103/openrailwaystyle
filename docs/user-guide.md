@@ -111,6 +111,12 @@ Draw points, lines, smooth curves and areas with a chosen colour, line style and
 width. Drawings include length and area measurements, are kept in the browser,
 and can be saved or opened as GeoJSON.
 
+Opening a file keeps usable drawings even when another feature or independent
+multi-geometry component has a malformed coordinate list. A line or imported
+area outline with an invalid vertex is skipped as a whole, so missing coordinates never create a
+new connecting segment. The opened count describes the drawings accepted from
+that file. The same validation applies when restoring saved browser drawings.
+
 A line can mix straight sections and curves. With **Curved** on, newly added points
 form a smooth curve; with it off, they form corners. A curve leaves and joins a
 straight section along it, without a corner. The measure tool supports
