@@ -207,13 +207,13 @@ test('a failed basemap request starts the archive afresh and is tried again',asy
   assert.equal(calls.length,3);
   const cancelled=new AbortController();cancelled.abort();calls.length=0;
   await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},cancelled));
-  assert.equal(calls.length,1);
+  assert.equal(calls.length,0);
 });
 test('basemap requests give up after a while, so a stalled one can be tried again',async()=>{
   // An inner source that answers only when told, or fails when its signal aborts.
   const stalled={getKey:()=>'k',getBytes:(o,l,signal)=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError'))))};
   const started=Date.now();
-  await assert.rejects(timedSource(stalled,50).getBytes(0,10),/aborted/);
+  await assert.rejects(timedSource(stalled,50).getBytes(0,10),{name:'TimeoutError'});
   assert.ok(Date.now()-started>=45,'waited for the timeout');
   const outer=new AbortController();setTimeout(()=>outer.abort(),10);
   await assert.rejects(timedSource(stalled,5000).getBytes(0,10,outer.signal),/aborted/,'a cancelled tile cancels its request');
@@ -222,7 +222,7 @@ test('basemap requests give up after a while, so a stalled one can be tried agai
   assert.equal(timedSource(quick,50).getKey(),'k');
   // The protocol makes the timed archive, and a fresh one after a failure.
   const protocols={},made=[],pmtiles={tiles:new Map(),tile:async p=>{
-    if(made.length===1)throw new DOMException('aborted','AbortError');
+    if(made.length===1)throw new DOMException('timed out','TimeoutError');
     return {data:tile({name:'Seoul'})};
   }};
   installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},pmtiles,fetch,{basemapRetries:[0,0],basemapArchive:url=>{made.push(url);return {url};}});

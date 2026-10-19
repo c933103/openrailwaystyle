@@ -261,3 +261,59 @@ rights. No separate Papers-specific hosted-service policy was established in
 this check. Automated Atlas checks continue to fixture this host with no provider
 egress. The vectors are generalized context, not verified present-day operating
 railways, and do not fill the separate worldwide station-point inventory gap.
+
+## Permanent-response retry classification
+
+The basemap wrapper and non-ORM metadata reload handler use the existing
+request-pool/rail HTTP policy: **408, 429 and 500–599** are retryable; other
+HTTP failure responses (including 400, 401, 403, 404, 410, 416, 422 and 451)
+are not. Classification accepts explicit status fields and the pinned
+PMTiles 4.2.1 `Bad response code:` / MapLibre `AJAXError:` messages. A known
+permanent status takes precedence over generic network wording. Recognized
+transport failures and `TimeoutError` remain retryable. Intentional aborts,
+malformed archive/JSON errors and unknown exceptions do not trigger retries.
+The basemap's 20-second range deadline now reports `TimeoutError`, distinct
+from a consumer's cancellation.
+
+Retry ownership and maximum budgets are explicit:
+
+- **Basemap:** one initial protocol attempt plus two retries after 0.5 and
+  2 seconds for transient failures. A failed shared archive is replaced only
+  if another consumer has not already replaced it. Permanent failures keep
+  their original error and do not cause archive replacement. Cancellation
+  during backoff settles immediately and starts no further range requests.
+- **PMTiles internals:** ordinary HTTP errors have no inner retry. The pinned
+  client retains its one small-archive 416 range correction and one ETag
+  repair for directory/tile reads. An exhausted ETag repair is not retried by
+  Atlas. These protocol repairs are not a new general HTTP retry allowance.
+- **Other metadata:** one initial source load plus at most three reloads
+  after 5, 15 and 45 seconds. Duplicate error events share the pending timer;
+  a permanent failure, actual metadata success, changed source/URL or map
+  removal retires it. MapLibre marks metadata failures as loaded, so that
+  flag alone cannot suppress recovery.
+  A request-pool adapter can still make two transport attempts per source
+  load (maximum eight across this existing metadata budget). Direct metadata
+  sources make at most four transport attempts.
+- **No nested basemap reloads:** `atlasbase://` owns its retries, so the app's
+  metadata handler does not repeat its three-attempt budget. Previously a
+  permanent basemap metadata response consumed three wrapper attempts. The
+  outer handler could multiply that to twelve if the source reported unloaded
+  after failure (the pinned MapLibre instead reports loaded). The new owner
+  rule prevents multiplication in either case; the permanent header failure
+  has one actual range request.
+
+`tests/pmtiles-retry.test.mjs` exercises the actual pinned FetchSource,
+Protocol and caches with synthetic header, leaf-directory, metadata and tile
+ranges. It counts permanent/transient requests, shared-consumer work,
+cancellation and the existing 416 repairs. `tests/provider-retry.test.mjs`
+and the startup harness cover status serialization and metadata timer
+ownership. `scripts/check-provider-retries-browser.mjs` checks real MapLibre
+403/503 metadata events, successful transient recovery and the unrelated
+permanent failure's retained status under the fail-closed fixture guard.
+
+This is a bounded retry-classification correction, not a provider-policy or
+availability verdict. PMTiles 4.2.1 does not expose response `Retry-After`
+headers to this wrapper; its existing fixed transient backoff remains a
+separate limitation. The glyph/request pool's existing `Retry-After` handling,
+rail demand-driven recovery, terrain deadlines and source/data holds are
+unchanged.
