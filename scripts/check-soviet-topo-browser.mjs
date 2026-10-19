@@ -45,8 +45,17 @@ try {
  const checks=[];
  for(const [name,lon,lat] of locations){
    const before=requests.length;
-   await page.evaluate(({lon,lat})=>window.location.hash=`#5/${lat}/${lon}`,{lon,lat});
-   await page.waitForFunction(()=>true,null,{timeout:3000});
+   await page.evaluate(async({lon,lat})=>{
+     const {map}=await import(document.querySelector('script[type="module"]').src);
+     map.jumpTo({center:[lon,lat],zoom:5});
+   },{lon,lat});
+   await page.waitForFunction(async({lon,lat})=>{
+     const {map}=await import(document.querySelector('script[type="module"]').src);
+     const c=map.getCenter();
+     return Math.abs(c.lng-lon)<.001&&Math.abs(c.lat-lat)<.001&&
+       map.isSourceLoaded('sovietTopo')&&!map.isMoving();
+   },{lon,lat},{timeout:30000});
+   assert.ok(requests.length>before,`no Soviet raster tile requested at ${name}`);
    const result=await state();
    assert.equal(result.soviet,'visible',name);
    assert.equal(result.bathymetry,'visible',name);
