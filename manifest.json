@@ -3045,16 +3045,16 @@
   "inputSha256": "2b2f213b6511afe3bc871b30826ea058832a131495c5af130af02a0892901e13",
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/8b430e70e32c08a25a1c4aac/renderer-acceptance-91a60e78abbe081ac361e6b2bcf9987caeb197ca35fc3a256d6d5be5df1073be.json",
-    "sha256": "91a60e78abbe081ac361e6b2bcf9987caeb197ca35fc3a256d6d5be5df1073be",
+    "path": "generations/8b430e70e32c08a25a1c4aac/renderer-acceptance-8a702e72078269f6133313462a0d7cb793d2444237fc560faa1c60314a4fc6b0.json",
+    "sha256": "8a702e72078269f6133313462a0d7cb793d2444237fc560faa1c60314a4fc6b0",
     "inputSha256": "2b2f213b6511afe3bc871b30826ea058832a131495c5af130af02a0892901e13",
     "samples": 840,
     "appSamples": 18,
-    "assetRequests": 1078,
-    "assetBytes": 62213583,
+    "assetRequests": 1077,
+    "assetBytes": 62166431,
     "timing": {
-      "medianMs": 345,
-      "p95Ms": 1413
+      "medianMs": 347,
+      "p95Ms": 1412
     }
   }
 }
