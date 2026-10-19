@@ -7,7 +7,7 @@ import {lengthKm, formatLength, climb, formatClimb} from '../../styles/draw.mjs'
 
 const app = await readFile(new URL('../../styles/app.mjs', import.meta.url), 'utf8');
 const begin = app.indexOf('const elevation = createElevation(DEM_URL);');
-const end = app.indexOf('\nfunction closeDetails()', begin);
+const end = app.indexOf("\n$('details-close').addEventListener", begin);
 assert.ok(begin >= 0 && end > begin, 'actual profile block delimiters exist');
 // Execute the production profile controller and SVG renderer with real DOM
 // nodes. Only terrain responses and the map marker are fixtures; no network.
@@ -19,7 +19,7 @@ export function profileHarness({heights = points => points.map((_, i) => i), uni
     if (className) node.className = className;
     return node;
   };
-  const context = vm.createContext({...elevation, document, $, settings: {units}, currentFeature: null,
+  const context = vm.createContext({...elevation, document, $, AbortController, frequencyExpiry: null, settings: {units}, currentFeature: null,
     lengthKm, formatLength, climb, formatClimb, textNode, map: {}, DEM_URL: 'fixture-only',
     createElevation: () => ({heights}),
     row: (dl, label, value) => dl.append(textNode('dt', label), textNode('dd', value)),
@@ -35,7 +35,7 @@ export function profileHarness({heights = points => points.map((_, i) => i), uni
     show: (name = 'Synthetic line', coordinates = [[0, 0], [.002, 0]]) => context.showProfile({properties: {name}, geometry: {type: 'LineString', coordinates}}),
     content: () => $('detail-content'),
     summary: () => Object.fromEntries([...$('detail-content').querySelectorAll('dt')].map(dt => [dt.textContent, dt.nextElementSibling.textContent])),
-    dismiss: () => { $('details').hidden = true; },
-    close: () => dom.window.close(),
+    dismiss: () => context.closeDetails(),
+    close: () => { context.cancelProfile(); dom.window.close(); },
   };
 }

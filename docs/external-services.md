@@ -95,7 +95,31 @@ caching permission and availability remain unverified unless stated otherwise.
 | En Liberté remote glyphs | `https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf`, wrapped in `atlasglyph://`; local CJK families are removed from `fontstack` | Shared pool: 12 s deadline from dispatch, one retry after at least 1 s for retryable failures, concurrency 4 per origin / 6 total. `Retry-After` can extend the delay and origin cooldown. Remote glyph licence and hosted-service conditions have not been established by this inventory. [Fontstack filtering][glyph-filter], [adapter][glyph-adapter], [pool][request-pool]. |
 | EOX Satellite/Hybrid | `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg`; raster tiles, source max zoom 14 | Source/help declare EOX, modified Copernicus Sentinel data 2025, and CC BY-NC-SA 4.0/non-commercial use. This records the application's licence notice, not a new verification of provider terms or service limits. [Source][basemap-source], [credits][licence-notices]. |
 | OSM Standard (Carto background) | `https://tile.openstreetmap.org/{z}/{x}/{y}.png`; raster tiles, source max zoom 19 | Ordinary browser caching; no offline/prefetch support. OSM attribution is declared and the help links the OSMF tile policy. Current header/policy/attribution acceptance remains unverified. [Endpoint][carto-source], [source][basemap-source], [help][source-notices]. |
-| Mapzen Terrain Tiles / AWS | `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`; relief, contours, bathymetry, measure heights and elevation profiles, including coarser/finer repair reads | Relief/contour `DemSource` has a 20 s timeout and cache size 200. The separate elevation reader shares pending work and bounds each completed-tile cache to 64; rejected loads give unknown heights. Its loader has no application deadline, and the worker's 32-entry repair-reference cache uses separate bare fetches. Do not extend the outer timeout guarantee to those paths. [Endpoint][dem-source], [initialization][map-initialization], [elevation reader][elevation-source], [repair worker][dem-worker]. |
+| Mapzen Terrain Tiles / AWS | `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`; relief, contours, bathymetry, measure heights and elevation profiles, including coarser/finer repair reads | Relief/contour `DemSource` has a 20 s timeout and cache size 200. The separate elevation reader shares pending work and bounds each completed-tile cache to 64. Main reads have a 20 s end-to-end deadline including body/decode; optional repair has a separate 5 s total budget. Missing main tiles stay unknown; failed optional repair retains usable fine heights. Worker repair references share active reads separately from their 32-entry successful cache and use a 5 s budget; failed/abandoned references are not cached. The existing outer DemSource 20 s deadline still applies to the whole worker request. [Endpoint][dem-source], [initialization][map-initialization], [elevation reader][elevation-source], [repair worker][dem-worker]. |
+
+Elevation deadlines are application budgets, not provider-approved request
+limits. Close, replacement and measurement edits cancel their subscriptions;
+another consumer of the same tile keeps its request. The last departing
+consumer aborts the transport, and a late non-cooperative response cannot
+populate the cache or replace newer work. No automatic retry is added. Failed
+main tiles can be retried by reopening a profile or using the existing Retry
+heights control. Successful fine results retain the existing completed cache,
+even if optional repair was unavailable. Worker reference failures are evicted,
+so a later tile request can obtain recovered repair inputs.
+
+The profile has at most two asynchronous phases: 20 s for its main reads and
+5 s for optional repair. Repair timeout preserves the original fine tile; it
+never manufactures a zero height. Partial main failures remain explicit chart
+gaps and exclude unknown stretches from statistics. These bounds cover pending
+asynchronous work while the JavaScript event loop runs; browser suspension and
+synchronous decoding/repair CPU are not wall-clock execution guarantees.
+
+`tests/terrain-deadlines.test.mjs` uses controlled never-settling headers,
+bodies and decoders, cancellation, late settlement and cache recovery; existing
+profile-gap and measurement-state tests retain their assertions. The guarded
+`check-terrain-deadlines-browser.mjs` exercises the actual app and renderer with
+real default 20 s deadlines, synthetic PNGs, partial-profile recovery, Close
+and measurement retry. No provider traffic or current-service claim is needed.
 
 MapLibre 5.24.0 with the Atlas attribution backport, PMTiles 4.2.1, the
 contour/worker bundles, packaged Chinese Noto WOFF2 files and rare-Han slices

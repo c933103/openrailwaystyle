@@ -1,27 +1,27 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261019-station-world-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261019-station-world-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261019-station-world-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261019-station-world-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261019-station-world-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261019-station-world-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261019-station-world-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261019-terrain-deadlines-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261019-terrain-deadlines-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261019-terrain-deadlines-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261019-terrain-deadlines-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261019-terrain-deadlines-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261019-terrain-deadlines-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261019-terrain-deadlines-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261019-station-world-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261019-station-world-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261019-station-world-1';
-import {departureItem} from './departures-ui.mjs?v=20261019-station-world-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261019-station-world-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261019-station-world-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261019-station-world-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261019-station-world-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-station-world-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-station-world-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261019-station-world-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-station-world-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261019-station-world-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261019-station-world-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-station-world-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-station-world-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261019-terrain-deadlines-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261019-terrain-deadlines-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261019-terrain-deadlines-1';
+import {departureItem} from './departures-ui.mjs?v=20261019-terrain-deadlines-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261019-terrain-deadlines-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261019-terrain-deadlines-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261019-terrain-deadlines-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261019-terrain-deadlines-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-terrain-deadlines-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-terrain-deadlines-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261019-terrain-deadlines-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-terrain-deadlines-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261019-terrain-deadlines-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261019-terrain-deadlines-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-terrain-deadlines-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-terrain-deadlines-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -60,7 +60,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-station-world-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-terrain-deadlines-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -791,6 +791,7 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
+  cancelProfile();
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   if (feature.source==='electricMethods' && feature.geometry.type!=='Point') {
@@ -2028,15 +2029,23 @@ if (compactControls()) setControlsExpanded(false);
 // (20 to 200 samples), from the terrain tiles. Hovering the chart marks the
 // place on the map.
 const elevation = createElevation(DEM_URL);
-let profileMarker, profileRequest = 0;
+let profileMarker, profileController, profileRequest = 0;
+function cancelProfile() {
+  profileRequest++; profileController?.abort(); profileController = null; profileMarker?.remove();
+}
 async function showProfile(feature) {
+  cancelProfile();
+  const controller = profileController = new AbortController();
   const coordinates = feature.geometry.coordinates, units = settings.units, km = lengthKm(coordinates);
   const panel = $('detail-content'), request = ++profileRequest;
   const waiting = textNode('p', 'Finding heights…', 'small');
   panel.replaceChildren(textNode('div', 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), waiting);
   $('details').hidden = false; currentFeature = null;
   const samples = alongLine(coordinates, Math.max(20, Math.min(200, Math.round(km * 100))), lengthKm);
-  const heights = await elevation.heights(samples.map(s => s.point));
+  let heights;
+  try { heights = await elevation.heights(samples.map(s => s.point), {signal: controller.signal}); }
+  catch (error) { if (controller.signal.aborted) return; throw error; }
+  finally { if (profileController === controller) profileController = null; }
   // Only if this profile is still what the panel shows: not replaced by
   // another feature's details, another profile or closed meanwhile.
   if (request !== profileRequest || !waiting.isConnected || $('details').hidden) return;
@@ -2088,7 +2097,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
   return svg;
 }
-function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
