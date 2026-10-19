@@ -115,15 +115,46 @@ export async function prepareWorldStationOverlay({
       });
     },
     install(map) {
-      if(map.getSource(WORLD_STATION_SOURCE)||map.getLayer(WORLD_STATION_DOTS))
-        throw new Error('Duplicate worldwide station overlay');
+      // A serialized language reload can retain both runtime objects; a fresh
+      // style has neither. Reuse the verified protocol/cache in either case.
+      if(map.getSource(WORLD_STATION_SOURCE)&&map.getLayer(WORLD_STATION_DOTS))return true;
       // Original visible place labels still paint over the dots, but crossing
       // markers appear beneath them. This intentionally matches PR #202.
       if(!map.getLayer('place_label_city') || !map.getLayer('infrastructure-crossing-overview'))
         throw new Error('Required station/crossing ordering anchors absent');
-      map.addSource(WORLD_STATION_SOURCE,snapshotSource());
+      if(!map.getSource(WORLD_STATION_SOURCE))map.addSource(WORLD_STATION_SOURCE,snapshotSource());
       map.addLayer(worldStationLayer(),'place_label_city');
       return true;
     },
   };
+}
+
+// Preparation belongs to the map session, installation to each loaded style.
+// In-flight preparation must never add layers to a superseded/loading style.
+export function installWorldStationLifecycle({map,maplibregl,onChange=()=>{},logger=console,...options}) {
+  let task,active=false,disabled=false,removed=false,styleReady=false,revision=0;
+  const change=(value,force=false)=>{if(force||active!==value){active=value;onChange(value,styleReady);}};
+  const loading=()=>{styleReady=false;revision++;change(false);};
+  const loaded=async()=>{
+    const current=++revision;
+    styleReady=true;change(false,true);
+    if(disabled||removed)return;
+    task ||= prepareWorldStationOverlay({...options,logger}).then(overlay=>{
+      if(overlay&&!removed)overlay.register(maplibregl);
+      return overlay;
+    });
+    try {
+      const overlay=await task;
+      if(!overlay||disabled||removed||current!==revision)return;
+      overlay.install(map);
+      change(true);
+    } catch(error) {
+      logger.warn?.('World station snapshot not activated:',error.message);
+    }
+  };
+  const remove=()=>{removed=true;revision++;};
+  map.on('styledataloading',loading);
+  map.on('style.load',loaded);
+  map.on('remove',remove);
+  return {disable(){disabled=true;revision++;change(false);}};
 }

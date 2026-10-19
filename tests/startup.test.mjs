@@ -250,7 +250,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const stationFallback = new vm.SyntheticModule(Object.keys(stationFallbackModule),function(){for(const [key,value] of Object.entries(stationFallbackModule))this.setExport(key,value);},{context});
   const stationWorld = new vm.SyntheticModule(Object.keys(stationWorldModule),function(){
     for(const [key,value] of Object.entries(stationWorldModule))this.setExport(key,
-      key==='prepareWorldStationOverlay'?options=>value({...fixtureOptions(options),root:new URL(options.root.href)}):value);
+      ['prepareWorldStationOverlay','installWorldStationLifecycle'].includes(key)?options=>value({...fixtureOptions(options),root:new URL(options.root.href)}):value);
   },{context});
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);

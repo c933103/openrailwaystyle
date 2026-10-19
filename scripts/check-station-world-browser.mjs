@@ -7,9 +7,10 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {encodeBundle} from '../styles/tile-bundles.mjs';
 import {launchBrowser} from './browser.mjs';
-import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
 
-const base='http://127.0.0.1:4173/',assets=await rendererFixture(base);
+const server=await serveAtlasAppFixture(),base=server.origin+'/',assets=await rendererFixture(base);
 const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.1.js'));
 assert.ok(renderer);
 const center=[15,15],points=Array.from({length:8},(_,i)=>({
@@ -35,6 +36,18 @@ const index={zoom:3,bundles:['4/3']}; // At latitude 15°N the z3 tile is 4/3.
 const browser=await launchBrowser({engine:process.env.ATLAS_TEST_ENGINE==='webkit'?'webkit':'chromium'}),page=await browser.newPage({viewport:{width:860,height:620}}),
  calls=[],errors=[];
 page.on('pageerror',error=>errors.push(error.message));
+try {
+// WebKit routes MapLibre's Blob workers through Playwright. Replay only the
+// recorded real renderer bytes; the transport guard still denies remote egress.
+await page.addInitScript(()=>{
+ window.stationFixtureBlobs=new Map();const create=URL.createObjectURL.bind(URL);
+ URL.createObjectURL=blob=>{const url=create(blob);stationFixtureBlobs.set(url,blob);return url;};
+});
+await page.context().route(`blob:${server.origin}/**`,async route=>{
+ const body=await page.evaluate(async url=>stationFixtureBlobs.get(url)?.text()??null,route.request().url());
+ assert.notEqual(body,null,'only actual recorded renderer Blob workers can be replayed');
+ await route.fulfill({body,contentType:'text/javascript'});
+});
 await page.route(new URL('station-world-browser-fixture.html',base).href,route=>
  route.fulfill({contentType:'text/html',body:'<!doctype html><html><head></head><body><div id="map" style="position:fixed;inset:0"></div></body></html>'}));
 await page.route(renderer,route=>route.fulfill(assets.get(renderer)));
@@ -70,7 +83,7 @@ if(process.env.ATLAS_TEST_ENGINE==='webkit'){
    assert.ok(bytes.length>32&&bytes.magic.join(',')==='65,84,66,49',
      'WebKit decoded the real compressed Atlas bundle');
    console.log('WEBKIT_BUNDLE_PASS: native gzip and ATB1 decode; real renderer SKIPPED (headless Linux WebGL2 unavailable)');
-   await browser.close();process.exit(0);
+   await browser.close();await server.close();process.exit(0);
  }
 }
 await page.evaluate(({center})=>{
@@ -93,7 +106,8 @@ await page.evaluate(({center})=>{
   });
   fixtureMap.on('error',e=>{(window.errors||=[]).push(e.error?.message||'unknown')});
 },{center});
-await page.waitForFunction(()=>fixtureMap.isStyleLoaded(),null,{timeout:30000});
+try {await page.waitForFunction(()=>fixtureMap.isStyleLoaded(),null,{timeout:30000});}
+catch(error){console.error('STATION_STYLE_FAILURE',await page.evaluate(()=>({errors:window.errors,styleLoaded:fixtureMap.isStyleLoaded()})),errors);throw error;}
 const installed=await page.evaluate(async root=>{
  const mod=await import('/station-world.mjs?v=20261019-station-world-1');
  const overlay=await mod.prepareWorldStationOverlay({root:new URL(root)});
@@ -126,10 +140,59 @@ for(const zoom of [3,4,5,6,7,8,10,11,12]){
  }
  results.push(sample);
 }
+assert.deepEqual(await page.evaluate(()=>window.errors||[]),[],'renderer must not report source/worker errors');
 assert.equal(errors.length,0,errors.join('\n'));
 assert.ok(calls.includes('manifest')&&calls.includes('index')&&calls.includes('bundle'));
 await mkdir('browser-review',{recursive:true});
 await writeFile('browser-review/station-world-overlay.json',JSON.stringify({scope:'synthetic only',calls,results},null,2)+'\n');
 await page.screenshot({path:'browser-review/station-world-z12.png'});
 console.log('PASS: all 8 synthetic station nodes independent of text and crossing ink at z3–11; preserved detail handoff at z12');
-await browser.close();
+
+// Exercise the actual app handler as well as the isolated layer. A serialized
+// language style retains runtime entries; a fresh replacement does not.
+await installEmptyMapProviders(page.context(),base);
+await page.goto(`${base}?mode=infrastructure&language=en&stations=1&autoGlobe=0&relief=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#7/15/15`);
+await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+await page.evaluate(async()=>{window.stationAppMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+const appReady=async()=>{
+ await page.waitForFunction(()=>{
+  const map=window.stationAppMap;
+  return map?.getLayer('station-world-dots')&&map.isStyleLoaded()&&
+   map.getLayoutProperty('station-world-dots','visibility')==='visible'&&
+   new Set(map.queryRenderedFeatures({layers:['station-world-dots']}).map(f=>f.properties.id)).size===8;
+ },null,{timeout:45000});
+ const sample=await page.evaluate(()=>{
+  const map=stationAppMap;
+  return {language:document.querySelector('#language').value,
+   source:Boolean(map.getSource('stationWorld')),
+   markerIds:[...new Set(map.queryRenderedFeatures({layers:['station-world-dots']}).map(f=>f.properties.id))].sort(),
+   layers:map.getStyle().layers.filter(layer=>layer.id==='station-world-dots').length,
+   superseded:['station-major-dots','station-stationLow-dots','station-stationMed-dots','station-provider-dots','station-curated-fallback-dots','station-basemap-fallback-dots']
+    .filter(id=>map.getLayer(id)).map(id=>[id,map.getLayoutProperty(id,'visibility')])};
+ });
+ assert.equal(sample.source,true);assert.equal(sample.layers,1);
+ assert.deepEqual(sample.markerIds,points.map(f=>f.properties.id).sort());
+ assert.ok(sample.superseded.every(([,visibility])=>visibility==='none'));
+ return sample;
+};
+const appResults=[{action:'cold load',...await appReady()}],metadata=calls.filter(call=>call!=='bundle');
+for(const language of ['fr','en']){
+ await page.selectOption('#language',language);
+ appResults.push({action:'language reload',...await appReady()});
+}
+for(const fresh of [false,true,true]){
+ await page.evaluate(fresh=>{
+  const style=stationAppMap.getStyle();
+  if(fresh){delete style.sources.stationWorld;style.layers=style.layers.filter(layer=>layer.id!=='station-world-dots');}
+  stationAppMap.setStyle(style,{diff:false});
+ },fresh);
+ appResults.push({action:fresh?'fresh style reload':'serialized style reload',...await appReady()});
+}
+// Intentional source cancellation is not a data failure, even after reload.
+await page.evaluate(()=>stationAppMap.fire('error',{sourceId:'stationWorld',error:new DOMException('The operation was aborted','AbortError')}));
+appResults.push({action:'intentional abort',...await appReady()});
+assert.deepEqual(calls.filter(call=>call!=='bundle'),metadata,'style/language reloads reuse the verified manifest/index');
+assert.deepEqual(errors,[],'the full app must not throw during style replacement');
+await writeFile('browser-review/station-world-app-reloads.json',JSON.stringify({scope:'synthetic only',appResults,calls},null,2)+'\n');
+console.log('PASS: actual Atlas language, serialized/fresh style reloads and abort preserve all eight station identities');
+} finally {await browser.close();await server.close();}

@@ -21,7 +21,7 @@ import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261
 import { createBundleReader } from './tile-bundles.mjs?v=20261019-station-world-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261019-station-world-1';
 import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-station-world-1';
-import {prepareWorldStationOverlay, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-station-world-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-station-world-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -58,7 +58,7 @@ let legendHelpOpen = false, serviceStatusOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
-let stationWorldActive = false, stationWorldTask;
+let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-station-world-1';
 // An old active worker can save this new page before its replacement has
@@ -1771,19 +1771,9 @@ async function initialize() {
   // Do not install or request the optional point tiles until the complete
   // release manifest and bundle index are verified against each other. A
   // partial/unpublished OSM crawl leaves the existing dot layers untouched.
-  map.on('style.load', () => {
-    if (stationWorldTask) return;
-    const instance=map;
-    stationWorldTask=(async()=>{
-      const overlay=await prepareWorldStationOverlay({
-        root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
-      });
-      if(!overlay||map!==instance)return;
-      overlay.register(maplibregl);
-      overlay.install(instance);
-      stationWorldActive=true;
-      if(ready)applySettings();
-    })().catch(error=>console.warn('World station snapshot not activated:',error.message));
+  stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
+    root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
+    onChange:(active,styleReady)=>{stationWorldActive=active;if(ready&&styleReady)applySettings();},
   });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
@@ -1813,7 +1803,7 @@ async function initialize() {
     if(e.sourceId===WORLD_STATION_SOURCE) {
       // A cancelled offscreen or superseded tile is not a station data failure.
       if(e.error?.name==='AbortError' || /aborterror|operation was aborted/i.test(e.error?.message || '')) return;
-      if(stationWorldActive){stationWorldActive=false;if(ready)applySettings();}
+      stationWorldLifecycle.disable();
       console.warn('Worldwide station-point source unavailable; previous sources restored:',e.error?.message);
       return;
     }
