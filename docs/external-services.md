@@ -317,3 +317,30 @@ headers to this wrapper; its existing fixed transient backoff remains a
 separate limitation. The glyph/request pool's existing `Retry-After` handling,
 rail demand-driven recovery, terrain deadlines and source/data holds are
 unchanged.
+
+### Partial map-source recovery
+
+Map error presentation records each failed non-rail tile independently, tied to
+its source instance. A loaded sibling or successful metadata response cannot
+clear an unresolved tile; metadata failures require metadata success. Multiple
+world copies remain independent. Source replacement retires obsolete evidence,
+and renderer-cache retirement does not assert that a provider recovered. A known
+failed cached tile restores its warning if reused without a fresh error event.
+Hidden layers retain their unresolved evidence. This bookkeeping does not add
+requests, retry budgets or cache invalidation, and does not change the dedicated
+rail/station recovery mechanisms.
+
+Source-less failures (including glyph errors without resource identity) cannot
+be matched to a later source success and remain a generic warning until the map
+is replaced/reloaded. A tile error with unusable identity likewise cannot be
+cleared by an unrelated success. Provider-specific wording and source-less glyph
+recovery remain separate work, as do the wider availability/coverage requirements
+in #112. The earlier #138 comments describe residual work, but GitHub marks that
+issue closed; this increment is tracked under #112 and does not close it.
+
+`tests/source-failures.test.mjs` and startup tests cover exact resource recovery,
+metadata/tile mixtures, world copies, replacement, cancellation and cached reuse.
+The guarded provider browser check exercises actual MapLibre vector and raster
+403 failures beside healthy tiles, then recovers the failed tiles individually.
+All provider responses in these checks are synthetic; no current provider
+availability, usage-policy compliance or worldwide coverage is inferred.

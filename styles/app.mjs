@@ -1,27 +1,28 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261019-provider-retries-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261019-provider-retries-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261019-provider-retries-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261019-provider-retries-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261019-provider-retries-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261019-provider-retries-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261019-provider-retries-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261019-source-recovery-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261019-source-recovery-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261019-source-recovery-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261019-source-recovery-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261019-source-recovery-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261019-source-recovery-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261019-source-recovery-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261019-provider-retries-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261019-provider-retries-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261019-provider-retries-1';
-import {departureItem} from './departures-ui.mjs?v=20261019-provider-retries-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261019-provider-retries-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261019-provider-retries-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261019-provider-retries-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261019-provider-retries-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-provider-retries-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-provider-retries-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261019-provider-retries-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-provider-retries-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261019-provider-retries-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261019-provider-retries-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-provider-retries-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-provider-retries-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261019-source-recovery-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261019-source-recovery-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261019-source-recovery-1';
+import {departureItem} from './departures-ui.mjs?v=20261019-source-recovery-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261019-source-recovery-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261019-source-recovery-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261019-source-recovery-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261019-source-recovery-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-source-recovery-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-source-recovery-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261019-source-recovery-1';
+import { createSourceFailures } from './source-failures.mjs?v=20261019-source-recovery-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-source-recovery-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261019-source-recovery-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261019-source-recovery-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-source-recovery-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-source-recovery-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -60,7 +61,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-provider-retries-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-source-recovery-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -351,7 +352,7 @@ function whenReady(action) {
   if (ready) action();
   else pendingView = action;
 }
-const errors = new Map();
+const errors = new Map(), sourceFailureStates = new Map();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
   if (className) el.className = className;
@@ -1233,9 +1234,16 @@ const mapErrorMessage = () => {
 };
 function updateStatus() {
   const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
+  for (const [id, failures] of sourceFailureStates) {
+    if (!failures.current()) sourceFailureStates.delete(id);
+    else if (failures.hasFailures() && !errors.has(id)) errors.set(id, {source:failures.source, failures});
+  }
   for (const [id, error] of errors) {
-    if (error.stationOwned && !stationFailures?.hasSourceFailure(id)) errors.delete(id);
+    if (error.failures && !error.failures.current()) errors.delete(id);
+    else if (error.stationOwned && !stationFailures?.hasSourceFailure(id)) errors.delete(id);
     else if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
+    else if (error.failures && !error.failures.hasFailures() &&
+      !railRecovery?.hasSourceFailure(id, error.source) && !stationFailures?.hasSourceFailure(id)) errors.delete(id);
   }
   applyStationFallbackState();
   if (errors.size || railFailed || ['stations','stationMed'].some(id=>stationFailures?.hasSourceFailure(id))) {
@@ -1818,9 +1826,13 @@ async function initialize() {
     const railError = railRecovery.noteError(e);
     const stationError = stationFailures.noteError(e);
     const id = e.sourceId || 'resource', instance = e.sourceId && map.getSource(e.sourceId), previous = errors.get(id);
+    const savedFailures = sourceFailureStates.get(id);
+    const failures = e.sourceId && (savedFailures?.current() ? savedFailures : createSourceFailures(map, id));
+    if (failures) sourceFailureStates.set(id, failures);
+    if (failures && !railError && !stationError) failures.noteError(e);
     // A retryable error cannot take ownership of a nonretryable error on the
     // same source instance; pruning must not erase that independent failure.
-    errors.set(id, {source:instance,
+    errors.set(id, {source:instance, failures,
       stationOwned:stationError && (!previous || previous.source !== instance || previous.stationOwned),
       recoveryOwned:railError && (!previous || previous.source !== instance || previous.recoveryOwned)});
     updateStatus();
@@ -1836,19 +1848,21 @@ async function initialize() {
     // success, and keep a source's error until all its failed tiles recover.
     const successful = e.sourceDataType === 'metadata' || e.tile?.state === 'loaded';
     let cleared = false;
-    if (e.sourceId && (recovered || successful && e.isSourceLoaded) &&
+    const failures = sourceFailureStates.get(e.sourceId);
+    failures?.noteSourceData(e);
+    if (e.sourceId && (recovered || successful) && !failures?.hasFailures() &&
       !railRecovery.failedSourceIds().includes(e.sourceId) && !stationFailures.hasSourceFailure(e.sourceId)) {
       cleared = errors.delete(e.sourceId);
       otherMetadataRetries.clear(e.sourceId);
     }
     // Refresh after BOTH recovery state and app bookkeeping change. A callback
     // inside noteSourceData would observe stale errors; idle may never arrive.
-    if (recovered || cleared || stationChanged) updateStatus();
+    if (recovered || cleared || stationChanged || failures) updateStatus();
   });
   // Native tile removal can report abort instead of successful source data.
   // Reconcile presentation only; an abort is not provider recovery evidence.
   map.on('sourcedataabort', e => {
-    if (stationFailures.noteSourceData(e)) updateStatus();
+    if (stationFailures.noteSourceData(e) || sourceFailureStates.has(e.sourceId)) updateStatus();
   });
   // Apply settings as soon as the style is in place, not at MapLibre's
   // 'load', which waits for every initial tile: zoomed out that is dozens of
@@ -1961,7 +1975,7 @@ for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
 function reloadLanguage() {
   const appliedLanguage=settings.language;
   const style=map.getStyle();localizeStyle(style);
-  ready=false;errors.clear();
+  ready=false;errors.clear();sourceFailureStates.clear();
   status.classList.remove('error');status.textContent='Updating map labels…';
   // Replace the style atomically. Incremental setUrl calls can leave stale
   // symbol-placement buckets after a language switch followed by a long pan.

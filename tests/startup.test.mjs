@@ -26,6 +26,7 @@ import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
+import * as sourceFailuresModule from '../styles/source-failures.mjs';
 import * as stationFallbackModule from '../styles/station-fallback.mjs';
 import * as stationWorldModule from '../styles/station-world.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
@@ -247,6 +248,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,key==='createBundleReader'?options=>value(fixtureOptions(options)):value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
+  const sourceFailures = new vm.SyntheticModule(Object.keys(sourceFailuresModule),function(){for(const [key,value] of Object.entries(sourceFailuresModule))this.setExport(key,value);},{context});
   const stationFallback = new vm.SyntheticModule(Object.keys(stationFallbackModule),function(){for(const [key,value] of Object.entries(stationFallbackModule))this.setExport(key,value);},{context});
   const stationWorld = new vm.SyntheticModule(Object.keys(stationWorldModule),function(){
     for(const [key,value] of Object.entries(stationWorldModule))this.setExport(key,
@@ -255,7 +257,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('source-failures.mjs') ? sourceFailures : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -2062,13 +2064,14 @@ test('rail recovery preserves unrelated app errors until actual unrelated succes
   const f = await recoveryApp();
   try {
     const tile = failedRailTile();f.fail(tile);
-    f.map.handlers.error({sourceId:'openmaptiles', tile:{}, error:new Error('unrelated error')});
+    const otherTile={state:'errored'};
+    f.map.handlers.error({sourceId:'openmaptiles', tile:otherTile, error:new Error('unrelated error')});
     tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
     assert.equal(f.status.classList.contains('error'), true);
     assert.match(f.status.textContent, /Some map data could not load/);
     f.map.handlers.sourcedata({sourceId:'openmaptiles', isSourceLoaded:true});
     assert.equal(f.status.classList.contains('error'), true, 'loaded flag alone is not recovery');
-    f.map.handlers.sourcedata({sourceId:'openmaptiles', tile:{state:'loaded'}, isSourceLoaded:true});
+    otherTile.state='loaded';f.map.handlers.sourcedata({sourceId:'openmaptiles', tile:otherTile, isSourceLoaded:true});
     assert.equal(f.status.classList.contains('error'), false);
     assert.deepEqual(f.clock.retries, []);
   } finally {f.close();}
@@ -2325,4 +2328,50 @@ test('non-rail metadata app handler owns one transient timer and cancels it on p
     map.sources.other.url='atlasbase://en/https://basemap.test/fixture.pmtiles';fail({message:'Bad response code: 503'});assert.equal(clock.timers.size,0,'no second basemap retry budget');
     map.sources.other.url='https://metadata.test/tiles.json';fail({status:503});map.handlers.remove();assert.equal(clock.timers.size,0);
   } finally {map.handlers.remove();app.dom.window.close();}
+});
+
+for (const sourceId of ['openmaptiles','satellite','osm']) test(`partial ${sourceId} recovery cannot clear another failed tile`,async()=>{
+ const f=await recoveryApp();try{
+  const a=failedRailTile(1),b=failedRailTile(2),healthy={state:'loaded',tileID:{canonical:{z:7,x:3,y:2}}};
+  const fail=tile=>f.map.handlers.error({sourceId,tile,error:{status:403,message:'HTTP 403'}});
+  const data=tile=>f.map.handlers.sourcedata({sourceId,tile,isSourceLoaded:true});
+  fail(a);fail(b);data(healthy);
+  assert.equal(f.status.classList.contains('error'),true,'a successful sibling is not recovery evidence for either failed tile');
+  a.state='loaded';data(a);
+  assert.equal(f.status.classList.contains('error'),true,'partial recovery retains the remaining tile failure');
+  b.state='loaded';data(b);
+  assert.equal(f.status.classList.contains('error'),false,'all recorded tile failures recovered');
+ }finally{f.close();}
+});
+
+test('non-rail metadata, tiles and source-less resources recover independently',async()=>{
+ const f=await recoveryApp();try{
+  const sourceId='openmaptiles',tile=failedRailTile();
+  f.map.handlers.error({sourceId,error:{status:403}});f.map.handlers.error({sourceId,tile,error:{status:403}});
+  f.map.handlers.sourcedata({sourceId,sourceDataType:'metadata',isSourceLoaded:true});
+  assert.equal(f.status.classList.contains('error'),true,'metadata success cannot erase failed tile');
+  f.map.handlers.error({error:new Error('glyph failure without source identity')});
+  tile.state='loaded';f.map.handlers.sourcedata({sourceId,tile,isSourceLoaded:true});
+  assert.equal(f.status.classList.contains('error'),true,'source success cannot prove a source-less glyph recovered');
+ }finally{f.close();}
+});
+test('non-rail source replacement retires old errors but hiding does not claim recovery',async()=>{
+ const f=await recoveryApp();try{
+  const sourceId='openmaptiles',tile=failedRailTile();f.map.handlers.error({sourceId,tile,error:{status:403}});
+  f.window.document.querySelector('[data-background="satellite"]').click();
+  assert.equal(f.status.classList.contains('error'),true);
+  f.map.sources[sourceId]={url:'replacement'};
+  f.map.handlers.sourcedata({sourceId,sourceDataType:'metadata',isSourceLoaded:true});
+  assert.equal(f.status.classList.contains('error'),false);
+ }finally{f.close();}
+});
+test('non-rail cached failures become visible again without a new error event',async()=>{
+ const f=await recoveryApp();try{
+  const sourceId='openmaptiles',source=f.map.getSource(sourceId),tile=failedRailTile();let active=[tile];
+  f.map.style={tileManagers:{[sourceId]:{getSource:()=>source,getIds:()=>active.map((_,i)=>i),getTileByID:i=>active[i]}}};
+  f.map.handlers.error({sourceId,tile,error:{status:403}});assert.equal(f.status.classList.contains('error'),true);
+  active=[];f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),false);
+  active=[tile];f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),true,'cached failure remains known');
+  tile.state='loaded';f.map.handlers.sourcedata({sourceId,tile,isSourceLoaded:true});assert.equal(f.status.classList.contains('error'),false);
+ }finally{f.close();}
 });
