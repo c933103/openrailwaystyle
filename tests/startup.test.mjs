@@ -1157,6 +1157,26 @@ for(const layer of stationFallbackModule.STATION_FALLBACK_IDS)test(`visible ${la
   map.handlers.sourcedata({sourceId:'stations',sourceDataType:'metadata',isSourceLoaded:true});check(false);
  }finally{maps[0]?.handlers.remove?.();dom.window.close();}
 });
+test('anonymous curated fallback clicks retain the exact selected OSM identity',async()=>{
+ const {dom,window,maps}=await start({search:'?mode=infrastructure&language=en&stations=1'});
+ try{
+  const doc=window.document,map=maps[0];map.zoom=10;
+  map.getLayer=id=>map.options.style.layers.find(item=>item.id===id);
+  map.handlers['style.load']();
+  map.handlers.error({sourceId:'stations',error:{status:503,message:'HTTP503'}});
+  for(const id of ['24680','24681']) {
+   map.rendered=[{source:'stationMajor',layer:{id:'station-curated-fallback-dots'},
+    properties:{id:`curated-${id}`,osm_id:id,osm_type:'node',name:'',atlas_name:'',feature:'station',state:'present'},
+    geometry:{type:'Point',coordinates:[2.3753,48.8909]}}];
+   doc.getElementById('details').hidden=true;
+   map.handlers.click({point:{x:500,y:400},lngLat:{lng:2.3753,lat:48.8909}});
+   assert.equal(doc.getElementById('details').hidden,false,'anonymous markers remain interactive');
+   assert.equal(doc.querySelector('#details h2').textContent,'Unnamed station');
+   assert.equal(doc.querySelector('#details .osm-link').href,`https://www.openstreetmap.org/node/${id}`,
+    'the selected object changes even when both titles are anonymous');
+  }
+ }finally{maps[0]?.handlers.remove?.();dom.window.close();}
+});
 for(const zoom of [9,9.8,10,11,12])test(`station fallback tracks actual source errors and settings at Paris zoom ${zoom}`,async()=>{
  const {dom,window,maps}=await start({search:'?mode=infrastructure&language=en&stations=1'});
  try{

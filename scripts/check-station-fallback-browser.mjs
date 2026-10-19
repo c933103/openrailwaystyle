@@ -20,7 +20,7 @@ const neighborPoi=point('fixture-neighbor-poi',[2.60,48.8709],{class:'railway',s
 const poi=[basemapPoint,neighborPoi,point('fixture-entrance',[2.3453,48.8709],{class:'railway',subclass:'subway_entrance',name:'Entrance'}),point('fixture-crossing',[2.3453,48.8809],{class:'railway',subclass:'level_crossing',name:'Crossing'})];
 const providerPoint=point('node/12345',center,{feature:'station',station:'train',state:'present',station_size:'large',name:'Provider station'});
 const neighborProvider=point('node/54321',neighbor,{feature:'station',station:'train',state:'present',station_size:'large',name:'Healthy provider station'});
-const hubs={type:'FeatureCollection',features:[point('curated-paris',curated,{feature:'station',tier:3,name:'Curated Paris'}),point('curated-neighbor',[2.64,48.8909],{feature:'station',tier:3,name:'Healthy curated neighbor'}),point('curated-distant',distant,{feature:'station',tier:3,name:'Curated distant'})]};
+const hubs={type:'FeatureCollection',features:[point('curated-paris',curated,{feature:'station',tier:3,name:'Curated Paris',osm_type:'node',osm_id:'24680',osm_ids:'node-24680'}),point('curated-neighbor',[2.64,48.8909],{feature:'station',tier:3,name:'Healthy curated neighbor'}),point('curated-distant',distant,{feature:'station',tier:3,name:'Curated distant'})]};
 const index=features=>geojsonvt({type:'FeatureCollection',features},{maxZoom:16,indexMaxZoom:7,extent:4096,buffer:64});
 const poiIndex=index(poi),stationIndex=index([providerPoint,neighborProvider]),basemapTiles={};
 const tileAt=(position,z)=>{const n=2**z,[lon,lat]=position;return {z,x:Math.floor((lon+180)/360*n),y:Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n)};};
@@ -104,7 +104,10 @@ try{
    assert.ok(report.names.some(f=>f.id==='fixture-paris-poi'),'fallback station name actually renders');
    assert.ok(report.curated.some(f=>f.id==='curated-paris'),'curated hub actually renders');
    assert.equal(report.provider.length,0);assert.match(report.status,/station data unavailable/);assert.equal(report.error,true);
-   for(const [coordinates,expected] of [[basemapPoint.geometry.coordinates,/Fixture station|Gare témoin/],[curated,/Curated Paris/]]){
+   // Curated display names require the intentionally failing provider. Check
+   // the honest anonymous title AND exact OSM identity, rather than assuming
+   // the fixture's seed name can survive the app's provider-only name policy.
+   for(const [coordinates,expected,object] of [[basemapPoint.geometry.coordinates,/Fixture station|Gare témoin/,null],[curated,/^Unnamed station$/,'node/24680']]){
     await page.evaluate(coordinates=>{
      const map=window.stationMap,point=map.project(coordinates);
      map.fire('mousemove',{point,lngLat:{lng:coordinates[0],lat:coordinates[1]},originalEvent:{buttons:0}});
@@ -115,7 +118,9 @@ try{
      map.fire('click',{point:map.project(coordinates),lngLat:{lng:coordinates[0],lat:coordinates[1]}});
     },coordinates);
     await page.locator('#details').waitFor({state:'visible'});
-    assert.match(await page.locator('#details h2').innerText(),expected,'fallback click opens the selected station');
+    assert.match(await page.locator('#details h2').innerText(),expected,'fallback click shows the available station name');
+    if(object)assert.equal(await page.locator('#details .osm-link').getAttribute('href'),
+     `https://www.openstreetmap.org/${object}`,'anonymous fallback click opens the exact selected OSM object');
     await page.locator('#details-close').click();
    }
   }
