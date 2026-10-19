@@ -5,7 +5,8 @@ import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {newStationAcquisition,checkStationAcquisition,stationRegionQuery,
- applyStationRegion,postponeStationRegion,stationWorldCoverage,nextStationAcquisitionCycle} from './station-acquisition.mjs';
+ applyStationRegion,postponeStationRegion,stationWorldCoverage,nextStationAcquisitionCycle,
+ stationQueryExceededLimits} from './station-acquisition.mjs';
 import {stationOverviewData} from './station-overview.mjs';
 
 const endpoint=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter';
@@ -15,6 +16,7 @@ if(u.protocol!=='https:'||u.username||u.password||u.hash)throw Error('Overpass m
 const input=process.env.PREVIOUS_DATA||'';
 const output='station-snapshot';
 const MAX_RESPONSE_BYTES=15*1024*1024;
+const MAX_ERROR_BYTES=64*1024;
 let state=newStationAcquisition(),records=[],existing=false;
 if(input){
   let loaded=0;
@@ -43,24 +45,32 @@ if(pending){
       headers:{'User-Agent':'RailwayAtlas-station-snapshot/1 (+https://github.com/c933103/openrailwaystyle)',
         'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
       body:new URLSearchParams({data:query})});
-    if([429,502,503,504].includes(response.status))throw Error(`Provider temporarily unavailable (HTTP ${response.status})`);
-    if(!response.ok)throw Error(`Unexpected OSM HTTP ${response.status}`);
     let oversized=false,chunks=[];
+    const limit=response.ok?MAX_RESPONSE_BYTES:MAX_ERROR_BYTES;
     for await(const chunk of response.body){
       received+=chunk.byteLength;
-      if(received>MAX_RESPONSE_BYTES){oversized=true;break;}
+      if(received>limit){oversized=true;break;}
       chunks.push(chunk);
     }
-    if(oversized){
+    const body=Buffer.concat(chunks).toString('utf8');
+    if(!response.ok){
+      // Read only a small bounded diagnostic. An HTML HTTP 5xx can carry
+      // the same executed-query limit as a JSON remark. Do not throw away
+      // that evidence and retry the unchanged heavy region indefinitely.
+      // An incomplete diagnostic is not sufficient evidence to subdivide.
+      if(!oversized&&stationQueryExceededLimits(response.status,body)){
+        state=postponeStationRegion(state,pending.box);
+        status='split provider-rejected oversized region';
+      }else throw Error(`Unexpected OSM HTTP ${response.status}`);
+    }else if(oversized){
       await response.body?.cancel().catch(()=>{});
       state=postponeStationRegion(state,pending.box);
       status='split oversized region';
     }else{
-      const body=Buffer.concat(chunks).toString('utf8');
       let json;
       try{json=JSON.parse(body)}catch{throw Error('Invalid or truncated OSM JSON response')}
       if(json?.remark){
-        if(/too (?:many|large)|out of memory|timed out|maxsize/i.test(json.remark)){
+        if(stationQueryExceededLimits(response.status,json.remark)){
           state=postponeStationRegion(state,pending.box);
           status='split provider-rejected oversized region';
         }else throw Error('OSM server could not complete the query');
