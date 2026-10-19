@@ -30,6 +30,10 @@ function originalVisibility(layer, settings) {
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && baseMap) visible = false;
   else if (settings.background === 'carto' && baseMap && !layer.id.startsWith('terrain-')) visible = false;
+  if (settings.background==='soviet'&&!runtime) {
+    if(baseMap&&layer.type==='symbol'&&layer.source==='openmaptiles')visible=false;
+    if(layer.id.startsWith('terrain-'))visible=layer.type==='raster';
+  }
   if (layer.id === 'terrain-bathymetry' && settings.background === 'carto') visible = false;
   return visible;
 }
