@@ -1211,6 +1211,10 @@ function applyStationFallbackState() {
     const visible=((id.endsWith('-names')?showNames:showMarkers) ? 'visible' : 'none');
     if (map.getLayoutProperty(id,'visibility')!==visible)
       map.setLayoutProperty(id,'visibility',visible);
+    // Fallback visibility changes on source events as well as settings.
+    // Keep hit testing in sync, including removal after recovery or hiding.
+    clickable=clickable.filter(layerId=>layerId!==id);
+    if(visible==='visible' && isClickable(id))clickable.push(id);
   }
 }
 const mapErrorMessage = () => {

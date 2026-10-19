@@ -50,6 +50,7 @@ try{
  style.sources.stationMajor.data=hubs;
  await page.route('**/world.style.json*',route=>route.fulfill({json:style}));
  await page.route('**/major-stations.geojson*',route=>route.fulfill({json:hubs}));
+ await page.route('**/data/station-points/manifest.json',route=>route.fulfill({json:{complete:false}}));
  await page.route('https://openrailwaymap.app/**',route=>{
   const path=new URL(route.request().url()).pathname;
   let requested;
@@ -103,6 +104,20 @@ try{
    assert.ok(report.names.some(f=>f.id==='fixture-paris-poi'),'fallback station name actually renders');
    assert.ok(report.curated.some(f=>f.id==='curated-paris'),'curated hub actually renders');
    assert.equal(report.provider.length,0);assert.match(report.status,/station data unavailable/);assert.equal(report.error,true);
+   for(const [coordinates,expected] of [[basemapPoint.geometry.coordinates,/Fixture station|Gare témoin/],[curated,/Curated Paris/]]){
+    await page.evaluate(coordinates=>{
+     const map=window.stationMap,point=map.project(coordinates);
+     map.fire('mousemove',{point,lngLat:{lng:coordinates[0],lat:coordinates[1]},originalEvent:{buttons:0}});
+    },coordinates);
+    await waitUntil(page,()=>window.stationMap.getCanvas().style.cursor==='pointer',undefined,{timeout:10000});
+    await page.evaluate(coordinates=>{
+     const map=window.stationMap;
+     map.fire('click',{point:map.project(coordinates),lngLat:{lng:coordinates[0],lat:coordinates[1]}});
+    },coordinates);
+    await page.locator('#details').waitFor({state:'visible'});
+    assert.match(await page.locator('#details h2').innerText(),expected,'fallback click opens the selected station');
+    await page.locator('#details-close').click();
+   }
   }
   return report;
  };

@@ -27,6 +27,7 @@ import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as stationFallbackModule from '../styles/station-fallback.mjs';
+import * as stationWorldModule from '../styles/station-world.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as referenceModule from '../styles/mainline-reference.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
@@ -247,10 +248,14 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
   const stationFallback = new vm.SyntheticModule(Object.keys(stationFallbackModule),function(){for(const [key,value] of Object.entries(stationFallbackModule))this.setExport(key,value);},{context});
+  const stationWorld = new vm.SyntheticModule(Object.keys(stationWorldModule),function(){
+    for(const [key,value] of Object.entries(stationWorldModule))this.setExport(key,
+      key==='prepareWorldStationOverlay'?options=>value({...fixtureOptions(options),root:new URL(options.root.href)}):value);
+  },{context});
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -1119,6 +1124,39 @@ test('curated hub names with rare Han wait for their slices before reaching the 
 });
 
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+for(const layer of stationFallbackModule.STATION_FALLBACK_IDS)test(`visible ${layer} supports hover and station details through settings and recovery`,async()=>{
+ const {dom,window,maps}=await start({search:'?mode=infrastructure&language=en&stations=1'});
+ try{
+  const doc=window.document,map=maps[0];map.zoom=10;
+  map.getLayer=id=>map.options.style.layers.find(item=>item.id===id);
+  map.isMoving=()=>false;
+  window.cancelAnimationFrame=()=>{};window.requestAnimationFrame=callback=>{callback();return 1;};
+  map.handlers['style.load']();
+  const point={x:500,y:400},lngLat={lng:2.3753,lat:48.8909};
+  map.rendered=[{source:layer.includes('curated')?'stationMajor':'openmaptiles',sourceLayer:'poi',
+   layer:{id:layer},properties:{id:42,osm_id:42,osm_type:'node',name:'Fallback Paris',
+    class:'railway',subclass:'station',feature:'station',state:'present'},
+   geometry:{type:'Point',coordinates:[lngLat.lng,lngLat.lat]}}];
+  const check=visible=>{
+   // Keep the synthetic hit present even when hidden: the app must exclude
+   // hidden fallback layers from its interaction query, not trust this stub.
+   doc.getElementById('details').hidden=true;
+   map.handlers.mousemove({point,lngLat,originalEvent:{buttons:0}});
+   assert.equal(map.getCanvas().style.cursor,visible?'pointer':'');
+   map.handlers.click({point,lngLat});
+   assert.equal(doc.getElementById('details').hidden,!visible);
+   if(visible)assert.equal(doc.querySelector('#details h2').textContent,'Fallback Paris');
+  };
+  check(false);
+  map.handlers.error({sourceId:'stations',error:{status:503,message:'HTTP503'}});check(true);
+  for(const mode of ['speed','infrastructure']){doc.querySelector(`[data-mode="${mode}"]`).click();check(true);}
+  const stations=doc.getElementById('stations');
+  for(const enabled of [false,true]){stations.checked=enabled;stations.dispatchEvent(new window.Event('change'));check(enabled);}
+  const language=doc.getElementById('language');language.value='fr';language.dispatchEvent(new window.Event('change'));await tick();
+  map.handlers.error({sourceId:'stations',error:{status:503,message:'HTTP503'}});check(true);
+  map.handlers.sourcedata({sourceId:'stations',sourceDataType:'metadata',isSourceLoaded:true});check(false);
+ }finally{maps[0]?.handlers.remove?.();dom.window.close();}
+});
 for(const zoom of [9,9.8,10,11,12])test(`station fallback tracks actual source errors and settings at Paris zoom ${zoom}`,async()=>{
  const {dom,window,maps}=await start({search:'?mode=infrastructure&language=en&stations=1'});
  try{
