@@ -1,13 +1,17 @@
-# External provider conditions: OpenRailwayMap (issue #138)
+# External service inventory and conditions (issue #138)
 
 The independent OSM reference pipeline for #181 uses dated Geofabrik PBF
 exports and local Osmium filtering. Its acquisition policy, bounds,
 attribution, failure states and exact-source acceptance are documented in
 [mainline-reference.md](mainline-reference.md). It never fetches ORM tiles.
 
-Reviewed on 2026-10-07. This is an audit of the published terms for the
-**public OpenRailwayMap service hosted at `openrailwaymap.app`**, not a legal
-interpretation of every third-party data source used by Railway Atlas.
+The OpenRailwayMap policy audit below is dated 2026-10-07. Runtime inventory
+and CI boundaries were reconciled on 2026-10-19 against
+[`dbdab03b024c92dd7bd3c2328d562e50e1a7653b`](https://github.com/c933103/openrailwaystyle/tree/dbdab03b024c92dd7bd3c2328d562e50e1a7653b).
+That reconciliation inspected source only: no live provider calls or new
+runtime measurements, and no re-verification of published service terms.
+The ORM audit applies to the **public service at `openrailwaymap.app`**;
+it is not a legal interpretation of every data source used by Railway Atlas.
 
 ## Primary policy and verified requirements
 
@@ -34,10 +38,10 @@ separate terms for that host have **not been verified**.
 | Language-dependent station tiles and label adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs`, `styles/tile-labels.mjs` and generated browser bundle) | A custom URL scheme does not change the classification of its underlying HTTP requests. Browser CI blocks requests to the public hostname at the network boundary. |
 | Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; exact URLs share in-flight/cache entries. | **Measured with local fixtures only:** one cold rail-bearing tile = 27 distinct requests; cold 2x2 viewport = 48 instead of 108 logical candidates; one-tile east pan adds 12. Track geometry is now fetched first; station areas and points then load in parallel only when needed. A railway halo whose returned track bodies are all zero-length skips both station datasets (cold zero-length 2x2 fixture = 16). No numerical operator threshold is published, so this is a volume measurement, not a compliance verdict. |
 | Major-stations placement/baseline audit | `scripts/check-major-stations-browser.mjs` used Playwright `route.fetch()` to fetch live `standard_railway_text_stations_low/med` responses for baseline comparison | **Confirmed risk**: direct automated tile downloads, even if deduplicated for comparison. Now explicitly requires `ATLAS_TEST_ORM_URL`; its `route.fetch` points to loopback data only. |
-| Generic browser response cache | `scripts/browser.mjs` cached all external GET responses (200/204/206), including public railway tiles, seven days; miss used `route.continue()` | **Confirmed risk**: repeated CI runs could fetch provider map tiles automatically; cache hits do not fix initial collection. Cache now excludes public ORM URLs; cache generation bumped to invalidate mixed entries. |
+| Legacy browser response cache | `cacheOtherOrigins` in `scripts/browser.mjs` is retained for cache-format regression tests, but the harness and CI no longer install it | Historical caching did not authorize initial automated retrieval. The current guard blocks every unmocked third-party request, including a legacy cache miss through `route.continue()`; this is not an ORM-only exclusion. |
 | Browser smoke and geographic tests | `check-map-browser.mjs`, `check-context-browser.mjs`, `check-planning-browser.mjs` requested many global regions; deployment also ran these after publishing | **Confirmed risk**: automated map-tile requests. Not part of public CI or post-deploy steps anymore. Early guard requires local provider if manually invoked. |
 | Synthetic WebGL tests | `check-platform*`, `check-infrastructure-browser.mjs`, `check-signal-power-browser.mjs`, new `check-orm-fixture-browser.mjs` | Provider TileJSON/tiles replaced by generated/recorded local fixtures; no provider tile downloads required. |
-| Facility search | `https://api.openrailwaymap.org/v2/facility` | Separate domain and unverified service policy. `check-search-api.mjs` remains a separately flagged non-blocking check; do not infer that `.app` tile conditions settle it. |
+| Facility search | `https://api.openrailwaymap.org/v2/facility` | Separate domain and unverified service policy. `check-search-api.mjs` remains a separately flagged non-blocking live check on non-PR site workflow events; PRs use synthetic fetch/CORS fixtures. Do not infer that `.app` tile conditions settle it. |
 | Recovery probe in PR #145 | Shared, backoff-limited TileJSON health probe with MapLibre source reload | Recovery when a real user's provider is down is distinct from CI permission. **TileJSON is metadata, not a vector tile body**, but whether the operator classifies this particular endpoint as a limited automated API request is not established. Browser-generated genuine request identification still applies. |
 | Offline and in-memory caching | `styles/sw.js` retains app shell/libs/selected fonts rather than public provider tiles. `styles/byte-cache.mjs` bounds in-memory raw byte caching | No prohibited automated/bulk request demonstrated **from these caches alone**; their presence is not independent permission for other automated tile retrieval. |
 
@@ -77,30 +81,96 @@ station-boundary behavior. Reducing those inputs further without a replacement
 data model would change established counts. A larger reduction should use
 precomputed/self-hosted count data rather than silently truncating neighbours.
 
+## Non-rail map providers and first-party assets
+
+These are application request paths, not a fresh audit of provider policies.
+No API key or custom identifying header is configured at these inspected
+map/glyph/DEM call sites. That does not establish what a provider requires or
+what headers every browser sends. Hosted-service limits, identification,
+caching permission and availability remain unverified unless stated otherwise.
+
+| Dependency | Runtime endpoint and transport | Current handling and limits |
+| --- | --- | --- |
+| En Liberté basemap | `https://tuiles.enliberte.fr/planet.pmtiles`; PMTiles HTTP `Range` reads wrapped in `atlasbase://`; also supplies the bathymetry water mask | Shared archive with a 20 s per-range abort timeout; the label wrapper evicts failed archives and retries twice after 0.5/2 s. OSM/En Liberté attribution is declared. These are application settings, not provider-approved budgets. [Definitions][basemap-source], [initialization][map-initialization], [wrapper][basemap-wrapper]. |
+| En Liberté remote glyphs | `https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf`, wrapped in `atlasglyph://`; local CJK families are removed from `fontstack` | Shared pool: 12 s deadline from dispatch, one retry after at least 1 s for retryable failures, concurrency 4 per origin / 6 total. `Retry-After` can extend the delay and origin cooldown. Remote glyph licence and hosted-service conditions have not been established by this inventory. [Fontstack filtering][glyph-filter], [adapter][glyph-adapter], [pool][request-pool]. |
+| EOX Satellite/Hybrid | `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg`; raster tiles, source max zoom 14 | Source/help declare EOX, modified Copernicus Sentinel data 2025, and CC BY-NC-SA 4.0/non-commercial use. This records the application's licence notice, not a new verification of provider terms or service limits. [Source][basemap-source], [credits][licence-notices]. |
+| OSM Standard (Carto background) | `https://tile.openstreetmap.org/{z}/{x}/{y}.png`; raster tiles, source max zoom 19 | Ordinary browser caching; no offline/prefetch support. OSM attribution is declared and the help links the OSMF tile policy. Current header/policy/attribution acceptance remains unverified. [Endpoint][carto-source], [source][basemap-source], [help][source-notices]. |
+| Mapzen Terrain Tiles / AWS | `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`; relief, contours, bathymetry, measure heights and elevation profiles, including coarser/finer repair reads | Relief/contour `DemSource` has a 20 s timeout and cache size 200. The separate elevation reader shares pending work and bounds each completed-tile cache to 64; rejected loads give unknown heights. Its loader has no application deadline, and the worker's 32-entry repair-reference cache uses separate bare fetches. Do not extend the outer timeout guarantee to those paths. [Endpoint][dem-source], [initialization][map-initialization], [elevation reader][elevation-source], [repair worker][dem-worker]. |
+
+MapLibre 5.24.0 with the Atlas attribution backport, PMTiles 4.2.1, the
+contour/worker bundles, packaged Chinese Noto WOFF2 files and rare-Han slices
+are **first-party runtime assets**. The jsDelivr URLs in current code identify
+verified legacy-cache compatibility entries, not current startup downloads.
+Installed-font fallback and optional packaged fonts are distinct from the
+remote glyph endpoint above. npm installation and upstream font acquisition
+are build/maintenance dependencies, not browser CDN dependencies. See the
+[library loader][library-loader], [legacy-cache handling][legacy-libraries],
+[browser build][browser-build] and [font provenance][font-provenance].
+
+The [basemap wrapper][basemap-wrapper] retries every non-cancelled exception;
+it does not classify permanent HTTP responses or honor `Retry-After` itself.
+The separate [non-ORM metadata handler][metadata-retries] can reload a source
+up to three times after 5/15/45 s and has no HTTP-status exclusion in its
+condition. The combined budget has not been measured here. Non-rail error
+bookkeeping is source-based (or `resource` for source-less errors), not a
+verified per-provider/per-failed-tile recovery contract. Those runtime limits
+remain follow-on work in #138; this documentation correction does not fix them.
+
+[basemap-source]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/scripts/style/sources/basemap.mjs#L1-L19
+[map-initialization]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/app.mjs#L1532-L1550
+[basemap-wrapper]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/tile-labels.mjs#L300-L322
+[glyph-filter]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/tile-labels.mjs#L18-L25
+[glyph-adapter]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/tile-labels.mjs#L147-L159
+[request-pool]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/request-pool.mjs#L7-L98
+[licence-notices]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/index.html#L180-L188
+[carto-source]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/map-model.mjs#L180-L183
+[source-notices]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/index.html#L174-L188
+[dem-source]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/map-model.mjs#L821
+[elevation-source]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/elevation.mjs#L8-L87
+[dem-worker]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/dem-worker.mjs#L12-L42
+[library-loader]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/app.mjs#L110-L146
+[legacy-libraries]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/sw.js#L20-L35
+[browser-build]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/scripts/build-browser.mjs#L20-L46
+[font-provenance]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/fonts/README.md
+[metadata-retries]: https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/app.mjs#L1773-L1823
+
 ## CI safeguards and geographic testing
 
-1. `scripts/browser.mjs` installs an `openrailwaymap.app` network guard on
-   **every** Playwright context and disables service workers (which may bypass
-   route interception). By default it aborts public ORM requests, rather
-   than silently allowing cache misses to hit the network.
+1. [`scripts/browser.mjs`](../scripts/browser.mjs) installs the fail-closed
+   [`browser-network-guard.mjs`](../scripts/browser-network-guard.mjs) on
+   **every** Playwright context. All unmocked third-party requests are blocked
+   before egress, including later handlers using `route.continue()` or
+   `route.fetch()`. Only loopback HTTP and explicitly selected first-party
+   deployment paths may be read. Redirects are rejected, WebSockets are
+   blocked, and registered service workers are disabled because they can
+   bypass route interception. Dedicated map workers run under the guard.
 2. Individual deterministic tests intercept the real provider URL pattern
    with `page.route()`, fulfill it using in-process metadata and tile fixtures,
    and inspect browser-generated Referer/User-Agent headers without allowing
    a network download. The `check-orm-fixture-browser.mjs` test exercises
-   the real Atlas page and MapLibre, including Wuhan at z6 and z7, with
+   the real Atlas page and MapLibre, including Wuhan at z6, z7 and z8, with
    synthetic railway vector tiles. Its railway geometry is **not evidence of
    real Wuhan OSM content**.
-3. The `BROWSER_TILE_CACHE` helper excludes `openrailwaymap.app` entirely.
-   GitHub Actions' cache key changed from `browser-tiles-v1` to
-   `browser-tiles-v2-no-public-orm` to avoid replaying previously fetched
-   public tiles. Other external providers are **not** declared compliant by
-   this change and remain within the broader scope of #138.
+3. The legacy external disk cache is **not installed by the harness or CI**.
+   Retained cache-format utilities are regression-test code, not a route to
+   provider egress. Every external map provider needs an explicit fixture;
+   this includes basemap, glyph, raster and terrain requests as well as ORM.
+   See the [harness setup](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/scripts/browser.mjs#L29-L53)
+   and [legacy-cache scope](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/scripts/browser.mjs#L100-L103).
 4. The complete, real-geography checks (`check-map-browser.mjs`,
    `check-context-browser.mjs`, `check-planning-browser.mjs`, and
    `check-major-stations-browser.mjs`) are **local-only** until populated
    with independently licensed fixtures or tested against a locally hosted
    OpenRailwayMap dataset. They are not run as automated public-provider tests
    in PR CI or post-deploy CI.
+5. This boundary describes the browser matrix, **not an offline deployment
+   workflow**. Package installation, GitHub snapshot reads and first-party
+   deployment verification remain real network work. Outside the matrix,
+   [the site workflow](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/.github/workflows/site.yml#L142-L158)
+   runs the one-request station-search probe on non-PR events; PRs run its
+   synthetic positive/negative fetch and CORS tests. The live probe rejects
+   redirects. See [development validation](development.md#validation) for the
+   fixture and service-worker coverage limits.
 
 To run the real-data geographic audits using your own locally installed
 OpenRailwayMap service (with your own local tiles/data), set the local HTTP
@@ -117,8 +187,9 @@ or `http://[::1]` loopback endpoints; redirects from the local HTTP server
 are not followed. **Do not set this to a hosted proxy that fetches public
 OpenRailwayMap tiles on the test's behalf**. The local service needs compatible
 TileJSON, vector tiles and enough geographic coverage for the assertions.
-Other external basemap/glyph/terrain providers can still affect these
-full-geography audits and require separate review.
+Other external basemap/glyph/terrain providers remain blocked in these
+full-geography audits too: supply local fixture routes for any data they need.
+No option re-enables public provider egress.
 
 ## Remaining issues (not resolved by this change)
 
@@ -129,14 +200,15 @@ full-geography audits and require separate review.
   backoff-controlled automated requests for metadata at `openrailwaymap.app`
   count as permitted API use, and whether any further request limits apply.
   PR #145's outage recovery must not be read as blanket permission.
-- **Real-geometry coverage:** the offline z6/z7 fixture proves rendering
+- **Real-geometry coverage:** the offline z6/z7/z8 fixture proves rendering
   integration but does not establish that the published Wuhan/China railway
   network contains the correct lines. Run a self-hosted real-data audit with
   relevant OSM extracts or a separately permitted dataset.
 - **Other third-party services:** terms/headers/availability for
   `api.openrailwaymap.org`, Transitous, Overpass, En Liberté,
-  Mapzen/AWS terrain, EOX imagery, OSMF Standard, glyph/CDN sources and
-  others remain separate #138 inventory items, not automatically permitted.
+  Mapzen/AWS terrain, EOX imagery, OSMF Standard and remote glyph sources
+  remain separate #138 inventory items, not automatically permitted. Build-time
+  package/font acquisition is separate from first-party runtime asset delivery.
 - **Header verification:** a real Chromium session's `Referer`/user-agent
   should be inspected without spoofing, across redirects and nested tile
   requests. The October 5 reported 403 is an observed symptom, not a
