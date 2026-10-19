@@ -63,3 +63,22 @@ test('missing or throwing renderer inventory preserves unresolved evidence',()=>
  f.map.style.tileManagers.test.getIds=()=>{throw new Error('style changed');};
  assert.equal(f.state.hasFailures(),true);a.state='loaded';f.state.noteSourceData({tile:a});assert.equal(f.state.hasFailures(),false);
 });
+
+test('hiding a failed source retains warning through abort, empty inventory and replacement demand',()=>{
+ const f=fixture({inventory:true}),a=tile(),b=tile(2);let visibility='visible';
+ f.map.getStyle=()=>({layers:[{source:'test',layout:{visibility}}]});f.map.getZoom=()=>2;
+ f.setTiles([a,b]);f.state.noteError({tile:a});f.state.noteError({tile:b});assert.equal(f.state.hasFailures(),true);
+ visibility='none';f.setTiles([]);a.aborted=b.aborted=true;a.state=b.state='unloaded';
+ assert.equal(f.state.hasFailures(),true,'hidden cancellation is not recovery');
+ visibility='visible';assert.equal(f.state.hasFailures(),true,'showing precedes renderer demand');
+ const nextA=tile(),nextB=tile(2);nextA.state='loaded';nextB.state='loading';f.setTiles([nextA,nextB]);
+ f.state.noteSourceData({tile:nextA});assert.equal(f.state.hasFailures(),true,'remaining replacement request has not recovered');
+ nextB.state='loaded';f.state.noteSourceData({tile:nextB});assert.equal(f.state.hasFailures(),false);
+});
+test('one visible source layer permits offscreen retirement and hidden metadata remains independent',()=>{
+ const f=fixture({inventory:true}),a=tile();
+ f.map.getStyle=()=>({layers:[{source:'test',layout:{visibility:'none'}},{source:'test',layout:{visibility:'visible'}}]});
+ f.setTiles([a]);f.state.noteError({tile:a});f.setTiles([]);assert.equal(f.state.hasFailures(),false);
+ f.state.noteError({});assert.equal(f.state.hasFailures(),true);
+ f.state.noteSourceData({sourceDataType:'metadata'});assert.equal(f.state.hasFailures(),false);
+});

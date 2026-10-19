@@ -65,6 +65,12 @@ async function checkPartialRecovery(type) {
   await page.waitForFunction(()=>['2/1/1','2/2/1'].every(key=>partialEvents.some(e=>e.key===key&&e.eventType==='error'&&e.status===403))&&partialMap.isSourceLoaded('fixture-partial'));
   assert.equal(await page.locator('#map-status').evaluate(node=>node.classList.contains('error')),true);
   assert.ok(requests.some(r=>!r.failed),'healthy sibling requests also completed');
+  await page.evaluate(()=>partialMap.setLayoutProperty('fixture-partial','visibility','none'));
+  await page.waitForFunction(()=>partialMap.style.tileManagers['fixture-partial'].getIds().length===0);
+  assert.equal(await page.locator('#map-status').evaluate(node=>node.classList.contains('error')),true,'hiding must not clear unresolved failures');
+  await page.evaluate(()=>partialMap.setLayoutProperty('fixture-partial','visibility','visible'));
+  await page.waitForFunction(()=>partialMap.style.tileManagers['fixture-partial'].getIds().length>0&&partialMap.isSourceLoaded('fixture-partial'));
+  assert.equal(await page.locator('#map-status').evaluate(node=>node.classList.contains('error')),true,'restored failed source stays unavailable');
   for(const [key,last] of [['2/1/1',false],['2/2/1',true]]){
     failures.delete(key);
     await page.evaluate(key=>{const [z,x,y]=key.split('/').map(Number);partialMap.refreshTiles('fixture-partial',[{z,x,y}]);},key);

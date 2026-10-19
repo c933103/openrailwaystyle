@@ -10,7 +10,7 @@ const endpoint = source => JSON.stringify([source?.url,source?.tiles]);
 export function createSourceFailures(map, id) {
   const source = map.getSource(id), address = endpoint(source);
   const tiles = new Set(), locations = new Set(), observed = new WeakSet();
-  let metadata = false, unknownTile = false;
+  let metadata = false, unknownTile = false, hidden = false;
   const current = () => map.getSource(id) === source && endpoint(source) === address;
   function inventory() {
     try {
@@ -23,9 +23,40 @@ export function createSourceFailures(map, id) {
       return active.every(Boolean) ? active : null;
     } catch { return null; }
   }
+  function visible() {
+    const layers = map.getStyle?.()?.layers;
+    if (!Array.isArray(layers)) return true;
+    const zoom = map.getZoom?.();
+    return layers.some(layer => layer.source === id && layer.layout?.visibility !== 'none' &&
+      (!Number.isFinite(zoom) || (layer.minzoom == null || zoom >= layer.minzoom) &&
+        (layer.maxzoom == null || zoom < layer.maxzoom)));
+  }
   function prune() {
     if (!current()) return;
     const active = inventory();
+    if (!visible()) {
+      // Hiding a source causes MapLibre to abort/unload its empty failed tiles.
+      // Neither that cancellation nor its now-empty inventory proves recovery.
+      hidden = true;
+      for (const tile of tiles) if (tile.state === 'loaded') { tiles.delete(tile); observed.delete(tile); }
+      return;
+    }
+    if (hidden) {
+      // Settings can become visible before the renderer installs new demand.
+      // Keep the warning through that gap, including unsupported inventories.
+      if (!active?.length) {
+        for (const tile of tiles) if (tile.state === 'loaded') { tiles.delete(tile); observed.delete(tile); }
+        return;
+      }
+      // Aborted hidden copies may be replaced by new tile objects. Rebind their
+      // resource locations only once the renderer has installed current demand.
+      for (const tile of tiles) if (!active.includes(tile)) {
+        const location = key(tile.tileID?.canonical);
+        if (tile.state !== 'loaded') { if (location) locations.add(location); else unknownTile = true; }
+        tiles.delete(tile); observed.delete(tile);
+      }
+      hidden = false;
+    }
     if (active) {
       // A previously failed tile can return from the renderer cache without a
       // fresh error event. Weak evidence keeps that failure, not unrelated ones.
