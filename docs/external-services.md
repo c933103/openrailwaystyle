@@ -168,9 +168,11 @@ remain follow-on work in #138; this documentation correction does not fix them.
    deployment verification remain real network work. Outside the matrix,
    [the site workflow](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/.github/workflows/site.yml#L142-L158)
    runs the one-request station-search probe on non-PR events; PRs run its
-   synthetic positive/negative fetch and CORS tests. The live probe rejects
-   redirects. See [development validation](development.md#validation) for the
-   fixture and service-worker coverage limits.
+   synthetic positive/negative fetch and CORS tests. The
+   [live probe](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/scripts/check-search-api.mjs#L1-L17)
+   makes one fetch with a 20 s abort timeout, no retry, and redirects rejected
+   before following them. See [development validation](development.md#validation)
+   for the fixture and service-worker coverage limits.
 
 To run the real-data geographic audits using your own locally installed
 OpenRailwayMap service (with your own local tiles/data), set the local HTTP
