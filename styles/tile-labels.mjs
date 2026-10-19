@@ -1,4 +1,6 @@
 import {createRequestPool} from './request-pool.mjs';
+import {isRetryableProviderError, providerRetryDelay} from './provider-retry.mjs';
+export {createMetadataRetries} from './provider-retry.mjs';
 import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs} from './rail-source-catalog.mjs';
 import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
@@ -126,10 +128,12 @@ export function timedSource(inner, ms) {
   return {
     getKey: () => inner.getKey(),
     async getBytes(offset, length, signal, etag) {
-      const controller = new AbortController(), stop = () => controller.abort();
+      const controller = new AbortController(), stop = () => controller.abort(signal?.reason);
+      const timeout = () => controller.abort(new DOMException('Basemap request timed out', 'TimeoutError'));
       if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
-      const timer = setTimeout(stop, ms);
+      const timer = setTimeout(timeout, ms);
       try { return await inner.getBytes(offset, length, controller.signal, etag); }
+      catch (error) { throw controller.signal.aborted ? controller.signal.reason : error; }
       finally { clearTimeout(timer); signal?.removeEventListener('abort', stop); }
     },
   };
@@ -302,19 +306,23 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!url) throw new Error('Invalid basemap request');
     // PMTiles keeps a failed header or directory request in its cache, so one
     // dropped connection would fail every tile under it until a reload. On a
-    // failure the archive starts afresh (its header is read again) and the
-    // request is tried twice more.
+    // transient failure the archive starts afresh (its header is read again)
+    // and the request is tried twice more. Permanent responses, invalid data
+    // and PMTiles exhausted ETag repair are never amplified by this wrapper.
     // `basemapArchive` makes the archive (with timed requests) for its URL.
     const archive = url.replace(/\/\d+\/\d+\/\d+$/,'');
     let result;
     for (let attempt = 0; ; attempt++) {
+      controller.signal.throwIfAborted();
       if (basemapArchive && !pmtilesProtocol.tiles.has(archive)) pmtilesProtocol.tiles.set(archive, basemapArchive(archive));
+      const requestedArchive = pmtilesProtocol.tiles?.get(archive);
       try { result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller); break; }
       catch (error) {
-        if (controller.signal.aborted || attempt >= basemapRetries.length) throw error;
-        pmtilesProtocol.tiles?.delete(archive);
-        await new Promise(resolve => setTimeout(resolve, basemapRetries[attempt]));
-        if (controller.signal.aborted) throw error;
+        if (controller.signal.aborted) throw controller.signal.reason;
+        if (!isRetryableProviderError(error) || attempt >= basemapRetries.length) throw error;
+        // Another consumer may already have replaced the failed shared archive.
+        if (pmtilesProtocol.tiles?.get(archive) === requestedArchive) pmtilesProtocol.tiles?.delete(archive);
+        await providerRetryDelay(basemapRetries[attempt], controller.signal);
       }
     }
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};

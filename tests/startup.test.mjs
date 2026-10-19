@@ -56,7 +56,7 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -189,7 +189,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
       key==='createPlatformTileGeometry'?options=>{platformGeometryOptions?.(options);return value(fixtureOptions(options));}:
       key==='createPlatformLengths'?(map,options)=>value(map,fixtureOptions(options)):value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
+  const protocols=new vm.SyntheticModule(['createMetadataRetries','installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('createMetadataRetries',(map,options)=>labelModule.createMetadataRetries(map,{...options,...(metadataClock?{setTimer:metadataClock.setTimer,clearTimer:metadataClock.clearTimer}:{})}));this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -2302,4 +2302,27 @@ test('service details expose exact grouped and segment OSM sources, retain them 
   }
   assert.equal(errors.length,0);
  }finally{dom.window.close();}
+});
+
+for(const error of [{status:400},{status:401},{status:403},{status:404},{message:'Bad response code: 403'},
+  {message:'AJAXError: 404 (Not Found)'},{message:'AJAXError: Forbidden (403): https://metadata.test/permanent.json'},{name:'SyntaxError',message:'bad JSON'}]) test(`non-rail metadata app handler does not retry ${JSON.stringify(error)}`,async()=>{
+  const clock=recoveryClock(),app=await start({metadataClock:clock}),map=app.maps[0];
+  try {
+    map.handlers['style.load']();map.sources.other={url:'https://metadata.test/tiles.json',loaded:()=>true,setUrl:url=>clock.retries.push(url)};
+    map.handlers.error({sourceId:'other',error});assert.equal(clock.timers.size,0);
+    assert.ok(app.window.document.getElementById('map-status').classList.contains('error'),'permanent failure stays visible');
+  } finally {map.handlers.remove();app.dom.window.close();}
+});
+test('non-rail metadata app handler owns one transient timer and cancels it on permanent failure, success or removal',async()=>{
+  const clock=recoveryClock(),app=await start({metadataClock:clock}),map=app.maps[0];
+  try {
+    map.handlers['style.load']();map.sources.other={url:'https://metadata.test/tiles.json',loaded:()=>true,setUrl:url=>clock.retries.push(url)};
+    const fail=error=>map.handlers.error({sourceId:'other',error});
+    fail({status:503});fail({status:503});assert.equal(clock.timers.size,1);assert.equal([...clock.timers.values()][0].delay,5000);
+    fail({status:403});assert.equal(clock.timers.size,0);
+    fail({status:503});fail({name:'AbortError',message:'Aborted'});assert.equal(clock.timers.size,0);
+    fail({status:503});map.handlers.sourcedata({sourceId:'other',sourceDataType:'metadata',isSourceLoaded:false});assert.equal(clock.timers.size,0);
+    map.sources.other.url='atlasbase://en/https://basemap.test/fixture.pmtiles';fail({message:'Bad response code: 503'});assert.equal(clock.timers.size,0,'no second basemap retry budget');
+    map.sources.other.url='https://metadata.test/tiles.json';fail({status:503});map.handlers.remove();assert.equal(clock.timers.size,0);
+  } finally {map.handlers.remove();app.dom.window.close();}
 });
