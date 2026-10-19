@@ -37,6 +37,7 @@ const browser=await launchBrowser({engine:process.env.ATLAS_TEST_ENGINE==='webki
  calls=[],errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 try {
+await installEmptyMapProviders(page.context(),base);
 // WebKit routes MapLibre's Blob workers through Playwright. Replay only the
 // recorded real renderer bytes; the transport guard still denies remote egress.
 await page.addInitScript(()=>{
@@ -150,7 +151,6 @@ console.log('PASS: all 8 synthetic station nodes independent of text and crossin
 
 // Exercise the actual app handler as well as the isolated layer. A serialized
 // language style retains runtime entries; a fresh replacement does not.
-await installEmptyMapProviders(page.context(),base);
 await page.goto(`${base}?mode=infrastructure&language=en&stations=1&autoGlobe=0&relief=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#7/15/15`);
 await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
 await page.evaluate(async()=>{window.stationAppMap=(await import(document.querySelector('script[type="module"]').src)).map;});
