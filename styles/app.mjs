@@ -1,26 +1,27 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261018-drawing-clear-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261018-drawing-clear-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261018-drawing-clear-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261018-drawing-clear-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261018-drawing-clear-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261018-drawing-clear-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261018-drawing-clear-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261019-station-world-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261019-station-world-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261019-station-world-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261019-station-world-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261019-station-world-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261019-station-world-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261019-station-world-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261018-drawing-clear-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261018-drawing-clear-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261018-drawing-clear-1';
-import {departureItem} from './departures-ui.mjs?v=20261018-drawing-clear-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261018-drawing-clear-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261018-drawing-clear-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261018-drawing-clear-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261018-drawing-clear-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261018-drawing-clear-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261018-drawing-clear-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261018-drawing-clear-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261018-drawing-clear-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261018-drawing-clear-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261018-drawing-clear-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261018-drawing-clear-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261019-station-world-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261019-station-world-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261019-station-world-1';
+import {departureItem} from './departures-ui.mjs?v=20261019-station-world-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261019-station-world-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261019-station-world-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261019-station-world-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261019-station-world-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-station-world-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-station-world-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261019-station-world-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-station-world-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261019-station-world-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261019-station-world-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-station-world-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-station-world-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -57,8 +58,9 @@ let legendHelpOpen = false, serviceStatusOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
+let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261018-drawing-clear-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261019-station-world-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -673,11 +675,17 @@ function applySettings() {
     if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
     if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer, settings);
-    const enabled = layer.id.includes('-fallback-') && layer.id.startsWith('station-') ? false : visible;
+    // The verified, complete source replaces selective dots at z3–11. The
+    // corresponding provider/curated name symbols stay eligible; the normal
+    // high-detail dots still begin at z12. An incomplete snapshot changes none.
+    const replaced = stationWorldActive && WORLD_STATION_SUPERSEDED_DOTS.includes(layer.id);
+    const enabled = replaced || (layer.id === WORLD_STATION_DOTS && !stationWorldActive)
+      || (layer.id.includes('-fallback-') && layer.id.startsWith('station-'))
+      ? false : visible;
     if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
-    if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
+    if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   // Clear the previous view's values before drawing the legend: if the new
   // view has nothing in view, the in-view list never changes and the legend
@@ -813,6 +821,7 @@ function showDetails(feature) {
   else if (isStation) {
     row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
     if(isBasemapStation) panel.append(textNode('p','Station location from basemap POI data. Its operating status and identity match with timetable stops have not been verified; departures are unavailable for this fallback marker.','small'));
+    if (feature.source===WORLD_STATION_SOURCE) panel.append(textNode('p','Independent worldwide OpenStreetMap station-point snapshot. This marker does not establish that trains currently stop here or that a timetable match exists.','small'));
     if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
     if (p.station_size&&!p.curated) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
@@ -1194,7 +1203,7 @@ function applyStationFallbackState() {
   const area=stationFailures?.area(map.getZoom());
   const options={zoom:map.getZoom(),stationsEnabled:settings.stations,background:settings.background,
     failedSources:new Set(area?[map.getZoom()>=8?'stations':'stationMed']:[])};
-  const showMarkers=stationFallbackMarkersEnabled(options);
+  const showMarkers=!stationWorldActive && stationFallbackMarkersEnabled(options);
   const showNames=stationFallbackNamesEnabled(options);
   for (const id of ['station-basemap-fallback-dots','station-curated-fallback-dots','station-basemap-fallback-names']) {
     const filter=stationFallbackFilter(id,area);
@@ -1202,6 +1211,10 @@ function applyStationFallbackState() {
     const visible=((id.endsWith('-names')?showNames:showMarkers) ? 'visible' : 'none');
     if (map.getLayoutProperty(id,'visibility')!==visible)
       map.setLayoutProperty(id,'visibility',visible);
+    // Fallback visibility changes on source events as well as settings.
+    // Keep hit testing in sync, including removal after recovery or hiding.
+    clickable=clickable.filter(layerId=>layerId!==id);
+    if(visible==='visible' && isClickable(id))clickable.push(id);
   }
 }
 const mapErrorMessage = () => {
@@ -1755,6 +1768,13 @@ async function initialize() {
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
+  // Do not install or request the optional point tiles until the complete
+  // release manifest and bundle index are verified against each other. A
+  // partial/unpublished OSM crawl leaves the existing dot layers untouched.
+  stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
+    root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
+    onChange:(active,styleReady)=>{stationWorldActive=active;if(ready&&styleReady)applySettings();},
+  });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
@@ -1778,6 +1798,15 @@ async function initialize() {
   map.on('moveend', wakeRailRecovery);
   map.on('remove', () => {recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
+    // Any failed complete-snapshot tile returns to the original station dots,
+    // rather than making its geographic region blank or misreporting coverage.
+    if(e.sourceId===WORLD_STATION_SOURCE) {
+      // A cancelled offscreen or superseded tile is not a station data failure.
+      if(e.error?.name==='AbortError' || /aborterror|operation was aborted/i.test(e.error?.message || '')) return;
+      stationWorldLifecycle.disable();
+      console.warn('Worldwide station-point source unavailable; previous sources restored:',e.error?.message);
+      return;
+    }
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
     // Log text as well as the object: errors passed back from map workers

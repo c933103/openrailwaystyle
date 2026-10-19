@@ -14,6 +14,7 @@ on:
       - '.github/workflows/station-points.yml'
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: station-point-snapshot
   cancel-in-progress: false
@@ -113,5 +114,9 @@ jobs:
           if ! git push --force origin HEAD:station-points-work; then
             test "$(git ls-remote origin refs/heads/station-points-work | cut -f1)" = "$(git rev-parse HEAD)"
           fi
-      # The website imports station-points-data only after that separate
-      # integration has tests for manifest, identity, zoom handoffs and polar.
+      # Only a completed, atomically published generation can update the map.
+      - name: Redeploy site after complete OSM station snapshot publication
+        if: steps.verify.outputs.complete == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

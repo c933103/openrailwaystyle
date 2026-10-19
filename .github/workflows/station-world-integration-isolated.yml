@@ -1,0 +1,37 @@
+name: Station-world integration isolated checks
+on:
+  push:
+    branches: [feat/station-world-runtime-integration-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Exercise complete and incomplete offline station snapshots
+        run: node --test tests/station-world.test.mjs
+      - name: Validate app and station runtime syntax
+        run: |
+          node --check styles/app.mjs
+          node --check styles/station-world.mjs
+      - name: Rebuild and validate generated style
+        run: |
+          npm run build
+          git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
+      - name: Install real Chromium and verify station marker rendering
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/serve.mjs &
+          node scripts/check-station-world-browser.mjs
+      - name: Verify fallback station interaction under provider outages
+        run: node scripts/check-station-fallback-browser.mjs
+      - name: Verify real WebKit station layer and gzip-bundle support
+        run: |
+          npx playwright install --with-deps webkit
+          ATLAS_TEST_ENGINE=webkit node scripts/check-station-world-browser.mjs
