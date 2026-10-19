@@ -36,12 +36,15 @@ export function createMetadataRetries(map, {provider, retries = [5000, 15000, 45
     pending.delete(id);
   }
   function noteError(event) {
-    if (disposed || !event.sourceId || event.tile || event.coord) return;
+    if (disposed || !event.sourceId) return;
     const id = event.sourceId, source = map.getSource(id), url = source?.url;
-    if (!url || url.startsWith('atlasbase://') || (provider && url.includes(new URL(provider).host)) ||
-      typeof source.setUrl !== 'function') return;
     let entry = pending.get(id);
+    // Observe replacement before filtering the new event/source. Otherwise an
+    // excluded source can leave an old timer alive across an ABA URL change.
     if (entry && (entry.source !== source || entry.url !== url)) { clear(id); entry = undefined; }
+    if (!url || url.startsWith('atlasbase://') || (provider && url.includes(new URL(provider).host)) ||
+      typeof source.setUrl !== 'function') { clear(id); return; }
+    if (event.tile || event.coord) return;
     if (!isRetryableProviderError(event.error)) { clear(id); return; }
     // MapLibre marks failed metadata as loaded. Only an actual metadata
     // success event can retire this retry, not source.loaded().

@@ -59,3 +59,14 @@ test('MapLibre loaded-after-failure is not confused with metadata success',()=>{
   const f=fixture();f.sources.other.loaded=()=>true;f.fail({status:503});f.tick();assert.equal(f.reloads.length,1);
   f.fail({status:503});f.retry.clear('other');assert.equal(f.timers.size,0);
 });
+
+test('late errors retire excluded or removed metadata sources before an ABA restoration',()=>{
+  for(const replace of [f=>{delete f.sources.other;},f=>{f.sources.other.url='atlasbase://en/https://basemap.test/planet.pmtiles';},
+    f=>{f.sources.other.url='atlasrail://https://openrailwaymap.app/railway_line_high';},f=>{f.sources.other.setUrl=undefined;},
+    f=>{f.sources.other={url:f.sources.other.url};}]) {
+    const f=fixture(),source=f.sources.other,url=source.url,setUrl=source.setUrl;
+    f.fail({status:503});const stale=[...f.timers.values()][0].fn;
+    replace(f);f.fail({status:503});assert.equal(f.timers.size,0,'late event retires obsolete timer immediately');
+    f.sources.other=source;source.url=url;source.setUrl=setUrl;stale();assert.deepEqual(f.reloads,[],'restoring earlier URL/source does not revive old failure');
+  }
+});
