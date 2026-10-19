@@ -145,3 +145,15 @@ test('a failed explicit retry returns to unavailable and a cleared measurement c
   h.measure.clear(); assert.equal(h.measure.canRetryHeights, false);
   h.measure.retryHeights(); await flush(); assert.equal(calls, 2);
 });
+
+for (const reset of ['clear', 'mode', 'undo', 'next']) test(`${reset} cancels the obsolete height subscription`, async () => {
+  const calls = [];
+  const h = harness((points, {signal}) => {calls.push({points, signal}); return new Promise(() => {});});
+  h.finish(); await flush();
+  if (reset === 'clear') h.measure.clear();
+  else if (reset === 'mode') h.measure.setMode('radius');
+  else if (reset === 'undo') h.measure.undo();
+  else h.finish();
+  assert.equal(calls[0].signal.aborted, true);
+  h.measure.clear();
+});

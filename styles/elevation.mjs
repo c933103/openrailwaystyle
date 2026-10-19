@@ -4,7 +4,8 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261019-station-world-1';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261019-terrain-deadlines-1';
+import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261019-terrain-deadlines-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -30,61 +31,57 @@ export function sampleHeight(data, size, px, py) {
 
 // Decode a PNG tile in the browser into RGBA pixels.
 async function loadPixels(url, signal) {
-  const response = await fetch(url, {signal});
-  if (!response.ok) throw new Error(`Terrain tile returned ${response.status}`);
-  const image = await createImageBitmap(await response.blob());
-  const canvas = new OffscreenCanvas(image.width, image.height), context = canvas.getContext('2d', {willReadFrequently: true});
-  context.drawImage(image, 0, 0);
-  return {data: context.getImageData(0, 0, image.width, image.height).data, size: image.width};
+  const {blob} = await terrainBlob(url, signal);
+  const {pixels} = await decodeTerrain(blob, signal);
+  return {data: pixels.data, size: pixels.width};
 }
 
-// heights(points): a promise of the height in metres at each [lng, lat]
-// (null where a tile could not load). Tiles are shared between calls.
-export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels} = {}) {
-  // A profile can need more than CACHE tiles before any response settles.
-  // Keep active work shared independently of the bounded completed LRU:
-  // evicting an unfinished promise would start duplicate downloads/repairs.
-  function sharedTiles(loadTile) {
-    const pending = new Map(), completed = new Map();
-    return (...coordinates) => {
-      const key = coordinates.join('/');
-      if (completed.has(key)) {
-        const pixels = completed.get(key); completed.delete(key); completed.set(key, pixels);
-        return Promise.resolve(pixels);
-      }
-      if (pending.has(key)) return pending.get(key);
-      const promise = Promise.resolve().then(() => loadTile(...coordinates)).then(pixels => {
-        if (pixels) {
-          completed.set(key, pixels);
-          while (completed.size > CACHE) completed.delete(completed.keys().next().value);
-        }
-        return pixels;
-      }).finally(() => pending.delete(key));
-      pending.set(key, promise);
-      return promise;
-    };
-  }
-  const fetchTile = sharedTiles((z, x, y) =>
-    load(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)).catch(() => null));
-  // A tile with its bad pixels repaired against the coarser tile.
-  const tile = sharedTiles(async (x, y) => {
-    const pixels = await fetchTile(zoom, x, y);
-    if (!pixels || zoom < REPAIR_FROM) return pixels;
-    const coarser = referenceTile(zoom, x, y), ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y) : null;
-    const data = Uint8ClampedArray.from(pixels.data);
-    repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
-    const witness = witnessTiles(data, pixels.size, zoom, x, y);
-    if (witness.tiles.length) {
-      const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await fetchTile(witness.z, tx, ty)])));
-      repairFromWitness(data, pixels.size, zoom, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.size === pixels.size ? p.data : null; });
-    }
-    return {data, size: pixels.size};
+// heights(points, {signal}): metres or null for missing main tiles. Raw reads
+// have a 20 s deadline including body/decode; optional repair gets 5 s total.
+// On repair failure keep usable fine heights. There are no automatic retries:
+// failed main tiles are uncached and a subsequent call can try again.
+export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels,
+  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS} = {}) {
+  const raw = sharedTerrainTiles((key, signal) => {
+    const [z, x, y] = key.split('/');
+    return load(url.replace('{z}', z).replace('{x}', x).replace('{y}', y), signal);
+  }, {keep: CACHE, timeoutMs});
+  const fetchTile = (z, x, y, signal) => raw(`${z}/${x}/${y}`, signal).catch(error => {
+    if (signal.aborted) throw terrainAbort();
+    return null;
   });
+  const tile = sharedTerrainTiles(async (key, signal) => {
+    const [x, y] = key.split('/').map(Number), pixels = await fetchTile(zoom, x, y, signal);
+    if (!pixels || zoom < REPAIR_FROM) return pixels;
+    try {
+      return await terrainTask(async repairSignal => {
+        const coarser = referenceTile(zoom, x, y);
+        const ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y, repairSignal) : null;
+        const data = Uint8ClampedArray.from(pixels.data);
+        repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
+        const witness = witnessTiles(data, pixels.size, zoom, x, y);
+        if (witness.tiles.length) {
+          const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await fetchTile(witness.z, tx, ty, repairSignal)])));
+          repairFromWitness(data, pixels.size, zoom, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.size === pixels.size ? p.data : null; });
+        }
+        return {data, size: pixels.size};
+      }, {signal, timeoutMs: repairTimeoutMs});
+    } catch {
+      if (signal.aborted) throw terrainAbort();
+      return pixels;
+    }
+  }, {keep: CACHE, timeoutMs: 0}); // Its two phases above own the deadlines.
   return {
-    heights: points => Promise.all(points.map(async ([lng, lat]) => {
-      const {x, y, px, py} = tilePixel(lng, lat, zoom), pixels = await tile(x, y);
-      return pixels ? sampleHeight(pixels.data, pixels.size, px, py) : null;
-    })),
+    heights: (points, {signal} = {}) => {
+      // One subscription per tile per call, even for many samples in that tile.
+      const tiles = new Map();
+      return Promise.all(points.map(async ([lng, lat]) => {
+        const {x, y, px, py} = tilePixel(lng, lat, zoom), key = `${x}/${y}`;
+        if (!tiles.has(key)) tiles.set(key, tile(key, signal));
+        const pixels = await tiles.get(key);
+        return pixels ? sampleHeight(pixels.data, pixels.size, px, py) : null;
+      }));
+    },
   };
 }
 

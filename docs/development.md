@@ -160,6 +160,7 @@ node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs
 node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
+node scripts/check-terrain-deadlines-browser.mjs
 ```
 
 The fixture test verifies city-centred Infrastructure railway-line rendering near

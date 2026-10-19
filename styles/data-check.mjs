@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261019-station-world-1';
+import {SEARCH_API} from './map-model.mjs?v=20261019-terrain-deadlines-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

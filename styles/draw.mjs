@@ -626,9 +626,10 @@ export class Measure {
     const key = this.ended ? this.climbFor() : null;
     // A new/edited measurement owns its own request, even if it returns to
     // the same endpoints. Redraws of one finished measurement never retry.
-    if (!key || !this.heights) { if (this.climb) { this.climb = null; this.changed(); } return; }
+    if (!key || !this.heights) { if (this.climb) { this.climb.controller?.abort(); this.climb = null; this.changed(); } return; }
     if (this.climb?.key === key) return;
-    const request = this.climb = {key, pending: true, value: null};
+    this.climb?.controller?.abort();
+    const request = this.climb = {key, pending: true, value: null, controller: new AbortController()};
     this.changed();
     const km = lengthKm(this.points);
     const points = [this.points[0], this.points.at(-1)].map(p => [...p]);
@@ -637,7 +638,7 @@ export class Measure {
       request.pending = false; request.value = value;
       this.refresh(); this.changed();
     };
-    Promise.resolve().then(() => this.climb === request ? this.heights(points) : null).then(values => {
+    Promise.resolve().then(() => this.climb === request ? this.heights(points, {signal: request.controller.signal}) : null).then(values => {
       complete(Array.isArray(values) ? climb(values[0], values[1], km) : null);
     }, () => complete(null));
   }
