@@ -2305,7 +2305,7 @@ test('service details expose exact grouped and segment OSM sources, retain them 
 });
 
 for(const error of [{status:400},{status:401},{status:403},{status:404},{message:'Bad response code: 403'},
-  {message:'AJAXError: 404 (Not Found)'},{name:'SyntaxError',message:'bad JSON'}]) test(`non-rail metadata app handler does not retry ${JSON.stringify(error)}`,async()=>{
+  {message:'AJAXError: 404 (Not Found)'},{message:'AJAXError: Forbidden (403): https://metadata.test/permanent.json'},{name:'SyntaxError',message:'bad JSON'}]) test(`non-rail metadata app handler does not retry ${JSON.stringify(error)}`,async()=>{
   const clock=recoveryClock(),app=await start({metadataClock:clock}),map=app.maps[0];
   try {
     map.handlers['style.load']();map.sources.other={url:'https://metadata.test/tiles.json',loaded:()=>true,setUrl:url=>clock.retries.push(url)};

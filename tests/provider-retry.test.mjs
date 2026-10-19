@@ -7,7 +7,7 @@ const transient = [408, 429, 500, 502, 503, 504, 520, 599];
 test('provider status classification survives PMTiles and MapLibre error serialization', () => {
   for (const status of [...permanent, ...transient]) {
     for (const error of [{status}, {status:String(status)}, new Error(`Bad response code: ${status}`),
-      new Error(`Map names returned ${status}`), {message:`AJAXError: ${status} (failure)`}, new Error(`HTTP ${status}`)]) {
+      new Error(`Map names returned ${status}`), {message:`AJAXError: ${status} (failure)`}, {message:`AJAXError: Provider response (${status}): https://metadata.test/tiles.json`}, new Error(`HTTP ${status}`)]) {
       assert.equal(isRetryableProviderError(error), transient.includes(status), JSON.stringify(error));
     }
   }
@@ -15,7 +15,8 @@ test('provider status classification survives PMTiles and MapLibre error seriali
     new DOMException('request timed out', 'TimeoutError'), {message:'net::ERR_CONNECTION_RESET'}]) assert.equal(isRetryableProviderError(error), true);
   for (const error of [new DOMException('Aborted', 'AbortError'), new SyntaxError('bad JSON'), new Error('Wrong magic number for PMTiles archive'),
     new Error('Maximum directory depth exceeded'), new Error('Server returned non-matching ETag after one retry.'), new Error('unclassified error'),
-    {status:403,message:'AJAXError: failed to fetch'}, {status:503,name:'AbortError'}]) assert.equal(isRetryableProviderError(error), false);
+    {status:403,message:'AJAXError: failed to fetch'}, {status:503,name:'AbortError'},
+    {message:'AJAXError: Forbidden (403): https://metadata.test/HTTP503'}]) assert.equal(isRetryableProviderError(error), false);
 });
 
 function fixture() {

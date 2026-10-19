@@ -4,7 +4,10 @@
 export function providerErrorStatus(error) {
   const status = Number(error?.status);
   if (Number.isInteger(status) && status >= 300 && status <= 599) return status;
-  return Number(/(?:Bad response code:|returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(String(error?.message ?? error ?? ''))?.[1]);
+  const message = String(error?.message ?? error ?? '');
+  const match = /AJAXError:\s*[^()\r\n]*\((\d{3})\)/i.exec(message) ||
+    /(?:Bad response code:|returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(message);
+  return Number(match?.[1]);
 }
 export function isRetryableProviderError(error) {
   const message = String(error?.message ?? error ?? '');
