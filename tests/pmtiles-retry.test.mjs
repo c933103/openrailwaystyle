@@ -73,3 +73,12 @@ test('cancelling one shared basemap reader leaves the other reader and its range
   await new Promise(resolve=>setImmediate(resolve));cancelled.abort();await first;assert.equal(signal.aborted,false);release();
   await second;assert.deepEqual(f.requests,[0,offsets.directory,offsets.tile]);assert.equal(f.made.length,1);
 });
+
+for(const message of ['Load failed','The Internet connection appears to be offline.','The network connection was lost.']) {
+  test(`WebKit transport rejection retains the three-attempt bound: ${message}`,async t=>{
+    const f=setup(t,{answer:new TypeError(message)});await assert.rejects(f.request(),error=>error.message===message);assert.equal(f.requests.length,3);
+  });
+  test(`WebKit transport rejection recovers through a fresh archive: ${message}`,async t=>{
+    const f=setup(t,{answer:new TypeError(message),failures:1});await f.request();assert.equal(f.made.length,2);assert.equal(f.requests.filter(x=>x===0).length,2);
+  });
+}

@@ -12,7 +12,9 @@ test('provider status classification survives PMTiles and MapLibre error seriali
     }
   }
   for (const error of [new TypeError('Failed to fetch'), new Error('NetworkError when attempting to fetch resource'),
-    new DOMException('request timed out', 'TimeoutError'), {message:'net::ERR_CONNECTION_RESET'}]) assert.equal(isRetryableProviderError(error), true);
+    new DOMException('request timed out', 'TimeoutError'), {message:'net::ERR_CONNECTION_RESET'},
+    new TypeError('Load failed'), {message:'Load failed'}, 'TypeError: Load failed',
+    new TypeError('The Internet connection appears to be offline.'), {message:'The network connection was lost.'}]) assert.equal(isRetryableProviderError(error), true);
   for (const error of [new DOMException('Aborted', 'AbortError'), new SyntaxError('bad JSON'), new Error('Wrong magic number for PMTiles archive'),
     new Error('Maximum directory depth exceeded'), new Error('Server returned non-matching ETag after one retry.'), new Error('unclassified error'),
     {status:403,message:'AJAXError: failed to fetch'}, {status:503,name:'AbortError'},

@@ -14,7 +14,8 @@ export function isRetryableProviderError(error) {
   if (error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(message)) return false;
   const status = providerErrorStatus(error);
   if (status >= 300) return status === 408 || status === 429 || status >= 500;
-  return error?.name === 'TimeoutError' || /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout/i.test(message);
+  return error?.name === 'TimeoutError' || /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout/i.test(message) ||
+    /^(?:TypeError:\s*)?Load failed\.?$|internet connection (?:appears to be|is) offline|network connection was lost/i.test(message);
 }
 
 export function providerRetryDelay(ms, signal) {
