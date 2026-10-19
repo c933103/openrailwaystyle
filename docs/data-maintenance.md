@@ -258,6 +258,25 @@ under #112. No merge, deployment or fresh worldwide extraction is implied.
 
 Use the published snapshots for local development; [setup instructions](development.md#load-published-map-data) avoid a new worldwide extraction. The workflows are the executable source of truth for schedules and publishing steps; update this guide when they change.
 
+## Worldwide station-point acquisition
+
+The [station workflow](../.github/workflows/station-points.yml) checkpoints at
+most one Overpass region per run. Only a complete generation is published to
+`station-points-data`; in-progress records stay on `station-points-work`. The
+[rendering contract](rendering.md#completed-worldwide-osm-station-marker-source)
+describes the complete-only runtime integration and remaining coverage limits.
+
+The builder reads successful responses up to 15 MiB, and HTTP error diagnostics
+up to a separate 64 KiB limit. An explicit executed-query timeout or memory-limit
+diagnostic in a JSON remark or HTTP 5xx body checkpoints a geographic subdivision
+for a later run. A busy dispatcher, generic gateway error, HTTP 429/503,
+permission/syntax failure, truncated diagnostic or network abort retains the
+same region. No outcome adds an immediate retry or publishes partial tiles.
+`requestBytes` includes consumed error-body bytes. These decisions are exercised
+against the actual executable in `tests/station-builder.test.mjs` with synthetic
+responses and no public-provider requests. See the provider's distinction between
+[admission limits and executed-query limits](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html).
+
 ## Curated major stations
 
 The reviewed source is `styles/data-src/major-stations.json`; the build generates the versioned `styles/major-stations.geojson` and bundles the same data in `world.style.json` for the first upgrade from the previous installed worker. This initial list contains 181 independently checked priority candidates across ten regions. It is not the map's complete station inventory: provider stations fill the remaining space at zooms 4–6 beneath the curated hubs, including the provider copy of a curated identity. Zoom 3 retains the previous globe selection. The curated selection admits closer candidates at each regional band without deferring the previously selected hubs; collision placement determines the labels actually visible on screen. The band spacing and padding live in `MAJOR_STATION_DENSITY` in `scripts/major-stations.mjs`. Chicago Union, New York Penn, Tokyo, Taipei, Beijing and Shanghai retain their principal-hub priority; adjacent secondary terminals can remain deferred to the ordinary provider labels.

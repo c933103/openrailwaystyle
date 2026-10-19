@@ -2,9 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stationBaseRegions,stationRegionQuery,stationWorldCoverage,newStationAcquisition,
  checkStationAcquisition,applyStationRegion,postponeStationRegion,splitStationRegion,
- centerInside,nextStationAcquisitionCycle} from '../scripts/station-acquisition.mjs';
+ centerInside,nextStationAcquisitionCycle,stationQueryExceededLimits} from '../scripts/station-acquisition.mjs';
 
 const node=(id,lon,lat)=>({type:'node',id,lon,lat,version:1,timestamp:'2026-10-11T00:00:00Z',tags:{railway:'station',name:'Railway'}});
+
+test('station query limits require a bounded explicit executed-query diagnostic',()=>{
+ assert.equal(stationQueryExceededLimits(504,'<p>runtime error: Query timed out in "query" at line 1 after 120 seconds.</p>'),true);
+ assert.equal(stationQueryExceededLimits(200,'runtime error: Query run out of memory using about 64 MB of RAM.'),true);
+ for(const status of [undefined,NaN,Infinity,'504',400,401,403,429,503,600])
+  assert.equal(stationQueryExceededLimits(status,'runtime error: Query run out of memory using about 64 MB of RAM.'),false);
+ for(const message of [null,{},'Gateway timeout','Unknown maxsize setting','Query validation failed: out of memory',
+  '<'.repeat(64*1024),'runtime error: Query '+ 'X'.repeat(64*1024)+' timed out'])
+  assert.equal(stationQueryExceededLimits(504,message),false);
+});
 
 test('world region coverage is a nonoverlapping exhaustive partition',()=>{
  const regions=stationBaseRegions();

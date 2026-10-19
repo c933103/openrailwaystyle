@@ -36,6 +36,16 @@ export function stationRegionQuery(box){
  ];
  return `[out:json][timeout:120][maxsize:67108864];(${queries.join('')});out meta center qt;`;
 }
+// Only an explicit executed-query limit justifies a smaller geographic query.
+// Generic gateway failures and dispatcher/admission timeouts say nothing about
+// this region's size. HTTP permission/syntax/rate-limit errors never subdivide.
+export function stationQueryExceededLimits(status,detail){
+ if(status!==200&&(!Number.isInteger(status)||status<500||status>599||status===503))return false;
+ if(typeof detail!=='string'||detail.length>64*1024)return false;
+ const text=detail.replace(/<[^<>]*>/g,' ').replace(/\s+/g,' ');
+ if(/Dispatcher|too busy|rate.limited|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(text))return false;
+ return /runtime error:\s*Query\s+(?:timed? ?out\b|(?:run|ran) out of memory\b)/i.test(text);
+}
 export function centerInside(box,s){
  const {lat,lon}=s;
  return lat>=box[0]&&(lat<box[2]||box[2]===90&&lat===90)&&
