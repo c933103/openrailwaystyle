@@ -1003,17 +1003,17 @@ for (const previous of ['20261018-drawing-import-1', '20261018-measure-height-st
   assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
 });
 
-test('source recovery release caches exact new module and preserves prior tabs',async()=>{
+test('source recovery release caches the existing recovery module and preserves prior tabs',async()=>{
  const previous='20261019-provider-retries-1',page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  const version=page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];assert.notEqual(version,previous);
- const paths=['app.mjs','source-failures.mjs'];
+ const paths=['app.mjs','rail-provider-recovery.mjs'];
  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
  const prior=new Map(paths.map(path=>[new URL(path,scope).pathname,`export const previous='${path}';`]));
  const old=startWorker({version:previous,assetBodies:prior,rejectExternal:true});await bounded(old.lifecycle('install'));await old.lifecycle('activate');
  const caches=[...old.stores.keys()],next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});
  await bounded(next.request('./',true));next.setOffline();
  for(const path of paths){assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));assert.equal(await(await next.request(path+'?v='+previous)).text(),prior.get(new URL(path,scope).pathname));}
- const module=new vm.SourceTextModule(await(await next.request('source-failures.mjs?v='+version)).text());
+ const module=new vm.SourceTextModule(await(await next.request('rail-provider-recovery.mjs?v='+version)).text());
  await module.link(()=>{throw new Error('unexpected source failure dependency');});await module.evaluate();
  const source={},state=module.namespace.createSourceFailures({getSource:()=>source},'fixture');
  const a={state:'errored'},b={state:'errored'};state.noteError({tile:a});state.noteError({tile:b});

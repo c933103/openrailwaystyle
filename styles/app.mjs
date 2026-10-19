@@ -17,8 +17,7 @@ import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-se
 import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261019-source-recovery-1';
 import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261019-source-recovery-1';
 import { installWatchGesture } from './watch-map.mjs?v=20261019-source-recovery-1';
-import { createSourceFailures } from './source-failures.mjs?v=20261019-source-recovery-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261019-source-recovery-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261019-source-recovery-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261019-source-recovery-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261019-source-recovery-1';
 import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-source-recovery-1';

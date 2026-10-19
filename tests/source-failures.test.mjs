@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSourceFailures} from '../styles/source-failures.mjs';
+import {createSourceFailures} from '../styles/rail-provider-recovery.mjs';
 const tile=(x=1,wrap=0)=>({state:'errored',tileID:{canonical:{z:2,x,y:1},wrap}});
 function fixture({inventory=false}={}){
  let source={url:'https://fixture.test/map'},active=[];
