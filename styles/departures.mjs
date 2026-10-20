@@ -122,28 +122,35 @@ function conflictingDestinationText(group) {
   // of the first row: no bilingual bridge can hide another row's qualifier.
   return new Set(group.map(row => destinationIdentity(row.headsign))).size > 1;
 }
+function datedTripSource(tripId) {
+  // MOTIS date_start-time_dataset-tag_original-trip-id envelope. Unknown or
+  // invalid dates supply no evidence for presentation-independent identity.
+  const match = tripId.match(/^(\d{4})(\d{2})(\d{2})_\d{2,}:[0-5]\d_([^_]+)_[\s\S]+$/);
+  if (!match) return null;
+  const date = `${match[1]}-${match[2]}-${match[3]}`, stamp = Date.parse(`${date}T00:00:00Z`);
+  return Number.isFinite(stamp) && new Date(stamp).toISOString().slice(0, 10) === date ? match[4] : null;
+}
 function conflictingSourceTrips(group) {
-  // MOTIS tag_lookup encodes date_start-time_dataset-tag_original-trip-id.
-  // Dataset tags cannot contain '_'; original trip IDs can. Only recognize
-  // this provider-defined envelope, never route/agency names or stop lists.
-  // Unknown formats keep the existing ambiguity rules and supply no source.
   const bySource = new Map();
   for (const {tripId} of group) {
-    const match = tripId.match(/^(\d{4})(\d{2})(\d{2})_\d{2,}:[0-5]\d_([^_]+)_[\s\S]+$/);
-    if (!match) continue;
-    const date = `${match[1]}-${match[2]}-${match[3]}`, stamp = Date.parse(`${date}T00:00:00Z`);
-    if (!Number.isFinite(stamp) || new Date(stamp).toISOString().slice(0, 10) !== date) continue;
-    const source = match[4];
+    const source = datedTripSource(tripId);
+    if (!source) continue;
     if (bySource.has(source) && bySource.get(source) !== tripId) return true;
     bySource.set(source, tripId);
   }
   return false;
 }
+const conflictingDirections = group => new Set(group.map(row => row.directionId).filter(value => value !== null)).size > 1;
+const sameEvent = (a, b) => Boolean(datedTripSource(a.tripId) && a.tripId === b.tripId &&
+  a.routeId && a.routeId === b.routeId && a.stopId && a.stopId === b.stopId &&
+  modeFamily(a.mode) === modeFamily(b.mode) && Number.isFinite(a.scheduled) && a.scheduled === b.scheduled &&
+  a.tripEvent === b.tripEvent && !conflictingDirections([a, b]));
+const sameEventGroup = group => group.every(row => sameEvent(group[0], row));
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
   row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled,
-  row.tripId, row.stopId, row.tripScheduled, row.tripEvent]);
+  row.tripId, row.stopId, row.tripScheduled, row.tripEvent, row.routeId, row.directionId]);
 const compareRows = (a, b) => Number(!a.line) - Number(!b.line) || a.headsign.length - b.headsign.length || compareText(rowOrder(a), rowOrder(b));
 const mergeObservations = group => {
   const ordered = [...group].sort(compareRows), keep = ordered[0];
@@ -178,6 +185,8 @@ function validateDepartureTime(time) {
   if (!optionalFields(time, ['displayName', 'routeShortName', 'tripShortName', 'routeLongName', 'headsign',
     'routeId', 'tripId', 'routeColor', 'routeTextColor'], 'string') ||
     !optionalFields(time, ['realTime', 'cancelled', 'tripCancelled'], 'boolean')) invalid();
+  if (time.directionId != null && typeof time.directionId !== 'string' &&
+      !(typeof time.directionId === 'number' && Number.isSafeInteger(time.directionId))) invalid();
   const place = time.place ?? {};
   if (!record(place) || !optionalFields(place, ['departure', 'arrival', 'scheduledDeparture', 'scheduledArrival',
       'tz', 'track', 'scheduledTrack', 'stopId'], 'string') ||
@@ -186,6 +195,11 @@ function validateDepartureTime(time) {
     !optionalFields(time.tripTo, ['name'], 'string'))) invalid();
 }
 
+// Strong same-event evidence adds candidates without removing label-based
+// competitors: a validated dated trip ID plus route, stop, exact instant, event
+// and mode may agree even when display labels differ. Only an entire such group
+// bypasses presentation vetoes. Explicit direction disagreements conservatively
+// veto merges; equal direction values alone establish no identity across feeds.
 // Board rows from departure lists (one list per stop; merged, earliest first,
 // rail modes only, one row per train). Within one list only an exact repeat is
 // the same train: trip/route identity, names, mode family, resolved destination
@@ -240,11 +254,13 @@ function parseDepartureList(times, list) {
     // Missing IDs are equal only to missing IDs, never a wildcard. If the
     // schedule is invalid, differing actual times must remain distinguishable.
     const key = JSON.stringify([list, time.tripId ?? null, time.routeId ?? null,
+      time.directionId == null ? null : String(time.directionId), place.stopId ?? null, place.scheduledDeparture != null ? 'departure' : place.scheduledArrival != null ? 'arrival' : place.departure != null ? 'departure' : 'arrival',
       time.displayName || '', time.routeShortName || '', time.tripShortName || '', time.routeLongName || '',
       modeFamily(time.mode), headsign, Number.isFinite(scheduled) ? scheduled :
         [place.scheduledDeparture ?? null, place.scheduledArrival ?? null, departure]]);
     const row = {
       departure, scheduled, tz: place.tz, line, matchingLine, headsign,
+      routeId: time.routeId || '', directionId: time.directionId == null ? null : String(time.directionId),
       tripId: typeof time.tripId === 'string' ? time.tripId : '',
       stopId: typeof place.stopId === 'string' ? place.stopId : '',
       ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:place.scheduledDeparture!=null?'departure':place.scheduledArrival!=null?'arrival':place.departure!=null?'departure':'arrival'}:{}),
@@ -283,7 +299,7 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
   }
   const out = groups.map(group => {
     const row = mergeObservations(group), candidate = expanded.get(group[0]);
-    if (candidate && new Set(candidate.map(member => member.matchingLine).filter(Boolean)).size <= 1 &&
+    if (candidate && (sameEventGroup(candidate) || new Set(candidate.map(member => member.matchingLine).filter(Boolean)).size <= 1) &&
         group.every(member => candidate.includes(member)) &&
         candidate.every(member => !upcoming.has(member) || group.includes(member))) {
       // Only cancellation crosses the expiry boundary. Live/platform data and
@@ -292,12 +308,12 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
     }
     return row;
   });
-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, routeId, directionId, ...row}) => row);
 }
 
 function departureGroups(rows, {allCandidates = false} = {}) {
-  const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
-    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
+  const compatible = (a, b) => a.list !== b.list && (sameEvent(a, b) || (modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
+    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine)));
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)
@@ -308,8 +324,8 @@ function departureGroups(rows, {allCandidates = false} = {}) {
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length ||
         !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
-        !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
-        conflictingDestinationText(group) || conflictingSourceTrips(group)) {
+        (!sameEventGroup(group) && (!group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
+          conflictingDestinationText(group))) || conflictingSourceTrips(group) || conflictingDirections(group)) {
       out.push(...group.map(row => [row])); continue;
     }
     out.push(group);

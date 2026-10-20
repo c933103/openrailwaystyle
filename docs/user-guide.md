@@ -15,8 +15,8 @@ name matching and two-board request limit still apply; this does not expand
 provider coverage.
 
 Repeated observations within one timetable board are combined only when their
-trip and route identifiers, service names, mode family, destination and scheduled
-time agree. Distinguishable simultaneous services remain separate. A combined
+trip and route identifiers, boarding stop, arrival/departure event, explicit
+direction, service names, mode family, destination and scheduled time agree. Distinguishable simultaneous services remain separate. A combined
 row retains any cancellation and uses a live prediction when available. When
 live predictions disagree and no update timestamp is available, the later
 predicted departure is displayed consistently; this does not establish which
@@ -49,7 +49,23 @@ smaller subgroup. If recognized MOTIS trip IDs identify different trip instances
 within the same dataset, those rows also remain separate, even across different
 stop boards. A cancellation from one instance cannot cancel another. Unrecognized
 or missing IDs supply no dataset identity; route and agency labels are not used
-to infer it. This does not establish full cross-source train identity.
+to infer it. A bounded exception permits different display names and destination text when
+all observations share the same recognized full dated MOTIS trip ID, nonempty
+route and boarding-stop IDs, mode family, exact scheduled instant and event type.
+This adds a candidate without deleting existing competitors: ambiguous groups
+still remain separate, and mixed groups cannot inherit the exception from one
+matching pair. Explicit direction disagreements veto the entire group. Direction
+values are source-relative; this conservative veto may retain real cross-feed
+duplicates, and equal direction values alone prove nothing. String and integer
+representations of the same direction compare equally.
+
+Expired observations can contribute cancellation only after the full identity
+and ambiguity checks, including expired competitors. They cannot replace a live
+platform, prediction or the upcoming trip/stop/event tuple. Missing, malformed or
+unrecognized IDs do not qualify for the new exception; they retain the existing
+label-based matching rules. Contradictory identity fields therefore deny this
+shortcut, not every possible legacy label match. This does not establish full
+cross-source train identity or resolve the broader identity audit.
 
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. This includes malformed rows or wrong-typed fields consumed by the
