@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {BACKGROUNDS,MODES,readSettings} from '../styles/map-model.mjs';
 import {getLayerSemantics,layerVisibility} from '../styles/layer-semantics.mjs';
-import {installSovietStyle,SOVIET_SOURCE,SOVIET_LAYER,SOVIET_TILE_ORIGIN} from '../styles/soviet-topo.mjs';
+import {installSovietStyle,sovietPreviewAllowed,SOVIET_SOURCE,SOVIET_LAYER,SOVIET_TILE_ORIGIN} from '../styles/soviet-topo.mjs';
 
 const baseStyle=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
-const source=()=>installSovietStyle(structuredClone(baseStyle));
+const preview='http://127.0.0.1:4173/?sovietPreview=1';
+const source=()=>installSovietStyle(structuredClone(baseStyle),preview);
 const testSettings=(background,overrides={})=>({...readSettings('?background='+background),...overrides});
 
 test('historic Soviet raster has a bounded direct source and cannot request unknown proxy URLs',()=>{
@@ -21,8 +22,8 @@ test('historic Soviet raster has a bounded direct source and cannot request unkn
  assert.match(style.sources.sovietTopo.attribution,/AtloMaps.*NaKarte/);
  assert.ok(!SOVIET_SOURCE.tiles[0].includes('?token='));
  assert.equal(style.layers.filter(l=>l.id===SOVIET_LAYER).length,1);
- assert.throws(()=>installSovietStyle(style),/already extended/);
- assert.throws(()=>installSovietStyle({sources:{},layers:[]}),/Seabed/);
+ assert.throws(()=>installSovietStyle(style,preview),/already extended/);
+ assert.throws(()=>installSovietStyle({sources:{},layers:[]},preview),/Seabed/);
 });
 
 test('Soviet scans draw above land fallback and below bathymetry, tracks and station nodes',()=>{
@@ -64,7 +65,7 @@ test('fifth selector and historical coverage warning are present',async()=>{
  assert.equal((html.match(/data-background="soviet"/g)||[]).length,1);
  assert.match(html,/Soviet topo \(experimental\)/);
  assert.match(html,/bathymetry/);
- assert.match(html,/Russian words printed on the map/);
+ assert.match(html,/Printed Russian map text is part of the image/);
  assert.match(html,/tiles\.nakarte\.me|NaKarte/);
  const sw=await readFile(new URL('../styles/sw.js',import.meta.url),'utf8');
  assert.match(sw,/'soviet-topo\.mjs'/);
@@ -102,8 +103,22 @@ test('scan overlay suppression respects declared roles and cached legacy metadat
   if(legacy)for(const layer of style.layers)delete layer.metadata;
   const landuse=style.layers.find(l=>l.id==='landuse');
   if(!legacy){landuse.id='renamed-land-fill';landuse.source='renamed-basemap';}
-  installSovietStyle(style);
+  installSovietStyle(style,preview);
   assert.equal(layerVisibility(landuse,testSettings('soviet')),false);
   assert.equal(layerVisibility(landuse,testSettings('map')),true);
  }
+});
+
+test('publication hold rejects public query opt-ins and missing preview context',()=>{
+ for(const href of [undefined,'','https://10671435.xyz/?sovietPreview=1',
+   'https://c933103.github.io/openrailwaystyle/?sovietPreview=1',
+   'http://localhost.evil.example/?sovietPreview=1','http://127.0.0.2/?sovietPreview=1',
+   'http://localhost:4173/','file:///tmp/map?sovietPreview=1']){
+  assert.equal(sovietPreviewAllowed(href),false,String(href));
+  const style=structuredClone(baseStyle);
+  assert.equal(installSovietStyle(style,href),style);
+  assert.deepEqual(style,baseStyle,'denied preview must not change source or layers');
+ }
+ for(const host of ['localhost','127.0.0.1','[::1]'])
+  assert.equal(sovietPreviewAllowed(`http://${host}:4173/?sovietPreview=1`),true);
 });

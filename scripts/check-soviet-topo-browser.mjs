@@ -3,12 +3,13 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
+import {checkSovietStackingPixels} from './soviet-stacking-pixels.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 const base='http://127.0.0.1:4173/';
 const browser=await launchBrowser();
 const context=await browser.newContext({viewport:{width:1050,height:740}});
 const requests=[];
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==','base64');
 const locations=[['Alps',9.54,47.15],['Japan',139.77,35.68],['India',72.88,19.07],['North America',-87.63,41.88],['Ocean',-140,-20]];
 let page;
 try {
@@ -22,7 +23,17 @@ try {
  page=await context.newPage();
  const errors=[];
  page.on('pageerror',error=>errors.push(error.message));
- await page.goto(base+'?background=map&mode=infrastructure&autoGlobe=0&relief=1&stations=1#5/47.15/9.54');
+ await page.goto(base+'?background=soviet&autoGlobe=0#5/0/0');
+ await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+ assert.equal(await page.locator('[data-background="soviet"]').isVisible(),false,'selector hidden without explicit preview');
+ assert.equal(await page.locator('[data-background="soviet"]').isEnabled(),false,'selector disabled without explicit preview');
+ const held=await page.evaluate(async()=>{
+  const {map}=await import(document.querySelector('script[type="module"]').src);
+  return {source:Boolean(map.getSource('sovietTopo')),layer:Boolean(map.getLayer('soviet-topo'))};
+ });
+ assert.deepEqual(held,{source:false,layer:false},'held source must not be installed by query settings');
+ assert.equal(requests.length,0,'held URL must not request historical tiles');
+ await page.goto(base+'?sovietPreview=1&background=map&mode=infrastructure&autoGlobe=0&relief=1&stations=1#5/0/0');
  await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
  await page.waitForFunction(async()=>{
    const {map}=await import(document.querySelector('script[type="module"]').src);
@@ -42,6 +53,7 @@ try {
    const {map}=await import(document.querySelector('script[type="module"]').src);
    return map.getLayoutProperty('soviet-topo','visibility')==='visible';
  },null,{timeout:30000});
+ const pixelChecks=await checkSovietStackingPixels(context,base);
  const checks=[];
  for(const [name,lon,lat] of locations){
    const before=requests.length;
@@ -72,6 +84,6 @@ try {
  assert.equal((await state()).soviet,'none');
  assert.deepEqual(errors,[]);
  await mkdir('browser-review',{recursive:true});
- await writeFile('browser-review/soviet-topo-fixture.json',JSON.stringify({scope:'fixture-only, no external-provider access',requests:requests.length,checks},null,2)+'\n');
+ await writeFile('browser-review/soviet-topo-fixture.json',JSON.stringify({scope:'fixture-only, no external-provider access',requests:requests.length,checks,pixelChecks},null,2)+'\n');
  console.log('PASS: five historical raster locations, source isolation, ocean/rail/station overlays and return to ordinary map');
 } finally {await browser.close();}

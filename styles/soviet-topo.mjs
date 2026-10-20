@@ -16,11 +16,23 @@ export const SOVIET_SOURCE={
 };
 export const SOVIET_LAYER='soviet-topo';
 
+// Publication is held. Only an explicit loopback preview may install this source.
+// A query parameter on a public host must never enable third-party tile traffic.
+export function sovietPreviewAllowed(href){
+  try {
+    const url=new URL(href);
+    return ['http:','https:'].includes(url.protocol)&&
+      ['localhost','127.0.0.1','[::1]'].includes(url.hostname)&&
+      url.searchParams.get('sovietPreview')==='1';
+  } catch { return false; }
+}
+
 // Render scanned land maps before the existing bathymetry raster, which is
 // masked to the sea. Modern railway and station layers are above both.
 // On a missing historic tile, the subdued existing base-map fills remain
 // underneath instead of leaving a misleading solid colour.
-export function installSovietStyle(style){
+export function installSovietStyle(style,href){
+  if(!sovietPreviewAllowed(href)) return style;
   if(!style||typeof style!=='object'||!style.sources||
      !Array.isArray(style.layers)||style.sources.sovietTopo||
      style.layers.some(l=>l.id===SOVIET_LAYER))

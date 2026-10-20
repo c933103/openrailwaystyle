@@ -21,7 +21,7 @@ import { createRailProviderRecovery, createSourceFailures } from './rail-provide
 import { createBundleReader } from './tile-bundles.mjs?v=20261019-soviet-preview-1';
 import { createReferenceReader } from './mainline-reference.mjs?v=20261019-soviet-preview-1';
 import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261019-soviet-preview-1';
-import {installSovietStyle} from './soviet-topo.mjs?v=20261019-soviet-preview-1';
+import {installSovietStyle,sovietPreviewAllowed} from './soviet-topo.mjs?v=20261019-soviet-preview-1';
 import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261019-soviet-preview-1';
 
 const $ = id => document.getElementById(id);
@@ -51,6 +51,12 @@ const readCookie = name => { try { return decodeURIComponent(document.cookie.mat
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
+const sovietPreview=sovietPreviewAllowed(location.href);
+if(!sovietPreview&&settings.background==='soviet') settings.background='map';
+document.querySelectorAll('[data-background="soviet"], [data-soviet-preview]').forEach(element=>{
+  element.hidden=!sovietPreview;
+  if(element.tagName==='BUTTON') element.disabled=!sovietPreview;
+});
 // The compact attribution/info control is UI state rather than a shareable map
 // setting. Keep it in the same settings cookie, closed on a first visit.
 settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
@@ -1616,7 +1622,7 @@ async function initialize() {
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
   const style = await response.json();
-  installSovietStyle(style);
+  installSovietStyle(style,location.href);
   // Independent fallback uses only existing basemap tiles and vetted hubs.
   // It is not a complete replacement for a worldwide station inventory.
   addStationFallbackLayers(style,{annotateLayers,labelExpression});
@@ -1969,6 +1975,7 @@ fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).
 }).catch(()=>{serviceDataStatus={state:'failed'};renderLegend();});
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
+  if(button.dataset.background==='soviet'&&!sovietPreview)return;
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));
 for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
