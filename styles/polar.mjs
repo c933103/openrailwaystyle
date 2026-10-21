@@ -36,9 +36,10 @@ export const POLAR_BANDS = {
 };
 export const FEET = 3.28084;
 export const bandFor = zoom => zoom >= 11 ? 2 : zoom >= 9 ? 1 : 0;
-// Railway backgrounds retain the reviewed low-detail cap. Only Carto uses
-// the finer bands; clamp for older snapshots containing just band zero.
-export const polarBandFor = (zoom, background, count) => Math.min(background === 'carto' ? bandFor(zoom) : 0, count - 1);
+// Both drawn backgrounds follow the map's fine contour bands. Imagery
+// keeps coarse/no-data caps; clamp for older snapshots with fewer bands.
+export const polarBandFor = (zoom, background, count) =>
+  Math.min(background === 'map' || background === 'carto' ? bandFor(zoom) : 0, count - 1);
 export const POLAR_DETAIL_ZOOM = 10;
 // Compact storage: coordinates in tens of metres, each line's points as
 // differences from the previous point.
