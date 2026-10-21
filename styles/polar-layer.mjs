@@ -6,6 +6,7 @@
 // turns them into points on the sphere like any other.
 import earcut from 'earcut';
 import {globeGroundZoom} from './globe-drag.mjs';
+import {cssRgba, polarStylePaint} from './polar-paint.mjs';
 import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
@@ -13,7 +14,7 @@ import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine,
 // satellite imagery.
 const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
 const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec', building:'#d9d0c9',apron:'#e9dce5',road:'#ffffff',path:'#b29b7d',waterway:'#aad3df',taxiway:'#bbc0c4'};
-const rgba = (hex, alpha = 1) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).concat(alpha);
+const rgba = (css, alpha = 1) => cssRgba(css, alpha) || [0, 0, 0, 0];
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
 const ramp = (stops, zoom) => {
   if (zoom <= stops[0][0]) return stops[0][1];
@@ -275,8 +276,8 @@ export class PolarLayer {
     }).catch(() => { tile.failed = true; });
     return tile;
   }
-  // Detailed meshes and in-flight requests exist only in a visible Carto
-  // cap. Switching backgrounds removes them immediately; coarse data stays.
+  // Detailed meshes and in-flight requests exist only in a visible drawn
+  // map or Carto cap. Satellite/hybrid release them; coarse data stays.
   syncDetail(active) {
     if (active) { this.detailPending ||= new AbortController(); return; }
     this.detailPending?.abort();this.detailPending=null;
@@ -289,10 +290,14 @@ export class PolarLayer {
     this.json(`${key}.json`, this.detailPending?.signal).then(data => {
       if (generation !== this.generation || this.tiles.get(key) !== tile) return;
       const decode = line => decodeLine(line, 0, line.length, data.quantum || 0.001);
-      for (const kind of ['buildings', 'aprons']) tile[kind] = this.upload(fillMesh(cap, (data[kind] || []).map(rings => rings.map(decode))), 'fill');
+      const buildings = (data.buildings || []).map(rings => rings.map(decode));
+      tile.buildings = this.upload(fillMesh(cap, buildings), 'fill');
+      // The Atlas style includes subdued footprints and independent outlines.
+      tile.buildingOutlines = this.upload(lineMesh(cap, buildings.flat()), 'line');
+      tile.aprons = this.upload(fillMesh(cap, (data.aprons || []).map(rings => rings.map(decode))), 'fill');
       for (const kind of ['roads', 'paths', 'waterways', 'taxiways']) tile[kind] = this.upload(lineMesh(cap, (data[kind] || []).map(decode)), 'line');
       tile.places = (data.places || []).map(p => ({...p, lngLat: fromPolar(cap, [p.x, p.y])}));
-      tile.parts = ['buildings', 'aprons', 'roads', 'paths', 'waterways', 'taxiways'].map(k => tile[k]);
+      tile.parts = ['buildings', 'buildingOutlines', 'aprons', 'roads', 'paths', 'waterways', 'taxiways'].map(k => tile[k]);
       tile.loading = false; tile.bytes = tile.parts.reduce((sum, m) => sum + m.bytes, 0) + tile.places.length * 256;
       this.pruneTiles(); this.map.triggerRepaint();
     }).catch(() => { tile.failed = true; });
@@ -332,7 +337,7 @@ export class PolarLayer {
   // of 256 pixels, one zoom finer than the view; at the cap's edge, where a
   // Web Mercator tile covers cos 85.05° of its width on the ground, it
   // takes tiles about that much coarser.
-  drawRelief(cap, state, shaderData, projection, zoom, fade) {
+  drawRelief(cap, state, shaderData, projection, zoom, fade, relief = RELIEF) {
     const {x0, step, size} = state.index.relief, edge = Math.cos(MERCATOR_LIMIT * Math.PI / 180);
     const tileZoom = Math.max(0, Math.min(15, Math.round(zoom + 1 + Math.log2(edge))));
     const colour = hex => rgba(hex);
@@ -340,8 +345,8 @@ export class PolarLayer {
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, state.relief); gl.uniform1i(u.u_image, 0);
       gl.uniform3f(u.u_grid, x0, step, size); gl.uniform1f(u.u_south, cap === 'south' ? 1 : 0);
       gl.uniform1f(u.u_zoom, tileZoom); gl.uniform1f(u.u_edge, edge);
-      gl.uniform2f(u.u_light, RELIEF.exaggeration, RELIEF.direction * Math.PI / 180);
-      gl.uniform4f(u.u_shadow, ...colour(RELIEF.shadow)); gl.uniform4f(u.u_highlight, ...colour(RELIEF.highlight)); gl.uniform4f(u.u_accent, ...colour(RELIEF.accent));
+      gl.uniform2f(u.u_light, relief.exaggeration, relief.direction * Math.PI / 180);
+      gl.uniform4f(u.u_shadow, ...colour(relief.shadow)); gl.uniform4f(u.u_highlight, ...colour(relief.highlight)); gl.uniform4f(u.u_accent, ...colour(relief.accent));
       gl.uniform1f(u.u_opacity, fade);
     });
   }
@@ -363,8 +368,10 @@ export class PolarLayer {
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
-    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', colours = carto ? CARTO_COLOURS : COLOURS;
-    this.syncDetail(carto && !imagery && Boolean(view.north || view.south));
+    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', custom = background === 'map';
+    const mapPaint = custom ? polarStylePaint(this.map, zoom) : null;
+    const colours = carto ? CARTO_COLOURS : {...COLOURS, ...mapPaint?.colours};
+    this.syncDetail((carto || custom) && !imagery && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
@@ -372,9 +379,9 @@ export class PolarLayer {
       if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(colours.noImagery, fade)); continue; }
       this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
       this.fill(state.water, options.shaderData, projection, rgba(colours.water, fade));
-      this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, 0.8 * fade));
+      this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
-      if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade);
+      if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
       // The finest band prepared for this zoom (only the coarsest may exist).
       const bands = state.index?.units?.[units] || [], bandIndex = polarBandFor(zoom, background, bands.length), band = bands[bandIndex];
       if (band && terrain) {
@@ -387,13 +394,17 @@ export class PolarLayer {
           if (tile.loading || tile.failed) continue;
           for (const [part, kind, major] of [['seabedMinor', 'seabed', 0], ['seabedMajor', 'seabed', 1], ['landMinor', 'land', 0], ['landMajor', 'land', 1]]) {
             if (zoom < MIN_ZOOM[kind]) continue;
-            this.line(tile[part], options.shaderData, projection, rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
+            const style = mapPaint && (kind === 'land' ? mapPaint.landContour : mapPaint.seabedContour);
+            this.line(tile[part], options.shaderData, projection,
+              rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, (style?.opacity ?? ramp(OPACITY[kind], zoom)) * fade),
+              major ? (style?.majorWidth ?? 0.8) : (style?.minorWidth ?? 0.4));
           }
         }
       }
-      if (zoom >= MIN_ZOOM.runway) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
+      if (zoom >= MIN_ZOOM.runway && (carto || mapPaint?.airportVisible)) this.line(state.runways, options.shaderData, projection,
+        rgba(colours.runway, (mapPaint?.runwayOpacity ?? 1) * fade), mapPaint?.runwayWidth ?? 2);
       const detail = state.index?.carto;
-      if (carto && !imagery && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
+      if ((carto || custom) && !imagery && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
         const size = 2 * CAP_RADIUS / detail.n, [x0, y0, x1, y1] = view[cap];
         for (const key of detail.tiles) {
           const [tx, ty] = key.split('-').map(Number), x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
@@ -401,11 +412,28 @@ export class PolarLayer {
           const tileKey = `${cap}-carto-${key}`; this.visibleKeys.add(tileKey);
           const tile = this.loadDetailTile(tileKey);
           if (tile.loading || tile.failed) continue;
-          this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, fade));
-          if (zoom >= 13) this.fill(tile.buildings, options.shaderData, projection, rgba(colours.building, fade));
-          for (const [kind, colour, width] of [['waterways','waterway',1], ['roads','road',2], ['paths','path',1], ['taxiways','taxiway',2]])
-            this.line(tile[kind], options.shaderData, projection, rgba(colours[colour], fade), width);
-          if (zoom >= 12) labels.push(...tile.places);
+          if (carto) {
+            this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, fade));
+            if (zoom >= 13) this.fill(tile.buildings, options.shaderData, projection, rgba(colours.building, fade));
+            for (const [kind, colour, width] of [['waterways','waterway',1], ['roads','road',2], ['paths','path',1], ['taxiways','taxiway',2]])
+              this.line(tile[kind], options.shaderData, projection, rgba(colours[colour], fade), width);
+            if (zoom >= 12) labels.push(...tile.places);
+          } else {
+            // Atlas intentionally omits ordinary roads and paths. Do not
+            // bring Carto's road styling into this thematic basemap.
+            this.line(tile.waterways, options.shaderData, projection,
+              rgba(colours.waterway, mapPaint.waterwayOpacity * fade), mapPaint.waterwayWidth);
+            if (zoom >= 13) this.fill(tile.buildings, options.shaderData, projection,
+              rgba(colours.building, mapPaint.buildingOpacity * fade));
+            if (zoom >= 15) this.line(tile.buildingOutlines, options.shaderData, projection,
+              rgba(colours.buildingOutline, mapPaint.buildingOutlineOpacity * fade), mapPaint.buildingOutlineWidth);
+            if (mapPaint.airportVisible) {
+              this.fill(tile.aprons, options.shaderData, projection,
+                rgba(colours.apron, mapPaint.apronOpacity * fade));
+              this.line(tile.taxiways, options.shaderData, projection,
+                rgba(colours.taxiway, mapPaint.runwayOpacity * fade), mapPaint.taxiwayWidth);
+            }
+          }
         }
       }
       if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
