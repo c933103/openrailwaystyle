@@ -58,8 +58,8 @@ test('Atlas polar painter samples the actual map style on every render', () => {
   assert.equal(first.colours.contourLand,'#996633');assert.equal(first.colours.contourSeabed,'#123456');
   near(first.iceShelfOpacity,0.6);near(first.landContour.opacity,0.8);
   near(first.landContour.majorWidth,1.25);near(first.landContour.minorWidth,0.5);
-  near(first.buildingOpacity,0.2);near(first.runwayWidth,5.636038969321072); // exponential zoom progression
-  near(first.taxiwayWidth,2.6);
+  near(first.buildingOpacity,0.2);near(first.runwayWidth,2.5 + (18 - 2.5) / 7); // exponential-base-2 zoom progression
+  near(first.taxiwayWidth,2);
   assert.equal(first.colours.runway,'#334455');assert.equal(first.colours.taxiway,'#aab1c8');
   assert.equal(first.relief.exaggeration,0.5);assert.equal(first.relief.direction,270);
   paint.background['background-color']='#ffeedd';
