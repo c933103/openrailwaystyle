@@ -307,6 +307,33 @@ Ocean bathymetry is generally much coarser than land elevation; extra zoom does 
 
 Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
 
+### Polar rendering and custom style consistency
+
+Web Mercator sources end at 85.05°; the north and south globe caps are
+separate prepared meshes, not ordinary basemap tiles. When using the Atlas
+**Map** background, the cap now reads its colours, fill opacity, contour
+width/opacity, hillshade settings, waterway styling, building footprint
+styling and airport runway paint from the live MapLibre style, including
+subsequent style changes. The normal map's zoom-dependent contour bands
+are used for both Map and Carto, clamped to the number of bands present in
+older static polar snapshots.
+
+The already-published polar OSM detail tiles (historically named `carto`
+in their index/filenames) are now shared by Map and Carto. In Map they
+display mapped waterways, subdued buildings and their outlines, and
+airport aprons/taxiways/runways while the Transport context layer is
+visible. The Atlas map intentionally omits ordinary roads and paths; only
+Carto continues to draw those as part of its raster-background detail.
+Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
+Visibility-based requests, byte/count limits, aborts and older-snapshot
+fallback remain in force. No browser request is made to Overpass.
+
+This is **style parity for features in the currently prepared polar dataset**,
+not complete source-data parity: ordinary-world tile classes, detailed
+facility/railway semantics and higher-resolution terrain unavailable in
+the polar snapshot cannot be inferred or rendered by changing paint alone.
+
+
 ## Country and state names
 
 One collision-managed, ISO-neutral country-label layer handles country points
