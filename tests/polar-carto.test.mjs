@@ -4,14 +4,16 @@ import {CAP_RADIUS, decodeLine, fromPolar, polarBandFor} from '../styles/polar.m
 import {PolarLayer} from '../styles/polar-layer.mjs';
 import {closedRings, detailQuery, detailTiles, parseOverpass} from '../scripts/polar-features.mjs';
 
-test('finer contour bands belong exclusively to Carto, with old-snapshot fallback', () => {
-  for (const background of ['map', 'satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
+test('both drawn backgrounds use fine contours; imagery stays coarse and older snapshots work', () => {
+  for (const background of ['satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
     assert.equal(polarBandFor(zoom, background, 3), 0);
-  assert.equal(polarBandFor(8.99, 'carto', 3), 0);
-  assert.equal(polarBandFor(9, 'carto', 3), 1);
-  assert.equal(polarBandFor(11, 'carto', 3), 2);
-  assert.equal(polarBandFor(18, 'carto', 1), 0);
-  assert.equal(polarBandFor(18, 'carto', 0), -1);
+  for (const background of ['map', 'carto']) {
+    assert.equal(polarBandFor(8.99, background, 3), 0);
+    assert.equal(polarBandFor(9, background, 3), 1);
+    assert.equal(polarBandFor(11, background, 3), 2);
+    assert.equal(polarBandFor(18, background, 1), 0);
+    assert.equal(polarBandFor(18, background, 0), -1);
+  }
 });
 
 test('detail extraction covers both full caps; incomplete Overpass responses are rejected', () => {
@@ -64,17 +66,19 @@ function renderingLayer() {
   const render=()=>layer.renderCaps(gl,{defaultProjectionData:{projectionTransition:1},shaderData:{}});
   return {layer, calls, labels, render, background:b=>background=b, zoom:z=>zoom=z, terrain:t=>terrain=t, view:v=>view=v};
 }
-test('real rendering decisions request only visible Carto detail; other views stay coarse', () => {
+test('Map and Carto use visible fine assets; imagery cancels them', () => {
   const r = renderingLayer();
-  r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-0-0-0']);
+  r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-2-1-1','south-carto-1-1']);
   r.background('carto');r.zoom(9);r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-1-0-0']);
   r.zoom(13);r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-2-1-1','south-carto-1-1']);
-  r.terrain(false);r.render(); assert.deepEqual(r.calls.splice(0), ['south-carto-1-1'], 'Carto OSM detail is independent of relief');
-  for (const background of ['map','satellite','hybrid']) {
+  r.terrain(false);r.render(); assert.deepEqual(r.calls.splice(0), ['south-carto-1-1'], 'OSM detail is independent of relief');
+  r.background('map');r.render();assert.deepEqual(r.calls.splice(0), ['south-carto-1-1']);
+  assert.ok(r.layer.detailPending, 'Map keeps its visible detail budget');
+  for (const background of ['satellite','hybrid']) {
     r.background(background);r.render();assert.deepEqual(r.calls.splice(0), []);
     assert.equal(r.layer.detailPending, null);
   }
-  r.background('carto');r.view({});r.render();assert.deepEqual(r.calls.splice(0), []);assert.equal(r.layer.detailPending,null);
+  r.background('map');r.view({});r.render();assert.deepEqual(r.calls.splice(0), []);assert.equal(r.layer.detailPending,null);
 });
 
 test('switching away from Carto cancels fine requests and discards late replies and GPU meshes', async () => {
