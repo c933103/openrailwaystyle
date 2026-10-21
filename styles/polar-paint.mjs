@@ -7,6 +7,7 @@ const DEFAULTS = {
   contourLand: '#927b5a', contourSeabed: '#467d9a',
   building: '#a8aca4', buildingOutline: '#879187',
   waterway: 'rgba(168, 190, 207, 0.54)',
+  runway: '#8d95b0', taxiway: '#aab1c8', apron: '#929bc2',
   reliefShadow: '#667365', reliefHighlight: '#ffffff', reliefAccent: '#738978',
 };
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -81,10 +82,10 @@ export function samplePaint(expression, zoom, properties = {}) {
       return read(args.at(-1));
     }
     if (op === 'interpolate' && args.length >= 6 && args.length % 2 === 0 &&
-        args[0]?.[0] === 'linear' && args[1]?.[0] === 'zoom') {
+        ['linear', 'exponential'].includes(args[0]?.[0]) && args[1]?.[0] === 'zoom') {
       const stops = [];
       for (let i = 2; i < args.length; i += 2) stops.push([args[i], read(args[i + 1])]);
-      return interpolate(stops, zoom);
+      return interpolate(stops, zoom, args[0][0] === 'linear' ? 1 : args[0][1]);
     }
     return undefined;
   }
@@ -125,6 +126,9 @@ export function polarStylePaint(map, zoom) {
       building: colour('building-footprints', 'fill-color', DEFAULTS.building),
       buildingOutline: colour('building-outlines', 'line-color', DEFAULTS.buildingOutline),
       waterway: colour('waterway', 'line-color', DEFAULTS.waterway),
+      runway: colour('context-transport-airport-runways', 'line-color', DEFAULTS.runway, {class:'runway'}),
+      taxiway: colour('context-transport-airport-runways', 'line-color', DEFAULTS.taxiway, {class:'taxiway'}),
+      apron: colour('context-transport-airport-area', 'fill-color', DEFAULTS.apron),
     },
     iceShelfOpacity: number('landcover-ice-shelf', 'fill-opacity', 0.8),
     buildingOpacity: number('building-footprints', 'fill-opacity', 0.24),
@@ -132,6 +136,14 @@ export function polarStylePaint(map, zoom) {
     buildingOutlineWidth: number('building-outlines', 'line-width', 0.55),
     waterwayOpacity: number('waterway', 'line-opacity', 1),
     waterwayWidth: number('waterway', 'line-width', 1),
+    airportVisible: (() => {
+      try { return map?.getLayoutProperty?.('context-transport-airport-runways', 'visibility') !== 'none'; }
+      catch { return true; }
+    })(),
+    apronOpacity: number('context-transport-airport-area', 'fill-opacity', 0.25),
+    runwayOpacity: number('context-transport-airport-runways', 'line-opacity', 0.85),
+    runwayWidth: number('context-transport-airport-runways', 'line-width', 2.5, {class:'runway'}),
+    taxiwayWidth: number('context-transport-airport-runways', 'line-width', 1, {class:'taxiway'}),
     landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04),
     seabedContour: contour(zoom >= 11 ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours', zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7),
     relief: {
