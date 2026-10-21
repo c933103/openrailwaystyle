@@ -1,6 +1,6 @@
-// Deterministic WebGL coverage: both caps, view gating, unit switching and
-// coarse-only snapshot compatibility. No railway/DEM provider availability
-// is needed; fixtures exercise the production bundled custom layer.
+// Deterministic WebGL coverage: both caps, live Atlas paint changes,
+// Map/Carto detail, imagery gating, units and older snapshots. No public
+// providers are needed; fixtures exercise the production bundled custom layer.
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -38,17 +38,33 @@ try {
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres} from './globe-drag.mjs';
       window.background='map';window.units='metric';window.labels=[];
-      const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
+      const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},
+        sources:{empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
+        layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}},
+          {id:'water',type:'fill',source:'empty',paint:{'fill-color':'#bfd8e0'}}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
       map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:14+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
       </script></body></html>`}));
     await page.goto('http://127.0.0.1:4173/polar-check.html');
     await page.waitForFunction(()=>window.loaded&&window.layer?.caps?.[window.map.getCenter().lat>0?'north':'south']?.index,null,{timeout:60000});
     await page.waitForFunction(()=>[...window.layer.tiles.values()].some(t=>!t.loading&&!t.failed));
-    assert.ok(!requests.some(n=>n.includes('carto')||/-metric-[12]-/.test(n)), 'Map must request only coarse polar data');
+    await page.waitForFunction(()=>[...window.layer.tiles.entries()].some(([key,t])=>key.includes('carto')&&!t.loading&&!t.failed));
+    assert.ok(requests.some(n=>/-metric-2-/.test(n)), 'Map requests its fine contour band');
+    assert.ok(requests.some(n=>n.includes('carto')), 'Map reuses the static OSM detail asset');
+    // Observe the production fill shader's actual input after a live paint
+    // update. Do not substitute a mock fill; it must still draw the pixels.
+    await page.evaluate(cap=>{
+      const layer=window.layer, state=layer.caps[cap], original=layer.fill.bind(layer);
+      window.capColours=[];
+      layer.fill=(mesh,...args)=>{if(mesh===state.disc)window.capColours.push(args.at(-1));return original(mesh,...args);};
+      window.map.setPaintProperty(cap==='south'?'background':'water',
+        cap==='south'?'background-color':'fill-color','#123456');
+      window.map.triggerRepaint();
+    },cap);
+    await page.waitForFunction(()=>window.capColours.some(c=>Math.abs(c[0]*255-18)<0.1&&Math.abs(c[1]*255-52)<0.1&&Math.abs(c[2]*255-86)<0.1));
     await page.evaluate(()=>{window.background='carto';window.map.triggerRepaint();});
     await page.waitForFunction(()=>window.labels.some(p=>p.name==='Fixture research station')&&[...window.layer.tiles.entries()].some(([key,t])=>key.includes('carto')&&!t.loading&&!t.failed));
-    assert.ok(requests.some(n=>/-metric-2-/.test(n)), 'Carto requests its fine contour band');
+    assert.ok(requests.some(n=>/-metric-2-/.test(n)), 'Map/Carto share a fine contour band');
     await page.evaluate(async()=>{await new Promise(r=>{window.map.once('render',r);window.map.triggerRepaint();});window.map.getCanvas().getContext('webgl2').finish();});
     await mkdir('browser-review',{recursive:true});
     await page.screenshot({path:`browser-review/polar-carto-${cap}.png`});
@@ -56,17 +72,21 @@ try {
     assert.ok(coloured>10, `Carto building fill must produce real WebGL pixels (${coloured})`);
     await page.evaluate(()=>{window.units='imperial';window.map.triggerRepaint();});
     await page.waitForFunction(()=>[...window.layer.tiles.entries()].some(([k,t])=>k.includes('-imperial-2-')&&!t.loading&&!t.failed));
-    for(const background of ['map','satellite','hybrid']) {
+    await page.evaluate(()=>{window.background='map';window.map.triggerRepaint();});
+    await page.waitForFunction(()=>window.layer.detailPending&&window.labels.length===0);
+    for(const background of ['satellite','hybrid']) {
       const before=requests.length;
       await page.evaluate(background=>{window.background=background;window.map.triggerRepaint();},background);
       await page.waitForFunction(()=>!window.layer.detailPending&&![...window.layer.tiles.values()].some(t=>t.detailed)&&window.labels.length===0);
       assert.ok(!requests.slice(before).some(n=>n.includes('carto')||/-(metric|imperial)-[12]-/.test(n)),`${background} must not fetch detail`);
     }
-    // Existing deployed snapshots may predate Carto detail.
-    await page.evaluate(()=>{const cap=window.map.getCenter().lat>0?'north':'south',state=window.layer.caps[cap];delete state.index.carto;for(const units of ['metric','imperial'])state.index.units[units]=state.index.units[units].slice(0,1);window.background='carto';window.map.triggerRepaint();});
+    // Existing deployed snapshots may predate Carto/Map detail.
+    await page.evaluate(()=>{const cap=window.map.getCenter().lat>0?'north':'south',state=window.layer.caps[cap];delete state.index.carto;for(const units of ['metric','imperial'])state.index.units[units]=state.index.units[units].slice(0,1);window.background='map';window.map.triggerRepaint();});
+    await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
+    await page.evaluate(()=>{window.background='carto';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
     assert.deepEqual(errors,[]);assert.ok(!warnings.some(w=>/Polar caps not drawn/.test(w)),warnings.join('\n'));
-    console.log(`PASS ${cap}: coarse-only railway views, Carto detail pixels/labels, feet, cancellation and old snapshot`);
+    console.log(`PASS ${cap}: Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
     await page.close();
   }
 } finally {await browser.close();}
