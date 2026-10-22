@@ -88,10 +88,10 @@ export function locate(lon, lat) {
 }
 // Record the Han-name region at each feature's centre. Every tile URL used
 // by the map ends in z/x/y, so every labelled feature has a location.
-export function locateFeatures(tile, coordinates) {
+export function locateFeatures(tile, coordinates, sourceLayer) {
   if (!coordinates) throw new Error('Label tile has no z/x/y coordinates');
   const {z,x,y} = coordinates, n = 2 ** z;
-  for (const f of features(tile)) {
+  for (const f of sourceLayer ? sourceFeatures(tile,sourceLayer) : features(tile)) {
     const [w,s,e,north] = f.bbox();
     const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
     Object.assign(f.properties, locate(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI));
@@ -400,7 +400,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       }
       if (!primary) {
         primary=translated; primaryData=data;
-        try { locateFeatures(primary,tileCoordinates(url)); }
+        try { locateFeatures(primary,tileCoordinates(url),sourceLayer); }
         catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
       }
       const byId=new Map(stationFeatures(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
