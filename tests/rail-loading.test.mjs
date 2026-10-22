@@ -4,6 +4,8 @@ import {railTileMetadata,zoomOverrides,railTileNeedsGlyphs,RAIL_TILE_RANGES,RAIL
 import {installLabelProtocols} from '../styles/tile-labels.mjs';
 import {railwaySources} from '../scripts/style/sources/railway.mjs';
 import encode from 'vt-pbf';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
 const origin='https://openrailwaymap.app';
 test('all catalog ranges match the generated source contract, including the station underzoom override',()=>{
  for(const source of Object.values(railwaySources())){
@@ -123,5 +125,34 @@ test('public ORM obsolete single-layer 404 remains a visible failure, not empty 
   await assert.rejects(handlers.atlasrail({type:'arrayBuffer',
    url:'atlasrail://'+origin+'/railway_line_high/7/104/52'},new AbortController()),/404/);
   assert.deepEqual(urls,[origin+'/railway_line_high,railway_text_km/7/104/52']);
+ }finally{protocols.dispose();}
+});
+
+test('station localization cannot cross layer boundaries in a composite ORM tile',async()=>{
+ const handlers={}, urls=[];
+ const fixture=encode.fromGeojsonVt({
+  standard_railway_text_stations:{features:[{type:1,geometry:[[100,100]],tags:{
+   id:'same-osm-id',name:'Station Alpha','name:en':'Station Alpha'}}]},
+  standard_railway_grouped_stations:{features:[{type:1,geometry:[[200,200]],tags:{
+   id:'same-osm-id',name:'Unrelated grouped point','name:en':'Unrelated grouped point'}}]},
+ });
+ const bytes=fixture.buffer.slice(fixture.byteOffset,fixture.byteOffset+fixture.byteLength);
+ const protocols=installLabelProtocols({addProtocol:(name,fn)=>handlers[name]=fn},{},async url=>{
+  urls.push(url);return {ok:true,status:200,arrayBuffer:async()=>bytes};
+ });
+ try{
+  const result=await handlers.atlasstation({type:'arrayBuffer',
+   url:'atlasstation://en/'+origin+'/standard_railway_text_stations/8/130/90'},new AbortController());
+  const tile=new VectorTile(new Pbf(new Uint8Array(result.data))).layers;
+  const station=tile.standard_railway_text_stations.feature(0).properties;
+  const other=tile.standard_railway_grouped_stations.feature(0).properties;
+  assert.equal(station.atlas_name,'Station Alpha');
+  assert.equal(station.atlas_language,'en');
+  assert.equal(other.name,'Unrelated grouped point');
+  assert.equal(other.atlas_name,undefined,'unrelated source-layer must not be localized');
+  assert.equal(other.atlas_han,undefined,'unrelated layer must not receive station location data');
+  assert.ok(urls.length>=1);
+  assert.ok(urls.every(url=>url.includes('/standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,')),
+   'all station fetches use the public upstream composite URL');
  }finally{protocols.dispose();}
 });
