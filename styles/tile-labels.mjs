@@ -74,6 +74,7 @@ export function tileHasFeatures(data) {
   return Boolean(data?.byteLength);
 }
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
+const sourceFeatures = (tile, name) => { const layer=tile.layers[name];return layer?Array.from({length:layer.length},(_,i)=>layer.feature(i)):[]; };
 export const tileCoordinates = url => {
   const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
   return match && {z:+match[1],x:+match[2],y:+match[3]};
@@ -98,8 +99,8 @@ export function locateFeatures(tile, coordinates) {
 }
 // `found` (optional) collects the rare-Han blocks of the names written, so
 // their glyph slices can load before the tile is drawn (rare-han.mjs).
-export function writeLabels(tile, lang, found) {
-  for (const f of features(tile)) {
+export function writeLabels(tile, lang, found, sourceLayer) {
+  for (const f of sourceLayer ? sourceFeatures(tile,sourceLayer) : features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
     f.properties.atlas_language = lang;
     if (found) rareHanBlocks(f.properties.atlas_name, found);
@@ -371,11 +372,17 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const coordinates = tileCoordinates(address), target = Number(new URLSearchParams(fragment).get('underzoom'));
     const underzoom = coordinates && Number.isInteger(target) && target > coordinates.z ? target : 0;
     url = address;
+    // The public station XYZ response is now composite. Only the logical
+    // station layer belongs to this atlasstation source; unrelated station
+    // areas/entrances/interlockings may reuse OSM IDs and must not enter the
+    // translation merge or receive synthetic station label attributes.
+    const sourceLayer = new URL(url).pathname.split('/')[1];
+    const stationFeatures = tile => sourceFeatures(tile,sourceLayer);
     const candidates = stationLanguages(lang), fetched = new Set();
     let primary, primaryData;
     for (;;) {
       // Fetch the first listed language some station could still use.
-      const wanted = primary && new Set(features(primary).flatMap(f=>stationPending(f.properties,lang,fetched)));
+      const wanted = primary && new Set(stationFeatures(primary).flatMap(f=>stationPending(f.properties,lang,fetched)));
       const candidate = primary ? candidates.find(c=>!fetched.has(c) && wanted.has(c)) : candidates[0];
       if (!candidate) break;
       fetched.add(candidate);
@@ -384,7 +391,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
       let translated, data;
-      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data); }
+      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data,[sourceLayer]); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.
@@ -396,10 +403,10 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         try { locateFeatures(primary,tileCoordinates(url)); }
         catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
       }
-      const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
-      for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
+      const byId=new Map(stationFeatures(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
+      for(const f of stationFeatures(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
     }
-    try { return writeLabels(primary,lang,found); }
+    try { return writeLabels(primary,lang,found,sourceLayer); }
     catch (error) {
       console.error('Station labels unavailable:', error?.message || String(error));
       return primaryData.slice(0);
