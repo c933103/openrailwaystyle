@@ -1,7 +1,7 @@
 import {createRequestPool} from './request-pool.mjs';
 import {isRetryableProviderError, providerRetryDelay} from './provider-retry.mjs';
 export {createMetadataRetries} from './provider-retry.mjs';
-import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs} from './rail-source-catalog.mjs';
+import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs, railProviderTileURL} from './rail-source-catalog.mjs';
 import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -157,8 +157,12 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   function get(url, signal, json = false, priority = 0) {
     if (signal?.aborted) return Promise.reject(signal.reason);
     const metadata = json && railTileMetadata(url, ORM);
-    const validate = !json ? (data => validProviderVectorTile(url, 200, data, ORM)) : undefined;
-    return metadata ? Promise.resolve(metadata) : pool.get(url, signal, {json, priority, validate});
+    // The public proxy requires a composite path for several standalone MVT
+    // source layers. Translate at the fetch boundary, before request pooling,
+    // so stations, platform geometry and track counts share the same bytes.
+    const requestURL = json ? url : railProviderTileURL(url, ORM);
+    const validate = !json ? (data => validProviderVectorTile(requestURL, 200, data, ORM)) : undefined;
+    return metadata ? Promise.resolve(metadata) : pool.get(requestURL, signal, {json, priority, validate});
   }
   maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:(await get(glyphRequestURL(params.url),controller.signal,false,1)).slice(0)}));
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
