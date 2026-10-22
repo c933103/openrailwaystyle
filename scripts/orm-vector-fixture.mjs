@@ -6,11 +6,14 @@ import vtpbf from 'vt-pbf';
 export function ormVectorFixture(path, indexes, onTile = () => {}) {
   const match = /^\/([^/]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
   if (!match) return null;
-  const [, layer, z, x, y] = match;
-  onTile({layer, z:Number(z), x:Number(x), y:Number(y)});
-  const tile = indexes[layer]?.getTile(Number(z), Number(x), Number(y));
-  // An encoded empty layer has nonempty bytes but no decoded source layer.
-  // The real provider contract uses an empty successful body for empty tiles.
+  const [, group, z, x, y] = match, layers = {};
+  for (const layer of group.split(',')) {
+    onTile({layer, z:Number(z), x:Number(x), y:Number(y)});
+    const tile = indexes[layer]?.getTile(Number(z), Number(x), Number(y));
+    if (tile?.features.length) layers[layer] = tile;
+  }
+  // Model Martin's composite response: each available source layer gets its
+  // own MVT layer, and a wholly empty tile is exactly zero bytes.
   return {contentType:'application/x-protobuf',
-    body:tile?.features.length ? Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile}, {version:2})) : Buffer.alloc(0)};
+    body:Object.keys(layers).length ? Buffer.from(vtpbf.fromGeojsonVt(layers, {version:2})) : Buffer.alloc(0)};
 }
