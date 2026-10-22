@@ -34,9 +34,9 @@ separate terms for that host have **not been verified**.
 
 | Atlas request path | Endpoint / transport | Automation risk and disposition |
 | --- | --- | --- |
-| MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | `https://openrailwaymap.app/<dataset>` TileJSON and tile URLs; see `scripts/style/sources/railway.mjs` | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
+| MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | Logical `https://openrailwaymap.app/<dataset>` metadata in `rail-source-catalog.mjs`; recognized XYZ tile requests use the upstream **comma-separated composite** endpoints via `railProviderTileURL`. The actual outgoing URL may differ from the logical style URL. | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
 | Language-dependent station tiles and label adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs`, `styles/tile-labels.mjs` and generated browser bundle) | A custom URL scheme does not change the classification of its underlying HTTP requests. Browser CI blocks requests to the public hostname at the network boundary. |
-| Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; exact URLs share in-flight/cache entries. | **Measured with local fixtures only:** one cold rail-bearing tile = 27 distinct requests; cold 2x2 viewport = 48 instead of 108 logical candidates; one-tile east pan adds 12. Track geometry is now fetched first; station areas and points then load in parallel only when needed. A railway halo whose returned track bodies are all zero-length skips both station datasets (cold zero-length 2x2 fixture = 16). No numerical operator threshold is published, so this is a volume measurement, not a compliance verdict. |
+| Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; logical requests share the *physical composite endpoint URL* in the bounded pool. | The numbers in the historical measurement below predate composite-endpoint routing. In the current model, station areas and station points can share one composite tile fetch instead of two. A no-track halo still skips station dependencies. No numerical operator threshold is published, so fixture measurements are not a compliance verdict. |
 | Major-stations placement/baseline audit | `scripts/check-major-stations-browser.mjs` used Playwright `route.fetch()` to fetch live `standard_railway_text_stations_low/med` responses for baseline comparison | **Confirmed risk**: direct automated tile downloads, even if deduplicated for comparison. Now explicitly requires `ATLAS_TEST_ORM_URL`; its `route.fetch` points to loopback data only. |
 | Legacy browser response cache | `cacheOtherOrigins` in `scripts/browser.mjs` is retained for cache-format regression tests, but the harness and CI no longer install it | Historical caching did not authorize initial automated retrieval. The current guard blocks every unmocked third-party request, including a legacy cache miss through `route.continue()`; this is not an ORM-only exclusion. |
 | Browser smoke and geographic tests | `check-map-browser.mjs`, `check-context-browser.mjs`, `check-planning-browser.mjs` requested many global regions; deployment also ran these after publishing | **Confirmed risk**: automated map-tile requests. Not part of public CI or post-deploy steps anymore. Early guard requires local provider if manually invoked. |
@@ -49,11 +49,15 @@ The service operator policy does not enumerate a quantitative API rate limit.
 No particular number of calls, retry cadence or TileJSON polling allowance
 has therefore been certified as compliant.
 
-### Track-count request amplification measurement
+### Historical track-count request amplification (before composite routing)
 
 Measured on 2026-10-07 with deterministic in-process vector-tile fixtures; **no
-public OpenRailwayMap tile traffic was sent**. Atlas computes at z14 and
-overzooms those count tiles above z14, so this covers z14+ interaction.
+public OpenRailwayMap tile traffic was sent**. These are historical physical
+request counts **before** the 2026-10-23 adaptation to combined Martin endpoints,
+not a forecast of present-day public traffic. The updated client deduplicates
+station-areas and station-points dependencies against one composite URL; the
+real-MapLibre synthetic fixture continues to assert upper limits. Atlas computes
+at z14 and overzooms those count tiles above z14.
 
 - Cold rail-bearing single count tile: **27 distinct requests** (three 3x3
   dataset halos). Track geometry is fetched first; the two station datasets
@@ -75,10 +79,9 @@ overzooms those count tiles above z14, so this covers z14+ interaction.
   unnoticed increase is not. Symbol placement is deliberately not used as the
   completion gate because collision handling may legitimately hide every badge.
 
-The remaining 27-request rail-bearing single-tile cost is retained because the
-current counter uses all three neighbour halos for cross-tile line joining and
-station-boundary behavior. Reducing those inputs further without a replacement
-data model would change established counts. A larger reduction should use
+The three halo datasets and their geometries remain necessary for cross-tile
+joining and station-boundary behavior, but **27 no longer means 27 HTTP
+requests** after composite routing. Further reduction of geometry work requires
 precomputed/self-hosted count data rather than silently truncating neighbours.
 
 ## Non-rail map providers and first-party assets
