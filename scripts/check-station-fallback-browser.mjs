@@ -54,10 +54,10 @@ try{
  await page.route('https://openrailwaymap.app/**',route=>{
   const path=new URL(route.request().url()).pathname;
   let requested;
-  const response=ormVectorFixture(path,{'standard_railway_text_stations':stationIndex},tile=>{requested=tile;requests.push({...tile,provider});});
+  const response=ormVectorFixture(path,{'standard_railway_text_stations':stationIndex},tile=>{if(tile.layer==='standard_railway_text_stations'){requested=tile;requests.push({...tile,provider});}});
   if(!response)return route.fallback();
   const failed=provider==='failed'||provider==='mixed'&&requested.x===tileAt(center,requested.z).x&&requested.y===tileAt(center,requested.z).y;
-  if(path.startsWith('/standard_railway_text_stations/')&&failed)return route.fulfill({status:503,body:'Controlled station failure'});
+  if(path.startsWith('/standard_railway_text_stations,')&&failed)return route.fulfill({status:503,body:'Controlled station failure'});
   return route.fulfill(response);
  });
  const sample=async()=>page.evaluate(async ids=>{
