@@ -5,7 +5,7 @@ import {mkdir, writeFile} from 'node:fs/promises';
 import {RAIL_TILE_RANGES} from '../styles/rail-source-catalog.mjs';
 import {checkRailRecoveryWithoutIdle} from './rail-recovery-browser-fixture.mjs';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {WUHAN_ZOOMS,checkWuhanRailZoom,readWuhanRail,assertWuhanRail} from './wuhan-rail-browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
@@ -51,10 +51,10 @@ try {
     if(!headers['user-agent'])requests.missingUserAgent.push(url.pathname);
     const path=url.pathname;
     if(path.startsWith('/api/'))return route.fulfill({status:404,body:''});
-    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
+    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_,]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
     if(tileMatch){
       requests.tiles++;
-      const [,endpoint,z,x,y]=tileMatch,tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
+      const [,group,z,x,y]=tileMatch,endpoint=group.split(',')[0],tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
       // The local catalogue now gives visible rail geometry the SAME direct
       // URLs as track-count inputs. Count their union after pool sharing.
       // Localized station display requests (?lang=...) were excluded by the
@@ -72,8 +72,9 @@ try {
         }
       }
       ledger.push({url:request.url(),path,status:200,at:Date.now()});
-      return route.fulfill({contentType:'application/x-protobuf',
-        body:tile?.features.length?Buffer.from(vtpbf.fromGeojsonVt({[endpoint]:tile},{version:2})):Buffer.alloc(0)});
+      const response=ormVectorFixture(path.replace(/^\\/__orm-fixture/,''),indexes);
+      assert.ok(response,'Composite ORM tiles must have a synthetic MVT fixture');
+      return route.fulfill(response);
     }
     requests.metadata++;
     const endpoint=path.split('/').filter(Boolean)[0];
