@@ -72,7 +72,7 @@ try {
         }
       }
       ledger.push({url:request.url(),path,status:200,at:Date.now()});
-      const response=ormVectorFixture(path.replace(/^\\/__orm-fixture/,''),indexes);
+      const response=ormVectorFixture(path.startsWith('/__orm-fixture/') ? path.slice('/__orm-fixture'.length) : path,indexes);
       assert.ok(response,'Composite ORM tiles must have a synthetic MVT fixture');
       return route.fulfill(response);
     }
