@@ -1,7 +1,7 @@
 // The custom globe caps sample the SAME paint declarations as the ordinary
 // Atlas basemap, instead of maintaining a second (eventually stale) palette.
-// This deliberately supports only the feature-independent paint expressions
-// used by these layers. Unknown expressions fall back to reviewed defaults.
+// This deliberately supports a bounded subset of paint expressions, including
+// the feature-dependent contour weights. Unknown expressions use reviewed defaults.
 const DEFAULTS = {
   land: '#f2f1e9', water: '#bfd8e0', iceShelf: 'hsl(47, 26%, 88%)',
   contourLand: '#927b5a', contourSeabed: '#467d9a',
@@ -33,7 +33,7 @@ export function cssRgba(value, opacity = 1) {
     } else if (hslMatch) {
       const h = ((Number(hslMatch[1]) % 360) + 360) % 360 / 60;
       const s = Number(hslMatch[2]) / 100, l = Number(hslMatch[3]) / 100;
-      if (s > 1 || l > 1) return null;
+      if (!finite(h) || !finite(s) || !finite(l) || s > 1 || l > 1) return null;
       const c = (1 - Math.abs(2 * l - 1)) * s;
       const x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
       const sectors = [[c,x,0],[x,c,0],[0,c,x],[0,x,c],[x,0,c],[c,0,x]];
@@ -62,12 +62,30 @@ function interpolate(stops, zoom, base = 1) {
 }
 
 export function samplePaint(expression, zoom, properties = {}) {
+  return evaluatePaint(expression, zoom, properties, {remaining: 2048}, 0);
+}
+function evaluatePaint(expression, zoom, properties, budget, depth) {
+  if (--budget.remaining < 0 || depth > 64) return undefined;
   if (Array.isArray(expression)) {
+    if (expression.length > budget.remaining) return undefined;
     const [op, ...args] = expression;
-    const read = value => samplePaint(value, zoom, properties);
+    const read = value => evaluatePaint(value, zoom, properties, budget, depth + 1);
     if (op === 'zoom') return zoom;
-    if (op === 'get') return Object.hasOwn(properties, args[0]) ? properties[args[0]] : undefined;
+    if (op === 'get') return typeof args[0] === 'string' && Object.hasOwn(properties, args[0]) ? properties[args[0]] : undefined;
     if (op === 'literal') return args[0];
+    if (['+', '-', '*', '/', 'abs'].includes(op)) {
+      if (!args.length || args.length > budget.remaining ||
+          (op === 'abs' && args.length !== 1) ||
+          (op === '-' && args.length > 2) || (op === '/' && args.length !== 2)) return undefined;
+      const values = args.map(read);
+      if (!values.every(finite)) return undefined;
+      const result = op === 'abs' ? Math.abs(values[0])
+        : op === '+' ? values.reduce((a,b) => a+b, 0)
+        : op === '*' ? values.reduce((a,b) => a*b, 1)
+        : op === '/' ? values[0]/values[1]
+        : values.length === 1 ? -values[0] : values[0]-values[1];
+      return finite(result) ? result : undefined;
+    }
     if (['<', '>', '<=', '>=', '==', '!='].includes(op) && args.length === 2) {
       const a = read(args[0]), b = read(args[1]);
       if (a === undefined || b === undefined) return undefined;
@@ -82,10 +100,13 @@ export function samplePaint(expression, zoom, properties = {}) {
       return read(args.at(-1));
     }
     if (op === 'interpolate' && args.length >= 6 && args.length % 2 === 0 &&
-        ['linear', 'exponential'].includes(args[0]?.[0]) && args[1]?.[0] === 'zoom') {
+        ['linear', 'exponential'].includes(args[0]?.[0])) {
       const stops = [];
-      for (let i = 2; i < args.length; i += 2) stops.push([args[i], read(args[i + 1])]);
-      return interpolate(stops, zoom, args[0][0] === 'linear' ? 1 : args[0][1]);
+      for (let i = 2; i < args.length; i += 2) {
+        if (!finite(args[i]) || (i > 2 && args[i] <= args[i - 2])) return undefined;
+        stops.push([args[i], read(args[i + 1])]);
+      }
+      return interpolate(stops, read(args[1]), args[0][0] === 'linear' ? 1 : args[0][1]);
     }
     return undefined;
   }
@@ -111,10 +132,11 @@ export function polarStylePaint(map, zoom) {
     const paint = value(id, property, fallback, properties);
     return finite(paint) && paint >= 0 ? paint : fallback;
   };
-  const contour = (id, fallbackOpacity) => ({
-    opacity: number(id, 'line-opacity', fallbackOpacity),
-    minorWidth: number(id, 'line-width', 0.4, {level: 0, ele: id.includes('seabed') ? -100 : 100}),
-    majorWidth: number(id, 'line-width', 0.8, {level: 1, ele: id.includes('seabed') ? -100 : 100}),
+  const seabedId = zoom >= 11 ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours';
+  const contour = (id, fallbackOpacity) => properties => ({
+    opacity: number(id, 'line-opacity', fallbackOpacity, properties),
+    width: number(id, 'line-width', properties.level > 0 ? 0.8 : 0.4, properties),
+    colour: colour(id, 'line-color', id.includes('seabed') ? DEFAULTS.contourSeabed : DEFAULTS.contourLand, properties),
   });
   return {
     colours: {
@@ -122,7 +144,7 @@ export function polarStylePaint(map, zoom) {
       water: colour('water', 'fill-color', DEFAULTS.water),
       iceShelf: colour('landcover-ice-shelf', 'fill-color', DEFAULTS.iceShelf),
       contourLand: colour('terrain-contours', 'line-color', DEFAULTS.contourLand, {ele:100}),
-      contourSeabed: colour('terrain-seabed-contours', 'line-color', DEFAULTS.contourSeabed, {ele:-100}),
+      contourSeabed: colour(seabedId, 'line-color', DEFAULTS.contourSeabed, {ele:-100}),
       building: colour('building-footprints', 'fill-color', DEFAULTS.building),
       buildingOutline: colour('building-outlines', 'line-color', DEFAULTS.buildingOutline),
       waterway: colour('waterway', 'line-color', DEFAULTS.waterway),
@@ -145,7 +167,7 @@ export function polarStylePaint(map, zoom) {
     runwayWidth: number('context-transport-airport-runways', 'line-width', 2.5, {class:'runway'}),
     taxiwayWidth: number('context-transport-airport-runways', 'line-width', 1, {class:'taxiway'}),
     landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04),
-    seabedContour: contour(zoom >= 11 ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours', zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7),
+    seabedContour: contour(seabedId, zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7),
     relief: {
       exaggeration: number('terrain-relief', 'hillshade-exaggeration', 0.3),
       shadow: colour('terrain-relief', 'hillshade-shadow-color', DEFAULTS.reliefShadow),

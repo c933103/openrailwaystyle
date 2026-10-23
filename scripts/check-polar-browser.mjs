@@ -3,9 +3,14 @@
 // providers are needed; fixtures exercise the production bundled custom layer.
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
+import {expression as styleExpression} from '@maplibre/maplibre-gl-style-spec';
 import {CAP_RADIUS, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {detailTiles} from './polar-features.mjs';
+
+const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+const contourLayers=world.layers.filter(layer=>['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))
+  .map(({id,type,paint})=>({id,type,source:'empty',paint}));
 
 const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
@@ -25,7 +30,7 @@ try {
     data.set(`${cap}-index.json`,index);
     data.set(`${cap}-features.json`,{water:[],iceShelves:[],runways:[],places:[]});
     for(const units of ['metric','imperial'])for(const [i,band]of bands.entries())for(const key of band.tiles)
-      data.set(`${cap}-${units}-${i}-${key}.json`,{lines:[[units==='metric'?50:100,1,...encodeLine([[-4,y+0.3],[0,y+0.6],[4,y+0.3]])]]});
+      data.set(`${cap}-${units}-${i}-${key}.json`,{lines:[[50,1],[-100,0],[-100,1],[-3000,0]].map(([ele,level],j)=>[ele*(units==='metric'?1:3.28084),level,...encodeLine([[-4,y+0.3+j*0.1],[0,y+0.6+j*0.1],[4,y+0.3+j*0.1]])])});
     for(const [key,tile]of detail)data.set(`${cap}-carto-${key}.json`,tile);
     await page.route('**/polar-fixture/**',async route=>{
       const name=new URL(route.request().url()).pathname.split('/').at(-1);requests.push(name);
@@ -36,14 +41,17 @@ try {
       <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
       <script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
-      import {allowPolarCentres} from './globe-drag.mjs';
+      import {allowPolarCentres,globeGroundZoom} from './globe-drag.mjs';
       window.background='map';window.units='metric';window.labels=[];
       const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},
         sources:{empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
         layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}},
-          {id:'water',type:'fill',source:'empty',paint:{'fill-color':'#bfd8e0'}}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
+          {id:'water',type:'fill',source:'empty',paint:{'fill-color':'#bfd8e0'}},...${JSON.stringify(contourLayers)}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
-      map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:14+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
+      window.contourSamples={};
+      map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});
+      const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties)window.contourSamples[JSON.stringify(mesh.properties)]={properties:mesh.properties,opacity:args[2][3],zoom:globeGroundZoom(map.getZoom(),map.getCenter().lat)};return line(mesh,...args);};
+      map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:14+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
       </script></body></html>`}));
     await page.goto('http://127.0.0.1:4173/polar-check.html');
     await page.waitForFunction(()=>window.loaded&&window.layer?.caps?.[window.map.getCenter().lat>0?'north':'south']?.index,null,{timeout:60000});
@@ -51,6 +59,22 @@ try {
     await page.waitForFunction(()=>[...window.layer.tiles.entries()].some(([key,t])=>key.includes('carto')&&!t.loading&&!t.failed));
     assert.ok(requests.some(n=>/-metric-2-/.test(n)), 'Map requests its fine contour band');
     assert.ok(requests.some(n=>n.includes('carto')), 'Map reuses the static OSM detail asset');
+    await page.waitForFunction(()=>Object.keys(window.contourSamples).length===4);
+    const verifyContours=async expression=>{
+      const samples=await page.evaluate(()=>Object.values(window.contourSamples));
+      for(const sample of samples.filter(s=>s.properties.ele<0)){
+        const compiled=styleExpression.createExpression(expression);assert.equal(compiled.result,'success');
+        const expected=compiled.value.evaluate({zoom:sample.zoom},{type:'LineString',properties:sample.properties});
+        assert.ok(Math.abs(sample.opacity-expected)<1e-8,`${cap}: actual GPU opacity ${sample.opacity} != MapLibre ${expected}`);
+      }
+    };
+    const originalOpacity=contourLayers.find(layer=>layer.id==='terrain-seabed-contours-close').paint['line-opacity'];
+    await verifyContours(originalOpacity);
+    const changedOpacity=['*',0.5,['case',['>', ['get','level'],0],1,0.2],['interpolate',['linear'],['abs',['get','ele']],0,1,3000,0.2]];
+    await page.evaluate(expression=>{window.contourSamples={};window.map.setPaintProperty('terrain-seabed-contours-close','line-opacity',expression);window.map.triggerRepaint();},changedOpacity);
+    await page.waitForFunction(()=>Object.keys(window.contourSamples).length===4);
+    await verifyContours(changedOpacity);
+    await page.evaluate(expression=>window.map.setPaintProperty('terrain-seabed-contours-close','line-opacity',expression),originalOpacity);
     // Observe the production fill shader's actual input after a live paint
     // update. Do not substitute a mock fill; it must still draw the pixels.
     await page.evaluate(cap=>{
@@ -86,7 +110,7 @@ try {
     await page.evaluate(()=>{window.background='carto';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
     assert.deepEqual(errors,[]);assert.ok(!warnings.some(w=>/Polar caps not drawn/.test(w)),warnings.join('\n'));
-    console.log(`PASS ${cap}: Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
+    console.log(`PASS ${cap}: actual contour GPU weights/classes and live expressions, Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
     await page.close();
   }
 } finally {await browser.close();}
