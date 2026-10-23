@@ -7,7 +7,7 @@
 import earcut from 'earcut';
 import {globeGroundZoom} from './globe-drag.mjs';
 import {cssRgba, polarStylePaint} from './polar-paint.mjs';
-import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
+import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
@@ -304,11 +304,13 @@ export class PolarLayer {
     this.tiles.set(key, tile);
     this.json(`${key}.json`, this.detailPending?.signal).then(data => {
       if (generation !== this.generation || this.tiles.get(key) !== tile) return;
-      const decode = line => decodeLine(line, 0, line.length, data.quantum || 0.001);
+      const quantum = data.quantum || 0.001, decode = line => decodeLine(line, 0, line.length, quantum);
       const buildings = (data.buildings || []).map(rings => rings.map(decode));
       tile.buildings = this.upload(fillMesh(cap, buildings), 'fill');
       // The Atlas style includes subdued footprints and independent outlines.
-      tile.buildingOutlines = this.upload(lineMesh(cap, buildings.flat()), 'line');
+      const [tx,ty] = key.split('-').slice(2).map(Number), n = this.caps[cap].index?.carto?.n || 4;
+      const size = 2 * CAP_RADIUS / n, x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
+      tile.buildingOutlines = this.upload(lineMesh(cap, detailOutlineLines(buildings, [x,y,x+size,y+size], quantum)), 'line');
       tile.aprons = this.upload(fillMesh(cap, (data.aprons || []).map(rings => rings.map(decode))), 'fill');
       for (const kind of ['roads', 'paths', 'waterways', 'taxiways']) tile[kind] = this.upload(lineMesh(cap, (data[kind] || []).map(decode)), 'line');
       tile.places = (data.places || []).map(p => ({...p, lngLat: fromPolar(cap, [p.x, p.y])}));

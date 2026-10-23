@@ -320,6 +320,9 @@ paint, layer ranges, layout visibility and contour filters use the ordinary
 camera zoom.
 Unsupported paint/filter operators retain reviewed fallbacks; an unsupported
 contour filter is distinct from an evaluated false match and does not hide all contours.
+Building outlines omit synthetic edges introduced by the prepared tile/cap
+clipping mask. Older assets cannot distinguish original edges exactly coincident
+with that mask; those coincident segments are conservatively omitted.
 
 The already-published polar OSM detail tiles (historically named `carto`
 in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,

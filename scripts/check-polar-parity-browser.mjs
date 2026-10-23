@@ -110,6 +110,15 @@ try {
     await check(0.055,[0,255,0,255],'apron without Carto road');
     await check(-0.02,[255,0,0,255],'building over apron');
     await check(0,[0,0,255,255],'runway over building and apron');
+    await page.evaluate(()=>{
+      window.map.setPaintProperty('context-transport-airport-runways','line-opacity',0);
+      window.map.setPaintProperty('building-outlines','line-color','#00ffff');
+      window.map.setPaintProperty('building-outlines','line-width',8);
+      window.map.setPaintProperty('building-outlines','line-opacity',1);
+    });
+    await page.evaluate(()=>window.frame());
+    await check(0,[255,0,0,255],'tile cut inside building has no outline seam');
+    await page.evaluate(()=>{window.map.setPaintProperty('building-outlines','line-opacity',0);window.map.setPaintProperty('context-transport-airport-runways','line-opacity',1);});
     await page.evaluate(()=>window.map.setPaintProperty('context-transport-airport-runways','line-color','#cc33ff'));
     await page.evaluate(()=>window.frame());
     await check(0,[204,51,255,255],'live runway paint change');

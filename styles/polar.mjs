@@ -41,6 +41,37 @@ export const bandFor = zoom => zoom >= 11 ? 2 : zoom >= 9 ? 1 : 0;
 export const polarBandFor = (zoom, background, count) =>
   Math.min(background === 'map' || background === 'carto' ? bandFor(zoom) : 0, count - 1);
 export const POLAR_DETAIL_ZOOM = 10;
+// Published detail polygons are clipped to a 4×4 grid and the 720-sided
+// cap mask. Their closing cut edges are not original building outlines.
+// Old snapshots cannot distinguish a genuine edge exactly on that mask;
+// omit coincident edges conservatively rather than inventing a dark seam.
+export function detailOutlineLines(polygons, bounds, quantum = 0.001) {
+  const lines = [], tolerance = quantum / 2 + 1e-9, step = 2 * Math.PI / 720;
+  const capDistance = CAP_RADIUS * Math.cos(step / 2);
+  const innerSquared = (capDistance - quantum / Math.SQRT2 - 1e-9) ** 2;
+  const cut = (a, b) => {
+    if ([bounds[0],bounds[2]].some(x=>Math.abs(a[0]-x)<=tolerance&&Math.abs(b[0]-x)<=tolerance) ||
+        [bounds[1],bounds[3]].some(y=>Math.abs(a[1]-y)<=tolerance&&Math.abs(b[1]-y)<=tolerance)) return true;
+    if (a[0]*a[0]+a[1]*a[1]<innerSquared || b[0]*b[0]+b[1]*b[1]<innerSquared) return false;
+    const side = Math.floor(Math.atan2(a[1],a[0]) / step);
+    for (let k = side - 1; k <= side + 1; k++) {
+      const angle = (k + 0.5) * step, x = Math.cos(angle), y = Math.sin(angle);
+      const onEdge = p => Math.abs(p[0]*x+p[1]*y-capDistance) <= quantum / Math.SQRT2 + 1e-9;
+      if (onEdge(a) && onEdge(b)) return true;
+    }
+    return false;
+  };
+  for (const rings of polygons) for (const ring of rings) {
+    let line = [];
+    for (let i = 1; i < ring.length; i++) {
+      const a = ring[i - 1], b = ring[i];
+      if (cut(a,b)) { if (line.length > 1) lines.push(line); line = []; }
+      else { if (!line.length) line.push(a); line.push(b); }
+    }
+    if (line.length > 1) lines.push(line);
+  }
+  return lines;
+}
 // Compact storage: coordinates in tens of metres, each line's points as
 // differences from the previous point.
 export const QUANTUM = 0.01; // km

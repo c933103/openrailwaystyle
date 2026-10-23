@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAP_RADIUS, decodeLine, fromPolar, polarBandFor} from '../styles/polar.mjs';
+import {CAP_RADIUS, decodeLine, detailOutlineLines, fromPolar, polarBandFor} from '../styles/polar.mjs';
 import {PolarLayer} from '../styles/polar-layer.mjs';
 import {closedRings, detailQuery, detailTiles, parseOverpass} from '../scripts/polar-features.mjs';
 
@@ -50,6 +50,27 @@ test('unclosed area members are not invented into polygons; lines outside the ca
   assert.deepEqual(closedRings([{geometry:geometry([[0,0],[1,0],[1,1]])}]), []);
   const tiles = detailTiles('south', [{type:'way',id:1,tags:{highway:'path'},geometry:geometry([[CAP_RADIUS+1,1],[CAP_RADIUS+2,1]])}]);
   assert.equal(tiles.size, 0);
+});
+
+test('building outlines discard synthetic tile and cap cuts while preserving real edges and holes', () => {
+  for (const y of [100,CAP_RADIUS-1]) {
+    const left=y===100?-1:1,right=y===100?1:3;
+    const shape=geometry([[left,y],[right,y],[right,y+2],[left,y+2],[left,y]]);
+    const tiles=detailTiles('south',[{type:'way',id:90,tags:{building:'yes'},geometry:shape}]);
+    let segments=0;
+    for(const [key,tile] of tiles){
+      const [tx,ty]=key.split('-').map(Number),size=2*CAP_RADIUS/4,x=-CAP_RADIUS+tx*size,by=-CAP_RADIUS+ty*size;
+      const polygons=tile.buildings.map(rings=>rings.map(line=>decodeLine(line,0,line.length,tile.quantum)));
+      const lines=detailOutlineLines(polygons,[x,by,x+size,by+size],tile.quantum);
+      for(const line of lines)for(let i=1;i<line.length;i++){
+        assert.ok(!(Math.abs(line[i-1][0])<1e-9&&Math.abs(line[i][0])<1e-9),'the shared x=0 tile cut is not a building edge');
+        segments++;
+      }
+    }
+    assert.equal(segments,y===100?6:3,'retain original edges, remove only clipping cuts');
+  }
+  const outer=[[10,10],[14,10],[14,14],[10,14],[10,10]],hole=[[11,11],[12,11],[12,12],[11,12],[11,11]];
+  assert.deepEqual(detailOutlineLines([[outer,hole]],[-100,-100,100,100]),[outer,hole],'genuine closed rings and holes remain intact');
 });
 
 function renderingLayer() {
