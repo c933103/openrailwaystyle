@@ -322,6 +322,11 @@ test('airfield paint is evaluated independently for known runway, taxiway and ap
   for(const kind of ['runway','taxiway'])near(sampled[`${kind}Opacity`],compiled.value.evaluate({zoom:15},{type:'LineString',properties:{class:kind}}));
   near(sampled.apronOpacity,0.6);assert.equal(sampled.colours.apron,'#123456');
   const calls=f.draw();near(calls.find(call=>call[1]==='runways')[2][3],0.9);near(calls.find(call=>call[1]==='taxiways')[2][3],0.25);
+  const originalFilter=f.map.getFilter;
+  f.map.getFilter=id=>id==='context-transport-airport-runways'?['==',['get','class'],'runway']:originalFilter(id);
+  assert.equal(f.draw().some(call=>call[1]==='taxiways'),false);
+  f.map.getFilter=id=>id==='context-transport-airport-runways'?['==',['get','class'],'taxiway']:originalFilter(id);
+  const taxiOnly=f.draw();assert.equal(taxiOnly.some(call=>call[1]==='runways'),false);assert.ok(taxiOnly.some(call=>call[1]==='taxiways'));
 });
 
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {

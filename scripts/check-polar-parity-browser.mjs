@@ -114,6 +114,13 @@ try {
     await page.evaluate(()=>window.map.setPaintProperty('context-transport-airport-runways','line-opacity',['case',['==',['get','class'],'taxiway'],1,0]));
     await page.evaluate(()=>window.frame());
     await check(0,[0,255,255,255],'taxiway visible while runway is hidden by feature opacity');
+    await page.evaluate(()=>{window.map.setPaintProperty('context-transport-airport-runways','line-opacity',1);window.map.setFilter('context-transport-airport-runways',['==',['get','class'],'runway']);});
+    await page.evaluate(()=>window.frame());
+    await check(0,[0,0,255,255],'runway-only class filter');
+    await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['==',['get','class'],'taxiway']));
+    await page.evaluate(()=>window.frame());
+    await check(0,[0,255,255,255],'taxiway-only class filter');
+    await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['in',['get','kind'],['literal',['runway','taxiway']]]));
     await page.evaluate(()=>{
       window.map.setPaintProperty('context-transport-airport-runways','line-opacity',0);
       window.map.setPaintProperty('building-outlines','line-color','#00ffff');
