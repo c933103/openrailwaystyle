@@ -163,7 +163,11 @@ export function polarStylePaint(map, zoom) {
   const matches = (id, properties) => {
     let filter;
     try { filter = map?.getFilter?.(id); } catch { return true; }
-    return filter === undefined || filter === null || samplePaint(filter, zoom, properties) === true;
+    if (filter === undefined || filter === null) return true;
+    const sampled = samplePaint(filter, zoom, properties);
+    // Unsupported valid filters retain the reviewed class/depth fallback;
+    // only an evaluated boolean false suppresses a supported filter match.
+    return sampled === undefined || sampled === true;
   };
   const value = (id, property, fallback, properties) => {
     if (layerFor(id) === null) return fallback; // Do not log missing-layer errors every frame.

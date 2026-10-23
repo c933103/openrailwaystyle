@@ -318,6 +318,8 @@ subsequent style changes. Prepared ground-zoom contour bands are shared by
 Map and Carto, clamped to the bands present in older static snapshots. Map
 paint, layer ranges, layout visibility and contour filters use the ordinary
 camera zoom.
+Unsupported paint/filter operators retain reviewed fallbacks; an unsupported
+contour filter is distinct from an evaluated false match and does not hide all contours.
 
 The already-published polar OSM detail tiles (historically named `carto`
 in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,

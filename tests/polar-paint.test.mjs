@@ -274,6 +274,22 @@ test('overlapping seabed zoom ranges draw both live paints in current layer orde
   assert.deepEqual(f.draw().filter(call=>call[1]==='contour').map(call=>call[2][3]),[0.4,0.2]);
 });
 
+test('unsupported valid contour filters preserve fallback rather than becoming explicit false', () => {
+  const map={getLayer:id=>world.layers.find(layer=>layer.id===id)};
+  const properties={ele:-100,level:0};
+  for(const filter of [['match',['get','ele'],[-100,-200],true,false],['in',['get','ele'],['literal',[-100,-200]]]]){
+    const compiled=styleExpression.createExpression(filter);assert.equal(compiled.result,'success');
+    assert.equal(compiled.value.evaluate({zoom:12},{type:'LineString',properties}),true,'fixture is a valid matching MapLibre filter');
+    assert.equal(samplePaint(filter,12,properties),undefined,'operator is outside the bounded interpreter');
+    map.getFilter=()=>filter;
+    assert.equal(polarStylePaint(map,12).seabedContours(properties).length,1,'unsupported is distinct from evaluated false');
+  }
+  map.getFilter=()=>['==',['get','ele'],-200];
+  assert.deepEqual(polarStylePaint(map,12).seabedContours(properties),[],'supported false still hides contours');
+  map.getFilter=()=>['==',['get','ele'],-100];
+  assert.equal(polarStylePaint(map,12).seabedContours(properties).length,1);
+});
+
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {
   const layer=new PolarLayer({});const draws=[];
   layer.gl=new Proxy({drawElements:(...args)=>draws.push(args)}, {get:(obj,key)=>obj[key]??(()=>{})});
