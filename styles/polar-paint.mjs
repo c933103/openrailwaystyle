@@ -111,7 +111,19 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
     return undefined;
   }
   if (expression && typeof expression === 'object') {
-    if (Array.isArray(expression.stops)) return interpolate(expression.stops, zoom, expression.base || 1);
+    if (Array.isArray(expression.stops)) {
+      const stops = expression.stops;
+      // Legacy functions share the expression tree's budget: a stop pair
+      // and its two scalar values each consume a node, before any scanning.
+      if (stops.length > Math.floor(budget.remaining / 3)) return undefined;
+      budget.remaining -= stops.length * 3;
+      for (let i = 0; i < stops.length; i++) {
+        const stop = stops[i];
+        if (!Array.isArray(stop) || stop.length !== 2 || !stop.every(finite) ||
+            (i > 0 && stop[0] <= stops[i - 1][0])) return undefined;
+      }
+      return interpolate(stops, zoom, expression.base ?? 1);
+    }
     return undefined;
   }
   return expression;

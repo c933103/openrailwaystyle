@@ -161,6 +161,19 @@ test('paint arithmetic rejects missing, nonnumeric, nonfinite, excessive and exe
   assert.equal(samplePaint(['+',...Array(3000).fill(1)],12),undefined);
 });
 
+test('legacy stop functions consume the shared budget before reading entries', () => {
+  const stops = Array.from({length:1000},(_,i)=>[i,i]);
+  let reads=0;
+  Object.defineProperty(stops,0,{get(){reads++;return [0,0];}});
+  assert.equal(samplePaint({stops},999),undefined);
+  assert.equal(reads,0,'oversized legacy input is rejected before the scan');
+  const bounded={stops:Array.from({length:400},(_,i)=>[i,i])};
+  near(samplePaint(bounded,200.5),200.5);
+  assert.equal(samplePaint(['+',bounded,bounded],200.5),undefined,'sibling legacy functions debit one shared budget');
+  for(const legacy of [{stops:[[0,0],[0,1]]},{stops:[[0,0],null]},{stops:[[0,0],[1,Infinity]]},{stops:[[0,0],[1,1]],base:0}])
+    assert.equal(samplePaint(legacy,0.5),undefined);
+});
+
 test('contour ranges preserve elevation/class and draw offsets with four owned GPU meshes', async () => {
   const f=polarFixture(), uploads=[], deleted=[];
   f.layer.gl.deleteBuffer=buffer=>deleted.push(buffer);
