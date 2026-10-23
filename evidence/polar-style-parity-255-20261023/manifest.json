@@ -1,0 +1,97 @@
+{
+  "source_commit": "610763a00a5854d54ff717d8916452654a61f2b9",
+  "source_tree": "0e94f59c28ffac5526aac46cf3395216760b80e9",
+  "node": "v24.19.0",
+  "playwright": "1.56.1",
+  "browser": "Chromium 141 / Playwright build 1194, headless SwiftShader",
+  "package_lock_sha256": "a2c30dadc7a29a2e928d02bee7e295496a5d38eb1b041edf98ad45cd82a62e6d",
+  "final_generated_polar_bundle_sha256": "6647be6231926b652a5c35d1bd80db1daace06351f23abf2f62ed7ef223fe7ef",
+  "files": [
+    {
+      "name": "tests-parity-idle-complete.tap",
+      "bytes": 631081,
+      "sha256": "a1171da17542878ebb0c69f5c05c23c1af8569a4c9f78c436f1621848eaea8f2"
+    },
+    {
+      "name": "polar-all-610763a.tap",
+      "bytes": 8589,
+      "sha256": "f99f700dc542ee0b2d7c86c9d89bf77451df8325b3e28824410afaf0fcab498b"
+    },
+    {
+      "name": "build-final-610763a.log",
+      "bytes": 209,
+      "sha256": "1fe5b7d6a80115f9bea2ea4fba7e561ee7363ef10e5b72cb89a6394aeea9de94"
+    },
+    {
+      "name": "browser-guide-610763a.log",
+      "bytes": 8059,
+      "sha256": "517846d2fe2d3df1815d57646d91956a7cef0801da9a15139c0b71b6aaa9f244"
+    },
+    {
+      "name": "timings-guide-610763a.json",
+      "bytes": 909,
+      "sha256": "07638873d47ce7b6adee65cb26407088f003e0acf411c161bbbc8d319b19dd26"
+    },
+    {
+      "name": "polar-negative.log",
+      "bytes": 788,
+      "sha256": "2dfc1ab532490a3e80780a65e67a02f6144a1108a32a43721e9a42f1023bfad4"
+    },
+    {
+      "name": "polar-camera-negative.log",
+      "bytes": 667,
+      "sha256": "d7bc77c5c42c31138af6ba91ce77c3af1277839b8c7783b7d3586bdba2bb14e5"
+    },
+    {
+      "name": "polar-dynamic-negative.log",
+      "bytes": 417,
+      "sha256": "c91c0b954bd829aecf0ab831d8c4453ec9e872fc55ea653662deb59d31dd6295"
+    },
+    {
+      "name": "polar-outline-negative.log",
+      "bytes": 718,
+      "sha256": "6458cf03bb3b667f1b4e26fc18c391ed4ac7369bd04f88e276aedfa4703b9d9e"
+    },
+    {
+      "name": "polar-airfield-filter-negative.log",
+      "bytes": 679,
+      "sha256": "d444d265ba675393891c6adf172a7d5e8eb3ad5ff0da36cdf1ab7f059a00cdc1"
+    },
+    {
+      "name": "negative-idle.log",
+      "bytes": 685,
+      "sha256": "b0428483de32b30b08182647ba3157144efd65f2d1e6f3c954370570f693f08d"
+    },
+    {
+      "name": "browser-wide-final.log",
+      "bytes": 1583,
+      "sha256": "eb7d4c1babfec1f433ae8853ad2b617e4f3e0a5ebbded4ad5f425b794266b206"
+    },
+    {
+      "name": "platform-recheck.log",
+      "bytes": 604,
+      "sha256": "03e81426b9eabda47a6684d44bcb9556ff7a74f47cb274a932f809459771f79a"
+    },
+    {
+      "name": "browser-2683997.log",
+      "bytes": 3247,
+      "sha256": "0dc0ad71f51ae8e7e5d3a7faf12f3e1807b0bde254937c6a4ed8b796bc3fa65f"
+    },
+    {
+      "name": "timings-polar-2683997.json",
+      "bytes": 258,
+      "sha256": "4594483603638ad4b06fad39530ab953932451f5e03ec5a5fc4d1e4c1232ee8a"
+    },
+    {
+      "name": "timings-parity-idle.json",
+      "bytes": 177,
+      "sha256": "59cf4ecfb96769841421ac16cd7db0b385ecbd9bf9536de80d19a614b3c7ed0f"
+    },
+    {
+      "name": "parity-idle-repeat.log",
+      "bytes": 222,
+      "sha256": "bba6976221e2070b509a3864692e44b6cf82ff648a0bb80a39e18ccd6bfee567"
+    }
+  ],
+  "archive_sha256": "f6806ed6d39dc7975248b4eda44d9f4eab8f24d42c95af00ce494a5587b83cc4"
+}
