@@ -58,7 +58,10 @@ try {
       const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,style:${JSON.stringify(style)},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
       map.on('load',()=>{const layer=window.layer=new PolarLayer({data:new URL('./parity-fixture/',location.href),units:()=> 'metric',relief:()=>window.terrain,palette:()=>window.background,imagery:()=>['satellite','hybrid'].includes(window.background)});map.addLayer(layer);map.jumpTo({center:[0,${sign*edge}],zoom:${cameraZoom}});});
-      window.frame=()=>new Promise(resolve=>{map.once('render',()=>{map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
+      // Filters/data-driven paint rebuild ordinary source buckets in workers.
+      // The first redraw can still contain the preceding filter's geometry;
+      // require native source/style settlement before exact pixel sampling.
+      window.frame=()=>new Promise(resolve=>{map.once('idle',()=>{map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
       window.pixel=point=>{const gl=map.getCanvas().getContext('webgl2'),at=map.project(point),out=new Uint8Array(4);gl.readPixels(Math.round(at.x),gl.drawingBufferHeight-1-Math.round(at.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,out);return [...out];};
       </script>`}));
     await page.goto('http://127.0.0.1:4173/polar-parity.html');
