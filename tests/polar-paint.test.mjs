@@ -90,6 +90,7 @@ function polarFixture() {
     getContainer:()=>({clientWidth:400,clientHeight:300}),
     project:()=>({x:200,y:150}),triggerRepaint(){},
     getPaintProperty:(id,key)=>paint[id]?.[key],
+    getFilter:id=>world.layers.find(layer=>layer.id===id)?.filter,
     getLayoutProperty:()=>airports?'visible':'none',
   };
   const gl={disable(){},enable(){},blendFunc(){},deleteBuffer(){},deleteTexture(){},deleteProgram(){}};
@@ -288,6 +289,27 @@ test('unsupported valid contour filters preserve fallback rather than becoming e
   assert.deepEqual(polarStylePaint(map,12).seabedContours(properties),[],'supported false still hides contours');
   map.getFilter=()=>['==',['get','ele'],-100];
   assert.equal(polarStylePaint(map,12).seabedContours(properties).length,1);
+});
+
+test('contour passes follow actual filters for negative and positive ranges at camera zoom 7–9', () => {
+  const f=polarFixture(),layers=structuredClone(world.layers);
+  let zoom=8;
+  f.map.getZoom=()=>zoom;f.map.getCenter=()=>({lat:-85.051129});
+  f.map.getLayer=id=>layers.find(layer=>layer.id===id);
+  f.map.getLayersOrder=()=>layers.map(layer=>layer.id);
+  f.map.getFilter=id=>f.map.getLayer(id)?.filter;
+  f.layer.relief=()=>true;f.layer.caps.south.index.units.metric=[{n:1,tiles:['0-0']}];
+  const mesh=(key,ele,level)=>({key,ranges:[{properties:{ele,level},count:6,offset:0}]});
+  f.layer.loadTile=()=>({seabedMinor:mesh('shallow',-100,0),seabedMajor:mesh('deep',-1000,1),landMinor:mesh('land',100,0)});
+  const contours=()=>f.draw().map(call=>call[1]).filter(key=>['shallow','deep','land'].includes(key));
+  assert.deepEqual(contours(),['shallow','deep','land','shallow'],'z8 includes depths in terrain-contours plus the shallow seabed pass');
+  zoom=9;
+  assert.deepEqual(contours(),['land','shallow','deep'],'z9 excludes depths from terrain-contours');
+  zoom=8;f.map.getLayer('terrain-contours').filter=['>', ['get','ele'],0];
+  assert.deepEqual(contours(),['land','shallow'],'live filters, not a sign dispatch, decide matching passes');
+  f.map.getLayer('terrain-seabed-contours-close').minzoom=7;
+  f.map.getLayer('terrain-seabed-contours-close').filter=['>', ['get','ele'],0];
+  assert.deepEqual(contours(),['land','shallow','land'],'a live seabed filter may also accept a positive range');
 });
 
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {

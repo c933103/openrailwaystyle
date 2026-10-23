@@ -418,7 +418,9 @@ export class PolarLayer {
             const mesh = tile[part];
             if (custom) {
               for (const range of mesh?.ranges || []) {
-                const styles = kind === 'land' ? [mapPaint.landContour(range.properties)] : mapPaint.seabedContours(range.properties);
+                // Layer filters, not the mesh's storage sign, decide which
+                // passes apply (terrain-contours also accepts depths at z7–9).
+                const styles = [mapPaint.landContour(range.properties), ...mapPaint.seabedContours(range.properties)];
                 for (const style of styles) if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
               }
             } else this.line(mesh, options.shaderData, projection,

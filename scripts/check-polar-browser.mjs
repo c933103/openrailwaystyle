@@ -89,6 +89,17 @@ try {
     });
     assert.deepEqual(removed,[],'removed contour layers must not draw fallback paint');
     await page.evaluate(layers=>{for(const layer of layers)window.map.addLayer(layer);},contourLayers);
+    const lowZoom=await page.evaluate(async()=>{
+      const map=window.map,restore=map.getZoom();map.jumpTo({zoom:8});window.contourDraws=[];
+      await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});return {restore,draws:window.contourDraws};
+    });
+    const negative=lowZoom.draws.filter(sample=>sample.properties.ele<0);
+    assert.equal(negative.length,5,'z8 terrain-contours draws all three depths/classes plus two shallow seabed passes');
+    const deep=negative.filter(sample=>sample.properties.ele===-3000);assert.equal(deep.length,1);
+    const landOpacity=styleExpression.createExpression(contourLayers.find(layer=>layer.id==='terrain-contours').paint['line-opacity']);
+    assert.equal(landOpacity.result,'success');
+    assert.ok(Math.abs(deep[0].opacity-landOpacity.value.evaluate({zoom:8},{type:'LineString',properties:deep[0].properties}))<1e-8,'the deep range receives the actual terrain-contours opacity');
+    await page.evaluate(zoom=>window.map.jumpTo({zoom}),lowZoom.restore);
     // Observe the production fill shader's actual input after a live paint
     // update. Do not substitute a mock fill; it must still draw the pixels.
     await page.evaluate(cap=>{
