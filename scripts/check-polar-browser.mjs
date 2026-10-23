@@ -48,9 +48,9 @@ try {
         layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}},
           {id:'water',type:'fill',source:'empty',paint:{'fill-color':'#bfd8e0'}},...${JSON.stringify(contourLayers)}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
-      window.contourSamples={};
+      window.contourSamples={};window.contourDraws=[];
       map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});
-      const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties)window.contourSamples[JSON.stringify(mesh.properties)]={properties:mesh.properties,opacity:args[2][3],zoom:map.getZoom()};return line(mesh,...args);};
+      const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties){const sample={properties:mesh.properties,opacity:args[2][3],zoom:map.getZoom()};window.contourSamples[JSON.stringify(mesh.properties)]=sample;window.contourDraws.push(sample);}return line(mesh,...args);};
       map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:15+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
       </script></body></html>`}));
     await page.goto('http://127.0.0.1:4173/polar-check.html');
@@ -76,6 +76,19 @@ try {
     await page.waitForFunction(()=>Object.keys(window.contourSamples).length===4);
     await verifyContours(changedOpacity);
     await page.evaluate(({id,expression})=>window.map.setPaintProperty(id,'line-opacity',expression),{id:activeContour,expression:originalOpacity});
+    const overlap=await page.evaluate(async()=>{
+      const map=window.map;map.setLayerZoomRange('terrain-seabed-contours',5,20);map.setLayerZoomRange('terrain-seabed-contours-close',5);
+      map.setPaintProperty('terrain-seabed-contours','line-opacity',0.2);map.setPaintProperty('terrain-seabed-contours-close','line-opacity',0.4);
+      window.contourDraws=[];await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});return window.contourDraws.filter(sample=>sample.properties.ele<0);
+    });
+    assert.equal(overlap.length,6,'three seabed classes/depths draw in each overlapping layer');
+    assert.deepEqual(overlap.map(sample=>sample.opacity),[0.2,0.2,0.2,0.4,0.4,0.4]);
+    const removed=await page.evaluate(async()=>{
+      for(const id of ['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'])window.map.removeLayer(id);
+      window.contourDraws=[];await new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();});return window.contourDraws;
+    });
+    assert.deepEqual(removed,[],'removed contour layers must not draw fallback paint');
+    await page.evaluate(layers=>{for(const layer of layers)window.map.addLayer(layer);},contourLayers);
     // Observe the production fill shader's actual input after a live paint
     // update. Do not substitute a mock fill; it must still draw the pixels.
     await page.evaluate(cap=>{

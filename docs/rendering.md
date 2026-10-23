@@ -314,15 +314,16 @@ separate prepared meshes, not ordinary basemap tiles. When using the Atlas
 **Map** background, the cap now reads its colours, fill opacity, contour
 width/opacity, hillshade settings, waterway styling, building footprint
 styling and airport runway paint from the live MapLibre style, including
-subsequent style changes. The normal map's zoom-dependent contour bands
-are used for both Map and Carto, clamped to the number of bands present in
-older static polar snapshots.
+subsequent style changes. Prepared ground-zoom contour bands are shared by
+Map and Carto, clamped to the bands present in older static snapshots. Map
+paint, layer ranges, layout visibility and contour filters use the ordinary
+camera zoom.
 
 The already-published polar OSM detail tiles (historically named `carto`
-in their index/filenames) are now shared by Map and Carto. In Map they
-display mapped waterways, subdued buildings and their outlines, and
-airport aprons/taxiways/runways while the Transport context layer is
-visible. The Atlas map intentionally omits ordinary roads and paths; only
+in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,
+subdued buildings and outlines; airport aprons/taxiways/runways also follow
+the Transport toggle. Removed style layers stay hidden, and overlapping
+seabed layer ranges draw each visible layer in style order. The Atlas map intentionally omits ordinary roads and paths; only
 Carto continues to draw those as part of its raster-background detail.
 Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
 Visibility-based requests, byte/count limits, aborts and older-snapshot
@@ -381,7 +382,7 @@ These layers are independent of the original demo styles and remain visible over
 
 ### Carto background
 
-Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Detailed polar data is loaded and drawn only for Carto; other backgrounds retain their coarsest contours, and satellite/hybrid retain black caps. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map and Carto share the visible fine contour bands and prepared detail tiles; roads, paths and detailed facility labels remain Carto-only. Satellite/Hybrid retain black caps and release detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
 

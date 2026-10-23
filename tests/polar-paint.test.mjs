@@ -62,7 +62,7 @@ test('Atlas polar painter samples the actual map style on every render', () => {
   const map = {getPaintProperty:(id,prop)=>paint[id]?.[prop],getLayoutProperty:()=> 'visible'};
   const first = polarStylePaint(map,14);
   assert.equal(first.colours.land,'#112233');assert.equal(first.colours.water,'#224466');
-  assert.equal(first.colours.contourLand,'#996633');assert.equal(first.colours.contourSeabed,'#123456');
+  assert.equal(first.landContour({ele:100,level:1}).colour,'#996633');assert.equal(first.seabedContours({ele:-100,level:1})[0].colour,'#123456');
   near(first.iceShelfOpacity,0.6);near(first.landContour({ele:100,level:1}).opacity,0.8);
   near(first.landContour({ele:100,level:1}).width,1.25);near(first.landContour({ele:100,level:0}).width,0.5);
   near(first.buildingOpacity,0.2);near(first.runwayWidth,2.5 + (18 - 2.5) / 7); // exponential-base-2 zoom progression
@@ -141,12 +141,12 @@ test('actual seabed expressions agree with MapLibre at every depth, class, zoom 
       assert.equal(compiled.result,'success');
       const expected=compiled.value.evaluate({zoom},{type:'LineString',properties});
       near(samplePaint(expression,zoom,properties),expected);
-      near(polarStylePaint(map,zoom).seabedContour(properties).opacity,expected);
+      near(polarStylePaint(map,zoom).seabedContours(properties)[0].opacity,expected);
     }
   }
   paint['terrain-seabed-contours-close']['line-opacity']=['*',0.25,['case',['>', ['get','level'],0],1,0.2],['/', ['abs',['get','ele']],1000]];
-  near(polarStylePaint(map,14).seabedContour({ele:-1000,level:0}).opacity,0.05);
-  near(polarStylePaint(map,14).seabedContour({ele:-1000,level:1}).opacity,0.25);
+  near(polarStylePaint(map,14).seabedContours({ele:-1000,level:0})[0].opacity,0.05);
+  near(polarStylePaint(map,14).seabedContours({ele:-1000,level:1})[0].opacity,0.25);
 });
 
 test('paint arithmetic rejects missing, nonnumeric, nonfinite, excessive and executable input', () => {
@@ -236,10 +236,42 @@ test('Atlas uses camera zoom for live style paint/ranges and ground zoom only fo
   assert.equal(f.draw().some(call=>call[1]==='buildings'),false,'maxzoom is exclusive');
   for(const zoom of [8,9,10.99,11]){
     const paint=polarStylePaint(f.map,zoom);
-    const shallow=paint.seabedContour({ele:-100,level:0}),deep=paint.seabedContour({ele:-1000,level:1});
+    const shallow=paint.seabedContours({ele:-100,level:0})[0],deep=paint.seabedContours({ele:-1000,level:1});
     assert.equal(shallow.id,zoom>=11?'terrain-seabed-contours-close':'terrain-seabed-contours');
-    assert.equal(shallow.visible,true);assert.equal(deep.visible,zoom>=9,'camera-zoom shelf filter propagates');
+    assert.equal(shallow.visible,true);assert.equal(deep.length>0,zoom>=9,'camera-zoom shelf filter propagates');
   }
+});
+
+test('removed style layers stay hidden while unavailable APIs retain reviewed fallbacks', () => {
+  const f=polarFixture();let paintReads=0;f.map.getLayer=()=>undefined;
+  f.map.getPaintProperty=()=>{paintReads++;throw new Error('missing layer');};
+  f.map.getLayoutProperty=()=>{throw new Error('no such layer');};
+  assert.deepEqual(f.draw(),[],'successful missing lookups must not draw fallback layers');
+  assert.equal(paintReads,0,'removed layers are not probed for paint every frame');
+  const missing=polarStylePaint(f.map,15);
+  assert.equal(missing.landContour({ele:100,level:1}).visible,false);
+  assert.deepEqual(missing.seabedContours({ele:-100,level:1}),[]);
+  f.map.getLayer=()=>{throw new Error('style unavailable');};
+  assert.ok(f.draw().some(call=>call[1]==='buildings'),'unavailable style API retains the known fallback');
+  f.map.getLayer=()=>undefined;f.background('carto');
+  assert.ok(f.draw().some(call=>call[1]==='roads'),'Carto stays independent');
+});
+
+test('overlapping seabed zoom ranges draw both live paints in current layer order', () => {
+  const f=polarFixture(), layers=structuredClone(world.layers);
+  f.map.getLayer=id=>layers.find(layer=>layer.id===id);
+  f.map.getFilter=id=>f.map.getLayer(id)?.filter;
+  f.map.getLayersOrder=()=>layers.map(layer=>layer.id);
+  f.map.getLayer('terrain-seabed-contours').maxzoom=20;
+  f.map.getLayer('terrain-seabed-contours-close').minzoom=5;
+  f.paint['terrain-seabed-contours']={'line-color':'#123456','line-opacity':0.2};
+  f.paint['terrain-seabed-contours-close']['line-opacity']=0.4;
+  f.layer.relief=()=>true;f.layer.caps.south.index.units.metric=[{n:1,tiles:['0-0']}];
+  f.layer.loadTile=()=>({seabedMinor:{key:'contour',ranges:[{properties:{ele:-100,level:0},count:6,offset:0}]}});
+  assert.deepEqual(polarStylePaint(f.map,15).seabedContours({ele:-100,level:0}).map(style=>style.id),['terrain-seabed-contours','terrain-seabed-contours-close']);
+  assert.deepEqual(f.draw().filter(call=>call[1]==='contour').map(call=>call[2][3]),[0.2,0.4]);
+  f.map.getLayersOrder=()=>['terrain-seabed-contours-close',...layers.map(layer=>layer.id).filter(id=>id!=='terrain-seabed-contours-close')];
+  assert.deepEqual(f.draw().filter(call=>call[1]==='contour').map(call=>call[2][3]),[0.4,0.2]);
 });
 
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {

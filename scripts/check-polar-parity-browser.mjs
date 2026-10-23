@@ -122,6 +122,12 @@ try {
     await page.evaluate(()=>{window.map.setLayoutProperty('context-transport-airport-runways','visibility','none');window.map.setLayoutProperty('context-transport-airport-area','visibility','none');});
     await page.evaluate(()=>window.frame());
     await check(0,[255,0,0,255],'transport off');
+    await page.evaluate(()=>{window.map.removeLayer('building-footprints');window.map.removeLayer('building-outlines');});
+    await page.evaluate(()=>window.frame());
+    await check(0,[255,255,0,255],'removed buildings reveal waterway');
+    await page.evaluate(()=>window.map.removeLayer('waterway'));
+    await page.evaluate(()=>window.frame());
+    await check(0,[242,241,233,255],'removed waterway stays hidden');
     await page.screenshot({path:`browser-review/polar-boundary-${cap}-diagnostic.png`});
     for(const mode of ['satellite','hybrid']){
       await page.evaluate(mode=>{window.background=mode;},mode);await page.evaluate(()=>window.frame());

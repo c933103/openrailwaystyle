@@ -392,12 +392,15 @@ export class PolarLayer {
       this.loadCap(cap);
       const state = this.caps[cap];
       if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(colours.noImagery, fade)); continue; }
-      this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
-      this.fill(state.water, options.shaderData, projection, rgba(colours.water, fade));
-      this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
+      if (custom) {
+        if (mapPaint.backgroundVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.land, mapPaint.backgroundOpacity * fade));
+        if (cap === 'north' && mapPaint.waterVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.water, mapPaint.waterOpacity * fade));
+      } else this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
+      if (!custom || mapPaint.waterVisible) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
+      if (!custom || mapPaint.iceShelfVisible) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
       const contours = [];
-      if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
+      if (terrain && (!custom || mapPaint.reliefVisible) && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
       // The finest band prepared for this zoom (only the coarsest may exist).
       const bands = state.index?.units?.[units] || [], bandIndex = polarBandFor(zoom, background, bands.length), band = bands[bandIndex];
       if (band && terrain) {
@@ -413,8 +416,8 @@ export class PolarLayer {
             const mesh = tile[part];
             if (custom) {
               for (const range of mesh?.ranges || []) {
-                const style = (kind === 'land' ? mapPaint.landContour : mapPaint.seabedContour)(range.properties);
-                if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
+                const styles = kind === 'land' ? [mapPaint.landContour(range.properties)] : mapPaint.seabedContours(range.properties);
+                for (const style of styles) if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
               }
             } else this.line(mesh, options.shaderData, projection,
               rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);

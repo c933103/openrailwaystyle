@@ -140,10 +140,23 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
 }
 
 export function polarStylePaint(map, zoom) {
+  // Cache lookups only for this frame. null means a successful missing
+  // lookup; undefined means the API/style is unavailable and allows fallback.
+  const layers = new Map();
+  const layerFor = id => {
+    if (!layers.has(id)) {
+      let layer;
+      try { if (typeof map?.getLayer === 'function') layer = map.getLayer(id) || null; } catch { /* unavailable style */ }
+      layers.set(id, layer);
+    }
+    return layers.get(id);
+  };
   const visible = (id, min = 0, max = Infinity) => {
     try {
-      const layer = map?.getLayer?.(id);
-      return zoom >= (layer?.minzoom ?? min) && zoom < (layer?.maxzoom ?? max) &&
+      const layer = layerFor(id);
+      if (layer === null) return false;
+      min = layer?.minzoom ?? min; max = layer?.maxzoom ?? max;
+      return zoom >= min && zoom < max &&
         map?.getLayoutProperty?.(id, 'visibility') !== 'none';
     } catch { return zoom >= min && zoom < max; }
   };
@@ -153,6 +166,7 @@ export function polarStylePaint(map, zoom) {
     return filter === undefined || filter === null || samplePaint(filter, zoom, properties) === true;
   };
   const value = (id, property, fallback, properties) => {
+    if (layerFor(id) === null) return fallback; // Do not log missing-layer errors every frame.
     let expression;
     try { expression = map?.getPaintProperty?.(id, property); } catch { /* map style not loaded */ }
     const sampled = samplePaint(expression, zoom, properties);
@@ -166,20 +180,20 @@ export function polarStylePaint(map, zoom) {
     const paint = value(id, property, fallback, properties);
     return finite(paint) && paint >= 0 ? paint : fallback;
   };
-  const seabedId = visible('terrain-seabed-contours-close', 11) ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours';
   const contour = (id, fallbackOpacity, min, max) => properties => ({
     id, visible: visible(id, min, max) && matches(id, properties),
     opacity: number(id, 'line-opacity', fallbackOpacity, properties),
     width: number(id, 'line-width', properties.level > 0 ? 0.8 : 0.4, properties),
     colour: colour(id, 'line-color', id.includes('seabed') ? DEFAULTS.contourSeabed : DEFAULTS.contourLand, properties),
   });
+  const seabedOpacity = zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7;
+  const seabed = [contour('terrain-seabed-contours', seabedOpacity, 5, 11),
+    contour('terrain-seabed-contours-close', seabedOpacity, 11)];
   return {
     colours: {
       land: colour('background', 'background-color', DEFAULTS.land),
       water: colour('water', 'fill-color', DEFAULTS.water),
       iceShelf: colour('landcover-ice-shelf', 'fill-color', DEFAULTS.iceShelf),
-      contourLand: colour('terrain-contours', 'line-color', DEFAULTS.contourLand, {ele:100}),
-      contourSeabed: colour(seabedId, 'line-color', DEFAULTS.contourSeabed, {ele:-100}),
       building: colour('building-footprints', 'fill-color', DEFAULTS.building),
       buildingOutline: colour('building-outlines', 'line-color', DEFAULTS.buildingOutline),
       waterway: colour('waterway', 'line-color', DEFAULTS.waterway),
@@ -187,6 +201,12 @@ export function polarStylePaint(map, zoom) {
       taxiway: colour('context-transport-airport-runways', 'line-color', DEFAULTS.taxiway, {class:'taxiway'}),
       apron: colour('context-transport-airport-area', 'fill-color', DEFAULTS.apron),
     },
+    backgroundVisible: visible('background'),
+    backgroundOpacity: number('background', 'background-opacity', 1),
+    waterVisible: visible('water'),
+    waterOpacity: number('water', 'fill-opacity', 1),
+    iceShelfVisible: visible('landcover-ice-shelf'),
+    reliefVisible: visible('terrain-relief'),
     iceShelfOpacity: number('landcover-ice-shelf', 'fill-opacity', 0.8),
     buildingOpacity: number('building-footprints', 'fill-opacity', 0.24),
     buildingOutlineOpacity: number('building-outlines', 'line-opacity', 0.05),
@@ -203,7 +223,7 @@ export function polarStylePaint(map, zoom) {
     runwayWidth: number('context-transport-airport-runways', 'line-width', 2.5, {class:'runway'}),
     taxiwayWidth: number('context-transport-airport-runways', 'line-width', 1, {class:'taxiway'}),
     landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04, 7),
-    seabedContour: contour(seabedId, zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7, seabedId.endsWith('-close') ? 11 : 5, seabedId.endsWith('-close') ? Infinity : 11),
+    seabedContours: properties => seabed.map(sample => sample(properties)).filter(style => style.visible),
     relief: {
       exaggeration: number('terrain-relief', 'hillshade-exaggeration', 0.3),
       shadow: colour('terrain-relief', 'hillshade-shadow-color', DEFAULTS.reliefShadow),
