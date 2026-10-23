@@ -175,6 +175,20 @@ test('legacy stop functions consume the shared budget before reading entries', (
     assert.equal(samplePaint(legacy,0.5),undefined);
 });
 
+test('unsupported legacy function modes, properties and defaults use reviewed fallback', () => {
+  for(const definition of [
+    {type:'interval',stops:[[8,1],[20,3]]},
+    {type:'categorical',stops:[[8,1],[20,3]]},
+    {type:'identity',stops:[[8,1],[20,3]]},
+    {property:'ele',stops:[[-1000,0.2],[0,0.8]]},
+    {type:'exponential',property:'ele',stops:[[-1000,0.2],[0,0.8]]},
+    {default:0.1,stops:[[8,1],[20,3]]},
+  ]) assert.equal(samplePaint(definition,14,{ele:-500}),undefined,JSON.stringify(definition));
+  near(samplePaint({type:'exponential',base:1,stops:[[8,1],[20,3]]},14),2);
+  const map={getPaintProperty:(id,key)=>id==='waterway'&&key==='line-width'?{type:'interval',stops:[[8,1],[20,3]]}:undefined};
+  near(polarStylePaint(map,14).waterwayWidth,1,'unsupported mode uses the reviewed width, not an incorrect interpolated value');
+});
+
 test('contour ranges preserve elevation/class and draw offsets with four owned GPU meshes', async () => {
   const f=polarFixture(), uploads=[], deleted=[];
   f.layer.gl.deleteBuffer=buffer=>deleted.push(buffer);

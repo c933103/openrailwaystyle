@@ -166,6 +166,11 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
   }
   if (expression && typeof expression === 'object') {
     if (Array.isArray(expression.stops)) {
+      // Only numeric exponential CAMERA functions are supported here. Other
+      // legacy modes/property/default semantics must use reviewed fallback,
+      // rather than silently treating their input as camera zoom.
+      if ((expression.type !== undefined && expression.type !== 'exponential') ||
+          Object.hasOwn(expression,'property') || Object.hasOwn(expression,'default')) return undefined;
       const stops = expression.stops;
       // Legacy functions share the expression tree's budget: a stop pair
       // and its two scalar values each consume a node, before any scanning.
