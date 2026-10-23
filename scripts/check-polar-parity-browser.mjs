@@ -23,9 +23,10 @@ try {
       {type:'way',id:2,tags:{building:'yes'},geometry:geo(building)},
       {type:'way',id:3,tags:{waterway:'stream'},geometry:geo(strip(0))},
       {type:'way',id:4,tags:{highway:'service'},geometry:geo(strip(0.055))},
+      {type:'way',id:5,tags:{aeroway:'taxiway'},geometry:geo(strip(0))},
     ]);
     const clip=points=>points.map(([lon,lat])=>[lon,sign*Math.min(edge,Math.abs(lat))]);
-    const features=[['apron',apron,'Polygon'],['building',building,'Polygon'],['runway',strip(0),'LineString'],['waterway',strip(0),'LineString']]
+    const features=[['apron',apron,'Polygon'],['building',building,'Polygon'],['runway',strip(0),'LineString'],['taxiway',strip(0),'LineString'],['waterway',strip(0),'LineString']]
       .map(([kind,points,type])=>({type:'Feature',properties:{kind,class:kind==='waterway'?'stream':kind},geometry:{type,coordinates:type==='Polygon'?[clip(points)]:clip(points)}}));
     const data=new Map([
       [`${cap}-index.json`,{cap,radius:CAP_RADIUS,units:{metric:[]},carto:{from:10,n:4,tiles:[...details.keys()]}}],
@@ -97,7 +98,7 @@ try {
       paint('context-transport-airport-area',{'fill-color':'#00ff00','fill-opacity':1});
       paint('building-footprints',{'fill-color':'#ff0000','fill-opacity':1});
       paint('building-outlines',{'line-opacity':0});
-      paint('context-transport-airport-runways',{'line-color':['case',['==',['get','class'],'runway'],'#0000ff','#00ffff'],'line-opacity':1,'line-width':12});
+      paint('context-transport-airport-runways',{'line-color':['case',['==',['get','class'],'runway'],'#0000ff','#00ffff'],'line-opacity':['case',['==',['get','class'],'taxiway'],0,1],'line-width':12});
       paint('waterway',{'line-color':'#ffff00','line-opacity':0,'line-width':12});
     });
     await page.evaluate(()=>window.frame());
@@ -110,6 +111,9 @@ try {
     await check(0.055,[0,255,0,255],'apron without Carto road');
     await check(-0.02,[255,0,0,255],'building over apron');
     await check(0,[0,0,255,255],'runway over building and apron');
+    await page.evaluate(()=>window.map.setPaintProperty('context-transport-airport-runways','line-opacity',['case',['==',['get','class'],'taxiway'],1,0]));
+    await page.evaluate(()=>window.frame());
+    await check(0,[0,255,255,255],'taxiway visible while runway is hidden by feature opacity');
     await page.evaluate(()=>{
       window.map.setPaintProperty('context-transport-airport-runways','line-opacity',0);
       window.map.setPaintProperty('building-outlines','line-color','#00ffff');
@@ -118,7 +122,7 @@ try {
     });
     await page.evaluate(()=>window.frame());
     await check(0,[255,0,0,255],'tile cut inside building has no outline seam');
-    await page.evaluate(()=>{window.map.setPaintProperty('building-outlines','line-opacity',0);window.map.setPaintProperty('context-transport-airport-runways','line-opacity',1);});
+    await page.evaluate(()=>{window.map.setPaintProperty('building-outlines','line-opacity',0);window.map.setPaintProperty('context-transport-airport-runways','line-opacity',['case',['==',['get','class'],'taxiway'],0,1]);});
     await page.evaluate(()=>window.map.setPaintProperty('context-transport-airport-runways','line-color','#cc33ff'));
     await page.evaluate(()=>window.frame());
     await check(0,[204,51,255,255],'live runway paint change');

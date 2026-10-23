@@ -312,6 +312,18 @@ test('contour passes follow actual filters for negative and positive ranges at c
   assert.deepEqual(contours(),['land','shallow','land'],'a live seabed filter may also accept a positive range');
 });
 
+test('airfield paint is evaluated independently for known runway, taxiway and apron classes', () => {
+  const f=polarFixture(),opacity=['case',['==',['get','class'],'runway'],0.9,0.25];
+  f.paint['context-transport-airport-runways']['line-opacity']=opacity;
+  f.paint['context-transport-airport-area']['fill-opacity']=['case',['==',['get','class'],'apron'],0.6,0.1];
+  f.paint['context-transport-airport-area']['fill-color']=['case',['==',['get','class'],'apron'],'#123456','#ffffff'];
+  const sampled=polarStylePaint(f.map,15),compiled=styleExpression.createExpression(opacity);
+  assert.equal(compiled.result,'success');
+  for(const kind of ['runway','taxiway'])near(sampled[`${kind}Opacity`],compiled.value.evaluate({zoom:15},{type:'LineString',properties:{class:kind}}));
+  near(sampled.apronOpacity,0.6);assert.equal(sampled.colours.apron,'#123456');
+  const calls=f.draw();near(calls.find(call=>call[1]==='runways')[2][3],0.9);near(calls.find(call=>call[1]==='taxiways')[2][3],0.25);
+});
+
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {
   const layer=new PolarLayer({});const draws=[];
   layer.gl=new Proxy({drawElements:(...args)=>draws.push(args)}, {get:(obj,key)=>obj[key]??(()=>{})});

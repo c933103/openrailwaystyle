@@ -469,7 +469,7 @@ export class PolarLayer {
           ['context-transport-airport-runways', () => {
             if (mapPaint.airportVisible) {
               this.line(state.runways, options.shaderData, projection, rgba(colours.runway, mapPaint.runwayOpacity * fade), mapPaint.runwayWidth);
-              for (const tile of detailTiles) this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, mapPaint.runwayOpacity * fade), mapPaint.taxiwayWidth);
+              for (const tile of detailTiles) this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, mapPaint.taxiwayOpacity * fade), mapPaint.taxiwayWidth);
             }
           }],
           ...['terrain-contours', 'terrain-seabed-contours', 'terrain-seabed-contours-close'].map(id => [id, () => {
