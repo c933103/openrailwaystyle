@@ -64,6 +64,50 @@ function interpolate(stops, zoom, base = 1) {
 export function samplePaint(expression, zoom, properties = {}) {
   return evaluatePaint(expression, zoom, properties, {remaining: 2048}, 0);
 }
+// Filter grammar has legacy property comparisons that are NOT paint-expression
+// literal comparisons. Logical filter nodes and their leaves share one budget.
+function evaluateFilter(filter, zoom, properties, geometry, budget, depth) {
+  if (Array.isArray(filter)) {
+    if (depth > 64 || filter.length > budget.remaining) return undefined;
+    const [op, ...args] = filter;
+    const logical = ['all','any','none'].includes(op);
+    const comparison = ['==','!=','<','>','<=','>='].includes(op) && args.length === 2 &&
+      typeof args[0] === 'string' && !Array.isArray(args[1]);
+    const membership = ['in','!in'].includes(op) && typeof args[0] === 'string' &&
+      (op === '!in' || !Array.isArray(args[1]));
+    const has = ['has','!has'].includes(op) && args.length === 1 && typeof args[0] === 'string';
+    if (logical || comparison || membership || has) {
+      if (--budget.remaining < 0) return undefined;
+      if (logical) {
+        for (const arg of args) {
+          const value = evaluateFilter(arg, zoom, properties, geometry, budget, depth + 1);
+          if (typeof value !== 'boolean') return undefined;
+          if (op === 'all' && !value) return false;
+          if (op !== 'all' && value) return op === 'any';
+        }
+        return op !== 'any';
+      }
+      budget.remaining -= args.length;
+      if (budget.remaining < 0) return undefined;
+      const key = args[0], a = key === '$type' ? geometry : Object.hasOwn(properties,key) ? properties[key] : undefined;
+      if (a === undefined) return undefined; // Unretained attributes use reviewed fallback.
+      if (has) return op === 'has';
+      if (membership) {
+        if (args.slice(1).some(value=>value!==null&&typeof value==='object')) return undefined;
+        const found = args.slice(1).includes(a);return op === 'in' ? found : !found;
+      }
+      const b = args[1];
+      if (b !== null && typeof b === 'object') return undefined;
+      if (op === '==') return a === b;
+      if (op === '!=') return a !== b;
+      if (typeof a !== typeof b || !['number','string'].includes(typeof a)) return false;
+      return {'<':()=>a<b, '>':()=>a>b, '<=':()=>a<=b, '>=':()=>a>=b}[op]();
+    }
+  }
+  // Preserve expression semantics inside case/interpolate/etc., rather than
+  // rewriting their literal comparisons as legacy property filters.
+  return evaluatePaint(filter, zoom, properties, budget, depth);
+}
 function evaluatePaint(expression, zoom, properties, budget, depth) {
   if (--budget.remaining < 0 || depth > 64) return undefined;
   if (Array.isArray(expression)) {
@@ -164,7 +208,8 @@ export function polarStylePaint(map, zoom) {
     let filter;
     try { filter = map?.getFilter?.(id); } catch { return true; }
     if (filter === undefined || filter === null) return true;
-    const sampled = samplePaint(filter, zoom, properties);
+    const geometry = id === 'context-transport-airport-area' ? 'Polygon' : 'LineString';
+    const sampled = evaluateFilter(filter, zoom, properties, geometry, {remaining:2048}, 0);
     // Unsupported valid filters retain the reviewed class/depth fallback;
     // only an evaluated boolean false suppresses a supported filter match.
     return sampled === undefined || sampled === true;

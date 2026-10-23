@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {cssRgba, samplePaint, polarStylePaint} from '../styles/polar-paint.mjs';
 import {PolarLayer} from '../styles/polar-layer.mjs';
 import {readFileSync} from 'node:fs';
-import {expression as styleExpression} from '@maplibre/maplibre-gl-style-spec';
+import {expression as styleExpression, featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import {seabedContourOpacity} from '../styles/bathymetry.mjs';
 import {encodeLine} from '../styles/polar.mjs';
 
@@ -327,6 +327,29 @@ test('airfield paint is evaluated independently for known runway, taxiway and ap
   assert.equal(f.draw().some(call=>call[1]==='taxiways'),false);
   f.map.getFilter=id=>id==='context-transport-airport-runways'?['==',['get','class'],'taxiway']:originalFilter(id);
   const taxiOnly=f.draw();assert.equal(taxiOnly.some(call=>call[1]==='runways'),false);assert.ok(taxiOnly.some(call=>call[1]==='taxiways'));
+});
+
+test('legacy property filters agree with MapLibre without changing paint literal comparisons', () => {
+  const f=polarFixture(),id='context-transport-airport-runways';
+  const filters=[['==','class','runway'],['!=','class','runway'],['in','class','runway','taxiway'],['!in','class','runway'],
+    ['all',['==','$type','LineString'],['==','class','runway']],['any',['==','class','runway'],['==','class','taxiway']],
+    ['none',['==','class','taxiway']],['has','class'],['!has','class']];
+  for(const filter of filters){
+    f.map.getFilter=layer=>layer===id?filter:undefined;
+    const paint=polarStylePaint(f.map,15),compiled=featureFilter(filter);
+    for(const kind of ['runway','taxiway'])assert.equal(paint[kind==='runway'?'airportVisible':'taxiwayVisible'],
+      compiled.filter({zoom:15},{type:'LineString',properties:{class:kind}}),JSON.stringify(filter)+' '+kind);
+  }
+  const literal=['case',['==','class','runway'],false,true];
+  f.map.getFilter=layer=>layer===id?literal:undefined;
+  assert.equal(polarStylePaint(f.map,15).airportVisible,true,'literal comparison inside an expression remains literal');
+  assert.equal(samplePaint(['==','class','runway'],15,{class:'runway'}),false,'paint grammar remains unchanged');
+  const huge=['in','class',...Array(3000).fill('runway')];let reads=0;
+  Object.defineProperty(huge,2,{get(){reads++;return 'runway';}});
+  f.map.getFilter=layer=>layer===id?huge:undefined;
+  assert.equal(polarStylePaint(f.map,15).airportVisible,true);assert.equal(reads,0,'oversized legacy lists use fallback without scanning');
+  const cycle=['all'];cycle.push(cycle);f.map.getFilter=layer=>layer===id?cycle:undefined;
+  assert.equal(polarStylePaint(f.map,15).airportVisible,true,'cyclic filters terminate at the depth budget');
 });
 
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {

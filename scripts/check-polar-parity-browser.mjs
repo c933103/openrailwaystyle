@@ -120,6 +120,12 @@ try {
     await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['==',['get','class'],'taxiway']));
     await page.evaluate(()=>window.frame());
     await check(0,[0,255,255,255],'taxiway-only class filter');
+    await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['==','class','runway']));
+    await page.evaluate(()=>window.frame());
+    await check(0,[0,0,255,255],'legacy runway-only property filter');
+    await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['==','class','taxiway']));
+    await page.evaluate(()=>window.frame());
+    await check(0,[0,255,255,255],'legacy taxiway-only property filter');
     await page.evaluate(()=>window.map.setFilter('context-transport-airport-runways',['in',['get','kind'],['literal',['runway','taxiway']]]));
     await page.evaluate(()=>{
       window.map.setPaintProperty('context-transport-airport-runways','line-opacity',0);
