@@ -1,3 +1,9 @@
+# Final verification passed
+
+[Final exact-head CI and review receipt](final-receipt.md) · [Hosted results snapshot](hosted-results.json)
+
+The local archive below records its original collection time; final hosted CI subsequently passed in full.
+
 # Polar style parity — PR #255 validation evidence
 
 Source: `610763a00a5854d54ff717d8916452654a61f2b9`, tree `0e94f59c28ffac5526aac46cf3395216760b80e9`.

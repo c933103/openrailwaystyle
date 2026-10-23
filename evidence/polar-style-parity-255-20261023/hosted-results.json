@@ -1,0 +1,168 @@
+{
+  "captured_at": "2026-10-23T09:48:45.811Z",
+  "source_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+  "source_tree": "0e94f59c28ffac5526aac46cf3395216760b80e9",
+  "review": {
+    "code_review": {
+      "commit_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    },
+    "security_review": {
+      "commit_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    }
+  },
+  "unresolved_review_threads": 0,
+  "workflows": [
+    {
+      "id": 39931287310,
+      "name": "Controls painter diagnostic",
+      "head_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39931287310",
+      "jobs": [
+        {
+          "id": 120340030684,
+          "name": "compare",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 39931287447,
+      "name": "Build worldwide OSM railway reference",
+      "head_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39931287447",
+      "jobs": [
+        {
+          "id": 120339909148,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120339974608,
+          "name": "assemble",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120339976015,
+          "name": "extract",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "id": 39931287433,
+      "name": "Validate and deploy world railway map",
+      "head_sha": "610763a00a5854d54ff717d8916452654a61f2b9",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/39931287433",
+      "jobs": [
+        {
+          "id": 120340328714,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120340329088,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120340329192,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120340436469,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343040710,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343040765,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343040840,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343040851,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343040866,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120343041840,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120350363234,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120350405603,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120350408181,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    }
+  ],
+  "commit_statuses": [
+    {
+      "context": "site/browser-checks",
+      "state": "success",
+      "target_url": "https://github.com/c933103/openrailwaystyle/actions/runs/39931287433",
+      "description": "tree 0e94f59c28ffac5526aac46cf3395216760b80e9 data b7c1a94503e01a9b2a7f8eed7a5fde07"
+    }
+  ],
+  "pr": {
+    "url": "https://github.com/c933103/openrailwaystyle/pull/255",
+    "state": "open",
+    "merged": false,
+    "head_sha": "610763a00a5854d54ff717d8916452654a61f2b9"
+  }
+}
