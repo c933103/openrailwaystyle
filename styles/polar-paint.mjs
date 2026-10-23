@@ -73,6 +73,16 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
     if (op === 'zoom') return zoom;
     if (op === 'get') return typeof args[0] === 'string' && Object.hasOwn(properties, args[0]) ? properties[args[0]] : undefined;
     if (op === 'literal') return args[0];
+    if (op === 'all' || op === 'any') {
+      let result = op === 'all';
+      for (const arg of args) {
+        const value = read(arg);
+        if (typeof value !== 'boolean') return undefined;
+        if (op === 'all' && !value) return false;
+        if (op === 'any' && value) return true;
+      }
+      return result;
+    }
     if (['+', '-', '*', '/', 'abs'].includes(op)) {
       if (!args.length || args.length > budget.remaining ||
           (op === 'abs' && args.length !== 1) ||
@@ -130,6 +140,18 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
 }
 
 export function polarStylePaint(map, zoom) {
+  const visible = (id, min = 0, max = Infinity) => {
+    try {
+      const layer = map?.getLayer?.(id);
+      return zoom >= (layer?.minzoom ?? min) && zoom < (layer?.maxzoom ?? max) &&
+        map?.getLayoutProperty?.(id, 'visibility') !== 'none';
+    } catch { return zoom >= min && zoom < max; }
+  };
+  const matches = (id, properties) => {
+    let filter;
+    try { filter = map?.getFilter?.(id); } catch { return true; }
+    return filter === undefined || filter === null || samplePaint(filter, zoom, properties) === true;
+  };
   const value = (id, property, fallback, properties) => {
     let expression;
     try { expression = map?.getPaintProperty?.(id, property); } catch { /* map style not loaded */ }
@@ -144,8 +166,9 @@ export function polarStylePaint(map, zoom) {
     const paint = value(id, property, fallback, properties);
     return finite(paint) && paint >= 0 ? paint : fallback;
   };
-  const seabedId = zoom >= 11 ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours';
-  const contour = (id, fallbackOpacity) => properties => ({
+  const seabedId = visible('terrain-seabed-contours-close', 11) ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours';
+  const contour = (id, fallbackOpacity, min, max) => properties => ({
+    id, visible: visible(id, min, max) && matches(id, properties),
     opacity: number(id, 'line-opacity', fallbackOpacity, properties),
     width: number(id, 'line-width', properties.level > 0 ? 0.8 : 0.4, properties),
     colour: colour(id, 'line-color', id.includes('seabed') ? DEFAULTS.contourSeabed : DEFAULTS.contourLand, properties),
@@ -170,16 +193,17 @@ export function polarStylePaint(map, zoom) {
     buildingOutlineWidth: number('building-outlines', 'line-width', 0.55),
     waterwayOpacity: number('waterway', 'line-opacity', 1),
     waterwayWidth: number('waterway', 'line-width', 1),
-    airportVisible: (() => {
-      try { return map?.getLayoutProperty?.('context-transport-airport-runways', 'visibility') !== 'none'; }
-      catch { return true; }
-    })(),
+    airportVisible: visible('context-transport-airport-runways', 10),
+    apronVisible: visible('context-transport-airport-area', 10),
+    buildingVisible: visible('building-footprints', 13),
+    buildingOutlineVisible: visible('building-outlines', 15),
+    waterwayVisible: visible('waterway', 5),
     apronOpacity: number('context-transport-airport-area', 'fill-opacity', 0.25),
     runwayOpacity: number('context-transport-airport-runways', 'line-opacity', 0.85),
     runwayWidth: number('context-transport-airport-runways', 'line-width', 2.5, {class:'runway'}),
     taxiwayWidth: number('context-transport-airport-runways', 'line-width', 1, {class:'taxiway'}),
-    landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04),
-    seabedContour: contour(seabedId, zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7),
+    landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04, 7),
+    seabedContour: contour(seabedId, zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7, seabedId.endsWith('-close') ? 11 : 5, seabedId.endsWith('-close') ? Infinity : 11),
     relief: {
       exaggeration: number('terrain-relief', 'hillshade-exaggeration', 0.3),
       shadow: colour('terrain-relief', 'hillshade-shadow-color', DEFAULTS.reliefShadow),

@@ -10,7 +10,7 @@ import {detailTiles} from './polar-features.mjs';
 
 const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
 const contourLayers=world.layers.filter(layer=>['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))
-  .map(({id,type,paint})=>({id,type,source:'empty',paint}));
+  .map(({id,type,paint,minzoom,maxzoom,layout,filter})=>({id,type,source:'empty',paint,minzoom,maxzoom,layout,filter}));
 
 const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
@@ -41,7 +41,7 @@ try {
       <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
       <script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
-      import {allowPolarCentres,globeGroundZoom} from './globe-drag.mjs';
+      import {allowPolarCentres} from './globe-drag.mjs';
       window.background='map';window.units='metric';window.labels=[];
       const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},
         sources:{empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
@@ -50,8 +50,8 @@ try {
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
       window.contourSamples={};
       map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});
-      const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties)window.contourSamples[JSON.stringify(mesh.properties)]={properties:mesh.properties,opacity:args[2][3],zoom:globeGroundZoom(map.getZoom(),map.getCenter().lat)};return line(mesh,...args);};
-      map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:14+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
+      const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties)window.contourSamples[JSON.stringify(mesh.properties)]={properties:mesh.properties,opacity:args[2][3],zoom:map.getZoom()};return line(mesh,...args);};
+      map.addLayer(window.layer);map.jumpTo({center:[0,${lat}],zoom:15+Math.log2(Math.cos(${lat}*Math.PI/180))});window.loaded=true;});
       </script></body></html>`}));
     await page.goto('http://127.0.0.1:4173/polar-check.html');
     await page.waitForFunction(()=>window.loaded&&window.layer?.caps?.[window.map.getCenter().lat>0?'north':'south']?.index,null,{timeout:60000});
@@ -68,13 +68,14 @@ try {
         assert.ok(Math.abs(sample.opacity-expected)<1e-8,`${cap}: actual GPU opacity ${sample.opacity} != MapLibre ${expected}`);
       }
     };
-    const originalOpacity=contourLayers.find(layer=>layer.id==='terrain-seabed-contours-close').paint['line-opacity'];
+    const activeContour=await page.evaluate(()=>window.map.getZoom()>=11?'terrain-seabed-contours-close':'terrain-seabed-contours');
+    const originalOpacity=contourLayers.find(layer=>layer.id===activeContour).paint['line-opacity'];
     await verifyContours(originalOpacity);
     const changedOpacity=['*',0.5,['case',['>', ['get','level'],0],1,0.2],['interpolate',['linear'],['abs',['get','ele']],0,1,3000,0.2]];
-    await page.evaluate(expression=>{window.contourSamples={};window.map.setPaintProperty('terrain-seabed-contours-close','line-opacity',expression);window.map.triggerRepaint();},changedOpacity);
+    await page.evaluate(({id,expression})=>{window.contourSamples={};window.map.setPaintProperty(id,'line-opacity',expression);window.map.triggerRepaint();},{id:activeContour,expression:changedOpacity});
     await page.waitForFunction(()=>Object.keys(window.contourSamples).length===4);
     await verifyContours(changedOpacity);
-    await page.evaluate(expression=>window.map.setPaintProperty('terrain-seabed-contours-close','line-opacity',expression),originalOpacity);
+    await page.evaluate(({id,expression})=>window.map.setPaintProperty(id,'line-opacity',expression),{id:activeContour,expression:originalOpacity});
     // Observe the production fill shader's actual input after a live paint
     // update. Do not substitute a mock fill; it must still draw the pixels.
     await page.evaluate(cap=>{

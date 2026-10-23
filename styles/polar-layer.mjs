@@ -378,13 +378,13 @@ export class PolarLayer {
     if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.syncDetail(false);this.visibleKeys=new Set();this.pruneTiles();this.places([]); return; }
     const center = this.map.getCenter();
     // Zoom by the planet's size (MapLibre's zoom depends on the latitude).
-    const zoom = globeGroundZoom(this.map.getZoom(),center.lat);
+    const cameraZoom = this.map.getZoom(), zoom = globeGroundZoom(cameraZoom,center.lat);
     const fade = transition ** 4, units = this.units(), labels = [];
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
     const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', custom = background === 'map';
-    const mapPaint = custom ? polarStylePaint(this.map, zoom) : null;
+    const mapPaint = custom ? polarStylePaint(this.map, cameraZoom) : null;
     const colours = carto ? CARTO_COLOURS : {...COLOURS, ...mapPaint?.colours};
     this.syncDetail((carto || custom) && !imagery && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
@@ -409,13 +409,12 @@ export class PolarLayer {
           const tile = this.loadTile(tileKey);
           if (tile.loading || tile.failed) continue;
           for (const [part, kind, major] of [['seabedMinor', 'seabed', 0], ['seabedMajor', 'seabed', 1], ['landMinor', 'land', 0], ['landMajor', 'land', 1]]) {
-            if (zoom < MIN_ZOOM[kind]) continue;
+            if (!custom && zoom < MIN_ZOOM[kind]) continue;
             const mesh = tile[part];
             if (custom) {
               for (const range of mesh?.ranges || []) {
                 const style = (kind === 'land' ? mapPaint.landContour : mapPaint.seabedContour)(range.properties);
-                contours.push({id: kind === 'land' ? 'terrain-contours' : zoom >= 11 ? 'terrain-seabed-contours-close' : 'terrain-seabed-contours',
-                  mesh: {...mesh, ...range}, style});
+                if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
               }
             } else this.line(mesh, options.shaderData, projection,
               rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
@@ -449,19 +448,19 @@ export class PolarLayer {
         // Roads/paths remain exclusive to Carto; imagery has already returned.
         const passes = [
           ['context-transport-airport-area', () => {
-            if (mapPaint.airportVisible) for (const tile of detailTiles)
+            if (mapPaint.apronVisible) for (const tile of detailTiles)
               this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, mapPaint.apronOpacity * fade));
           }],
           ['building-footprints', () => {
-            if (zoom >= 13) for (const tile of detailTiles)
+            if (mapPaint.buildingVisible) for (const tile of detailTiles)
               this.fill(tile.buildings, options.shaderData, projection, rgba(colours.building, mapPaint.buildingOpacity * fade));
           }],
           ['building-outlines', () => {
-            if (zoom >= 15) for (const tile of detailTiles)
+            if (mapPaint.buildingOutlineVisible) for (const tile of detailTiles)
               this.line(tile.buildingOutlines, options.shaderData, projection, rgba(colours.buildingOutline, mapPaint.buildingOutlineOpacity * fade), mapPaint.buildingOutlineWidth);
           }],
           ['context-transport-airport-runways', () => {
-            if (zoom >= MIN_ZOOM.runway && mapPaint.airportVisible) {
+            if (mapPaint.airportVisible) {
               this.line(state.runways, options.shaderData, projection, rgba(colours.runway, mapPaint.runwayOpacity * fade), mapPaint.runwayWidth);
               for (const tile of detailTiles) this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, mapPaint.runwayOpacity * fade), mapPaint.taxiwayWidth);
             }
@@ -471,7 +470,7 @@ export class PolarLayer {
               this.line(contour.mesh, options.shaderData, projection, rgba(contour.style.colour, contour.style.opacity * fade), contour.style.width);
           }]),
           ['waterway', () => {
-            for (const tile of detailTiles) this.line(tile.waterways, options.shaderData, projection, rgba(colours.waterway, mapPaint.waterwayOpacity * fade), mapPaint.waterwayWidth);
+            if (mapPaint.waterwayVisible) for (const tile of detailTiles) this.line(tile.waterways, options.shaderData, projection, rgba(colours.waterway, mapPaint.waterwayOpacity * fade), mapPaint.waterwayWidth);
           }],
         ];
         const layerIds = this.map.getLayersOrder?.();

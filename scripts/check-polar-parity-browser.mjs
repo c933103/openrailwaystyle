@@ -13,7 +13,7 @@ const browser=await launchBrowser();
 const receipts=[];
 try {
   for(const cap of ['north','south']) {
-    const sign=cap==='north'?1:-1, edge=MERCATOR_LIMIT;
+    const sign=cap==='north'?1:-1, edge=MERCATOR_LIMIT, cameraZoom=15+Math.log2(Math.cos(MERCATOR_LIMIT*Math.PI/180));
     const ring=(west,east,lo,hi)=>[[west,sign*lo],[east,sign*lo],[east,sign*hi],[west,sign*hi],[west,sign*lo]];
     const apron=ring(-0.08,0.08,edge-0.016,edge+0.016), building=ring(-0.04,0.04,edge-0.012,edge+0.012);
     const strip=lon=>[[lon,sign*(edge-0.016)],[lon,sign*(edge+0.016)]];
@@ -33,7 +33,7 @@ try {
       ...[...details].map(([key,value])=>[`${cap}-carto-${key}.json`,value]),
     ]);
     const layers=world.layers.filter(layer=>ids.includes(layer.id)).map(layer=>{
-      const copy={id:layer.id,type:layer.type,paint:structuredClone(layer.paint)};
+      const copy={id:layer.id,type:layer.type,paint:structuredClone(layer.paint),minzoom:layer.minzoom,maxzoom:layer.maxzoom,layout:structuredClone(layer.layout)};
       if(copy.type!=='background'){
         copy.source='fixture';
         const kinds={'water':[],'context-transport-airport-area':['apron'],'building-footprints':['building'],'building-outlines':['building'],'context-transport-airport-runways':['runway','taxiway'],'waterway':['waterway']};
@@ -56,16 +56,39 @@ try {
       window.background='map';window.terrain=false;
       const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,style:${JSON.stringify(style)},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
-      map.on('load',()=>{const layer=window.layer=new PolarLayer({data:new URL('./parity-fixture/',location.href),units:()=> 'metric',relief:()=>window.terrain,palette:()=>window.background,imagery:()=>['satellite','hybrid'].includes(window.background)});map.addLayer(layer);map.jumpTo({center:[0,${sign*edge}],zoom:15+Math.log2(Math.cos(${edge}*Math.PI/180))});});
+      map.on('load',()=>{const layer=window.layer=new PolarLayer({data:new URL('./parity-fixture/',location.href),units:()=> 'metric',relief:()=>window.terrain,palette:()=>window.background,imagery:()=>['satellite','hybrid'].includes(window.background)});map.addLayer(layer);map.jumpTo({center:[0,${sign*edge}],zoom:${cameraZoom}});});
       window.frame=()=>new Promise(resolve=>{map.once('render',()=>{map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
       window.pixel=point=>{const gl=map.getCanvas().getContext('webgl2'),at=map.project(point),out=new Uint8Array(4);gl.readPixels(Math.round(at.x),gl.drawingBufferHeight-1-Math.round(at.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,out);return [...out];};
       </script>`}));
     await page.goto('http://127.0.0.1:4173/polar-parity.html');
-    await page.waitForFunction(()=>window.layer&&[...window.layer.tiles.values()].some(tile=>!tile.loading&&!tile.failed)&&window.map.isSourceLoaded('fixture'));
+    await page.waitForFunction(()=>window.layer&&[...window.layer.tiles.values()].some(tile=>!tile.loading&&!tile.failed)&&window.map.isSourceLoaded('fixture')).catch(async error=>{
+      console.log(await page.evaluate(()=>({zoom:window.map?.getZoom(),center:window.map?.getCenter(),projection:window.map?.getProjection(),broken:window.layer?.broken,keys:[...window.layer?.tiles?.keys()||[]],visible:window.layer?.visible()})));
+      console.log(errors,warnings);throw error;
+    });
     await page.evaluate(()=>new Promise(resolve=>{window.map.once('idle',resolve);window.map.triggerRepaint();}));
     await page.evaluate(()=>window.frame());
     await mkdir('browser-review',{recursive:true});
     await page.screenshot({path:`browser-review/polar-boundary-${cap}-authored.png`});
+    // Preserve the actual authored zoom limits: a ground zoom near 15 at
+    // the boundary is only camera zoom 11.46, below footprints/outlines.
+    await page.evaluate(()=>{
+      const layer=window.layer,fill=layer.fill.bind(layer),line=layer.line.bind(layer);
+      window.buildingDraws=0;window.outlineDraws=0;
+      layer.fill=(mesh,...args)=>{if([...layer.tiles.values()].some(tile=>tile.buildings===mesh))window.buildingDraws++;return fill(mesh,...args);};
+      layer.line=(mesh,...args)=>{if([...layer.tiles.values()].some(tile=>tile.buildingOutlines===mesh))window.outlineDraws++;return line(mesh,...args);};
+    });
+    await page.evaluate(()=>window.frame());
+    const visibility=await page.evaluate(()=>({building:window.buildingDraws,outline:window.outlineDraws,
+      ordinary:window.map.queryRenderedFeatures({layers:['building-footprints','building-outlines']}).length,
+      fine:[...window.layer.tiles.values()].some(tile=>tile.detailed)}));
+    assert.deepEqual(visibility,{building:0,outline:0,ordinary:0,fine:true},`${cap}: camera thresholds hide both renderers while fine data remains available`);
+    receipts.push({cap,label:'authored camera zoom thresholds',visibility});
+    // MapLibre's default globe becomes Mercator before camera zoom 13.
+    // After checking the unmodified authored thresholds above, lower the two
+    // fixture layers through the public API to exercise genuine overlapping
+    // globe geometry and propagation of in-session visibility changes.
+    await page.evaluate(()=>{window.map.setLayerZoomRange('building-footprints',10);window.map.setLayerZoomRange('building-outlines',10);});
+    await page.evaluate(()=>window.frame());
     // Opaque diagnostic colours isolate ordering from the authored palette's
     // subtle blends. Interior fill/line pixels must equal exact RGBA bytes.
     await page.evaluate(()=>{

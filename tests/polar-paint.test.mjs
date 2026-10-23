@@ -217,6 +217,31 @@ test('Atlas draws all tiles in ordinary layer order and follows in-session layer
   for(const mode of ['satellite','hybrid']){f.background(mode);assert.deepEqual(f.draw().map(call=>call[1]),['disc']);}
 });
 
+test('Atlas uses camera zoom for live style paint/ranges and ground zoom only for asset bands', () => {
+  const f=polarFixture(), layers=structuredClone(world.layers), requested=[];
+  f.map.getCenter=()=>({lat:-85.051129});f.map.getZoom=()=>11.46;
+  f.map.getLayer=id=>layers.find(layer=>layer.id===id);
+  f.map.getFilter=id=>f.map.getLayer(id)?.filter;
+  f.layer.relief=()=>true;
+  f.layer.caps.south.index.units.metric=Array.from({length:3},()=>({n:1,tiles:['0-0']}));
+  f.layer.loadTile=key=>{requested.push(key);return {loading:true};};
+  const before=f.draw();
+  assert.ok(requested.includes('south-metric-2-0-0'),'ground zoom near 15 still selects fine data');
+  assert.equal(before.some(call=>call[1]==='buildings'||call[1]==='buildingOutlines'),false,'camera zoom below 13/15 hides ordinary buildings');
+  near(before.find(call=>call[1]==='runways')[3],1+(2.5-1)*(2**1.46-1)/7);
+  near(polarStylePaint(f.map,11.46).landContour({ele:100,level:1}).opacity,0.3+(0.8-0.3)*(11.46-7)/5);
+  const building=f.map.getLayer('building-footprints');building.minzoom=11;building.maxzoom=12;
+  assert.ok(f.draw().some(call=>call[1]==='buildings'),'live minzoom propagates');
+  building.maxzoom=11.46;
+  assert.equal(f.draw().some(call=>call[1]==='buildings'),false,'maxzoom is exclusive');
+  for(const zoom of [8,9,10.99,11]){
+    const paint=polarStylePaint(f.map,zoom);
+    const shallow=paint.seabedContour({ele:-100,level:0}),deep=paint.seabedContour({ele:-1000,level:1});
+    assert.equal(shallow.id,zoom>=11?'terrain-seabed-contours-close':'terrain-seabed-contours');
+    assert.equal(shallow.visible,true);assert.equal(deep.visible,zoom>=9,'camera-zoom shelf filter propagates');
+  }
+});
+
 test('contour subranges use byte offsets without owning or deleting shared buffers', () => {
   const layer=new PolarLayer({});const draws=[];
   layer.gl=new Proxy({drawElements:(...args)=>draws.push(args)}, {get:(obj,key)=>obj[key]??(()=>{})});
