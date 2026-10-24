@@ -83,6 +83,8 @@ test('public ORM composite aliases translate only recognized geographic tiles, p
   `${origin}/railway_line_high`,
   `${origin}/api/feature/railway_line_high/way-4`,
   `${origin}/other_dataset/7/104/52`,
+  `${origin}/constructor/7/104/52`,
+  `${origin}/__proto__/7/104/52`,
   `${origin}/railway_line_high/7/999/52`,
   `${origin}/railway_line_high/23/1/2`,
   `${origin}/railway_line_high/7/104/52#fragment`,

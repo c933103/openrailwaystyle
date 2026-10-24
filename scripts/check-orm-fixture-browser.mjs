@@ -55,7 +55,7 @@ try {
     if(tileMatch){
       requests.tiles++;
       const [,group,z,x,y]=tileMatch,endpoint=group.split(',')[0],tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
-      if(!path.startsWith('/__orm-fixture/')&&RAIL_COMPOSITE_PATHS[endpoint])
+      if(!path.startsWith('/__orm-fixture/')&&Object.hasOwn(RAIL_COMPOSITE_PATHS,endpoint))
         assert.equal(group,RAIL_COMPOSITE_PATHS[endpoint],'known public datasets must use their physical composite endpoint');
       // The local catalogue now gives visible rail geometry the SAME direct
       // URLs as track-count inputs. Count their union after pool sharing.

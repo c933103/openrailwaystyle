@@ -22,8 +22,9 @@ export function railProviderTileURL(address, provider = 'https://openrailwaymap.
         root.username || root.password || url.origin !== root.origin || url.username || url.password || url.hash) return address;
     const match = /^\/([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(url.pathname);
     if (!match) return address;
-    const [, layer, z, x, y] = match, physical = RAIL_COMPOSITE_PATHS[layer];
-    if (!physical) return address;
+    const [, layer, z, x, y] = match;
+    if (!Object.hasOwn(RAIL_COMPOSITE_PATHS, layer)) return address;
+    const physical = RAIL_COMPOSITE_PATHS[layer];
     const zoom = Number(z), column = Number(x), row = Number(y);
     if (!Number.isInteger(zoom) || zoom > 22 || column >= 2 ** zoom || row >= 2 ** zoom) return address;
     url.pathname = `/${physical}/${z}/${x}/${y}`;
