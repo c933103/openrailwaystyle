@@ -376,8 +376,11 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     // station layer belongs to this atlasstation source; unrelated station
     // areas/entrances/interlockings may reuse OSM IDs and must not enter the
     // translation merge or receive synthetic station label attributes.
-    const sourceLayer = new URL(url).pathname.split('/')[1];
-    const stationFeatures = tile => sourceFeatures(tile,sourceLayer);
+    const stationURL=new URL(url), stationPath=/^\/(standard_railway_text_stations(?:_low|_med)?)\/\d+\/\d+\/\d+(?:\.pbf)?$/.exec(stationURL.pathname);
+    const sourceLayer=stationURL.origin===new URL(ORM).origin&&!stationURL.username&&!stationURL.password&&stationPath?stationPath[1]:undefined;
+    // Other providers may use arbitrary paths (e.g. /med) for their station
+    // layer. Preserve the existing adapter instead of inferring their schema.
+    const stationFeatures = tile => sourceLayer?sourceFeatures(tile,sourceLayer):features(tile);
     const candidates = stationLanguages(lang), fetched = new Set();
     let primary, primaryData;
     for (;;) {
@@ -391,7 +394,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
       let translated, data;
-      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data,[sourceLayer]); }
+      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data,sourceLayer?[sourceLayer]:undefined); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.
