@@ -60,6 +60,26 @@ test('station protocol fetches English fallback and Hanja from actual translatio
   assert.ok(requests.includes('en'));assert.ok(requests.includes('ko-Hani'));
   assert.equal(requests.filter(x=>x==='en').length,1,'Successful fallback tiles should be reused across language changes');
 });
+test('custom station endpoint paths need not match their MVT layer names',async()=>{
+ for(const endpoint of ['https://example.org/med','https://private-orm.example/standard_railway_text_stations','https://example.org/api/v1/medium-stations']){
+  const protocols={},requests=[];
+  const adapters=installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async address=>{
+   const url=new URL(address),lang=url.searchParams.get('lang');requests.push(lang);
+   assert.equal(url.pathname,`${new URL(endpoint).pathname}/7/109/50`,'custom transport URL is preserved');
+   return {ok:true,status:200,arrayBuffer:async()=>tile({name:'진주',localized_name:lang==='en'?'Jinju':'진주'})};
+  });
+  try{
+   const request={url:`atlasstation://fr/${endpoint}/7/109/50`};
+   for(let repeat=0;repeat<2;repeat++){
+    const result=await protocols.atlasstation(request,new AbortController());
+    const station=readTile(result.data).layers.stations.feature(0).properties;
+    assert.equal(station.atlas_name,'Jinju','English fallback is fetched and written to the foreign layer');
+    assert.equal(station.atlas_language,'fr');assert.equal(station.atlas_han,'cjkv');
+   }
+   assert.deepEqual(requests,['fr','en'],'translated bytes remain cached across repeated custom requests');
+  }finally{adapters.dispose();}
+ }
+});
 test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Malaysia and the Russian Far East',()=>{
   const places={
     cjkv:[[139.77,35.68],[135.24,34.43],[126.97,37.55],[125.75,39.03],[105.84,21.02],[114.17,22.30],[113.54,22.19],[121.52,25.05],[87.6,43.8],[127.47,50.22]],
@@ -256,12 +276,18 @@ test('tiles below the first zoom of the provider are made from their children',a
   assert.equal(template,'atlasstation://local/https://example.org/med/{z}/{x}/{y}#underzoom=7');
   const result=await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','6/1/1')},new AbortController());
   const layer=readTile(result.data).layers.stations;
+  for(let i=0;i<layer.length;i++){
+   const p=layer.feature(i).properties;
+   assert.equal(p.atlas_name,p.name,'underzoomed custom layers receive labels as well as geometry');
+   assert.equal(p.atlas_language,'local');assert.equal(typeof p.atlas_han,'string');
+  }
   const stations=Array.from({length:layer.length},(_,i)=>layer.feature(i)).map(f=>[f.properties.name,f.loadGeometry()[0][0].x,f.loadGeometry()[0][0].y]).sort();
   assert.deepEqual(stations,[['S1',500,500],['S2',2050,500],['S3',500,3548],['S4',3548,3548]]);
   assert.equal(requests.filter(u=>/\/7\//.test(u)).length,4,'four children, no repeat');
   // At the provider's own zoom the tile is fetched directly.
   requests.length=0;
-  await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','7/9/9')},new AbortController());
+  const direct=await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','7/9/9')},new AbortController());
+  assert.equal(readTile(direct.data).layers.stations.feature(0).properties.atlas_name,'S9');
   assert.deepEqual(requests,['https://example.org/med/7/9/9']);
 });
 

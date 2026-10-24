@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {ormVectorFixture} from '../scripts/orm-vector-fixture.mjs';
-import {RAIL_TILE_RANGES} from '../styles/rail-source-catalog.mjs';
+import {RAIL_TILE_RANGES,RAIL_COMPOSITE_PATHS,railProviderTileURL} from '../styles/rail-source-catalog.mjs';
 import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
 
 const feature={type:2, geometry:[[[10,10],[100,100]]], tags:{id:'fixture-1',ref:'1 / 2'}};
@@ -36,4 +36,37 @@ test('platform measurement z15 and advertised .pbf paths retain their original c
 });
 test('metadata and API routes remain separate, including unknown-endpoint fallback',()=>{
   for(const path of ['/standard_railway_platforms','/unknown_endpoint','/api/feature/standard_railway_platforms/way-1'])assert.equal(ormVectorFixture(path,{}),null);
+});
+
+test('upstream composite XYZ fixtures carry independently addressable MVT source layers',()=>{
+ const tile={features:[feature],extent:4096},seen=[];
+ const group=RAIL_COMPOSITE_PATHS.standard_railway_platforms;
+ const path='/'+group+'/17/1/2';
+ const response=ormVectorFixture(path,{
+  standard_railway_platforms:{getTile:()=>tile},
+  standard_railway_platform_edges:{getTile:()=>tile},
+ },info=>seen.push(info.layer));
+ assert.deepEqual(seen,['standard_railway_platforms','standard_railway_platform_edges']);
+ const layers=new VectorTile(new Pbf(response.body)).layers;
+ assert.deepEqual(Object.keys(layers),['standard_railway_platforms','standard_railway_platform_edges']);
+ assert.equal(layers.standard_railway_platforms.length,1);
+ assert.equal(layers.standard_railway_platform_edges.length,1);
+ assert.equal(railProviderTileURL('https://openrailwaymap.app/standard_railway_platform_edges/17/1/2'),
+  'https://openrailwaymap.app'+path);
+ assert.equal(validProviderVectorTile('https://openrailwaymap.app'+path,200,response.body),true);
+});
+
+test('composite-only supplemental layer is valid but unrelated and malformed tiles are rejected',()=>{
+ const group=RAIL_COMPOSITE_PATHS.railway_line_high;
+ const url='https://openrailwaymap.app/'+group+'/14/5000/5000';
+ const actual=ormVectorFixture('/'+group+'/14/5000/5000',{
+  railway_text_km:{getTile:()=>({features:[feature],extent:4096})},
+ });
+ assert.deepEqual(Object.keys(new VectorTile(new Pbf(actual.body)).layers),['railway_text_km']);
+ assert.equal(validProviderVectorTile(url,200,actual.body),true);
+ const unrelated=ormVectorFixture('/unrelated_source/14/5000/5000',{
+  unrelated_source:{getTile:()=>({features:[feature],extent:4096})},
+ });
+ assert.equal(validProviderVectorTile(url,200,unrelated.body),false);
+ assert.equal(validProviderVectorTile(url,200,new TextEncoder().encode('not a vector tile')),false);
 });

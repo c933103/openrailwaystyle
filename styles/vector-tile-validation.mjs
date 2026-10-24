@@ -22,7 +22,13 @@ export function validProviderVectorTile(address, status, data, provider = RAIL_P
   if (status !== 200 || !endpoint || !data?.byteLength) return true;
   try {
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-    return Boolean(new VectorTile(new Pbf(bytes)).layers[endpoint]);
+    // Martin composite URLs are a set of independent source layers. A tile
+    // containing only a supplementary layer (e.g. a kilometre marker or station
+    // entrance) is valid even when the requested logical layer has no features.
+    // Reject malformed tiles and nonempty responses lacking *all* advertised
+    // layers; an HTTP 200 HTML error page must never enter the byte cache.
+    const layers = new VectorTile(new Pbf(bytes)).layers;
+    return endpoint.split(',').some(layer => Object.hasOwn(layers, layer));
   } catch {
     return false;
   }

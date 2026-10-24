@@ -2,10 +2,10 @@
 // generated OpenRailwayMap-shaped tiles. NEVER download provider tiles in CI.
 import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
-import {RAIL_TILE_RANGES} from '../styles/rail-source-catalog.mjs';
+import {RAIL_TILE_RANGES,RAIL_COMPOSITE_PATHS} from '../styles/rail-source-catalog.mjs';
 import {checkRailRecoveryWithoutIdle} from './rail-recovery-browser-fixture.mjs';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {WUHAN_ZOOMS,checkWuhanRailZoom,readWuhanRail,assertWuhanRail} from './wuhan-rail-browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
@@ -51,15 +51,18 @@ try {
     if(!headers['user-agent'])requests.missingUserAgent.push(url.pathname);
     const path=url.pathname;
     if(path.startsWith('/api/'))return route.fulfill({status:404,body:''});
-    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
+    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_,]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
     if(tileMatch){
       requests.tiles++;
-      const [,endpoint,z,x,y]=tileMatch,tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
+      const [,group,z,x,y]=tileMatch,endpoint=group.split(',')[0],tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
+      if(!path.startsWith('/__orm-fixture/')&&Object.hasOwn(RAIL_COMPOSITE_PATHS,endpoint))
+        assert.equal(group,RAIL_COMPOSITE_PATHS[endpoint],'known public datasets must use their physical composite endpoint');
       // The local catalogue now gives visible rail geometry the SAME direct
       // URLs as track-count inputs. Count their union after pool sharing.
       // Localized station display requests (?lang=...) were excluded by the
       // old /__orm-fixture split and remain separately recorded, not mistaken
-      // for duplicate raw station inputs. Preserve the 65/+13 ceilings.
+      // for duplicate raw station inputs. Physical ceilings are 45/+9 after
+      // station-area and station-point aliases share the same endpoint.
       if(z==='14'&&endpoint==='standard_railway_text_stations'&&url.search)requests.localizedStationTiles.push(path+url.search);
       if(z==='14'&&!url.search&&['railway_line_high','standard_railway_grouped_station_areas','standard_railway_text_stations'].includes(endpoint))requests.trackDependencies.push(path);
       if(outage.enabled&&endpoint==='railway_line_high'&&z==='7'){
@@ -72,8 +75,9 @@ try {
         }
       }
       ledger.push({url:request.url(),path,status:200,at:Date.now()});
-      return route.fulfill({contentType:'application/x-protobuf',
-        body:tile?.features.length?Buffer.from(vtpbf.fromGeojsonVt({[endpoint]:tile},{version:2})):Buffer.alloc(0)});
+      const response=ormVectorFixture(path.startsWith('/__orm-fixture/') ? path.slice('/__orm-fixture'.length) : path,indexes);
+      assert.ok(response,'Composite ORM tiles must have a synthetic MVT fixture');
+      return route.fulfill(response);
     }
     requests.metadata++;
     const endpoint=path.split('/').filter(Boolean)[0];
@@ -156,7 +160,9 @@ try {
 
   assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
   assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
-  assert.ok(initial.requests<=65,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
+  for(const endpoint of ['railway_line_high','standard_railway_text_stations'])
+    assert.ok(initial.byDataset[RAIL_COMPOSITE_PATHS[endpoint]]>0,'must exercise rail and station physical dependencies');
+  assert.ok(initial.requests<=45,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
   try {
     await page.evaluate(()=>new Promise((resolve,reject)=>{
       const map=window.fixtureMap,mapErrors=[];
@@ -181,7 +187,7 @@ try {
   }
   const afterPan=dependencySnapshot(),panAdded=afterPan.requests-initial.requests;
   assert.equal(afterPan.requests,afterPan.unique,'one-tile pan must retain exact-URL request deduplication');
-  assert.ok(panAdded<=13,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
+  assert.ok(panAdded<=9,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
   await page.screenshot({path:'browser-review/orm-fixture-wuhan-z14-track-count.png'});
   assert.deepEqual(requests.missingReferer,[], 'z14 dependency requests must keep genuine site-origin Referer');
   assert.deepEqual(requests.missingUserAgent,[], 'z14 dependency requests must keep genuine User-Agent');

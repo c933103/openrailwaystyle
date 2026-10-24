@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261019-source-recovery-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261019-source-recovery-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261024-orm-composite-2';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261024-orm-composite-2';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261019-source-recovery-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261024-orm-composite-2';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
