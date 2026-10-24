@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "complete": false,
+  "source": "OpenStreetMap via Overpass",
+  "license": "ODbL-1.0",
+  "stations": 60190,
+  "pendingRegions": 11,
+  "completedRegions": 33,
+  "started": "2026-10-11T09:59:10.212Z",
+  "updated": "2026-10-24T13:15:33.442Z",
+  "status": "retry next maintenance run",
+  "requestBytes": 0,
+  "regionUpdated": false
+}
