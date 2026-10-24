@@ -24,8 +24,10 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.4'
           cache: npm
+      - name: Verify patched Node.js runtime
+        run: test "$(node --version)" = "v22.23.4"
       - run: npm ci --ignore-scripts
       - name: Build with the checked-out source identity
         env:

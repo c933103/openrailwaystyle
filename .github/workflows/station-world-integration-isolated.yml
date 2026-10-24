@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: {node-version: '22'}
+        with: {node-version: '22.23.4'}
+      - name: Verify patched Node.js runtime
+        run: test "$(node --version)" = "v22.23.4"
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Exercise complete and incomplete offline station snapshots
         run: node --test tests/station-world.test.mjs
