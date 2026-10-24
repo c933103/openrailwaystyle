@@ -57,7 +57,9 @@ test('all CI Node commands run after setup and security-baseline verification',a
     const jobs=section.split(/^  ([A-Za-z][\w-]*):\s*$/m);
     for(let i=1;i<jobs.length;i+=2){
       const job=jobs[i],body=jobs[i+1]||'';
-      const command=/^[ \t]*(?:-\s+run:\s*)?(?:node|npm|npx)(?=\s|$)/gm.exec(body);
+      // Ignore the guard's own one-line Node invocation without changing later indices.
+      const nonGuard=body.replaceAll(guardRun,'run: true'.padEnd(guardRun.length,' '));
+      const command=/^[ \t]*(?:-\s+run:\s*)?(?:node|npm|npx)(?=\s|$)/gm.exec(nonGuard);
       if(!command)continue;
       const setup=body.indexOf('uses: actions/setup-node@v4');
       const guard=body.indexOf(guardRun);
