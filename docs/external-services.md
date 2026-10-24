@@ -49,6 +49,29 @@ The service operator policy does not enumerate a quantitative API rate limit.
 No particular number of calls, retry cadence or TileJSON polling allowance
 has therefore been certified as compliant.
 
+### Composite track-count request bounds
+
+The composite-routing regression uses in-process MVT fixtures, with no public
+provider traffic. A rail-bearing count tile retains all **27 logical inputs**:
+nine railway, nine station-area and nine station-point tiles. Those inputs now
+share **18 physical downloads** because both station datasets use the same
+composite endpoint. A cold 2x2 viewport uses **32** physical downloads; an east
+pan adds **8**. A definitely empty track halo still skips station inputs
+(**16** cold and **4** additional). Per-origin transport concurrency stays at **4**.
+Worker transfer ownership remains separate: all 27 inputs receive distinct
+private buffers, while the cache retains the 18 physical originals. Each worker
+input reads only its named MVT layer, including when other layers have colliding
+feature IDs or plausible station geometry.
+
+The real-MapLibre 1280x800 Infrastructure fixture enforces **45** cold requests
+and **9** additional east-pan requests as ceilings, derived by collapsing the
+historical station-area/station-point pairs below. It requires both railway and
+station physical endpoints, composite routing and exact-URL deduplication.
+This run observed **43** cold requests and **8** additional requests. Geometry
+filtering, partial-outage recovery and genuine browser request headers remain
+required. These synthetic measurements do not establish live availability or
+operator-approved traffic limits.
+
 ### Historical track-count request amplification (before composite routing)
 
 Measured on 2026-10-07 with deterministic in-process vector-tile fixtures; **no
@@ -56,7 +79,7 @@ public OpenRailwayMap tile traffic was sent**. These are historical physical
 request counts **before** the 2026-10-23 adaptation to combined Martin endpoints,
 not a forecast of present-day public traffic. The updated client deduplicates
 station-areas and station-points dependencies against one composite URL; the
-real-MapLibre synthetic fixture continues to assert upper limits. Atlas computes
+real-MapLibre synthetic fixture now asserts the composite limits above. Atlas computes
 at z14 and overzooms those count tiles above z14.
 
 - Cold rail-bearing single count tile: **27 distinct requests** (three 3x3
@@ -74,8 +97,8 @@ at z14 and overzooms those count tiles above z14.
   distinct track-count dependencies** after in-flight/cache sharing: 25 track
   geometry, 20 station-area and 20 station-point tiles. Panning east by 512 px
   added **13** requests (5 + 4 + 4), for 78 total. The browser fixture verifies
-  that the interaction actually issues track-count dependencies and enforces
-  65/13 as regression ceilings, so a future reduction is allowed but an
+  that the interaction actually issues track-count dependencies and at that time
+  enforced 65/13 as regression ceilings, so a future reduction was allowed but an
   unnoticed increase is not. Symbol placement is deliberately not used as the
   completion gate because collision handling may legitimately hide every badge.
 

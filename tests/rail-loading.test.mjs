@@ -94,6 +94,12 @@ test('public ORM composite aliases translate only recognized geographic tiles, p
   `${origin}/railway_line_high,railway_text_km/7/104/52`);
  assert.equal(railProviderTileURL(`${origin}/railway_line_high/7/104/52`, 'https://private-orm.example'),
   `${origin}/railway_line_high/7/104/52`,'do not rewrite private provider URLs');
+ const privateURL='https://private-orm.example/railway_line_high/7/104/52';
+ assert.equal(railProviderTileURL(privateURL,'https://private-orm.example'),privateURL,
+  'a selected private provider keeps its own endpoint contract');
+ for(const provider of [origin+'/private/',origin+'?key=private',origin+'#private'])
+  assert.equal(railProviderTileURL(`${origin}/railway_line_high/7/104/52`,provider),
+   `${origin}/railway_line_high/7/104/52`,'only the exact public provider root enables routing');
 });
 
 test('composite requests coalesce across logical sources and accept a supplementary-only MVT',async()=>{

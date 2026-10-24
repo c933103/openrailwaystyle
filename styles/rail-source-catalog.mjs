@@ -18,7 +18,8 @@ export const RAIL_COMPOSITE_PATHS = Object.freeze(Object.fromEntries(
 export function railProviderTileURL(address, provider = 'https://openrailwaymap.app') {
   try {
     const url = new URL(address), root = new URL(provider);
-    if (url.origin !== root.origin || url.username || url.password || url.hash) return address;
+    if (root.origin !== 'https://openrailwaymap.app' || root.pathname !== '/' || root.search || root.hash ||
+        root.username || root.password || url.origin !== root.origin || url.username || url.password || url.hash) return address;
     const match = /^\/([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(url.pathname);
     if (!match) return address;
     const [, layer, z, x, y] = match, physical = RAIL_COMPOSITE_PATHS[layer];
