@@ -1,0 +1,29 @@
+{
+  "generated": "2026-10-24T13:55:27.500Z",
+  "changesSince": null,
+  "tags": true,
+  "crossings": 1231660,
+  "road": 1004303,
+  "pedestrian": 227357,
+  "onMinorTracksOnly": 487176,
+  "tableVersion": 3,
+  "acquisition": {
+    "epoch": "94bad3c5-8257-4149-8048-054c0048796f",
+    "startedAt": "2026-10-16T06:24:13.315Z",
+    "watermark": "2026-10-16T05:24:13Z",
+    "observationStartedAt": "2026-10-16T06:24:13.319Z",
+    "observationCompletedAt": "2026-10-24T13:54:37.506Z",
+    "parentSnapshot": "6a3bb3413a3759b8ec2bdc1612de827feaf3113f",
+    "resumedLeaves": 40,
+    "newLeaves": 16
+  },
+  "tiles": 13113,
+  "tileBytes": 16225502,
+  "regions": 56,
+  "requests": 24,
+  "downloadedBytes": 26601811,
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping."
+}
