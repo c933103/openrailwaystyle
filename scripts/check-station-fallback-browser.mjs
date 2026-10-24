@@ -11,6 +11,7 @@ import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {waitUntil} from './wait-until.mjs';
 import {STATION_FALLBACK_IDS} from '../styles/station-fallback.mjs';
 import {stationLanguageStyleReady} from './rail-fixture-readiness.mjs';
+import {RAIL_TILE_RANGES} from '../styles/rail-source-catalog.mjs';
 
 const center=[2.3553,48.8809],curated=[2.3753,48.8909],distant=[32.3753,48.8909];
 const point=(id,coordinates,properties)=>({type:'Feature',id,properties:{id,...properties},geometry:{type:'Point',coordinates}});
@@ -32,7 +33,7 @@ for(let z=8;z<=14;z++)for(const f of poi){
  }
 }
 const server=await serveAtlasAppFixture(),base=server.origin+'/',browser=await launchBrowser();
-const reports=[],errors=[],requests=[];let page,provider='healthy',currentCase;
+const reports=[],errors=[],requests=[],physicalRequests=[];let page,provider='healthy',currentCase;
 await mkdir('browser-review',{recursive:true});
 try{
  const context=await browser.newContext({viewport:{width:1280,height:900}});
@@ -54,9 +55,16 @@ try{
  await page.route('https://openrailwaymap.app/**',route=>{
   const path=new URL(route.request().url()).pathname;
   let requested;
-  const response=ormVectorFixture(path,{'standard_railway_text_stations':stationIndex},tile=>{if(tile.layer==='standard_railway_text_stations'){requested=tile;requests.push({...tile,provider});}});
+  const [minzoom,maxzoom]=RAIL_TILE_RANGES.standard_railway_text_stations;
+  const response=ormVectorFixture(path,{'standard_railway_text_stations':stationIndex},tile=>{
+   if(tile.layer==='standard_railway_text_stations'&&tile.z>=minzoom&&tile.z<=maxzoom){requested=tile;requests.push({...tile,provider});}
+  });
   if(!response)return route.fallback();
-  const failed=provider==='failed'||provider==='mixed'&&requested&&requested.x===tileAt(center,requested.z).x&&requested.y===tileAt(center,requested.z).y;
+  // The scenario fails station tiles at their served zooms, not entrances
+  // requested at z17–22 through the same composite name. Those are different
+  // physical XYZ tiles. Keep the original station-only outage at maximum zoom.
+  const failed=Boolean(requested)&&(provider==='failed'||provider==='mixed'&&requested.x===tileAt(center,requested.z).x&&requested.y===tileAt(center,requested.z).y);
+  physicalRequests.push({path,provider,status:failed?503:200,station:Boolean(requested)});
   if(path.startsWith('/standard_railway_text_stations,')&&failed)return route.fulfill({status:503,body:'Controlled station failure'});
   return route.fulfill(response);
  });
@@ -190,6 +198,10 @@ try{
  currentCase={provider,zoom:22,action:'pan at maximum zoom'};
  await page.evaluate(center=>window.stationMap.jumpTo({center,zoom:22}),distant);
  maximum=await ready({requirePoi:false,hub:'curated-distant'});assert.ok(maximum.curatedData.includes('curated-distant'));
+ assert.ok(physicalRequests.some(r=>r.provider==='failed'&&r.station&&r.status===503&&/\/16\//.test(r.path)),
+  'maximum-zoom fallback retains a real failure at the station source maxzoom');
+ assert.ok(physicalRequests.some(r=>r.provider==='failed'&&!r.station&&r.status===200&&r.path.startsWith('/standard_railway_text_stations,')&&/\/22\//.test(r.path)),
+  'higher-zoom entrance composites remain independent of the failed z16 station tile');
  assert.ok(requests.some(r=>r.provider==='failed'&&r.layer==='standard_railway_text_stations'),'real station HTTP failures exercised');
  assert.ok(requests.some(r=>r.provider==='healthy'&&r.layer==='standard_railway_text_stations'),'healthy fixture source exercised');
  assert.deepEqual(errors,[]);console.log(`Paris station fallback: ${reports.length} real-renderer cases passed`);
@@ -201,8 +213,8 @@ try{
    stationTiles:manager?.getIds().map(id=>{const tile=manager.getTileByID(id);return {state:tile.state,aborted:Boolean(tile.aborted),wrap:tile.tileID.wrap,...tile.tileID.canonical};}),
    layers:map?.getStyle()?.layers.filter(l=>l.id.includes('fallback')).map(l=>({id:l.id,layout:l.layout})),sources:map?.getStyle()?.sources};
  }):null;}catch{}
- await writeFile('browser-review/paris-station-fallback-failure.json',JSON.stringify({currentCase,error:String(error),diagnostic,errors,requests,reports},null,2));throw error;
+ await writeFile('browser-review/paris-station-fallback-failure.json',JSON.stringify({currentCase,error:String(error),diagnostic,errors,requests,physicalRequests,reports},null,2));throw error;
 }finally{
- await writeFile('browser-review/paris-station-fallback.json',JSON.stringify({reports,errors,requests},null,2));
+ await writeFile('browser-review/paris-station-fallback.json',JSON.stringify({reports,errors,requests,physicalRequests},null,2));
  try{await browser.close();}finally{await server.close();}
 }

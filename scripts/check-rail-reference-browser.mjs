@@ -9,6 +9,8 @@ import {waitUntil} from './wait-until.mjs';
 import {railReferenceSettled} from './rail-reference-settlement.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
 import {MODES} from '../styles/map-model.mjs';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
+import {RAIL_COMPOSITE_PATHS} from '../styles/rail-source-catalog.mjs';
 
 const base='http://127.0.0.1:4173/';
 const center=[121.42631,31.18992];
@@ -61,10 +63,14 @@ try{
  await page.route('https://openrailwaymap.app/**',route=>{
   const m=/^\/([^/]+)\/(\d+)\/(\d+)\/(\d+)$/.exec(new URL(route.request().url()).pathname);
   if(!m)return route.fallback();
-  const [,layer,z,x,y]=m;
-  if(layer==='railway_line_high'&&provider==='error')return route.fulfill({status:403,body:'synthetic access error'});
-  const data=layer==='standard_railway_text_stations'?tile(stations,layer,z,x,y):layer==='railway_line_high'&&provider==='healthy'?tile(areas[area].tracks,layer,z,x,y):Buffer.alloc(0);
-  return route.fulfill({contentType:'application/x-protobuf',body:data});
+  const [,group]=m,layers=group.split(',');
+  for(const layer of ['railway_line_high','standard_railway_text_stations'])if(layers.includes(layer))
+   assert.equal(group,RAIL_COMPOSITE_PATHS[layer],'the fixture must exercise the public composite contract');
+  if(layers.includes('railway_line_high')&&provider==='error')return route.fulfill({status:403,body:'synthetic access error'});
+  return route.fulfill(ormVectorFixture(new URL(route.request().url()).pathname,{
+   standard_railway_text_stations:stations,
+   ...(provider==='healthy'?{railway_line_high:areas[area].tracks}:{}),
+  }));
  });
  const open=async(mode,background='map',zoom=10.9)=>{
   currentCase={area,provider,mode,background,zoom};
