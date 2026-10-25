@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CAP_RADIUS, decodeLine, detailOutlineLines, fromPolar, polarBandFor} from '../styles/polar.mjs';
-import {PolarLayer} from '../styles/polar-layer.mjs';
-import {closedRings, detailQuery, detailTiles, parseOverpass} from '../scripts/polar-features.mjs';
+import {PolarLayer, transportationGroups} from '../styles/polar-layer.mjs';
+import {closedRings, detailQuery, detailTiles, parseOverpass, transportationType} from '../scripts/polar-features.mjs';
 
 test('both drawn backgrounds use fine contours; imagery stays coarse and older snapshots work', () => {
   for (const background of ['satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
@@ -118,4 +118,37 @@ test('switching away from Carto cancels fine requests and discards late replies 
   for (const r of replies) r.resolve(r.name.includes('carto') ? {quantum:0.001} : {lines:[]});
   await Promise.resolve();await Promise.resolve();assert.equal(uploads, 0);
   layer.onRemove();assert.deepEqual(deleted,['detail-buffer','coarse-buffer']);
+});
+
+test('polar detail tiles record each road piece\'s OpenMapTiles transportation class', () => {
+  const way = (id, tags, points) => ({type:'way', id, tags, geometry:geometry(points)});
+  const tiles = detailTiles('south', [
+    way(10, {highway:'service'}, [[10,20],[40,20]]), way(11, {highway:'footway'}, [[10,22],[40,22]]),
+    way(12, {highway:'service'}, [[10,24],[40,24]]), way(13, {highway:'proposed'}, [[10,26],[40,26]]),
+    way(14, {highway:'construction', construction:'residential'}, [[10,28],[40,28]]), way(15, {waterway:'stream'}, [[10,30],[40,30]])]);
+  const tile = tiles.get('2-2');
+  assert.equal(tile.roadTypes.length, tile.roads.length); assert.equal(tile.pathTypes.length, tile.paths.length);
+  const roadClasses = tile.roadTypes.map(i => tile.lineTypes[i]), pathClasses = tile.pathTypes.map(i => tile.lineTypes[i]);
+  assert.deepEqual(roadClasses, [{class:'service',subclass:''}, {class:'service',subclass:''}, {class:'',subclass:''}, {class:'minor_construction',subclass:''}]);
+  assert.deepEqual(pathClasses, [{class:'path',subclass:'footway'}]);
+  assert.equal(new Set(tile.lineTypes.map(t => JSON.stringify(t))).size, tile.lineTypes.length, 'class table has no duplicates');
+  assert.equal(tile.waterways.length, 1);
+  assert.deepEqual(transportationType({highway:'primary_link'}), {class:'primary', subclass:''});
+  assert.deepEqual(transportationType({highway:'unclassified'}), {class:'minor', subclass:''});
+  assert.deepEqual(transportationType({highway:'construction'}), {class:'', subclass:''});
+  assert.deepEqual(transportationType({highway:'service', bridge:'yes'}), {class:'service', subclass:'', brunnel:'bridge'});
+  assert.deepEqual(transportationType({highway:'service', tunnel:'building_passage'}), {class:'service', subclass:'', brunnel:'tunnel'});
+  assert.deepEqual(transportationType({highway:'track', ford:'yes', bridge:'no'}), {class:'track', subclass:'', brunnel:'ford'});
+});
+
+test('viewer groups classified lines and leaves older or misaligned tiles unclassified', () => {
+  const classified = transportationGroups({roads:['a','b','c'], paths:['d'], lineTypes:[{class:'service',subclass:''},{class:'path',subclass:'steps'}], roadTypes:[0,0,0], pathTypes:[1]});
+  assert.deepEqual(classified.map(g => [g.kind, g.class, g.subclass, g.brunnel, g.lines]), [['roads','service','',null,['a','b','c']], ['paths','path','steps',null,['d']]]);
+  const tunnels = transportationGroups({roads:['a','b'], lineTypes:[{class:'service',subclass:''},{class:'service',subclass:'',brunnel:'tunnel'}], roadTypes:[0,1]});
+  assert.deepEqual(tunnels.map(g => [g.brunnel, g.lines]), [[null,['a']], ['tunnel',['b']]]);
+  const old = transportationGroups({roads:['a'], paths:['b']});
+  assert.deepEqual(old.map(g => [g.kind, g.class, g.subclass]), [['roads','',''], ['paths','','']]);
+  const misaligned = transportationGroups({roads:['a','b'], lineTypes:[{class:'service',subclass:''}], roadTypes:[0]});
+  assert.deepEqual(misaligned.map(g => [g.class, g.lines.length]), [['', 2]], 'a type list of the wrong length is ignored, not shifted');
+  assert.deepEqual(transportationGroups({}), []);
 });

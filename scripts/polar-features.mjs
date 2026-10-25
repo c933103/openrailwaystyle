@@ -15,6 +15,23 @@ export function parseOverpass(text) {
   if (data.remark || !Array.isArray(data.elements)) throw new Error(`Incomplete polar OSM response: ${data.remark || 'no elements array'}`);
   return data;
 }
+// OpenMapTiles transportation class/subclass for an OSM highway, as the basemap
+// encodes it. The viewer matches these against the live Atlas road layer
+// filters; an unlisted highway keeps an empty class and matches none.
+const OMT_PATHS = new Set(['pedestrian', 'path', 'footway', 'cycleway', 'steps', 'bridleway', 'corridor', 'platform']);
+const OMT_CLASS = {motorway:'motorway', motorway_link:'motorway', trunk:'trunk', trunk_link:'trunk', primary:'primary', primary_link:'primary',
+  secondary:'secondary', secondary_link:'secondary', tertiary:'tertiary', tertiary_link:'tertiary',
+  unclassified:'minor', residential:'minor', living_street:'minor', road:'minor', service:'service', track:'track',
+  busway:'busway', bus_guideway:'bus_guideway', raceway:'raceway'};
+const yes = value => value !== undefined && value !== 'no';
+export function transportationType(tags) {
+  const highway = tags.highway;
+  const brunnel = yes(tags.bridge) ? 'bridge' : yes(tags.tunnel) ? 'tunnel' : tags.ford === 'yes' ? 'ford' : '';
+  const type = OMT_PATHS.has(highway) ? {class: 'path', subclass: highway}
+    : highway === 'construction' ? {class: OMT_CLASS[tags.construction] ? `${OMT_CLASS[tags.construction]}_construction` : '', subclass: ''}
+    : {class: OMT_CLASS[highway] || '', subclass: ''};
+  return brunnel ? {...type, brunnel} : type;
+}
 const same = (a, b) => a[0] === b[0] && a[1] === b[1];
 const disc = [[Array.from({length: 721}, (_, k) => [CAP_RADIUS * Math.cos(k / 720 * 2 * Math.PI), CAP_RADIUS * Math.sin(k / 720 * 2 * Math.PI)])]];
 export function closedRings(members) {
@@ -45,7 +62,10 @@ export function detailTiles(cap, elements) {
   const tiles = new Map(), size = 2 * CAP_RADIUS / DETAIL_SIDE;
   const tile = (tx, ty) => {
     const key = `${tx}-${ty}`;
-    if (!tiles.has(key)) tiles.set(key, {quantum: DETAIL_QUANTUM, buildings: [], aprons: [], roads: [], paths: [], waterways: [], taxiways: [], places: []});
+    if (!tiles.has(key)) tiles.set(key, {quantum: DETAIL_QUANTUM, buildings: [], aprons: [], roads: [], paths: [], waterways: [], taxiways: [], places: [],
+      // lineTypes[roadTypes[i]] is the transportation class of roads[i] (and
+      // likewise for paths); older tiles without them stay valid.
+      lineTypes: [], roadTypes: [], pathTypes: []});
     return tiles.get(key);
   };
   // Nodes/ways/relations may occur in neighbouring longitude queries.
@@ -68,7 +88,15 @@ export function detailTiles(cap, elements) {
       for (let ty = 0; ty < DETAIL_SIDE; ty++) for (let tx = 0; tx < DETAIL_SIDE; tx++) {
         const x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
         const pieces = clipToRect(lines, [x, y, x + size, y + size]);
-        if (pieces.length) tile(tx, ty)[lineKind].push(...pieces.map(l => encodeLine(l, DETAIL_QUANTUM)));
+        if (!pieces.length) continue;
+        const target = tile(tx, ty);
+        target[lineKind].push(...pieces.map(l => encodeLine(l, DETAIL_QUANTUM)));
+        if (t.highway) {
+          const type = transportationType(t), id = other => JSON.stringify([other.class, other.subclass, other.brunnel || '']);
+          let index = target.lineTypes.findIndex(other => id(other) === id(type));
+          if (index < 0) index = target.lineTypes.push(type) - 1;
+          target[lineKind === 'roads' ? 'roadTypes' : 'pathTypes'].push(...pieces.map(() => index));
+        }
       }
     }
     if (t.name && (t.amenity || t.man_made === 'research_station' || t.natural === 'peak')) {
