@@ -11,7 +11,11 @@ import {mainlineRegion,mainlineTiles} from './mainline-overview.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
-const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,3);
+// One neutral and one Infrastructure layer per mapped classification; the
+// compiled style starts with only the neutral strokes visible.
+const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,6);
+assert.deepEqual(layers.filter(l=>l.layout?.visibility!=='none').map(l=>l.id).sort(),
+ ['rail-reference-branch','rail-reference-main','rail-reference-unknown']);
 const readerModule=new URL('mainline-reference.mjs',base).href;
 const renderer=published?new Map():await rendererFixture(base);
 const librarySpec=BROWSER_LIBRARIES.find(l=>l.package==='maplibre-gl'&&l.target.endsWith('.js'));
