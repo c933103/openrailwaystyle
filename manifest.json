@@ -1,8 +1,8 @@
 {
-  "generated": "2026-10-18T08:16:28.713Z",
-  "osmBase": "2026-10-18T08:14:48Z",
-  "features": 15968,
-  "tiles": 549,
+  "generated": "2026-10-25T08:38:41.261Z",
+  "osmBase": "2026-10-25T08:37:06Z",
+  "features": 16010,
+  "tiles": 551,
   "source": "https://overpass-api.de/api/interpreter",
   "query": "[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;",
   "license": "ODbL-1.0",
