@@ -91,3 +91,19 @@ test('a cancelled tile is not silently replaced and storage failures keep the se
   assert.equal(b.protocol.esriActive(), false);
   await assert.rejects(get(b.protocol, 10, 1, 1).then(() => b.protocol.tile({url: 'atlasimagery://bad'}, {})), /Invalid imagery tile/);
 });
+
+test('denied storage access and a failed Esri body download still yield EOX imagery', async () => {
+  const realm = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {configurable: true, get() { throw new DOMException('denied', 'SecurityError'); }});
+  try {
+    const protocol = createImageryProtocol({esriKey: KEY, fetcher: async url => url.includes('arcgis') ? reply(403) : image('eox'), resample: async () => bytes('x')});
+    assert.equal(await get(protocol, 10, 1, 1), 'eox');
+    assert.equal(protocol.esriActive(), false, 'the refusal is kept for this session');
+  } finally {
+    if (realm) Object.defineProperty(globalThis, 'localStorage', realm); else delete globalThis.localStorage;
+  }
+  const truncated = {ok: true, status: 200, headers: new Headers({'content-type': 'image/jpeg'}), arrayBuffer: async () => { throw new TypeError('network error'); }};
+  const h = harness(() => truncated);
+  assert.equal(await get(h.protocol, 10, 7, 8), 'eox 10/8/7');
+  assert.equal(h.protocol.esriActive(), true, 'a transport failure is not a refusal');
+});

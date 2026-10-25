@@ -35,7 +35,9 @@ export function applyImageryConfig(source, {esriKey} = {}) {
   return source;
 }
 
-export function createImageryProtocol({esriKey = '', fetcher = fetch, storage = globalThis.localStorage, now = Date.now, resample = resampleTile} = {}) {
+export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, now = Date.now, resample = resampleTile} = {}) {
+  // Reading localStorage itself throws when the browser denies storage.
+  if (storage === undefined) { try { storage = globalThis.localStorage; } catch { storage = null; } }
   const read = () => { try { return Number(storage?.getItem(ESRI_OFF_KEY)) || 0; } catch { return 0; } };
   let offUntil = read();
   const esriActive = () => Boolean(esriKey) && now() >= Math.max(offUntil, read());
@@ -68,14 +70,12 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage = 
     if (!match) throw new Error('Invalid imagery tile');
     const [z, x, y] = match.slice(1).map(Number), signal = controller?.signal;
     if (esriActive() && z <= ESRI_MAX_ZOOM) {
-      let response;
-      try { response = await fetcher(`${fill(ESRI_TILES, z, x, y)}?token=${encodeURIComponent(esriKey)}`, {signal}); }
-      catch (error) { if (signal?.aborted) throw error; }
-      if (response) {
+      try {
+        const response = await fetcher(`${fill(ESRI_TILES, z, x, y)}?token=${encodeURIComponent(esriKey)}`, {signal});
         if (response.ok && imageType(response)) return {data: await response.arrayBuffer()};
         // ArcGIS may report token/quota errors as JSON with HTTP 200.
         if (AUTH_STATUS.has(response.status) || (response.ok && !imageType(response))) disableEsri();
-      }
+      } catch (error) { if (signal?.aborted) throw error; } // Network or body failure: this tile uses EOX.
     }
     return {data: await eox(z, x, y, signal)};
   };
