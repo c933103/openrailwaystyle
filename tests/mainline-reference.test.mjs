@@ -12,6 +12,7 @@ import {mainlineRegion,mainlineTiles,MAINLINE_LAYER} from '../scripts/mainline-o
 import {sha256,MAINLINE_REGIONS,MAINLINE_CONTROLS,validateMainlineSources,segmentInBox,auditMainlineCoverage} from '../scripts/mainline-coverage.mjs';
 import {referenceTileKey,createReferenceReader,decompressReference} from '../styles/mainline-reference.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
+import {INFRASTRUCTURE} from '../styles/map-model.mjs';
 import {REFERENCE_INPUTS,referenceInputDigest,matchingReferenceInputs} from '../scripts/mainline-provenance.mjs';
 import {emptyReferenceFixture} from '../scripts/browser-renderer-fixture.mjs';
 import {retainMainlineGeneration} from '../scripts/retain-mainline-generation.mjs';
@@ -180,14 +181,26 @@ test('complete-index empty tiles differ from upstream failures and corrupt paylo
 });
 test('reference layers stay beneath each theme and through z6–7 without borrowing thematic fields',async()=>{
  const style=JSON.parse(await readFile('styles/world.style.json'));
- const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,3);
+ const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,6);
  assert.equal(style.sources.railReference.maxzoom,6);
+ const fields=paint=>JSON.stringify(paint).match(/\["get","([^"]+)"\]/g)?.map(m=>m.slice(8,-2))||[];
  for(const layer of layers){
   assert.equal(layer.maxzoom,8);assert.ok(!layer.paint['line-color'].includes('maxspeed'));
-  for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service']){
-   assert.equal(layerVisibility(layer,{mode,background:'flat'}),true);
+  for(const field of fields(layer.paint))assert.ok(['highspeed_tag','classification'].includes(field),`${layer.id} reads ${field}`);
+ }
+ for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service']){
+  const shown=layers.filter(layer=>layerVisibility(layer,{mode,background:'flat'}));
+  // One stroke per mapped classification in every view: the Infrastructure
+  // view colours them from mapped tags, other views keep neutral strokes.
+  assert.deepEqual(shown.map(l=>l.filter[2]).sort(),['branch','main','unknown'],mode);
+  for(const layer of shown){
+   assert.equal(layer.id.startsWith('infrastructure-reference-'),mode==='infrastructure',`${mode}: ${layer.id}`);
    assert.ok(style.layers.indexOf(layer)<style.layers.findIndex(l=>l.id===`${mode}-overview`));
   }
  }
- assert.equal(layers.find(l=>l.id==='rail-reference-main').minzoom,undefined,'negative zoom must not gate major corridors');
+ const colour=layers.find(l=>l.id==='infrastructure-reference-main').paint['line-color'];
+ assert.deepEqual(colour,['case',['==',['get','highspeed_tag'],'yes'],INFRASTRUCTURE[0][0],
+  ['==',['get','classification'],'branch'],INFRASTRUCTURE[2][0],INFRASTRUCTURE[1][0]]);
+ for(const kind of ['main','unknown'])for(const id of [`rail-reference-${kind}`,`infrastructure-reference-${kind}`])
+  assert.equal(layers.find(l=>l.id===id).minzoom,undefined,'negative zoom must not gate major corridors');
 });

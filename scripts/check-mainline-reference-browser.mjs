@@ -11,7 +11,11 @@ import {mainlineRegion,mainlineTiles} from './mainline-overview.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
-const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,3);
+// One neutral and one Infrastructure layer per mapped classification; the
+// compiled style starts with only the neutral strokes visible.
+const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,6);
+assert.deepEqual(layers.filter(l=>l.layout?.visibility!=='none').map(l=>l.id).sort(),
+ ['rail-reference-branch','rail-reference-main','rail-reference-unknown']);
 const readerModule=new URL('mainline-reference.mjs',base).href;
 const renderer=published?new Map():await rendererFixture(base);
 const librarySpec=BROWSER_LIBRARIES.find(l=>l.package==='maplibre-gl'&&l.target.endsWith('.js'));
@@ -158,11 +162,20 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
   for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service'])for(const zoom of [6,7]){
    await page.locator(`[data-mode="${mode}"]`).click();
    await page.evaluate(({center,zoom})=>{atlasMap.setProjection({type:'mercator'});atlasMap.jumpTo({center,zoom});},{center:c.center,zoom});
-   await page.waitForFunction(ids=>atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-    .some(f=>ids.includes(f.properties.id)),c.chainIdsByZoom[6],{timeout:30000});
-   appSamples.push({mode,zoom,...await page.evaluate(ids=>({cameraZoom:atlasMap.getZoom(),
-    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))]}),c.chainIdsByZoom[6])});
+   // The Infrastructure view draws the reference in its own mapped-tag
+   // colours; every other view draws the neutral strokes. Never both.
+   const prefix=mode==='infrastructure'?'infrastructure-reference-':'rail-reference-';
+   const shown=[`${prefix}main`,`${prefix}unknown`],hidden=[prefix==='rail-reference-'?'infrastructure-reference-main':'rail-reference-main'];
+   await page.waitForFunction(({ids,shown})=>atlasMap.queryRenderedFeatures({layers:shown})
+    .some(f=>ids.includes(f.properties.id)),{ids:c.chainIdsByZoom[6],shown},{timeout:30000});
+   const sample=await page.evaluate(({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
+    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
+     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
+    // queryRenderedFeatures ignores visibility, and layers that differ only in
+    // paint share one bucket, so read the other style's visibility directly.
+    hidden:hidden.map(id=>atlasMap.getLayoutProperty(id,'visibility'))}),{ids:c.chainIdsByZoom[6],shown,hidden});
+   assert.deepEqual(sample.hidden,['none'],`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
+   appSamples.push({mode,zoom,...sample});
   }
   await page.waitForFunction(mainlineOutageVisible,null,{timeout:30000});
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});

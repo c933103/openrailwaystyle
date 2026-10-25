@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261025-empty-mvt-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261025-reference-colours-3';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

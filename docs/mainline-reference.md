@@ -1,8 +1,12 @@
 # Independent worldwide OSM railway reference (#181)
 
 This reference prevents a failed live overview provider from removing mapped
-major corridors at zoom 0–6, including a negative camera zoom. It is neutral
-geometry beneath every thematic railway layer. Its native z6 tiles remain
+major corridors at zoom 0–6, including a negative camera zoom. It is drawn
+beneath every thematic railway layer: neutral grey in every view except
+Infrastructure, which colours it from the reference's own mapped tags
+(`highspeed=yes` high-speed, `usage=branch` branch line, otherwise Railway),
+the same rules the live Infrastructure layer applies. No view derives speed,
+power, control, gauge, loading, axle or owner values from it. Its native z6 tiles remain
 visible through z7; existing z7+ detailed tracks draw above them. The reference
 ends at z8 and does not replace close-zoom infrastructure or branch overlays.
 

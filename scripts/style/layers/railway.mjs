@@ -1,4 +1,4 @@
-import { INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
+import { MODES, INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
 import {present, notFerry, hasService, byKindZoom} from './railway-expressions.mjs';
 import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 
@@ -64,15 +64,27 @@ export function createRailwayLayers() {
   // Atlas OSM geometry is independent of every live thematic provider.
   // Hold its z6 tiles through the z7 detail handoff; detail paints above it.
   // Neutral styles encode only directly mapped usage, never speed/power/etc.
+  // Infrastructure colours come from those same mapped tags (highspeed=yes,
+  // usage=branch), so that view uses the live layer's colours from the first
+  // frame instead of grey; every other view keeps the neutral strokes.
+  const referenceInfrastructure = ['case',
+    ['==', ['get', 'highspeed_tag'], 'yes'], INFRASTRUCTURE[0][0],
+    ['==', ['get', 'classification'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
+  const neutralViews = MODES.filter(mode => mode !== 'infrastructure');
   for(const [kind,color,dash,minzoom] of [['branch','#93999c',null,3],
-    ['unknown','#93999c',[2,1],undefined],['main','#70777b',null,undefined]]) groups.backbone.push({
-    id:`rail-reference-${kind}`,type:'line',source:'railReference',
-    'source-layer':'atlas_mainline_overview',...(minzoom===undefined?{}:{minzoom}),maxzoom:8,
-    filter:['==',['get','classification'],kind],
-    layout:{'line-cap':'round','line-join':'round','line-sort-key':['-',3,['get','rank']]},
-    paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],0,1,6,1.3,8,1.7],
-      ...(dash?{'line-dasharray':dash}:{})},
-  });
+    ['unknown','#93999c',[2,1],undefined],['main','#70777b',null,undefined]]) {
+    const reference = (id, paint, views) => ({
+      id,type:'line',source:'railReference',
+      'source-layer':'atlas_mainline_overview',...(minzoom===undefined?{}:{minzoom}),maxzoom:8,
+      filter:['==',['get','classification'],kind],
+      layout:{'line-cap':'round','line-join':'round','line-sort-key':['-',3,['get','rank']]},
+      paint:{'line-width':['interpolate',['linear'],['zoom'],0,1,6,1.3,8,1.7],...paint},
+      metadata:{'atlas:views':views},
+    });
+    groups.backbone.push(
+      reference(`rail-reference-${kind}`,{'line-color':color,...(dash?{'line-dasharray':dash}:{})},neutralViews),
+      reference(`infrastructure-reference-${kind}`,{'line-color':referenceInfrastructure},['infrastructure']));
+  }
   // Branch lines at zooms 4–7 are split the same way (the overview width).
   const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
   const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
