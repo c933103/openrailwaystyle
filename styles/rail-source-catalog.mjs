@@ -1,3 +1,39 @@
+// The public ORM proxy serves several Martin function layers through one
+// comma-separated endpoint. Logical source IDs and MVT source-layer names stay
+// separate: changing the style to a composite name would break its filters.
+// Contract: hiddewie/OpenRailwayMap-vector/proxy/proxy.conf.template.
+// Rewrite only exact public ORM tile URLs; never rewrite metadata, API calls,
+// other hosts or a user's selected/local provider.
+const COMPOSITE_TILE_DATASETS = Object.freeze([
+  'signals_railway_line_low,signals_railway_line_low_construction',
+  'railway_line_high,railway_text_km',
+  'standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,standard_station_entrances,standard_railway_stop_positions,standard_interlocking,standard_interlocking_text',
+  'standard_railway_platforms,standard_railway_platform_edges',
+  'points_of_interest,points_of_interest_areas,level_crossings_grouped,level_crossings_grouped_buffered',
+]);
+export const RAIL_COMPOSITE_PATHS = Object.freeze(Object.fromEntries(
+  COMPOSITE_TILE_DATASETS.flatMap(path => path.split(',').map(layer => [layer, path]))
+));
+
+export function railProviderTileURL(address, provider = 'https://openrailwaymap.app') {
+  try {
+    const url = new URL(address), root = new URL(provider);
+    if (root.origin !== 'https://openrailwaymap.app' || root.pathname !== '/' || root.search || root.hash ||
+        root.username || root.password || url.origin !== root.origin || url.username || url.password || url.hash) return address;
+    const match = /^\/([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(url.pathname);
+    if (!match) return address;
+    const [, layer, z, x, y] = match;
+    if (!Object.hasOwn(RAIL_COMPOSITE_PATHS, layer)) return address;
+    const physical = RAIL_COMPOSITE_PATHS[layer];
+    const zoom = Number(z), column = Number(x), row = Number(y);
+    if (!Number.isInteger(zoom) || zoom > 22 || column >= 2 ** zoom || row >= 2 ** zoom) return address;
+    url.pathname = `/${physical}/${z}/${x}/${y}`;
+    return url.href;
+  } catch {
+    return address;
+  }
+}
+
 // Atlas's verified provider contract. These are the zoom ranges consumed by
 // scripts/style/sources/railway.mjs, not a promise of provider availability.
 // The provider's documented XYZ endpoint convention needs no network TileJSON

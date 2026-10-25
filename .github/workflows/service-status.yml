@@ -29,7 +29,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.4'
+      - name: Verify patched Node.js runtime
+        run: test "$(node --version)" = "v22.23.4"
       - name: Verify offline metadata and trust fixtures
         run: node --test tests/service-status-delivery.test.mjs
       - name: Deliver changed zero-box acquisition status

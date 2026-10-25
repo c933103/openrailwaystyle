@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261023-polar-paint-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261025-polar-paint-3';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

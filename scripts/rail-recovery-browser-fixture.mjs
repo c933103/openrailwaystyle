@@ -1,6 +1,7 @@
 import {writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {RAIL_OUTAGE_STATUS,railOutageReady} from './rail-fixture-readiness.mjs';
+import {RAIL_COMPOSITE_PATHS} from '../styles/rail-source-catalog.mjs';
 
 // A real MapLibre source remains pending while rail recovery completes. This
 // rules out idle as the cause of the visible status update. All data is local.
@@ -15,7 +16,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage,setupDelay=
   let arm, recoverFirst, recoverAll;
   const armed=new Promise(resolve=>{arm=resolve;}), first=new Promise(resolve=>{recoverFirst=resolve;}), all=new Promise(resolve=>{recoverAll=resolve;});
   const initialGate=async route=>{await armed;await route.fallback();};
-  const pattern='https://openrailwaymap.app/railway_line_high/7/**';
+  const pattern=`https://openrailwaymap.app/${RAIL_COMPOSITE_PATHS.railway_line_high}/7/**`;
   await page.route(pattern,initialGate);
   const attempts=new Map();
   // The request pool makes one internal retry. Let both initial failures

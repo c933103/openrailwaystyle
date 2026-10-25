@@ -34,9 +34,9 @@ separate terms for that host have **not been verified**.
 
 | Atlas request path | Endpoint / transport | Automation risk and disposition |
 | --- | --- | --- |
-| MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | `https://openrailwaymap.app/<dataset>` TileJSON and tile URLs; see `scripts/style/sources/railway.mjs` | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
+| MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | Logical `https://openrailwaymap.app/<dataset>` metadata in `rail-source-catalog.mjs`; recognized XYZ tile requests use the upstream **comma-separated composite** endpoints via `railProviderTileURL`. The actual outgoing URL may differ from the logical style URL. | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
 | Language-dependent station tiles and label adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs`, `styles/tile-labels.mjs` and generated browser bundle) | A custom URL scheme does not change the classification of its underlying HTTP requests. Browser CI blocks requests to the public hostname at the network boundary. |
-| Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; exact URLs share in-flight/cache entries. | **Measured with local fixtures only:** one cold rail-bearing tile = 27 distinct requests; cold 2x2 viewport = 48 instead of 108 logical candidates; one-tile east pan adds 12. Track geometry is now fetched first; station areas and points then load in parallel only when needed. A railway halo whose returned track bodies are all zero-length skips both station datasets (cold zero-length 2x2 fixture = 16). No numerical operator threshold is published, so this is a volume measurement, not a compliance verdict. |
+| Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; logical requests share the *physical composite endpoint URL* in the bounded pool. | The numbers in the historical measurement below predate composite-endpoint routing. In the current model, station areas and station points can share one composite tile fetch instead of two. A no-track halo still skips station dependencies. No numerical operator threshold is published, so fixture measurements are not a compliance verdict. |
 | Major-stations placement/baseline audit | `scripts/check-major-stations-browser.mjs` used Playwright `route.fetch()` to fetch live `standard_railway_text_stations_low/med` responses for baseline comparison | **Confirmed risk**: direct automated tile downloads, even if deduplicated for comparison. Now explicitly requires `ATLAS_TEST_ORM_URL`; its `route.fetch` points to loopback data only. |
 | Legacy browser response cache | `cacheOtherOrigins` in `scripts/browser.mjs` is retained for cache-format regression tests, but the harness and CI no longer install it | Historical caching did not authorize initial automated retrieval. The current guard blocks every unmocked third-party request, including a legacy cache miss through `route.continue()`; this is not an ORM-only exclusion. |
 | Browser smoke and geographic tests | `check-map-browser.mjs`, `check-context-browser.mjs`, `check-planning-browser.mjs` requested many global regions; deployment also ran these after publishing | **Confirmed risk**: automated map-tile requests. Not part of public CI or post-deploy steps anymore. Early guard requires local provider if manually invoked. |
@@ -49,11 +49,38 @@ The service operator policy does not enumerate a quantitative API rate limit.
 No particular number of calls, retry cadence or TileJSON polling allowance
 has therefore been certified as compliant.
 
-### Track-count request amplification measurement
+### Composite track-count request bounds
+
+The composite-routing regression uses in-process MVT fixtures, with no public
+provider traffic. A rail-bearing count tile retains all **27 logical inputs**:
+nine railway, nine station-area and nine station-point tiles. Those inputs now
+share **18 physical downloads** because both station datasets use the same
+composite endpoint. A cold 2x2 viewport uses **32** physical downloads; an east
+pan adds **8**. A definitely empty track halo still skips station inputs
+(**16** cold and **4** additional). Per-origin transport concurrency stays at **4**.
+Worker transfer ownership remains separate: all 27 inputs receive distinct
+private buffers, while the cache retains the 18 physical originals. Each worker
+input reads only its named MVT layer, including when other layers have colliding
+feature IDs or plausible station geometry.
+
+The real-MapLibre 1280x800 Infrastructure fixture enforces **45** cold requests
+and **9** additional east-pan requests as ceilings, derived by collapsing the
+historical station-area/station-point pairs below. It requires both railway and
+station physical endpoints, composite routing and exact-URL deduplication.
+This run observed **43** cold requests and **8** additional requests. Geometry
+filtering, partial-outage recovery and genuine browser request headers remain
+required. These synthetic measurements do not establish live availability or
+operator-approved traffic limits.
+
+### Historical track-count request amplification (before composite routing)
 
 Measured on 2026-10-07 with deterministic in-process vector-tile fixtures; **no
-public OpenRailwayMap tile traffic was sent**. Atlas computes at z14 and
-overzooms those count tiles above z14, so this covers z14+ interaction.
+public OpenRailwayMap tile traffic was sent**. These are historical physical
+request counts **before** the 2026-10-23 adaptation to combined Martin endpoints,
+not a forecast of present-day public traffic. The updated client deduplicates
+station-areas and station-points dependencies against one composite URL; the
+real-MapLibre synthetic fixture now asserts the composite limits above. Atlas computes
+at z14 and overzooms those count tiles above z14.
 
 - Cold rail-bearing single count tile: **27 distinct requests** (three 3x3
   dataset halos). Track geometry is fetched first; the two station datasets
@@ -70,15 +97,14 @@ overzooms those count tiles above z14, so this covers z14+ interaction.
   distinct track-count dependencies** after in-flight/cache sharing: 25 track
   geometry, 20 station-area and 20 station-point tiles. Panning east by 512 px
   added **13** requests (5 + 4 + 4), for 78 total. The browser fixture verifies
-  that the interaction actually issues track-count dependencies and enforces
-  65/13 as regression ceilings, so a future reduction is allowed but an
+  that the interaction actually issues track-count dependencies and at that time
+  enforced 65/13 as regression ceilings, so a future reduction was allowed but an
   unnoticed increase is not. Symbol placement is deliberately not used as the
   completion gate because collision handling may legitimately hide every badge.
 
-The remaining 27-request rail-bearing single-tile cost is retained because the
-current counter uses all three neighbour halos for cross-tile line joining and
-station-boundary behavior. Reducing those inputs further without a replacement
-data model would change established counts. A larger reduction should use
+The three halo datasets and their geometries remain necessary for cross-tile
+joining and station-boundary behavior, but **27 no longer means 27 HTTP
+requests** after composite routing. Further reduction of geometry work requires
 precomputed/self-hosted count data rather than silently truncating neighbours.
 
 ## Non-rail map providers and first-party assets
