@@ -3042,19 +3042,19 @@
     }
   },
   "dataInputSha256": "f4233933e79b6cbb99308fb7976e6c800034cf8f6b03f8d5aff6d57b3e926a19",
-  "inputSha256": "cdf8d298e00ca0a3103d54e5ebcb56257e70cb8f9158f90ed28846011c2881bc",
+  "inputSha256": "7e8489718af65801609d4977dabd47c1bb78fec0d78f2910181342759a335276",
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/1eb3e73fa6b16e4e6349f0e4/renderer-acceptance-2e3ba217f28ad13633145603ed5f959b90a6c61bfdeb81032a2f4788007a6e77.json",
-    "sha256": "2e3ba217f28ad13633145603ed5f959b90a6c61bfdeb81032a2f4788007a6e77",
-    "inputSha256": "cdf8d298e00ca0a3103d54e5ebcb56257e70cb8f9158f90ed28846011c2881bc",
+    "path": "generations/1eb3e73fa6b16e4e6349f0e4/renderer-acceptance-df23bd33f96e811553733ba23d943151e72fbeb99957b09efd457d61e4a18ddf.json",
+    "sha256": "df23bd33f96e811553733ba23d943151e72fbeb99957b09efd457d61e4a18ddf",
+    "inputSha256": "7e8489718af65801609d4977dabd47c1bb78fec0d78f2910181342759a335276",
     "samples": 840,
     "appSamples": 18,
     "assetRequests": 1077,
     "assetBytes": 62187462,
     "timing": {
-      "medianMs": 342,
-      "p95Ms": 1334
+      "medianMs": 339,
+      "p95Ms": 894
     }
   }
 }
