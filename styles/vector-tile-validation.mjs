@@ -14,9 +14,21 @@ export function providerVectorTileEndpoint(address, provider = RAIL_PROVIDER) {
   }
 }
 
+// @mapbox/vector-tile omits layers that have no features, but a named empty
+// layer is how Martin encodes an empty tile. Read the raw layer names (tile
+// field 3, layer field 1) so such tiles are not mistaken for provider errors.
+function encodedLayerNames(bytes) {
+  return new Pbf(bytes).readFields((tag, names, pbf) => {
+    if (tag === 3) names.push(pbf.readMessage((field, layer, message) => {
+      if (field === 1) layer.name = message.readString();
+    }, {name: ''}).name);
+  }, []);
+}
+
 // HTTP success is not sufficient evidence that a provider tile is usable.
 // A non-empty MVT must parse and contain the source layer advertised by the
-// provider endpoint. Empty successful bodies remain valid empty tiles.
+// provider endpoint, with or without features. Empty successful bodies
+// remain valid empty tiles.
 export function validProviderVectorTile(address, status, data, provider = RAIL_PROVIDER) {
   const endpoint = providerVectorTileEndpoint(address, provider);
   if (status !== 200 || !endpoint || !data?.byteLength) return true;
@@ -27,8 +39,10 @@ export function validProviderVectorTile(address, status, data, provider = RAIL_P
     // entrance) is valid even when the requested logical layer has no features.
     // Reject malformed tiles and nonempty responses lacking *all* advertised
     // layers; an HTTP 200 HTML error page must never enter the byte cache.
-    const layers = new VectorTile(new Pbf(bytes)).layers;
-    return endpoint.split(',').some(layer => Object.hasOwn(layers, layer));
+    // Parsing every layer also rejects malformed keys, values and headers.
+    new VectorTile(new Pbf(bytes));
+    const names = new Set(encodedLayerNames(bytes));
+    return endpoint.split(',').some(layer => names.has(layer));
   } catch {
     return false;
   }
