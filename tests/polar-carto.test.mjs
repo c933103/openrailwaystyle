@@ -1,17 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAP_RADIUS, decodeLine, fromPolar, polarBandFor} from '../styles/polar.mjs';
+import {CAP_RADIUS, decodeLine, detailOutlineLines, fromPolar, polarBandFor} from '../styles/polar.mjs';
 import {PolarLayer} from '../styles/polar-layer.mjs';
 import {closedRings, detailQuery, detailTiles, parseOverpass} from '../scripts/polar-features.mjs';
 
-test('finer contour bands belong exclusively to Carto, with old-snapshot fallback', () => {
-  for (const background of ['map', 'satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
+test('both drawn backgrounds use fine contours; imagery stays coarse and older snapshots work', () => {
+  for (const background of ['satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
     assert.equal(polarBandFor(zoom, background, 3), 0);
-  assert.equal(polarBandFor(8.99, 'carto', 3), 0);
-  assert.equal(polarBandFor(9, 'carto', 3), 1);
-  assert.equal(polarBandFor(11, 'carto', 3), 2);
-  assert.equal(polarBandFor(18, 'carto', 1), 0);
-  assert.equal(polarBandFor(18, 'carto', 0), -1);
+  for (const background of ['map', 'carto']) {
+    assert.equal(polarBandFor(8.99, background, 3), 0);
+    assert.equal(polarBandFor(9, background, 3), 1);
+    assert.equal(polarBandFor(11, background, 3), 2);
+    assert.equal(polarBandFor(18, background, 1), 0);
+    assert.equal(polarBandFor(18, background, 0), -1);
+  }
 });
 
 test('detail extraction covers both full caps; incomplete Overpass responses are rejected', () => {
@@ -50,6 +52,27 @@ test('unclosed area members are not invented into polygons; lines outside the ca
   assert.equal(tiles.size, 0);
 });
 
+test('building outlines discard synthetic tile and cap cuts while preserving real edges and holes', () => {
+  for (const y of [100,CAP_RADIUS-1]) {
+    const left=y===100?-1:1,right=y===100?1:3;
+    const shape=geometry([[left,y],[right,y],[right,y+2],[left,y+2],[left,y]]);
+    const tiles=detailTiles('south',[{type:'way',id:90,tags:{building:'yes'},geometry:shape}]);
+    let segments=0;
+    for(const [key,tile] of tiles){
+      const [tx,ty]=key.split('-').map(Number),size=2*CAP_RADIUS/4,x=-CAP_RADIUS+tx*size,by=-CAP_RADIUS+ty*size;
+      const polygons=tile.buildings.map(rings=>rings.map(line=>decodeLine(line,0,line.length,tile.quantum)));
+      const lines=detailOutlineLines(polygons,[x,by,x+size,by+size],tile.quantum);
+      for(const line of lines)for(let i=1;i<line.length;i++){
+        assert.ok(!(Math.abs(line[i-1][0])<1e-9&&Math.abs(line[i][0])<1e-9),'the shared x=0 tile cut is not a building edge');
+        segments++;
+      }
+    }
+    assert.equal(segments,y===100?6:3,'retain original edges, remove only clipping cuts');
+  }
+  const outer=[[10,10],[14,10],[14,14],[10,14],[10,10]],hole=[[11,11],[12,11],[12,12],[11,12],[11,11]];
+  assert.deepEqual(detailOutlineLines([[outer,hole]],[-100,-100,100,100]),[outer,hole],'genuine closed rings and holes remain intact');
+});
+
 function renderingLayer() {
   let background = 'map', zoom = 13, terrain = true, view = {south: [-20,-20,20,20]};
   const calls = [], labels = [];
@@ -64,17 +87,19 @@ function renderingLayer() {
   const render=()=>layer.renderCaps(gl,{defaultProjectionData:{projectionTransition:1},shaderData:{}});
   return {layer, calls, labels, render, background:b=>background=b, zoom:z=>zoom=z, terrain:t=>terrain=t, view:v=>view=v};
 }
-test('real rendering decisions request only visible Carto detail; other views stay coarse', () => {
+test('Map and Carto use visible fine assets; imagery cancels them', () => {
   const r = renderingLayer();
-  r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-0-0-0']);
+  r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-2-1-1','south-carto-1-1']);
   r.background('carto');r.zoom(9);r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-1-0-0']);
   r.zoom(13);r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-2-1-1','south-carto-1-1']);
-  r.terrain(false);r.render(); assert.deepEqual(r.calls.splice(0), ['south-carto-1-1'], 'Carto OSM detail is independent of relief');
-  for (const background of ['map','satellite','hybrid']) {
+  r.terrain(false);r.render(); assert.deepEqual(r.calls.splice(0), ['south-carto-1-1'], 'OSM detail is independent of relief');
+  r.background('map');r.render();assert.deepEqual(r.calls.splice(0), ['south-carto-1-1']);
+  assert.ok(r.layer.detailPending, 'Map keeps its visible detail budget');
+  for (const background of ['satellite','hybrid']) {
     r.background(background);r.render();assert.deepEqual(r.calls.splice(0), []);
     assert.equal(r.layer.detailPending, null);
   }
-  r.background('carto');r.view({});r.render();assert.deepEqual(r.calls.splice(0), []);assert.equal(r.layer.detailPending,null);
+  r.background('map');r.view({});r.render();assert.deepEqual(r.calls.splice(0), []);assert.equal(r.layer.detailPending,null);
 });
 
 test('switching away from Carto cancels fine requests and discards late replies and GPU meshes', async () => {
