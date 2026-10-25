@@ -171,8 +171,10 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
    const sample=await page.evaluate(({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
     ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
      .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
-    hidden:atlasMap.queryRenderedFeatures({layers:hidden}).length}),{ids:c.chainIdsByZoom[6],shown,hidden});
-   assert.equal(sample.hidden,0,`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
+    // queryRenderedFeatures ignores visibility, and layers that differ only in
+    // paint share one bucket, so read the other style's visibility directly.
+    hidden:hidden.map(id=>atlasMap.getLayoutProperty(id,'visibility'))}),{ids:c.chainIdsByZoom[6],shown,hidden});
+   assert.deepEqual(sample.hidden,['none'],`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
    appSamples.push({mode,zoom,...sample});
   }
   await page.waitForFunction(mainlineOutageVisible,null,{timeout:30000});
