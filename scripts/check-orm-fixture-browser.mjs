@@ -21,6 +21,37 @@ const context=await browser.newContext({viewport:{width:1280,height:800},service
 const outage={enabled:false,allowSuccess:false,path:null,otherPath:null,recoveredPaths:new Set()},ledger=[];
 const errors=[],requests={metadata:0,tiles:0,trackDependencies:[],localizedStationTiles:[],missingReferer:[],missingUserAgent:[]};
 await mkdir('browser-review',{recursive:true});
+// #254: a provider tile whose requested layer is present but has no features is
+// a valid empty tile. Serve every empty layer that way on a fresh page and
+// require no repeated tile request, no outage status and no page error.
+async function checkNamedEmptyTiles(){
+  const page=await context.newPage(),counts=new Map(),emptyPaths=new Set(),pageErrors=[];
+  page.on('pageerror',error=>pageErrors.push(error.message));
+  try{
+    await page.route('https://openrailwaymap.app/**',route=>{
+      const path=new URL(route.request().url()).pathname;
+      const tile=/^\/([a-z_,]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
+      if(!tile)return route.fulfill({status:404,body:''});
+      counts.set(path,(counts.get(path)||0)+1);
+      const [,group,z,x,y]=tile;
+      if(group.split(',').every(layer=>!indexes[layer]?.getTile(Number(z),Number(x),Number(y))?.features.length))emptyPaths.add(path);
+      return route.fulfill(ormVectorFixture(path,indexes,undefined,{emptyLayers:true}));
+    });
+    await page.goto(base+'?mode=infrastructure&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#7/30.55/114.4',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
+    await page.evaluate(async()=>{const map=(await import(document.querySelector('script[type="module"]').src)).map;
+      await Promise.race([new Promise(resolve=>map.loaded()?resolve():map.once('idle',resolve)),new Promise(resolve=>setTimeout(resolve,30000))]);});
+    // Longer than the first provider retry delay: a rejected tile would repeat.
+    await page.waitForTimeout(7000);
+    const status=await page.evaluate(()=>{const element=document.getElementById('map-status');return {error:element.classList.contains('error'),text:element.textContent};});
+    const repeated=[...counts].filter(([,count])=>count>1);
+    assert.ok(emptyPaths.size>0,'the fixture must serve named empty provider tiles');
+    assert.deepEqual(repeated,[],'named empty tiles must not be retried');
+    assert.equal(status.error,false,`named empty tiles must not raise an outage status: ${status.text}`);
+    assert.deepEqual(pageErrors,[]);
+    return {tiles:counts.size,namedEmpty:emptyPaths.size,status:status.text};
+  }finally{await page.close();}
+}
 try {
   // This also fixtures fonts, imagery and the basemap, avoiding unrelated
   // external services during the browser integration check.
@@ -197,7 +228,8 @@ try {
   assert.equal(requests.metadata,1,'Only the explicit unknown endpoint fetched metadata');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests.missingReferer,[]);assert.deepEqual(requests.missingUserAgent,[]);
-  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,wuhan,filtered,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
+  const namedEmpty=await checkNamedEmptyTiles();
+  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,wuhan,filtered,initial,afterPan,panAdded,recovery,namedEmpty,requests,ledger},null,2)+'\n');
   console.log('PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only',
     JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{

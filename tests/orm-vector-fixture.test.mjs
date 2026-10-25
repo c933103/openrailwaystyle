@@ -70,3 +70,13 @@ test('composite-only supplemental layer is valid but unrelated and malformed til
  assert.equal(validProviderVectorTile(url,200,unrelated.body),false);
  assert.equal(validProviderVectorTile(url,200,new TextEncoder().encode('not a vector tile')),false);
 });
+
+test('emptyLayers fixtures encode requested empty layers as valid named empty MVT layers', () => {
+  const group = RAIL_COMPOSITE_PATHS.railway_line_high, url = 'https://openrailwaymap.app/' + group + '/7/1/1';
+  const response = ormVectorFixture('/' + group + '/7/1/1', {}, undefined, {emptyLayers: true});
+  assert.ok(response.body.length > 0, 'named empty layers are not zero bytes');
+  assert.deepEqual(Object.keys(new VectorTile(new Pbf(response.body)).layers), [], 'the decoder drops featureless layers');
+  assert.equal(validProviderVectorTile(url, 200, response.body), true);
+  const single = ormVectorFixture('/railway_line_high/7/1/1', {}, undefined, {emptyLayers: true});
+  assert.equal(Buffer.from(single.body).toString('hex'), '1a1878020a117261696c7761795f6c696e655f68696768288020', 'the #254 tile');
+});
