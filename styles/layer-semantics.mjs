@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261025-polar-paint-3';
+import { MODES } from './map-model.mjs?v=20261025-empty-mvt-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
