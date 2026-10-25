@@ -158,11 +158,18 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
   for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service'])for(const zoom of [6,7]){
    await page.locator(`[data-mode="${mode}"]`).click();
    await page.evaluate(({center,zoom})=>{atlasMap.setProjection({type:'mercator'});atlasMap.jumpTo({center,zoom});},{center:c.center,zoom});
-   await page.waitForFunction(ids=>atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-    .some(f=>ids.includes(f.properties.id)),c.chainIdsByZoom[6],{timeout:30000});
-   appSamples.push({mode,zoom,...await page.evaluate(ids=>({cameraZoom:atlasMap.getZoom(),
-    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))]}),c.chainIdsByZoom[6])});
+   // The Infrastructure view draws the reference in its own mapped-tag
+   // colours; every other view draws the neutral strokes. Never both.
+   const prefix=mode==='infrastructure'?'infrastructure-reference-':'rail-reference-';
+   const shown=[`${prefix}main`,`${prefix}unknown`],hidden=[prefix==='rail-reference-'?'infrastructure-reference-main':'rail-reference-main'];
+   await page.waitForFunction(({ids,shown})=>atlasMap.queryRenderedFeatures({layers:shown})
+    .some(f=>ids.includes(f.properties.id)),{ids:c.chainIdsByZoom[6],shown},{timeout:30000});
+   const sample=await page.evaluate(({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
+    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
+     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
+    hidden:atlasMap.queryRenderedFeatures({layers:hidden}).length}),{ids:c.chainIdsByZoom[6],shown,hidden});
+   assert.equal(sample.hidden,0,`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
+   appSamples.push({mode,zoom,...sample});
   }
   await page.waitForFunction(mainlineOutageVisible,null,{timeout:30000});
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});

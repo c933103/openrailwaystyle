@@ -8631,7 +8631,6 @@
         ]
       },
       "paint": {
-        "line-color": "#93999c",
         "line-width": [
           "interpolate",
           [
@@ -8646,15 +8645,109 @@
           1.3,
           8,
           1.7
+        ],
+        "line-color": "#93999c"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-branch",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "branch"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
         ]
       },
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "atlas_mainline_overview",
-        "atlas:views": [],
+        "atlas:views": [
+          "infrastructure"
+        ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -8690,7 +8783,6 @@
         ]
       },
       "paint": {
-        "line-color": "#93999c",
         "line-width": [
           "interpolate",
           [
@@ -8706,6 +8798,7 @@
           8,
           1.7
         ],
+        "line-color": "#93999c",
         "line-dasharray": [
           2,
           1
@@ -8715,9 +8808,101 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "atlas_mainline_overview",
-        "atlas:views": [],
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
         "atlas:settings": [],
         "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-unknown",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "unknown"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -8753,7 +8938,6 @@
         ]
       },
       "paint": {
-        "line-color": "#70777b",
         "line-width": [
           "interpolate",
           [
@@ -8768,15 +8952,108 @@
           1.3,
           8,
           1.7
+        ],
+        "line-color": "#70777b"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-main",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "main"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
         ]
       },
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "atlas_mainline_overview",
-        "atlas:views": [],
+        "atlas:views": [
+          "infrastructure"
+        ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
