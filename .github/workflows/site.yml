@@ -524,6 +524,25 @@ jobs:
         with:
           name: railway-world-site
           path: styles
+      # Esri World Imagery needs an ArcGIS Location Platform API key (public in
+      # the browser; restrict it to the site's referrer in Esri's dashboard).
+      # Without the repository variable the site keeps Sentinel-2 imagery only.
+      - name: Configure satellite imagery provider
+        env:
+          ESRI_API_KEY: ${{ vars.ESRI_API_KEY }}
+        run: |
+          set -eu
+          if [ -n "$ESRI_API_KEY" ]; then
+            # The accepted character set needs no JSON escaping.
+            if ! printf '%s' "$ESRI_API_KEY" | grep -Eqx '[A-Za-z0-9._-]{20,}'; then
+              echo 'ESRI_API_KEY has an unexpected format' >&2; exit 1
+            fi
+            printf '{"esriKey":"%s"}\n' "$ESRI_API_KEY" > styles/imagery-config.json
+            echo 'Esri World Imagery enabled with Sentinel-2 fallback.'
+          else
+            echo '{}' > styles/imagery-config.json
+            echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
