@@ -160,6 +160,8 @@ node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs
 node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
+node scripts/check-polar-browser.mjs
+node scripts/check-polar-parity-browser.mjs
 node scripts/check-terrain-deadlines-browser.mjs
 ```
 
