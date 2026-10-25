@@ -24,9 +24,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.23.4'
-      - name: Verify patched Node.js runtime
-        run: test "$(node --version)" = "v22.23.4"
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - name: Identify required reference inputs
         id: inputs
         run: |
@@ -115,9 +116,10 @@ jobs:
           fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.23.4'
-      - name: Verify patched Node.js runtime
-        run: test "$(node --version)" = "v22.23.4"
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - id: plan
         env:
           EVENT: ${{ github.event_name }}
@@ -142,9 +144,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.23.4'
-      - name: Verify patched Node.js runtime
-        run: test "$(node --version)" = "v22.23.4"
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - name: Install style validator
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Rebuild world style
@@ -440,9 +443,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.23.4'
-      - name: Verify patched Node.js runtime
-        run: test "$(node --version)" = "v22.23.4"
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: actions/download-artifact@v4
         with:
@@ -552,9 +556,10 @@ jobs:
         uses: actions/deploy-pages@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.23.4'
-      - name: Verify patched Node.js runtime
-        run: test "$(node --version)" = "v22.23.4"
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
