@@ -129,6 +129,25 @@ void main() {
 }`;
 const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragColor; void main() { fragColor = vec4(u_color.rgb * u_color.a, u_color.a); }`;
 
+// Split a detail tile's roads/paths by their recorded transportation class.
+export function transportationGroups(data) {
+  const groups = [], byKey = new Map();
+  for (const kind of ['roads', 'paths']) {
+    const lines = data[kind] || [], types = data[kind === 'roads' ? 'roadTypes' : 'pathTypes'];
+    const classified = Array.isArray(types) && types.length === lines.length && Array.isArray(data.lineTypes);
+    lines.forEach((line, i) => {
+      const type = classified ? data.lineTypes[types[i]] : undefined;
+      const text = key => typeof type?.[key] === 'string' ? type[key] : '';
+      // An absent brunnel is null, as MapLibre's ['get', 'brunnel'] reads it.
+      const properties = {class: text('class'), subclass: text('subclass'), brunnel: text('brunnel') || null};
+      const key = JSON.stringify([kind, properties.class, properties.subclass, properties.brunnel]);
+      if (!byKey.has(key)) { const group = {kind, ...properties, lines: []}; byKey.set(key, group); groups.push(group); }
+      byKey.get(key).lines.push(line);
+    });
+  }
+  return groups;
+}
+
 // data: where the prepared files are; units(): 'metric' or 'imperial';
 // relief(): whether relief and contours are shown; places(features):
 // called with the named places in view, for labels; imagery(): whether the
@@ -312,9 +331,13 @@ export class PolarLayer {
       const size = 2 * CAP_RADIUS / n, x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
       tile.buildingOutlines = this.upload(lineMesh(cap, detailOutlineLines(buildings, [x,y,x+size,y+size], quantum)), 'line');
       tile.aprons = this.upload(fillMesh(cap, (data.aprons || []).map(rings => rings.map(decode))), 'fill');
-      for (const kind of ['roads', 'paths', 'waterways', 'taxiways']) tile[kind] = this.upload(lineMesh(cap, (data[kind] || []).map(decode)), 'line');
+      for (const kind of ['waterways', 'taxiways']) tile[kind] = this.upload(lineMesh(cap, (data[kind] || []).map(decode)), 'line');
+      // Roads and paths grouped by transportation class when the tile records
+      // it; otherwise one unclassified group each, which no road filter matches.
+      tile.lineGroups = transportationGroups(data).map(group => ({...group,
+        mesh: this.upload(lineMesh(cap, group.lines.map(decode)), 'line'), lines: undefined}));
       tile.places = (data.places || []).map(p => ({...p, lngLat: fromPolar(cap, [p.x, p.y])}));
-      tile.parts = ['buildings', 'buildingOutlines', 'aprons', 'roads', 'paths', 'waterways', 'taxiways'].map(k => tile[k]);
+      tile.parts = [...['buildings', 'buildingOutlines', 'aprons', 'waterways', 'taxiways'].map(k => tile[k]), ...tile.lineGroups.map(g => g.mesh)];
       tile.loading = false; tile.bytes = tile.parts.reduce((sum, m) => sum + m.bytes, 0) + tile.places.length * 256;
       this.pruneTiles(); this.map.triggerRepaint();
     }).catch(() => { tile.failed = true; });
@@ -443,8 +466,10 @@ export class PolarLayer {
           if (carto) {
             this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, fade));
             if (zoom >= 13) this.fill(tile.buildings, options.shaderData, projection, rgba(colours.building, fade));
-            for (const [kind, colour, width] of [['waterways','waterway',1], ['roads','road',2], ['paths','path',1], ['taxiways','taxiway',2]])
-              this.line(tile[kind], options.shaderData, projection, rgba(colours[colour], fade), width);
+            this.line(tile.waterways, options.shaderData, projection, rgba(colours.waterway, fade), 1);
+            for (const group of tile.lineGroups) this.line(group.mesh, options.shaderData, projection,
+              rgba(colours[group.kind === 'roads' ? 'road' : 'path'], fade), group.kind === 'roads' ? 2 : 1);
+            this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, fade), 2);
             if (zoom >= 12) labels.push(...tile.places);
           }
         }
@@ -452,8 +477,14 @@ export class PolarLayer {
       if (custom) {
         // Complete one style layer across ALL visible detail tiles before the
         // next. Tile-local ordering still breaks overlapping edge geometry.
-        // Roads/paths remain exclusive to Carto; imagery has already returned.
-        const passes = [
+        // Each live road layer draws the polar lines its own filter accepts.
+        const roadPasses = mapPaint.transportationLines().map(layer => [layer.id, () => {
+          for (const tile of detailTiles) for (const group of tile.lineGroups) {
+            const style = layer.style(group);
+            if (style) this.line(group.mesh, options.shaderData, projection, rgba(style.colour, style.opacity * fade), style.width);
+          }
+        }]);
+        const passes = [...roadPasses,
           ['context-transport-airport-area', () => {
             if (mapPaint.apronVisible) for (const tile of detailTiles)
               this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, mapPaint.apronOpacity * fade));

@@ -7,7 +7,7 @@ const DEFAULTS = {
   contourLand: '#927b5a', contourSeabed: '#467d9a',
   building: '#a8aca4', buildingOutline: '#879187',
   waterway: 'rgba(168, 190, 207, 0.54)',
-  runway: '#8d95b0', taxiway: '#aab1c8', apron: '#929bc2',
+  runway: '#8d95b0', taxiway: '#aab1c8', apron: '#929bc2', road: '#c2bdb2',
   reliefShadow: '#667365', reliefHighlight: '#ffffff', reliefAccent: '#738978',
 };
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -127,6 +127,20 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
       }
       return result;
     }
+    if (op === 'coalesce') {
+      for (const arg of args) { const value = read(arg); if (value !== undefined && value !== null) return value; }
+      return null;
+    }
+    if (op === '!' && args.length === 1) { const value = read(args[0]); return typeof value === 'boolean' ? !value : undefined; }
+    if (op === 'match' && args.length >= 4 && args.length % 2 === 0) {
+      const input = read(args[0]);
+      if (input === undefined) return undefined;
+      for (let i = 1; i < args.length - 1; i += 2) {
+        const labels = Array.isArray(args[i]) ? args[i] : [args[i]];
+        if (labels.includes(input)) return read(args[i + 1]);
+      }
+      return read(args.at(-1));
+    }
     if (['+', '-', '*', '/', 'abs'].includes(op)) {
       if (!args.length || args.length > budget.remaining ||
           (op === 'abs' && args.length !== 1) ||
@@ -219,6 +233,12 @@ export function polarStylePaint(map, zoom) {
     // only an evaluated boolean false suppresses a supported filter match.
     return sampled === undefined || sampled === true;
   };
+  const filterResult = (id, properties) => {
+    let filter;
+    try { filter = map?.getFilter?.(id); } catch { return undefined; }
+    if (filter === undefined || filter === null) return true;
+    return evaluateFilter(filter, zoom, properties, 'LineString', {remaining:2048}, 0);
+  };
   const value = (id, property, fallback, properties) => {
     if (layerFor(id) === null) return fallback; // Do not log missing-layer errors every frame.
     let expression;
@@ -240,6 +260,26 @@ export function polarStylePaint(map, zoom) {
     width: number(id, 'line-width', properties.level > 0 ? 0.8 : 0.4, properties),
     colour: colour(id, 'line-color', id.includes('seabed') ? DEFAULTS.contourSeabed : DEFAULTS.contourLand, properties),
   });
+  // Line layers drawn from the basemap's transportation layer (Atlas roads and
+  // paths), in style order. Each returns the paint for a polar line group its
+  // live filter accepts, or null.
+  const transportationLines = () => {
+    let ids = [];
+    try { ids = map?.getLayersOrder?.() || []; } catch { return []; }
+    return ids.filter(id => {
+      const layer = layerFor(id);
+      if (!layer || layer.type !== 'line') return false;
+      const meta = layer.metadata || {};
+      return meta['atlas:group'] === 'basemap' && meta['atlas:category'] === 'transportation' ||
+        (layer.sourceLayer ?? layer['source-layer']) === 'transportation';
+    }).map(id => ({id, style: ({class: kind, subclass, brunnel = null}) => {
+      const properties = {class: kind, subclass, brunnel};
+      // Strict: a road filter this evaluator cannot decide draws nothing.
+      if (!kind || !visible(id) || filterResult(id, properties) !== true) return null;
+      return {colour: colour(id, 'line-color', DEFAULTS.road, properties),
+        opacity: number(id, 'line-opacity', 1, properties), width: number(id, 'line-width', 1, properties)};
+    }}));
+  };
   const seabedOpacity = zoom <= 5 ? 0.4 : zoom >= 12 ? 0.65 : 0.4 + (zoom - 5) * 0.25 / 7;
   const seabed = [contour('terrain-seabed-contours', seabedOpacity, 5, 11),
     contour('terrain-seabed-contours-close', seabedOpacity, 11)];
@@ -279,6 +319,7 @@ export function polarStylePaint(map, zoom) {
     runwayWidth: number('context-transport-airport-runways', 'line-width', 2.5, {class:'runway'}),
     taxiwayWidth: number('context-transport-airport-runways', 'line-width', 1, {class:'taxiway'}),
     landContour: contour('terrain-contours', zoom <= 7 ? 0.45 : zoom >= 12 ? 0.65 : 0.45 + (zoom - 7) * 0.04, 7),
+    transportationLines,
     seabedContours: properties => seabed.map(sample => sample(properties)).filter(style => style.visible),
     relief: {
       exaggeration: number('terrain-relief', 'hillshade-exaggeration', 0.3),

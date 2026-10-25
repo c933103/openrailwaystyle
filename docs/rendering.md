@@ -330,8 +330,15 @@ The already-published polar OSM detail tiles (historically named `carto`
 in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,
 subdued buildings and outlines; airport aprons/taxiways/runways also follow
 the Transport toggle. Removed style layers stay hidden, and overlapping
-seabed layer ranges draw each visible layer in style order. The Atlas map intentionally omits ordinary roads and paths; only
-Carto continues to draw those as part of its raster-background detail.
+seabed layer ranges draw each visible layer in style order. Polar roads and
+paths record their OpenMapTiles transportation class (derived from the OSM
+`highway` tag as the basemap does); each Atlas road layer draws the polar lines
+its own live filter accepts, with its colour, width, opacity, zoom range and
+visibility, in style order. Detail tiles built before this change carry no
+class and draw no Map roads; Carto still draws all roads and paths. Polar line
+strokes are solid, so dashed road styles (cycle and footpaths) appear solid
+beyond 85°. Named facility and peak labels remain Carto-only: the snapshot
+stores no amenity type to match the Map's per-category context labels.
 Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
 Visibility-based requests, byte/count limits, aborts and older-snapshot
 fallback remain in force. No browser request is made to Overpass.

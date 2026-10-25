@@ -8,7 +8,7 @@ import {detailTiles} from './polar-features.mjs';
 import {CAP_RADIUS, MERCATOR_LIMIT, encodeLine, toPolar} from '../styles/polar.mjs';
 
 const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
-const ids=['background','water','context-transport-airport-area','building-footprints','building-outlines','context-transport-airport-runways','waterway'];
+const ids=['background','water','context-transport-airport-area','building-footprints','building-outlines','context-transport-airport-runways','waterway','road-local'];
 const browser=await launchBrowser();
 const receipts=[];
 try {
@@ -22,12 +22,12 @@ try {
       {type:'way',id:1,tags:{aeroway:'apron'},geometry:geo(apron)},
       {type:'way',id:2,tags:{building:'yes'},geometry:geo(building)},
       {type:'way',id:3,tags:{waterway:'stream'},geometry:geo(strip(0))},
-      {type:'way',id:4,tags:{highway:'service'},geometry:geo(strip(0.055))},
+      {type:'way',id:4,tags:{highway:'service'},geometry:geo(strip(0.02))},
       {type:'way',id:5,tags:{aeroway:'taxiway'},geometry:geo(strip(0))},
     ]);
     const clip=points=>points.map(([lon,lat])=>[lon,sign*Math.min(edge,Math.abs(lat))]);
-    const features=[['apron',apron,'Polygon'],['building',building,'Polygon'],['runway',strip(0),'LineString'],['taxiway',strip(0),'LineString'],['waterway',strip(0),'LineString']]
-      .map(([kind,points,type])=>({type:'Feature',properties:{kind,class:kind==='waterway'?'stream':kind},geometry:{type,coordinates:type==='Polygon'?[clip(points)]:clip(points)}}));
+    const features=[['apron',apron,'Polygon'],['building',building,'Polygon'],['runway',strip(0),'LineString'],['taxiway',strip(0),'LineString'],['waterway',strip(0),'LineString'],['road',strip(0.02),'LineString']]
+      .map(([kind,points,type])=>({type:'Feature',properties:{kind,class:kind==='waterway'?'stream':kind==='road'?'service':kind},geometry:{type,coordinates:type==='Polygon'?[clip(points)]:clip(points)}}));
     const data=new Map([
       [`${cap}-index.json`,{cap,radius:CAP_RADIUS,units:{metric:[]},carto:{from:10,n:4,tiles:[...details.keys()]}}],
       [`${cap}-features.json`,{water:[],iceShelves:[],places:[],runways:[encodeLine(strip(0).map(point=>toPolar(cap,point)).map(([x,y])=>[x,sign===1?Math.max(y,-CAP_RADIUS):Math.min(y,CAP_RADIUS)]))]}],
@@ -37,6 +37,8 @@ try {
       const copy={id:layer.id,type:layer.type,paint:structuredClone(layer.paint),minzoom:layer.minzoom,maxzoom:layer.maxzoom,layout:structuredClone(layer.layout)};
       if(copy.type!=='background'){
         copy.source='fixture';
+        // Roads keep the authored class filter: both renderers must decide it.
+        if(copy.id==='road-local'){copy.filter=structuredClone(layer.filter);copy.metadata=structuredClone(layer.metadata);return copy;}
         const kinds={'water':[],'context-transport-airport-area':['apron'],'building-footprints':['building'],'building-outlines':['building'],'context-transport-airport-runways':['runway','taxiway'],'waterway':['waterway']};
         copy.filter=['in',['get','kind'],['literal',kinds[copy.id]]];
       }
@@ -103,6 +105,9 @@ try {
       paint('building-outlines',{'line-opacity':0});
       paint('context-transport-airport-runways',{'line-color':['case',['==',['get','class'],'runway'],'#0000ff','#00ffff'],'line-opacity':['case',['==',['get','class'],'taxiway'],0,1],'line-width':12});
       paint('waterway',{'line-color':'#ffff00','line-opacity':0,'line-width':12});
+      // Near the centre the two projections differ by a few pixels; a wide
+      // stroke keeps that pre-existing offset out of the comparison.
+      paint('road-local',{'line-color':'#ff00ff','line-opacity':1,'line-width':120});
     });
     await page.evaluate(()=>window.frame());
     await page.screenshot({path:`browser-review/polar-boundary-${cap}-overlaps.png`});
@@ -111,7 +116,15 @@ try {
       for(const [i,pixel] of pixels.entries())assert.deepEqual(pixel,expected,`${cap} ${label}: ${i?'cap':'ordinary'} side of ${sign*edge}, pixels ${JSON.stringify(pixels)}`);
       receipts.push({cap,label,pixels});
     };
-    await check(0.055,[0,255,0,255],'apron without Carto road');
+    await check(0.055,[0,255,0,255],'apron');
+    await check(0.02,[255,0,0,255],'building where the authored road range hides the service road');
+    // A classified polar service road follows road-local exactly like the
+    // ordinary basemap road: same filter, colour, width and order over aprons.
+    await page.evaluate(()=>window.map.setLayerZoomRange('road-local',10));
+    await page.evaluate(()=>window.frame());
+    await check(0.015,[255,0,255,255],'service road over building');
+    await page.evaluate(()=>window.map.setLayerZoomRange('road-local',12));
+    await page.evaluate(()=>window.frame());
     await check(-0.02,[255,0,0,255],'building over apron');
     await check(0,[0,0,255,255],'runway over building and apron');
     await page.evaluate(()=>window.map.setPaintProperty('context-transport-airport-runways','line-opacity',['case',['==',['get','class'],'taxiway'],1,0]));

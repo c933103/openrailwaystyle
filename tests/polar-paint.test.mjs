@@ -99,8 +99,11 @@ function polarFixture() {
   layer.onAdd(map,gl);layer.visible=()=>({south:[-20,-20,20,20]});layer.loadCap=()=>{};
   const indexed={units:{metric:[]},carto:{from:10,n:4,tiles:['1-1']}};
   layer.caps.south={index:indexed,disc:{key:'disc'},water:{key:'water'},iceShelves:{key:'iceShelves'},runways:{key:'runways'}};
-  layer.loadDetailTile=()=>Object.fromEntries(['buildings','buildingOutlines','aprons','roads','paths','waterways','taxiways']
-    .map(key=>[key,{key}]).concat([['loading',false],['places',[]]]));
+  layer.loadDetailTile=()=>Object.fromEntries(['buildings','buildingOutlines','aprons','waterways','taxiways']
+    .map(key=>[key,{key}]).concat([['loading',false],['places',[]],['lineGroups',[
+      {kind:'roads',class:'service',subclass:'',mesh:{key:'roads'}},
+      {kind:'paths',class:'path',subclass:'footway',mesh:{key:'paths'}},
+      {kind:'roads',class:'',subclass:'',mesh:{key:'unclassified'}}]]]));
   layer.fill=(mesh,_,__,color)=>calls.push(['fill',mesh?.key,color]);
   layer.line=(mesh,_,__,color,width)=>calls.push(['line',mesh?.key,color,width]);
   const draw=()=>{calls.length=0;layer.renderCaps(gl,{defaultProjectionData:{projectionTransition:1},shaderData:{}});return calls.slice();};
@@ -126,6 +129,53 @@ test('rendered Atlas cap omits Carto roads and respects style changes and transp
   f.background('satellite');
   const satellite=f.draw();
   assert.ok(by(satellite,'disc'));assert.equal(by(satellite,'waterways'),undefined);
+});
+
+test('Atlas caps draw polar roads with the live road layer each class matches, in style order', () => {
+  const f=polarFixture(), layers=structuredClone(world.layers);
+  f.map.getLayer=id=>layers.find(layer=>layer.id===id)||null;
+  f.map.getFilter=id=>f.map.getLayer(id)?.filter;
+  f.map.getLayersOrder=()=>layers.map(layer=>layer.id);
+  f.map.getLayoutProperty=()=> 'visible';
+  for(const layer of layers)f.paint[layer.id]=structuredClone(layer.paint);
+  const calls=f.draw(),line=key=>calls.filter(call=>call[0]==='line'&&call[1]===key);
+  assert.equal(line('roads').length,1,'service roads draw once, through road-local');
+  assert.equal(line('paths').length,1,'footways draw once, through road-walk');
+  assert.deepEqual(line('unclassified'),[],'a tile without a recorded class invents no road style');
+  near(line('roads')[0][2][0],0xc2/255);near(line('paths')[0][2][0],0xa8/255);
+  const order=calls.filter(call=>call[0]==='line').map(call=>call[1]);
+  assert.ok(order.indexOf('roads')<order.indexOf('paths'),'road-local precedes road-walk in the style');
+  layers.find(layer=>layer.id==='road-local').layout={visibility:'none'};
+  f.map.getLayoutProperty=id=>layers.find(layer=>layer.id===id)?.layout?.visibility==='none'?'none':'visible';
+  const hidden=f.draw();
+  assert.equal(hidden.filter(call=>call[1]==='roads').length,0,'a hidden road layer draws nothing');
+  assert.equal(hidden.filter(call=>call[1]==='paths').length,1);
+});
+
+test('polar road classes select the same Atlas road layers as MapLibre filters', () => {
+  const layers=world.layers.filter(layer=>layer.type==='line'&&layer['source-layer']==='transportation');
+  const map={getLayer:id=>layers.find(layer=>layer.id===id)||null,getLayersOrder:()=>layers.map(layer=>layer.id),
+    getFilter:id=>map.getLayer(id)?.filter,getPaintProperty:()=>undefined,getLayoutProperty:()=> 'visible'};
+  const classes=['motorway','trunk','primary','secondary','tertiary','minor','service','track','busway','raceway','primary_construction','minor_construction'];
+  const groups=[...classes.map(kind=>({class:kind,subclass:''})),
+    ...['pedestrian','path','footway','cycleway','steps','bridleway','corridor','platform'].map(subclass=>({class:'path',subclass}))];
+  const lines=polarStylePaint(map,16).transportationLines();
+  map.getPaintProperty=(id,key)=>map.getLayer(id)?.paint?.[key];
+  for(const base of groups)for(const brunnel of [null,'tunnel','bridge']){
+    const group={...base,brunnel},properties=brunnel?group:{class:group.class,subclass:group.subclass};
+    const ours=lines.filter(layer=>layer.style(group)).map(layer=>layer.id);
+    const maplibre=layers.filter(layer=>(layer.minzoom??0)<=16&&
+      featureFilter(layer.filter).filter({zoom:16},{type:2,properties,geometry:[]})).map(layer=>layer.id);
+    assert.deepEqual(ours,maplibre,JSON.stringify(group));
+    assert.ok(ours.length<=1,JSON.stringify(group));
+    for(const layer of lines.filter(layer=>layer.style(group))){
+      const style=layer.style(group),paint=map.getLayer(layer.id).paint;
+      for(const [key,ours] of [['line-opacity',style.opacity],['line-width',style.width]])if(paint[key]!==undefined){
+        const expected=styleExpression.createExpression(paint[key]).value.evaluate({zoom:16},{type:'LineString',properties});
+        near(ours,expected);
+      }
+    }
+  }
 });
 
 test('actual seabed expressions agree with MapLibre at every depth, class, zoom and unit', () => {
@@ -292,7 +342,11 @@ test('overlapping seabed zoom ranges draw both live paints in current layer orde
 test('unsupported valid contour filters preserve fallback rather than becoming explicit false', () => {
   const map={getLayer:id=>world.layers.find(layer=>layer.id===id)};
   const properties={ele:-100,level:0};
-  for(const filter of [['match',['get','ele'],[-100,-200],true,false],['in',['get','ele'],['literal',[-100,-200]]]]){
+  // match is interpreted exactly (it decides road classes); still-unsupported
+  // operators must keep the reviewed fallback.
+  const match=['match',['get','ele'],[-100,-200],true,false];
+  assert.equal(samplePaint(match,12,properties),styleExpression.createExpression(match).value.evaluate({zoom:12},{type:'LineString',properties}));
+  for(const filter of [['>=',['index-of',['get','ele'],['literal',[-100,-200]]],0],['in',['get','ele'],['literal',[-100,-200]]]]){
     const compiled=styleExpression.createExpression(filter);assert.equal(compiled.result,'success');
     assert.equal(compiled.value.evaluate({zoom:12},{type:'LineString',properties}),true,'fixture is a valid matching MapLibre filter');
     assert.equal(samplePaint(filter,12,properties),undefined,'operator is outside the bounded interpreter');

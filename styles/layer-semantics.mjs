@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261025-reference-colours-3';
+import { MODES } from './map-model.mjs?v=20261025-polar-roads-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
