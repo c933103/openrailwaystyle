@@ -58,7 +58,9 @@ async function realTransportCase(browser, {reset = 'destroy', persistent = false
       assert.equal(requests, 1); assert.equal(fulfillCalls, 0);
       assert.equal(delivered, null); assert.deepEqual(warnings, []);
     } else if (persistent) {
-      assert.ok(error); assert.equal(error.code, undefined);
+      // Current Playwright preserves the native reset code. Browserless
+      // regressions separately cover older serialized errors without a code.
+      assert.ok(error); assert.equal(error.code, 'ECONNRESET');
       assert.match(error.message, /^route\.fetch: socket hang up\n/);
       assert.equal(requests, 2); assert.equal(fulfillCalls, 0);
       assert.equal(delivered, null); assert.equal(warnings.length, 2);
