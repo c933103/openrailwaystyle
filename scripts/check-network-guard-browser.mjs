@@ -7,6 +7,8 @@ import {launchBrowser} from './browser.mjs';
 // Real public Route objects retain Playwright's own transport/error
 // serialization. No private constructor import or fabricated error prefix.
 async function realTransportCase(browser, {reset = 'destroy', persistent = false, redirect = false} = {}) {
+  const caseName = `reset=${reset}, persistent=${persistent}, redirect=${redirect}`;
+  console.log('START real transport case:', caseName);
   const bytes = Buffer.from('real first-party fixture bytes'), warnings = [];
   let requests = 0, fetchCalls = 0, fulfillCalls = 0, error, fetched;
   const server = createServer((req, res) => {
@@ -69,6 +71,8 @@ async function realTransportCase(browser, {reset = 'destroy', persistent = false
       assert.match(warnings[0], /attempt 1\/2; retrying 2\/2/);
       assert.match(warnings[1], /returned on attempt 2\/2/);
     }
+  } catch (cause) {
+    throw new Error(`Real transport case failed (${caseName})`, {cause});
   } finally {
     try { await context?.close(); }
     finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
@@ -83,7 +87,7 @@ const server=createServer((req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}/`,browser=await launchBrowser();
-let checked=false;
+let checked=false, primaryError;
 try {
   const context=await browser.newContext(),page=await context.newPage();
   await page.goto(base);
@@ -114,9 +118,16 @@ try {
   await realTransportCase(browser, {persistent: true});
   await realTransportCase(browser, {redirect: true});
   checked=true;
+} catch (error) {
+  primaryError=error;
+  throw error;
 } finally {
   const closed=browser.close();
   try {if(checked)await assert.rejects(closed,/Unmocked browser network requests were blocked:[\s\S]*provider\.invalid/);else await closed;}
+  catch (cleanupError) {
+    if(primaryError)throw new AggregateError([primaryError,cleanupError],'Network check failed; browser cleanup also reported blocked requests');
+    throw cleanupError;
+  }
   finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }
 console.log('PASS: first-party bytes are fetched; fixtures work; unmocked page, context, fetch, URL-rewriting fallback, redirect and worker requests are blocked before provider egress');
