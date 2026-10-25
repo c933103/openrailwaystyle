@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261024-orm-composite-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261025-empty-mvt-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
