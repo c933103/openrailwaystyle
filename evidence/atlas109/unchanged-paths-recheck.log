@@ -1,0 +1,275 @@
+✔ the actual pinned renderer considers a loaded empty tile renderable (0.846744ms)
+✔ exact Atlas style at failure-shaped zoom/source counts submits hidden stencil work (257.345559ms)
+✔ hidden sources between visible sources cannot corrupt retained stencil references (12.168918ms)
+✔ hidden-to-visible-to-hidden transitions repaint the newly visible source on the same painter (7.63682ms)
+✔ zoom-hidden layers follow the same guard as layout-hidden layers (9.634345ms)
+✔ visible dispatch and abstract stencil acceptance remain equal across Atlas modes and zooms (3985.366322ms)
+✔ all-visible clipping work is unchanged (1.559467ms)
+(node:16) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ startup network guard rejects native fetch, HTTP and socket fallbacks (4.901885ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ drawing toolbar clears a first unfinished shape only after confirmation and accepts fresh input (351.254988ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ measurement toolbar settles unavailable endpoint heights and recovers on an explicit repeat (202.243586ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ measurement toolbar retries heights with existing point handles without losing editing (154.813901ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ startup native-realm loaders use each window fixture without external fetch (219.19152ms)
+✔ application guards each replacement painter after WebGL context restoration (99.063143ms)
+✔ application installs the hidden-mask guard before the first renderer frame (79.457596ms)
+✔ actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries (287.653217ms)
+✔ actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries (164.506339ms)
+✔ new app recovers verified already-patched first-party cache bytes without a second patch (96.819203ms)
+✔ legacy startup recovery ignores unrelated caches and non-JavaScript saved responses (73.330027ms)
+✔ legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME (69.359113ms)
+✔ legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME (99.537637ms)
+▶ installation help works before renderer libraries load and after WebGL initialization fails
+  ✔ {"delayLibraries":true} (183.13357ms)
+  ✔ {"failWebGL":true} (121.357326ms)
+✔ installation help works before renderer libraries load and after WebGL initialization fails (305.826034ms)
+✔ a complete installed Chinese font is used without any download (127.631831ms)
+✔ a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script (149.53503ms)
+✔ a failed packaged Chinese font download waits before trying again, and retries when back online (114.983861ms)
+✔ Japanese labels keep the installed Japanese font even when it is partial (89.360425ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ unavailable Chinese font preserves a working map and system fallback (102.157918ms)
+Conductor rails and railway charging unavailable: Invalid railway energy supply snapshot
+✔ clicked station, service, entrance, power and context details share the selected regional font (191.906068ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ English and local infoboxes scope script languages to CJK runs and preserve English text (540.150032ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ infobox Han text requests the packaged font after probing without requiring map glyph drawing (157.459087ms)
+✔ an open infobox follows language and font changes while map style loading is delayed (104.267537ms)
+✔ rare Han in infobox body values and later departure text loads only the displayed slices (127.401875ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ service frequency profile is applied on the first frame and controls persist independently (127.598682ms)
+✔ frequency periods no applied source covers are not offered, and a link to one falls back (97.890566ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ equal-width service details expire even after the inspected route leaves loaded tiles (120.283702ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ mixed timetable and headway details name each source, period definition and terms link (105.369076ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ app starts with the MapLibre 5 API and enables map controls (156.18562ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ controls work while the map is still loading, and settings take effect once it loads (117.811847ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ more detail cycles: the next zoom level at half size, two levels at a quarter, then normal (78.120456ms)
+✔ settings are remembered in a cookie; a shared link applies once and leaves the address (288.397189ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests (89.019759ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated hub names with rare Han wait for their slices before reaching the map (74.628661ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ visible station-basemap-fallback-dots supports hover and station details through settings and recovery (111.577814ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ visible station-curated-fallback-dots supports hover and station details through settings and recovery (117.830575ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ visible station-basemap-fallback-names supports hover and station details through settings and recovery (96.513102ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ anonymous curated fallback clicks retain the exact selected OSM identity (87.040476ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback tracks actual source errors and settings at Paris zoom 9 (107.329591ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback tracks actual source errors and settings at Paris zoom 9.8 (113.523964ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback tracks actual source errors and settings at Paris zoom 10 (112.7445ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback tracks actual source errors and settings at Paris zoom 11 (113.984717ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback tracks actual source errors and settings at Paris zoom 12 (115.217362ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated fallback repopulates on cold load and pan at raw zoom 22 (109.057021ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station fallback keeps the failed tile mask through neighboring success, recovery and pan (89.062865ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ healthy descendant success immediately masks retained ancestor failures without clearing status (78.804147ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant expired immediately restores installed station fallback masks without idle (87.430292ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant reloading immediately restores installed station fallback masks without idle (76.115821ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant errored immediately restores installed station fallback masks without idle (82.720336ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant unloaded immediately restores installed station fallback masks without idle (71.103049ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant aborted immediately restores installed station fallback masks without idle (85.205375ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant removed immediately restores installed station fallback masks without idle (72.08078ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant content-reloading immediately restores installed station fallback masks without idle (91.680081ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant content-expired immediately restores installed station fallback masks without idle (84.831322ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ descendant native-abort immediately restores installed station fallback masks without idle (99.048802ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ ordinary failed world copies retain fallback and status until all copies recover (82.88229ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ source-data inventory pruning immediately updates the remaining station mask (92.613639ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ coordinate-only station failure clears presentation and status after a healthy pan (86.509517ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ coordinate-only parent station failures retire when healthy higher-zoom tiles replace them (75.064799ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ late coordinate-only station error cannot replace healthy zoom selection (inventory false) (84.457229ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ late coordinate-only station error cannot replace healthy zoom selection (inventory true) (73.518748ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ owner low-zoom HTTP 403 remains an ORM railway outage (97.558504ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ axle low-zoom HTTP 403 remains an ORM railway outage (70.315163ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated dots survive an unavailable name dependency: metadata (101.652027ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated dots survive an unavailable name dependency: stationProtocol (95.660043ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ a selected deferred dot is named when missing provider metadata later becomes available (119.949144ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ curated locations publish before an eligible provider name request settles (111.108304ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ opening a deferred curated dot loads its provider name and refreshes name-based departure matching (105.34214ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ failed selected-hub lookups stay bounded and preserve the anonymous point (133.697308ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ a deferred curated name cannot overwrite the panel after close (129.683349ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ a deferred curated name cannot overwrite the panel after select another station (121.692872ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ an open deferred hub follows the newest language and ignores its older pending name (145.007052ms)
+✔ tiles served as stored load the rare Han slices of their text, such as service route names (111.777851ms)
+✔ real renderer initialization failures reach the visible error message (87.556312ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ station inspection finds nearby interchanges and facility inspection avoids railway fields (124.014661ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ museum and theatre context does not offer a pointer or intercept railway inspection (84.509258ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ concurrent train-control systems use compact names with complete hover and native expandable descriptions (392.439705ms)
+Conductor rails and railway charging unavailable: Invalid railway energy supply snapshot
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ railway energy supplies download once at facility zoom and relocalize existing data on language changes (144.012666ms)
+Conductor rails and railway charging unavailable: Invalid railway energy supply snapshot
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ Power facilities inspect their supply type and source object without train speed or timetable fields (101.682914ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+▶ Power details keep train fuel, storage and generation sources distinct
+  ✔ fuel: {"fuel":"diesel","fuel:hydrogen":"yes"} (4.482284ms)
+  ✔ fuel: {"fuel":"yes","fuel:diesel":"yes"} (1.376451ms)
+  ✔ fuel: {"fuel":"no","fuel:diesel":"yes","fuel:hydrogen":"no"} (2.221452ms)
+  ✔ fuel: {} (0.796198ms)
+  ✔ fuel_tank: {"content":"diesel"} (0.985182ms)
+  ✔ water_tank: {"man_made":"storage_tank","content":"water","usage":"railway"} (1.261358ms)
+  ✔ water_tower: {"disused:man_made":"water_tower","usage":"railway"} (0.756128ms)
+  ✔ plant: {"plant:source":"hydro","generator:source":"solar"} (0.869288ms)
+  ✔ generator: {"generator:source":"wind"} (0.835207ms)
+  ✔ coaling_facility: {} (0.889919ms)
+✔ Power details keep train fuel, storage and generation sources distinct (113.601745ms)
+✔ Power help names all point categories and retains the implemented coverage limits (75.101034ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ close infrastructure details follow the mode, labels and background on the initial frame and after switching (121.967691ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ signals and entrances inspect their mapped node and avoid track/timetable fields (107.221411ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution (87.224967ms)
+✔ desktop brand announces collapse on its first activation (92.396239ms)
+✔ compact controls open from the icon and return focus to it on collapse and Escape (93.094901ms)
+✔ saved hidden overlays are absent in the constructor before any tile request (85.143175ms)
+✔ Causeway Bay search reaches both APIs before a delayed label bundle loads (86.174627ms)
+✔ full app search distinguishes partial-empty, healthy rows, complete-empty and outage (623.47362ms)
+✔ map info identifies the executing cached asset and links to its build repository across backgrounds (72.075028ms)
+✔ map info exposes mismatched cached bundle versions and handles a missing commit (81.236866ms)
+✔ every versioned file the page loads asks for the page version (12.062994ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ watch starts map-only and deliberate controls return to the map after each action (123.566178ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ entering watch mode deactivates hidden drawing and measurement input (94.732055ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ speed: zoom-suppressed urban references are not reported as missing data (84.700659ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ infrastructure: zoom-suppressed urban references are not reported as missing data (75.850981ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ electrification: zoom-suppressed urban references are not reported as missing data (93.91172ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ control: zoom-suppressed urban references are not reported as missing data (73.675877ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ gauge: zoom-suppressed urban references are not reported as missing data (86.234888ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ loading: zoom-suppressed urban references are not reported as missing data (75.753864ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ service: zoom-suppressed urban references are not reported as missing data (88.520257ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ owner: zoom-suppressed urban references are not reported as missing data (73.785852ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ axle: zoom-suppressed urban references are not reported as missing data (89.706231ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ reference-only rail coverage is reported without mistaking a different view for detail (85.044726ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ reference coverage waits for the selected detail source and preserves actual resource errors (234.4895ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ rail tile recovery updates visible app status without idle, after bookkeeping, including early style events (187.449133ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ partial rail recovery and loaded-but-errored sources retain the outage state without extra retries (93.412069ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ rail recovery preserves unrelated app errors until actual unrelated success (85.950008ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ metadata recovery clears app bookkeeping without idle and cancellation is not an outage (98.180965ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ source replacement retires old recovery and disposal cancels every scheduled retry (84.330672ms)
+✔ platform measurement fetches HTTP templates rather than MapLibre protocol URLs (87.34647ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ settings hide and show failed layers without pan or idle resumes exactly one recovery timer (121.362432ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ off-screen retirement reconciles owned errors without source success and retains other failures (95.783508ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ retirement cannot clear nonretryable or newer same-ID errors (179.573891ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+Major station names unavailable: Cannot read properties of undefined (reading 'getWest')
+✔ timer retirement reconciles status after its transaction and queued notifications are inert after disposal (89.717048ms)
+✔ Power legend shows facility point letters and preserves track samples across setting and view changes (109.274231ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ expired unoffered overnight and hourly evidence remains visible only in service details (87.994786ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ service details expose exact grouped and segment OSM sources, retain them on redraw, and disclose legacy limits (127.794091ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"status":400} (89.908225ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"status":401} (86.658901ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"status":403} (83.035207ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"status":404} (90.734088ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"message":"Bad response code: 403"} (77.221909ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"message":"AJAXError: 404 (Not Found)"} (91.852106ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"message":"AJAXError: Forbidden (403): https://metadata.test/permanent.json"} (75.915078ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler does not retry {"name":"SyntaxError","message":"bad JSON"} (97.418043ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata app handler owns one transient timer and cancels it on permanent failure, success or removal (80.589698ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ partial openmaptiles recovery cannot clear another failed tile (93.457782ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ partial satellite recovery cannot clear another failed tile (81.107752ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ partial osm recovery cannot clear another failed tile (88.427692ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail metadata, tiles and source-less resources recover independently (87.460807ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail source replacement retires old errors but hiding does not claim recovery (103.686451ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261026-imagery-coverage-1
+✔ non-rail cached failures become visible again without a new error event (90.470215ms)
+ℹ tests 152
+ℹ suites 0
+ℹ pass 152
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16673.917118

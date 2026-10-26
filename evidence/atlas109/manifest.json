@@ -1,0 +1,37 @@
+{
+  "source": "88bee49d4c20aa4fbebdd501b503587f2dba7e49",
+  "base": "021ac76a61f8803134c7647fcc15f0a6b7920516",
+  "runtime": "Node v24.22.1 / Linux",
+  "files": [
+    {
+      "path": "initial-full.log",
+      "bytes": 278456,
+      "sha256": "6f735d69e84d3412591bbded74eba7bb24b4a64480a06c29b2cb35a2ae08afab",
+      "git_blob": "54cdbd1e40c1891e3ea689a53e6816d9cb247ee0"
+    },
+    {
+      "path": "focused-final.log",
+      "bytes": 14133,
+      "sha256": "6b259b788e0e50548bd6ece3664dabbcfb56504dd0f45ba72e0acf7215c2fe08",
+      "git_blob": "f17391151376f4f2c82bacafeae54017b6f5f764"
+    },
+    {
+      "path": "unchanged-paths-recheck.log",
+      "bytes": 26028,
+      "sha256": "1ab7ffd41745a968eedcb190e10721987bb2b73f77aa0ffaf240271b4fda99b5",
+      "git_blob": "e685c1d02c6e97ec0f9aa1673cf14a8520bcf2f3"
+    },
+    {
+      "path": "full-final.log",
+      "bytes": 279568,
+      "sha256": "aaaebacb5d091f965462aeb7723ae240640b4e4e9a973b99d3cc7b7de772fa1e",
+      "git_blob": "a301e2ba52f9369b00bd3353c1ea2d742c9fcc5e"
+    },
+    {
+      "path": "build-final.log",
+      "bytes": 209,
+      "sha256": "c6234a84d974e7b9f4639d4a1d7357848c26a79008e3367c88d426fb535f189b",
+      "git_blob": "09c53b201042a0be737c7db35e8b8c380a018c61"
+    }
+  ]
+}
