@@ -82,6 +82,23 @@ test('node-mapped facilities, multipolygon substations and traction feeding poin
   assert.equal(lines['way-23'].traction_facilities,'node-500');
 });
 
+test('holes are not facility area, and ending on a relation outline is a connection',()=>{
+  const ring=points=>({type:'way',role:'outer',geometry:geometry(points)});
+  const hole=points=>({type:'way',role:'inner',geometry:geometry(points)});
+  const relation={type:'relation',id:600,tags:{type:'multipolygon',power:'substation',substation:'traction'},
+    members:[ring([[30,50],[30.01,50],[30.01,50.01],[30,50.01],[30,50]]),hole([[30.003,50.003],[30.007,50.003],[30.007,50.007],[30.003,50.007],[30.003,50.003]])]};
+  const lines=classify([relation,
+    line(30,{power:'line',frequency:'50'},[[30.004,50.004],[30.006,50.006]]),
+    line(31,{power:'line',frequency:'50'},[[30.02,50.02],[30.01,50.01]]),
+    line(32,{power:'line',frequency:'50'},[[30.005,50.005],[30.005,50.002]]),
+    line(33,{power:'line',frequency:'50'},[[29.99,50.012],[30.02,50.012]]),
+  ]);
+  assert.equal(lines['way-30'],undefined,'a line entirely inside the hole');
+  assert.equal(lines['way-31'].traction_facilities,'relation-600','ending on the outline corner');
+  assert.equal(lines['way-32'].traction_facilities,'relation-600','leaving the hole into the facility area');
+  assert.equal(lines['way-33'],undefined,'passing outside');
+});
+
 test('a line returned by two regions combines their evidence in any order',()=>{
   const points=[[8.99,49.99],[9.0001,50.0001]];
   const west=classify([line(2,{power:'line',frequency:'50;16.7'},points)])['way-2'];

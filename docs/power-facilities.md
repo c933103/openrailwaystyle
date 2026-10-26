@@ -99,7 +99,7 @@ Primary references:
 ## Railway traction power lines
 
 Power also draws railway traction power lines from zoom 10, beneath the tracks
-so they never hide track colours. Overhead and minor lines are solid brown;
+so they never hide track colours. Overhead and minor lines are solid amber;
 cables are dashed. Former and planned lines are faded and dashed and follow the
 planned/former infrastructure setting. Selecting a line shows its type, status,
 the evidence that selected it, operator, owner, voltage, frequency, circuits
@@ -113,8 +113,9 @@ selected when either source fact holds:
 - its mapped geometry reaches a railway electricity facility selected by the
   rules above (traction substation, railway power plant or generator, converter,
   traction transformer or traction feeding point): the line shares a node with
-  the facility, or a line vertex lies inside the facility's mapped area,
-  including a multipolygon's joined outer ring.
+  the facility, or its geometry enters or ends on the facility's mapped area
+  (a vertex inside it, or a segment meeting its outline). A multipolygon's
+  member ways are joined into rings, and its holes are not part of the area.
 
 A line that merely passes near such a facility, reaches only an ordinary utility
 substation, or reaches an auxiliary `railway=power_supply` socket is not
@@ -163,6 +164,8 @@ A site needs both kinds of evidence:
 - **Rail link.** A siding, spur or yard track, or a track with
   `usage=industrial`, whose mapped geometry enters the site area: a vertex
   inside it or a segment meeting its outline. Passing nearby is not a link.
+  A multipolygon's holes are not part of the site, for either storage or
+  sidings, and are kept in the published area.
 
 Point-mapped sites have no area to test and are not selected. A site mapped
 without any of the role evidence above, or whose siding stops short of the

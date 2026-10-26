@@ -7,7 +7,7 @@ import {energySiteQuery,energySitesGeoJSON,mergeEnergySite} from '../scripts/ene
 import {buildEnergySites,validateEnergySitesSnapshot} from '../scripts/build-energy-sites.mjs';
 import {energySiteLayers,energySiteNameLayers} from '../scripts/style/layers/energy-sites.mjs';
 import {energySiteRows,energySiteName,POWER_FACILITY_EXPLANATION,ENERGY_SITE_NOTE} from '../styles/power-facilities.mjs';
-import {lineMeetsRing,outerRings} from '../scripts/osm-geometry.mjs';
+import {lineMeetsPolygon,areaPolygons,outerRings} from '../scripts/osm-geometry.mjs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {layerVisibility,annotateLayers} from '../styles/layer-semantics.mjs';
 
@@ -73,9 +73,19 @@ test('multipolygon sites, segment crossings and storage on the boundary region a
   const sites=classify([relation,crossing]);
   assert.equal(sites['relation-7'].rail_sidings,'way-920');
   assert.equal(outerRings(relation.members).length,1);
-  assert.equal(lineMeetsRing([[19.9,49.9],[19.95,49.95]],square(20)),false);
+  assert.equal(lineMeetsPolygon([[19.9,49.9],[19.95,49.95]],areaPolygons(site(0,{},square(20)))[0]),false);
   const geometryType=energySitesGeoJSON({elements:[relation,crossing]}).features[0].geometry.type;
   assert.equal(geometryType,'Polygon');
+});
+
+test('storage and sidings inside a multipolygon hole do not count',()=>{
+  const member=(points,role)=>({type:'way',role,geometry:geometry(points)});
+  const relation={type:'relation',id:8,tags:{type:'multipolygon',landuse:'industrial'},
+    members:[member(square(30,50,0.01),'outer'),member(square(30.003,50.003,0.004),'inner')]};
+  const holeOnly=classify([relation,store(80,30.005,50.005,{content:'oil'}),siding(940,[[29.99,50.005],[30.01,50.005]],{railway:'rail',usage:'main'}),siding(941,[[30.004,50.004],[30.006,50.006]])]);
+  assert.deepEqual(holeOnly,{},'oil stored in the hole and a siding inside the hole');
+  const served=energySitesGeoJSON({elements:[relation,store(81,30.001,50.001,{content:'oil'}),siding(942,[[29.99,50.0015],[30.002,50.0015]])]}).features[0];
+  assert.equal(served.geometry.coordinates.length,2,'the hole is kept in the published polygon');
 });
 
 test('a site returned by two regions combines evidence in any order',()=>{

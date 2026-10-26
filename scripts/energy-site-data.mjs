@@ -5,7 +5,7 @@
 // area. A site next to a track, a site name, or an operator never establishes
 // either. Point-mapped sites have no area to test and are not selected.
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
-import {areaRings,inside,bounds,boxesOverlap,lineMeetsRing,validPoint} from './osm-geometry.mjs';
+import {areaPolygons,insidePolygon,lineMeetsPolygon,validPoint} from './osm-geometry.mjs';
 
 const STATES=['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const PREFIXES=['',...STATES.map(state=>`${state}:`)];
@@ -53,7 +53,7 @@ export function energySitesGeoJSON(json) {
     if(element.type==='way'&&isSiding(tags)&&element.geometry) {
       if(element.geometry.length<2||!element.geometry.every(validPoint))throw new Error(`Incomplete geometry for siding way-${element.id}`);
       const line=element.geometry.map(p=>[p.lon,p.lat]);
-      sidings.push({id:`way-${element.id}`,state:trackState(tags),line,box:bounds(line)});
+      sidings.push({id:`way-${element.id}`,state:trackState(tags),line});
       continue;
     }
     const contents=tokens(tags.content).filter(v=>FUEL_CONTENTS.includes(v)||COAL_CONTENTS.includes(v));
@@ -66,21 +66,21 @@ export function energySitesGeoJSON(json) {
   }
   const features=new Map();
   for(const element of areas) {
-    const tags=element.tags||{},rings=areaRings(element);
-    if(!rings.length)continue;
-    const boxes=rings.map(bounds),within=p=>rings.some((ring,i)=>p[0]>=boxes[i][0]&&p[0]<=boxes[i][2]&&p[1]>=boxes[i][1]&&p[1]<=boxes[i][3]&&inside(p,ring));
+    const tags=element.tags||{},polygons=areaPolygons(element);
+    if(!polygons.length)continue;
+    const within=p=>polygons.some(polygon=>p[0]>=polygon.box[0]&&p[0]<=polygon.box[2]&&p[1]>=polygon.box[1]&&p[1]<=polygon.box[3]&&insidePolygon(p,polygon));
     const stored=[...new Set(stores.filter(s=>within(s.point)).flatMap(s=>s.contents))].sort();
     const industry=tokens(tags.industrial),resource=tokens(tags.resource);
     const evidence=[...industry.filter(v=>FUEL_INDUSTRY.includes(v)||v==='coal').map(v=>`industrial=${v}`),...resource.filter(v=>COAL_RESOURCE.includes(v)).map(v=>`resource=${v}`),...(stored.length?['storage contents']:[])];
     const fuel=industry.some(v=>FUEL_INDUSTRY.includes(v))||stored.some(v=>FUEL_CONTENTS.includes(v));
     const coal=industry.includes('coal')||resource.some(v=>COAL_RESOURCE.includes(v))||stored.some(v=>COAL_CONTENTS.includes(v));
     if(!fuel&&!coal)continue;
-    const entering=sidings.filter(s=>rings.some((ring,i)=>boxesOverlap(s.box,boxes[i])&&lineMeetsRing(s.line,ring)));
+    const entering=sidings.filter(s=>polygons.some(polygon=>lineMeetsPolygon(s.line,polygon)));
     if(!entering.length)continue;
     const state=entering.some(s=>s.state==='present')?'present':entering[0].state;
-    const centre=rings[0][0],atlas_han=hanRegion(...centre),id=`${element.type}-${element.id}`;
+    const centre=polygons[0].outer[0],atlas_han=hanRegion(...centre),id=`${element.type}-${element.id}`;
     const kind=fuel?'fuel_site':'coal_site';
-    features.set(id,{type:'Feature',id,geometry:rings.length===1?{type:'Polygon',coordinates:rings}:{type:'MultiPolygon',coordinates:rings.map(ring=>[ring])},properties:{...tags,
+    features.set(id,{type:'Feature',id,geometry:polygons.length===1?{type:'Polygon',coordinates:[polygons[0].outer,...polygons[0].inners]}:{type:'MultiPolygon',coordinates:polygons.map(p=>[p.outer,...p.inners])},properties:{...tags,
       atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...centre):'',osm_type:element.type,osm_id:String(element.id),
       energy_kind:kind,energy_group:fuel?'fuel':'coal',energy_evidence:evidence.join(';'),
       ...(stored.length?{stored_contents:stored.join(';')}:{}),

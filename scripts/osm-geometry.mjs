@@ -3,9 +3,10 @@
 export const validPoint=p=>Number.isFinite(p?.lon)&&Number.isFinite(p?.lat)&&Math.abs(p.lon)<=180&&Math.abs(p.lat)<=90;
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
 
-// Join relation member ways into closed outer rings by shared end coordinates.
-export function outerRings(members=[]) {
-  const open=members.filter(m=>m.type==='way'&&m.role!=='inner'&&m.geometry?.length>=2&&m.geometry.every(validPoint)).map(m=>m.geometry.map(p=>[p.lon,p.lat]));
+// Join member ways with the given role test into closed rings by shared end
+// coordinates.
+function joinRings(members,keep) {
+  const open=members.filter(m=>m.type==='way'&&keep(m.role)&&m.geometry?.length>=2&&m.geometry.every(validPoint)).map(m=>m.geometry.map(p=>[p.lon,p.lat]));
   const closed=[];
   while(open.length) {
     let ring=open.shift();
@@ -21,13 +22,24 @@ export function outerRings(members=[]) {
   }
   return closed;
 }
+export const outerRings=(members=[])=>joinRings(members,role=>role!=='inner');
 // The ring of a closed way, or none.
 export function wayRing(element) {
   const points=(element.geometry||[]).filter(validPoint).map(p=>[p.lon,p.lat]);
   return points.length>=4&&points.length===element.geometry.length&&same(points[0],points.at(-1))?[points]:[];
 }
-// Areas of a way or multipolygon relation.
-export const areaRings=element=>element.type==='way'?wayRing(element):element.type==='relation'?outerRings(element.members):[];
+// Polygons of a closed way or multipolygon relation: each outer ring with the
+// inner rings (holes) that lie inside it.
+export function areaPolygons(element) {
+  if(element.type==='way')return wayRing(element).map(outer=>({outer,inners:[],box:bounds(outer)}));
+  if(element.type!=='relation')return [];
+  const polygons=outerRings(element.members).map(outer=>({outer,inners:[],box:bounds(outer)}));
+  for(const inner of joinRings(element.members||[],role=>role==='inner')) {
+    const holder=polygons.find(p=>inside(inner[0],p.outer));
+    if(holder)holder.inners.push(inner);
+  }
+  return polygons;
+}
 export function inside([x,y],ring) {
   let result=false;
   for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
@@ -46,9 +58,15 @@ export function segmentsMeet(a,b,c,d) {
   if(o1!==o2&&o3!==o4)return true;
   return o1===0&&onSegment(a,b,c)||o2===0&&onSegment(a,b,d)||o3===0&&onSegment(c,d,a)||o4===0&&onSegment(c,d,b);
 }
-// Whether a line enters an area: a vertex inside it or a segment meeting its edge.
-export function lineMeetsRing(line,ring) {
-  if(line.some(p=>inside(p,ring)))return true;
+const ringMeets=(line,ring)=>{
   for(let i=1;i<line.length;i++)for(let j=1;j<ring.length;j++)if(segmentsMeet(line[i-1],line[i],ring[j-1],ring[j]))return true;
   return false;
+};
+// Whether a point lies in a polygon's area, outside its holes.
+export const insidePolygon=(p,polygon)=>inside(p,polygon.outer)&&!polygon.inners.some(ring=>inside(p,ring));
+// Whether a line reaches a polygon: a vertex in its area, or a segment meeting
+// its outline or a hole's edge (which includes ending on the boundary).
+export function lineMeetsPolygon(line,polygon) {
+  if(!boxesOverlap(bounds(line),polygon.box))return false;
+  return line.some(p=>insidePolygon(p,polygon))||ringMeets(line,polygon.outer)||polygon.inners.some(ring=>ringMeets(line,ring));
 }
