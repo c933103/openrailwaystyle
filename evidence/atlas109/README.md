@@ -58,3 +58,13 @@ tile bytes do not. This probe does not make a live or general classifier claim.
 per-envelope bounds, a 1,000-observation plateau test, raw/gzip fixture sizes and
 the existing service publication's single-blob size risk. They do not claim a
 measured global post-change output or a new acceptance gate.
+
+## Final merged deployment receipt
+
+`deployment-receipt.json` binds the tested/reviewed source and identical merge
+tree to both successful natural postmerge site runs. The last deploy job passed
+Pages, exact deployed tile bytes, independent-OSM renderer verification and the
+local railway-fixture check at 09:03:26 UTC on 26 October 2026. The existing
+reference run succeeded with extraction skipped. These task-specific monitors
+are terminal and stopped. No future provider acquisition or metadata backfill
+is implied; #109 classification and #108 publication-size risk remain open.

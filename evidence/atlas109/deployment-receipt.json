@@ -1,0 +1,176 @@
+{
+  "recordedAt": "2026-10-26T09:05Z",
+  "pr": "https://github.com/c933103/openrailwaystyle/pull/271",
+  "reviewedHead": "88bee49d4c20aa4fbebdd501b503587f2dba7e49",
+  "merge": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+  "parents": [
+    "021ac76a61f8803134c7647fcc15f0a6b7920516",
+    "88bee49d4c20aa4fbebdd501b503587f2dba7e49"
+  ],
+  "identicalReviewedAndMergedTree": "5756ea1cb42623a2315c3dfc29d90074f2b09d36",
+  "review": "https://github.com/c933103/openrailwaystyle/pull/271#issuecomment-6410828132",
+  "localChecks": {
+    "fullPassed": 2716,
+    "focusedPassed": 129,
+    "failures": 0,
+    "skipped": 0,
+    "build": true,
+    "syntax": true,
+    "generatedOutputEquality": true
+  },
+  "postmerge": {
+    "primarySite": {
+      "run": 40291259984,
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40291259984",
+      "head": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+      "status": "completed",
+      "conclusion": "success",
+      "completedObserved": "2026-10-26T08:32:06Z",
+      "deployJob": 121468642000,
+      "deployedTileBytes": "success",
+      "independentGeometry": "success",
+      "localRailwayFixture": "success"
+    },
+    "reference": {
+      "run": 40291259886,
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40291259886",
+      "status": "completed",
+      "conclusion": "success",
+      "extraction": "skipped"
+    },
+    "naturalFollowOnSite": {
+      "run": 40292124128,
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40292124128",
+      "head": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+      "status": "completed",
+      "conclusion": "success",
+      "updatedAt": "2026-10-26T09:03:27Z",
+      "jobs": [
+        {
+          "id": 121471995714,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:32:24Z"
+        },
+        {
+          "id": 121471995943,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:32:13Z"
+        },
+        {
+          "id": 121471996011,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:32:20Z"
+        },
+        {
+          "id": 121472107395,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:38:10Z"
+        },
+        {
+          "id": 121474312459,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:53:50Z"
+        },
+        {
+          "id": 121474312482,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:43:35Z"
+        },
+        {
+          "id": 121474312526,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:44:55Z"
+        },
+        {
+          "id": 121474312569,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:42:55Z"
+        },
+        {
+          "id": 121474312594,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:48:14Z"
+        },
+        {
+          "id": 121474312659,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:43:16Z"
+        },
+        {
+          "id": 121480359524,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T08:53:55Z"
+        },
+        {
+          "id": 121480389984,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "success",
+          "completedAt": "2026-10-26T09:03:26Z",
+          "steps": [
+            {
+              "name": "Deploy to GitHub Pages",
+              "status": "completed",
+              "conclusion": "success",
+              "completedAt": "2026-10-26T08:55:07Z"
+            },
+            {
+              "name": "Verify deployed vector tile bytes",
+              "status": "completed",
+              "conclusion": "success",
+              "completedAt": "2026-10-26T08:55:14Z"
+            },
+            {
+              "name": "Verify deployed independent OSM geometry with live overview unavailable",
+              "status": "completed",
+              "conclusion": "success",
+              "completedAt": "2026-10-26T09:02:11Z"
+            },
+            {
+              "name": "Verify published map with local railway fixture",
+              "status": "completed",
+              "conclusion": "success",
+              "completedAt": "2026-10-26T09:03:20Z"
+            }
+          ]
+        },
+        {
+          "id": 121480392528,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "skipped",
+          "completedAt": "2026-10-26T08:53:55Z"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "Metadata retention only; broader issue109 classification and raw positive/negative coverage remain open.",
+    "No manual provider query, acquisition expansion, generated-data rewrite or metadata backfill was performed.",
+    "Pre-existing single-blob publication-size risk is recorded in issue108 comment6411621169; it is not a new merge gate.",
+    "The two initial candidate full-run failures and unknown causes are preserved separately; final exact-head full suite passed.",
+    "No completed preview/deployment monitor remains active for this task."
+  ]
+}
