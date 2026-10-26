@@ -669,6 +669,7 @@ function applySettings() {
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
+  updateTerrainButton();
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   const frequencyPaint=serviceFrequencyPaint(settings);
@@ -1385,6 +1386,20 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+const terrainButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'3D'});
+function updateTerrainButton() {
+  const enabled = terrain3DEnabled(settings.relief, map?.getPitch());
+  terrainButton.setAttribute('aria-pressed', String(enabled));
+  terrainButton.title = enabled ? 'Return to overhead view' : 'Tilt the map for true 3D terrain and seabed';
+  terrainButton.setAttribute('aria-label', terrainButton.title);
+}
+terrainButton.addEventListener('click', () => {
+  if (!map) return;
+  const was3D = terrain3DEnabled(settings.relief, map.getPitch());
+  if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  map.easeTo({pitch: was3D ? 0 : 60, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600});
+});
+updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(from = settings.detail) {
   const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
@@ -1691,7 +1706,7 @@ async function initialize() {
   // synchronous and precedes the next scheduled frame on the new painter.
   map.on('webglcontextrestored', () => installHiddenTileMaskGuard(map));
   // Tilt may change via touch, compass, keyboard or a linked view.
-  map.on('pitch', () => syncTerrain3D(map, settings.relief));
+  map.on('pitch', () => {syncTerrain3D(map, settings.relief); updateTerrainButton();});
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
@@ -1781,7 +1796,7 @@ async function initialize() {
   // (with the direction of travel where the device reports one); moving the
   // map stops following, and a press resumes it.
   map.addControl(new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, trackUserLocation: true, showUserHeading: true, fitBoundsOptions: {maxZoom: 15 + settings.detail}}), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, terrainButton, polarButton]), 'top-right');
   // Controls in the bottom corners stack upwards: added first, it sits below the scale bar.
   map.addControl({onAdd: () => readout, onRemove: () => readout.remove()}, 'bottom-left');
   map.on('mousemove', event => { readoutPoint = event.point; updateReadout(); });
