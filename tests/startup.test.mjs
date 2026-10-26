@@ -58,7 +58,7 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -81,11 +81,11 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   class Map {
     constructor(options) {
       if (failWebGL) throw new Error('Failed to initialize WebGL');
-      this.options = options; this.handlers = {}; this.visibility = {};
+      this.options = options; this.handlers = {}; this.visibility = {}; this.styleLoaded = styleLoaded;
       this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
       maps.push(this);
     }
-    once(name,handler) {this.handlers[name]=handler;}
+    once(name,handler) {this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
     removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
@@ -96,7 +96,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     }
     on(name, handler) {
       const listeners=(this.listeners ||= {})[name] ||= new Set();listeners.add(handler);
-      this.handlers[name]=(...args)=>{for(const listener of [...listeners])listener(...args);};
+      this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;for(const listener of [...listeners])listener(...args);};
     }
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
@@ -120,7 +120,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
-    isStyleLoaded() { return true; }
+    // The terrain fixture must not make a cold map ready before style.load.
+    isStyleLoaded() { return this.styleLoaded; }
     getTerrain() { return this.options.style.terrain || null; }
     setTerrain(terrain) { this.options.style.terrain = terrain; }
     projection = {type:'mercator'};
@@ -271,6 +272,24 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
+
+for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 'already loaded' : 'cold'} style readiness`, async () => {
+  const {dom,maps,errors}=await start({styleLoaded});
+  try {
+    const map=maps[0];
+    assert.equal(map.isStyleLoaded(),styleLoaded);
+    assert.equal(dom.window.document.body.dataset.mapReady,styleLoaded?'true':undefined);
+    if (!styleLoaded) {
+      assert.equal(map.sourceData?.stationMajor,undefined,'cold startup cannot populate the worldwide placeholder viewport');
+      map.handlers['style.load']();
+      assert.equal(map.isStyleLoaded(),true);
+      assert.equal(dom.window.document.body.dataset.mapReady,'true');
+    }
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.deepEqual(errors,[]);
+  } finally {maps[0]?.handlers.remove?.();dom.window.close();}
+});
 
 test('pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests', async () => {
   const {dom,window,maps,errors}=await start();
@@ -2060,7 +2079,11 @@ test('rail tile recovery updates visible app status without idle, after bookkeep
   for (const early of [false, true]) {
     const f = await recoveryApp({early});
     try {
-      if (early) f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      if (early) {
+        assert.equal(f.map.isStyleLoaded(),false,'exercise a genuinely cold style');
+        assert.equal(f.window.document.body.dataset.mapReady,undefined);
+        f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      }
       const tile = failedRailTile();f.fail(tile);
       assert.equal(f.status.classList.contains('error'), true);
       tile.state = 'loaded';f.data({tile, isSourceLoaded:true});

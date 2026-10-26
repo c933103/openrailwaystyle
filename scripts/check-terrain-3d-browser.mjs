@@ -102,7 +102,13 @@ try {
   assert.ok(terrain.counts.fine>0&&terrain.counts.coarse>0&&terrain.counts.water>0,
     'the browser must recover real negative ocean mesh cells');
   await page.screenshot({path:'browser-review/terrain-3d-seabed-synthetic.png'});
-  await page.evaluate(()=>{window.fixtureMap.setPitch(0);const map=window.fixtureMap;syncTerrain3D(map,true);});
+  await page.evaluate(async()=>{
+    // evaluate runs outside the fixture module's lexical scope. Import the
+    // production helper here too; do not accidentally replace terrain checks
+    // with a ReferenceError after the signed-height assertions pass.
+    const {syncTerrain3D}=await import('./terrain-3d.mjs');
+    const map=window.fixtureMap;map.setPitch(0);syncTerrain3D(map,true);
+  });
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
   assert.equal(await page.evaluate(()=>window.fixtureMap.queryTerrainElevation([0,0])),null);
   assert.deepEqual(failures,[]);
