@@ -152,9 +152,19 @@ test('planned or former propulsion and traction keep their own lifecycle on an o
   assert.equal(byId['way-32'].power_state,'disused');
   assert.equal(byId['way-32'].propulsion_linear_motor,true);
   assert.equal(byId['way-33'].power_state,'abandoned','a former track makes its traction former too');
+  assert.equal(byId['way-31'].power_method_label,'Third rail');
+  assert.equal(byId['way-31-proposed'].power_method_label,'Rack railway (proposed)','a planned means is labelled as planned');
+  assert.equal(byId['way-33'].power_method_label,'Cable traction (abandoned)');
   const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-rack-traction'),former=layers.find(l=>l.id==='electrification-former-rack-traction');
   const draws=(layer,p)=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:p,geometry:[]});
   assert.equal(draws(present,byId['way-31']),false);
   assert.equal(draws(present,byId['way-31-proposed']),false);
   assert.equal(draws(former,byId['way-31-proposed']),true);
+});
+test('the value-labels setting names every Power view label it controls',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const html=await readFile(new URL('../styles/index.html',import.meta.url),'utf8');
+  const text=html.match(/id="labels"[^>]*>([^<]*)</)[1];
+  for(const words of ['refuelling','coaling','watering','electricity supply','charging points','means of power delivery','catenary references'])
+    assert.ok(text.includes(words),`value-labels checkbox mentions ${words}`);
 });

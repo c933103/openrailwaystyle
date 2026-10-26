@@ -77,7 +77,8 @@ export function powerMethodsGeoJSON(json) {
       byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
         atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
         power_state:state,electrification_state:state,
-        power_method:selected.join(';'),power_method_label:group.map(m=>METHOD_LABELS[m.value]).join(' + '),
+        power_method:selected.join(';'),// A planned or former means says so in its label, not only by opacity.
+        power_method_label:group.map(m=>METHOD_LABELS[m.value]).join(' + ')+(state==='present'?'':` (${state})`),
         // Booleans keep layer filters exact (4th_rail must not match rail).
         method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
         method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
