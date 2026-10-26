@@ -4,6 +4,15 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
+import vtpbf from 'vt-pbf';
+
+// Real MVT bytes: the worker must decode ocean polygons itself rather than
+// falling back to the page's stub decoder.
+const MASK_MVT = Buffer.from(vtpbf.fromGeojsonVt({water:{extent:4096,features:[{
+  type:3,tags:{class:'ocean'},geometry:[[
+    {x:0,y:0},{x:2048,y:0},{x:2048,y:4096},{x:0,y:4096}
+  ]]
+}]}})).toString('base64');
 
 const base=(process.env.ATLAS_FIXTURE_BASE_URL||process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
@@ -39,11 +48,20 @@ try {
         type:3,extent:4096,properties:{class:'ocean'},loadGeometry:()=>[coast]
       })}}});
       const counts={fine:0,coarse:0,water:0};
+      const waterBytes=Uint8Array.from(atob('${MASK_MVT}'),c=>c.charCodeAt(0)).buffer;
+      window.workerReplies=[];
       installTerrain3D(maplibregl,{getDemTile:async (z)=>{
         counts[z<=10?'coarse':'fine']++;
         return makeTile(z<=10);
-      }},{waterTile:async()=>{counts.water++;return {data:new Uint8Array([1]).buffer};},
-         readTile});
+      }},{waterTile:async()=>{counts.water++;return {data:waterBytes.slice(0)};},
+         readTile,
+         createWorker:()=>{
+           const worker=new Worker('./vendor/terrain-3d-worker.js');
+           worker.addEventListener('message',event=>window.workerReplies.push({
+             encoded:Boolean(event.data?.data),error:event.data?.error||null
+           }));
+           return worker;
+         }});
       const map=window.fixtureMap=new maplibregl.Map({
         container:'map',center:[lng(0.5),lat],zoom:11.3,pitch:60,maxPitch:80,
         style:{version:8,sources:{
@@ -75,6 +93,9 @@ try {
       &&s.sea < -750&&s.land > 250;
   },null,{timeout:45000});
   const terrain=await page.evaluate(()=>window.terrainState());
+  const workerReplies=await page.evaluate(()=>window.workerReplies);
+  assert.ok(workerReplies.some(reply=>reply.encoded),'the native terrain worker must encode real decoded ocean MVT');
+  assert.ok(workerReplies.every(reply=>!reply.error),JSON.stringify(workerReplies));
   assert.equal(terrain.source,'terrain3d');
   assert.ok(terrain.sea < -750,JSON.stringify(terrain));
   assert.ok(terrain.land > 250,JSON.stringify(terrain));
