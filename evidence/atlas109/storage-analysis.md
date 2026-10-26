@@ -57,17 +57,19 @@ per-stage retained-relation counts sum to 11,915 (not a count of serialized
 frontier/pending objects).
 
 Service publication still copies/pushes that single blob. It has no final-output
-size guard or chunking. The repository documents GitHub's approximately 100 MB
-blob ceiling in `scripts/build-mainline-snapshot.mjs:88`, and that other pipeline
-uses 40 MiB chunks plus a 512 MiB archive budget. Those safeguards do **not** apply
+size guard or chunking. The repository informally says '100 MB' in
+`scripts/build-mainline-snapshot.mjs:88`, and that other pipeline uses 40 MiB
+chunks plus a 512 MiB archive budget. Those safeguards do **not** apply
 to the service table. Incoming service acquisition limits of 50 MB/run and
 100 MB/day limit provider downloads, not retained gzip size.
 
-The current artifact is unchanged and below the repository-documented 100 MB
-ceiling, with 12,764,351 bytes of headroom if expressed as decimal 100 MB. The
-platform's precise byte threshold was not re-researched outside repository
-sources. Bounded per-relation history does not prove that future global output
-will fit. Additional metadata, route inventory growth or other retained evidence
+[GitHub's current official limit](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github),
+verified 2026-10-26 at 08:29 UTC, blocks files larger than **100 MiB**
+(**104,857,600 bytes**), not decimal 100 MB. The current artifact is unchanged
+and below that limit, leaving **17,621,951 bytes** of headroom. This corrects the
+earlier repository-only comparison against informal decimal '100 MB'; the
+fixture measurements and replay bounds are unchanged. Bounded per-relation
+history does not prove that future global output will fit. Additional metadata, route inventory growth or other retained evidence
 can eventually exceed the single-blob publication limit. That is a concrete
 pre-existing publication-format risk amplified by growth, **not an observed
 over-limit output, an excuse to rewrite data now, or a new merge gate**.
