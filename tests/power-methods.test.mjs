@@ -161,10 +161,19 @@ test('planned or former propulsion and traction keep their own lifecycle on an o
   assert.equal(draws(present,byId['way-31-proposed']),false);
   assert.equal(draws(former,byId['way-31-proposed']),true);
 });
-test('the value-labels setting names every Power view label it controls',async()=>{
-  const {readFile}=await import('node:fs/promises');
-  const html=await readFile(new URL('../styles/index.html',import.meta.url),'utf8');
-  const text=html.match(/id="labels"[^>]*>([^<]*)</)[1];
-  for(const words of ['refuelling','coaling','watering','electricity supply','charging points','means of power delivery','catenary references'])
-    assert.ok(text.includes(words),`value-labels checkbox mentions ${words}`);
+test('every Power marker and means says what it is, whatever the value-labels setting',async()=>{
+  const {powerFacilityLayers,powerKindText}=await import('../scripts/style/layers/power-facilities.mjs');
+  const {POWER_FACILITY_KINDS}=await import('../styles/power-facilities.mjs');
+  const {expression}=await import('@maplibre/maplibre-gl-style-spec');
+  const layers=[...powerFacilityLayers(),...powerMethodLayers()];
+  for(const id of ['electrification-supply-kinds','electrification-former-supply-kinds','electrification-supply-names','electrification-former-supply-names',
+    'electrification-method-labels','electrification-former-method-labels','electrification-charging-kinds','electrification-former-charging-kinds','electrification-charging-names'])
+    assert.ok(!layers.find(l=>l.id===id).metadata['atlas:settings'].includes('labels'),`${id} does not follow the value-labels setting`);
+  assert.ok(layers.find(l=>l.id==='electrification-catenary-references').metadata['atlas:settings'].includes('labels'),'mast numbers remain value labels');
+  const evaluate=(former,p)=>expression.createExpression(powerKindText(former)).value.evaluate({zoom:14},{properties:p});
+  for(const [kind,{label}] of Object.entries(POWER_FACILITY_KINDS))assert.equal(evaluate(false,{power_kind:kind}),label);
+  assert.equal(evaluate(false,{power_kind:'water_crane'}),'Steam locomotive water crane');
+  assert.equal(evaluate(true,{power_kind:'coaling_facility',power_state:'disused'}),'Steam engine coaling (disused)');
+  const html=(await (await import('node:fs/promises')).readFile(new URL('../styles/index.html',import.meta.url),'utf8')).match(/id="labels"[^>]*>([^<]*)</)[1];
+  assert.match(html,/catenary mast numbers/);
 });

@@ -58021,9 +58021,224 @@
         "atlas:views": [
           "electrification"
         ],
-        "atlas:settings": [
-          "labels"
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
         ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ]
+      ],
+      "id": "electrification-supply-kinds",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "match",
+          [
+            "get",
+            "power_kind"
+          ],
+          "substation",
+          "Traction substation",
+          "plant",
+          "Railway power station",
+          "generator",
+          "Railway generator",
+          "converter",
+          "Traction power converter",
+          "transformer",
+          "Traction transformer",
+          "feeder",
+          "Traction feeding point",
+          "power_supply",
+          "Railway power supply",
+          "preheating",
+          "Train preheating supply",
+          "charging_station",
+          "Battery train charging facility",
+          "fuel",
+          "Train refuelling point",
+          "fuel_tank",
+          "Railway fuel tank",
+          "coaling_facility",
+          "Steam engine coaling",
+          "water_tower",
+          "Steam locomotive water tower",
+          "water_tank",
+          "Steam locomotive water tank",
+          "water_crane",
+          "Steam locomotive water crane",
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10.5,
+        "text-anchor": "bottom",
+        "text-offset": [
+          0,
+          -0.9
+        ],
+        "text-padding": 2,
+        "text-max-width": 12,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": [
+          "get",
+          "power_color"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricFacilities",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ]
+      ],
+      "id": "electrification-former-supply-kinds",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "concat",
+          [
+            "match",
+            [
+              "get",
+              "power_kind"
+            ],
+            "substation",
+            "Traction substation",
+            "plant",
+            "Railway power station",
+            "generator",
+            "Railway generator",
+            "converter",
+            "Traction power converter",
+            "transformer",
+            "Traction transformer",
+            "feeder",
+            "Traction feeding point",
+            "power_supply",
+            "Railway power supply",
+            "preheating",
+            "Train preheating supply",
+            "charging_station",
+            "Battery train charging facility",
+            "fuel",
+            "Train refuelling point",
+            "fuel_tank",
+            "Railway fuel tank",
+            "coaling_facility",
+            "Steam engine coaling",
+            "water_tower",
+            "Steam locomotive water tower",
+            "water_tank",
+            "Steam locomotive water tank",
+            "water_crane",
+            "Steam locomotive water crane",
+            ""
+          ],
+          " (",
+          [
+            "get",
+            "power_state"
+          ],
+          ")"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10.5,
+        "text-anchor": "bottom",
+        "text-offset": [
+          0,
+          -0.9
+        ],
+        "text-padding": 2,
+        "text-max-width": 12,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": [
+          "get",
+          "power_color"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricFacilities",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
@@ -58105,8 +58320,7 @@
           "electrification"
         ],
         "atlas:settings": [
-          "inactive",
-          "labels"
+          "inactive"
         ],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
@@ -59843,9 +60057,7 @@
         "atlas:views": [
           "electrification"
         ],
-        "atlas:settings": [
-          "labels"
-        ],
+        "atlas:settings": [],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
@@ -60012,9 +60224,103 @@
         "atlas:views": [
           "electrification"
         ],
-        "atlas:settings": [
-          "labels"
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
         ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-charging-kinds",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "match",
+          [
+            "get",
+            "power_kind"
+          ],
+          "substation",
+          "Traction substation",
+          "plant",
+          "Railway power station",
+          "generator",
+          "Railway generator",
+          "converter",
+          "Traction power converter",
+          "transformer",
+          "Traction transformer",
+          "feeder",
+          "Traction feeding point",
+          "power_supply",
+          "Railway power supply",
+          "preheating",
+          "Train preheating supply",
+          "charging_station",
+          "Battery train charging facility",
+          "fuel",
+          "Train refuelling point",
+          "fuel_tank",
+          "Railway fuel tank",
+          "coaling_facility",
+          "Steam engine coaling",
+          "water_tower",
+          "Steam locomotive water tower",
+          "water_tank",
+          "Steam locomotive water tank",
+          "water_crane",
+          "Steam locomotive water crane",
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10.5,
+        "text-anchor": "bottom",
+        "text-offset": [
+          0,
+          -0.9
+        ],
+        "text-max-width": 12,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#008a83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
@@ -61757,8 +62063,7 @@
           "electrification"
         ],
         "atlas:settings": [
-          "inactive",
-          "labels"
+          "inactive"
         ],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
@@ -61934,8 +62239,114 @@
           "electrification"
         ],
         "atlas:settings": [
-          "inactive",
-          "labels"
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ]
+      ],
+      "id": "electrification-former-charging-kinds",
+      "type": "symbol",
+      "layout": {
+        "text-field": [
+          "concat",
+          [
+            "match",
+            [
+              "get",
+              "power_kind"
+            ],
+            "substation",
+            "Traction substation",
+            "plant",
+            "Railway power station",
+            "generator",
+            "Railway generator",
+            "converter",
+            "Traction power converter",
+            "transformer",
+            "Traction transformer",
+            "feeder",
+            "Traction feeding point",
+            "power_supply",
+            "Railway power supply",
+            "preheating",
+            "Train preheating supply",
+            "charging_station",
+            "Battery train charging facility",
+            "fuel",
+            "Train refuelling point",
+            "fuel_tank",
+            "Railway fuel tank",
+            "coaling_facility",
+            "Steam engine coaling",
+            "water_tower",
+            "Steam locomotive water tower",
+            "water_tank",
+            "Steam locomotive water tank",
+            "water_crane",
+            "Steam locomotive water crane",
+            ""
+          ],
+          " (",
+          [
+            "get",
+            "power_state"
+          ],
+          ")"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10.5,
+        "text-anchor": "bottom",
+        "text-offset": [
+          0,
+          -0.9
+        ],
+        "text-max-width": 12,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#008a83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
         ],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,

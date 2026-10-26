@@ -337,7 +337,11 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.locator('#details-close').click();
     await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
-    assert.ok(await page.evaluate(()=>window.reviewMap.getLayoutProperty('electrification-supply-names','visibility')==='none'&&window.reviewMap.getLayoutProperty('electrification-supply-points','visibility')==='visible'));
+    assert.ok(await page.evaluate(()=>['electrification-supply-kinds','electrification-supply-names','electrification-supply-points','electrification-method-labels'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='visible')),'Power markers keep their kind, name and means labels with value labels off');
+    await closeControls();
+    const kinds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).map(f=>f.properties.power_kind))]);
+    assert.ok(kinds.length>=2,`kind labels render for several markers: ${kinds}`);
+    await openSettings();
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
     await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     await openSettings();await page.locator('#labels').uncheck();
