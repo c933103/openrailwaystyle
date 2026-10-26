@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261025-esri-imagery-1" rel="stylesheet">
+  <link href="app.css?v=20261026-imagery-coverage-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -182,7 +182,7 @@
       <li>Map data: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, under the Open Database Licence 1.0 (ODbL). The databases this site publishes (planned and former railways, branch and metro lines, street running, level crossings) are ODbL as well.</li>
       <li>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>, under its <a href="https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/USAGE.md">usage policy</a>. Base map tiles: <a href="https://tuiles.enliberte.fr/">En Liberté tiles</a>.</li>
       <li>Generalized railway backbone: <a href="https://www.naturalearthdata.com/about/terms-of-use/">Natural Earth public-domain data and terms</a>, served by <a href="https://papers.reearth.land/attribution">Re:Earth Papers (source credits)</a>. See the <a href="https://github.com/reearth/reearth-papers#attribution">provider’s attribution documentation</a>; the data licence does not guarantee the hosted service’s availability.</li>
-      <li>Satellite imagery: where this site is configured for it, <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri World Imagery</a> (powered by Esri; Esri, Vantor, Earthstar Geographics, and the GIS User Community), under the <a href="https://goto.arcgis.com/termsofuse/viewtermsofuse">Esri terms of use</a>. Where Esri is unavailable, including when its monthly free allowance is used up: <a href="https://cloudless.eox.at">EOxCloudless 2025</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>: non-commercial use only.</li>
+      <li>Satellite imagery: <a href="https://cloudless.eox.at">EOxCloudless 2025</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>: non-commercial use only, wherever it has its full 10 m detail. Where this site is configured for it, closer in than that detail and outside Sentinel-2's coverage (south of 56° S and north of 84° N): <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri World Imagery</a> (powered by Esri; Esri, Vantor, Earthstar Geographics, and the GIS User Community), under the <a href="https://goto.arcgis.com/termsofuse/viewtermsofuse">Esri terms of use</a>. When Esri is unavailable, including when its monthly free allowance is used up, EOxCloudless is shown there too, enlarged beyond its detail.</li>
       <li>Terrain: see the <a href="terrain-credits.html">terrain credits</a>. Departures: <a href="https://transitous.org/sources/">Transitous and its sources</a>. Station search: the <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a> public API (OpenStreetMap data, ODbL). Place search: <a href="https://nominatim.org/">Nominatim</a>, under the <a href="https://operations.osmfoundation.org/policies/nominatim/">OSM Foundation's usage policy</a>.</li>
       <li>Software in the page: <a href="vendor/maplibre-gl-5.24.0-LICENSE.txt">MapLibre GL JS</a> and <a href="vendor/pmtiles-4.2.1-LICENSE.txt">PMTiles</a> (BSD 3-Clause) are served with this site; maplibre-contour, pbf, vector-tile, vt-pbf, earcut, ieee754, point-geometry and fflate are also bundled with their licence files (BSD 3-Clause, MIT, ISC) under <code>vendor/</code>.</li>
       <li>Label fonts: <a href="https://github.com/notofonts/noto-cjk">Noto Sans CJK</a> (<a href="fonts/OFL.txt">SIL Open Font License 1.1</a>) for Chinese labels, and <a href="https://kamichikoichi.github.io/jigmo/">Jigmo</a> (CC0, glyphs from <a href="https://glyphwiki.org/">GlyphWiki</a>) for rare characters.</li>
@@ -222,6 +222,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261025-esri-imagery-1"></script>
+  <script type="module" src="app.mjs?v=20261026-imagery-coverage-1"></script>
 </body>
 </html>

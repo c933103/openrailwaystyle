@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261025-esri-imagery-1';
+import {SEARCH_API} from './map-model.mjs?v=20261026-imagery-coverage-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
