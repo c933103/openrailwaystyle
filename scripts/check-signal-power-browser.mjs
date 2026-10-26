@@ -341,6 +341,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await closeControls();
     const kinds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).map(f=>f.properties.power_kind))]);
     assert.ok(kinds.length>=2,`kind labels render for several markers: ${kinds}`);
+    const kindLabel=await page.evaluate(()=>{const f=window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).find(f=>f.properties.power_kind==='coaling_facility');if(!f)return null;const p=window.reviewMap.project(f.geometry.coordinates);return {x:p.x,y:p.y-22};});
+    assert.ok(kindLabel,'coaling kind label rendered');
+    await page.locator('#map canvas').click({position:kindLabel});assert.match(await page.locator('#detail-content').innerText(),/coaling/i,'clicking a kind label opens its facility');await page.locator('#details-close').click();
     await openSettings();
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
     await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
