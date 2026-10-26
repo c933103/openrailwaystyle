@@ -183,3 +183,4 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 
 .swatch.conductor-rail { border-top: 2px dashed var(--swatch); background: none; height: 0; }
 .swatch.traction-line { height: 0; border-top: 2px solid var(--swatch); background: none; }
+.swatch.energy-site { height: 12px; border: 1.5px solid var(--swatch); background: color-mix(in srgb, var(--swatch) 18%, transparent); box-sizing: border-box; }

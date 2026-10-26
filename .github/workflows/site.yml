@@ -408,6 +408,13 @@ jobs:
             assert.ok(lines!==null && lineData!==null,'Incomplete traction-line files');
             validateTractionLinesSnapshot(JSON.parse(lineData),JSON.parse(lines));
           }
+          const sites=await readOptional('styles/data/traction/power/energy-sites-manifest.json');
+          const siteData=await readOptional('styles/data/traction/power/energy-sites.geojson');
+          if(sites!==null || siteData!==null) {
+            const {validateEnergySitesSnapshot}=await import('./scripts/build-energy-sites.mjs');
+            assert.ok(sites!==null && siteData!==null,'Incomplete energy-site files');
+            validateEnergySitesSnapshot(JSON.parse(siteData),JSON.parse(sites));
+          }
           JS
       # The code tree and a digest of the assembled data: a pull request
       # records it when its checks pass, and main skips the browser checks

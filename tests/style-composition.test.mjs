@@ -26,9 +26,9 @@ function canonical(value) {
 
 // New independently tested overlays retain every historical source/layer byte
 // and their relative order; their own schema and paint are in power-methods.test
-// and traction-lines.test.
-const addedSources=new Set(['railReference','electricMethods','electricLines','electricCatenary']);
-const addedLayers=new Set(['electrification-conductor-rails','electrification-method-labels','electrification-charging-points','electrification-charging-marks','electrification-charging-names','electrification-former-conductor-rails','electrification-former-method-labels','electrification-former-charging-points','electrification-former-charging-marks','electrification-former-charging-names','electrification-catenary-masts','electrification-catenary-portals','electrification-catenary-references','electrification-traction-lines','electrification-traction-cables','electrification-former-traction-lines','electrification-former-traction-cables']);
+// traction-lines.test and energy-sites.test.
+const addedSources=new Set(['railReference','electricMethods','energySites','electricLines','electricCatenary']);
+const addedLayers=new Set(['electrification-conductor-rails','electrification-method-labels','electrification-charging-points','electrification-charging-marks','electrification-charging-names','electrification-former-conductor-rails','electrification-former-method-labels','electrification-former-charging-points','electrification-former-charging-marks','electrification-former-charging-names','electrification-catenary-masts','electrification-catenary-portals','electrification-catenary-references','electrification-traction-lines','electrification-traction-cables','electrification-former-traction-lines','electrification-former-traction-cables','electrification-energy-site-areas','electrification-energy-site-edges','electrification-former-energy-site-areas','electrification-former-energy-site-edges','electrification-energy-site-names']);
 const digest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 
 function rootContract(value) {

@@ -7,6 +7,7 @@
 import {powerFacility,tractionFrequency} from '../styles/power-facilities.mjs';
 import {powerFacilityQuery} from './power-facility-data.mjs';
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
+import {validPoint,outerRings,wayRing,inside,bounds} from './osm-geometry.mjs';
 
 const STATES=['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const PREFIXES=['',...STATES.map(state=>`${state}:`)];
@@ -51,47 +52,13 @@ function lifecycle(tags,key) {
   }
   return {value:[],state:'present'};
 }
-const validPoint=p=>Number.isFinite(p?.lon)&&Number.isFinite(p?.lat)&&Math.abs(p.lon)<=180&&Math.abs(p.lat)<=90;
-
-// Join relation member ways into closed rings by shared end coordinates.
-function rings(members) {
-  const open=members.filter(m=>m.type==='way'&&m.role!=='inner'&&m.geometry?.length>=2&&m.geometry.every(validPoint)).map(m=>m.geometry.map(p=>[p.lon,p.lat]));
-  const closed=[],same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
-  while(open.length) {
-    let ring=open.shift();
-    for(let joined=true;joined&&!same(ring[0],ring.at(-1));) {
-      joined=false;
-      for(let i=0;i<open.length;i++) {
-        const part=open[i],end=ring.at(-1);
-        const next=same(part[0],end)?part:same(part.at(-1),end)?[...part].reverse():null;
-        if(next){ring=[...ring,...next.slice(1)];open.splice(i,1);joined=true;break;}
-      }
-    }
-    if(ring.length>=4&&same(ring[0],ring.at(-1)))closed.push(ring);
-  }
-  return closed;
-}
-function inside([x,y],ring) {
-  let result=false;
-  for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
-    const [xi,yi]=ring[i],[xj,yj]=ring[j];
-    if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)result=!result;
-  }
-  return result;
-}
-const bounds=points=>points.reduce((b,[x,y])=>[Math.min(b[0],x),Math.min(b[1],y),Math.max(b[2],x),Math.max(b[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
-
 function supplyFacility(element) {
   const kind=powerFacility(element.tags||{})?.kind;
   if(!SUPPLY_KINDS.has(kind))return null;
   const id=`${element.type}-${element.id}`;
   if(element.type==='node')return {id,nodes:new Set([element.id]),rings:[]};
-  if(element.type==='way') {
-    const points=(element.geometry||[]).filter(validPoint).map(p=>[p.lon,p.lat]);
-    const closed=points.length>=4&&points[0][0]===points.at(-1)[0]&&points[0][1]===points.at(-1)[1];
-    return {id,nodes:new Set(element.nodes||[]),rings:closed?[points]:[]};
-  }
-  if(element.type==='relation')return {id,nodes:new Set(),rings:rings(element.members||[])};
+  if(element.type==='way')return {id,nodes:new Set(element.nodes||[]),rings:wayRing(element)};
+  if(element.type==='relation')return {id,nodes:new Set(),rings:outerRings(element.members)};
   return null;
 }
 

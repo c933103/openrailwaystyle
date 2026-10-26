@@ -14,6 +14,9 @@ on:
       - scripts/staged-overpass.mjs
       - scripts/traction-line-data.mjs
       - scripts/build-traction-lines.mjs
+      - scripts/osm-geometry.mjs
+      - scripts/energy-site-data.mjs
+      - scripts/build-energy-sites.mjs
       - styles/power-facilities.mjs
   workflow_dispatch:
 permissions:
@@ -26,7 +29,7 @@ jobs:
   snapshot:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/signal-power-facilities'
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,6 +60,8 @@ jobs:
         run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-methods.mjs
       - name: Collect railway traction power lines worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-traction-lines.mjs
+      - name: Collect rail-served fuel and coal sites worldwide
+        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-energy-sites.mjs
       - name: Collect signals missing provider direction data worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
       - name: Preserve completed region responses
@@ -88,6 +93,8 @@ jobs:
           validatePowerMethodsSnapshot(methodData,methods);
           const {validateTractionLinesSnapshot}=await import('./scripts/build-traction-lines.mjs');
           validateTractionLinesSnapshot(JSON.parse(await readFile('power-data/traction-lines.geojson')),JSON.parse(await readFile('power-data/traction-lines-manifest.json')));
+          const {validateEnergySitesSnapshot}=await import('./scripts/build-energy-sites.mjs');
+          validateEnergySitesSnapshot(JSON.parse(await readFile('power-data/energy-sites.geojson')),JSON.parse(await readFile('power-data/energy-sites-manifest.json')));
           assert.equal(power.complete,true);
           assert.equal(features.features.length,power.features);
           assert.ok(power.coverage.length>=8 && power.features>0);

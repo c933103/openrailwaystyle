@@ -293,7 +293,8 @@ Curated hubs carry no names: the client names them from the provider's station t
 
 The manual or code-change-triggered `traction-facilities.yml` workflow prepares
 worldwide railway energy supply facilities, conductor rails and battery train
-charging, railway traction power lines, and the railway signals omitted by the
+charging, railway traction power lines, rail-served fuel and coal sites, and
+the railway signals omitted by the
 provider's direction-dependent signal source. It adds no schedule. Every
 world partition must complete before either dataset replaces `traction-data`;
 partial/error Overpass responses are rejected. Complete raw regions are kept
@@ -301,7 +302,8 @@ for retries. The site workflow validates both manifests before copying
 `power/` and `signals/` under `styles/data/traction/`.
 
 Run `node scripts/build-power-facilities.mjs`, `node scripts/build-power-methods.mjs`,
-`node scripts/build-traction-lines.mjs` and `node scripts/build-signals.mjs`
+`node scripts/build-traction-lines.mjs`, `node scripts/build-energy-sites.mjs`
+and `node scripts/build-signals.mjs`
 for local maintenance. These builders use the public Overpass service; map
 visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
 for the tag rules and primary references.

@@ -12,6 +12,7 @@ import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
 import {tractionLinesGeoJSON} from './traction-line-data.mjs';
+import {energySitesGeoJSON} from './energy-site-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -66,6 +67,16 @@ const tractionLines=tractionLinesGeoJSON({elements:[
   {type:'way',id:9434,nodes:[51,52],tags:{power:'line',frequency:'50'},geometry:at([[.0004,.0008],[.0004,.0011]])},
 ]});
 assert.deepEqual(tractionLines.features.map(f=>f.id),['way-9430','way-9431','way-9432','way-9433'],'a line passing the substation is not a supply line');
+// A tank farm a siding enters (evidence: its diesel tank) and one a siding only
+// passes, which must not be selected.
+const energySites=energySitesGeoJSON({elements:[
+  {type:'way',id:9450,tags:{landuse:'industrial',name:'Test fuel terminal',operator:'Test fuels'},geometry:at([[.0002,-.0006],[.0006,-.0006],[.0006,-.00045],[.0002,-.00045],[.0002,-.0006]])},
+  {type:'way',id:9451,center:{lon:.0005,lat:-.00055},tags:{man_made:'storage_tank',content:'diesel'}},
+  {type:'way',id:9452,tags:{railway:'rail',service:'siding'},geometry:at([[.0001,-.0005],[.0004,-.0005]])},
+  {type:'way',id:9453,tags:{landuse:'industrial',industrial:'fuel_depot'},geometry:at([[-.0009,-.0006],[-.0006,-.0006],[-.0006,-.00045],[-.0009,-.00045],[-.0009,-.0006]])},
+  {type:'way',id:9454,tags:{railway:'rail',service:'siding'},geometry:at([[-.001,-.0004],[-.0005,-.0004]])},
+]});
+assert.deepEqual(energySites.features.map(f=>f.id),['way-9450'],'a siding passing a depot does not make it rail-served');
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
 const branchIndex = index([branchOverview,metroOverview]);
@@ -115,7 +126,7 @@ await mkdir('browser-review',{recursive:true});
 try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:2,serviceWorkers:'block'});setDefaultTimeout(page,60000);
   await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
-  const errors=[];let supplyRequests=0,lineRequests=0;page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];let supplyRequests=0,lineRequests=0,siteRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
@@ -128,6 +139,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson')){await route.fulfill({json:methods});return;}
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/traction-lines.geojson')){lineRequests++;await route.fulfill({json:tractionLines});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/energy-sites.geojson')){siteRequests++;await route.fulfill({json:energySites});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
     const [,folder,file]=match,snapshot=snapshotIndexes[folder];
@@ -295,6 +307,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await mode('speed');assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
     assert.equal(lineRequests,0,'traction power lines are deferred until Power view');
+    assert.equal(siteRequests,0,'rail-served sites are deferred until Power view');
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
@@ -312,6 +325,20 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
       if(id==='9431')await page.locator('#details').screenshot({path:`browser-review/power-traction-line-details-${kind}.png`});
       await page.locator('#details-close').click();
     }
+    await visible('electrification-energy-site-areas');await visible('electrification-energy-site-edges');await visible('electrification-energy-site-names');
+    assert.ok(await page.evaluate(()=>{const ids=window.reviewMap.getStyle().layers.map(l=>l.id);return ['electrification-energy-site-areas','electrification-energy-site-edges'].every(id=>ids.indexOf(id)<ids.indexOf('electrification-tracks'));}),'site areas draw beneath the tracks');
+    await clickCoordinates([.00035,-.00057]);await page.waitForSelector('#details:not([hidden])');
+    {
+      const rows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
+      assert.match(await page.locator('#detail-content h2').innerText(),/Test fuel terminal/);
+      assert.equal(rows.Type,'Rail-served fuel site');assert.equal(rows['Stored contents'],'diesel');
+      assert.equal(rows['Energy evidence'],'Storage inside the site records energy contents');assert.equal(rows['Rail connection'],'A siding enters the mapped site');
+      assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/way/9450"]').count(),1);
+      await page.locator('#details').screenshot({path:`browser-review/power-energy-site-details-${kind}.png`});
+      await page.locator('#details-close').click();
+    }
+    const siteSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>/^Rail-served (fuel|coal) site$/.test(row.lastElementChild.textContent)).map(row=>[row.lastElementChild.textContent,row.firstElementChild.classList.contains('energy-site'),row.firstElementChild.style.getPropertyValue('--swatch')]));
+    assert.deepEqual(siteSamples,[['Rail-served fuel site',true,'#906532'],['Rail-served coal site',true,'#4b4c50']],'the legend shows sites as area samples');
     const lineSample=await page.evaluate(()=>{const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Railway traction power line');return row&&{line:row.firstElementChild.classList.contains('traction-line'),colour:row.firstElementChild.style.getPropertyValue('--swatch')};});
     assert.deepEqual(lineSample,{line:true,colour:'#b77d00'},'the legend shows traction lines as a line sample');
     await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
@@ -336,7 +363,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openControls();await page.locator('#about-open').click();
     const powerHelp=await page.locator('#help-power').innerText();
-    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water','railway traction power lines'])assert.ok(powerHelp.includes(label),label);
+    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water','railway traction power lines','rail-served fuel (brown) and coal (grey) sites'])assert.ok(powerHelp.includes(label),label);
     assert.match(powerHelp,/whole electricity grid.*not yet/);
     await page.locator('#help-power').scrollIntoViewIfNeeded();
     await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
@@ -355,7 +382,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await openSettings();await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>['infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')&&window.reviewMap.getLayoutProperty('infrastructure-signal-points','visibility')==='visible'));
     await page.locator('#labels').check();
-    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');assert.equal(lineRequests,1,'traction lines are downloaded once');await powerLegend(false);
+    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');assert.equal(lineRequests,1,'traction lines are downloaded once');assert.equal(siteRequests,1,'rail-served sites are downloaded once');await powerLegend(false);
     await mode('control');await closeControls();
     console.log(`CHECK: ${kind} energy supplies passed; checking overview control bands`);
     await jump([0,0],5);console.log(`CHECK: ${kind} moved to overview`);await sharedBands('control-overview');await sharedBands('control-branch-overview');

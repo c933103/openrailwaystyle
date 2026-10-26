@@ -2,7 +2,8 @@
 
 Power is intended to represent the whole electricity grid and the railway fuel
 supply chain, including train servicing. The current implementation covers the
-railway-related facilities and traction power lines selected below; the whole-grid and wider production,
+railway-related facilities, traction power lines and rail-served fuel and
+coal sites selected below; the whole-grid and wider production,
 storage and rail-connected transfer coverage required by
 [issue #114](https://github.com/c933103/openrailwaystyle/issues/114) is not yet
 implemented. Missing markers do not establish that supplies are absent.
@@ -137,6 +138,44 @@ crossing a region boundary can be returned by each region; the builder combines
 the evidence from every region, so the result does not depend on region order. `traction-facilities.yml` publishes `power/traction-lines.geojson`
 with its digest-bearing manifest; site assembly accepts snapshots made before
 this file existed and validates it once present.
+
+## Rail-served fuel and coal sites
+
+Power shades fuel sites (brown) and coal sites (grey) from zoom 11 when a
+railway siding is mapped as entering them. They draw beneath the tracks, and
+names follow the Labels setting from zoom 14. Areas are used rather than
+markers, so a served site is not mistaken for an **F** train refuelling point
+or **C** coaling point. A site whose only entering siding is disused,
+abandoned or planned is drawn faded and dashed with the planned/former setting.
+Selecting a site shows the evidence for its energy role, recorded storage
+contents and how many sidings enter it.
+
+A site needs both kinds of evidence:
+
+- **Energy role.** Its own tags (`industrial=fuel_depot`, `oil_depot`,
+  `refinery`, `oil`, `gas`, `natural_gas`, `lng`, `hydrogen` or `coal`, or
+  `resource=coal`, `lignite` or `anthracite`), or a `landuse=industrial` area
+  holding a `storage_tank`, `silo` or `bunker_silo` whose `content` records a
+  fuel or coal (for example `oil`, `diesel`, `gas`, `lpg`, `hydrogen`, `coal`).
+  Contents such as water, grain or vegetable oil do not qualify. Many tank
+  farms carry no industrial subtype, so recorded storage contents are
+  essential evidence.
+- **Rail link.** A siding, spur or yard track, or a track with
+  `usage=industrial`, whose mapped geometry enters the site area: a vertex
+  inside it or a segment meeting its outline. Passing nearby is not a link.
+
+Point-mapped sites have no area to test and are not selected. A site mapped
+without any of the role evidence above, or whose siding stops short of the
+mapped boundary, is not shown; its absence does not establish that it is not
+rail-served. Being rail-served does not mean the site refuels trains or that
+deliveries continue.
+
+`scripts/build-energy-sites.mjs` collects the sites worldwide with the shared
+staged acquisition (`scripts/staged-overpass.mjs`). A site crossing a region
+boundary sees only that region's sidings and storage; the builder combines the
+evidence from every region. `traction-facilities.yml` publishes
+`power/energy-sites.geojson` with its digest-bearing manifest; site assembly
+accepts snapshots made before this file existed.
 
 ## Conductor rails, charging and catenary equipment
 

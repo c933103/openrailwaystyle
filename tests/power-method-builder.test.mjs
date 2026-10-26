@@ -7,6 +7,7 @@ import {gunzipSync} from 'node:zlib';
 import {buildPowerMethods,validatePowerMethodsSnapshot,POWER_METHOD_REGIONS,POWER_METHOD_LIMITS} from '../scripts/build-power-methods.mjs';
 import {powerMethodQuery} from '../scripts/power-method-data.mjs';
 import {buildTractionLines} from '../scripts/build-traction-lines.mjs';
+import {buildEnergySites} from '../scripts/build-energy-sites.mjs';
 
 const element={type:'way',id:12,tags:{railway:'subway',electrified:'rail'},geometry:[{lon:135,lat:34},{lon:135.001,lat:34.001}]};
 const complete={osm3s:{timestamp_osm_base:'2026-10-13T00:00:00Z'},elements:[element]};
@@ -206,6 +207,10 @@ test('actual publisher and site workflow gates reject incomplete files and prese
   const line={type:'way',id:31,tags:{power:'line',frequency:'16.7'},nodes:[1,2],geometry:[{lon:9,lat:50},{lon:9.01,lat:50.01}]};
   await buildTractionLines({...options,output:join(dir,'lines'),fetcher:async()=>response({osm3s:{},elements:[line]})});
   for(const file of ['traction-lines.geojson','traction-lines-manifest.json'])await copyFile(join(dir,'lines',file),join(dir,'power-data',file));
+  const depot={type:'way',id:41,tags:{industrial:'fuel_depot'},geometry:[[9,50],[9.01,50],[9.01,50.01],[9,50.01],[9,50]].map(([lon,lat])=>({lon,lat}))};
+  const spur={type:'way',id:42,tags:{railway:'rail',service:'spur'},geometry:[{lon:8.99,lat:50.005},{lon:9.005,lat:50.005}]};
+  await buildEnergySites({...options,output:join(dir,'sites'),fetcher:async()=>response({osm3s:{},elements:[depot,spur]})});
+  for(const file of ['energy-sites.geojson','energy-sites-manifest.json'])await copyFile(join(dir,'sites',file),join(dir,'power-data',file));
   const script=async(file,step)=>{
     const workflow=await readFile(new URL(`../.github/workflows/${file}`,import.meta.url),'utf8');
     const body=workflow.slice(workflow.indexOf(`- name: ${step}`)).match(/node --input-type=module <<'JS'\n([\s\S]*?)\n {10}JS/);

@@ -22,6 +22,8 @@ export const POWER_FACILITY_KINDS = Object.freeze({
 // Railway traction power lines share the electricity supply colour. Cables
 // are dashed; former lines are dashed and faded with the inactive setting.
 export const TRACTION_LINE_STYLE = Object.freeze({color:'#b77d00', width:Object.freeze({line:Object.freeze([1.4,2.6]), other:Object.freeze([0.9,1.6])})});
+// Rail-served fuel and coal sites share their group's marker colour.
+export const ENERGY_SITE_STYLE = Object.freeze({fuel:'#906532', coal:'#4b4c50'});
 // Shared by the map's point layers and legend; the legend samples the detailed
 // marker size. Lifecycle changes only the fill, stroke and letter colour.
 export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
@@ -38,8 +40,9 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
 export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
+export const ENERGY_SITE_NOTE = `Shaded areas are rail-served fuel (brown) and coal (grey) sites: a railway siding is mapped as entering the site, and the site's tags or the storage inside it record the fuel. A site beside a track is not included, and a served site is not a train refuelling point.`;
 export const TRACTION_LINE_NOTE = `Brown lines are railway traction power lines, with cables dashed: lines recorded at a traction frequency (16.7 Hz) or mapped as reaching a railway electricity facility. A line merely passing near one is not included.`;
-export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${TRACTION_LINE_NOTE} ${POWER_FACILITY_LIMITS}`;
+export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${TRACTION_LINE_NOTE} ${ENERGY_SITE_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -117,6 +120,25 @@ export function tractionLineRows(properties = {}) {
     ['Operator',p.operator],['Owner',p.owner],['Voltage',p.voltage],
     ['Frequency',p.frequency!=null&&String(p.frequency).trim()!==''?`${p.frequency} Hz`:undefined],
     ['Circuits',p.circuits],['Cables',p.cables],['Reference',p.ref],['Line location',p.location],
+  ].filter(([,value])=>value!=null&&String(value).trim()!=='');
+}
+
+// Rail-served site details. The site's energy role and its rail link are
+// stated as the evidence that selected it: a siding entering the mapped area,
+// not proximity, and not a claim that trains are refuelled there.
+const ENERGY_SITE_LABELS = Object.freeze({fuel_site:'Rail-served fuel site', coal_site:'Rail-served coal site'});
+export function energySiteName(properties = {}) {
+  return ENERGY_SITE_LABELS[properties.energy_kind] || 'Rail-served energy site';
+}
+export function energySiteRows(properties = {}) {
+  const p=properties,list=value=>String(value??'').split(';').filter(Boolean);
+  const evidence=list(p.energy_evidence).map(value=>value==='storage contents'?'Storage inside the site records energy contents':`Tagged ${value}`);
+  const sidings=list(p.rail_sidings);
+  return [
+    ['Type',energySiteName(p)],['Status',p.power_state==='present'?'present':`${p.power_state} rail connection`],
+    ['Energy evidence',evidence.join('; ')],['Stored contents',list(p.stored_contents).join(', ')],
+    ['Rail connection',sidings.length?`${sidings.length===1?'A siding enters':`${sidings.length} sidings enter`} the mapped site`:undefined],
+    ['Operator',p.operator],['Owner',p.owner],
   ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 

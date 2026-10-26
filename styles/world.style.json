@@ -5053,6 +5053,14 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "energySites": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      },
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "electricLines": {
       "type": "geojson",
       "data": {
@@ -8237,6 +8245,199 @@
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
+      }
+    },
+    {
+      "source": "energySites",
+      "minzoom": 11,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "==",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-energy-site-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "energy_group"
+          ],
+          "coal",
+          "#4b4c50",
+          "#906532"
+        ],
+        "fill-opacity": 0.18
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energySites",
+      "minzoom": 11,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "==",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-energy-site-edges",
+      "type": "line",
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "energy_group"
+          ],
+          "coal",
+          "#4b4c50",
+          "#906532"
+        ],
+        "line-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energySites",
+      "minzoom": 11,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-former-energy-site-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "energy_group"
+          ],
+          "coal",
+          "#4b4c50",
+          "#906532"
+        ],
+        "fill-opacity": 0.08
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energySites",
+      "minzoom": 11,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-former-energy-site-edges",
+      "type": "line",
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "energy_group"
+          ],
+          "coal",
+          "#4b4c50",
+          "#906532"
+        ],
+        "line-width": 1.5,
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-opacity": 0.6
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -59964,6 +60165,73 @@
         "text-color": "#8c5f00",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1
+      }
+    },
+    {
+      "id": "electrification-energy-site-names",
+      "type": "symbol",
+      "source": "energySites",
+      "minzoom": 14,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      },
+      "filter": [
+        "==",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "atlas_name"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 12,
+        "text-padding": 4,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "energy_group"
+          ],
+          "coal",
+          "#4b4c50",
+          "#906532"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
       }
     },
     {
