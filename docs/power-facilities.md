@@ -98,7 +98,7 @@ Primary references:
 ## Railway traction power lines
 
 Power also draws railway traction power lines from zoom 10, beneath the tracks
-so they never hide track colours. Overhead and minor lines are solid brown;
+so they never hide track colours. Overhead and minor lines are solid amber;
 cables are dashed. Former and planned lines are faded and dashed and follow the
 planned/former infrastructure setting. Selecting a line shows its type, status,
 the evidence that selected it, operator, owner, voltage, frequency, circuits
@@ -112,8 +112,9 @@ selected when either source fact holds:
 - its mapped geometry reaches a railway electricity facility selected by the
   rules above (traction substation, railway power plant or generator, converter,
   traction transformer or traction feeding point): the line shares a node with
-  the facility, or a line vertex lies inside the facility's mapped area,
-  including a multipolygon's joined outer ring.
+  the facility, or its geometry enters or ends on the facility's mapped area
+  (a vertex inside it, or a segment meeting its outline). A multipolygon's
+  member ways are joined into rings, and its holes are not part of the area.
 
 A line that merely passes near such a facility, reaches only an ordinary utility
 substation, or reaches an auxiliary `railway=power_supply` socket is not

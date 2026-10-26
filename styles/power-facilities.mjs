@@ -38,7 +38,7 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
 export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
-export const TRACTION_LINE_NOTE = `Brown lines are railway traction power lines, with cables dashed: lines recorded at a traction frequency (16.7 Hz) or mapped as reaching a railway electricity facility. A line merely passing near one is not included.`;
+export const TRACTION_LINE_NOTE = `Amber lines are railway traction power lines, with cables dashed: lines recorded at a traction frequency (16.7 Hz) or mapped as reaching a railway electricity facility. A line merely passing near one is not included.`;
 export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${TRACTION_LINE_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
@@ -102,8 +102,8 @@ export function powerFacilityName(properties = {}) {
 }
 
 // Traction power line details. The basis states which source evidence
-// selected the line; reaching a facility means shared nodes or a vertex inside
-// its mapped area, not mere proximity.
+// selected the line; reaching a facility means a shared node or geometry
+// entering or ending on its mapped area, not mere proximity.
 const TRACTION_LINE_LABELS = Object.freeze({line:'Railway traction power line', minor_line:'Railway traction power line (minor)', cable:'Railway traction power cable'});
 export function tractionLineName(properties = {}) {
   return TRACTION_LINE_LABELS[properties.power_line_kind] || 'Railway traction power line';

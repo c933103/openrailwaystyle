@@ -1,12 +1,13 @@
 // Maintenance-only selection of railway traction power lines. A line belongs
 // to the railway supply when its recorded frequency is a traction frequency,
 // or when its mapped geometry actually reaches a railway electricity facility:
-// it shares a node with the facility, or a vertex lies inside the facility's
-// area. Passing nearby is not a connection, and an operator name, voltage or
+// it shares a node with the facility, or it enters or ends on the facility's
+// mapped area (holes excluded). Passing nearby is not a connection, and an operator name, voltage or
 // a track running alongside never establishes railway use.
 import {powerFacility,tractionFrequency} from '../styles/power-facilities.mjs';
 import {powerFacilityQuery} from './power-facility-data.mjs';
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
+import {validPoint,areaPolygons,lineMeetsPolygon} from './osm-geometry.mjs';
 
 const STATES=['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const PREFIXES=['',...STATES.map(state=>`${state}:`)];
@@ -51,47 +52,12 @@ function lifecycle(tags,key) {
   }
   return {value:[],state:'present'};
 }
-const validPoint=p=>Number.isFinite(p?.lon)&&Number.isFinite(p?.lat)&&Math.abs(p.lon)<=180&&Math.abs(p.lat)<=90;
-
-// Join relation member ways into closed rings by shared end coordinates.
-function rings(members) {
-  const open=members.filter(m=>m.type==='way'&&m.role!=='inner'&&m.geometry?.length>=2&&m.geometry.every(validPoint)).map(m=>m.geometry.map(p=>[p.lon,p.lat]));
-  const closed=[],same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
-  while(open.length) {
-    let ring=open.shift();
-    for(let joined=true;joined&&!same(ring[0],ring.at(-1));) {
-      joined=false;
-      for(let i=0;i<open.length;i++) {
-        const part=open[i],end=ring.at(-1);
-        const next=same(part[0],end)?part:same(part.at(-1),end)?[...part].reverse():null;
-        if(next){ring=[...ring,...next.slice(1)];open.splice(i,1);joined=true;break;}
-      }
-    }
-    if(ring.length>=4&&same(ring[0],ring.at(-1)))closed.push(ring);
-  }
-  return closed;
-}
-function inside([x,y],ring) {
-  let result=false;
-  for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
-    const [xi,yi]=ring[i],[xj,yj]=ring[j];
-    if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)result=!result;
-  }
-  return result;
-}
-const bounds=points=>points.reduce((b,[x,y])=>[Math.min(b[0],x),Math.min(b[1],y),Math.max(b[2],x),Math.max(b[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
-
 function supplyFacility(element) {
   const kind=powerFacility(element.tags||{})?.kind;
   if(!SUPPLY_KINDS.has(kind))return null;
   const id=`${element.type}-${element.id}`;
-  if(element.type==='node')return {id,nodes:new Set([element.id]),rings:[]};
-  if(element.type==='way') {
-    const points=(element.geometry||[]).filter(validPoint).map(p=>[p.lon,p.lat]);
-    const closed=points.length>=4&&points[0][0]===points.at(-1)[0]&&points[0][1]===points.at(-1)[1];
-    return {id,nodes:new Set(element.nodes||[]),rings:closed?[points]:[]};
-  }
-  if(element.type==='relation')return {id,nodes:new Set(),rings:rings(element.members||[])};
+  if(element.type==='node')return {id,nodes:new Set([element.id]),polygons:[]};
+  if(element.type==='way'||element.type==='relation')return {id,nodes:new Set(element.nodes||[]),polygons:areaPolygons(element)};
   return null;
 }
 
@@ -101,7 +67,7 @@ export function tractionLinesGeoJSON(json) {
   for(const element of json.elements) {
     if(!['node','way','relation'].includes(element?.type)||!Number.isSafeInteger(element.id))continue;
     const facility=supplyFacility(element);
-    if(facility){facility.boxes=facility.rings.map(bounds);facilities.push(facility);}
+    if(facility)facilities.push(facility);
     if(element.type==='way'&&lifecycle(element.tags||{},'power').value.some(v=>TRACTION_LINE_KINDS.includes(v)))lines.push(element);
   }
   const features=new Map();
@@ -111,11 +77,10 @@ export function tractionLinesGeoJSON(json) {
     const power=lifecycle(tags,'power');
     const coordinates=element.geometry?.map(p=>[p.lon,p.lat]);
     if(!coordinates||coordinates.length<2||!element.geometry.every(validPoint))throw new Error(`Incomplete geometry for traction line way-${element.id}`);
-    const nodes=new Set(element.nodes||[]),[minX,minY,maxX,maxY]=bounds(coordinates);
-    const reached=facilities.filter(f=>[...f.nodes].some(n=>nodes.has(n))||f.rings.some((ring,i)=>{
-      const b=f.boxes[i];
-      return b[0]<=maxX&&b[2]>=minX&&b[1]<=maxY&&b[3]>=minY&&coordinates.some(p=>inside(p,ring));
-    })).map(f=>f.id).sort();
+    const nodes=new Set(element.nodes||[]);
+    // A shared node, or geometry entering the area: a vertex inside it (not in
+    // a hole) or a segment meeting its outline, including ending on it.
+    const reached=facilities.filter(f=>[...f.nodes].some(n=>nodes.has(n))||f.polygons.some(polygon=>lineMeetsPolygon(coordinates,polygon))).map(f=>f.id).sort();
     const frequency=tractionFrequency(tags.frequency);
     if(!frequency&&!reached.length)continue;
     const kind=power.value.find(v=>TRACTION_LINE_KINDS.includes(v)),centre=coordinates[Math.floor(coordinates.length/2)],atlas_han=hanRegion(...centre);
