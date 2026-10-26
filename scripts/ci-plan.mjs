@@ -37,7 +37,7 @@ export const LOCAL_ORM_CHECKS = [
 // runs alone after `prepare`. Every check uses synthetic external providers.
 export const GROUPS = [
   {group: 'rail-fixture', checks: ['check-deployed-fixture-browser.mjs', 'check-orm-fixture-browser.mjs', 'check-rail-overview-browser.mjs', 'check-overview-markers-browser.mjs', 'check-mainline-reference-browser.mjs', 'check-rail-reference-browser.mjs', 'check-station-fallback-browser.mjs', 'check-station-world-browser.mjs']},
-  {group: 'context', checks: ['check-bathymetry-browser.mjs', 'check-terrain-deadlines-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs', 'check-polar-parity-browser.mjs', 'check-imagery-browser.mjs']},
+  {group: 'context', checks: ['check-bathymetry-browser.mjs', 'check-terrain-deadlines-browser.mjs', 'check-terrain-3d-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs', 'check-polar-parity-browser.mjs', 'check-imagery-browser.mjs']},
   {group: 'controls', checks: ['check-network-guard-browser.mjs', 'check-provider-retries-browser.mjs', 'check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs', 'check-service-provenance-browser.mjs', 'check-first-party-assets-browser.mjs', 'check-pwa-install-browser.mjs', 'check-departures-browser.mjs']},
   {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},
   {group: 'platforms', checks: ['check-platform-stations-browser.mjs']},
