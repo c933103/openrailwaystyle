@@ -95,49 +95,55 @@ Primary references:
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
 
-## Railway traction power lines
+## Railway supply power lines
 
-Power also draws railway traction power lines from zoom 10, beneath the tracks
-so they never hide track colours. Overhead and minor lines are solid amber;
-cables are dashed. Former and planned lines are faded and dashed and follow the
-planned/former infrastructure setting. Selecting a line shows its type, status,
-the evidence that selected it, operator, owner, voltage, frequency, circuits
-and OSM way.
+Power also draws the power lines that supply railway electricity facilities,
+from zoom 10, beneath the tracks so they never hide track colours. Overhead and
+minor lines are solid amber; cables are dashed. Former and planned lines are
+faded and dashed and follow the planned/former infrastructure setting.
+Selecting a line shows its type, status, the evidence that selected it,
+operator, owner, voltage, frequency, circuits and OSM way.
 
-A `power=line`, `minor_line` or `cable` way, including lifecycle prefixes, is
-selected when either source fact holds:
+Selection uses topology alone, the same way everywhere. A `power=line`,
+`minor_line` or `cable` way, including lifecycle prefixes, is selected when:
 
-- its `frequency` records a traction frequency (16.7, 16.67 or 16.666 Hz),
-  including lines that also carry other circuits, such as `50;16.7`; or
-- its mapped geometry reaches a railway electricity facility selected by the
-  rules above (traction substation, railway power plant or generator, converter,
-  traction transformer or traction feeding point): the line shares a node with
-  the facility, or its geometry enters or ends on the facility's mapped area
-  (a vertex inside it, or a segment meeting its outline). A multipolygon's
-  member ways are joined into rings, and its holes are not part of the area.
+- it **reaches** a railway electricity facility selected by the rules above
+  (traction substation, railway power plant or generator, converter, traction
+  transformer or traction feeding point): it shares a node with the facility,
+  or its geometry enters or ends on the facility's mapped area (a vertex inside
+  it, or a segment meeting its outline; a multipolygon's member ways are joined
+  into rings and its holes are not part of the area); or
+- it is in the **same circuit** as such a line. Two ways are in one circuit
+  when one ends on the other: a split or a tee. Circuits therefore stop where
+  lines terminate separately in substations. Parallel lines that only share
+  towers are not connected.
 
-A line that merely passes near such a facility, reaches only an ordinary utility
-substation, or reaches an auxiliary `railway=power_supply` socket is not
-selected. Conductors tagged `line=bay` or `busbar` are substation equipment
-and are excluded. A line ending close to a node-mapped substation without a
-shared node is not counted as connected. An operator name, voltage, or a track
-running alongside never establishes railway use.
+No frequency, voltage, operator or name selects a line. A dedicated railway
+network (such as a 16.7 Hz or 25 Hz system) and a grid feeder from a 50/60 Hz
+grid are found by the same rule wherever they connect to mapped railway
+facilities. A line that merely passes near a facility, reaches only an
+ordinary utility substation, or reaches an auxiliary `railway=power_supply`
+socket is not selected; nor is a line whose circuit reaches none. Conductors
+tagged `line=bay` or `busbar` are substation equipment and are excluded. A line
+ending close to a node-mapped substation without a shared node is not counted
+as connected.
 
-This covers dedicated railway supply networks and the grid connections that
-reach mapped railway facilities. It is not the civil electricity grid, which
-remains open in [issue #265](https://github.com/c933103/openrailwaystyle/issues/265).
-Railway supply in 50/60 Hz countries is often taken directly from the grid,
-so where the connection is not mapped into a railway facility the map shows no
-supply line; that absence does not establish that the railway has none.
+The query follows connections up to six ways away from lines near a facility,
+so a very long circuit split into more ways may be shown only in part. The
+civil electricity grid as a whole remains open in
+[issue #265](https://github.com/c933103/openrailwaystyle/issues/265). Where
+railway facilities or their connections are not mapped, no supply line is
+shown; that absence does not establish that the railway has none.
 
 `scripts/build-traction-lines.mjs` collects the lines worldwide with the same
 staged acquisition, retry, budget and publication checks as the conductor-rail
 supplement (`scripts/staged-overpass.mjs`). Its query reuses the reviewed
-facility selection and searches once for lines near those facilities. A line
-crossing a region boundary can be returned by each region; the builder combines
-the evidence from every region, so the result does not depend on region order. `traction-facilities.yml` publishes `power/traction-lines.geojson`
-with its digest-bearing manifest; site assembly accepts snapshots made before
-this file existed and validates it once present.
+facility selection, searches once for lines near those facilities and then
+fetches neighbouring lines; the classifier decides which are connected. A line
+returned by several regions has its evidence combined, so the result does not
+depend on region order. `traction-facilities.yml` publishes
+`power/traction-lines.geojson` with its digest-bearing manifest; site assembly
+accepts snapshots made before this file existed and validates it once present.
 
 ## Conductor rails, charging and catenary equipment
 

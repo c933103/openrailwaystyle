@@ -203,8 +203,9 @@ test('actual publisher and site workflow gates reject incomplete files and prese
   await writeFile(join(dir,'signal-data/index.json'),JSON.stringify({tiles:['fixture']}));
   for(const file of ['power-methods.geojson','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
   // The publisher also requires the complete traction-line snapshot.
-  const line={type:'way',id:31,tags:{power:'line',frequency:'16.7'},nodes:[1,2],geometry:[{lon:9,lat:50},{lon:9.01,lat:50.01}]};
-  await buildTractionLines({...options,output:join(dir,'lines'),fetcher:async()=>response({osm3s:{},elements:[line]})});
+  const substation={type:'node',id:30,lon:9,lat:50,tags:{power:'substation',substation:'traction'}};
+  const line={type:'way',id:31,tags:{power:'line'},nodes:[30,2],geometry:[{lon:9,lat:50},{lon:9.01,lat:50.01}]};
+  await buildTractionLines({...options,output:join(dir,'lines'),fetcher:async()=>response({osm3s:{},elements:[substation,line]})});
   for(const file of ['traction-lines.geojson','traction-lines-manifest.json'])await copyFile(join(dir,'lines',file),join(dir,'power-data',file));
   const script=async(file,step)=>{
     const workflow=await readFile(new URL(`../.github/workflows/${file}`,import.meta.url),'utf8');

@@ -53,16 +53,17 @@ const methods=powerMethodsGeoJSON({elements:[
   {type:'way',id:9421,tags:{railway:'subway',electrified:'rail',voltage:'750',frequency:'0','electrified:rail':'bottom'},geometry:[{lon:-.0002,lat:.0002},{lon:.0016,lat:.0002}]},
   {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
 ]});
-// Traction power lines: one by recorded frequency, one 50 Hz line reaching a
-// traction substation's area, a cable, a former line, and a 50 Hz line passing
-// the substation without reaching it, which must not be selected.
+// Railway supply lines: a 50 Hz line reaching a traction substation's area, a
+// line continuing it (same circuit), a cable and a former line reaching a second
+// substation, and a line passing the first substation without reaching it.
 const at=points=>points.map(([lon,lat])=>({lon,lat}));
 const tractionLines=tractionLinesGeoJSON({elements:[
   {type:'way',id:9440,nodes:[1,2,3,4,1],tags:{power:'substation',substation:'traction'},geometry:at([[.00015,.00085],[.00035,.00085],[.00035,.00105],[.00015,.00105],[.00015,.00085]])},
-  {type:'way',id:9430,nodes:[11,12],tags:{power:'line',frequency:'16.7',voltage:'110000',operator:'Test railway energy'},geometry:at([[-.0002,.00115],[.0016,.00115]])},
+  {type:'way',id:9441,nodes:[5,6,7,8,5],tags:{power:'substation',substation:'traction'},geometry:at([[.0014,-.00115],[.0016,-.00115],[.0016,-.00095],[.0014,-.00095],[.0014,-.00115]])},
+  {type:'way',id:9430,nodes:[11,21],tags:{power:'line',frequency:'16.7',voltage:'110000',operator:'Test railway energy'},geometry:at([[.0016,.00115],[.0006,.0011]])},
   {type:'way',id:9431,nodes:[21,22],tags:{power:'line',frequency:'50',voltage:'20000'},geometry:at([[.0006,.0011],[.00025,.00095]])},
-  {type:'way',id:9432,nodes:[31,32],tags:{power:'cable',frequency:'16.7',voltage:'15000'},geometry:at([[-.0002,-.001],[.0016,-.001]])},
-  {type:'way',id:9433,nodes:[41,42],tags:{'disused:power':'line',frequency:'16.7'},geometry:at([[-.0002,-.0011],[.0016,-.0011]])},
+  {type:'way',id:9432,nodes:[31,32],tags:{power:'cable',frequency:'16.7',voltage:'15000'},geometry:at([[-.0002,-.001],[.0015,-.001]])},
+  {type:'way',id:9433,nodes:[41,42],tags:{'disused:power':'line',frequency:'16.7'},geometry:at([[-.0002,-.0011],[.0015,-.0011]])},
   {type:'way',id:9434,nodes:[51,52],tags:{power:'line',frequency:'50'},geometry:at([[.0004,.0008],[.0004,.0011]])},
 ]});
 assert.deepEqual(tractionLines.features.map(f=>f.id),['way-9430','way-9431','way-9432','way-9433'],'a line passing the substation is not a supply line');
@@ -304,7 +305,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-traction-lines','electrification-traction-cables']}).map(f=>f.properties.osm_id))].sort()),['9430','9431','9432']);
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-former-traction-lines']}).length),0,'a former line follows the inactive setting');
     assert.ok(await page.evaluate(()=>{const ids=window.reviewMap.getStyle().layers.map(l=>l.id);return ['electrification-traction-lines','electrification-traction-cables'].every(id=>ids.indexOf(id)<ids.indexOf('electrification-tracks'));}),'supply lines draw beneath the tracks');
-    for(const [coordinates,id,basis,type] of [[[.0011,.00115],'9430','Recorded traction frequency','Railway traction power line'],[[.000425,.00103],'9431','Reaches a mapped railway electricity facility','Railway traction power line'],[[.0011,-.001],'9432','Recorded traction frequency','Railway traction power cable']]) {
+    for(const [coordinates,id,basis,type] of [[[.0011,.001125],'9430','Same circuit as a line reaching a railway electricity facility','Railway traction power line'],[[.000425,.00103],'9431','Reaches a mapped railway electricity facility','Railway traction power line'],[[.0011,-.001],'9432','Reaches a mapped railway electricity facility','Railway traction power cable']]) {
       await clickCoordinates(coordinates);await page.waitForSelector('#details:not([hidden])');
       const rows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
       assert.equal(rows.Type,type);assert.equal(rows['Railway supply basis'],basis);
@@ -336,7 +337,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openControls();await page.locator('#about-open').click();
     const powerHelp=await page.locator('#help-power').innerText();
-    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water','railway traction power lines'])assert.ok(powerHelp.includes(label),label);
+    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water','railway supply power lines'])assert.ok(powerHelp.includes(label),label);
     assert.match(powerHelp,/whole electricity grid.*not yet/);
     await page.locator('#help-power').scrollIntoViewIfNeeded();
     await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
