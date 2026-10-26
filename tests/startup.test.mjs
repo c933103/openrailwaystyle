@@ -19,6 +19,7 @@ import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
 import * as rareHanFeatures from '../styles/rare-han.mjs';
 import * as bathymetryModule from '../styles/bathymetry.mjs';
+import * as terrain3dModule from '../styles/terrain-3d.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as serviceStatusModule from '../styles/service-status.mjs';
@@ -119,6 +120,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
+    isStyleLoaded() { return true; }
+    getTerrain() { return this.options.style.terrain || null; }
+    setTerrain(terrain) { this.options.style.terrain = terrain; }
     projection = {type:'mercator'};
     getProjection() { return this.projection; }
     setProjection(projection) { this.projection = projection; }
@@ -126,7 +130,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getCenter() { return {lng:0, lat:0}; }
     getBounds() { return {getWest:()=>-180,getEast:()=>180,getSouth:()=>-85,getNorth:()=>85}; }
     getBearing() { return 0; }
-    getPitch() { return 0; }
+    getPitch() { return this.pitch ?? this.options.pitch ?? 0; }
+    setPitch(pitch) { this.pitch=pitch; this.handlers.pitch?.(); }
     unproject() { return {lng:0, lat:0}; }
   }
   // This is the MapLibre 5 surface used by the app, including the pinned
@@ -233,6 +238,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bathymetry = new vm.SyntheticModule(Object.keys(bathymetryModule),function() {
     for (const [key,value] of Object.entries(bathymetryModule)) this.setExport(key,value);
   }, {context});
+  const terrain3d = new vm.SyntheticModule(Object.keys(terrain3dModule),function() {
+    for (const [key,value] of Object.entries(terrain3dModule)) this.setExport(key,value);
+  }, {context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
@@ -257,12 +265,32 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
+
+test('pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests', async () => {
+  const {dom,window,maps,errors}=await start();
+  try {
+    const map=maps[0];
+    map.handlers['style.load']();
+    assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
+    const relief=window.document.getElementById('relief');
+    relief.click();
+    assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
+    relief.click();
+    assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
+    map.setPitch(0);
+    assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
 
 test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
  const before=unmockedRequests.length;
