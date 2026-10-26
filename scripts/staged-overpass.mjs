@@ -140,7 +140,9 @@ export function createStagedSnapshot(config) {
       checkTime();
       const query=snapshotQuery(box),file=join(cache,`${config.cachePrefix}-v${config.cacheVersion}-${box.join('_')}.json`),splitFile=`${file}.split`;
       let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
-      if(!json&&!split) {
+      // One request with retries. Returns the response, or the execution-limit
+      // failure that proves this box needs less work.
+      const attempt=async body=>{
         let failure;
         for(let attempt=0;attempt<policy.attempts;attempt++) {
           if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
@@ -149,7 +151,7 @@ export function createStagedSnapshot(config) {
             await delay(Math.max(policy.retryMs,failure.retryAfterMs));
           }else if(requests)await delay(policy.pauseMs);
           log(`Collecting ${config.label}`,box.join(','),'attempt',attempt+1);
-          try {json=await request(query);break;}catch(error) {
+          try {return {json:await request(body)};}catch(error) {
             failure=error;log(box.join(','),error.category,error.message);
             if(!error.retry)throw error;
             // An explicit execution limit proves this box needs less work.
@@ -158,10 +160,22 @@ export function createStagedSnapshot(config) {
             if(error.split)break;
           }
         }
-        if(!json) {
-          if(!failure.split||depth>=policy.depth)throw failure;
+        if(!failure.split||depth>=policy.depth)throw failure;
+        return {split:true};
+      };
+      if(!json&&!split) {
+        let result=await attempt(query);
+        // An optional second query derived from the first response, such as
+        // following circuits from the lines that actually reach a facility.
+        // Both responses are kept together under the region's checkpoint.
+        const followUp=result.json&&config.followUp?.(result.json);
+        if(followUp) {
+          const next=await attempt(followUp);
+          result=next.split?next:{json:{...result.json,elements:[...result.json.elements,...next.json.elements]}};
+        }
+        if(result.split) {
           await save(splitFile,{query,kind:'spatial-split',version:1});split=true;
-        }else await save(file,{query,response:json});
+        }else {json=result.json;await save(file,{query,response:json});}
       }
       if(split) {
         if(depth>=policy.depth)throw fatal(`${Noun} split exceeds depth budget: ${box}`,'budget');

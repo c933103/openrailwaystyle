@@ -114,11 +114,17 @@ Selection uses topology alone, the same way everywhere. A `power=line`,
   it, or a segment meeting its outline; a multipolygon's member ways are joined
   into rings and its holes are not part of the area); or
 - it is in the **same circuit** as such a line. Two ways are in one circuit
-  when one ends on the other: a split or a tee. Circuits therefore stop where
-  lines terminate separately in substations. Parallel lines that only share
+  when one ends on the other (a split or a tee) and their recorded frequency
+  and voltage agree with the circuit followed so far. The circuit starts with
+  the values the reaching line shares with the facility, so a way carrying
+  several systems (for example `frequency=50;16.7`) passes on only the one
+  that reached the facility. An unrecorded value neither blocks nor narrows
+  the circuit. Circuits therefore stop where lines terminate separately in
+  substations or change to another system. Parallel lines that only share
   towers are not connected.
 
-No frequency, voltage, operator or name selects a line. A dedicated railway
+No frequency, voltage, operator or name is looked up: values are only
+compared between connected ways. A dedicated railway
 network (such as a 16.7 Hz or 25 Hz system) and a grid feeder from a 50/60 Hz
 grid are found by the same rule wherever they connect to mapped railway
 facilities. A line that merely passes near a facility, reaches only an
@@ -128,8 +134,10 @@ tagged `line=bay` or `busbar` are substation equipment and are excluded. A line
 ending close to a node-mapped substation without a shared node is not counted
 as connected.
 
-The query follows connections up to six ways away from lines near a facility,
-so a very long circuit split into more ways may be shown only in part. The
+Each region uses two queries. The first returns facilities and the lines near
+them; the lines that actually reach a facility then seed a second query that
+follows matching neighbouring lines up to eight ways away. A very long
+circuit split into more ways may be shown only in part. The
 civil electricity grid as a whole remains open in
 [issue #265](https://github.com/c933103/openrailwaystyle/issues/265). Where
 railway facilities or their connections are not mapped, no supply line is
@@ -138,8 +146,9 @@ shown; that absence does not establish that the railway has none.
 `scripts/build-traction-lines.mjs` collects the lines worldwide with the same
 staged acquisition, retry, budget and publication checks as the conductor-rail
 supplement (`scripts/staged-overpass.mjs`). Its query reuses the reviewed
-facility selection, searches once for lines near those facilities and then
-fetches neighbouring lines; the classifier decides which are connected. A line
+facility selection and searches once for lines near those facilities; the
+follow-up query and the classifier decide which neighbouring lines are
+connected. Both responses are kept together in the region's checkpoint. A line
 returned by several regions has its evidence combined, so the result does not
 depend on region order. `traction-facilities.yml` publishes
 `power/traction-lines.geojson` with its digest-bearing manifest; site assembly

@@ -60,7 +60,9 @@ const at=points=>points.map(([lon,lat])=>({lon,lat}));
 const tractionLines=tractionLinesGeoJSON({elements:[
   {type:'way',id:9440,nodes:[1,2,3,4,1],tags:{power:'substation',substation:'traction'},geometry:at([[.00015,.00085],[.00035,.00085],[.00035,.00105],[.00015,.00105],[.00015,.00085]])},
   {type:'way',id:9441,nodes:[5,6,7,8,5],tags:{power:'substation',substation:'traction'},geometry:at([[.0014,-.00115],[.0016,-.00115],[.0016,-.00095],[.0014,-.00095],[.0014,-.00115]])},
-  {type:'way',id:9430,nodes:[11,21],tags:{power:'line',frequency:'16.7',voltage:'110000',operator:'Test railway energy'},geometry:at([[.0016,.00115],[.0006,.0011]])},
+  {type:'way',id:9430,nodes:[11,21],tags:{power:'line',frequency:'50',voltage:'20000',operator:'Test railway energy'},geometry:at([[.0016,.00115],[.0006,.0011]])},
+  // Same node, different system: another circuit, not a supply line.
+  {type:'way',id:9435,nodes:[21,61],tags:{power:'line',frequency:'16.7',voltage:'110000'},geometry:at([[.0006,.0011],[.0006,.0012]])},
   {type:'way',id:9431,nodes:[21,22],tags:{power:'line',frequency:'50',voltage:'20000'},geometry:at([[.0006,.0011],[.00025,.00095]])},
   {type:'way',id:9432,nodes:[31,32],tags:{power:'cable',frequency:'16.7',voltage:'15000'},geometry:at([[-.0002,-.001],[.0015,-.001]])},
   {type:'way',id:9433,nodes:[41,42],tags:{'disused:power':'line',frequency:'16.7'},geometry:at([[-.0002,-.0011],[.0015,-.0011]])},

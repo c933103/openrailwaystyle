@@ -241,3 +241,31 @@ test('optimized query leaves v1 responses and expensive-query split evidence unt
   assert.equal(await readFile(stem,'utf8'),legacy);assert.equal(await readFile(stem+'.split','utf8'),split);
   assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
 }));
+
+test('a follow-up query is fetched per region, cached with the first response, and its failures split or stop',async()=>{
+  const {createStagedSnapshot}=await import('../scripts/staged-overpass.mjs');
+  const dir=await mkdtemp(join(tmpdir(),'atlas-followup-'));
+  try {
+    const point=(id)=>({type:'node',id,lon:1,lat:1});
+    const snapshot=createStagedSnapshot({noun:'fixture',label:'fixture',userAgent:'fixture',query:box=>`first ${box.join(',')}`,
+      followUp:json=>json.elements.some(e=>e.id===1)?'second':null,
+      transform:json=>{if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'bad');return {type:'FeatureCollection',features:json.elements.map(e=>({type:'Feature',id:`n${e.id}`,geometry:{type:'Point',coordinates:[1,1]},properties:{}}))};},
+      cachePrefix:'fixture',cacheVersion:1,files:{data:'f.geojson',gzip:'f.geojson.gz',manifest:'f.json'},stagePrefix:'.f-',emptyMessage:'empty',completeMessage:'done'});
+    const options={cache:join(dir,'cache'),output:join(dir,'out'),sleep:async()=>{},log:()=>{}};
+    const bodies=[];
+    const fetcher=async(url,init)=>{const q=init.body.get('data');bodies.push(q);return new Response(JSON.stringify({elements:q==='second'?[point(2)]:[point(1)]}));};
+    const {data}=await snapshot.build({...options,fetcher});
+    assert.equal(bodies.length,16,'first and follow-up query for each of eight regions');
+    assert.deepEqual(data.features.map(f=>f.id),['n1','n2'],'follow-up elements join the region response');
+    bodies.length=0;await snapshot.build({...options,fetcher});
+    assert.equal(bodies.length,0,'the combined response is reused from the region checkpoint');
+    // An execution limit on the follow-up splits the region like the first query.
+    let timedOut=0;
+    const splitting=async(url,init)=>{const q=init.body.get('data');bodies.push(q);
+      if(q==='second'&&!timedOut++)return new Response(JSON.stringify({remark:'runtime error: Query timed out',elements:[]}));
+      return new Response(JSON.stringify({elements:q==='second'?[point(2)]:[point(1)]}));};
+    bodies.length=0;await snapshot.build({...options,refresh:true,fetcher:splitting});
+    assert.ok(bodies.filter(q=>q.startsWith('first ')).length>8,'the timed-out region was split into children');
+    await assert.rejects(snapshot.build({...options,refresh:true,fetcher:async(url,init)=>init.body.get('data')==='second'?new Response('',{status:400}):new Response(JSON.stringify({elements:[point(1)]}))}),error=>error.category==='http-permanent');
+  } finally {await rm(dir,{recursive:true,force:true});}
+});

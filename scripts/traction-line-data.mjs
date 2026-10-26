@@ -2,10 +2,11 @@
 // power line reaches a railway electricity facility when it shares a node with
 // it or enters or ends on its mapped area (holes excluded). Every line in the
 // same circuit as such a line is part of that supply: ways are in one circuit
-// when one ends on the other (a split or a tee), so circuits stop where lines
-// terminate separately in substations. Parallel lines that only share towers
-// are not connected. No frequency, voltage, operator or name is used, so a
-// dedicated railway network and a grid feeder are found the same way anywhere.
+// when one ends on the other (a split or a tee) and their recorded frequency
+// and voltage agree, so circuits stop where lines terminate separately in
+// substations or change to another system. Parallel lines that only share
+// towers are not connected. No frequency, voltage, operator or name is looked
+// up, so a dedicated railway network and a grid feeder are found the same way.
 import {powerFacility} from '../styles/power-facilities.mjs';
 import {powerFacilityQuery} from './power-facility-data.mjs';
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
@@ -20,9 +21,9 @@ const INTERNAL=new Set(['bay','busbar']);
 // preheating points are not part of the traction supply network.
 const SUPPLY_KINDS=new Set(['substation','plant','generator','converter','transformer','feeder']);
 const CANDIDATE_RADIUS=30;
-// Rounds of neighbouring lines fetched around lines near railway facilities.
-// The classifier decides which of them are electrically connected.
-export const CIRCUIT_ROUNDS=6;
+// Rounds of matching neighbouring lines fetched from lines reaching railway
+// facilities. The classifier decides which of them are electrically connected.
+export const CIRCUIT_ROUNDS=8;
 const tokens=value=>String(value??'').split(';').map(s=>s.trim().toLowerCase()).filter(Boolean);
 const match=(key,options)=>`[${JSON.stringify(key)}~${JSON.stringify(`(^|;)[[:space:]]*(${options})[[:space:]]*(;|$)`)},i]`;
 
@@ -33,11 +34,30 @@ export function tractionLineQuery(box) {
   const facilities=powerFacilityQuery(box);
   if(!facilities.endsWith(');out body center qt;'))throw new Error('Unexpected railway energy facility query');
   const kinds=TRACTION_LINE_KINDS.join('|'),powerLines=set=>`(${PREFIXES.map(prefix=>`way.${set}${match(prefix+'power',kinds)};`).join('')})`;
-  let rounds='';
-  for(let round=0;round<CIRCUIT_ROUNDS;round++)rounds+=`node(w.lines)->.lineNodes;way(bn.lineNodes)->.adjacent;(.lines;${powerLines('adjacent')};)->.lines;`;
-  // Each proximity search runs once; tag filters then inspect only its result.
+  // The proximity search runs once; tag filters then inspect only its result.
   return `${facilities.slice(0,-';out body center qt;'.length)}->.facilities;way(around.facilities:${CANDIDATE_RADIUS})->.nearFacilities;`+
-    `${powerLines('nearFacilities')}->.lines;${rounds}(.lines;.facilities;);out body geom qt;`;
+    `${powerLines('nearFacilities')}->.lines;(.lines;.facilities;);out body geom qt;`;
+}
+
+const regexValue=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+// Second query for a region: follow circuits from the lines that actually
+// reach a facility, through neighbouring lines whose recorded frequency and
+// voltage match that circuit's or are unrecorded. The values come from the
+// response itself; the classifier still decides which ways are connected.
+export function tractionLineFollowUp(json) {
+  const {seeds}=classifyLines(json);
+  const groups=new Map();
+  for(const {way,circuit} of seeds){const key=JSON.stringify(circuit);if(!groups.has(key))groups.set(key,{circuit,ids:new Set()});groups.get(key).ids.add(way.element.id);}
+  if(!groups.size)return null;
+  const power=`[~${JSON.stringify(`^(${PREFIXES.map(regexValue).join('|')})power$`)}~${JSON.stringify(`^(${TRACTION_LINE_KINDS.join('|')})$`)}]`;
+  const filters=circuit=>['frequency','voltage'].reduce((sets,key)=>circuit[key]?sets.flatMap(f=>[`${f}[!${JSON.stringify(key)}]`,`${f}${match(key,circuit[key].map(regexValue).join('|'))}`]):sets,['']);
+  let body='',sets=[];
+  [...groups.values()].sort((a,b)=>Math.min(...a.ids)-Math.min(...b.ids)).forEach(({circuit,ids},g)=>{
+    const set=`circuit${g}`;sets.push(`.${set};`);
+    body+=`way(id:${[...ids].sort((a,b)=>a-b).join(',')})->.${set};`;
+    for(let round=0;round<CIRCUIT_ROUNDS;round++)body+=`node(w.${set})->.circuitNodes;way(bn.circuitNodes)->.adjacent;(.${set};${filters(circuit).map(f=>`way.adjacent${power}${f};`).join('')})->.${set};`;
+  });
+  return `[out:json][timeout:240][maxsize:134217728];${body}(${sets.join('')});out body geom qt;`;
 }
 
 // A line crossing a region boundary can reach facilities in each region it
@@ -65,13 +85,15 @@ function supplyFacility(element) {
   return null;
 }
 
-export function tractionLinesGeoJSON(json) {
+function classifyLines(json) {
   if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'Incomplete traction-line response');
-  const facilities=[],lines=[];
-  for(const element of json.elements) {
+  const facilities=[],lines=[],unique=new Map();
+  // A region's two responses can repeat elements; keep one of each.
+  for(const element of json.elements)if(element&&Number.isSafeInteger(element.id))unique.set(`${element.type}-${element.id}`,element);
+  for(const element of unique.values()) {
     if(!['node','way','relation'].includes(element?.type)||!Number.isSafeInteger(element.id))continue;
     const facility=supplyFacility(element);
-    if(facility)facilities.push(facility);
+    if(facility)facilities.push({...facility,tags:element.tags||{}});
     if(element.type==='way'&&lifecycle(element.tags||{},'power').value.some(v=>TRACTION_LINE_KINDS.includes(v)))lines.push(element);
   }
   const ways=[];
@@ -83,20 +105,52 @@ export function tractionLinesGeoJSON(json) {
     const nodes=element.nodes||[],set=new Set(nodes);
     // A shared node, or geometry entering the area: a vertex inside it (not in
     // a hole) or a segment meeting its outline, including ending on it.
-    const reached=facilities.filter(f=>[...f.nodes].some(n=>set.has(n))||f.polygons.some(polygon=>lineMeetsPolygon(coordinates,polygon))).map(f=>f.id);
+    const reached=facilities.filter(f=>[...f.nodes].some(n=>set.has(n))||f.polygons.some(polygon=>lineMeetsPolygon(coordinates,polygon)));
     ways.push({element,tags,coordinates,nodes,ends:new Set([nodes[0],nodes.at(-1)]),reached});
   }
-  // Circuits: union ways that meet at a node which ends at least one of them.
-  const parent=ways.map((_,i)=>i),find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));
+  // Circuits: ways meet when a shared node ends at least one of them. From each
+  // line reaching a facility, follow only ways whose recorded frequency and
+  // voltage agree with the circuit followed so far, starting from the values
+  // the line shares with the facility. A way carrying several circuits (for
+  // example frequency 50;16.7) thus passes on only the one that reached the
+  // facility. Values are compared, never looked up: an unrecorded value
+  // neither blocks nor narrows the circuit.
   const atNode=new Map();
   ways.forEach((way,i)=>{for(const node of new Set(way.nodes)){if(!atNode.has(node))atNode.set(node,[]);atNode.get(node).push(i);}});
-  for(const [node,list] of atNode)for(let a=0;a<list.length;a++)for(let b=a+1;b<list.length;b++)
-    if(ways[list[a]].ends.has(node)||ways[list[b]].ends.has(node))parent[find(list[a])]=find(list[b]);
-  const reachedBy=new Map();
-  ways.forEach((way,i)=>{if(way.reached.length){const root=find(i);reachedBy.set(root,[...(reachedBy.get(root)||[]),...way.reached]);}});
+  const neighbours=i=>{const out=new Set();for(const node of new Set(ways[i].nodes))for(const j of atNode.get(node))if(j!==i&&(ways[i].ends.has(node)||ways[j].ends.has(node)))out.add(j);return out;};
+  const agree=(circuit,tags)=>{
+    const next={};
+    for(const key of ['frequency','voltage']) {
+      const own=tokens(tags[key]);
+      if(!circuit[key]||!own.length){next[key]=circuit[key]||(own.length?own:null);continue;}
+      const shared=circuit[key].filter(v=>own.includes(v));
+      if(!shared.length)return null;
+      next[key]=shared;
+    }
+    return next;
+  };
+  const supplied=new Map(),seeds=[];
+  for(const [start,way] of ways.entries())for(const facility of way.reached) {
+    const seed=agree(agree({},facility.tags)||{},way.tags)||agree({},way.tags);
+    seeds.push({way,circuit:seed});
+    const queue=[[start,seed]],seen=new Set();
+    while(queue.length) {
+      const [i,circuit]=queue.shift(),key=`${i}|${circuit.frequency}|${circuit.voltage}`;
+      if(seen.has(key))continue;
+      seen.add(key);
+      if(!supplied.has(i))supplied.set(i,new Set());
+      supplied.get(i).add(facility.id);
+      for(const j of neighbours(i)){const next=agree(circuit,ways[j].tags);if(next)queue.push([j,next]);}
+    }
+  }
+  return {ways,supplied,seeds};
+}
+
+export function tractionLinesGeoJSON(json) {
+  const {ways,supplied}=classifyLines(json);
   const features=new Map();
   ways.forEach((way,i)=>{
-    const circuit=reachedBy.get(find(i));
+    const circuit=supplied.get(i);
     if(!circuit)return;
     const {element,tags,coordinates}=way,power=lifecycle(tags,'power');
     const kind=power.value.find(v=>TRACTION_LINE_KINDS.includes(v)),centre=coordinates[Math.floor(coordinates.length/2)],atlas_han=hanRegion(...centre);
