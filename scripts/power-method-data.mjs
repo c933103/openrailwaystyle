@@ -52,30 +52,39 @@ export function powerMethodsGeoJSON(json) {
     const railPrefix=prefixes.find(prefix=>tokens(tags[prefix+'railway']).some(v=>tracks.includes(v)));
     const genericState=states.find(s=>tokens(tags.railway).includes(s));
     if(railPrefix===undefined&&!genericState)continue;
-    const prefix=prefixes.find(prefix=>tokens(tags[prefix+'electrified']).some(v=>methods.includes(v)));
-    const selected=prefix===undefined?[]:tokens(tags[prefix+'electrified']).filter(v=>methods.includes(v));
-    const propulsion=prefixes.flatMap(p=>tokens(tags[p+'propulsion'])).filter(v=>PROPULSION.includes(v));
-    const traction=prefixes.flatMap(p=>tokens(tags[p+'traction'])).filter(v=>TRACTION.includes(v));
-    if(!selected.length&&!propulsion.length&&!traction.length)continue;
+    // Each means keeps its own lifecycle: an operating line can carry a
+    // proposed:traction=rack or a disused:electrified=rail. A non-operating
+    // track makes every means on it non-operating too.
+    const trackState=genericState||railPrefix?.slice(0,-1)||undefined;
+    const fallback=states.find(s=>tags[s]==='yes')||'present';
+    const means=[];
+    for(const [key,allowed] of [['electrified',methods],['propulsion',PROPULSION],['traction',TRACTION]])
+      for(const prefix of prefixes)for(const value of tokens(tags[prefix+key]).filter(v=>allowed.includes(v)))
+        if(!means.some(m=>m.key===key&&m.value===value))means.push({key,value,prefix,state:trackState||prefix.slice(0,-1)||fallback});
+    if(!means.length)continue;
     const coordinates=element.geometry?.map(p=>[p.lon,p.lat]);
     if(!coordinates||coordinates.length<2||coordinates.some(p=>!p.every(Number.isFinite)||Math.abs(p[0])>180||Math.abs(p[1])>90))throw new Error(`Incomplete geometry for power method way-${element.id}`);
     const center=coordinates[Math.floor(coordinates.length/2)],atlas_han=hanRegion(...center);
-    // Track lifecycle and electrification lifecycle are independent. Proposed
-    // rails cannot be displayed as operating merely because electrified exists.
-    const state=genericState||railPrefix?.slice(0,-1)||prefix?.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
-    const number=key=>/^\d+(\.\d+)?$/.test(tags[(prefix??'')+key]||'')?Number(tags[(prefix??'')+key]):undefined;
-    const all=[...new Set([...selected,...propulsion,...traction])];
-    const id=`way-${element.id}`;
-    byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
-      atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
-      power_state:state,electrification_state:state==='present'?'present':state,
-      power_method:selected.join(';'),power_method_label:all.map(v=>METHOD_LABELS[v]).join(' + '),
-      // Booleans keep layer filters exact (4th_rail must not match rail).
-      method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
-      method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
-      propulsion_linear_motor:propulsion.includes('linear_motor'),traction_rack:traction.includes('rack'),traction_cable:traction.includes('cable'),
-      ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
-    }});
+    // One feature per lifecycle, so the planned/former setting hides exactly
+    // the means that are not operating. The first keeps the plain OSM id.
+    const groups=[...new Set(means.map(m=>m.state))];
+    for(const [index,state] of groups.entries()) {
+      const group=means.filter(m=>m.state===state),values=key=>group.filter(m=>m.key===key).map(m=>m.value);
+      const selected=values('electrified'),propulsion=values('propulsion'),traction=values('traction');
+      const prefix=group.find(m=>m.key==='electrified')?.prefix;
+      const number=key=>prefix!==undefined&&/^\d+(\.\d+)?$/.test(tags[prefix+key]||'')?Number(tags[prefix+key]):undefined;
+      const id=index?`way-${element.id}-${state}`:`way-${element.id}`;
+      byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
+        atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
+        power_state:state,electrification_state:state,
+        power_method:selected.join(';'),power_method_label:group.map(m=>METHOD_LABELS[m.value]).join(' + '),
+        // Booleans keep layer filters exact (4th_rail must not match rail).
+        method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
+        method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
+        propulsion_linear_motor:propulsion.includes('linear_motor'),traction_rack:traction.includes('rack'),traction_cable:traction.includes('cable'),
+        ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
+      }});
+    }
   }
   return {type:'FeatureCollection',features:[...byId.values()].sort((a,b)=>a.id.localeCompare(b.id))};
 }

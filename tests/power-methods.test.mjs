@@ -134,3 +134,27 @@ test('each means has its own stroke, a fourth-rail track is dashed on both sides
   assert.equal(filter('electrification-ground-supply')({zoom:12},at({power_method:'ground-level_power_supply'})),true);
   assert.equal(filter('electrification-former-conductor-rails')({zoom:12},at({method_rail:true})),false,'present tracks stay out of former layers');
 });
+test('planned or former propulsion and traction keep their own lifecycle on an operating line',()=>{
+  const features=powerMethodsGeoJSON({elements:[
+    way({railway:'rail',electrified:'rail','proposed:traction':'rack'},31),
+    way({railway:'monorail','disused:propulsion':'linear_motor'},32),
+    way({'abandoned:railway':'rail',traction:'cable'},33),
+  ]}).features;
+  const byId=Object.fromEntries(features.map(f=>[f.id,f.properties]));
+  assert.deepEqual(Object.keys(byId).sort(),['way-31','way-31-proposed','way-32','way-33']);
+  assert.equal(byId['way-31'].power_state,'present');
+  assert.equal(byId['way-31'].method_rail,true);
+  assert.equal(byId['way-31'].traction_rack,false,'operating feature must not draw the planned rack');
+  assert.equal(byId['way-31-proposed'].power_state,'proposed');
+  assert.equal(byId['way-31-proposed'].traction_rack,true);
+  assert.equal(byId['way-31-proposed'].method_rail,false);
+  assert.equal(byId['way-31-proposed'].osm_id,'31');
+  assert.equal(byId['way-32'].power_state,'disused');
+  assert.equal(byId['way-32'].propulsion_linear_motor,true);
+  assert.equal(byId['way-33'].power_state,'abandoned','a former track makes its traction former too');
+  const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-rack-traction'),former=layers.find(l=>l.id==='electrification-former-rack-traction');
+  const draws=(layer,p)=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:p,geometry:[]});
+  assert.equal(draws(present,byId['way-31']),false);
+  assert.equal(draws(present,byId['way-31-proposed']),false);
+  assert.equal(draws(former,byId['way-31-proposed']),true);
+});

@@ -296,6 +296,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await openControls();
     const methodSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>row.lastElementChild.textContent));
     assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
+    const sampleLines=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>[row.lastElementChild.textContent,row.firstElementChild.querySelectorAll('line').length])));
+    assert.equal(sampleLines['Third rail (dashed, one side)'],2,'third-rail sample is the track and one conductor stroke');
+    assert.equal(sampleLines['Fourth rail (dashed, both sides)'],3,'fourth-rail sample shows both conductor strokes as on the map');
     await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
     await closeControls();
     await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');

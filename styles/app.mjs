@@ -437,12 +437,15 @@ function powerFacilitySwatch({color,mark}, includeFormer) {
 // A track sample drawn from the same stroke definition as the map layer: the
 // track in a sample system colour and the method stroke beside or along it.
 // MapLibre dashes are in line widths; positive offsets lie right of the line.
+// Draw every stroke the map draws for a track with only this means: a
+// fourth-rail track shows the conductor-rail stroke as well as its own.
 function powerMethodSwatch(stroke) {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),system='#3f6fa8';
   svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
   const line=(attrs)=>{const el=document.createElementNS(ns,'line');for(const [k,v] of Object.entries({x1:0,x2:25,...attrs}))el.setAttribute(k,v);svg.append(el);};
   line({y1:7,y2:7,stroke:system,'stroke-width':2.5});
-  if(stroke){const y=7+stroke.offset;line({y1:y,y2:y,stroke:stroke.color||system,'stroke-width':stroke.width,'stroke-linecap':stroke.cap||'butt',...(stroke.dash?{'stroke-dasharray':stroke.dash.map(v=>Math.max(v,0.1)*stroke.width).join(' ')}:{})});}
+  const strokes=stroke?POWER_METHOD_STROKES.filter(s=>s.when.includes(stroke.when[0])):[];
+  for(const s of strokes){const y=7+s.offset;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
   return svg;
 }
 function renderLegend() {
