@@ -51,6 +51,12 @@ const methods=powerMethodsGeoJSON({elements:[
   {type:'node',id:9420,lon:.0011,lat:-.00012,tags:{name:'Test battery train charger',amenity:'charging_station',train:'yes','socket:pantograph:output':'1000 kW'}},
   {type:'way',id:9421,tags:{railway:'subway',electrified:'rail',voltage:'750',frequency:'0','electrified:rail':'bottom'},geometry:[{lon:-.0002,lat:.0002},{lon:.0016,lat:.0002}]},
   {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
+  // Each other means of delivery or traction on its own track.
+  {type:'way',id:9423,tags:{railway:'tram',electrified:'inductive'},geometry:[{lon:-.0002,lat:.0004},{lon:.0016,lat:.0004}]},
+  {type:'way',id:9424,tags:{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line'},geometry:[{lon:-.0002,lat:.0006},{lon:.0016,lat:.0006}]},
+  {type:'way',id:9425,tags:{railway:'narrow_gauge',traction:'rack',electrified:'no'},geometry:[{lon:-.0002,lat:-.001},{lon:.0016,lat:-.001}]},
+  {type:'way',id:9426,tags:{railway:'funicular',traction:'cable'},geometry:[{lon:-.0002,lat:-.0011},{lon:.0016,lat:-.0011}]},
+  {type:'way',id:9427,tags:{railway:'tram',electrified:'ground-level_power_supply'},geometry:[{lon:-.0002,lat:.00112},{lon:.0016,lat:.00112}]},
 ]});
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
@@ -283,6 +289,15 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
     await visible('electrification-conductor-rails');await visible('electrification-charging-points');
+    for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction'])await visible(`electrification-${id}`);
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-fourth-rails']}).map(f=>f.properties.osm_id))]),['9422'],'only the fourth-rail track has its second conductor rail');
+    await clickCoordinates([.0007,.0004]);assert.match(await page.locator('#detail-content').innerText(),/Inductive power supply/);await page.locator('#details-close').click();
+    await clickCoordinates([.00125,-.001]);assert.match(await page.locator('#detail-content').innerText(),/Rack railway/);assert.match(await page.locator('#detail-content').innerText(),/Traction\s+rack/);await page.locator('#details-close').click();
+    await openControls();
+    const methodSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>row.lastElementChild.textContent));
+    assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
+    await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
+    await closeControls();
     await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
     await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
     await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();

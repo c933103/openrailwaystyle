@@ -1,5 +1,5 @@
 import {electrificationPaint} from '../../../styles/map-model.mjs';
-import {POWER_FACILITY_SYMBOL} from '../../../styles/power-facilities.mjs';
+import {POWER_FACILITY_SYMBOL,POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 
 export function powerMethodLayers() {
   const metadata={'atlas:group':'railway','atlas:category':'energy-supply','atlas:views':['electrification'],'atlas:settings':[],'atlas:initial-hidden':true};
@@ -8,9 +8,18 @@ export function powerMethodLayers() {
     const suffix=former?'former-':'',meta={...metadata,'atlas:settings':former?['inactive']:[]};
     const base={source:'electricMethods',minzoom:10,metadata:meta,
       filter:['all',['==',['geometry-type'],'LineString'],[former?'!=':'==',['get','power_state'],'present']]};
-    layers.push({...base,id:`electrification-${suffix}conductor-rails`,type:'line',
-      layout:{'line-cap':'butt','line-join':'round'},
-      paint:{'line-color':electrificationPaint(),'line-width':2,'line-offset':3.5,'line-dasharray':[2,2],'line-opacity':former?0.5:1}});
+    // Snapshots built before the per-method fields existed carry only
+    // power_method; read it for those until the next snapshot replaces them.
+    const legacy={method_rail:'rail',method_fourth_rail:'4th_rail',method_ground:'ground-level',method_inductive:'inductive'};
+    const has=key=>legacy[key]?['any',['==',['get',key],true],['all',['!',['has',key]],['in',legacy[key],['coalesce',['get','power_method'],'']]]]:['==',['get',key],true];
+    const opacity=former?0.5:1;
+    // Each means of delivery or traction has its own stroke beside or along
+    // the track, so several can be read on one track. Overhead contact line
+    // is the track colour alone. Power strokes keep the system colour.
+    for(const {id,when,offset,width,dash,color,cap} of POWER_METHOD_STROKES)
+      layers.push({...base,id:`electrification-${suffix}${id}`,type:'line',filter:['all',...base.filter.slice(1),['any',...when.map(has)]],
+        layout:{'line-cap':cap||'butt','line-join':'round'},
+        paint:{'line-color':color||electrificationPaint(),'line-width':width,'line-offset':offset,...(dash?{'line-dasharray':dash}:{}),'line-opacity':opacity}});
     layers.push({...base,id:`electrification-${suffix}method-labels`,type:'symbol',minzoom:12,
       metadata:{...meta,'atlas:settings':[...meta['atlas:settings'],'labels']},
       layout:{'symbol-placement':'line','symbol-spacing':350,'text-field':['get','power_method_label'],'text-font':['Noto Sans Bold'],'text-size':11,'text-offset':[0,1]},

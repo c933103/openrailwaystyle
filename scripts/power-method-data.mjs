@@ -8,13 +8,17 @@ const states=['construction','proposed','disused','abandoned','razed','demolishe
 const prefixes=['',...states.map(s=>s+':')];
 const tokens=value=>String(value??'').split(';').map(s=>s.trim().toLowerCase());
 const match=(key,values)=>`[${JSON.stringify(key)}~${JSON.stringify(`(^|;)[[:space:]]*(${values})[[:space:]]*(;|$)`)},i]`;
-const tracks=['rail','narrow_gauge','subway','light_rail','tram','monorail','miniature'];
-const methods=['rail','4th_rail','ground-level_power_supply'];
+const tracks=['rail','narrow_gauge','subway','light_rail','tram','monorail','miniature','funicular'];
+const methods=['rail','4th_rail','ground-level_power_supply','inductive'];
+// How the train is propelled or held, independent of how power reaches it.
+const PROPULSION=['linear_motor'],TRACTION=['rack','cable'];
+const METHOD_LABELS={rail:'Third rail','4th_rail':'Fourth rail','ground-level_power_supply':'Ground-level power supply',inductive:'Inductive power supply',linear_motor:'Linear motor',rack:'Rack railway',cable:'Cable traction'};
 export function powerMethodQuery(box) {
   if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)||box[0]<-90||box[2]>90||box[1]<-180||box[3]>180||box[0]>=box[2]||box[1]>=box[3])throw new Error('Invalid power-method bbox');
   const bbox=`(${box.join(',')})`,charging=[],selectors=[];
   for(const prefix of prefixes) {
     selectors.push(`way${match(prefix+'electrified',methods.join('|'))}${bbox};`,
+      `way${match(prefix+'propulsion',PROPULSION.join('|'))}${bbox};`,`way${match(prefix+'traction',TRACTION.join('|'))}${bbox};`,
       `nwr${match(prefix+'railway','charging_station')}${bbox};`);
     for(const [key,value] of [['amenity','charging_station'],['man_made','charge_point']]) {
       charging.push(`nwr${match(prefix+key,value)}${bbox};`);
@@ -49,20 +53,27 @@ export function powerMethodsGeoJSON(json) {
     const genericState=states.find(s=>tokens(tags.railway).includes(s));
     if(railPrefix===undefined&&!genericState)continue;
     const prefix=prefixes.find(prefix=>tokens(tags[prefix+'electrified']).some(v=>methods.includes(v)));
-    if(prefix===undefined)continue;
-    const selected=tokens(tags[prefix+'electrified']).filter(v=>methods.includes(v));
+    const selected=prefix===undefined?[]:tokens(tags[prefix+'electrified']).filter(v=>methods.includes(v));
+    const propulsion=prefixes.flatMap(p=>tokens(tags[p+'propulsion'])).filter(v=>PROPULSION.includes(v));
+    const traction=prefixes.flatMap(p=>tokens(tags[p+'traction'])).filter(v=>TRACTION.includes(v));
+    if(!selected.length&&!propulsion.length&&!traction.length)continue;
     const coordinates=element.geometry?.map(p=>[p.lon,p.lat]);
     if(!coordinates||coordinates.length<2||coordinates.some(p=>!p.every(Number.isFinite)||Math.abs(p[0])>180||Math.abs(p[1])>90))throw new Error(`Incomplete geometry for power method way-${element.id}`);
     const center=coordinates[Math.floor(coordinates.length/2)],atlas_han=hanRegion(...center);
     // Track lifecycle and electrification lifecycle are independent. Proposed
     // rails cannot be displayed as operating merely because electrified exists.
-    const state=genericState||railPrefix?.slice(0,-1)||prefix.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
-    const number=key=>/^\d+(\.\d+)?$/.test(tags[prefix+key]||'')?Number(tags[prefix+key]):undefined;
+    const state=genericState||railPrefix?.slice(0,-1)||prefix?.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
+    const number=key=>/^\d+(\.\d+)?$/.test(tags[(prefix??'')+key]||'')?Number(tags[(prefix??'')+key]):undefined;
+    const all=[...new Set([...selected,...propulsion,...traction])];
     const id=`way-${element.id}`;
     byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
       atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
       power_state:state,electrification_state:state==='present'?'present':state,
-      power_method:selected.join(';'),power_method_label:selected.map(v=>({rail:'Third rail', '4th_rail':'Fourth rail','ground-level_power_supply':'Ground-level power supply'}[v])).join(' + '),
+      power_method:selected.join(';'),power_method_label:all.map(v=>METHOD_LABELS[v]).join(' + '),
+      // Booleans keep layer filters exact (4th_rail must not match rail).
+      method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
+      method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
+      propulsion_linear_motor:propulsion.includes('linear_motor'),traction_rack:traction.includes('rack'),traction_cable:traction.includes('cable'),
       ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
     }});
   }

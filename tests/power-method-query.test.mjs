@@ -23,7 +23,9 @@ test('common charging-use filters run only on a bounded primary candidate set',(
   assert.equal(prior.output.length,240);
   assert.equal(current.primary.length,16);assert.ok(current.primary.every(s=>s.bbox&&!s.set&&s.type==='nwr'&&s.filters.length===1));
   const direct=current.output.filter(s=>!s.set),local=current.output.filter(s=>s.set);
-  assert.equal(direct.length,16);assert.ok(direct.every(s=>s.bbox&&s.filters.length===1));
+  // Electrified methods, propulsion, traction and railway chargers: one bounded selector each per lifecycle prefix.
+  assert.equal(direct.length,32);assert.ok(direct.every(s=>s.bbox&&s.filters.length===1));
+  for(const key of ['electrified','propulsion','traction','railway'])assert.equal(direct.filter(s=>s.filters[0].key.replace(/^[a-z]+:/,'')===key).length,8,key);
   assert.equal(local.length,14);assert.ok(local.every(s=>s.set==='.potential'&&!s.bbox&&s.filters.length===1));
   assert.deepEqual(current.presence,['train','tram','light_rail','subway',...prefixes.map(p=>p+'railway'),'usage','landuse']);
   assert.ok(current.primary.every(s=>/^(?:(?:construction|proposed|disused|abandoned|razed|demolished|removed):)?(?:amenity|man_made)$/.test(s.filters[0].key)));

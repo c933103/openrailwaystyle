@@ -27,7 +27,7 @@ function canonical(value) {
 // New independently tested overlays retain every historical source/layer byte
 // and their relative order; their own schema and paint are in power-methods.test.
 const addedSources=new Set(['railReference','electricMethods','electricCatenary']);
-const addedLayers=new Set(['electrification-conductor-rails','electrification-method-labels','electrification-charging-points','electrification-charging-marks','electrification-charging-names','electrification-former-conductor-rails','electrification-former-method-labels','electrification-former-charging-points','electrification-former-charging-marks','electrification-former-charging-names','electrification-catenary-masts','electrification-catenary-portals','electrification-catenary-references']);
+const addedLayers=new Set(['electrification-conductor-rails','electrification-method-labels','electrification-charging-points','electrification-charging-marks','electrification-charging-names','electrification-former-conductor-rails','electrification-former-method-labels','electrification-former-charging-points','electrification-former-charging-marks','electrification-former-charging-names','electrification-catenary-masts','electrification-catenary-portals','electrification-catenary-references',...['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction'].flatMap(id=>[`electrification-${id}`,`electrification-former-${id}`])]);
 const digest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 
 function rootContract(value) {

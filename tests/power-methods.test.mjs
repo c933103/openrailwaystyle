@@ -57,8 +57,9 @@ test('track and electrification lifecycle both keep conductor rails behind the f
     assert.equal(layerVisibility(l,{...settings,inactive:false}),!l.id.includes('former-'),l.id);
   }
   const line=layers.find(l=>l.id==='electrification-conductor-rails'),filter=featureFilter(line.filter).filter;
-  assert.equal(filter({zoom:14},{type:2,properties:{power_state:'present'}}),true);
-  assert.equal(filter({zoom:14},{type:1,properties:{power_state:'present'}}),false);
+  assert.equal(filter({zoom:14},{type:2,properties:{power_state:'present',method_rail:true}}),true);
+  assert.equal(filter({zoom:14},{type:2,properties:{power_state:'present',method_rail:false}}),false,'a line without third rail is not drawn as one');
+  assert.equal(filter({zoom:14},{type:1,properties:{power_state:'present',method_rail:true}}),false);
   assert.deepEqual(validateStyleMin({version:8,glyphs:'https://example.org/{fontstack}/{range}.pbf',sources:{electricMethods:{type:'geojson',data:{type:'FeatureCollection',features:[]}},electricCatenary:{type:'vector',tiles:['https://example.org/{z}/{x}/{y}.pbf']}},layers}),[]);
   assert.deepEqual(osmObject({source:'electricCatenary',properties:{id:'123-mast'}}),{type:'node',id:'123'});
   assert.deepEqual(osmObject({source:'electricCatenary',properties:{id:'124-portal'}}),{type:'way',id:'124'});
@@ -91,4 +92,45 @@ test('maintenance builder publishes all eight regions, reuses exact caches and r
       } else {assert.notEqual(run.status,0);await assert.rejects(access(join(dir,'power/power-methods.geojson')));await assert.rejects(access(join(dir,'power/methods-manifest.json')));}
     }finally{await rm(dir,{recursive:true,force:true});}
   }
+});
+
+test('every means of delivery and traction is kept with exact per-method fields',()=>{
+  const cases=[
+    [{railway:'subway',electrified:'rail'},{method_rail:true,method_fourth_rail:false}],
+    [{railway:'subway',electrified:'4th_rail'},{method_rail:false,method_fourth_rail:true}],
+    [{railway:'tram',electrified:'ground-level_power_supply'},{method_ground:true}],
+    [{railway:'tram',electrified:'inductive'},{method_inductive:true}],
+    [{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line'},{propulsion_linear_motor:true,method_rail:false}],
+    [{railway:'narrow_gauge',traction:'rack',electrified:'no'},{traction_rack:true}],
+    [{railway:'funicular',traction:'cable'},{traction_cable:true}],
+    [{railway:'rail',electrified:'contact_line;rail'},{method_rail:true}],
+  ];
+  for(const [tags,expected] of cases) {
+    const data=powerMethodsGeoJSON({elements:[way(tags)]});
+    assert.equal(data.features.length,1,JSON.stringify(tags));
+    for(const [key,value] of Object.entries(expected))assert.equal(data.features[0].properties[key],value,`${JSON.stringify(tags)} ${key}`);
+  }
+  assert.equal(powerMethodsGeoJSON({elements:[way({railway:'rail',traction:'adhesion',propulsion:'motor'})]}).features.length,0,'ordinary adhesion and motor propulsion are not separate means');
+  assert.equal(powerMethodsGeoJSON({elements:[way({railway:'rail',electrified:'rail;contact_line',traction:'rack'})]}).features[0].properties.power_method_label,'Third rail + Rack railway');
+  const query=powerMethodQuery([-90,-180,0,-90]);
+  for(const key of ['propulsion','traction'])for(const prefix of prefixes)assert.ok(query.includes(JSON.stringify(prefix+key)),prefix+key);
+  assert.ok(query.includes('inductive'));
+});
+
+test('each means has its own stroke, a fourth-rail track is dashed on both sides, and older snapshots still draw',async()=>{
+  const {POWER_METHOD_STROKES}=await import('../styles/power-facilities.mjs');
+  const layers=powerMethodLayers();
+  for(const {id} of POWER_METHOD_STROKES)for(const suffix of ['','former-'])assert.ok(layers.some(l=>l.id===`electrification-${suffix}${id}`),id);
+  const filter=id=>featureFilter(layers.find(l=>l.id===id).filter).filter;
+  const at=properties=>({type:2,properties:{power_state:'present',...properties}});
+  assert.equal(filter('electrification-conductor-rails')({zoom:12},at({method_rail:false,method_fourth_rail:true})),true,'fourth-rail tracks draw both sides');
+  assert.equal(filter('electrification-fourth-rails')({zoom:12},at({method_rail:true,method_fourth_rail:false})),false,'third rail is not mistaken for fourth');
+  assert.equal(filter('electrification-linear-motors')({zoom:12},at({propulsion_linear_motor:true})),true);
+  assert.equal(filter('electrification-rack-traction')({zoom:12},at({traction_rack:false})),false);
+  // Published before the per-method fields: only power_method is recorded.
+  assert.equal(filter('electrification-conductor-rails')({zoom:12},at({power_method:'rail'})),true);
+  assert.equal(filter('electrification-fourth-rails')({zoom:12},at({power_method:'rail'})),false);
+  assert.equal(filter('electrification-fourth-rails')({zoom:12},at({power_method:'4th_rail'})),true);
+  assert.equal(filter('electrification-ground-supply')({zoom:12},at({power_method:'ground-level_power_supply'})),true);
+  assert.equal(filter('electrification-former-conductor-rails')({zoom:12},at({method_rail:true})),false,'present tracks stay out of former layers');
 });
