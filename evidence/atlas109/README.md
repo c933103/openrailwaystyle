@@ -51,3 +51,10 @@ matching only the supplemental brand. `matching-probe.json` records the result.
 Whole-input `osm_sha256` inventory hashes appropriately differ because NDJSON
 now retains more evidence; section-binding identities, matching outcomes and
 tile bytes do not. This probe does not make a live or general classifier claim.
+
+## Retention/size follow-through
+
+`storage-analysis.md`, `storage-probe.mjs` and `storage-probe.json` document
+per-envelope bounds, a 1,000-observation plateau test, raw/gzip fixture sizes and
+the existing service publication's single-blob size risk. They do not claim a
+measured global post-change output or a new acceptance gate.

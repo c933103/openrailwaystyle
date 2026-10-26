@@ -1,0 +1,35 @@
+{
+  "source": "88bee49d4c20aa4fbebdd501b503587f2dba7e49",
+  "fixtureSha256": "75a13a5e7586a2f1f58ee11fd42ef7582cfdde0358d8188b5de8072f5f8215f5",
+  "replayObservations": 1000,
+  "unchangedDuplicateEnvelopeIdentical": true,
+  "changingSnapshotEnvelopeAfter8IdenticalToAfter1000": true,
+  "retainedSnapshotsPerVariant": 8,
+  "counts": {
+    "maxRevisionIdentities": 2,
+    "maxVariantsPerRevision": 2,
+    "maxSourceReferencesPerVariant": 8,
+    "maxReferencesPerEnvelope": 32,
+    "allowlistedTags": 23,
+    "maxValueUtf16CodeUnits": 1024
+  },
+  "fixtureSingleAcceptedStageRows": {
+    "oldCore": {
+      "rawBytes": 11941,
+      "gzip9Bytes": 1357
+    },
+    "oneSupplementalObservation": {
+      "rawBytes": 13477,
+      "gzip9Bytes": 1631
+    },
+    "delta": {
+      "rawBytes": 1536,
+      "gzip9Bytes": 274
+    },
+    "eightSyntheticSourceSamples": {
+      "rawBytes": 19379,
+      "gzip9Bytes": 2144
+    }
+  },
+  "limits": "Measured only the unchanged authentic fixture, plus synthetic repeat-provenance. Not a global compression/growth estimate. Source-reference string lengths and number of route/stage rows are not globally byte-capped by this envelope."
+}
