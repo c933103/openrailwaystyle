@@ -212,7 +212,8 @@ export const CURRENT_SYSTEMS = [
 ];
 export const NOT_ELECTRIFIED = '#525b62';
 const kv = v => v >= 1000 ? `${Number((v / 1000).toFixed(2))} kV` : `${v} V`;
-export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts.at(-1)[0])}`;
+// No Array.prototype.at: Safari before 15.4 lacks it and the legend runs at startup.
+export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts[system.volts.length - 1][0])}`;
 export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(system.hue, system.sat, l)]);
 export function electrificationPaint() {
   const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
