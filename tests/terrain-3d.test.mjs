@@ -31,16 +31,16 @@ test('3D style uses an independent Terrarium source, preserving the original hil
 });
 
 test('3D activates only on pitched views with relief enabled', () => {
-  const view={loaded:false,pitch:30,terrain:null,calls:[]};
+  const view={sourceRegistered:false,pitch:30,terrain:null,calls:[]};
   const map={
-    isStyleLoaded:()=>view.loaded,getPitch:()=>view.pitch,getTerrain:()=>view.terrain,
+    getSource:()=>view.sourceRegistered?{}:null,getPitch:()=>view.pitch,getTerrain:()=>view.terrain,
     setTerrain: next=>{view.terrain=next;view.calls.push(next);},
   };
   assert.equal(terrain3DEnabled(true,0),false);
   assert.equal(terrain3DEnabled(false,60),false);
   assert.equal(terrain3DEnabled(true,60),true);
   syncTerrain3D(map,true);assert.equal(view.calls.length,0,'before style load');
-  view.loaded=true;syncTerrain3D(map,true);
+  view.sourceRegistered=true;syncTerrain3D(map,true);
   assert.deepEqual(view.terrain,{source:TERRAIN_3D_SOURCE,exaggeration:1});
   syncTerrain3D(map,true);assert.equal(view.calls.length,1,'must not reset terrain on each pitch frame');
   syncTerrain3D(map,false);assert.deepEqual(view.calls,[{source:TERRAIN_3D_SOURCE,exaggeration:1},null]);
