@@ -71,7 +71,10 @@ export function powerMethodsGeoJSON(json) {
     for(const [index,state] of groups.entries()) {
       const group=means.filter(m=>m.state===state),values=key=>group.filter(m=>m.key===key).map(m=>m.value);
       const selected=values('electrified'),propulsion=values('propulsion'),traction=values('traction');
-      const prefix=group.find(m=>m.key==='electrified')?.prefix;
+      // Electrical values come from the electrification prefix, or for a
+      // traction/propulsion-only group (e.g. a rack line under contact line)
+      // from that means' own prefix.
+      const prefix=(group.find(m=>m.key==='electrified')||group[0]).prefix;
       const number=key=>prefix!==undefined&&/^\d+(\.\d+)?$/.test(tags[prefix+key]||'')?Number(tags[prefix+key]):undefined;
       const id=index?`way-${element.id}-${state}`:`way-${element.id}`;
       byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,

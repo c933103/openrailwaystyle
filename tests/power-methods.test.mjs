@@ -159,6 +159,11 @@ test('planned or former propulsion and traction keep their own lifecycle on an o
   assert.equal(mixed['way-34'].power_traction,'rack');
   assert.equal(mixed['way-34-proposed'].power_traction,'cable','the inspector reads the planned feature\'s own traction');
   assert.equal(byId['way-32'].power_propulsion,'linear_motor','prefixed-only propulsion is still reported');
+  const [rack]=powerMethodsGeoJSON({elements:[way({railway:'rail',electrified:'contact_line',traction:'rack',voltage:'1500',frequency:'0'},35)]}).features;
+  assert.equal(rack.properties.voltage,1500,'a rack line under contact line keeps a numeric voltage');
+  assert.equal(rack.properties.frequency,0);
+  const [planned]=powerMethodsGeoJSON({elements:[way({railway:'rail','proposed:traction':'rack','proposed:voltage':'750',voltage:'1500'},36)]}).features;
+  assert.equal(planned.properties.voltage,750,'a planned means reads its own lifecycle\'s voltage');
   const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-rack-traction'),former=layers.find(l=>l.id==='electrification-former-rack-traction');
   const draws=(layer,p)=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:p,geometry:[]});
   assert.equal(draws(present,byId['way-31']),false);
