@@ -11,6 +11,7 @@ import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {POWER_FACILITY_KINDS,POWER_FACILITY_ICONS} from '../styles/power-facilities.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -166,41 +167,35 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const powerLegend = async former => {
     await openControls();
     if (await page.locator('#settings-view').isVisible()) await page.locator('#settings-close').click();
+    // A fixed key: one pictogram per kind of object, drawn as on the map.
     const samples = await page.evaluate(() => [...document.querySelectorAll('#legend .point-swatch')].map(sample => ({
       label:sample.nextElementSibling.textContent, hidden:sample.getAttribute('aria-hidden'),
-      line:sample.classList.contains('swatch'), width:sample.getBoundingClientRect().width,
+      line:sample.classList.contains('swatch'),
       symbols:[...sample.querySelectorAll('svg')].map(svg => {
-        const circle=svg.querySelector('circle'),text=svg.querySelector('text'),box=svg.getBoundingClientRect(),glyph=text.getBBox();
-        return {mark:text.textContent,fill:circle.getAttribute('fill'),stroke:circle.getAttribute('stroke'),
-          strokeWidth:+circle.getAttribute('stroke-width'),textColor:text.getAttribute('fill'),
-          radius:+circle.getAttribute('r'),fontSize:+text.getAttribute('font-size'),width:box.width,height:box.height,
-          glyphVisible:glyph.width>0&&glyph.height>0&&glyph.x>=0&&glyph.x+glyph.width<=16&&glyph.y>=0&&glyph.y+glyph.height<=16};
+        const tile=svg.querySelector('rect'),glyph=svg.querySelector('path'),box=svg.getBoundingClientRect(),g=glyph.getBBox();
+        return {d:glyph.getAttribute('d'),fill:tile.getAttribute('fill'),stroke:glyph.getAttribute('stroke'),dash:tile.getAttribute('stroke-dasharray'),width:box.width,height:box.height,
+          glyphVisible:g.width>0&&g.height>0&&g.x>=0&&g.x+g.width<=24&&g.y>=0&&g.y+g.height<=24};
       }),
     })));
-    assert.equal(samples.length,5,'E/B/F/C/W use circular point samples, not line swatches');
-    const expected=[['E','Electricity supply','#b77d00'],['B','Battery train charging','#008a83'],['F','Train refuelling point (fuel type where mapped)','#906532'],['C','Steam engine coaling','#4b4c50'],['W','Steam engine water','#287bad']];
-    const paints=await page.evaluate(()=>[false,true].map(former=>{
-      const map=window.reviewMap,prefix=former?'electrification-former-supply':'electrification-supply';
-      return {radius:map.getPaintProperty(prefix+'-points','circle-radius').at(-1),
-        stroke:map.getPaintProperty(prefix+'-points','circle-stroke-width'),textSize:map.getLayoutProperty(prefix+'-marks','text-size')};
-    }));
+    const kinds=Object.entries(POWER_FACILITY_KINDS);
+    assert.equal(samples.length,kinds.length,'every kind of point has its pictogram in the legend');
     for (const [i,sample] of samples.entries()) {
-      const [mark,label,color]=expected[i];assert.equal(sample.label,label);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
+      const [kind,{label,color}]=kinds[i];assert.ok(sample.label.startsWith(label),kind);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
       assert.equal(sample.symbols.length,former?2:1);
       for (const [j,symbol] of sample.symbols.entries()) {
-        assert.equal(symbol.mark,mark);assert.equal(symbol.fill,j?'#fffef8':color);assert.equal(symbol.stroke,j?color:'#fffef8');assert.equal(symbol.textColor,j?color:'#fffef8');
-        assert.equal(symbol.radius,paints[j].radius);assert.equal(symbol.strokeWidth,paints[j].stroke);assert.equal(symbol.fontSize,paints[j].textSize);
-        assert.equal(symbol.width,16);assert.equal(symbol.height,16);assert.equal(symbol.glyphVisible,true,'letter stays visible inside its circular sample');
+        assert.equal(symbol.d,POWER_FACILITY_ICONS[kind]);assert.equal(symbol.fill,j?'#fffef8':color);assert.equal(symbol.stroke,j?color:'#fffef8');assert.equal(symbol.dash,j?'3 2':null);
+        assert.ok(symbol.width>=16&&symbol.height>=16);assert.equal(symbol.glyphVisible,true,'pictogram stays inside its tile');
       }
     }
+    const systems=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient')).map(row=>row.lastElementChild.textContent));
+    assert.equal(systems.length,5,`fixed current-system key: ${systems}`);
     const track=await page.evaluate(()=>{
       const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Not electrified');
       const sample=row.firstElementChild,box=sample.getBoundingClientRect();return {line:sample.classList.contains('swatch'),width:box.width,height:box.height,text:sample.textContent};
     });
     assert.deepEqual(track,{line:true,width:25,height:4,text:''},'ordinary track sample retains its line geometry');
     const accessible=await page.locator('#legend').ariaSnapshot();
-    assert.ok(accessible.includes('Train refuelling point (fuel type where mapped)'));
-    assert.ok(!/^\s*- text: [EFCW]$/m.test(accessible),'decorative letters do not duplicate accessible labels');
+    assert.ok(accessible.includes('Train refuelling point (supplies written beside it)'));
     const layouts=[];
     for(const constrained of [false,true]){
       // The observed desktop panel had a 257px content box after its classic
@@ -324,7 +319,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openControls();await page.locator('#about-open').click();
     const powerHelp=await page.locator('#help-power').innerText();
-    for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water'])assert.ok(powerHelp.includes(label));
+    for(const label of ['Battery train charging facility','Train refuelling point (supplies written beside it)','Steam engine coaling','Steam locomotive water crane'])assert.ok(powerHelp.includes(label));
     assert.match(powerHelp,/whole electricity grid.*not yet/);
     await page.locator('#help-power').scrollIntoViewIfNeeded();
     await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});

@@ -1,28 +1,28 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261026-delivery-methods-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261026-delivery-methods-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261026-delivery-methods-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261026-delivery-methods-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261026-delivery-methods-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261026-delivery-methods-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261026-delivery-methods-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261026-power-symbols-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261026-power-symbols-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261026-power-symbols-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261026-power-symbols-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261026-power-symbols-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261026-power-symbols-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261026-power-symbols-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261026-delivery-methods-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261026-delivery-methods-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261026-delivery-methods-1';
-import {departureItem} from './departures-ui.mjs?v=20261026-delivery-methods-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261026-delivery-methods-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261026-delivery-methods-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261026-delivery-methods-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261026-delivery-methods-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261026-delivery-methods-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261026-delivery-methods-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261026-delivery-methods-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261026-delivery-methods-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261026-delivery-methods-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261026-delivery-methods-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261026-delivery-methods-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261026-delivery-methods-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261026-delivery-methods-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261026-power-symbols-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261026-power-symbols-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261026-power-symbols-1';
+import {departureItem} from './departures-ui.mjs?v=20261026-power-symbols-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261026-power-symbols-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261026-power-symbols-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261026-power-symbols-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261026-power-symbols-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, powerFacilityDisplay, powerIcon, POWER_FACILITY_ICONS, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261026-power-symbols-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261026-power-symbols-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261026-power-symbols-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261026-power-symbols-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261026-power-symbols-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261026-power-symbols-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261026-power-symbols-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261026-power-symbols-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261026-power-symbols-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -61,7 +61,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261026-delivery-methods-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261026-power-symbols-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -370,12 +370,7 @@ function scheduleLegend() {
 }
 const GAUGE_NAMES = {600:'', 762:'2 ft 6 in', 914:'3 ft', 1000:'metre', 1067:'3 ft 6 in', 1372:'Scotch', 1435:'standard', 1520:'Russian', 1524:'Finnish', 1600:'Irish', 1668:'Iberian', 1676:'Indian'};
 const IN_VIEW = {
-  electrification: p => {
-    if (['no', 'deelectrified'].includes(p.electrification_state) || p.voltage === 0) return null;
-    const label = describeCurrent(p.voltage, p.frequency);
-    // Sorted DC first, then AC by frequency, each by voltage.
-    return label && !/not recorded/.test(label) ? [electrificationColor(p), label, (p.frequency || 0) * 1e6 + (p.voltage || 0)] : null;
-  },
+  // Railway power has a fixed key (see renderLegend), not an in-view list.
   control: p => {
     const drawn = Object.fromEntries([0,1,2].map(i => [`train_protection${i}`,p[`train_protection${i}`]]));
     const rows = trainProtectionSystems(drawn).filter(code => code !== 'none').map(code => {
@@ -419,18 +414,19 @@ function updateInView() {
   if (settings.mode === 'control' && counts.size > 12) rows.push(['transparent',`${counts.size-12} less common systems in view; zoom in for them`,'empty']);
   if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
 }
-function powerFacilitySwatch({color,mark}, includeFormer) {
-  const {paper,radius,textSize,stroke,formerStroke} = POWER_FACILITY_SYMBOL;
+// The same pictogram and tile as on the map: filled when operating, light
+// with a dashed edge when planned or former.
+function powerFacilitySwatch({kind,color}, includeFormer) {
+  const {paper} = POWER_FACILITY_SYMBOL, ns='http://www.w3.org/2000/svg';
   const sample = textNode('span', '', `point-swatch${includeFormer ? ' paired' : ''}`);
   sample.setAttribute('aria-hidden','true');
   for (const former of includeFormer ? [false,true] : [false]) {
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox','0 0 16 16');
-    const circle=document.createElementNS(svg.namespaceURI,'circle');
-    for (const [key,value] of Object.entries({cx:8,cy:8,r:radius,fill:former?paper:color,stroke:former?color:paper,'stroke-width':former?formerStroke:stroke})) circle.setAttribute(key,value);
-    const letter=document.createElementNS(svg.namespaceURI,'text');
-    for (const [key,value] of Object.entries({x:8,y:8,'text-anchor':'middle','dominant-baseline':'central','font-size':textSize,'font-weight':700,fill:former?color:paper})) letter.setAttribute(key,value);
-    letter.textContent=mark;svg.append(circle,letter);sample.append(svg);
+    const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 24 24');
+    const tile=document.createElementNS(ns,'rect');
+    for (const [key,value] of Object.entries({x:0.75,y:0.75,width:22.5,height:22.5,rx:5,fill:former?paper:color,stroke:former?color:paper,'stroke-width':former?1.5:1,...(former?{'stroke-dasharray':'3 2'}:{})})) tile.setAttribute(key,value);
+    const glyph=document.createElementNS(ns,'path');
+    for (const [key,value] of Object.entries({d:POWER_FACILITY_ICONS[kind],transform:'translate(2 2) scale(0.8333)',fill:'none',stroke:former?color:paper,'stroke-width':1.9,'stroke-linejoin':'round','stroke-linecap':'round'})) glyph.setAttribute(key,value);
+    svg.append(tile,glyph);sample.append(svg);
   }
   return sample;
 }
@@ -455,7 +451,8 @@ function renderLegend() {
   const legends = {
     speed: { title: `Mapped maximum speed · ${settings.units === 'imperial' ? 'mph' : 'km/h'}`, rows: speedBands(settings.units).map(b => [b.color, b.label]) },
     infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
-    electrification: { title: 'Railway power · in view', rows: [...listed(inView), [NOT_ELECTRIFIED, 'Not electrified']] },
+    // A fixed key: each current system is a hue, its voltages light to dark.
+    electrification: { title: 'Railway power', rows: [...CURRENT_SYSTEMS.map(system=>({symbol:'gradient',colors:currentStops(system).map(([,colour])=>colour),label:`${system.label} · ${currentRange(system)}`})), [NOT_ELECTRIFIED, 'Not electrified']] },
     control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
     gauge: { title: 'Track gauge · in view', rows: listed(inView) },
     axle: {title:'Axle load · in view',rows:listed(inView)},
@@ -477,9 +474,10 @@ function renderLegend() {
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   // Existing track tuples become explicit line samples. Point categories keep
   // their geometry metadata instead of losing it in a colour/label tuple.
-  for (const {symbol,color,label,extra,mark,stroke} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
+  for (const {symbol,color,colors,label,extra,kind,stroke} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = symbol === 'point' ? powerFacilitySwatch({color,mark},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : textNode('span', '', `swatch ${extra || ''}`);
+    const swatch = symbol === 'point' ? powerFacilitySwatch({kind,color},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : textNode('span', '', `swatch ${extra || ''}`);
+    if (symbol === 'gradient') swatch.style.background = `linear-gradient(90deg,${colors.join(',')})`;
     if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
       const pattern=LIFECYCLE_PATTERNS[extra.slice(9)];
@@ -741,7 +739,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|method-labels|charging-(?:points|marks|kinds|names))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(points|marks|kinds|names))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|method-labels|charging-(?:points|kinds|names))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(points|kinds|names))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -1698,12 +1696,12 @@ async function initialize() {
   map.on('webglcontextrestored', () => installHiddenTileMaskGuard(map));
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates),...powerFacilityDisplay(f.properties)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
   powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language)}}))}),
+    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,...powerFacilityDisplay(f.properties),atlas_name:chooseName(f.properties,language)}}))}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     onError:error=>console.warn('Conductor rails and railway charging unavailable:',error.message)});
   updateAttribution();
@@ -1734,6 +1732,11 @@ async function initialize() {
     map.jumpTo(view); updatePolar();
   });
   map.on('styleimagemissing', event => {
+    if (event.id.startsWith('power-')) {
+      const icon = powerIcon(event.id,document);
+      if (icon) map.addImage(event.id,icon,{pixelRatio:2});
+      return;
+    }
     if (event.id.startsWith('context-')) {
       const icon = contextIcon(event.id,document);
       if (icon) map.addImage(event.id,icon,{pixelRatio:2});
