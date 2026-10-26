@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, ESRI_MAX_ZOOM, ESRI_OFF_KEY, ESRI_OFF_MS, ESRI_ATTRIBUTION} from '../styles/imagery.mjs';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, eoxCovers, ESRI_MAX_ZOOM, ESRI_OFF_KEY, ESRI_OFF_MS, ESRI_ATTRIBUTION} from '../styles/imagery.mjs';
 
 const KEY = 'AAPTxy8BH1VEsoebNVZXo8HurEOF051kAEKlhkOhBEc9BmTEST';
 const bytes = text => new TextEncoder().encode(text).buffer;
@@ -106,4 +106,22 @@ test('denied storage access and a failed Esri body download still yield EOX imag
   const h = harness(() => truncated);
   assert.equal(await get(h.protocol, 10, 7, 8), 'eox 10/8/7');
   assert.equal(h.protocol.esriActive(), true, 'a transport failure is not a refusal');
+});
+
+const tileY=(lat,z)=>Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*2**z);
+
+test('EOX covers a tile where it has native detail: z14 at the equator, falling with latitude, inside 56° S–84° N',()=>{
+  for(const [lat,z,covered] of [[0,14,true],[-0.001,14,true],[0,15,false],[35.7,13,true],[35.7,14,false],[59,13,true],[60.5,13,false],[60.5,12,true],
+    [76,11,true],[76,12,false],[84.5,3,true],[84.5,8,false],[-55,10,true],[-60,5,true],[-60,8,false],[-80,2,false]])
+    assert.equal(eoxCovers(z,tileY(lat,z)),covered,`${lat}° z${z}`);
+});
+
+test('with a key, Esri is used only where EOX cannot cover the tile',async()=>{
+  const h=harness(()=>image('esri'));
+  const x=(lon,z)=>Math.floor((lon+180)/360*2**z);
+  for(const [lat,lon,z] of [[0,30,14],[35.68,139.76,13],[60.5,10,12],[51.5,0,8]])
+    assert.equal(await get(h.protocol,z,x(lon,z),tileY(lat,z)),`eox ${z}/${tileY(lat,z)}/${x(lon,z)}`,`EOX directly at ${lat}° z${z}`);
+  assert.equal(h.calls.filter(url=>url.includes('arcgis')).length,0,'no Esri request where EOX has native detail');
+  for(const [lat,lon,z] of [[0,30,15],[35.68,139.76,14],[60.5,10,13],[-70,0,6],[84.5,0,8]])
+    assert.equal(await get(h.protocol,z,x(lon,z),tileY(lat,z)),'esri',`Esri at ${lat}° z${z}`);
 });
