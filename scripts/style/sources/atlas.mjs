@@ -11,6 +11,7 @@ export function atlasSources(majorStationData) {
   return {
     railReference: snapshot('mainlinetiles', 0, 6, {promoteId:'id'}),
     electricMethods: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:ATTRIBUTION},
+    electricSignals: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:ATTRIBUTION},
     electricFacilities: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
     axleBranch: snapshot('axlebranch', 4, 9),
     // Kept inline for existing installed workers. The application defers

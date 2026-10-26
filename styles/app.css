@@ -181,4 +181,5 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 /* Power facilities are circular lettered points, separate from track swatches. */
 .point-swatch{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:25px;height:16px;gap:4px}.point-swatch.paired{width:36px}.point-swatch svg{display:block;flex-shrink:0;width:16px;height:16px}
 
+.dot-swatch { width: 8px; height: 8px; flex-shrink: 0; margin: 0 7px; border-radius: 50%; background: var(--swatch); border: 1.5px solid var(--swatch-stroke); box-sizing: content-box; }
 .swatch.conductor-rail { border-top: 2px dashed var(--swatch); background: none; height: 0; }

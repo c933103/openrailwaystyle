@@ -11,7 +11,7 @@ const SOURCE_ORDER = [
   'openmaptiles', 'network', 'speed', 'electric', 'control', 'gaugeLow',
   'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch',
   'railway', 'railBackbone', 'railReference', 'trackCounts', 'stationMajor', 'platforms', 'platformEdges',
-  'platformLengths', 'platformNumbers', 'railwaySignals', 'railwaySignalSupplementOverview', 'railwaySignalSupplement', 'electricSubstations', 'electricFacilities', 'electricMethods', 'electricCatenary', 'stationEntrances',
+  'platformLengths', 'platformNumbers', 'railwaySignals', 'railwaySignalSupplementOverview', 'railwaySignalSupplement', 'electricSubstations', 'electricSignals', 'electricFacilities', 'electricMethods', 'electricCatenary', 'stationEntrances',
   'stationLow', 'stationMed', 'stations', 'inactiveRegional', 'crossings',
   'crossingsOverview', 'crossingsDetail', 'branchLines', 'serviceRoutes',
   'streetRunning', 'heritageAreas', 'contours', 'seabedContours', 'seabedContoursClose',

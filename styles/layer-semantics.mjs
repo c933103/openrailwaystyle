@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261025-esri-imagery-1';
+import { MODES } from './map-model.mjs?v=20261026-electricity-signals-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

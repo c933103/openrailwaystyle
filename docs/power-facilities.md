@@ -95,6 +95,32 @@ Primary references:
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
 
+## Electrification signals
+
+Power shows electrification signals from zoom 13 as small amber dots with a
+dark outline, distinct from the lettered supply markers: signals such as
+announce or lower pantograph, main switch off and on, and end of catenary.
+Selection is by tag alone: every `railway=signal` node recording
+`railway:signal:electricity` (other than `no`), whatever its national value.
+The provider's signal tiles mark a signal as electricity only when its value,
+function and form match the provider's per-country catalogue. On 26 October
+2026 about 3% of mapped values were outside it, mostly French, Portuguese,
+Spanish and Austrian tram signals, which the provider shows as unknown
+signals. The Power view therefore uses its own tag-based snapshot, so every
+country's signals are treated alike. References, or the recorded function when there
+is no reference, appear from zoom 16 and follow Labels. Deactivated signals
+(`railway:signal:electricity:deactivated=yes`) are hollow and follow the
+planned/former setting. Selecting a dot shows the recorded signal value,
+function, form, applicability, turn direction, voltage, frequency and facing
+direction. A dot is a mapped location, not a live aspect.
+
+`scripts/build-electricity-signals.mjs` collects the signals worldwide with the
+staged acquisition, retry, budget and publication checks shared with the
+conductor-rail supplement (`scripts/staged-overpass.mjs`).
+`traction-facilities.yml` publishes `power/electricity-signals.geojson` with its
+digest-bearing manifest; site assembly accepts snapshots made before this file
+existed and validates it once present.
+
 ## Conductor rails, charging and catenary equipment
 
 Power view also draws a dashed parallel line for mapped `electrified=rail`,
