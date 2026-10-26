@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {tractionLineQuery,tractionLinesGeoJSON,mergeTractionLine} from '../scripts/traction-line-data.mjs';
+import {tractionLineQuery,tractionLinesGeoJSON,mergeTractionLine,CIRCUIT_ROUNDS} from '../scripts/traction-line-data.mjs';
 import {buildTractionLines,validateTractionLinesSnapshot} from '../scripts/build-traction-lines.mjs';
 import {powerFacilityQuery} from '../scripts/power-facility-data.mjs';
 import {tractionLineLayers} from '../scripts/style/layers/traction-lines.mjs';
@@ -19,35 +19,36 @@ const traction={type:'way',id:100,nodes:[1,2,3,4,1],tags:{power:'substation',sub
 const line=(id,tags,points,nodes=points.map((_,i)=>id*10+i))=>({type:'way',id,nodes,tags,geometry:geometry(points)});
 const classify=elements=>Object.fromEntries(tractionLinesGeoJSON({elements}).features.map(f=>[f.id,f.properties]));
 
-test('the query reuses the reviewed facility selection and checks proximity once',()=>{
+test('the query reuses the reviewed facility selection, checks proximity once and fetches neighbouring lines',()=>{
   const box=[50,8,51,9],query=tractionLineQuery(box);
   assert.ok(query.startsWith(powerFacilityQuery(box).slice(0,-';out body center qt;'.length)+'->.facilities;'));
   assert.equal(query.split('around.').length-1,1,'one proximity search');
-  assert.ok(query.includes('way(50,8,51,9)["frequency"~"(^|;)[[:space:]]*(16\\\\.(7|67|66[67]?))[[:space:]]*(;|$)",i]->.frequencyHints;'));
+  assert.equal(query.split('way(bn.lineNodes)->.adjacent;').length-1,CIRCUIT_ROUNDS);
+  assert.ok(!/frequency|operator|voltage/.test(query.slice(powerFacilityQuery(box).length-20)),'no frequency, operator or voltage constants select lines');
   assert.ok(query.endsWith('(.lines;.facilities;);out body geom qt;'));
   for(const bad of [[0,0,0,0],[-91,0,0,1],[0,-181,1,0],[1,0,0,1],[0,0,1],'x'])assert.throws(()=>tractionLineQuery(bad),/Invalid traction-line bbox/);
 });
 
-test('lines are railway supply by recorded traction frequency or by reaching a railway facility',()=>{
+test('lines reaching a railway facility and every line in the same circuit are railway supply',()=>{
   const lines=classify([traction,
-    line(1,{power:'line',frequency:'16.7',voltage:'110000',operator:'Railway energy'},[[8,49],[8.1,49.1]]),
-    line(2,{power:'line',frequency:'50',voltage:'110000'},[[8.99,49.99],[9.0001,50.0001]]),
-    line(3,{power:'cable',frequency:'50'},[[8.99,50.0001],[9,50.0001]],[30,4]),
-    line(4,{power:'line',frequency:'50;16.7'},[[7,48],[7.1,48.1]]),
-    line(5,{'disused:power':'line',frequency:'16.67'},[[6,47],[6.1,47.1]]),
-    line(6,{power:'minor_line',frequency:'16.666'},[[6,46],[6.1,46.1]]),
+    line(2,{power:'line',frequency:'50',voltage:'110000'},[[8.99,49.99],[9.0001,50.0001]],[20,21]),
+    line(3,{power:'cable'},[[8.99,50.0001],[9,50.0001]],[30,4]),
+    // Continues way 2 from its far end, then a tee from the middle of way 4.
+    line(4,{power:'line',voltage:'110000'},[[8.9,49.9],[8.95,49.95],[8.97,49.97],[8.99,49.99]],[40,41,42,20]),
+    line(5,{'disused:power':'line'},[[8.95,49.95],[8.95,49.8]],[41,50]),
+    line(6,{power:'minor_line'},[[8.9,49.9],[8.8,49.8]],[40,60]),
+    // Shares a tower (a middle node of both) with way 4 but is not connected.
+    line(7,{power:'line',frequency:'16.7'},[[8.96,49.98],[8.97,49.97],[8.98,49.96]],[70,42,71]),
+    // Recorded railway frequency alone, unconnected, does not qualify.
+    line(8,{power:'line',frequency:'16.7'},[[7,48],[7.1,48.1]]),
   ]);
-  assert.deepEqual(Object.keys(lines).sort(),['way-1','way-2','way-3','way-4','way-5','way-6']);
-  assert.equal(lines['way-1'].traction_basis,'frequency');
-  assert.equal(lines['way-1'].traction_facilities,undefined);
+  assert.deepEqual(Object.keys(lines).sort(),['way-2','way-3','way-4','way-5','way-6']);
   assert.equal(lines['way-2'].traction_basis,'facility','a vertex inside the substation area');
-  assert.equal(lines['way-2'].traction_facilities,'way-100');
   assert.equal(lines['way-3'].traction_basis,'facility','a node shared with the substation outline');
-  assert.equal(lines['way-3'].power_line_kind,'cable');
-  assert.equal(lines['way-4'].traction_basis,'frequency','a line also carrying a traction circuit');
+  for(const id of ['way-4','way-5','way-6']){assert.equal(lines[id].traction_basis,'circuit',id);assert.equal(lines[id].traction_facilities,'way-100');}
   assert.equal(lines['way-5'].power_state,'disused');
   assert.equal(lines['way-6'].power_line_kind,'minor_line');
-  assert.equal(lines['way-1'].osm_type,'way');assert.equal(lines['way-1'].osm_id,'1');
+  assert.equal(lines['way-2'].osm_type,'way');assert.equal(lines['way-2'].osm_id,'2');
 });
 
 test('proximity, ordinary substations, internal conductors and auxiliary supplies are not railway supply lines',()=>{
@@ -101,16 +102,12 @@ test('holes are not facility area, and ending on a relation outline is a connect
 
 test('a line returned by two regions combines their evidence in any order',()=>{
   const points=[[8.99,49.99],[9.0001,50.0001]];
-  const west=classify([line(2,{power:'line',frequency:'50;16.7'},points)])['way-2'];
-  const east=classify([traction,line(2,{power:'line',frequency:'50;16.7'},points)])['way-2'];
-  const other={...traction,id:99};
-  const north=classify([other,line(2,{power:'line',frequency:'50;16.7'},points)])['way-2'];
-  assert.equal(west.traction_basis,'frequency');assert.equal(east.traction_basis,'frequency;facility');
   const feature=properties=>({type:'Feature',id:'way-2',geometry:{type:'LineString',coordinates:points},properties});
-  const a=mergeTractionLine(feature(west),feature(east)),b=mergeTractionLine(feature(east),feature(west));
-  assert.deepEqual(a,b);assert.equal(a.properties.traction_basis,'frequency;facility');assert.equal(a.properties.traction_facilities,'way-100');
-  assert.equal(mergeTractionLine(feature(east),feature(north)).properties.traction_facilities,'way-100;way-99');
-  assert.equal(mergeTractionLine(feature(west),feature(west)).properties.traction_facilities,undefined);
+  const east=feature(classify([traction,line(2,{power:'line'},points)])['way-2']);
+  const west=feature({...east.properties,traction_basis:'circuit',traction_facilities:'way-99'});
+  const a=mergeTractionLine(west,east),b=mergeTractionLine(east,west);
+  assert.deepEqual(a,b);assert.equal(a.properties.traction_basis,'facility');assert.equal(a.properties.traction_facilities,'way-100;way-99');
+  assert.equal(mergeTractionLine(west,west).properties.traction_basis,'circuit');
 });
 
 test('incomplete responses and geometry are rejected rather than published',()=>{
@@ -141,9 +138,9 @@ test('layers draw present and former lines and cables only in Power view',()=>{
 });
 
 test('details state the selection basis and the help explains it',()=>{
-  assert.deepEqual(tractionLineRows({power_line_kind:'cable',power_state:'present',traction_basis:'frequency;facility',voltage:'110000',frequency:'16.7',operator:'Railway energy'}),[
+  assert.deepEqual(tractionLineRows({power_line_kind:'cable',power_state:'present',traction_basis:'circuit',voltage:'110000',frequency:'16.7',operator:'Railway energy'}),[
     ['Type','Railway traction power cable'],['Status','present'],
-    ['Railway supply basis','Recorded traction frequency; Reaches a mapped railway electricity facility'],
+    ['Railway supply basis','Same circuit as a line reaching a railway electricity facility'],
     ['Operator','Railway energy'],['Voltage','110000'],['Frequency','16.7 Hz']]);
   assert.equal(tractionLineName({power_line_kind:'minor_line'}),'Railway traction power line (minor)');
   assert.ok(POWER_FACILITY_EXPLANATION.includes(TRACTION_LINE_NOTE));
@@ -153,10 +150,10 @@ test('details state the selection basis and the help explains it',()=>{
 test('the staged builder publishes a complete, validated world snapshot',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'atlas-traction-lines-'));
   try {
-    const element=line(1,{power:'line',frequency:'16.7'},[[9,50],[9.01,50.01]]);
+    const element=line(1,{power:'line'},[[8.99,49.99],[9.0001,50.0001]]);
     const options={cache:join(dir,'cache'),output:join(dir,'out'),sleep:async()=>{},log:()=>{}};
     let calls=0;
-    const {manifest}=await buildTractionLines({...options,fetcher:async()=>{calls++;return new Response(JSON.stringify({osm3s:{timestamp_osm_base:'2026-10-26T00:00:00Z'},elements:[element]}));}});
+    const {manifest}=await buildTractionLines({...options,fetcher:async()=>{calls++;return new Response(JSON.stringify({osm3s:{timestamp_osm_base:'2026-10-26T00:00:00Z'},elements:[element,traction]}));}});
     assert.equal(calls,8,'one request per world region');
     const data=JSON.parse(await readFile(join(options.output,'traction-lines.geojson'),'utf8'));
     assert.equal(data.features.length,1);assert.equal(manifest.features,1);
@@ -171,7 +168,7 @@ test('the staged builder publishes a complete, validated world snapshot',async()
       return new Response(JSON.stringify({osm3s:{},elements}));
     }});
     assert.equal(merged.data.features.length,1);
-    assert.equal(merged.data.features[0].properties.traction_basis,'frequency;facility');
+    assert.equal(merged.data.features[0].properties.traction_basis,'facility');
     assert.equal(merged.data.features[0].properties.traction_facilities,'way-100');
     await rm(options.output,{recursive:true});
     await assert.rejects(buildTractionLines({...options,refresh:true,fetcher:async()=>new Response(JSON.stringify({osm3s:{},elements:[]}))}),/Refusing to publish empty worldwide traction power line data/);
