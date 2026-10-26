@@ -815,7 +815,9 @@ function showDetails(feature) {
     const p=feature.properties,panel=$('detail-content');
     panel.replaceChildren(textNode('div','RAILWAY POWER','eyebrow'),textNode('h2',p.power_method_label));
     const dl=document.createElement('dl');row(dl,'Status',p.power_state);row(dl,'Electrification method',p.power_method);
-    row(dl,'Propulsion',p.propulsion);row(dl,'Traction',p.traction);
+    // Older snapshots lack the per-lifecycle values; read the raw tags there.
+    const own=key=>Object.hasOwn(p,`power_${key}`)?p[`power_${key}`]||undefined:p[key];
+    row(dl,'Propulsion',own('propulsion'));row(dl,'Traction',own('traction'));
     row(dl,'Current',describeCurrent(typeof p.voltage==='number'?p.voltage:undefined,typeof p.frequency==='number'?p.frequency:undefined));
     row(dl,'Voltage',p.voltage);row(dl,'Frequency',p.frequency===undefined?undefined:`${p.frequency} Hz`);
     row(dl,'Conductor contact',p['electrified:rail']);panel.append(dl);osmLink(panel,feature);$('details').hidden=false;return;

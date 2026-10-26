@@ -155,6 +155,10 @@ test('planned or former propulsion and traction keep their own lifecycle on an o
   assert.equal(byId['way-31'].power_method_label,'Third rail');
   assert.equal(byId['way-31-proposed'].power_method_label,'Rack railway (proposed)','a planned means is labelled as planned');
   assert.equal(byId['way-33'].power_method_label,'Cable traction (abandoned)');
+  const mixed=Object.fromEntries(powerMethodsGeoJSON({elements:[way({railway:'rail',traction:'rack','proposed:traction':'cable'},34)]}).features.map(f=>[f.id,f.properties]));
+  assert.equal(mixed['way-34'].power_traction,'rack');
+  assert.equal(mixed['way-34-proposed'].power_traction,'cable','the inspector reads the planned feature\'s own traction');
+  assert.equal(byId['way-32'].power_propulsion,'linear_motor','prefixed-only propulsion is still reported');
   const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-rack-traction'),former=layers.find(l=>l.id==='electrification-former-rack-traction');
   const draws=(layer,p)=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:p,geometry:[]});
   assert.equal(draws(present,byId['way-31']),false);

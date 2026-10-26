@@ -82,6 +82,8 @@ export function powerMethodsGeoJSON(json) {
         // Booleans keep layer filters exact (4th_rail must not match rail).
         method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
         method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
+        // This lifecycle's own values, for the inspector.
+        power_propulsion:propulsion.join(';'),power_traction:traction.join(';'),
         propulsion_linear_motor:propulsion.includes('linear_motor'),traction_rack:traction.includes('rack'),traction_cable:traction.includes('cable'),
         ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
       }});
