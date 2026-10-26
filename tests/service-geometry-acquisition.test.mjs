@@ -43,6 +43,25 @@ return new Response(next.padding?' '.repeat(next.padding):next.text??JSON.string
   } finally { await rm(root,{recursive:true,force:true}); }
 }
 
+test('urban acquisition: archived relation context reaches the production persisted supplemental envelope', async () => fixture(async run => {
+  // Replay the existing sanitized endpoint response locally. The synthetic
+  // stage wrapper makes no new provider request or geographic coverage claim.
+  const body = JSON.parse(await readFile('tests/fixtures/service-geometry/overpass-meta-relation-10003040.json', 'utf8'));
+  const result = await run([{body}]);
+  const table = readTable(gunzipSync(await readFile(join(result.root, 'service-data/service-routes.ndjson.gz'))).toString());
+  const item = table.routes.get('r10003040').evidence, revision = item.supplemental.revisions[0], variant = revision.variants[0];
+  assert.equal(revision.version, 25); assert.equal(revision.timestamp, '2026-06-12T01:19:51Z');
+  assert.equal(revision.declaration, item.revisionKeys[0]);
+  assert.equal(variant.tags.brand, 'Southern'); assert.equal(variant.tags.from, 'Epsom'); assert.equal(variant.tags.to, 'London Bridge');
+  assert.equal(variant.tags.interval, '00:30'); assert.equal(variant.tags['network:wikidata'], 'Q26334');
+  assert.equal(variant.sources[0].sourceSnapshot, '2026-10-07T04:09:50Z');
+  assert.equal(variant.sources[0].endpoint, 'https://overpass.invalid/test');
+  assert.equal(variant.sources[0].stage, 'japan'); assert.match(variant.sources[0].query, /^[a-f0-9]{64}$/);
+  assert.equal(item.members.length, 115); assert.deepEqual(item.eligible, []);
+  assert.deepEqual((await result.read('manifest.json')).geometry, geometrySummary(table));
+  assert.equal((await result.requests()).length, 1);
+}));
+
 // Sanitized diagnostic excerpt from urban acquisition run 38883856813,
 // job 116916739952 (2026-10-16); not a complete archived provider response.
 const capacity = '# 502 Gateway Timeout\nThis Overpass API server is currently at capacity. All query workers are busy and the request queue is full.';

@@ -223,6 +223,43 @@ NDJSON resume and retired-Europe migration keep these boundaries. Way geometry
 continues to use its separate source resolver. Pending new-way evidence cannot
 leak into an accepted legacy route's memberships.
 
+Verified complete declarations also retain a separate `supplemental` schema-1
+evidence envelope in NDJSON. It records only bounded service-identity/context
+tags: `brand`, `brand:wikidata`, `network:wikidata`, `operator:wikidata`,
+`wikidata`, `network:short/full`, `operator:short/full`, `from`, `to`, `via`,
+`interval`, `interval:conditional`, `duration`, `opening_hours`,
+`public_transport:version`, `passenger`, `usage`, and
+`gtfs:feed/feed_id/source/route_id` (the slash forms denote separate keys).
+Other tags, contributor identifiers and changesets remain omitted. Values are
+retained exactly, not normalized. Any non-string or over-1,024-code-unit value
+withholds that observation's whole supplemental projection as unobserved,
+never truncating a value or interpreting a rejected field as absent.
+
+The envelope and its tag variants have separate SHA-256 content fingerprints.
+Each variant is bound to the relation ID, version, timestamp and existing core
+declaration key; its source references preserve the actual OSM dataset snapshot
+and acquisition provenance. **No envelope means unobserved**, not that these tags
+were absent at source. An old narrow observation cannot erase compatible richer
+evidence, even at a newer snapshot of the same revision. A new revision never
+inherits the previous revision's tags. The bounded envelope keeps two highest
+revision identities (version, timestamp, then declaration-key order), two
+deterministic contradictory tag witnesses per identity and eight source samples
+per witness; it is not a full history or acquisition log. Contradictions remain
+explicit in each revision's `conflict` flag and do not silently become a selected
+classification. Pending evidence stays pending through resume and migration;
+only commit changes accepted evidence, and discard preserves accepted bytes.
+
+This repair does **not** widen the deployed core `tags` projection, fingerprint,
+observation hash or persisted revision keys. It changes no route view, grouping,
+membership eligibility, matcher, tile bytes, acquisition selector or diagnostic
+schema. The separate `captureOsmServiceEvidence` helper and station-crosswalk
+acquisition described in the [matching contract](timetable-matching-contract.md#osm-and-matching-inputs)
+remain inactive. The archived 115-member fixture proves retention of Southern,
+Epsom, London Bridge, `00:30`, `Q26334` and other observed context, **not** general
+service eligibility. Raw positive/negative classification coverage and the
+broader #109 acceptance remain unresolved; these fields alone are not sufficient
+classification rules.
+
 Geometry diagnostic schema 2 adds a `relations` schema-1 object with sorted
 conflict, unknown-provenance, unresolved-member and pending-evidence relation
 IDs, plus positively observed memberships whose retained table associations
