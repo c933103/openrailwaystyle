@@ -68,12 +68,12 @@ try {
     </script></body></html>`
   }));
   await page.goto(base+'atlas-terrain-test.html',{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.terrainLoaded,{timeout:30000});
+  await page.waitForFunction(()=>window.terrainLoaded,null,{timeout:30000});
   await page.waitForFunction(()=>{
     const s=window.terrainState();
     return s.source==='terrain3d'&&s.sea!==null&&s.land!==null
       &&s.sea < -750&&s.land > 250;
-  },{timeout:45000});
+  },null,{timeout:45000});
   const terrain=await page.evaluate(()=>window.terrainState());
   assert.equal(terrain.source,'terrain3d');
   assert.ok(terrain.sea < -750,JSON.stringify(terrain));
