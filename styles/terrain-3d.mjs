@@ -4,7 +4,7 @@
 // All elevations remain metres, regardless of the contour-label unit setting.
 import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs';
 import {encodeTerrarium} from './dem-repair.mjs';
-import {sharedTerrainTiles, TERRAIN_TIMEOUT_MS, terrainAbort} from './terrain-requests.mjs';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs';
 
 export const TERRAIN_3D_SOURCE = 'terrain3d';
 export const TERRAIN_3D_MAXZOOM = 14;
@@ -17,7 +17,9 @@ export function terrain3DEnabled(relief, pitch) {
 }
 
 export function syncTerrain3D(map, relief) {
-  if (!map?.isStyleLoaded?.()) return;
+  // isStyleLoaded() is false while *any* visible tile is loading, including
+  // ordinary rail and imagery tiles. The DEM source only has to be registered.
+  if (!map?.getSource?.(TERRAIN_3D_SOURCE)) return;
   const desired = terrain3DEnabled(relief, map.getPitch()) ? TERRAIN_3D_SOURCE : null;
   const current = map.getTerrain()?.source || null;
   if (current === desired) return;
@@ -127,7 +129,7 @@ function paintWorker(create) {
   worker.onmessage = ({data}) => {
     const task = pending.get(data?.id);
     if (!task) return;
-    if (data.error) { task.reject(new Error(data.error)); return; }
+    if (data.error) { fail(new Error(data.error)); return; }
     task.resolve(data.data);
   };
   worker.onerror = fail;
