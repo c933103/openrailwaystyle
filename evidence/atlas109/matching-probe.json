@@ -1,0 +1,13 @@
+{
+  "source": "88bee49d4c20aa4fbebdd501b503587f2dba7e49",
+  "positiveSections": 3,
+  "retainedOldArtifactStaleSections": 0,
+  "negativeBrandOnlySections": 0,
+  "byteIdenticalTiles": 6,
+  "tileInventorySha256": "8b4a3f0f0320ed023d641327f789a56224d59a29c75c9b3da7e7c909a25960f3",
+  "inventoryHashes": [
+    "69b85b9247fc984e00fc1e5254050fd72924d60b65f28aae3a770604a5220b13",
+    "a50378f462a2486f8082ff52e8ea3ae9d4139bd6019a7c48e4e924223cd3713b"
+  ],
+  "note": "Whole-input inventory hashes legitimately change with retained metadata; matched sections, old-artifact binding, positive tile bytes and negative classification do not."
+}

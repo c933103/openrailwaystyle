@@ -39,3 +39,15 @@ production acquisition persistence and production headway rebuild equality.
 the original outputs. General raw positive/negative classification coverage
 remains unresolved under #109. Supplemental context does not establish service
 eligibility and is not activated in the matcher.
+
+## Positive timetable-binding probe
+
+`node matching-probe.mjs /path/to/checkout` replays a verified synthetic OSM
+snapshot using the repository's existing local timetable fixture. At the exact
+final source it confirms 3 identical positive sections, 0 stale sections when
+the old artifact is bound against the supplemental table, 6 byte-identical
+tiles with actual nonzero timetable profiles, and 0 sections for an agency
+matching only the supplemental brand. `matching-probe.json` records the result.
+Whole-input `osm_sha256` inventory hashes appropriately differ because NDJSON
+now retains more evidence; section-binding identities, matching outcomes and
+tile bytes do not. This probe does not make a live or general classifier claim.
