@@ -19,6 +19,9 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
+// Railway traction power lines share the electricity supply colour. Cables
+// are dashed; former lines are dashed and faded with the inactive setting.
+export const TRACTION_LINE_STYLE = Object.freeze({color:'#b77d00', width:Object.freeze({line:Object.freeze([1.4,2.6]), other:Object.freeze([0.9,1.6])})});
 // Shared by the map's point layers and legend; the legend samples the detailed
 // marker size. Lifecycle changes only the fill, stroke and letter colour.
 export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
@@ -35,13 +38,14 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
 export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
-export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${POWER_FACILITY_LIMITS}`;
+export const TRACTION_LINE_NOTE = `Brown lines are railway traction power lines, with cables dashed: lines recorded at a traction frequency (16.7 Hz) or mapped as reaching a railway electricity facility. A line merely passing near one is not included.`;
+export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${TRACTION_LINE_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const values = value => String(value ?? '').split(';').map(v=>v.trim().toLowerCase()).filter(Boolean);
 const has = (value, candidates) => values(value).some(v=>candidates.includes(v));
-const tractionFrequency = value => values(value).some(v=>/^(16\.7|16\.67|16\.66[67]?)$/.test(v));
+export const tractionFrequency = value => values(value).some(v=>/^(16\.7|16\.67|16\.66[67]?)$/.test(v));
 
 function lifecycleValue(tags, key) {
   if (tags[key] != null) return {value:tags[key], state:STATES.find(s=>tags[s]==='yes') || 'present'};
@@ -95,6 +99,25 @@ export function powerFacilityName(properties = {}) {
   const steam=['',...STATES.map(state=>`${state}:`)].some(prefix=>has(properties[`${prefix}railway`],['water_tower','water_tank','water_crane']));
   if (['water_tower','water_tank'].includes(kind) && storage && !steam) return kind==='water_tower'?'Railway water tower':'Railway water tank';
   return POWER_FACILITY_KINDS[kind]?.label || (!properties.power_kind && properties.power === 'substation' ? 'Traction substation' : 'Railway energy supply');
+}
+
+// Traction power line details. The basis states which source evidence
+// selected the line; reaching a facility means shared nodes or a vertex inside
+// its mapped area, not mere proximity.
+const TRACTION_LINE_LABELS = Object.freeze({line:'Railway traction power line', minor_line:'Railway traction power line (minor)', cable:'Railway traction power cable'});
+export function tractionLineName(properties = {}) {
+  return TRACTION_LINE_LABELS[properties.power_line_kind] || 'Railway traction power line';
+}
+export function tractionLineRows(properties = {}) {
+  const p=properties,basis=String(p.traction_basis??'').split(';').filter(Boolean);
+  const reasons={frequency:'Recorded traction frequency',facility:'Reaches a mapped railway electricity facility'};
+  return [
+    ['Type',tractionLineName(p)],['Status',p.power_state],
+    ['Railway supply basis',basis.map(value=>reasons[value]).filter(Boolean).join('; ')],
+    ['Operator',p.operator],['Owner',p.owner],['Voltage',p.voltage],
+    ['Frequency',p.frequency!=null&&String(p.frequency).trim()!==''?`${p.frequency} Hz`:undefined],
+    ['Circuits',p.circuits],['Cables',p.cables],['Reference',p.ref],['Line location',p.location],
+  ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 
 // Keep independent source attributes independent. A generating source (solar,

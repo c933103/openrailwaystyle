@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os';
 import {gunzipSync} from 'node:zlib';
 import {buildPowerMethods,validatePowerMethodsSnapshot,POWER_METHOD_REGIONS,POWER_METHOD_LIMITS} from '../scripts/build-power-methods.mjs';
 import {powerMethodQuery} from '../scripts/power-method-data.mjs';
+import {buildTractionLines} from '../scripts/build-traction-lines.mjs';
 
 const element={type:'way',id:12,tags:{railway:'subway',electrified:'rail'},geometry:[{lon:135,lat:34},{lon:135.001,lat:34.001}]};
 const complete={osm3s:{timestamp_osm_base:'2026-10-13T00:00:00Z'},elements:[element]};
@@ -201,6 +202,10 @@ test('actual publisher and site workflow gates reject incomplete files and prese
   await writeFile(join(dir,'signal-data/manifest.json'),JSON.stringify({complete:true}));
   await writeFile(join(dir,'signal-data/index.json'),JSON.stringify({tiles:['fixture']}));
   for(const file of ['power-methods.geojson','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
+  // The publisher also requires the complete traction-line snapshot.
+  const line={type:'way',id:31,tags:{power:'line',frequency:'16.7'},nodes:[1,2],geometry:[{lon:9,lat:50},{lon:9.01,lat:50.01}]};
+  await buildTractionLines({...options,output:join(dir,'lines'),fetcher:async()=>response({osm3s:{},elements:[line]})});
+  for(const file of ['traction-lines.geojson','traction-lines-manifest.json'])await copyFile(join(dir,'lines',file),join(dir,'power-data',file));
   const script=async(file,step)=>{
     const workflow=await readFile(new URL(`../.github/workflows/${file}`,import.meta.url),'utf8');
     const body=workflow.slice(workflow.indexOf(`- name: ${step}`)).match(/node --input-type=module <<'JS'\n([\s\S]*?)\n {10}JS/);

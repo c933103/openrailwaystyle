@@ -399,6 +399,15 @@ jobs:
             assert.ok(methods!==null && methodData!==null,'Incomplete power-method files');
             validatePowerMethodsSnapshot(JSON.parse(methodData),JSON.parse(methods));
           }
+          // Traction power lines arrive with the first snapshot built after
+          // they were added; once either file exists, require both, complete.
+          const lines=await readOptional('styles/data/traction/power/traction-lines-manifest.json');
+          const lineData=await readOptional('styles/data/traction/power/traction-lines.geojson');
+          if(lines!==null || lineData!==null) {
+            const {validateTractionLinesSnapshot}=await import('./scripts/build-traction-lines.mjs');
+            assert.ok(lines!==null && lineData!==null,'Incomplete traction-line files');
+            validateTractionLinesSnapshot(JSON.parse(lineData),JSON.parse(lines));
+          }
           JS
       # The code tree and a digest of the assembled data: a pull request
       # records it when its checks pass, and main skips the browser checks

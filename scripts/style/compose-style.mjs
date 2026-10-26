@@ -13,6 +13,7 @@ import {stationLayers} from './layers/stations.mjs';
 import {infrastructureContextLayers} from './layers/infrastructure.mjs';
 import {powerMethodLayers} from './layers/power-methods.mjs';
 import {powerFacilityLayers} from './layers/power-facilities.mjs';
+import {tractionLineLayers} from './layers/traction-lines.mjs';
 import {roadLayers, constraintLayers} from '../planning-style.mjs';
 import {contextLayers} from '../context-style.mjs';
 import {assertSourceContracts} from './source-contract.mjs';
@@ -34,7 +35,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...reliefLayers,
     ...context.areas, ...constraints.areas, ...buildingLayers,
     ...context.lines, ...constraints.lines,
-    ...contourLayers, ...baseLines, ...contourLabels,
+    ...contourLayers, ...baseLines, ...tractionLineLayers(), ...contourLabels,
     ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
