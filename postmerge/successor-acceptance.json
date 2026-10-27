@@ -1,0 +1,197 @@
+{
+  "observed_at": "2026-10-27T10:43:06Z",
+  "source_commit": "c53f80dc1043f39a2666fc0f3f77b04cbe87d889",
+  "source_tree": "915749402711b586bd95723a1f76ea544f67d757",
+  "workflow": {
+    "id": 40473786023,
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40473786023"
+  },
+  "jobs": [
+    {
+      "id": 122116299987,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122116300317,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122116300409,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122116438605,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506335,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506336,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506341,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506360,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506501,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122118506554,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122139240591,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122139280272,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Configure satellite imagery provider",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/configure-pages@v5",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-pages-artifact@v3",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy to GitHub Pages",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Node 26 security baseline",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify deployed vector tile bytes",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install Safari engine for deployed reference verification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify deployed independent OSM geometry with live overview unavailable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify published map with local railway fixture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Save published map screenshots",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122139282503,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "live_source_recheck": "live-source-final.json",
+  "notes": [
+    "This same-head run was dispatched automatically by the existing reference workflow, not manually added.",
+    "All six browser groups, their aggregate, deployment and published rendering verification succeeded.",
+    "This closes regression monitoring; the original verified deployment was already delivered.",
+    "Deploy log text was unavailable through the connector (transport closed). Terminal job and individual step metadata are preserved rather than inventing a log transcript.",
+    "All earlier failure evidence and local validation limits remain unchanged."
+  ]
+}

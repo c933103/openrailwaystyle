@@ -32,3 +32,13 @@ The earlier local aggregate remains incomplete (146 observed passes, clean
 interruption exit 130); no full local aggregate or native local browser pass is
 claimed. Earlier source revisions retain historical rather than current-head
 acceptance. Source/race limits and all negative-control evidence remain intact.
+
+## Natural successor terminal result
+
+At 10:43 UTC, same-head successor 40473786023 also completed successfully,
+including all six browser groups, aggregate, deploy job 122139280272 and its
+published geometry/fixture verification. A final live source read at 10:44:34 UTC
+again matched all 13 files and the embedded merge identity. Main remained
+`c53f80dc1043f39a2666fc0f3f77b04cbe87d889`. See
+`successor-acceptance.json` and `live-source-final.json`. No regression was
+reported; no additional manual dispatch, source change or test weakening occurred.
