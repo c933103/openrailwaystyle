@@ -238,7 +238,7 @@ try {
   const horizonDifference=await captureFrame(false);
   assert.ok(horizonDifference.significant>=200,
     'at 82° pitch the rendered 3D surface must differ from zero-height terrain: '+JSON.stringify(horizonDifference));
-  await writeFile('browser-review/terrain-high-pitch-pixels.json',JSON.stringify(horizonDifference,null,2)+'\\n');
+  await writeFile('browser-review/terrain-high-pitch-pixels.json',JSON.stringify(horizonDifference,null,2)+'\n');
   await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
 
