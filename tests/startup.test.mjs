@@ -357,7 +357,7 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.equal(button.getAttribute('aria-pressed'),'false');
    map.zoom=2;
    button.click();
-   assert.equal(map.lastEase.pitch,78);
+   assert.equal(map.lastEase.pitch,60);
    assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
       'tilt beyond 65° enables coarser horizon tiles for all sources');
    assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
@@ -374,7 +374,7 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    map.zoom=15;
    button.click();
    assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
-   assert.equal(map.lastEase.pitch,78);
+   assert.equal(map.lastEase.pitch,60);
    map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
    assert.equal(errors.length,1,'the synthetic tile error must also be logged');
@@ -398,10 +398,10 @@ test('terrain control preserves clean history while sharing the current polar 3D
    let copied='';
    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
    let focusedZoom;
-   for(const pitch of [78,0]) {
+   for(const pitch of [60,0]) {
      button.click();map.handlers.moveend();
      assert.equal(map.getPitch(),pitch);
-     if(pitch===78){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
+     if(pitch===60){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
      else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
      const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
      assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
