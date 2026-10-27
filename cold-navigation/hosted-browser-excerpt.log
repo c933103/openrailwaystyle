@@ -1,0 +1,73 @@
+# Controls job
+2026-10-27T06:25:10.7792939Z PASS check-network-guard-browser.mjs in 1.6 s
+2026-10-27T06:25:43.8313708Z PASS check-provider-retries-browser.mjs in 33.1 s
+2026-10-27T06:27:07.7808736Z PASS check-map-controls-browser.mjs in 83.9 s
+2026-10-27T06:27:24.5334984Z PASS check-build-browser.mjs in 16.8 s
+2026-10-27T06:27:36.6516371Z PASS check-watch-browser.mjs in 12.1 s
+2026-10-27T06:27:37.6598178Z [service-frequency] am: 16 rendered widths and shared-track clicks verified
+2026-10-27T06:27:38.0091628Z [service-frequency] pm: 16 rendered widths and shared-track clicks verified
+2026-10-27T06:27:38.3594909Z [service-frequency] offpeak: 16 rendered widths and shared-track clicks verified
+2026-10-27T06:28:07.6266005Z [service-frequency] PASS: service stage partial/deferred/unresolved/empty/failed/unknown; metadata failure and snapshot binding; zero/expired/unmatched/unknown details and live expiry
+2026-10-27T06:28:07.7228927Z PASS check-service-frequency-browser.mjs in 31.1 s
+2026-10-27T06:28:37.5194549Z PASS check-service-provenance-browser.mjs in 29.8 s
+2026-10-27T06:28:47.9849175Z PASS check-first-party-assets-browser.mjs in 10.5 s
+2026-10-27T06:28:53.4448274Z PASS check-pwa-install-browser.mjs in 5.5 s
+2026-10-27T06:29:38.1879919Z PASS check-departures-browser.mjs in 44.7 s
+# Context job
+2026-10-27T06:25:34.6770667Z PASS check-bathymetry-browser.mjs in 41.6 s
+2026-10-27T06:26:36.6175223Z PASS check-terrain-deadlines-browser.mjs in 61.9 s
+2026-10-27T06:26:43.2076984Z [terrain-3d] Native 3D vs flat map at identical pitch: {
+2026-10-27T06:26:43.2077582Z [terrain-3d]   changed: 37356,
+2026-10-27T06:26:43.2077918Z [terrain-3d]   significant: 28213,
+2026-10-27T06:26:43.2078273Z [terrain-3d]   total: 944000,
+2026-10-27T06:26:43.2078562Z [terrain-3d]   pitch: 60,
+2026-10-27T06:26:43.2078854Z [terrain-3d]   sea: -875,
+2026-10-27T06:26:43.2079445Z [terrain-3d]   land: 340.89453125
+2026-10-27T06:26:43.2079726Z [terrain-3d] }
+2026-10-27T06:26:49.5241377Z [terrain-3d] 1× DEM vs 0× DEM with terrain renderer still on: {
+2026-10-27T06:26:49.5241844Z [terrain-3d]   changed: 37244,
+2026-10-27T06:26:49.5242172Z [terrain-3d]   significant: 28358,
+2026-10-27T06:26:49.5242462Z [terrain-3d]   total: 944000,
+2026-10-27T06:26:49.5242736Z [terrain-3d]   pitch: 60,
+2026-10-27T06:26:49.5242991Z [terrain-3d]   sea: -875,
+2026-10-27T06:26:49.5249811Z [terrain-3d]   land: 340.89453125
+2026-10-27T06:26:49.5250233Z [terrain-3d] }
+2026-10-27T06:26:51.0942845Z [terrain-3d] 3D native terrain: signed sea and land elevations, overhead release {
+2026-10-27T06:26:51.0943800Z [terrain-3d]   points: {
+2026-10-27T06:26:51.0944661Z [terrain-3d]     sea: [ 0.0439453125, -0.08789059053082508 ],
+2026-10-27T06:26:51.0945527Z [terrain-3d]     land: [ 0.1318359375, -0.08789059053082508 ],
+2026-10-27T06:26:51.0946365Z [terrain-3d]     summit: [ 0.10986328125, -0.08789059053082508 ]
+2026-10-27T06:26:51.0947194Z [terrain-3d]   },
+2026-10-27T06:26:51.0947780Z [terrain-3d]   pitch: 60,
+2026-10-27T06:26:51.0948486Z [terrain-3d]   source: 'terrain3d',
+2026-10-27T06:26:51.0949701Z [terrain-3d]   counts: { fine: 7, coarse: 16, water: 7 },
+2026-10-27T06:26:51.0950514Z [terrain-3d]   sea: -875,
+2026-10-27T06:26:51.0979955Z [terrain-3d]   land: 340.89453125,
+2026-10-27T06:26:51.1050008Z [terrain-3d]   summit: 1440
+2026-10-27T06:26:51.1100409Z [terrain-3d] }
+2026-10-27T06:26:51.1470055Z PASS check-terrain-3d-browser.mjs in 14.5 s
+2026-10-27T06:27:14.8220950Z PASS check-globe-browser.mjs in 23.7 s
+2026-10-27T06:27:20.1861068Z PASS check-polar-browser.mjs in 5.4 s
+2026-10-27T06:29:02.3653379Z PASS check-polar-parity-browser.mjs in 102.2 s
+2026-10-27T06:29:20.8239025Z PASS check-imagery-browser.mjs in 18.5 s
+# Infrastructure job
+2026-10-27T06:33:00.8645515Z PASS check-signal-power-browser.mjs in 131.7 s
+2026-10-27T06:34:07.3374952Z PASS check-platform-browser.mjs in 66.5 s
+2026-10-27T06:34:58.8155244Z PASS check-infrastructure-browser.mjs in 51.5 s
+# Frequency job
+2026-10-27T06:27:32.8618566Z PASS check-world-frequency-browser.mjs in 47.2 s
+2026-10-27T06:27:44.9698869Z PASS check-service-geometry-browser.mjs in 12.1 s
+2026-10-27T06:28:25.1702527Z PASS check-paris-service-geometry-browser.mjs in 40.2 s
+2026-10-27T06:29:06.0130384Z PASS check-normandy-service-geometry-browser.mjs in 40.8 s
+2026-10-27T06:30:59.0449716Z PASS check-timetable-frequency-browser.mjs in 113 s
+# Platforms job
+2026-10-27T06:27:52.4544003Z PASS check-platform-stations-browser.mjs in 167.4 s
+# Rail job
+2026-10-27T06:26:40.9599991Z PASS check-deployed-fixture-browser.mjs in 101.1 s
+2026-10-27T06:27:24.3974276Z PASS check-orm-fixture-browser.mjs in 43.4 s
+2026-10-27T06:27:29.7210602Z PASS check-rail-overview-browser.mjs in 5.3 s
+2026-10-27T06:28:05.8414392Z PASS check-overview-markers-browser.mjs in 36.1 s
+2026-10-27T06:30:58.0679510Z PASS check-mainline-reference-browser.mjs in 172.2 s
+2026-10-27T06:32:37.9218231Z PASS check-rail-reference-browser.mjs in 99.9 s
+2026-10-27T06:34:50.6928106Z PASS check-station-fallback-browser.mjs in 132.8 s
+2026-10-27T06:35:01.5940622Z PASS check-station-world-browser.mjs in 10.9 s

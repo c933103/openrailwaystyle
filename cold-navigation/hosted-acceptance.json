@@ -1,0 +1,153 @@
+{
+  "observed_at": "2026-10-27T06:36:32Z",
+  "source_commit": "5818dda595a4a6ff64480fa04ac7d4000bced808",
+  "source_tree": "915749402711b586bd95723a1f76ea544f67d757",
+  "base_commit": "934918385a85eca0fa5fc4a47d2ada67bd393050",
+  "tested_merge_commit": "25ab3d85c807a36550cd3ac61075903a134ff5f1",
+  "tested_merge_tree": "915749402711b586bd95723a1f76ea544f67d757",
+  "code_review": {
+    "commit": "5818dda595a4a6ff64480fa04ac7d4000bced808",
+    "status": "completed",
+    "has_any_findings": false,
+    "has_unresolved_findings": false,
+    "receipt": "https://github.com/c933103/openrailwaystyle/pull/274#issuecomment-6435136614"
+  },
+  "unit_tests": {
+    "tests": 2744,
+    "pass": 2744,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "search_tests": {
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "workflows": [
+    {
+      "id": 40459480553,
+      "name": "Controls painter diagnostic",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480553"
+    },
+    {
+      "id": 40459480641,
+      "name": "Build worldwide OSM railway reference",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480641"
+    },
+    {
+      "id": 40459480652,
+      "name": "Validate and deploy world railway map",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652"
+    }
+  ],
+  "site_jobs": [
+    {
+      "id": 122040878128,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122040878128"
+    },
+    {
+      "id": 122040878423,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122040878423"
+    },
+    {
+      "id": 122040878490,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122040878490"
+    },
+    {
+      "id": 122042894966,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122042894966"
+    },
+    {
+      "id": 122044742690,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742690"
+    },
+    {
+      "id": 122044742692,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742692"
+    },
+    {
+      "id": 122044742695,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742695"
+    },
+    {
+      "id": 122044742772,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742772"
+    },
+    {
+      "id": 122044742774,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742774"
+    },
+    {
+      "id": 122044742788,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122044742788"
+    },
+    {
+      "id": 122048445706,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122048445706"
+    },
+    {
+      "id": 122048466780,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122048466780"
+    },
+    {
+      "id": 122048468227,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40459480652/job/122048468227"
+    }
+  ],
+  "notes": [
+    "All six browser groups and their aggregate passed.",
+    "Native browser coverage was not run locally; this is hosted fixture-browser evidence.",
+    "The earlier local aggregate remains incomplete (146 observed passes, interrupted exit 130), not a full local pass.",
+    "The PR workflow deployment job is skipped; this receipt does not claim production deployment.",
+    "The original service-status failure ordering is not established; deterministic sensitive regressions establish the repaired live-state-loss path.",
+    "Exact-tree verification confirms the tested merge has the source tree recorded above."
+  ]
+}

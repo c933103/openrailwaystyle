@@ -19,7 +19,16 @@ with zero skips/cancellations. Build, generated-style equality, syntax and
 whitespace pass. All 41 references use `20261027-clean-history-3d-3`, shell 54.
 Legend-state fixes, visible terrain behavior and browser timing/oracles remain.
 
-Fresh exact-head review and hosted CI are required. Earlier-head outcomes are
-historical; no new full local aggregate or native-browser pass is claimed.
+Fresh exact-head Code review completed with no findings. All three hosted
+workflows succeeded: site 40459480652, reference 40459480641 and painter
+40459480553. The tested merge 25ab3d85c807a36550cd3ac61075903a134ff5f1 has
+exactly the source tree above. Hosted validation passed 2,744/2,744 unit tests
+and 4/4 search tests, zero failures/skips/cancellations. All six fixture-browser
+groups and their aggregate passed, including unchanged service-status and
+visible-terrain pixel oracles. See `hosted-acceptance.json` and the two log
+excerpts for job identities and results. PR deployment was skipped as expected.
+
+Earlier-head outcomes remain historical; no new full local aggregate or native-
+browser pass is claimed. This receipt does not claim production deployment.
 Commands/source hashes are in `manifest.json`. Logs redact only the local
 checkout path to `<checkout>`.
