@@ -4,7 +4,29 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
-import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure} from '../scripts/terrain-3d-browser-fixture.mjs';
+import vtpbf from 'vt-pbf';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
+import {readTile} from '../styles/tile-labels.mjs';
+import {oceanPolygons} from '../styles/bathymetry.mjs';
+import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture} from '../scripts/terrain-3d-browser-fixture.mjs';
+
+test('terrain water MVT round-trips the complete closed ocean rectangle in page and worker decoders',()=>{
+  const bytes=terrain3DWaterFixture();
+  const expected=[{extent:4096,rings:[[
+    {x:0,y:0},{x:2048,y:0},{x:2048,y:4096},{x:0,y:4096},{x:0,y:0}
+  ]]}];
+  for(const decode of [readTile,data=>new VectorTile(new Pbf(new Uint8Array(data)))]) {
+    assert.deepEqual(JSON.parse(JSON.stringify(oceanPolygons(decode(bytes)))),expected);
+  }
+  // The former object-coordinate fixture silently encoded a zero-area ring;
+  // its page-only stub hid that corruption from the real worker path.
+  const broken=vtpbf.fromGeojsonVt({water:{extent:4096,features:[{
+    type:3,tags:{class:'ocean'},geometry:[[...expected[0].rings[0].slice(0,-1)]]
+  }]}});
+  assert.deepEqual(oceanPolygons(readTile(broken))[0].rings[0].map(p=>[p.x,p.y]),
+    [[0,0],[0,0],[0,0],[0,0]]);
+});
 
 test('pinned MapLibre terrain queries the fixture fine DEM, with the original camera as a negative control',async()=>{
   // Execute the installed renderer's actual cover/DEM-selection/interpolation

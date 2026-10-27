@@ -4,16 +4,11 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
-import vtpbf from 'vt-pbf';
-import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure} from './terrain-3d-browser-fixture.mjs';
+import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture} from './terrain-3d-browser-fixture.mjs';
 
 // Real MVT bytes: the worker must decode ocean polygons itself rather than
-// falling back to the page's stub decoder.
-const MASK_MVT = Buffer.from(vtpbf.fromGeojsonVt({water:{extent:4096,features:[{
-  type:3,tags:{class:'ocean'},geometry:[[
-    {x:0,y:0},{x:2048,y:0},{x:2048,y:4096},{x:0,y:4096}
-  ]]
-}]}})).toString('base64');
+// falling back to the page. Both paths decode the same validated bytes.
+const MASK_MVT = Buffer.from(terrain3DWaterFixture()).toString('base64');
 
 const base=(process.env.ATLAS_FIXTURE_BASE_URL||process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
@@ -35,6 +30,7 @@ try {
     <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
     <script type="module">
       import {installTerrain3D,syncTerrain3D} from './terrain-3d.mjs';
+      import {readTile} from './vendor/tile-labels.js';
       const {tileSize:SIZE,demZoom:z,tileX:x,tileY:y}=${JSON.stringify(fixture)},n=2**z;
       const lng=(fraction)=>(x+fraction)/n*360-180;
       const lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/n)))*180/Math.PI;
@@ -44,10 +40,6 @@ try {
           data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340);
         return {width:SIZE,height:SIZE,data};
       };
-      const coast=[{x:0,y:0},{x:2048,y:0},{x:2048,y:4096},{x:0,y:4096}];
-      const readTile=()=>({layers:{water:{length:1,feature:()=>({
-        type:3,extent:4096,properties:{class:'ocean'},loadGeometry:()=>[coast]
-      })}}});
       const counts=window.terrainCounts={fine:0,coarse:0,water:0};
       window.requestedDems=[];
       window.terrainErrors=[];
