@@ -299,6 +299,8 @@ export function polarStylePaint(map, zoom) {
     backgroundOpacity: number('background', 'background-opacity', 1),
     waterVisible: visible('water'),
     waterOpacity: number('water', 'fill-opacity', 1),
+    depthVisible: visible('terrain-bathymetry'),
+    depthOpacity: Math.min(1, number('terrain-bathymetry', 'raster-opacity', 1)),
     iceShelfVisible: visible('landcover-ice-shelf'),
     reliefVisible: visible('terrain-relief'),
     iceShelfOpacity: number('landcover-ice-shelf', 'fill-opacity', 0.8),
