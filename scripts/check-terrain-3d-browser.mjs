@@ -124,30 +124,33 @@ try {
   // WebGL output and compare pixels at the SAME pitch, centre and zoom.
   // Synthetic sea fill and signed contour strokes provide visible reference
   // geometry that must follow the 3D mesh rather than stay on a flat plane.
-  const captureFrame = async () => page.evaluate(async () => {
+  // Keep the framebuffer bytes inside the browser: crossing the process
+  // boundary would serialize several million RGBA values twice.
+  const captureFrame = async (store3D) => page.evaluate(async ({store3D}) => {
     const map=window.fixtureMap;
     await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
     const source=map.getCanvas(),frame=document.createElement('canvas');
     frame.width=source.width; frame.height=source.height;
     const context=frame.getContext('2d',{willReadFrequently:true});
     context.drawImage(source,0,0);
-    return Array.from(context.getImageData(0,0,frame.width,frame.height).data);
-  });
-  const perspective3D=await captureFrame();
+    const pixels=context.getImageData(0,0,frame.width,frame.height).data;
+    if(store3D) {window.terrain3DFrame=pixels;return {pixels:pixels.length/4};}
+    const original=window.terrain3DFrame;
+    if(!original||original.length!==pixels.length)throw new Error('Mismatched 3D/flat frame dimensions');
+    let changed=0,significant=0;
+    for(let i=0;i<pixels.length;i+=4) {
+      const delta=Math.abs(original[i]-pixels[i])+
+        Math.abs(original[i+1]-pixels[i+1])+
+        Math.abs(original[i+2]-pixels[i+2]);
+      if(delta>6)changed++;
+      if(delta>48)significant++;
+    }
+    return {changed,significant,total:pixels.length/4};
+  },{store3D});
+  await captureFrame(true);
   await page.evaluate(()=>window.fixtureMap.setTerrain(null));
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
-  const perspectiveFlat=await captureFrame();
-  assert.equal(perspective3D.length,perspectiveFlat.length,'same framebuffer dimensions');
-  let changed=0,significant=0;
-  for(let i=0;i<perspective3D.length;i+=4) {
-    const delta=Math.abs(perspective3D[i]-perspectiveFlat[i])+
-      Math.abs(perspective3D[i+1]-perspectiveFlat[i+1])+
-      Math.abs(perspective3D[i+2]-perspectiveFlat[i+2]);
-    if(delta>6)changed++;
-    if(delta>48)significant++;
-  }
-  const visual={changed,significant,total:perspective3D.length/4,
-    pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
+  const visual={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
   console.log('Native 3D vs flat map at identical pitch:',visual);
   await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
   assert.ok(significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
