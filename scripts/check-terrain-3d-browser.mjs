@@ -36,8 +36,13 @@ try {
       const lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/n)))*180/Math.PI;
       const makeTile=(coarse)=>{
         const data=new Float32Array(SIZE*SIZE);
-        for(let iy=0;iy<SIZE;iy++)for(let ix=0;ix<SIZE;ix++)
-          data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340);
+        for(let iy=0;iy<SIZE;iy++)for(let ix=0;ix<SIZE;ix++){
+          // One prominent land summit makes visual deformation measurable.
+          // The original sea/land sampling locations stay -875/340 m.
+          const dx=(ix-160)/12,dy=(iy-128)/28;
+          const peak=1100*Math.exp(-dx*dx-dy*dy);
+          data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340+peak);
+        }
         return {width:SIZE,height:SIZE,data};
       };
       const counts=window.terrainCounts={fine:0,coarse:0,water:0};
@@ -95,11 +100,12 @@ try {
       });
       map.on('error',event=>window.terrainErrors.push({sourceId:event.sourceId||null,
         message:event.error?.message||String(event.error)}));
-      const points={sea:[lng(0.25),lat],land:[lng(0.75),lat]};
+      const points={sea:[lng(0.25),lat],land:[lng(0.75),lat],summit:[lng(160/256),lat]};
       window.terrainState=()=>({points,pitch:map.getPitch(),
         source:map.getTerrain()?.source||null,counts,
         sea:map.queryTerrainElevation(points.sea),
-        land:map.queryTerrainElevation(points.land)});
+        land:map.queryTerrainElevation(points.land),
+        summit:map.queryTerrainElevation(points.summit)});
       map.on('load',()=>{syncTerrain3D(map,true);window.terrainLoaded=true;});
     </script></body></html>`
   }));
@@ -108,7 +114,7 @@ try {
   await page.waitForFunction(()=>{
     const s=window.terrainState();
     return s.source==='terrain3d'&&s.sea!==null&&s.land!==null
-      &&s.sea < -750&&s.land > 250;
+      &&s.sea < -750&&s.land > 250&&s.summit > s.land+600;
   },null,{timeout:45000});
   const terrain=await page.evaluate(()=>window.terrainState());
   const workerReplies=await page.evaluate(()=>window.workerReplies);
@@ -117,6 +123,7 @@ try {
   assert.equal(terrain.source,'terrain3d');
   assert.ok(terrain.sea < -750,JSON.stringify(terrain));
   assert.ok(terrain.land > 250,JSON.stringify(terrain));
+  assert.ok(terrain.summit > terrain.land+600,'a real hill must rise above its surroundings');
   assert.ok(terrain.counts.fine>0&&terrain.counts.coarse>0&&terrain.counts.water>0,
     'the browser must recover real negative ocean mesh cells');
   await page.screenshot({path:'browser-review/terrain-3d-seabed-synthetic.png'});
