@@ -221,6 +221,27 @@ try {
     &&highPitch.far<highPitch.near-2,
     'a distant horizon tile must be requested at a lower LOD: '+JSON.stringify(highPitch));
   console.log('Native high-pitch bounded LOD:',highPitch);
+  // A station source installed *after* the high-angle policy must not use
+  // the default high-detail horizon requests until the camera is tilted
+  // across 65° again. Source-specific LOD works with MapLibre itself.
+  const lateSource=await page.evaluate(async()=>{
+    const {syncHighPitchTileBudget}=await import('./terrain-3d.mjs');
+    const map=window.fixtureMap, id='stationWorldLate';
+    map.addSource(id,{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    const first=syncHighPitchTileBudget(map,id);
+    const fn=map.getSource(id).calculateTileZoom;
+    const again=syncHighPitchTileBudget(map,id);
+    return {first,again,hasNativeLod:typeof fn==='function',
+      near:fn?.(11,0,0.1,0.1,35),far:fn?.(11,1,0.1,0.1,35)};
+  });
+  assert.equal(lateSource.first,true,'new source at 82° must receive LOD without pitching again');
+  assert.equal(lateSource.again,false,'repeated metadata must not reconfigure a loaded source');
+  assert.equal(lateSource.hasNativeLod,true);
+  assert.ok(Number.isFinite(lateSource.near)&&Number.isFinite(lateSource.far)
+    &&lateSource.far<lateSource.near-2,
+    'late-created source must request a coarser horizon: '+JSON.stringify(lateSource));
+  console.log('Late station source high-pitch tile LOD:',lateSource);
+
   await writeFile('browser-review/terrain-high-pitch-lod.json',JSON.stringify(highPitch,null,2)+'\n');
   await page.waitForFunction(() => {
     const heights=window.terrainState?.();
