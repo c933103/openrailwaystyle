@@ -1,0 +1,221 @@
+{
+  "observed_at": "2026-10-27T09:41:19Z",
+  "commit": "c53f80dc1043f39a2666fc0f3f77b04cbe87d889",
+  "tree": "915749402711b586bd95723a1f76ea544f67d757",
+  "site": "https://c933103.github.io/openrailwaystyle/",
+  "workflow": {
+    "id": 40462211289,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/40462211289"
+  },
+  "jobs": [
+    {
+      "id": 122049214699,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122049214832,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122049214951,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122087247863,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451462,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451509,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451522,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451613,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451623,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122089451675,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122112869423,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122112899926,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Configure satellite imagery provider",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/configure-pages@v5",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-pages-artifact@v3",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy to GitHub Pages",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Node 26 security baseline",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify deployed vector tile bytes",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install Safari engine for deployed reference verification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify deployed independent OSM geometry with live overview unavailable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify published map with local railway fixture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Save published map screenshots",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122112901124,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "unit_tests": {
+    "tests": 2744,
+    "pass": 2744,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "reference": {
+    "run": 40462211306,
+    "attempt": 2,
+    "job": 122080108313,
+    "conclusion": "success",
+    "isolated_renderer_samples": 840,
+    "generation": "87e1693d26bcf4231da89209",
+    "first_attempt": "Cancelled at the existing 90-minute limit; original diagnostic ZIP and limits preserved alongside this record."
+  },
+  "source_verification": "live-source.json",
+  "redundant_successor": {
+    "run": 40473786023,
+    "event": "workflow_dispatch",
+    "origin": "Automatically dispatched by existing reference workflow",
+    "status": "in_progress",
+    "stage": "validate",
+    "note": "The original actual deployment is complete and verified; this additional pipeline is not an outstanding requirement for that completed delivery."
+  },
+  "limitations": [
+    "Native local browser coverage was not run.",
+    "The original reference Safari-stage stall cause remains unestablished.",
+    "The earlier full local aggregate remains incomplete, not passed.",
+    "No provider scope, test assertion, timeout or workflow source was changed for recovery."
+  ]
+}

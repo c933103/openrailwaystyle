@@ -1,0 +1,19 @@
+# Actual merge-push validation
+2026-10-27T08:29:47.1901403Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c53f80dc1043f39a2666fc0f3f77b04cbe87d889:refs/remotes/origin/main
+2026-10-27T08:29:47.7825937Z  * [new ref]         c53f80dc1043f39a2666fc0f3f77b04cbe87d889 -> origin/main
+2026-10-27T08:29:47.8984266Z c53f80dc1043f39a2666fc0f3f77b04cbe87d889
+2026-10-27T08:31:45.1171920Z ℹ tests 2744
+2026-10-27T08:31:45.1172127Z ℹ pass 2744
+2026-10-27T08:31:45.1172226Z ℹ fail 0
+2026-10-27T08:31:45.1172332Z ℹ cancelled 0
+2026-10-27T08:31:45.1172432Z ℹ skipped 0
+2026-10-27T08:31:45.1172684Z ℹ duration_ms 107715.870693
+2026-10-27T08:34:02.7224599Z   SHA: c53f80dc1043f39a2666fc0f3f77b04cbe87d889
+# Reference retry
+2026-10-27T08:11:02.1991481Z PASS: complete versioned world reference {"generation":"87e1693d26bcf4231da89209","ways":1422601,"tiles":906,"tileBytes":20510021,"downloadedBytes":85732846923,"buildSeconds":115.751166116,"peakRssBytes":5381550080}
+2026-10-27T08:11:02.7715413Z PASS: complete versioned world reference {"generation":"87e1693d26bcf4231da89209","ways":1422601,"tiles":906,"tileBytes":20510021,"downloadedBytes":85732846923,"buildSeconds":115.751166116,"peakRssBytes":5381550080}
+2026-10-27T08:28:30.1437954Z PASS: independent reference with unavailable thematic provider {"samples":840,"timing":{"medianMs":337,"p95Ms":880},"generation":"87e1693d26bcf4231da89209"}
+2026-10-27T08:28:30.7720495Z PASS: complete versioned world reference {"generation":"87e1693d26bcf4231da89209","ways":1422601,"tiles":906,"tileBytes":20510021,"downloadedBytes":85732846923,"buildSeconds":115.751166116,"peakRssBytes":5381550080}
+# Actual merge-push behavior checks
+2026-10-27T08:40:15.7898889Z PASS check-service-frequency-browser.mjs in 32 s
+2026-10-27T08:38:42.0882984Z PASS check-terrain-3d-browser.mjs in 14.6 s

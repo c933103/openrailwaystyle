@@ -1,3 +1,9 @@
+# PR274 deployed acceptance
+
+[Actual merge-push deployment and live source/rendering verification](postmerge/deployed-acceptance.md).
+
+---
+
 # Current PR274 source evidence
 
 - [Cold-navigation review fix 5818dda](cold-navigation/README.md).
