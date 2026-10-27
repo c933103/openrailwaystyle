@@ -210,7 +210,10 @@ try {
       basemapLod:typeof baseZoom,
       near:terrainZoom?.(11,0,0.1,0.1,35),
       far:terrainZoom?.(11,1,0.1,0.1,35),
-      projection:map.getProjection().type,
+      // Some MapLibre styles use the implicit default projection, for
+      // which getProjection() is undefined despite valid 3D rendering.
+      // Projection is diagnostic only; the tests below assert actual mesh.
+      projection:map.getProjection?.()?.type ?? 'implicit-default',
     };
   });
   assert.equal(highPitch.maxPitch,85,'native map accepts greater than the default 60°');
