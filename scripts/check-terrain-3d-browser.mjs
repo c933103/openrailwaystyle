@@ -160,7 +160,7 @@ try {
   const visual={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
   console.log('Native 3D vs flat map at identical pitch:',visual);
   await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
-  assert.ok(significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
+  assert.ok(visual.significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
   await page.screenshot({path:'browser-review/terrain-flat-same-pitch-synthetic.png'});
   // A second, stricter control keeps the *same* terrain source and renderer
   // enabled, but flattens only its heights. This rules out a false positive
