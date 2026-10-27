@@ -369,7 +369,9 @@ Contours are calculated in the browser using the pinned maplibre-contour library
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
-Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
+Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
+
+The polar texture is an optional, format-validated asset (`north-depth.png`/`south-depth.png`) published alongside the existing contour/relief snapshots. Earlier snapshots lack the depth image and keep their flat polar fill without requesting a nonexistent asset; depth image load or shader failure is isolated from the rest of the map. Polar depth uses **ETOPO 2022**, while the ordinary Mercator seabed raster uses a different ETOPO-derived terrain source; the palette is identical but source resolution/depth samples may differ near 85.05° rather than providing artificial continuity. The colour texture is separate from the 3D terrain geometry; full 3D relief remains unavailable within the polar cap.
 
 ### Polar rendering and custom style consistency
 
