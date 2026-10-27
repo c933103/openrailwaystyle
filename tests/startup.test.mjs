@@ -357,19 +357,24 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.equal(button.getAttribute('aria-pressed'),'false');
    map.zoom=2;
    button.click();
-   assert.equal(map.lastEase.pitch,60);
-   assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
-      'tilt beyond 65° enables coarser horizon tiles for all sources');
-   assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
-      '3D DEM uses a stronger distant-tile LOD budget');
+   assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'initial 60° pitch must not enable the over-65° horizon budget');
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
    assert.equal(map.getTerrain()?.source,'terrain3d');
    assert.equal(button.getAttribute('aria-pressed'),'true');
+   // The loading policy responds to actual subsequent manual tilt, not to
+   // the first 3D button press. Cross 65° explicitly before its assertions.
+   map.setPitch(82);
+   assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'tilt beyond 65° enables coarser horizon tiles for all sources');
+   assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
+     '3D DEM uses a stronger distant-tile LOD budget');
    button.click();
    assert.equal(map.lastEase.pitch,0);
    assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
    assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
-     'overhead view restores MapLibre default LOD without artificial detail loss');
+     'overhead view restores MapLibre default LOD after a real high-pitch transition');
    assert.equal(button.getAttribute('aria-pressed'),'false');
    map.zoom=15;
    button.click();
