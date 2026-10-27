@@ -111,6 +111,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
     jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
     addSource() {}
@@ -297,18 +298,61 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     const map=maps[0];
     map.handlers['style.load']();
     assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
+    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+    assert.ok(button,'a live 3D control is registered');
     map.setPitch(55);
     assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.equal(button.getAttribute('aria-pressed'),'true');
     assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
     const relief=window.document.getElementById('relief');
     relief.click();
     assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
     relief.click();
     assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
+    assert.match(button.getAttribute('aria-label'),/Overhead map/);
     map.setPitch(0);
     assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
     assert.deepEqual(errors,[]);
   }finally{dom.window.close();}
+});
+
+test('3D mountain icon starts an actually detailed terrain view, not just a pitch flag',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   // The startup Map mock collects addControl() calls without mounting the
+   // control. Mount this one through its real MapLibre onAdd() interface.
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   assert.ok(control,'the native terrain control must be registered');
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   assert.ok(button,'native control must have a stable accessible identifier');
+   assert.equal(button.textContent.trim(),'','3D glyph is vector artwork, not literal text');
+   assert.equal(button.querySelector('svg')?.getAttribute('viewBox'),'0 0 24 24');
+   assert.ok(button.querySelectorAll('svg path').length>=3);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   map.zoom=2;
+   button.click();
+   assert.equal(map.lastEase.pitch,60);
+   assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   button.click();
+   assert.equal(map.lastEase.pitch,0);
+   assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   map.zoom=15;
+   button.click();
+   assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
+   assert.equal(map.lastEase.pitch,60);
+   map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
+   assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
+   assert.equal(errors.length,1,'the synthetic tile error must also be logged');
+   assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
 });
 
 test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{

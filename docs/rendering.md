@@ -28,7 +28,14 @@ The migration regression manifest in `tests/fixtures/style-composition-baseline.
 The map's native MapLibre raster-DEM terrain mesh activates when the camera is
 tilted (including the 3D map button), provided **Terrain, seabed and contours**
 is enabled. An overhead view does not request the additional mesh tiles.
-The 3D button can enable terrain after that setting has been turned off;
+The map control uses a vector mountain/bathymetry glyph (with a native
+pressed state and accessible label). At continental/globe scales, true 1x
+heights are smaller than the screen can resolve. A deliberate press of that
+control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
+offset), without jumping to a different location; a closer existing zoom is
+left unchanged. This makes 3D hills and sea-floor slopes distinguishable
+rather than just changing perspective over an effectively flat world.
+Returning overhead leaves the focused zoom in place. The 3D button can enable terrain after that setting has been turned off;
 returning overhead or disabling terrain removes the mesh. Pitched camera
 settings persist through the existing view/session restore. Map, satellite and
 hybrid textures and the existing signed above/below-sea contours drape over the
