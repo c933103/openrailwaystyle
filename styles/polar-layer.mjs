@@ -136,7 +136,7 @@ const DEPTH_RGB = new Float32Array(DEPTH_COLOURS.flatMap(([,hex]) => [1,3,5].map
 const DEPTH_FRAGMENT = `precision highp float;
 in vec2 v_polar; out vec4 fragColor;
 uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_opacity;
-uniform float u_depth_stops[7]; uniform vec3 u_depth_colours[7];
+uniform float u_depth_stops[${DEPTH_COLOURS.length}]; uniform vec3 u_depth_colours[${DEPTH_COLOURS.length}];
 float metres(vec3 encoded) {
   return floor(encoded.r * 255.0 + 0.5) * 256.0 + floor(encoded.g * 255.0 + 0.5);
 }
@@ -155,8 +155,8 @@ void main() {
   float coverage = dot(weights, vec4(1.0));
   if (coverage <= 0.0) { fragColor = vec4(0.0); return; }
   float depth = dot(weights, vec4(metres(a), metres(b), metres(c), metres(d))) / coverage;
-  vec3 colour = u_depth_colours[6];
-  for (int i = 1; i < 7; i++) {
+  vec3 colour = u_depth_colours[${DEPTH_COLOURS.length-1}];
+  for (int i = 1; i < ${DEPTH_COLOURS.length}; i++) {
     if (depth <= u_depth_stops[i]) {
       float t = clamp((depth - u_depth_stops[i-1]) /
         (u_depth_stops[i] - u_depth_stops[i-1]), 0.0, 1.0);
