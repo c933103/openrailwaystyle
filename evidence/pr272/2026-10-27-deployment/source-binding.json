@@ -1,0 +1,324 @@
+{
+  "observedAt": "2026-10-27T03:20:33.870Z",
+  "originalHead": "3a2dc68051b27b7dab16a3fbc30cdcad09dd00f7",
+  "base": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+  "acceptedHead": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+  "merge": "193ba893d1181a585ca4abb7146b55e9e28dac08",
+  "tree": "a06a4559412461465a3c7a261f8780e36145312a",
+  "parents": [
+    "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+    "cc428f63a4e741fcabfa07c7dc400394f7087096"
+  ],
+  "site": {
+    "id": 40432044935,
+    "head": "193ba893d1181a585ca4abb7146b55e9e28dac08",
+    "event": "workflow_dispatch",
+    "conclusion": "success",
+    "updatedAt": "2026-10-27T03:17:21Z",
+    "jobs": [
+      {
+        "id": 121957147100,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:37:34Z",
+        "completedAt": "2026-10-27T01:37:45Z"
+      },
+      {
+        "id": 121957147403,
+        "name": "reference",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:37:35Z",
+        "completedAt": "2026-10-27T01:37:51Z"
+      },
+      {
+        "id": 121957147425,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:37:35Z",
+        "completedAt": "2026-10-27T01:37:39Z"
+      },
+      {
+        "id": 121957241673,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:37:52Z",
+        "completedAt": "2026-10-27T01:43:27Z"
+      },
+      {
+        "id": 121959007542,
+        "name": "browser (controls)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:29Z",
+        "completedAt": "2026-10-27T01:48:17Z"
+      },
+      {
+        "id": 121959007565,
+        "name": "browser (rail-fixture)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:29Z",
+        "completedAt": "2026-10-27T02:31:47Z"
+      },
+      {
+        "id": 121959007575,
+        "name": "browser (infrastructure)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:29Z",
+        "completedAt": "2026-10-27T01:48:18Z"
+      },
+      {
+        "id": 121959007595,
+        "name": "browser (context)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:30Z",
+        "completedAt": "2026-10-27T01:57:25Z"
+      },
+      {
+        "id": 121959007621,
+        "name": "browser (frequency)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:29Z",
+        "completedAt": "2026-10-27T01:50:49Z"
+      },
+      {
+        "id": 121959007650,
+        "name": "browser (platforms)",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T01:43:29Z",
+        "completedAt": "2026-10-27T01:47:31Z"
+      },
+      {
+        "id": 121974355464,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T02:31:49Z",
+        "completedAt": "2026-10-27T02:31:52Z"
+      },
+      {
+        "id": 121974382041,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-27T02:31:55Z",
+        "completedAt": "2026-10-27T03:17:20Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:31:56Z",
+            "completedAt": "2026-10-27T02:31:59Z"
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:31:59Z",
+            "completedAt": "2026-10-27T02:32:18Z"
+          },
+          {
+            "name": "Configure satellite imagery provider",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:32:18Z",
+            "completedAt": "2026-10-27T02:32:18Z"
+          },
+          {
+            "name": "Run actions/configure-pages@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:32:18Z",
+            "completedAt": "2026-10-27T02:32:19Z"
+          },
+          {
+            "name": "Run actions/upload-pages-artifact@v3",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:32:19Z",
+            "completedAt": "2026-10-27T02:32:40Z"
+          },
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:32:40Z",
+            "completedAt": "2026-10-27T02:33:09Z"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:09Z",
+            "completedAt": "2026-10-27T02:33:15Z"
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:15Z",
+            "completedAt": "2026-10-27T02:33:15Z"
+          },
+          {
+            "name": "Verify deployed vector tile bytes",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:15Z",
+            "completedAt": "2026-10-27T02:33:15Z"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:15Z",
+            "completedAt": "2026-10-27T02:33:20Z"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:20Z",
+            "completedAt": "2026-10-27T02:33:23Z"
+          },
+          {
+            "name": "Run npx playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:33:23Z",
+            "completedAt": "2026-10-27T02:42:01Z"
+          },
+          {
+            "name": "Install Safari engine for deployed reference verification",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T02:42:01Z",
+            "completedAt": "2026-10-27T03:09:40Z"
+          },
+          {
+            "name": "Verify deployed independent OSM geometry with live overview unavailable",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:09:40Z",
+            "completedAt": "2026-10-27T03:15:57Z"
+          },
+          {
+            "name": "Verify published map with local railway fixture",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:15:57Z",
+            "completedAt": "2026-10-27T03:17:15Z"
+          },
+          {
+            "name": "Save published map screenshots",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:17:15Z",
+            "completedAt": "2026-10-27T03:17:17Z"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:17:17Z",
+            "completedAt": "2026-10-27T03:17:17Z"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:17:17Z",
+            "completedAt": "2026-10-27T03:17:17Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-27T03:17:17Z",
+            "completedAt": "2026-10-27T03:17:17Z"
+          }
+        ]
+      },
+      {
+        "id": 121974383921,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-27T02:31:52Z",
+        "completedAt": "2026-10-27T02:31:52Z"
+      }
+    ]
+  },
+  "independent": {
+    "run": 40431339860,
+    "attempt": 2,
+    "job": 121959956318,
+    "conclusion": "success",
+    "tests": 96,
+    "samples": 840,
+    "appSamples": 18,
+    "providerRequests": 0,
+    "firstAttempt": {
+      "job": 121949492666,
+      "conclusion": "cancelled",
+      "stage": "Playwright browser/dependency installation",
+      "rendererRan": false,
+      "configuredTimeoutMinutes": 20,
+      "cause": "Log says operation canceled at configured budget; no explicit initiating cause reported. Retried only this completed cancelled job once at unchanged source."
+    }
+  },
+  "reference": {
+    "run": 40431339840,
+    "job": 121949583341,
+    "conclusion": "success",
+    "generation": "87e1693d26bcf4231da89209",
+    "extract": "skipped",
+    "newAcquisition": false
+  },
+  "replacement": {
+    "cancelledPushRun": 40431339859,
+    "replacementRun": 40432044935,
+    "origin": "Existing mainline-reference.yml Redeploy the reviewed production site step",
+    "referenceJob": 121949583341,
+    "dispatchTime": "2026-10-27T01:21:01Z",
+    "returnedUrl": "https://github.com/c933103/openrailwaystyle/actions/runs/40432044935"
+  },
+  "artifacts": [
+    {
+      "id": 12703543301,
+      "name": "browser-review-context",
+      "bytes": 321060,
+      "digest": "sha256:c3d1c5acc0f066d9f8fac124d9c51508c84bf94f73573edb731c709a0f65816e",
+      "head": "193ba893d1181a585ca4abb7146b55e9e28dac08"
+    },
+    {
+      "id": 12703084681,
+      "name": "mainline-independent-renderer-diagnostics",
+      "bytes": 71503,
+      "digest": "sha256:9ac14f57d1af88b9c3141e44b3b863cee222ad88536ac907af3a30bb71aa75b9",
+      "head": "193ba893d1181a585ca4abb7146b55e9e28dac08"
+    },
+    {
+      "id": 12707442154,
+      "name": "published-map-review",
+      "bytes": 1862294,
+      "digest": "sha256:30b7fff6e1865f82660a75118fdb720aa6216c8f23c24200dc268dfa8469aaa6",
+      "head": "193ba893d1181a585ca4abb7146b55e9e28dac08"
+    }
+  ],
+  "limits": [
+    "Published browser fixtures use actual first-party deployed assets/data and synthetic external provider responses.",
+    "Terrain signed native worker and overhead assertions passed, but the uniform synthetic terrain screenshot is not a visual relief/contour-draping demonstration.",
+    "Coarse seabed is not hydrographic measurement; polar renderer remains independent.",
+    "Previous failed/incomplete local and hosted results remain in preceding evidence commits.",
+    "Decoded deploy-log retrieval returned generic Transport closed; step-level API success and original artifact were verified."
+  ]
+}
