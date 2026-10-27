@@ -1,0 +1,159 @@
+TAP version 13
+# Subtest: every versioned file the page loads asks for the page version
+not ok 1 - every versioned file the page loads asks for the page version
+  ---
+  duration_ms: 20.713537
+  type: 'test'
+  location: '<checkout>/tests/startup.test.mjs:2009:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page version 20261027-clean-map-history-1
+    + actual - expected
+    
+    + [
+    +   'cjk-font.mjs: 20261026-terrain-3d-1',
+    +   'departures-ui.mjs: 20261026-terrain-3d-1',
+    +   'elevation.mjs: 20261026-terrain-3d-1',
+    +   'elevation.mjs: 20261026-terrain-3d-1',
+    +   'layer-semantics.mjs: 20261026-terrain-3d-1',
+    +   'map-model.mjs: 20261026-terrain-3d-1',
+    +   'map-model.mjs: 20261026-terrain-3d-1',
+    +   'map-model.mjs: 20261026-terrain-3d-1',
+    +   'station-world.mjs: 20261026-terrain-3d-1',
+    +   'terrain-3d.mjs: 20261026-terrain-3d-1',
+    +   'terrain-3d.mjs: 20261026-terrain-3d-1',
+    +   'terrain-3d.mjs: 20261026-terrain-3d-1'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'cjk-font.mjs: 20261026-terrain-3d-1'
+    1: 'departures-ui.mjs: 20261026-terrain-3d-1'
+    2: 'elevation.mjs: 20261026-terrain-3d-1'
+    3: 'elevation.mjs: 20261026-terrain-3d-1'
+    4: 'layer-semantics.mjs: 20261026-terrain-3d-1'
+    5: 'map-model.mjs: 20261026-terrain-3d-1'
+    6: 'map-model.mjs: 20261026-terrain-3d-1'
+    7: 'map-model.mjs: 20261026-terrain-3d-1'
+    8: 'station-world.mjs: 20261026-terrain-3d-1'
+    9: 'terrain-3d.mjs: 20261026-terrain-3d-1'
+    10: 'terrain-3d.mjs: 20261026-terrain-3d-1'
+    11: 'terrain-3d.mjs: 20261026-terrain-3d-1'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<checkout>/tests/startup.test.mjs:2022:10)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: Power presentation upgrades a compact old module graph without mixing cached releases
+not ok 2 - Power presentation upgrades a compact old module graph without mixing cached releases
+  ---
+  duration_ms: 4.938721
+  type: 'test'
+  location: '<checkout>/tests/sw-install.test.mjs:609:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    data-check.html: entrypoint and transitive modules share one release
+    + actual - expected
+    
+    + '20261026-terrain-3d-1'
+    - '20261027-clean-map-history-1'
+              ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '20261027-clean-map-history-1'
+  actual: '20261026-terrain-3d-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<checkout>/tests/sw-install.test.mjs:626:14)
+    Test.runInAsyncScope (node:async_hooks:226:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.start (node:internal/test_runner/test:1262:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+  ...
+# Subtest: world-copy recovery release coordinates entrypoint and transitive module versions
+not ok 3 - world-copy recovery release coordinates entrypoint and transitive module versions
+  ---
+  duration_ms: 1.443242
+  type: 'test'
+  location: '<checkout>/tests/sw-install.test.mjs:680:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    cjk-font.mjs: cached imports must use the page's complete shell
+    + actual - expected
+    
+    + '20261026-terrain-3d-1'
+    - '20261027-clean-map-history-1'
+              ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '20261027-clean-map-history-1'
+  actual: '20261026-terrain-3d-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<checkout>/tests/sw-install.test.mjs:688:14)
+    Test.runInAsyncScope (node:async_hooks:226:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: destination identity upgrades a compact old module graph and keeps current row ownership offline
+not ok 4 - destination identity upgrades a compact old module graph and keeps current row ownership offline
+  ---
+  duration_ms: 1.210752
+  type: 'test'
+  location: '<checkout>/tests/sw-install.test.mjs:825:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    data-check.html: entrypoint and transitive imports use the current release
+    + actual - expected
+    
+    + '20261026-terrain-3d-1'
+    - '20261027-clean-map-history-1'
+              ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '20261027-clean-map-history-1'
+  actual: '20261026-terrain-3d-1'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<checkout>/tests/sw-install.test.mjs:841:14)
+    Test.runInAsyncScope (node:async_hooks:226:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+  ...
+# Subtest: search row-isolation release updates cached app/model together and retains old tabs
+not ok 5 - search row-isolation release updates cached app/model together and retains old tabs
+  ---
+  duration_ms: 83.715098
+  type: 'test'
+  location: '<checkout>/tests/sw-install.test.mjs:893:1'
+  failureType: 'testCodeFailure'
+  error: 'offline'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    fetch (file://<checkout>/tests/sw-install.test.mjs:63:24)
+    evalmachine.<anonymous>:204:30
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async load (file://<checkout>/tests/sw-install.test.mjs:918:88)
+  ...
+# (node:26) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+1..5
+# tests 5
+# suites 0
+# pass 0
+# fail 5
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 848.01613

@@ -1,0 +1,24 @@
+OFFLINE_CACHE_MISS https://atlas.test/openrailwaystyle/platform-length.mjs?v=20261026-terrain-3d-1
+OFFLINE_CACHE_MISS https://atlas.test/openrailwaystyle/railway-visibility.mjs?v=20261026-terrain-3d-1
+OFFLINE_CACHE_MISS https://atlas.test/openrailwaystyle/axle-load.mjs?v=20261026-terrain-3d-1
+(node:13) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ search row-isolation release updates cached app/model together and retains old tabs (77.622551ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.097745
+
+✖ failing tests:
+
+test at tests/sw-install.test.mjs:893:1
+✖ search row-isolation release updates cached app/model together and retains old tabs (77.622551ms)
+  TypeError [Error]: offline
+      at fetch (file://<checkout>/tests/sw-install.test.mjs:63:68)
+      at evalmachine.<anonymous>:204:30
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async load (file://<checkout>/tests/sw-install.test.mjs:918:88)

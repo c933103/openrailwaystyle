@@ -1,0 +1,877 @@
+TAP version 13
+# Subtest: axle loads distinguish reference categories, restricted variants and non-load classes
+ok 1 - axle loads distinguish reference categories, restricted variants and non-load classes
+  ---
+  duration_ms: 1.704074
+  type: 'test'
+  ...
+# Subtest: explicit limits take precedence, units convert and malformed values stay unknown
+ok 2 - explicit limits take precedence, units convert and malformed values stay unknown
+  ---
+  duration_ms: 14.603874
+  type: 'test'
+  ...
+# Subtest: axle lookup is lazy, annotates detailed and overview tiles and is shared with branch tiles
+ok 3 - axle lookup is lazy, annotates detailed and overview tiles and is shared with branch tiles
+  ---
+  duration_ms: 4.630958
+  type: 'test'
+  ...
+# Subtest: map line labels preserve native kg/lb units and convert only the other system
+ok 4 - map line labels preserve native kg/lb units and convert only the other system
+  ---
+  duration_ms: 3.01377
+  type: 'test'
+  ...
+# Subtest: axle extraction rejects partial, duplicate and malformed CSV while accepting empty regions
+ok 5 - axle extraction rejects partial, duplicate and malformed CSV while accepting empty regions
+  ---
+  duration_ms: 1.823143
+  type: 'test'
+  ...
+# Subtest: axle display preserves matching raw units and converts only between unit systems
+ok 6 - axle display preserves matching raw units and converts only between unit systems
+  ---
+  duration_ms: 0.667595
+  type: 'test'
+  ...
+# Subtest: an incomplete axle part is never cached; a validated part survives a later failed query and is reused
+ok 7 - an incomplete axle part is never cached; a validated part survives a later failed query and is reused
+  ---
+  duration_ms: 2.088443
+  type: 'test'
+  ...
+# Subtest: expired axle parts refresh while fresh parts make no service request
+ok 8 - expired axle parts refresh while fresh parts make no service request
+  ---
+  duration_ms: 0.2397
+  type: 'test'
+  ...
+# Subtest: in-app Sources and Licences disclose the backbone provider, automatic requests and data terms
+ok 9 - in-app Sources and Licences disclose the backbone provider, automatic requests and data terms
+  ---
+  duration_ms: 145.981583
+  type: 'test'
+  ...
+# Subtest: synthetic PMTiles archive exercises the real client across the reviewed coasts and zooms
+ok 10 - synthetic PMTiles archive exercises the real client across the reviewed coasts and zooms
+  ---
+  duration_ms: 4.827203
+  type: 'test'
+  ...
+# Subtest: Terrarium fixture PNG supplies distinct shallow shelf and deep-basin colours
+ok 11 - Terrarium fixture PNG supplies distinct shallow shelf and deep-basin colours
+  ---
+  duration_ms: 22.601488
+  type: 'test'
+  ...
+# Subtest: local glyph fixture has actual distinct platform numbers and consistent bitmap metrics
+ok 12 - local glyph fixture has actual distinct platform numbers and consistent bitmap metrics
+  ---
+  duration_ms: 5.560186
+  type: 'test'
+  ...
+# Subtest: coarse DEM references preserve both fixture shelves and basins through real terrain repair
+ok 13 - coarse DEM references preserve both fixture shelves and basins through real terrain repair
+  ---
+  duration_ms: 328.97709
+  type: 'test'
+  ...
+# Subtest: depth colours distinguish shallow reefs, shelves, deep basins and trenches
+ok 14 - depth colours distinguish shallow reefs, shelves, deep basins and trenches
+  ---
+  duration_ms: 1.559997
+  type: 'test'
+  ...
+# Subtest: street-detail tiles keep using bathymetry instead of fine DEM tiles without depths
+ok 15 - street-detail tiles keep using bathymetry instead of fine DEM tiles without depths
+  ---
+  duration_ms: 1.06393
+  type: 'test'
+  ...
+# Subtest: deep and fine contours are subdued, with the same weight in metres and feet
+ok 16 - deep and fine contours are subdued, with the same weight in metres and feet
+  ---
+  duration_ms: 2.827705
+  type: 'test'
+  ...
+# Subtest: overzooming crops the right shallow/deep quadrant and keeps missing data transparent
+ok 17 - overzooming crops the right shallow/deep quadrant and keeps missing data transparent
+  ---
+  duration_ms: 12.091864
+  type: 'test'
+  ...
+# Subtest: the water mask preserves island holes and excludes lakes and dry lowlands
+ok 18 - the water mask preserves island holes and excludes lakes and dry lowlands
+  ---
+  duration_ms: 0.627104
+  type: 'test'
+  ...
+# Subtest: invalid and cancelled requests do not fetch water or terrain
+ok 19 - invalid and cancelled requests do not fetch water or terrain
+  ---
+  duration_ms: 1.909823
+  type: 'test'
+  ...
+# Subtest: archive tile sharing avoids duplicate requests and isolates cancellation and buffers
+ok 20 - archive tile sharing avoids duplicate requests and isolates cancellation and buffers
+  ---
+  duration_ms: 1.027926
+  type: 'test'
+  ...
+# Subtest: depth shading stays below islands, contours and railways and respects the terrain setting
+ok 21 - depth shading stays below islands, contours and railways and respects the terrain setting
+  ---
+  duration_ms: 13.037642
+  type: 'test'
+  ...
+# Subtest: with a worker, depth tiles are drawn there: land needs no terrain, a cancelled tile is dropped
+ok 22 - with a worker, depth tiles are drawn there: land needs no terrain, a cancelled tile is dropped
+  ---
+  duration_ms: 25.782312
+  type: 'test'
+  ...
+# Subtest: a depth worker that fails is not used again: its tiles and later ones are drawn on the page
+ok 23 - a depth worker that fails is not used again: its tiles and later ones are drawn on the page
+  ---
+  duration_ms: 12.176601
+  type: 'test'
+  ...
+# Subtest: a depth worker that reports a processing error hands its tiles to the page and is not used again
+ok 24 - a depth worker that reports a processing error hands its tiles to the page and is not used again
+  ---
+  duration_ms: 4.724679
+  type: 'test'
+  ...
+# Subtest: world-wrap requests of the same depth tile keep independent worker state
+ok 25 - world-wrap requests of the same depth tile keep independent worker state
+  ---
+  duration_ms: 1.699547
+  type: 'test'
+  ...
+# Subtest: depth worker retains every active mask beyond 64 requests and releases painted or cancelled masks
+ok 26 - depth worker retains every active mask beyond 64 requests and releases painted or cancelled masks
+  ---
+  duration_ms: 4.156333
+  type: 'test'
+  ...
+# Subtest: branch schema migration requeues all regions without losing completion safeguards or daily budget history
+ok 27 - branch schema migration requeues all regions without losing completion safeguards or daily budget history
+  ---
+  duration_ms: 1.682321
+  type: 'test'
+  ...
+# Subtest: branch-line stages: the requested order, Japan first and the rest of the world last
+ok 28 - branch-line stages: the requested order, Japan first and the rest of the world last
+  ---
+  duration_ms: 0.356035
+  type: 'test'
+  ...
+# Subtest: branch-line queries: branch and metro lines within a country area, leaving out countries fetched earlier
+ok 29 - branch-line queries: branch and metro lines within a country area, leaving out countries fetched earlier
+  ---
+  duration_ms: 0.577089
+  type: 'test'
+  ...
+# Subtest: branch-line tags become the fields of the detailed railway tiles
+ok 30 - branch-line tags become the fields of the detailed railway tiles
+  ---
+  duration_ms: 4.607242
+  type: 'test'
+  ...
+# Subtest: branch-line table and tiles: z4–6 only, the style's fields and the OSM way id
+ok 31 - branch-line table and tiles: z4–6 only, the style's fields and the OSM way id
+  ---
+  duration_ms: 3.255027
+  type: 'test'
+  ...
+# Subtest: branch and metro tiles preserve simultaneous control systems and unknown list codes
+ok 32 - branch and metro tiles preserve simultaneous control systems and unknown list codes
+  ---
+  duration_ms: 1.95427
+  type: 'test'
+  ...
+# Subtest: metro lines: kept with their own usage, tiled at z7–9 only, apart from branch lines
+ok 33 - metro lines: kept with their own usage, tiled at z7–9 only, apart from branch lines
+  ---
+  duration_ms: 1.578094
+  type: 'test'
+  ...
+# Subtest: style: branch lines under the main overview lines in every view, from zoom 4 to 6
+ok 34 - style: branch lines under the main overview lines in every view, from zoom 4 to 6
+  ---
+  duration_ms: 17.806372
+  type: 'test'
+  ...
+# Subtest: Railway Atlas has one displayed name, without changing installed-app identity
+ok 35 - Railway Atlas has one displayed name, without changing installed-app identity
+  ---
+  duration_ms: 2.045978
+  type: 'test'
+  ...
+# Subtest: sharing metadata uses the current name and versioned PNG artwork
+ok 36 - sharing metadata uses the current name and versioned PNG artwork
+  ---
+  duration_ms: 3.062708
+  type: 'test'
+  ...
+# Subtest: main and auxiliary pages have matching favicon and Apple touch icon links
+ok 37 - main and auxiliary pages have matching favicon and Apple touch icon links
+  ---
+  duration_ms: 1.932808
+  type: 'test'
+  ...
+# Subtest: manifest icon revisions match their bytes and dimensions, including maskable artwork
+ok 38 - manifest icon revisions match their bytes and dimensions, including maskable artwork
+  ---
+  duration_ms: 2.437001
+  type: 'test'
+  ...
+# Subtest: documentation and the inline controls icon reuse the approved SVG
+ok 39 - documentation and the inline controls icon reuse the approved SVG
+  ---
+  duration_ms: 0.692271
+  type: 'test'
+  ...
+# Subtest: versioned branding icons still resolve offline from the precached plain aliases
+ok 40 - versioned branding icons still resolve offline from the precached plain aliases
+  ---
+  duration_ms: 9.124469
+  type: 'test'
+  ...
+# Subtest: other origins are served from the cache until it expires; the site and non-GET requests are not
+ok 41 - other origins are served from the cache until it expires; the site and non-GET requests are not
+  ---
+  duration_ms: 17.096824
+  type: 'test'
+  ...
+# Subtest: provider tile validation remains strict but public tiles bypass even a poisoned browser cache
+ok 42 - provider tile validation remains strict but public tiles bypass even a poisoned browser cache
+  ---
+  duration_ms: 2.782707
+  type: 'test'
+  ...
+# Subtest: a request whose page closes mid-flight fails quietly instead of crashing the check
+ok 43 - a request whose page closes mid-flight fails quietly instead of crashing the check
+  ---
+  duration_ms: 1.081598
+  type: 'test'
+  ...
+# Subtest: every browser check launches through the shared helper
+ok 44 - every browser check launches through the shared helper
+  ---
+  duration_ms: 10.430679
+  type: 'test'
+  ...
+# Subtest: the site workflow plans the browser checks and runs them through the runner
+ok 45 - the site workflow plans the browser checks and runs them through the runner
+  ---
+  duration_ms: 0.820064
+  type: 'test'
+  ...
+# Subtest: public railway-provider host matching is exact and separate from the .org search API
+ok 46 - public railway-provider host matching is exact and separate from the .org search API
+  ---
+  duration_ms: 0.267973
+  type: 'test'
+  ...
+# Subtest: only loopback local provider URLs are accepted for automated geographic checks
+ok 47 - only loopback local provider URLs are accepted for automated geographic checks
+  ---
+  duration_ms: 0.961386
+  type: 'test'
+  ...
+# Subtest: automated OpenRailwayMap routing aborts unfixed public requests without fetching
+ok 48 - automated OpenRailwayMap routing aborts unfixed public requests without fetching
+  ---
+  duration_ms: 0.307082
+  type: 'test'
+  ...
+# Subtest: CI uses a synthetic railway fixture rather than the provider-dependent globe/map audit
+ok 49 - CI uses a synthetic railway fixture rather than the provider-dependent globe/map audit
+  ---
+  duration_ms: 1.617845
+  type: 'test'
+  ...
+# Subtest: offline Latin glyph bearings use the FreeType ascent origin
+ok 50 - offline Latin glyph bearings use the FreeType ascent origin
+  ---
+  duration_ms: 7.10441
+  type: 'test'
+  ...
+# Subtest: generic browser cache excludes every supported loopback host, including IPv6
+ok 51 - generic browser cache excludes every supported loopback host, including IPv6
+  ---
+  duration_ms: 6.110524
+  type: 'test'
+  ...
+# Subtest: configured local ORM guard rejects redirects from advertised loopback tile URLs
+ok 52 - configured local ORM guard rejects redirects from advertised loopback tile URLs
+  ---
+  duration_ms: 2.464619
+  type: 'test'
+  ...
+# Subtest: only loopback and an exact first-party deployment path may reach the network
+ok 53 - only loopback and an exact first-party deployment path may reach the network
+  ---
+  duration_ms: 1.946529
+  type: 'test'
+  ...
+# Subtest: default route aborts providers without fetch, continue or cache access
+ok 54 - default route aborts providers without fetch, continue or cache access
+  ---
+  duration_ms: 0.806013
+  type: 'test'
+  ...
+# Subtest: later page and context routes cannot bypass the guard via continue or fetch
+ok 55 - later page and context routes cannot bypass the guard via continue or fetch
+  ---
+  duration_ms: 1.395069
+  type: 'test'
+  ...
+# Subtest: rewriting an allowed request to an external URL cannot send it out
+ok 56 - rewriting an allowed request to an external URL cannot send it out
+  ---
+  duration_ms: 1.34255
+  type: 'test'
+  ...
+# Subtest: first-party content remains fetched, with redirects disabled before transport
+ok 57 - first-party content remains fetched, with redirects disabled before transport
+  ---
+  duration_ms: 0.718331
+  type: 'test'
+  ...
+# Subtest: server and fixture redirects never reach Chromium; fetch overrides cannot enable following
+ok 58 - server and fixture redirects never reach Chromium; fetch overrides cannot enable following
+  ---
+  duration_ms: 1.011352
+  type: 'test'
+  ...
+# Subtest: fixture fulfillment and fallback remain usable, and unroute removes the wrapped handler
+ok 59 - fixture fulfillment and fallback remain usable, and unroute removes the wrapped handler
+  ---
+  duration_ms: 0.49864
+  type: 'test'
+  ...
+# Subtest: WebSocket setup is closed without connecting to the server
+ok 60 - WebSocket setup is closed without connecting to the server
+  ---
+  duration_ms: 0.356767
+  type: 'test'
+  ...
+# Subtest: every matrix browser launches through the shared guard (including WebKit)
+ok 61 - every matrix browser launches through the shared guard (including WebKit)
+  ---
+  duration_ms: 11.437359
+  type: 'test'
+  ...
+# Subtest: a later WebSocket fixture cannot opt back into a server connection
+ok 62 - a later WebSocket fixture cannot opt back into a server connection
+  ---
+  duration_ms: 0.983059
+  type: 'test'
+  ...
+# Subtest: URL-rewriting fallback is blocked before a later route can see it
+ok 63 - URL-rewriting fallback is blocked before a later route can see it
+  ---
+  duration_ms: 0.368525
+  type: 'test'
+  ...
+# Subtest: one exact loopback reset retries GET/HEAD once and returns actual response bytes
+ok 64 - one exact loopback reset retries GET/HEAD once and returns actual response bytes
+  ---
+  duration_ms: 1008.450608
+  type: 'test'
+  ...
+# Subtest: a second reset exhausts the fixed budget and fails without fulfillment
+ok 65 - a second reset exhausts the fixed budget and fails without fulfillment
+  ---
+  duration_ms: 251.689064
+  type: 'test'
+  ...
+# Subtest: non-idempotent methods, body-bearing reads and deployment URLs never retry
+ok 66 - non-idempotent methods, body-bearing reads and deployment URLs never retry
+  ---
+  duration_ms: 1.965968
+  type: 'test'
+  ...
+# Subtest: timeouts, refused connections, teardown, body errors and reset text in a call log never retry
+ok 67 - timeouts, refused connections, teardown, body errors and reset text in a call log never retry
+  ---
+  duration_ms: 0.866363
+  type: 'test'
+  ...
+# Subtest: HTTP errors keep their status and bytes without retry, including after one reset
+ok 68 - HTTP errors keep their status and bytes without retry, including after one reset
+  ---
+  duration_ms: 1004.542917
+  type: 'test'
+  ...
+# Subtest: unsafe targets and rewrites never reach transport even when the caller requests retries
+ok 69 - unsafe targets and rewrites never reach transport even when the caller requests retries
+  ---
+  duration_ms: 1.141808
+  type: 'test'
+  ...
+# Subtest: redirects before or after a reset stay blocked, without another fetch or fulfillment
+ok 70 - redirects before or after a reset stay blocked, without another fetch or fulfillment
+  ---
+  duration_ms: 1003.740751
+  type: 'test'
+  ...
+# Subtest: concurrent before/after maps share one fetch and body read, then replay identical bytes
+ok 71 - concurrent before/after maps share one fetch and body read, then replay identical bytes
+  ---
+  duration_ms: 1.332134
+  type: 'test'
+  ...
+# Subtest: HTTP 404 is passed through, then a fresh HTTP 200 is retained
+ok 72 - HTTP 404 is passed through, then a fresh HTTP 200 is retained
+  ---
+  duration_ms: 0.268254
+  type: 'test'
+  ...
+# Subtest: HTTP 429 is passed through, then a fresh HTTP 200 is retained
+ok 73 - HTTP 429 is passed through, then a fresh HTTP 200 is retained
+  ---
+  duration_ms: 0.168424
+  type: 'test'
+  ...
+# Subtest: HTTP 503 is passed through, then a fresh HTTP 200 is retained
+ok 74 - HTTP 503 is passed through, then a fresh HTTP 200 is retained
+  ---
+  duration_ms: 0.152229
+  type: 'test'
+  ...
+# Subtest: HTTP 520 is passed through, then a fresh HTTP 200 is retained
+ok 75 - HTTP 520 is passed through, then a fresh HTTP 200 is retained
+  ---
+  duration_ms: 0.155564
+  type: 'test'
+  ...
+# Subtest: fetch rejection is shared and evicted before a successful retry
+ok 76 - fetch rejection is shared and evicted before a successful retry
+  ---
+  duration_ms: 0.555186
+  type: 'test'
+  ...
+# Subtest: body rejection is shared and evicted before a successful retry
+ok 77 - body rejection is shared and evicted before a successful retry
+  ---
+  duration_ms: 0.26594
+  type: 'test'
+  ...
+# Subtest: synchronous fetch rejection is shared and evicted before a successful retry
+ok 78 - synchronous fetch rejection is shared and evicted before a successful retry
+  ---
+  duration_ms: 1.01007
+  type: 'test'
+  ...
+# Subtest: HTTP 200 keeps legitimate empty/partial tiles and replay-safe headers
+ok 79 - HTTP 200 keeps legitimate empty/partial tiles and replay-safe headers
+  ---
+  duration_ms: 0.79107
+  type: 'test'
+  ...
+# Subtest: HTTP 204 keeps legitimate empty/partial tiles and replay-safe headers
+ok 80 - HTTP 204 keeps legitimate empty/partial tiles and replay-safe headers
+  ---
+  duration_ms: 0.203346
+  type: 'test'
+  ...
+# Subtest: HTTP 206 keeps legitimate empty/partial tiles and replay-safe headers
+ok 81 - HTTP 206 keeps legitimate empty/partial tiles and replay-safe headers
+  ---
+  duration_ms: 0.141923
+  type: 'test'
+  ...
+# Subtest: permanent failure reaches the provider on each retry and remains visible
+ok 82 - permanent failure reaches the provider on each retry and remains visible
+  ---
+  duration_ms: 0.197147
+  type: 'test'
+  ...
+# Subtest: URLs and comparison contexts are isolated, and a consumer failure does not discard valid bytes
+ok 83 - URLs and comparison contexts are isolated, and a consumer failure does not discard valid bytes
+  ---
+  duration_ms: 0.178398
+  type: 'test'
+  ...
+# Subtest: public aliases and advertised local URLs share only the validated loopback target
+ok 84 - public aliases and advertised local URLs share only the validated loopback target
+  ---
+  duration_ms: 0.723338
+  type: 'test'
+  ...
+# Subtest: the guarded loader rejects redirects and a later attempt can recover
+ok 85 - the guarded loader rejects redirects and a later attempt can recover
+  ---
+  duration_ms: 0.603829
+  type: 'test'
+  ...
+# Subtest: cached TileJSON retains sanitization and a rejected template is not retained
+ok 86 - cached TileJSON retains sanitization and a rejected template is not retained
+  ---
+  duration_ms: 0.978031
+  type: 'test'
+  ...
+# Subtest: a fresh comparison reads changed fixture bytes while the current comparison stays stable
+ok 87 - a fresh comparison reads changed fixture bytes while the current comparison stays stable
+  ---
+  duration_ms: 0.306091
+  type: 'test'
+  ...
+# Subtest: a controlled HTTP loopback server recovers without retaining its transient failure
+ok 88 - a controlled HTTP loopback server recovers without retaining its transient failure
+  ---
+  duration_ms: 35.604981
+  type: 'test'
+  ...
+# Subtest: observes task duration and heartbeat delay independently without recording page data
+ok 89 - observes task duration and heartbeat delay independently without recording page data
+  ---
+  duration_ms: 2.218218
+  type: 'test'
+  ...
+# Subtest: snapshots preserve cumulative observations and drain queued entries exactly once
+ok 90 - snapshots preserve cumulative observations and drain queued entries exactly once
+  ---
+  duration_ms: 0.60485
+  type: 'test'
+  ...
+# Subtest: the triggering UI work is retained before a delayed first poll and across repeated polls
+ok 91 - the triggering UI work is retained before a delayed first poll and across repeated polls
+  ---
+  duration_ms: 0.342235
+  type: 'test'
+  ...
+# Subtest: a queued task overlapping installation is retained with its original duration
+ok 92 - a queued task overlapping installation is retained with its original duration
+  ---
+  duration_ms: 0.216886
+  type: 'test'
+  ...
+# Subtest: a timed-out evaluation that finishes late cannot erase unreported observations
+ok 93 - a timed-out evaluation that finishes late cannot erase unreported observations
+  ---
+  duration_ms: 12.250512
+  type: 'test'
+  ...
+# Subtest: bounded copied records retain exact totals and reject invalid timing values
+ok 94 - bounded copied records retain exact totals and reject invalid timing values
+  ---
+  duration_ms: 0.48503
+  type: 'test'
+  ...
+# Subtest: unsupported observations remain explicit and disposal stops both sources
+ok 95 - unsupported observations remain explicit and disposal stops both sources
+  ---
+  duration_ms: 0.472671
+  type: 'test'
+  ...
+# Subtest: diagnostic reads succeed, fail closed and time out without becoming an acceptance gate
+ok 96 - diagnostic reads succeed, fail closed and time out without becoming an acceptance gate
+  ---
+  duration_ms: 10.443028
+  type: 'test'
+  ...
+# Subtest: controls record diagnostics per settlement without changing the idle gate
+ok 97 - controls record diagnostics per settlement without changing the idle gate
+  ---
+  duration_ms: 2.327216
+  type: 'test'
+  ...
+# Subtest: PR site validation executes offline search fixtures instead of the live provider probe
+ok 98 - PR site validation executes offline search fixtures instead of the live provider probe
+  ---
+  duration_ms: 4.678945
+  type: 'test'
+  ...
+# Subtest: the separate live station-search probe rejects redirects before following them
+ok 99 - the separate live station-search probe rejects redirects before following them
+  ---
+  duration_ms: 3.577704
+  type: 'test'
+  ...
+# Subtest: deployed tile-byte verification retains real first-party fetch and rejects redirects
+ok 100 - deployed tile-byte verification retains real first-party fetch and rejects redirects
+  ---
+  duration_ms: 0.806954
+  type: 'test'
+  ...
+# Subtest: each Atlas Node setup tracks the latest patched Node 26 release
+ok 101 - each Atlas Node setup tracks the latest patched Node 26 release
+  ---
+  duration_ms: 10.795879
+  type: 'test'
+  ...
+# Subtest: Node 26 security guard accepts future fixes without accepting unpatched or other majors
+ok 102 - Node 26 security guard accepts future fixes without accepting unpatched or other majors
+  ---
+  duration_ms: 5.388738
+  type: 'test'
+  ...
+# Subtest: all CI Node commands run after setup and security-baseline verification
+ok 103 - all CI Node commands run after setup and security-baseline verification
+  ---
+  duration_ms: 5.211531
+  type: 'test'
+  ...
+# Subtest: deployed tile integrity fetch and Brotli decoding use the validated Node runtime
+ok 104 - deployed tile integrity fetch and Brotli decoding use the validated Node runtime
+  ---
+  duration_ms: 1.008478
+  type: 'test'
+  ...
+# Subtest: package engine floors match supported patched releases without lockfile drift
+ok 105 - package engine floors match supported patched releases without lockfile drift
+  ---
+  duration_ms: 1.632076
+  type: 'test'
+  ...
+# Subtest: every browser check is in fixture-safe site/diagnostic CI or explicitly local-only
+ok 106 - every browser check is in fixture-safe site/diagnostic CI or explicitly local-only
+  ---
+  duration_ms: 1.84074
+  type: 'test'
+  ...
+# Subtest: anything the site is built from runs every check
+ok 107 - anything the site is built from runs every check
+  ---
+  duration_ms: 33.402562
+  type: 'test'
+  ...
+# Subtest: tests, docs, other pipelines and style sources (checked through the committed style) run no browser checks
+ok 108 - tests, docs, other pipelines and style sources (checked through the committed style) run no browser checks
+  ---
+  duration_ms: 94.082319
+  type: 'test'
+  ...
+# Subtest: a check, its helpers and its fixtures run only the checks that use them
+ok 109 - a check, its helpers and its fixtures run only the checks that use them
+  ---
+  duration_ms: 545.864517
+  type: 'test'
+  ...
+# Subtest: deployed fixture follows its delegated checker and archive dependency in safe CI
+ok 110 - deployed fixture follows its delegated checker and archive dependency in safe CI
+  ---
+  duration_ms: 52.436336
+  type: 'test'
+  ...
+# Subtest: local references cover imports, dynamic imports and files read through new URL, without query strings
+ok 111 - local references cover imports, dynamic imports and files read through new URL, without query strings
+  ---
+  duration_ms: 0.295595
+  type: 'test'
+  ...
+# Subtest: the matrix lists each job with its checks and preparation
+ok 112 - the matrix lists each job with its checks and preparation
+  ---
+  duration_ms: 0.209014
+  type: 'test'
+  ...
+# Subtest: a push reuses a pull request result only for the same code and data, from its newest status
+ok 113 - a push reuses a pull request result only for the same code and data, from its newest status
+  ---
+  duration_ms: 1.379285
+  type: 'test'
+  ...
+# Subtest: the data digest follows every file name and byte of the assembled data
+ok 114 - the data digest follows every file name and byte of the assembled data
+  ---
+  duration_ms: 16.77482
+  type: 'test'
+  ...
+# Subtest: Han font choice: the first complete candidate, else the best partial one, else the system fallback
+ok 115 - Han font choice: the first complete candidate, else the best partial one, else the system fallback
+  ---
+  duration_ms: 1.682161
+  type: 'test'
+  ...
+# Subtest: probe sets cover Simplified, Traditional, Hong Kong, Macao, Japanese, compatibility and both extensions
+ok 116 - probe sets cover Simplified, Traditional, Hong Kong, Macao, Japanese, compatibility and both extensions
+  ---
+  duration_ms: 0.25926
+  type: 'test'
+  ...
+# Subtest: transport distinguishes interchanges from ordinary stops and private airfields
+ok 117 - transport distinguishes interchanges from ordinary stops and private airfields
+  ---
+  duration_ms: 3.601068
+  type: 'test'
+  ...
+# Subtest: requested destination types are selected without turning every shop or sports pitch into a magnet
+ok 118 - requested destination types are selected without turning every shop or sports pitch into a magnet
+  ---
+  duration_ms: 7.077529
+  type: 'test'
+  ...
+# Subtest: cultural destination labels remain drawn without taking clicks from railways
+ok 119 - cultural destination labels remain drawn without taking clicks from railways
+  ---
+  duration_ms: 0.599482
+  type: 'test'
+  ...
+# Subtest: nearby transport deduplicates buffered tiles, respects distance and ranks terminals before local stops and excludes marinas
+ok 120 - nearby transport deduplicates buffered tiles, respects distance and ranks terminals before local stops and excludes marinas
+  ---
+  duration_ms: 0.856749
+  type: 'test'
+  ...
+# Subtest: context settings default on for existing users and round-trip in shared links
+ok 121 - context settings default on for existing users and round-trip in shared links
+  ---
+  duration_ms: 0.877019
+  type: 'test'
+  ...
+# Subtest: one passive sample window starts once and stops once, with no page or network commands
+ok 122 - one passive sample window starts once and stops once, with no page or network commands
+  ---
+  duration_ms: 5.947499
+  type: 'test'
+  ...
+# Subtest: a hung setup is bounded; a late session is detached without starting the profiler
+ok 123 - a hung setup is bounded; a late session is detached without starting the profiler
+  ---
+  duration_ms: 1.005974
+  type: 'test'
+  ...
+# Subtest: a late Profiler.start cannot restart a retired capture or leave a watchdog
+ok 124 - a late Profiler.start cannot restart a retired capture or leave a watchdog
+  ---
+  duration_ms: 0.646553
+  type: 'test'
+  ...
+# Subtest: protocol rejection is diagnostic-only and does not retain exception text
+ok 125 - protocol rejection is diagnostic-only and does not retain exception text
+  ---
+  duration_ms: 0.79734
+  type: 'test'
+  ...
+# Subtest: capture watchdog stops sampling at 60 seconds independently of readiness
+ok 126 - capture watchdog stops sampling at 60 seconds independently of readiness
+  ---
+  duration_ms: 0.822207
+  type: 'test'
+  ...
+# Subtest: hung collection is bounded, detaches, and never replaces the result when it completes late
+ok 127 - hung collection is bounded, detaches, and never replaces the result when it completes late
+  ---
+  duration_ms: 0.761306
+  type: 'test'
+  ...
+# Subtest: stop failure remains diagnostic-only and never exposes protocol error text
+ok 128 - stop failure remains diagnostic-only and never exposes protocol error text
+  ---
+  duration_ms: 0.636137
+  type: 'test'
+  ...
+# Subtest: early exit before starting or during setup does not create a capture later
+ok 129 - early exit before starting or during setup does not create a capture later
+  ---
+  duration_ms: 0.526472
+  type: 'test'
+  ...
+# Subtest: sanitization preserves sample stacks but excludes URL secrets and unapproved profile fields
+ok 130 - sanitization preserves sample stacks but excludes URL secrets and unapproved profile fields
+  ---
+  duration_ms: 0.621165
+  type: 'test'
+  ...
+# Subtest: malformed or excessive profiles are explicit unavailable results, never partial causal evidence
+ok 131 - malformed or excessive profiles are explicit unavailable results, never partial causal evidence
+  ---
+  duration_ms: 1.660428
+  type: 'test'
+  ...
+# Subtest: integration profiles exactly the first transition and keeps fixture and acceptance contracts
+ok 132 - integration profiles exactly the first transition and keeps fixture and acceptance contracts
+  ---
+  duration_ms: 32.172327
+  type: 'test'
+  ...
+# Subtest: complete arrival batches retain exact natural equality despite different completion order and pending callbacks
+ok 133 - complete arrival batches retain exact natural equality despite different completion order and pending callbacks
+  ---
+  duration_ms: 125.897959
+  type: 'test'
+  ...
+# Subtest: barrier cannot erase a guard-caused cache eviction or equal-count coordinate substitution
+ok 134 - barrier cannot erase a guard-caused cache eviction or equal-count coordinate substitution
+  ---
+  duration_ms: 28.845731
+  type: 'test'
+  ...
+# Subtest: intermediate-frame cache changes cannot hide behind equal final observations
+ok 135 - intermediate-frame cache changes cannot hide behind equal final observations
+  ---
+  duration_ms: 9.255116
+  type: 'test'
+  ...
+# Subtest: missing, truncated, changed or incomplete batch evidence fails closed
+ok 136 - missing, truncated, changed or incomplete batch evidence fails closed
+  ---
+  duration_ms: 31.860383
+  type: 'test'
+  ...
+# Subtest: no completion means no renderer invocation, added timer, cache reset, or false idle
+ok 137 - no completion means no renderer invocation, added timer, cache reset, or false idle
+  ---
+  duration_ms: 16.200916
+  type: 'test'
+  ...
+# Subtest: source metadata completion is part of the batch and source errors fail explicitly
+ok 138 - source metadata completion is part of the batch and source errors fail explicitly
+  ---
+  duration_ms: 14.947381
+  type: 'test'
+  ...
+# Subtest: barrier installs only while idle, preserves render arguments/result, and restores only its own wrapper
+ok 139 - barrier installs only while idle, preserves render arguments/result, and restores only its own wrapper
+  ---
+  duration_ms: 22.011709
+  type: 'test'
+  ...
+# Subtest: hosted check keeps the natural gate and records the complete-input batch separately from controlled samples
+ok 140 - hosted check keeps the natural gate and records the complete-input batch separately from controlled samples
+  ---
+  duration_ms: 201.41312
+  type: 'test'
+  ...
+# Subtest: actual pinned source-update scheduler resumes on completion without a renderer-driven timer or retry
+ok 141 - actual pinned source-update scheduler resumes on completion without a renderer-driven timer or retry
+  ---
+  duration_ms: 182.383383
+  type: 'test'
+  ...
+# Subtest: symmetric missing or malformed terrain/cache/source evidence fails both natural and batch gates
+ok 142 - symmetric missing or malformed terrain/cache/source evidence fails both natural and batch gates
+  ---
+  duration_ms: 736.847111
+  type: 'test'
+  ...
+# Subtest: symmetric missing or malformed coordinate-bearing dispatch records fail closed
+ok 143 - symmetric missing or malformed coordinate-bearing dispatch records fail closed
+  ---
+  duration_ms: 213.723753
+  type: 'test'
+  ...
+# Subtest: dispatch schemas accept only pinned render passes even with matching symmetric dispatch strings
+ok 144 - dispatch schemas accept only pinned render passes even with matching symmetric dispatch strings
+  ---
+  duration_ms: 105.378191
+  type: 'test'
+  ...
+# Subtest: batch source schemas reject symmetric missing revision, usage, tile and envelope fields
+ok 145 - batch source schemas reject symmetric missing revision, usage, tile and envelope fields
+  ---
+  duration_ms: 149.775995
+  type: 'test'
+  ...
+# Subtest: explicit zero cache slots, zero source coordinates and zero dispatch remain valid evidence
+ok 146 - explicit zero cache slots, zero source coordinates and zero dispatch remain valid evidence
+  ---
+  duration_ms: 216.987469
+  type: 'test'
+  ...

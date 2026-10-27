@@ -1,0 +1,108 @@
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 891788e..6d995bb 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261026-terrain-3d-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-map-history-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index 472ce97..6ed28b5 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261026-terrain-3d-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-map-history-1"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index 3f5a563..ca7fa79 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261026-terrain-3d-1';
++import {SEARCH_API} from './map-model.mjs?v=20261027-clean-map-history-1';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index d1206ed..ea6b277 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261026-terrain-3d-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-map-history-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index f659928..e2ef18a 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,8 +4,8 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261026-terrain-3d-1';
+-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261026-terrain-3d-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-map-history-1';
++import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index d65630f..c486e62 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261026-terrain-3d-1';
++import { MODES } from './map-model.mjs?v=20261027-clean-map-history-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index b64c700..9fd1d44 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261026-terrain-3d-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261026-terrain-3d-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-map-history-1';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-map-history-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261026-terrain-3d-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-map-history-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/styles/station-world.mjs b/styles/station-world.mjs
+index 0e42711..1eddd33 100644
+--- a/styles/station-world.mjs
++++ b/styles/station-world.mjs
+@@ -2,7 +2,7 @@
+ // snapshot. Incomplete or missing acquisition never changes live station layers.
+ // Source: station-points-data, built by station-overview.mjs and published only
+ // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
+-import {createBundleReader} from './tile-bundles.mjs?v=20261026-terrain-3d-1';
++import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-map-history-1';
+ 
+ export const WORLD_STATION_SOURCE = 'stationWorld';
+ export const WORLD_STATION_DOTS = 'station-world-dots';
+diff --git a/styles/terrain-3d.mjs b/styles/terrain-3d.mjs
+index dbb3b7e..1612e8b 100644
+--- a/styles/terrain-3d.mjs
++++ b/styles/terrain-3d.mjs
+@@ -2,9 +2,9 @@
+ // the provider has no seabed elevations beyond z10. Restore only genuine sea
+ // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
+ // All elevations remain metres, regardless of the contour-label unit setting.
+-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261026-terrain-3d-1';
+-import {encodeTerrarium} from './dem-repair.mjs?v=20261026-terrain-3d-1';
+-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261026-terrain-3d-1';
++import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-map-history-1';
++import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-map-history-1';
++import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
+ 
+ export const TERRAIN_3D_SOURCE = 'terrain3d';
+ export const TERRAIN_3D_MAXZOOM = 14;

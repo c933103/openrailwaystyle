@@ -1,6 +1,0 @@
-{
-  "commit": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
-  "verifiedGitBlobCount": 479,
-  "unverifiedPaths": [],
-  "method": "Cached file bytes matched SHA-1 of Git blob header+content against each remote recursive-tree entry before isolated baseline snapshot construction."
-}

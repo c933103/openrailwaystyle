@@ -1,0 +1,480 @@
+TAP version 13
+# Subtest: installation drains response bodies without exhausting its three network slots
+ok 1 - installation drains response bodies without exhausting its three network slots
+  ---
+  duration_ms: 50.041
+  type: 'test'
+  ...
+# Subtest: a truncated map-model.mjs response cannot publish or activate an incomplete shell
+ok 2 - a truncated map-model.mjs response cannot publish or activate an incomplete shell
+  ---
+  duration_ms: 6.095427
+  type: 'test'
+  ...
+# Subtest: a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell
+ok 3 - a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell
+  ---
+  duration_ms: 9.896591
+  type: 'test'
+  ...
+# Subtest: a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell
+ok 4 - a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell
+  ---
+  duration_ms: 12.10134
+  type: 'test'
+  ...
+# Subtest: a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell
+ok 5 - a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell
+  ---
+  duration_ms: 5.362995
+  type: 'test'
+  ...
+# Subtest: a complete replacement keeps the previous version and revised icons available offline
+ok 6 - a complete replacement keeps the previous version and revised icons available offline
+  ---
+  duration_ms: 57.784068
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+ok 7 - the current application release refreshes app.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+  ---
+  duration_ms: 36.659809
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+ok 8 - the current application release refreshes departures.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+  ---
+  duration_ms: 27.57726
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+ok 9 - the current application release refreshes elevation.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+  ---
+  duration_ms: 22.199562
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+ok 10 - the current application release refreshes platform-length.mjs from 20261023-orm-composite-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.823174
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+ok 11 - the current application release refreshes app.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+  ---
+  duration_ms: 16.423297
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+ok 12 - the current application release refreshes departures.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+  ---
+  duration_ms: 28.739891
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+ok 13 - the current application release refreshes elevation.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+  ---
+  duration_ms: 20.031809
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+ok 14 - the current application release refreshes platform-length.mjs from 20261019-source-recovery-1 while previous tabs retain their version
+  ---
+  duration_ms: 24.70784
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261019-station-world-1 while previous tabs retain their version
+ok 15 - the current application release refreshes app.mjs from 20261019-station-world-1 while previous tabs retain their version
+  ---
+  duration_ms: 28.609773
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261019-station-world-1 while previous tabs retain their version
+ok 16 - the current application release refreshes departures.mjs from 20261019-station-world-1 while previous tabs retain their version
+  ---
+  duration_ms: 16.688497
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261019-station-world-1 while previous tabs retain their version
+ok 17 - the current application release refreshes elevation.mjs from 20261019-station-world-1 while previous tabs retain their version
+  ---
+  duration_ms: 23.433
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261019-station-world-1 while previous tabs retain their version
+ok 18 - the current application release refreshes platform-length.mjs from 20261019-station-world-1 while previous tabs retain their version
+  ---
+  duration_ms: 16.230147
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261011-power-legend-1 while previous tabs retain their version
+ok 19 - the current application release refreshes app.mjs from 20261011-power-legend-1 while previous tabs retain their version
+  ---
+  duration_ms: 25.849758
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261011-power-legend-1 while previous tabs retain their version
+ok 20 - the current application release refreshes departures.mjs from 20261011-power-legend-1 while previous tabs retain their version
+  ---
+  duration_ms: 18.02593
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261011-power-legend-1 while previous tabs retain their version
+ok 21 - the current application release refreshes elevation.mjs from 20261011-power-legend-1 while previous tabs retain their version
+  ---
+  duration_ms: 34.64143
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261011-power-legend-1 while previous tabs retain their version
+ok 22 - the current application release refreshes platform-length.mjs from 20261011-power-legend-1 while previous tabs retain their version
+  ---
+  duration_ms: 13.84278
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+ok 23 - the current application release refreshes app.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 20.404817
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+ok 24 - the current application release refreshes departures.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 24.943525
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+ok 25 - the current application release refreshes elevation.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 15.391793
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+ok 26 - the current application release refreshes platform-length.mjs from 20261011-departure-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 25.286505
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261012-search-availability-1 while previous tabs retain their version
+ok 27 - the current application release refreshes app.mjs from 20261012-search-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.028087
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261012-search-availability-1 while previous tabs retain their version
+ok 28 - the current application release refreshes departures.mjs from 20261012-search-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.75019
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261012-search-availability-1 while previous tabs retain their version
+ok 29 - the current application release refreshes elevation.mjs from 20261012-search-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 24.575991
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261012-search-availability-1 while previous tabs retain their version
+ok 30 - the current application release refreshes platform-length.mjs from 20261012-search-availability-1 while previous tabs retain their version
+  ---
+  duration_ms: 14.664829
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+ok 31 - the current application release refreshes app.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+  ---
+  duration_ms: 25.327521
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+ok 32 - the current application release refreshes departures.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+  ---
+  duration_ms: 18.10532
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+ok 33 - the current application release refreshes elevation.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.292645
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+ok 34 - the current application release refreshes platform-length.mjs from 20261016-crossfeed-cancellation-1 while previous tabs retain their version
+  ---
+  duration_ms: 20.252943
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+ok 35 - the current application release refreshes app.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+  ---
+  duration_ms: 30.731298
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+ok 36 - the current application release refreshes departures.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+  ---
+  duration_ms: 14.284026
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+ok 37 - the current application release refreshes elevation.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+  ---
+  duration_ms: 16.595836
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+ok 38 - the current application release refreshes platform-length.mjs from 20261017-source-trip-identity-1 while previous tabs retain their version
+  ---
+  duration_ms: 30.67925
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+ok 39 - the current application release refreshes app.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.276441
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+ok 40 - the current application release refreshes departures.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+  ---
+  duration_ms: 27.881548
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+ok 41 - the current application release refreshes elevation.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+  ---
+  duration_ms: 17.019744
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+ok 42 - the current application release refreshes platform-length.mjs from 20261017-elevation-pending-cache-1 while previous tabs retain their version
+  ---
+  duration_ms: 16.403687
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes app.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+ok 43 - the current application release refreshes app.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+  ---
+  duration_ms: 21.905189
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes departures.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+ok 44 - the current application release refreshes departures.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+  ---
+  duration_ms: 26.879799
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes elevation.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+ok 45 - the current application release refreshes elevation.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+  ---
+  duration_ms: 14.872822
+  type: 'test'
+  ...
+# Subtest: the current application release refreshes platform-length.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+ok 46 - the current application release refreshes platform-length.mjs from 20261017-search-row-isolation-1 while previous tabs retain their version
+  ---
+  duration_ms: 14.547152
+  type: 'test'
+  ...
+# Subtest: numeric station search refreshes exact app.mjs bytes from the immediate predecessor
+ok 47 - numeric station search refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 35.012745
+  type: 'test'
+  ...
+# Subtest: numeric station search refreshes exact map-model.mjs bytes from the immediate predecessor
+ok 48 - numeric station search refreshes exact map-model.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 19.521591
+  type: 'test'
+  ...
+# Subtest: unmatched timetable reporting refreshes exact app.mjs bytes from the immediate predecessor
+ok 49 - unmatched timetable reporting refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 28.950227
+  type: 'test'
+  ...
+# Subtest: unmatched timetable reporting refreshes exact departures.mjs bytes from the immediate predecessor
+ok 50 - unmatched timetable reporting refreshes exact departures.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 20.235857
+  type: 'test'
+  ...
+# Subtest: malformed departure-board handling refreshes exact app.mjs bytes from the immediate predecessor
+ok 51 - malformed departure-board handling refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 19.707832
+  type: 'test'
+  ...
+# Subtest: malformed departure-board handling refreshes exact departures.mjs bytes from the immediate predecessor
+ok 52 - malformed departure-board handling refreshes exact departures.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 42.350211
+  type: 'test'
+  ...
+# Subtest: row-isolation release upgrades executable parser offline while old tabs retain their cached behavior
+ok 53 - row-isolation release upgrades executable parser offline while old tabs retain their cached behavior
+  ---
+  duration_ms: 45.466583
+  type: 'test'
+  ...
+# Subtest: exact departure instants refreshes exact app.mjs bytes from the immediate predecessor
+ok 54 - exact departure instants refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 20.185466
+  type: 'test'
+  ...
+# Subtest: exact departure instants refreshes exact departures.mjs bytes from the immediate predecessor
+ok 55 - exact departure instants refreshes exact departures.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 25.539292
+  type: 'test'
+  ...
+# Subtest: integrated departure instants refreshes exact app.mjs bytes from the immediate predecessor
+ok 56 - integrated departure instants refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 18.728562
+  type: 'test'
+  ...
+# Subtest: integrated departure instants refreshes exact departures.mjs bytes from the immediate predecessor
+ok 57 - integrated departure instants refreshes exact departures.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 17.13765
+  type: 'test'
+  ...
+# Subtest: search availability wording refreshes exact app.mjs bytes from the immediate predecessor
+ok 58 - search availability wording refreshes exact app.mjs bytes from the immediate predecessor
+  ---
+  duration_ms: 32.723971
+  type: 'test'
+  ...
+# Subtest: first-party libraries install together and remain available offline with every external origin blocked
+ok 59 - first-party libraries install together and remain available offline with every external origin blocked
+  ---
+  duration_ms: 11.281378
+  type: 'test'
+  ...
+# Subtest: actual CDN-era worker copies remain usable after first-party migration without new CDN requests
+ok 60 - actual CDN-era worker copies remain usable after first-party migration without new CDN requests
+  ---
+  duration_ms: 37.057067
+  type: 'test'
+  ...
+# Subtest: an old CDN JS URL receives the fixed library even without a legacy cache entry
+ok 61 - an old CDN JS URL receives the fixed library even without a legacy cache entry
+  ---
+  duration_ms: 8.776756
+  type: 'test'
+  ...
+# Subtest: legacy cache migration and serving reject tampered-bytes with otherwise valid responses
+ok 62 - legacy cache migration and serving reject tampered-bytes with otherwise valid responses
+  ---
+  duration_ms: 29.994329
+  type: 'test'
+  ...
+# Subtest: legacy cache migration and serving reject crypto-unavailable with otherwise valid responses
+ok 63 - legacy cache migration and serving reject crypto-unavailable with otherwise valid responses
+  ---
+  duration_ms: 16.766541
+  type: 'test'
+  ...
+# Subtest: actual first-party worker migration serves fixed bytes to delayed old tabs
+ok 64 - actual first-party worker migration serves fixed bytes to delayed old tabs
+  ---
+  duration_ms: 39.952524
+  type: 'test'
+  ...
+# Subtest: legend overflow release replaces cached CSS while keeping the preceding page coherent
+ok 65 - legend overflow release replaces cached CSS while keeping the preceding page coherent
+  ---
+  duration_ms: 23.273985
+  type: 'test'
+  ...
+# Subtest: Power legend release upgrades the cached app, CSS and facility metadata together
+ok 66 - Power legend release upgrades the cached app, CSS and facility metadata together
+  ---
+  duration_ms: 25.879207
+  type: 'test'
+  ...
+# Subtest: station crossing release replaces cached style bytes while previous tabs stay coherent
+ok 67 - station crossing release replaces cached style bytes while previous tabs stay coherent
+  ---
+  duration_ms: 48.015903
+  type: 'test'
+  ...
+# Subtest: hidden-mask release refreshes the app and executable guard through the existing worker
+ok 68 - hidden-mask release refreshes the app and executable guard through the existing worker
+  ---
+  duration_ms: 34.993973
+  type: 'test'
+  ...
+# (node:12) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Power presentation upgrades a compact old module graph without mixing cached releases
+ok 69 - Power presentation upgrades a compact old module graph without mixing cached releases
+  ---
+  duration_ms: 37.921397
+  type: 'test'
+  ...
+# Subtest: world-copy recovery release coordinates entrypoint and transitive module versions
+ok 70 - world-copy recovery release coordinates entrypoint and transitive module versions
+  ---
+  duration_ms: 12.676666
+  type: 'test'
+  ...
+# Subtest: world-copy recovery release upgrades cached app and exact recovery bytes on online navigation
+ok 71 - world-copy recovery release upgrades cached app and exact recovery bytes on online navigation
+  ---
+  duration_ms: 43.051253
+  type: 'test'
+  ...
+# Subtest: cached station release upgrades executable fallback and retry bytes while preserving old tabs
+ok 72 - cached station release upgrades executable fallback and retry bytes while preserving old tabs
+  ---
+  duration_ms: 31.855949
+  type: 'test'
+  ...
+# Subtest: destination identity upgrades a compact old module graph and keeps current row ownership offline
+ok 73 - destination identity upgrades a compact old module graph and keeps current row ownership offline
+  ---
+  duration_ms: 51.919689
+  type: 'test'
+  ...
+# Subtest: search row-isolation release updates cached app/model together and retains old tabs
+ok 74 - search row-isolation release updates cached app/model together and retains old tabs
+  ---
+  duration_ms: 32.117363
+  type: 'test'
+  ...
+# Subtest: drawing Clear release updates the cached toolbar while preserving old tabs
+ok 75 - drawing Clear release updates the cached toolbar while preserving old tabs
+  ---
+  duration_ms: 41.701141
+  type: 'test'
+  ...
+# Subtest: measurement height-state release upgrades 20261018-drawing-import-1 and keeps old tabs isolated
+ok 76 - measurement height-state release upgrades 20261018-drawing-import-1 and keeps old tabs isolated
+  ---
+  duration_ms: 44.074267
+  type: 'test'
+  ...
+# Subtest: measurement height-state release upgrades 20261018-measure-height-state-1 and keeps old tabs isolated
+ok 77 - measurement height-state release upgrades 20261018-measure-height-state-1 and keeps old tabs isolated
+  ---
+  duration_ms: 41.259982
+  type: 'test'
+  ...
+# Subtest: source recovery release caches the existing recovery module and preserves prior tabs
+ok 78 - source recovery release caches the existing recovery module and preserves prior tabs
+  ---
+  duration_ms: 17.123539
+  type: 'test'
+  ...
+1..78
+# tests 78
+# suites 0
+# pass 78
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2084.080704

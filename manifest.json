@@ -1,0 +1,71 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "pull_request": 274,
+  "base_commit": "39fbe0e95b8f98a6a9740cce3989eaf92668bcce",
+  "base_tree": "1b06bf512b7cf89d19f87b9c5a765e5011d6b06b",
+  "patched_tree": "95b531fc20c73cc056e3f5b2602e2ff0d1322621",
+  "patch_sha256": "965448d3b14ef0f64b5e0f81f0b150cadd7853d1b61b62123bfdd4dced395585",
+  "change": "Nine styles files, fourteen release-token replacements from 20261026-terrain-3d-1 to 20261027-clean-map-history-1; no app, SW policy, HTML entrypoint, tests or assertions changed.",
+  "files": {
+    "styles/cjk-font.mjs": "47489fa2baa5c3f84cd3501ec0b8b45d8996a8f802dcd819e8c3a306486986e3",
+    "styles/data-check.html": "bb3a93945f5e4bbe532a2cb4c72f18db85be609cd26e15e9ced4f3071339eb03",
+    "styles/data-check.mjs": "ca94cc61c8017f6146c28ca445a71fa62d0519695e3d6cc11544285768f6489a",
+    "styles/departures-ui.mjs": "8bb979873cca58eafe219c3cc5c64d76a99c80c351b0e576b0ee14dc5bfc1446",
+    "styles/elevation.mjs": "bf969428f6496e9233eda16e542805674802c7b6bab5511b26a4f410c5c7ae20",
+    "styles/layer-semantics.mjs": "c6ef6b92fb90416cb7f1c7170aea2acca442bae7b717f0e7441d6b9dbc8cba19",
+    "styles/map-model.mjs": "7a2cb15d8458a8dce192e9164c96ef06965f0c6ace0998e37056a0a267ef3e5c",
+    "styles/station-world.mjs": "1ff0d42b7c7ab35d02c6ba8ad1b938aa95e712376d5640e2b8b3863c78b65bfc",
+    "styles/terrain-3d.mjs": "4a3bf71a7714a8e290e66ab20f38bcb407ca6d85dcff1797c1ffcf1c4f58dd66"
+  },
+  "root_cause": "Current map-model imported platform-length, railway-visibility and axle-load with stale token. Exact offline reproduction records cache misses for those URLs; fresh/current shell correctly caches its own version, so the mixed graph cannot execute offline. Same stale graph causes all five CI failures.",
+  "validation": {
+    "baseline_five": {
+      "result": "5 tests, 0 pass, 5 fail, 0 skipped/cancelled",
+      "log": "baseline-five-tap.log",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap --test-name-pattern='every versioned file|Power presentation upgrades|world-copy recovery release coordinates|destination identity upgrades|search row-isolation release' tests/startup.test.mjs tests/sw-install.test.mjs"
+    },
+    "offline_cause": {
+      "result": "Unmodified reproduction fails TypeError offline. Temporary diagnostic prints three stale transitive URLs; diagnostic change reverted before patch/tests.",
+      "logs": [
+        "baseline-offline.log",
+        "baseline-offline-cache-miss.log"
+      ]
+    },
+    "focused_repaired": {
+      "result": "8 tests, 8 pass, 0 fail/skipped/cancelled; five failing cases plus existing movement/local-view, incoming/cold-share and settings cases",
+      "log": "repaired-eight.log",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap --test-name-pattern='every versioned file|Power presentation upgrades|world-copy recovery release coordinates|destination identity upgrades|search row-isolation release|map movements persist locally|incoming map links|settings are remembered' tests/startup.test.mjs tests/sw-install.test.mjs"
+    },
+    "service_worker_suite": {
+      "result": "78 tests, 78 pass, 0 fail/skipped/cancelled",
+      "log": "repaired-sw-all.log",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-reporter=tap tests/sw-install.test.mjs"
+    },
+    "build": {
+      "result": "Passed; 262 layers; generated world.style.json and major-stations.geojson unchanged",
+      "log": "repaired-build.log",
+      "command": "npm run build && git diff --exit-code -- styles/world.style.json styles/major-stations.geojson"
+    },
+    "syntax_whitespace": {
+      "result": "Passed app.mjs and each changed .mjs syntax; git diff --check",
+      "command": "node --check styles/app.mjs; node --check <each changed .mjs>; git diff --check"
+    },
+    "graph_scan": {
+      "result": "41 literal versioned release references across11 files all equal current entrypoint token; app fallback matches via unchanged existing test"
+    },
+    "full_host": {
+      "result": "INCOMPLETE / INTERRUPTED. 146 emitted passing tests, no assertion failure emitted; no output for >3 minutes after controls-painter-batches final case. Operator interrupt yielded terminal exit130; no full pass claimed and no aggregate retry.",
+      "log": "repaired-full-node26.log",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/*.test.mjs",
+      "observations": "Observed /tmp96% full (241MiB available), workspace9.9GiB available, MemAvailable about1.2GiB. No established causal diagnosis. Earlier default-reporter/concurrent baseline attempts emitted nothing and were interrupted; not results."
+    },
+    "native_browser": "UNRUN. Existing known sandbox/socket launch restriction respected; no workaround/retry. Hosted browser gates remain required."
+  },
+  "published_commit": "b5932c2b838aaa2f4021d7563442b660fec39f25",
+  "runtime": {
+    "node": "26.12.1",
+    "npm": "11.9.0",
+    "dependency_lock": "unchanged; reused dependency installation after byte-equal lock check"
+  },
+  "log_redaction": "Absolute local checkout path replaced with <checkout>; log result content otherwise preserved."
+}

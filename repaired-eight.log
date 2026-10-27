@@ -1,0 +1,63 @@
+TAP version 13
+# (node:15) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:15) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# Subtest: settings are remembered in a cookie; a shared link applies once and leaves the address
+ok 1 - settings are remembered in a cookie; a shared link applies once and leaves the address
+  ---
+  duration_ms: 530.737948
+  type: 'test'
+  ...
+# Subtest: map movements persist locally without changing URL or browser history
+ok 2 - map movements persist locally without changing URL or browser history
+  ---
+  duration_ms: 107.72294
+  type: 'test'
+  ...
+# Subtest: incoming map links are consumed once; sharing still works before map initialization
+ok 3 - incoming map links are consumed once; sharing still works before map initialization
+  ---
+  duration_ms: 96.141302
+  type: 'test'
+  ...
+# Subtest: every versioned file the page loads asks for the page version
+ok 4 - every versioned file the page loads asks for the page version
+  ---
+  duration_ms: 8.4201
+  type: 'test'
+  ...
+# (node:27) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Power presentation upgrades a compact old module graph without mixing cached releases
+ok 5 - Power presentation upgrades a compact old module graph without mixing cached releases
+  ---
+  duration_ms: 95.97728
+  type: 'test'
+  ...
+# Subtest: world-copy recovery release coordinates entrypoint and transitive module versions
+ok 6 - world-copy recovery release coordinates entrypoint and transitive module versions
+  ---
+  duration_ms: 4.916147
+  type: 'test'
+  ...
+# Subtest: destination identity upgrades a compact old module graph and keeps current row ownership offline
+ok 7 - destination identity upgrades a compact old module graph and keeps current row ownership offline
+  ---
+  duration_ms: 61.865121
+  type: 'test'
+  ...
+# Subtest: search row-isolation release updates cached app/model together and retains old tabs
+ok 8 - search row-isolation release updates cached app/model together and retains old tabs
+  ---
+  duration_ms: 41.029749
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1645.78117
