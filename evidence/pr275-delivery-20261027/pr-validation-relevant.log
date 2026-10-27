@@ -1,0 +1,40 @@
+2026-10-27T08:22:33.8607452Z ✔ coarse DEM references preserve both fixture shelves and basins through real terrain repair (684.125833ms)
+2026-10-27T08:22:33.8619208Z ✔ invalid and cancelled requests do not fetch water or terrain (1.634176ms)
+2026-10-27T08:22:33.8669566Z ✔ depth shading stays below islands, contours and railways and respects the terrain setting (34.045693ms)
+2026-10-27T08:22:33.8687546Z ✔ with a worker, depth tiles are drawn there: land needs no terrain, a cancelled tile is dropped (40.714194ms)
+2026-10-27T08:22:37.6457292Z ✔ requested destination types are selected without turning every shop or sports pitch into a magnet (7.545385ms)
+2026-10-27T08:22:37.6539311Z ✔ symmetric missing or malformed terrain/cache/source evidence fails both natural and batch gates (90.633198ms)
+2026-10-27T08:22:43.2152053Z ✔ actual pinned renderer reproduces 360/144 with no guard and identical composited terrain (47.070282ms)
+2026-10-27T08:22:43.2155679Z ✔ cold comparisons reject missing/reordered layers and a missing terrain tile (17.667161ms)
+2026-10-27T08:22:43.2266168Z ✔ terrain repair: Terrarium colours round-trip (2.109692ms)
+2026-10-27T08:22:43.2266759Z ✔ terrain repair: pits, a groove and a band go; real terrain stays (517.728028ms)
+2026-10-27T08:22:43.2267497Z ✔ terrain repair: contour lines are counted in whichever units and family draw more (2.993229ms)
+2026-10-27T08:22:43.2268662Z ✔ terrain repair: single-pixel contour storms go at coarse zooms; real holes stay (208.525967ms)
+2026-10-27T08:22:43.2269352Z ✔ terrain repair: missing data is filled from zoom 4 (35.976256ms)
+2026-10-27T08:22:43.2270061Z ✔ terrain repair: faults a few pixels across go; islets, cliffs, coasts and plains stay (1705.47365ms)
+2026-10-27T08:22:43.2270907Z ✔ terrain repair: a pit the finer zoom does not have takes its heights; one it has stays (167.303629ms)
+2026-10-27T08:22:43.2271624Z ✔ terrain repair: at the finest zoom the next coarser one is asked (8.159058ms)
+2026-10-27T08:22:51.6961463Z ✔ actual terrain tile rejection reaches the UI as a gap and recovers on retry (39.080117ms)
+2026-10-27T08:24:18.5982907Z ✔ pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests (149.811397ms)
+2026-10-27T08:24:18.5983701Z ✔ 3D mountain icon starts an actually detailed terrain view, not just a pitch flag (123.349006ms)
+2026-10-27T08:24:18.5984480Z ✔ terrain control preserves clean history while sharing the current polar 3D view (159.798824ms)
+2026-10-27T08:24:18.6057519Z ✔ Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution (105.60454ms)
+2026-10-27T08:24:18.6300117Z ✔ terrain water MVT round-trips the complete closed ocean rectangle in page and worker decoders (3.5048ms)
+2026-10-27T08:24:18.6301166Z ✔ pinned MapLibre terrain queries the fixture fine DEM, with the original camera as a negative control (246.551037ms)
+2026-10-27T08:24:18.6311782Z ✔ failure diagnostics retain actual terrain, request and worker state in an isolated page realm (1.303676ms)
+2026-10-27T08:24:18.6313585Z ✔ high-pitch views extend to 85° while distant tiles switch to lower native LOD (2.270784ms)
+2026-10-27T08:24:18.6314432Z ✔ dynamically installed sources inherit the active horizon budget without extra pitch events (0.557257ms)
+2026-10-27T08:24:18.6315363Z ✔ 3D style uses an independent Terrarium source, preserving the original hillshade and contour sources (17.90462ms)
+2026-10-27T08:24:18.6316250Z ✔ 3D icon focuses the current location to visible terrain detail, without exaggeration (0.624582ms)
+2026-10-27T08:24:18.6316932Z ✔ 3D activates only on pitched views with relief enabled (0.400826ms)
+2026-10-27T08:24:18.6317680Z ✔ terrain exaggeration changes a live 3D mesh without replacing DEM samples, camera or source (0.668874ms)
+2026-10-27T08:24:18.6519662Z ℹ tests 2747
+2026-10-27T08:24:18.6520073Z ℹ pass 2747
+2026-10-27T08:24:18.6520275Z ℹ fail 0
+2026-10-27T08:24:18.8463537Z ℹ tests 4
+2026-10-27T08:24:18.8466403Z ℹ pass 4
+2026-10-27T08:24:18.8466724Z ℹ fail 0
+2026-10-27T08:24:34.4533026Z   key: rare-han-8ca9d93ef3e5bf773097f0f56dbb32e0a49b058f555511de361b2859af7c83ae
+2026-10-27T08:26:44.3169267Z Result key: tree a2eea3a81ea3ee510df500ef30d1cebfb259024e data a1c7df47cdc5f35eb875e0f5a35ea271
+2026-10-27T08:26:44.3489591Z   SHA: 64b91c6a55ae3e4790bde3655dee755b1b15adcc
+2026-10-27T08:26:44.3490069Z   KEY: tree a2eea3a81ea3ee510df500ef30d1cebfb259024e data a1c7df47cdc5f35eb875e0f5a35ea271

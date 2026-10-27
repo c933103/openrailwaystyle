@@ -1,0 +1,120 @@
+{
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "libraryAssets": [
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0-atlas.1.js",
+      "status": 200,
+      "type": "application/javascript",
+      "bytes": 1056809,
+      "sha256": "46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0.css",
+      "status": 200,
+      "type": "text/css",
+      "bytes": 70024,
+      "sha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732"
+    },
+    {
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/pmtiles-4.2.1.js",
+      "status": 200,
+      "type": "application/javascript",
+      "bytes": 19565,
+      "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79"
+    }
+  ],
+  "archiveContract": {
+    "rejected": "Wrong magic number for PMTiles archive",
+    "version": 3,
+    "entries": 1,
+    "metadata": {
+      "vector_layers": []
+    },
+    "bytes": 0,
+    "missing": true
+  },
+  "wuhan": [
+    {
+      "zoom": 6,
+      "center": [
+        114.305,
+        30.593
+      ],
+      "layer": "infrastructure-overview",
+      "source": "network",
+      "sourceLayer": "standard_railway_line_low",
+      "infrastructureVisibility": "visible",
+      "speedVisibility": "none",
+      "sourceLoaded": true,
+      "providerSourceFeatures": 1,
+      "providerPresentRail": 1,
+      "rendered": 1
+    },
+    {
+      "zoom": 7,
+      "center": [
+        114.305,
+        30.593
+      ],
+      "layer": "infrastructure-tracks",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "infrastructureVisibility": "visible",
+      "speedVisibility": "none",
+      "sourceLoaded": true,
+      "providerSourceFeatures": 1,
+      "providerPresentRail": 1,
+      "rendered": 1
+    },
+    {
+      "zoom": 8,
+      "center": [
+        114.305,
+        30.593
+      ],
+      "layer": "infrastructure-tracks",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "infrastructureVisibility": "visible",
+      "speedVisibility": "none",
+      "sourceLoaded": true,
+      "providerSourceFeatures": 3,
+      "providerPresentRail": 2,
+      "rendered": 2
+    }
+  ],
+  "filtered": {
+    "zoom": 7,
+    "center": [
+      114.305,
+      30.593
+    ],
+    "layer": "infrastructure-tracks",
+    "source": "railway",
+    "sourceLayer": "railway_line_high",
+    "infrastructureVisibility": "visible",
+    "speedVisibility": "none",
+    "sourceLoaded": true,
+    "providerSourceFeatures": 1,
+    "providerPresentRail": 1,
+    "rendered": 0
+  },
+  "initial": {
+    "requests": 43,
+    "unique": 43,
+    "byDataset": {
+      "railway_line_high,railway_text_km": 25,
+      "standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,standard_station_entrances,standard_railway_stop_positions,standard_interlocking,standard_interlocking_text": 18
+    }
+  },
+  "afterPan": {
+    "requests": 51,
+    "unique": 51,
+    "byDataset": {
+      "railway_line_high,railway_text_km": 30,
+      "standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,standard_station_entrances,standard_railway_stop_positions,standard_interlocking,standard_interlocking_text": 21
+    }
+  },
+  "panAdded": 8,
+  "evidence_note": "Selected non-secret original fields from published-map-review artifact12732966968. Full original fixture/ledger remains in that artifact."
+}

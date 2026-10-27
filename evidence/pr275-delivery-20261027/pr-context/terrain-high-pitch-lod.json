@@ -1,0 +1,9 @@
+{
+  "pitch": 82,
+  "maxPitch": 85,
+  "terrainLod": "function",
+  "basemapLod": "function",
+  "near": 11.068366935933913,
+  "far": 4.385968298891768,
+  "projection": "implicit-default"
+}

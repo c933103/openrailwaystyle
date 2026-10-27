@@ -1,0 +1,107 @@
+{
+  "observed_at": "2026-10-27T12:41:57.521219+00:00",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "expected_commit": "3efa308cb0ac088c6319fe7d73b8aa93647485ea",
+  "version": "20261027-terrain-pitch-2",
+  "files": [
+    {
+      "path": "app.mjs",
+      "bytes": 178766,
+      "sha256": "90e0a7e410473155fc50f06c9e6606a257ee8dc1c481a617d9f82f5d246ee8f4",
+      "expected_sha256": "90e0a7e410473155fc50f06c9e6606a257ee8dc1c481a617d9f82f5d246ee8f4",
+      "exact_source_match": true
+    },
+    {
+      "path": "cjk-font.mjs",
+      "bytes": 4077,
+      "sha256": "ea92ac1b303973c62d4ece9a0fca8ae3d31a99a9bdbcbe32baa17df3a3ef5926",
+      "expected_sha256": "ea92ac1b303973c62d4ece9a0fca8ae3d31a99a9bdbcbe32baa17df3a3ef5926",
+      "exact_source_match": true
+    },
+    {
+      "path": "data-check.html",
+      "bytes": 1399,
+      "sha256": "4434bc3712280da796b00cb1c808f901a1b565d4baca54fd2e87c758f82e5221",
+      "expected_sha256": "4434bc3712280da796b00cb1c808f901a1b565d4baca54fd2e87c758f82e5221",
+      "exact_source_match": true
+    },
+    {
+      "path": "data-check.mjs",
+      "bytes": 3834,
+      "sha256": "cf0c183b2d020eb01a7ef81dbf6c2b4cc2fb0aef3abe264e30a46c817036afc3",
+      "expected_sha256": "cf0c183b2d020eb01a7ef81dbf6c2b4cc2fb0aef3abe264e30a46c817036afc3",
+      "exact_source_match": true
+    },
+    {
+      "path": "departures-ui.mjs",
+      "bytes": 6973,
+      "sha256": "26d1a2dd3dc88e0d689577704f561dbebbc11bc61fd9e9e98227446f3de87c7f",
+      "expected_sha256": "26d1a2dd3dc88e0d689577704f561dbebbc11bc61fd9e9e98227446f3de87c7f",
+      "exact_source_match": true
+    },
+    {
+      "path": "elevation.mjs",
+      "bytes": 7683,
+      "sha256": "8f3c7c600f95a6a49f28d14078ad96b509698f2f45b30e00431e8b05b3529777",
+      "expected_sha256": "8f3c7c600f95a6a49f28d14078ad96b509698f2f45b30e00431e8b05b3529777",
+      "exact_source_match": true
+    },
+    {
+      "path": "index.html",
+      "bytes": 49376,
+      "sha256": "2c8eda46e0850e75f95977c003d2d748c8264fe5603d93b70c81b93b9b8f31c3",
+      "expected_sha256": "2c8eda46e0850e75f95977c003d2d748c8264fe5603d93b70c81b93b9b8f31c3",
+      "exact_source_match": true
+    },
+    {
+      "path": "layer-semantics.mjs",
+      "bytes": 6071,
+      "sha256": "d5267685890b4e4aa194950b53c23fe61d2c7dbebc4cae5303b44f021a1b34ac",
+      "expected_sha256": "d5267685890b4e4aa194950b53c23fe61d2c7dbebc4cae5303b44f021a1b34ac",
+      "exact_source_match": true
+    },
+    {
+      "path": "map-model.mjs",
+      "bytes": 62191,
+      "sha256": "8012b54dca2dd84b2f1c1081867941494dd99a0481c79479079df93fd503dd41",
+      "expected_sha256": "8012b54dca2dd84b2f1c1081867941494dd99a0481c79479079df93fd503dd41",
+      "exact_source_match": true
+    },
+    {
+      "path": "station-world.mjs",
+      "bytes": 7664,
+      "sha256": "a45937ed557f6e5ceaa988128e8cabdd7b9d911213a7a7ca604d69ec78dbf022",
+      "expected_sha256": "a45937ed557f6e5ceaa988128e8cabdd7b9d911213a7a7ca604d69ec78dbf022",
+      "exact_source_match": true
+    },
+    {
+      "path": "terrain-3d.mjs",
+      "bytes": 15265,
+      "sha256": "5b153235a6a0ab41943b1c400bcf8555b5422824ba12e21de50e674f9de28666",
+      "expected_sha256": "5b153235a6a0ab41943b1c400bcf8555b5422824ba12e21de50e674f9de28666",
+      "exact_source_match": true
+    },
+    {
+      "path": "sw.js",
+      "bytes": 15131,
+      "sha256": "8aad1503547e3f31eecf8942d72c5fd654c99cc2776bddf8fd7251ff963eb542",
+      "expected_sha256": "8aad1503547e3f31eecf8942d72c5fd654c99cc2776bddf8fd7251ff963eb542",
+      "exact_source_match": true
+    },
+    {
+      "path": "app.css",
+      "bytes": 24495,
+      "sha256": "3383079ccf0d112162a92bb95d062d9996f4cb4091a75754449bb9fea618feb1",
+      "expected_sha256": "3383079ccf0d112162a92bb95d062d9996f4cb4091a75754449bb9fea618feb1",
+      "exact_source_match": true
+    }
+  ],
+  "embedded_build_identity": {
+    "commit_present": true,
+    "source_url_present": true,
+    "release_present": true,
+    "bytes": 371634,
+    "sha256": "48264d7c2174e2ea37027a651cca34e7b8996f3b6c7a214dd9b7fe3440900d53"
+  },
+  "scope": "Read-only first-party HTTP source-byte and embedded build identity checks; no browser or provider requests."
+}
