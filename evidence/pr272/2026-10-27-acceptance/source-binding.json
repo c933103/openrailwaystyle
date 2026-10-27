@@ -1,0 +1,321 @@
+{
+  "source_head": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+  "tested_merge": "2cb4e6817e96d002f0d21fbf0fc0d45ddb72dd79",
+  "reference": {
+    "run": 40428208597,
+    "artifact": 12701182218,
+    "archive_sha256": "50b1e22af62c98cc81d8b02da63f8cd196b78727879589f4f18bc2ccb18d8516",
+    "generation": "87e1693d26bcf4231da89209",
+    "providerRequests": 0,
+    "samples": 840,
+    "appSamples": 18,
+    "rendererAcceptance": {
+      "complete": true,
+      "path": "generations/87e1693d26bcf4231da89209/renderer-acceptance-01f8f232c83bb59305e6c0e9fd3ee7b767e0a06de3acdebde5f6ec927242fcc0.json",
+      "sha256": "01f8f232c83bb59305e6c0e9fd3ee7b767e0a06de3acdebde5f6ec927242fcc0",
+      "inputSha256": "0d9670c110bf6bc865c1db41150ea18605ffb0f710d4370a8a1f7029b8321801",
+      "samples": 840,
+      "appSamples": 18,
+      "assetRequests": 1077,
+      "assetBytes": 62186904,
+      "timing": {
+        "medianMs": 340,
+        "p95Ms": 897
+      }
+    },
+    "scope": "Existing generation renderer verification; extract skipped. No acquisition.",
+    "visualInspection": "Nonempty actual Atlas railway fallback visible in inspected outage screenshot; configured provider failure message shown, no fresh acquisition."
+  },
+  "acceptance": "All four required current-head workflows successful; all six site browser shards and aggregate passed. Code review has no major issues. Artifact inspection completed with uniform-terrain-image limitation retained. No merge/deploy by repair task.",
+  "terrain": {
+    "run": 40428208575,
+    "job": 121941118166,
+    "artifact": 12701271450,
+    "archive_sha256": "a27d63a1d17e132dae69a8d56d90ce1a799766f3da22b569f4c0d6b88344ef2d",
+    "native": {
+      "source": "terrain3d",
+      "pitch": 60,
+      "sea": -875,
+      "land": 340,
+      "counts": {
+        "fine": 7,
+        "coarse": 16,
+        "water": 7
+      },
+      "worker": "Actual encoded worker replies required; all reply errors absent",
+      "overhead": "Terrain removed and query elevation becomes null"
+    },
+    "timings": [
+      {
+        "check": "check-bathymetry-browser.mjs",
+        "code": 0,
+        "seconds": 42.6
+      },
+      {
+        "check": "check-terrain-deadlines-browser.mjs",
+        "code": 0,
+        "seconds": 63
+      },
+      {
+        "check": "check-terrain-3d-browser.mjs",
+        "code": 0,
+        "seconds": 5.4
+      },
+      {
+        "check": "check-globe-browser.mjs",
+        "code": 0,
+        "seconds": 24.4
+      },
+      {
+        "check": "check-polar-browser.mjs",
+        "code": 0,
+        "seconds": 6.1
+      },
+      {
+        "check": "check-polar-parity-browser.mjs",
+        "code": 0,
+        "seconds": 93.3
+      },
+      {
+        "check": "check-imagery-browser.mjs",
+        "code": 0,
+        "seconds": 18.5
+      }
+    ],
+    "visualLimit": "Terrain image is uniform beige fill and not a visual relief/contour-draping demonstration. Signed heights rely on actual renderer/worker assertions. Bathymetry shelf image visibly preserves white island holes and depth color bands."
+  },
+  "platform": {
+    "run": 40428208575,
+    "job": 121941118210,
+    "checks": "Signal-power, desktop/mobile platform threshold and units, infrastructure passed",
+    "priorFailureCause": "Not established; diagnostics-only change, current acceptance is not a causal fix claim."
+  },
+  "controls": {
+    "run": 40428208601,
+    "artifact": 12700578707,
+    "archive_sha256": "2a14eb157ac63c6812487fa9da3039cd1ca3d6d7179bb3ae3915882ed9df3af2",
+    "manifest": {
+      "renderer": "MapLibre 5.24.0 atlas.1 attribution-only backport",
+      "applicationGuard": "installHiddenTileMaskGuard from styles/map-controls.mjs; instance-local, original prototype preserved",
+      "sourceCommit": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+      "eventCommit": "2cb4e6817e96d002f0d21fbf0fc0d45ddb72dd79",
+      "pullRequestHead": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+      "sources": {
+        "node_modules/maplibre-gl/src/render/painter.ts": "bf19980d31838a1e6d32cd940673bcb7b367fb102af426050afd5555abd913c0",
+        "node_modules/maplibre-gl/src/webgl/render_to_texture.ts": "58d9334f309c39452cccb8064a04a94dd6d3a6c5f98f56969599579e61216ac9",
+        "node_modules/maplibre-gl/src/webgl/render_pool.ts": "3c3d58135b22262c0bde1a9796f7c021fd800c511b545f4744cdc1afdb1c4319",
+        "node_modules/maplibre-gl/src/webgl/draw/draw_terrain.ts": "85b3ba1185f2d6268b0d9d3a436672e1be06de117079ad543ff6aacd4f4e98d6",
+        "node_modules/maplibre-gl/src/ui/map.ts": "796a5bb616f87ee26de1241c5375db0569a6a5ce0122954e16ce1c11c574763e",
+        "node_modules/maplibre-gl/src/style/style_layer.ts": "6b3730cb2721888003d5d2a00af23ff80506650b0e8197315d7f9f20b5f62fce",
+        "node_modules/maplibre-gl/src/tile/tile_manager.ts": "85eb7378a8e127d8d99c931899c2c87a49dd388f0c538ff74647a2972ee326ce",
+        "node_modules/maplibre-gl/src/tile/tile_manager_in_view_tiles.ts": "23af271fbcf75b2f5fa424a0bba8ed64cc58382d3865726aa5a7129575fd4aca",
+        "node_modules/maplibre-gl/src/tile/terrain_tile_manager.ts": "4dc6cbaf5604164234be1de77032deda5d15894a270272937abd28343b955b3b",
+        "node_modules/maplibre-gl/src/tile/tile_id.ts": "e264e6c5141aa7980b82ab9de6d379f991f8f72521b49f18a5f1ebfe01d87f24",
+        "node_modules/maplibre-gl/src/tile/tile.ts": "e40cf65d5ff780cc1cbd043196c8e5487814c31268f4fd3386befb0778aa6aab",
+        "node_modules/maplibre-gl/dist/maplibre-gl.js": "45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb",
+        "node_modules/maplibre-gl/dist/maplibre-gl.js.map": "a09ebdfe7d8a259b7c67a470caa2d4e57d31262bc99020ec41983d3325fa9901",
+        "styles/vendor/maplibre-gl-5.24.0-atlas.1.js": "46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223"
+      },
+      "inputs": {
+        "scripts/controls-painter-probe.mjs": "d247425f19ab670b833ea0b6ec543df723c6282b6633572d34f93acef8a9ee31",
+        "scripts/controls-painter-fixture.mjs": "90e9aba8cff63e9d8d66bc1145f099b2788f3419f332def1812f4746700a7007",
+        "scripts/check-controls-painter-browser.mjs": "737c9be93746d76b16ac47dd750b3a3f402c44998b2299d009139f20aca1e9c1",
+        "styles/app.mjs": "6139e51cddbea3e425046527f39417a1b8c6e93941e911adb99337a448c4b81e",
+        "styles/map-controls.mjs": "66734f550f0f6e690aabc5097ed8135ed35c1c7895db9a911030a5cd457432e7",
+        "styles/world.style.json": "b039776191dc804e7c313c87d464db157da030c2a75d7d32cad3dfc629329ed5",
+        "styles/request-pool.mjs": "bcc0d05d30d96c034b34634d89054179314839f3b87f535334a02dbaf4ebd0d2",
+        "styles/tile-labels.mjs": "746368917d4cba12341852f6997e5fba2833a0a812df8734929ec7420e2d43b7"
+      },
+      "settlementDeadlineMs": 60000,
+      "arms": [
+        "baseline",
+        "hidden-mask-guard"
+      ],
+      "repetitionsPerArm": 1,
+      "terrainDispatchSampling": "complete source batches before terrain rendering; all natural cache/dispatch frames retained and compared; one synchronous cold frame and one warm frame after settlement",
+      "productionChanges": true
+    },
+    "comparisons": [
+      {
+        "case": "mercator-hidden",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 1120,
+        "guardedMaskDraws": 2048
+      },
+      {
+        "case": "mercator-shown",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 3360,
+        "guardedMaskDraws": 4096
+      },
+      {
+        "case": "mercator-hidden-again",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 3360,
+        "guardedMaskDraws": 3072
+      },
+      {
+        "case": "mercator-zoom4",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 13786,
+        "guardedMaskDraws": 11834
+      },
+      {
+        "case": "mercator-pitched",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 11920,
+        "guardedMaskDraws": 11212
+      },
+      {
+        "case": "globe",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "baselineMaskDraws": 25060,
+        "guardedMaskDraws": 22864
+      },
+      {
+        "case": "terrain",
+        "changedBytes": 0,
+        "dispatchEqual": true,
+        "naturalDispatchEqual": true,
+        "naturalTerrainEqual": true,
+        "naturalSourceBatchEqual": true,
+        "terrainSamples": [
+          {
+            "cache": "cold",
+            "changedBytes": 0,
+            "identityEqual": true,
+            "dispatchEqual": true
+          },
+          {
+            "cache": "warm",
+            "changedBytes": 0,
+            "identityEqual": true,
+            "dispatchEqual": true
+          }
+        ],
+        "baselineMaskDraws": 1202,
+        "guardedMaskDraws": 1090
+      }
+    ],
+    "scope": "Fixture-only one-pair diagnostic, not a statistical performance claim",
+    "visualInspection": "Baseline and guard terrain-grid PNGs inspected: identical nonempty blue grid over a pitched surface. No statistical speed claim."
+  },
+  "validation": {
+    "run": 40428208575,
+    "job": 121939480469,
+    "node": "26.12.1",
+    "tests": 2730,
+    "pass": 2730,
+    "fail": 0,
+    "skip": 0,
+    "additionalTests": 4,
+    "mergeTree": "a06a4559412461465a3c7a261f8780e36145312a",
+    "mergeParents": [
+      "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+      "cc428f63a4e741fcabfa07c7dc400394f7087096"
+    ]
+  },
+  "codeReview": {
+    "receipt": 6430864254,
+    "reviewedHead": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+    "result": "No major issues"
+  },
+  "site": {
+    "run": 40428208575,
+    "head": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+    "sixBrowserShards": "success",
+    "browserChecksJob": 121945557876,
+    "browserChecks": "success",
+    "recordJob": 121945580620,
+    "record": "success",
+    "deploy": "skipped for pull_request"
+  },
+  "independentRetry": {
+    "run": 40428208612,
+    "originalJob": 121939180405,
+    "originalResult": "cancelled during Chromium/WebKit Ubuntu dependency download; renderer step not reached; no artifact",
+    "configuredJobBudgetMinutes": 20,
+    "observation": "Cancellation time matches the 20-minute job budget. Exact check-run annotation unavailable through connector endpoint. No test assertion failure inferred.",
+    "retry": "Only the existing cancelled job retried once at unchanged source via normal GitHub API at 2026-10-27T01:06:29Z; no workflow/deadline edits",
+    "acceptance": "Attempt 2 passed at unchanged head; original cancelled install retained."
+  },
+  "independent": {
+    "run": 40428208612,
+    "attempt": 2,
+    "job": 121946968903,
+    "artifact": 12702510427,
+    "archive_sha256": "13aae08ede8d05abf6d7020d8ef41811d9a49ad5f11c42e2125295e6e3fda8dc",
+    "samples": 840,
+    "appSamples": 18,
+    "providerRequests": 0,
+    "profiles": [
+      {
+        "name": "desktop",
+        "engine": "chromium",
+        "width": 800,
+        "height": 450,
+        "assetRequests": 72,
+        "assetBytes": 26365,
+        "decodedTileBytes": 20364,
+        "cachedTileBytes": 20364
+      },
+      {
+        "name": "android",
+        "engine": "chromium",
+        "width": 360,
+        "height": 450,
+        "assetRequests": 72,
+        "assetBytes": 26365,
+        "decodedTileBytes": 20364,
+        "cachedTileBytes": 20364
+      },
+      {
+        "name": "safari",
+        "engine": "webkit",
+        "width": 390,
+        "height": 450,
+        "assetRequests": 72,
+        "assetBytes": 26365,
+        "decodedTileBytes": 20364,
+        "cachedTileBytes": 20364
+      }
+    ],
+    "scope": "Synthetic renderer fixtures; no OSM completeness claim"
+  },
+  "time_utc": "2026-10-27T01:12:39Z",
+  "source_tree": "a06a4559412461465a3c7a261f8780e36145312a",
+  "base": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+  "remote_parent": "f38b73b03ac88b88318664c778658e074e5b40ab",
+  "verified_source_files": 820,
+  "source_publication": "Non-force expected-head update; all file modes/blobs and original parent verified",
+  "limitations": [
+    "Uniform synthetic terrain image does not itself demonstrate visual relief/contour draping; actual native signed-height/worker/overhead assertions provide the specific terrain acceptance.",
+    "Previous mobile platform timeout cause remains unproven; current unchanged threshold passes; diagnostics were added without product code changes.",
+    "No local browser accepted; prior local full attempts incomplete from SIGKILL/undercount, preserved in first archive. Hosted results, not incomplete local runs, establish current acceptance.",
+    "Coarse seabed is not hydrographic measurement; independent polar renderer remains separate."
+  ]
+}
