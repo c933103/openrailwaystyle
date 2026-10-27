@@ -316,6 +316,11 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
  const {dom,window,maps,errors}=await start();
  try {
    const map=maps[0];map.handlers['style.load']();
+   // The startup Map mock collects addControl() calls without mounting the
+   // control. Mount this one through its real MapLibre onAdd() interface.
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   assert.ok(control,'the native terrain control must be registered');
+   window.document.body.append(control.onAdd());
    const button=window.document.getElementById('terrain-toggle');
    assert.ok(button,'native control must have a stable accessible identifier');
    assert.equal(button.textContent.trim(),'','3D glyph is vector artwork, not literal text');
