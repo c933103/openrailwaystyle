@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-map-history-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-map-history-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-map-history-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-map-history-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-map-history-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-map-history-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-map-history-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-map-history-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-map-history-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-map-history-1';
-import {departureItem} from './departures-ui.mjs?v=20261027-clean-map-history-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-map-history-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-map-history-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled} from './terrain-3d.mjs?v=20261027-clean-map-history-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-map-history-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-map-history-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-map-history-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-map-history-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-map-history-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-map-history-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-map-history-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-map-history-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-map-history-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-map-history-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-map-history-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-1';
+import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -64,7 +64,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-map-history-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -687,7 +687,6 @@ function applySettings() {
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
-  updateTerrainButton();
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   const frequencyPaint=serviceFrequencyPaint(settings);
@@ -716,6 +715,9 @@ function applySettings() {
   inView = [];
   renderLegend();
   if (ready) { syncTerrain3D(map, settings.relief);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  // The button must reflect the mesh AFTER its state is reconciled. When
+  // relief is re-enabled while already tilted, no new pitch event occurs.
+  updateTerrainButton();
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -1252,6 +1254,9 @@ const mapErrorMessage = () => {
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
       'Independent map references remain where available; detail may be missing.';
   }
+  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
+    return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
+  }
   return 'Some map data could not load. Check your connection or reload to retry.';
 };
 function updateStatus() {
@@ -1404,18 +1409,38 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
-const terrainButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'3D'});
+// Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
+// rather than rendering the literal text "3D" in a MapLibre icon button.
+const terrainButton = Object.assign(document.createElement('button'), {
+  type:'button', className:'atlas-ctrl atlas-terrain-toggle', id:'terrain-toggle',
+});
+const terrainIcon = document.createElementNS('http://www.w3.org/2000/svg','svg');
+terrainIcon.setAttribute('viewBox','0 0 24 24');
+terrainIcon.setAttribute('aria-hidden','true');
+for (const d of [
+  'M2 18.5 7.5 7l3.6 6.4L15 4l7 14.5H2Z',
+  'M5.2 11.3 7.5 13.7l1.4-1.3',
+  'M13.3 9l1.7 2 1.7-1.6',
+  'M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0',
+]) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',d); terrainIcon.append(path);
+}
+terrainButton.append(terrainIcon);
 function updateTerrainButton() {
-  const enabled = terrain3DEnabled(settings.relief, map?.getPitch());
-  terrainButton.setAttribute('aria-pressed', String(enabled));
-  terrainButton.title = enabled ? 'Return to overhead view' : 'Tilt the map for true 3D terrain and seabed';
-  terrainButton.setAttribute('aria-label', terrainButton.title);
+  const enabled = terrain3DEnabled(settings.relief, map?.getPitch()) &&
+    map?.getTerrain?.()?.source === 'terrain3d';
+  terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
+  terrainButton.title = enabled ? 'Overhead map (keep current zoom)' :
+    'Inspect 3D terrain and seabed (zooms in if too far away)';
+  terrainButton.setAttribute('aria-label',terrainButton.title);
 }
 terrainButton.addEventListener('click', () => {
   if (!map) return;
   const was3D = terrain3DEnabled(settings.relief, map.getPitch());
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
-  map.easeTo({pitch: was3D ? 0 : 60, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600});
+  const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D});
+  map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
 });
 updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;

@@ -2,9 +2,25 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-map-history-1';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-map-history-1';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-1';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
+
+// MapLibre renders its terrain DEM one zoom below the camera tile level.
+// At globe/continent scales even mountains several kilometres high cover
+// fewer than a few display pixels at true 1x elevation. A deliberate press of
+// the 3D control therefore brings the *current centre* to a terrain-inspection
+// scale, without inventing vertical exaggeration or moving to another place.
+export const TERRAIN_3D_INSPECTION_ZOOM = 12.3;
+export const TERRAIN_3D_VIEW_PITCH = 60;
+export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
+  if (!Number.isFinite(zoom) || !Number.isInteger(detail) || detail < 0 || detail > 2) {
+    throw new RangeError('Invalid 3D terrain view');
+  }
+  if (active) return {pitch: 0};
+  const target = TERRAIN_3D_INSPECTION_ZOOM + detail;
+  return {pitch: TERRAIN_3D_VIEW_PITCH, ...(zoom < target ? {zoom: target} : {})};
+}
 
 export const TERRAIN_3D_SOURCE = 'terrain3d';
 export const TERRAIN_3D_MAXZOOM = 14;

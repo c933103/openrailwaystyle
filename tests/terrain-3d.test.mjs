@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {
   TERRAIN_3D_SOURCE, TERRAIN_3D_MAXZOOM, TERRAIN_TILE_SIZE,
+  TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, terrain3DViewTarget,
   terrain3DEnabled, syncTerrain3D, needsSeabedRecovery,
   sampleSeabed, composeTerrainHeights, encodeTerrainPng,
 } from '../styles/terrain-3d.mjs';
@@ -28,6 +29,18 @@ test('3D style uses an independent Terrarium source, preserving the original hil
   for(const name of ['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'])
     assert.ok(style.layers.some(layer=>layer.id===name),name);
   assert.equal(style.terrain,undefined,'an overhead map must not request a terrain mesh');
+});
+
+test('3D icon focuses the current location to visible terrain detail, without exaggeration', () => {
+  const target=TERRAIN_3D_INSPECTION_ZOOM;
+  assert.equal(target,12.3,'the native DEM manager samples one zoom below camera');
+  assert.deepEqual(terrain3DViewTarget({zoom:2,detail:0,active:false}),{zoom:target,pitch:TERRAIN_3D_VIEW_PITCH});
+  assert.deepEqual(terrain3DViewTarget({zoom:9.9,detail:2,active:false}),{zoom:target+2,pitch:TERRAIN_3D_VIEW_PITCH});
+  assert.deepEqual(terrain3DViewTarget({zoom:15,detail:0,active:false}),{pitch:TERRAIN_3D_VIEW_PITCH});
+  assert.deepEqual(terrain3DViewTarget({zoom:1.5,detail:0,active:true}),{pitch:0},
+    'returning overhead must retain the zoom reached while inspecting terrain');
+  assert.throws(()=>terrain3DViewTarget({zoom:NaN,detail:0}),/Invalid 3D/);
+  assert.throws(()=>terrain3DViewTarget({zoom:3,detail:9}),/Invalid 3D/);
 });
 
 test('3D activates only on pitched views with relief enabled', () => {
