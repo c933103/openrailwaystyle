@@ -32,7 +32,17 @@ export const HIGH_PITCH_LOD = Object.freeze({
 // requested visible tiles. Cache size does not impose an active-tile limit.
 export const HIGH_PITCH_TILE_CACHE_LIMIT = 96;
 const tileLodStates = new WeakMap();
-export function syncHighPitchTileBudget(map) {
+// Public style source IDs are cheap to enumerate on LOD transitions. Do not
+// enumerate/clone the entire multi-MB style on each pitch animation frame.
+function currentTileSources(map) {
+  const result = new Map();
+  for (const id of Object.keys(map.getStyle?.()?.sources || {})) {
+    const source = map.getSource(id);
+    if (source) result.set(id, source);
+  }
+  return result;
+}
+export function syncHighPitchTileBudget(map, changedSourceId = null) {
   const source = map?.getSource?.('terrain3d');
   if (!source) return false;
   if (typeof map.setSourceTileLodParams !== 'function')
@@ -41,20 +51,38 @@ export function syncHighPitchTileBudget(map) {
   if (!Number.isFinite(pitch)) throw new RangeError('Invalid camera pitch');
   const high = pitch > HIGH_PITCH_THRESHOLD;
   const previous = tileLodStates.get(map);
+  if (changedSourceId !== null) {
+    if (typeof changedSourceId !== 'string' || !changedSourceId)
+      throw new TypeError('Invalid updated map source ID');
+    // A dynamically registered station, railway or basemap source inherits
+    // the default MapLibre LOD, not the all-source policy installed earlier.
+    // Apply the budget to that source exactly once per source instance.
+    if (!high) return false;
+    if (!previous || previous.source !== source || previous.high !== high)
+      return syncHighPitchTileBudget(map);
+    const added = map.getSource(changedSourceId);
+    if (!added || previous.sources.get(changedSourceId) === added) return false;
+    const lod = changedSourceId === 'terrain3d' ? HIGH_PITCH_LOD.terrain : HIGH_PITCH_LOD.general;
+    // Record first: MapLibre requests a repaint when the LOD changes. This
+    // prevents recursive sourcedata notifications causing repeated updates.
+    previous.sources.set(changedSourceId, added);
+    try { map.setSourceTileLodParams(...lod, changedSourceId); }
+    catch (error) { previous.sources.delete(changedSourceId); throw error; }
+    return true;
+  }
   if (previous?.source === source && previous.high === high) return false;
   if (!high && !previous) {
-    // A fresh overhead camera already uses MapLibre's native defaults;
-    // keep all regular zooms and station detail unchanged.
-    tileLodStates.set(map, {source, high:false});
+    // A fresh overhead camera already uses MapLibre's native defaults.
+    tileLodStates.set(map, {source, high:false, sources:new Map()});
     return false;
   }
   const [levels, ratio] = high ? HIGH_PITCH_LOD.general : HIGH_PITCH_LOD.normal;
-  // One call for all tile sources, including railway and basemap context,
-  // so enabling near-horizon viewing cannot fan out full-resolution rail/
-  // landcover/imagery requests while restricting just the DEM.
+  // One call for all currently registered tile sources. The source list is
+  // snapshotted only after this state change. Newly installed sources are
+  // handled separately through their metadata/install notifications.
   map.setSourceTileLodParams(levels, ratio);
   if (high) map.setSourceTileLodParams(...HIGH_PITCH_LOD.terrain, 'terrain3d');
-  tileLodStates.set(map, {source, high});
+  tileLodStates.set(map, {source, high, sources:high ? currentTileSources(map) : new Map()});
   return true;
 }
 export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
