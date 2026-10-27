@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261027-terrain-pitch-2';
+import {SEARCH_API} from './map-model.mjs?v=20261027-polar-focus-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
