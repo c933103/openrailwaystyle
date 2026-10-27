@@ -20,7 +20,7 @@ const maskAt = (points) => {
 };
 
 test('high-pitch views extend to 85° while distant tiles switch to lower native LOD',()=>{
-  assert.equal(TERRAIN_3D_VIEW_PITCH,78,'3D button provides a near-horizon first view');
+  assert.equal(TERRAIN_3D_VIEW_PITCH,60,'3D first activation retains the earlier default, independent of manual max pitch');
   assert.equal(TERRAIN_3D_MAX_PITCH,85,'touch rotation is not stopped at the old 60° default');
   assert.equal(HIGH_PITCH_THRESHOLD,65,'only steep views need the extra tile budget');
   assert.deepEqual(HIGH_PITCH_LOD.general,[11,2]);
