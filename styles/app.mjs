@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-2';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-2';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-2';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-2';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-2';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-2';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-2';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-1';
-import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-2';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-2';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-2';
+import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-2';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-2';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-2';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-2';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-2';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-2';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-2';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-2';
+import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-2';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-2';
+import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-2';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-2';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-2';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-2';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-2';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -64,7 +64,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-2';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -438,7 +438,14 @@ function powerFacilitySwatch({color,mark}, includeFormer) {
   return sample;
 }
 function renderLegend() {
-  const box = $('legend'); box.replaceChildren();
+  const box = $('legend');
+  // Native details toggle events are queued. A settings/metadata redraw can
+  // happen first, so preserve the displayed state before replacing its nodes.
+  const previousHelp = box.querySelector(':scope > details.legend-help:not(#service-data-status)');
+  const previousStatus = box.querySelector('#service-data-status');
+  if (previousHelp) legendHelpOpen = previousHelp.open;
+  if (previousStatus) serviceStatusOpen = previousStatus.open;
+  box.replaceChildren();
   const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
   const listed = rows => rows.length ? rows : nothing;
   const legends = {
@@ -514,11 +521,11 @@ function renderLegend() {
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
   help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
-  help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
+  help.addEventListener('toggle', () => { if (help.isConnected) legendHelpOpen = help.open; });
   box.append(help);
   if(settings.mode==='service'){
     const dataStatus=Object.assign(textNode('details','','legend-help'),{open:serviceStatusOpen});dataStatus.id='service-data-status';
-    dataStatus.addEventListener('toggle',()=>{serviceStatusOpen=dataStatus.open;});
+    dataStatus.addEventListener('toggle',()=>{if(dataStatus.isConnected)serviceStatusOpen=dataStatus.open;});
     dataStatus.append(textNode('summary','Service data status'));
     for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
     const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;

@@ -950,6 +950,50 @@ test('rare Han in infobox body values and later departure text loads only the di
  }finally{dom.window.close();}
 });
 
+for(const selector of ['#service-data-status','#legend > details.legend-help:not(#service-data-status)']) test(`legend redraw keeps live ${selector} state before native toggle delivery`,async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak'});
+ try {
+   const doc=window.document;
+   const period=doc.getElementById('frequency-period');
+   const redraw=value=>{period.value=value;period.dispatchEvent(new window.Event('change'));};
+   let details=doc.querySelector(selector),toggles=0;
+   assert.equal(details.open,false);
+   details.addEventListener('toggle',()=>toggles++);
+   details.open=true;
+   assert.equal(toggles,0,'the native details toggle has not been delivered yet');
+   redraw('offpeak');
+   assert.notEqual(doc.querySelector(selector),details,'period change rebuilds the actual legend');
+   assert.equal(doc.querySelector(selector).open,true,'opening survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   details=doc.querySelector(selector);details.open=false;
+   redraw('peak');
+   assert.equal(doc.querySelector(selector).open,false,'closing also survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(doc.querySelector(selector).open,false,'detached-node events cannot undo the live closed state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('detached service status toggle cannot overwrite the closed state while another mode is shown',async()=>{
+ const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency'});
+ try {
+   const doc=window.document,retired=doc.getElementById('service-data-status');
+   retired.open=true;retired.dispatchEvent(new window.Event('toggle'));
+   const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+   const current=doc.getElementById('service-data-status');
+   assert.notEqual(current,retired);assert.equal(current.open,true);
+   current.open=false;current.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="infrastructure"]').click();
+   assert.equal(doc.getElementById('service-data-status'),null);
+   assert.equal(retired.isConnected,false);
+   // Deliver the old view's queued notification after the live view closed.
+   retired.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="service"]').click();
+   assert.equal(doc.getElementById('service-data-status').open,false,'returning to Service retains the last live state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
   const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
   try {
