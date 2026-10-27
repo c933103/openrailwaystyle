@@ -280,16 +280,22 @@ export class PolarLayer {
       gl.uniform1f(u.u_width, width * this.map.getPixelRatio());
     });
   }
-  async image(name) {
+  async image(name, {nearest=false, expectedSize}={}) {
     const generation=this.generation;
     const response = await fetch(new URL(name, this.data),{signal:this.pending?.signal});
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
-    const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none', colorSpaceConversion: 'none'});
-    if(generation!==this.generation){bitmap.close?.();return null;}
+    const blob = await response.blob();
+    if (expectedSize && blob.size > 8*1024*1024) throw new Error('Polar depth asset exceeds 8 MiB');
+    const bitmap = await createImageBitmap(blob, {premultiplyAlpha: 'none', colorSpaceConversion: 'none'});
+    if (generation!==this.generation) {bitmap.close?.();return null;}
+    if (expectedSize && (bitmap.width!==expectedSize || bitmap.height!==expectedSize)) {
+      bitmap.close?.();throw new Error('Polar depth image dimensions disagree with index');
+    }
     const gl = this.gl, texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
-    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    const filtering = nearest ? gl.NEAREST : gl.LINEAR;
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, filtering], [gl.TEXTURE_MAG_FILTER, filtering], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
     bitmap.close?.();
     return texture;
   }
@@ -317,6 +323,51 @@ export class PolarLayer {
       }
       this.map.triggerRepaint();
     }).catch(error => { console.warn('Polar map data unavailable:', error.message); });
+  }
+  // Old polar snapshots contain only a relief slope texture, not depths.
+  // Load the optional numeric depth raster once, only for a visible Map cap.
+  // Validation prevents malformed indices from allocating unbounded GPU data.
+  ensureDepth(cap, state) {
+    const info = state.index?.depth, relief = state.index?.relief;
+    if (!info || state.depth || state.depthLoading || state.depthFailed) return;
+    if (info.format !== POLAR_DEPTH_FORMAT || !Number.isSafeInteger(info.size) ||
+        info.size < 2 || info.size > POLAR_DEPTH_MAX_SIDE || !Number.isFinite(info.x0) ||
+        !Number.isFinite(info.step) || info.step <= 0 ||
+        info.size !== relief?.size || info.x0 !== relief?.x0 ||
+        info.step !== relief?.step || info.maxDepth !== DEPTH_LEVELS.at(-1)) {
+      state.depthFailed = true;
+      console.warn('Polar depth index is incompatible; retaining flat water fill');
+      return;
+    }
+    const generation = this.generation;
+    state.depthLoading = true;
+    this.image(`${cap}-depth.png`, {nearest:true, expectedSize:info.size}).then(texture => {
+      if (generation !== this.generation || this.caps[cap] !== state) {
+        if (texture) this.gl.deleteTexture(texture);
+        return;
+      }
+      state.depthLoading = false;
+      if (texture) state.depth = texture;
+      this.map.triggerRepaint();
+    }).catch(error => {
+      if (generation !== this.generation || this.caps[cap] !== state) return;
+      state.depthLoading = false;state.depthFailed = true;
+      console.warn('Polar depth texture unavailable; retaining flat water fill:', error.message);
+    });
+  }
+  // The colour bands and interpolation are taken from bathymetry.mjs, exactly
+  // as the ordinary atlas-depth water tiles. Only actual sampled valid ocean
+  // depths receive paint; land and no-data remain transparent.
+  drawDepth(state, shaderData, projection, fade) {
+    const {x0, step, size} = state.index.depth;
+    this.draw({...state.reliefMesh, kind:'depth'}, shaderData, projection, (gl, u) => {
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D, state.depth);
+      gl.uniform1i(u.u_image, 0);
+      gl.uniform3f(u.u_grid, x0, step, size);
+      gl.uniform1fv(u['u_depth_stops[0]'], DEPTH_LEVELS);
+      gl.uniform3fv(u['u_depth_colours[0]'], DEPTH_RGB);
+      gl.uniform1f(u.u_opacity, fade);
+    });
   }
   // Contour tile: four meshes (land/seabed, fine/emphasised).
   loadTile(key) {
@@ -463,6 +514,16 @@ export class PolarLayer {
         if (cap === 'north' && mapPaint.waterVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.water, mapPaint.waterOpacity * fade));
       } else this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
       if (!custom || mapPaint.waterVisible) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
+      // Ordinary layer order: water -> terrain-bathymetry -> ice shelves ->
+      // hillshade and contours. The custom cap uses the same order.
+      if (custom && mapPaint.depthVisible) {
+        this.ensureDepth(cap, state);
+        if (state.depth && !state.depthFailed) try {
+          this.drawDepth(state, options.shaderData, projection, mapPaint.depthOpacity * fade);
+        } catch (error) {
+          state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining flat water fill:', error.message);
+        }
+      }
       if (!custom || mapPaint.iceShelfVisible) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
       const contours = [];
