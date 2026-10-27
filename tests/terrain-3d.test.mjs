@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {
   TERRAIN_3D_SOURCE, TERRAIN_3D_MAXZOOM, TERRAIN_TILE_SIZE,
-  TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, terrain3DViewTarget,
-  terrain3DEnabled, syncTerrain3D, needsSeabedRecovery,
+  TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, TERRAIN_3D_MAX_PITCH,
+  HIGH_PITCH_THRESHOLD, HIGH_PITCH_LOD, HIGH_PITCH_TILE_CACHE_LIMIT, syncHighPitchTileBudget, terrain3DViewTarget,
+  terrain3DEnabled, syncTerrain3D, terrainExaggeration, TERRAIN_EXAGGERATION_OPTIONS, DEFAULT_TERRAIN_EXAGGERATION, needsSeabedRecovery,
   sampleSeabed, composeTerrainHeights, encodeTerrainPng,
 } from '../styles/terrain-3d.mjs';
 import {depthTile} from '../styles/bathymetry.mjs';
@@ -17,6 +18,43 @@ const maskAt = (points) => {
   for (const [x,y,alpha=255] of points) mask[(y*SIZE+x)*4+3]=alpha;
   return mask;
 };
+
+test('high-pitch views extend to 85° while distant tiles switch to lower native LOD',()=>{
+  assert.equal(TERRAIN_3D_VIEW_PITCH,78,'3D button provides a near-horizon first view');
+  assert.equal(TERRAIN_3D_MAX_PITCH,85,'touch rotation is not stopped at the old 60° default');
+  assert.equal(HIGH_PITCH_THRESHOLD,65,'only steep views need the extra tile budget');
+  assert.deepEqual(HIGH_PITCH_LOD.general,[11,2]);
+  assert.deepEqual(HIGH_PITCH_LOD.terrain,[12,1.5]);
+  assert.deepEqual(HIGH_PITCH_LOD.normal,[9.314,3]);
+  assert.equal(HIGH_PITCH_TILE_CACHE_LIMIT,96);
+  const view={pitch:0,terrainSource:{},calls:[]};
+  const map={
+    getPitch:()=>view.pitch,
+    getSource:name=>name==='terrain3d'?view.terrainSource:null,
+    setSourceTileLodParams:(...args)=>{view.calls.push(args);return map;},
+  };
+  assert.equal(syncHighPitchTileBudget(map),false,'overhead retains original full-detail coverage');
+  assert.deepEqual(view.calls,[],'overhead avoids unnecessary renderer changes');
+  view.pitch=78;
+  assert.equal(syncHighPitchTileBudget(map),true);
+  assert.deepEqual(view.calls,[[11,2],[12,1.5,'terrain3d']],
+    'all tile sources coarsen toward horizon, DEM has stricter distance LOD');
+  view.pitch=85;
+  assert.equal(syncHighPitchTileBudget(map),false,'touch tilt does not reconfigure on every pitch frame');
+  assert.equal(view.calls.length,2);
+  view.pitch=60;
+  assert.equal(syncHighPitchTileBudget(map),true);
+  assert.deepEqual(view.calls.at(-1),[9.314,3],'normal-angle view restores pinned MapLibre LOD');
+  view.pitch=80;
+  assert.equal(syncHighPitchTileBudget(map),true);
+  assert.equal(view.calls.length,5);
+  view.terrainSource={};
+  assert.equal(syncHighPitchTileBudget(map),true,'replacing style also replaces source LOD and needs reconfiguration');
+  assert.equal(view.calls.length,7);
+  assert.throws(()=>syncHighPitchTileBudget({
+    getSource:()=>({}),getPitch:()=>80,
+  }),/lacks high-pitch tile LOD support/,'renderer compatibility fails visibly, never silently');
+});
 
 test('3D style uses an independent Terrarium source, preserving the original hillshade and contour sources', async () => {
   const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
@@ -58,6 +96,38 @@ test('3D activates only on pitched views with relief enabled', () => {
   syncTerrain3D(map,true);assert.equal(view.calls.length,1,'must not reset terrain on each pitch frame');
   syncTerrain3D(map,false);assert.deepEqual(view.calls,[{source:TERRAIN_3D_SOURCE,exaggeration:1},null]);
   view.pitch=0;syncTerrain3D(map,true);assert.equal(view.calls.length,2);
+});
+
+test('terrain exaggeration changes a live 3D mesh without replacing DEM samples, camera or source', () => {
+  assert.deepEqual(TERRAIN_EXAGGERATION_OPTIONS,[1,2,3,5]);
+  assert.equal(DEFAULT_TERRAIN_EXAGGERATION,3);
+  for(const scale of TERRAIN_EXAGGERATION_OPTIONS)assert.equal(terrainExaggeration(scale),scale);
+  for(const scale of [0,-1,4,6,1.5,NaN,Infinity,'3',null]) {
+    assert.throws(()=>terrainExaggeration(scale),/Invalid 3D/);
+  }
+  const view={pitch:60,source:{},terrain:null,updates:0};
+  const map={
+    getSource:()=>view.source,
+    getPitch:()=>view.pitch,
+    getTerrain:()=>view.terrain,
+    setTerrain:terrain=>{view.updates++;view.terrain=terrain;},
+  };
+  syncTerrain3D(map,true,3);
+  assert.deepEqual(view.terrain,{source:'terrain3d',exaggeration:3});
+  syncTerrain3D(map,true,3);
+  assert.equal(view.updates,1,'unchanged options must not churn a terrain mesh');
+  syncTerrain3D(map,true,5);
+  assert.deepEqual(view.terrain,{source:'terrain3d',exaggeration:5});
+  assert.equal(view.updates,2,'scale adjustment updates the mesh without removing its source');
+  syncTerrain3D(map,true,1);
+  assert.equal(view.terrain.exaggeration,1,'true physical 1× rendering remains available');
+  view.pitch=0;syncTerrain3D(map,true,5);
+  assert.equal(view.terrain,null,'overhead view remains 2D');
+  assert.equal(view.updates,4);
+  syncTerrain3D(map,true,5);
+  assert.equal(view.updates,4,'overhead zoom and settings changes cannot trigger mesh work');
+  view.pitch=55;syncTerrain3D(map,false,5);
+  assert.equal(view.terrain,null,'surroundings setting still disables 3D');
 });
 
 test('only finer DEM tiles with flat ocean candidates need coarse bathymetry', () => {
