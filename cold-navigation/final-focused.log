@@ -1,0 +1,133 @@
+TAP version 13
+# (node:178) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:178) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Subtest: startup observes cold style readiness
+ok 1 - startup observes cold style readiness
+  ---
+  duration_ms: 261.478012
+  type: 'test'
+  ...
+# Subtest: startup observes already loaded style readiness
+ok 2 - startup observes already loaded style readiness
+  ---
+  duration_ms: 100.870232
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Subtest: pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+ok 3 - pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+  ---
+  duration_ms: 113.095768
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Subtest: 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+ok 4 - 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+  ---
+  duration_ms: 98.922062
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Subtest: terrain control preserves clean history while sharing the current polar 3D view
+ok 5 - terrain control preserves clean history while sharing the current polar 3D view
+  ---
+  duration_ms: 139.414017
+  type: 'test'
+  ...
+# Subtest: legend redraw keeps live \#service-data-status state before native toggle delivery
+ok 6 - legend redraw keeps live \#service-data-status state before native toggle delivery
+  ---
+  duration_ms: 106.158315
+  type: 'test'
+  ...
+# Subtest: legend redraw keeps live \#legend > details.legend-help:not(\#service-data-status) state before native toggle delivery
+ok 7 - legend redraw keeps live \#legend > details.legend-help:not(\#service-data-status) state before native toggle delivery
+  ---
+  duration_ms: 89.516755
+  type: 'test'
+  ...
+# Subtest: detached service status toggle cannot overwrite the closed state while another mode is shown
+ok 8 - detached service status toggle cannot overwrite the closed state while another mode is shown
+  ---
+  duration_ms: 90.946241
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-3
+# Subtest: service frequency profile is applied on the first frame and controls persist independently
+ok 9 - service frequency profile is applied on the first frame and controls persist independently
+  ---
+  duration_ms: 125.841456
+  type: 'test'
+  ...
+# Subtest: settings are remembered in a cookie; a shared link applies once and leaves the address
+ok 10 - settings are remembered in a cookie; a shared link applies once and leaves the address
+  ---
+  duration_ms: 7768.769344
+  type: 'test'
+  ...
+# Subtest: map movements persist locally without changing URL or browser history
+ok 11 - map movements persist locally without changing URL or browser history
+  ---
+  duration_ms: 22668.786412
+  type: 'test'
+  ...
+# Subtest: incoming map links are consumed once; sharing still works before map initialization
+ok 12 - incoming map links are consumed once; sharing still works before map initialization
+  ---
+  duration_ms: 133.490173
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during libraries loading, share=false, invalid=none
+ok 13 - cold navigation keeps the newest view during libraries loading, share=false, invalid=none
+  ---
+  duration_ms: 186.434264
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during labels loading, share=false, invalid=none
+ok 14 - cold navigation keeps the newest view during labels loading, share=false, invalid=none
+  ---
+  duration_ms: 10083.880504
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during libraries loading, share=true, invalid=none
+ok 15 - cold navigation keeps the newest view during libraries loading, share=true, invalid=none
+  ---
+  duration_ms: 25220.427273
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during labels loading, share=true, invalid=none
+ok 16 - cold navigation keeps the newest view during labels loading, share=true, invalid=none
+  ---
+  duration_ms: 83.274958
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during libraries loading, share=false, invalid=\#not-a-map
+ok 17 - cold navigation keeps the newest view during libraries loading, share=false, invalid=\#not-a-map
+  ---
+  duration_ms: 78.571471
+  type: 'test'
+  ...
+# Subtest: cold navigation keeps the newest view during labels loading, share=false, invalid=
+ok 18 - cold navigation keeps the newest view during labels loading, share=false, invalid=
+  ---
+  duration_ms: 80.010456
+  type: 'test'
+  ...
+# Subtest: every versioned file the page loads asks for the page version
+ok 19 - every versioned file the page loads asks for the page version
+  ---
+  duration_ms: 21.846616
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68255.615112

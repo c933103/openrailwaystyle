@@ -1,3 +1,10 @@
+# Current PR274 source evidence
+
+- [Cold-navigation review fix 5818dda](cold-navigation/README.md).
+- All earlier stages below remain historical, not current-head acceptance.
+
+---
+
 # Latest PR274 evidence
 
 - [Legend-state repair 807b1e0](legend-state/README.md), preserving clean history and visible terrain.
