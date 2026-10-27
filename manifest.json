@@ -1,0 +1,6222 @@
+{
+  "geometry": {
+    "schema": 2,
+    "waysWithoutGeometry": [],
+    "waysWithPartialGeometry": [],
+    "waysWithConflicts": [],
+    "waysWithUnknownProvenance": [],
+    "waysWithPendingEvidence": [],
+    "routeRelationsWithoutGeometry": [
+      331250,
+      331251,
+      331252,
+      377470,
+      1722440,
+      1722441,
+      1783279,
+      1849754,
+      2230605,
+      2453918,
+      2453919,
+      2581270,
+      2581271,
+      2703073,
+      2815040,
+      2954026,
+      3068672,
+      3517270,
+      3555581,
+      3555582,
+      3788350,
+      6504062,
+      6616903,
+      6730491,
+      7409680,
+      7409686,
+      7409709,
+      7702519,
+      7702520,
+      7898732,
+      8032733,
+      8312413,
+      8312414,
+      8312415,
+      8312416,
+      8312417,
+      9181537,
+      9204860,
+      9206064,
+      9283743,
+      9357512,
+      9600511,
+      9600551,
+      9736634,
+      10003054,
+      10003055,
+      11294195,
+      11368834,
+      11379809,
+      11929616,
+      12271401,
+      12824257,
+      12828618,
+      12888045,
+      12940681,
+      12940682,
+      13064486,
+      14103507,
+      14623682,
+      15775740,
+      15789478,
+      15951675,
+      16061931,
+      16244036,
+      16244037,
+      16358740,
+      16358830,
+      16644113,
+      17001642,
+      17075185,
+      17486839,
+      17504372,
+      17581553,
+      17739982,
+      17739983,
+      17787820,
+      17787821,
+      17824814,
+      17885132,
+      18054722,
+      18058146,
+      18251231,
+      18251232,
+      18621862,
+      18622253,
+      18624687,
+      18624725,
+      18649601,
+      18649602,
+      18651301,
+      18651302,
+      18663751,
+      18663752,
+      18737250,
+      18740721,
+      18788174,
+      18846885,
+      18846886,
+      18846887,
+      18846888,
+      18850076,
+      19053681,
+      19064976,
+      19131817,
+      19206257,
+      19233909,
+      19427410,
+      19427411,
+      19659733,
+      19905908,
+      19905909,
+      19925415,
+      20040971,
+      20042681,
+      20085036,
+      20140335,
+      21038854,
+      21045624,
+      21104772,
+      21208926,
+      21208991,
+      21234053,
+      21234870,
+      21239293,
+      21239294,
+      21444787,
+      21444798,
+      21454852,
+      21609019,
+      21650667
+    ],
+    "routeRelationsWithPartialGeometry": [],
+    "details": [],
+    "relations": {
+      "schema": 1,
+      "relationsWithConflicts": [],
+      "relationsWithUnknownProvenance": [],
+      "relationsWithUnresolvedMembers": [
+        11004,
+        22320,
+        23179,
+        23180,
+        23294,
+        50623,
+        66639,
+        84470,
+        85355,
+        105884,
+        106244,
+        110418,
+        178795,
+        207814,
+        271401,
+        289331,
+        294915,
+        300003,
+        331250,
+        331251,
+        331252,
+        331253,
+        331254,
+        331279,
+        331281,
+        331282,
+        331283,
+        331284,
+        331285,
+        358087,
+        358088,
+        370849,
+        371335,
+        371336,
+        371337,
+        377470,
+        383717,
+        385215,
+        385217,
+        387738,
+        394393,
+        399971,
+        401678,
+        443140,
+        443307,
+        572526,
+        917552,
+        939199,
+        952470,
+        962919,
+        1112285,
+        1112307,
+        1112313,
+        1112508,
+        1112509,
+        1133381,
+        1133383,
+        1133422,
+        1171503,
+        1184795,
+        1221336,
+        1221337,
+        1271500,
+        1275400,
+        1278220,
+        1279256,
+        1279393,
+        1282338,
+        1282341,
+        1353694,
+        1354956,
+        1354958,
+        1390151,
+        1405182,
+        1405558,
+        1452689,
+        1525348,
+        1525349,
+        1535561,
+        1535562,
+        1536164,
+        1536165,
+        1570939,
+        1570940,
+        1622359,
+        1622360,
+        1674700,
+        1674754,
+        1722440,
+        1722441,
+        1722600,
+        1761541,
+        1766484,
+        1766485,
+        1769489,
+        1769490,
+        1783279,
+        1809688,
+        1838775,
+        1838955,
+        1838956,
+        1849404,
+        1849754,
+        1860361,
+        1940503,
+        1955836,
+        1955837,
+        1955937,
+        1955989,
+        1956961,
+        1956963,
+        1956975,
+        1956976,
+        1957029,
+        1957030,
+        1964714,
+        1964715,
+        2064636,
+        2077646,
+        2077647,
+        2077981,
+        2077982,
+        2077984,
+        2078004,
+        2078006,
+        2078078,
+        2078079,
+        2078223,
+        2080356,
+        2080358,
+        2082553,
+        2084109,
+        2084110,
+        2084473,
+        2084474,
+        2084497,
+        2084498,
+        2124054,
+        2125143,
+        2125292,
+        2125311,
+        2125368,
+        2127397,
+        2152511,
+        2168775,
+        2168776,
+        2168849,
+        2168850,
+        2170197,
+        2170198,
+        2171615,
+        2176340,
+        2176341,
+        2198036,
+        2202118,
+        2202704,
+        2203209,
+        2203625,
+        2205365,
+        2206780,
+        2208754,
+        2210741,
+        2211465,
+        2224312,
+        2230605,
+        2256413,
+        2305003,
+        2343466,
+        2345102,
+        2345103,
+        2345104,
+        2424199,
+        2431321,
+        2453918,
+        2453919,
+        2468633,
+        2468634,
+        2548727,
+        2561856,
+        2561857,
+        2561859,
+        2561860,
+        2575578,
+        2575601,
+        2575608,
+        2575679,
+        2575704,
+        2576323,
+        2581270,
+        2581271,
+        2653189,
+        2653190,
+        2653193,
+        2653194,
+        2653205,
+        2653206,
+        2703073,
+        2706181,
+        2753056,
+        2753085,
+        2753154,
+        2753158,
+        2800693,
+        2804168,
+        2860815,
+        2860816,
+        2897488,
+        2901596,
+        2901597,
+        2954026,
+        3094380,
+        3163171,
+        3218722,
+        3218723,
+        3228455,
+        3287304,
+        3304344,
+        3309806,
+        3309807,
+        3350642,
+        3407929,
+        3409484,
+        3517270,
+        3555581,
+        3555582,
+        3774038,
+        3774039,
+        3788350,
+        3939084,
+        3969571,
+        4096010,
+        4108298,
+        4110002,
+        4139149,
+        4153861,
+        4153862,
+        4473912,
+        4621819,
+        4631288,
+        4631289,
+        4633529,
+        4657180,
+        4665783,
+        4665784,
+        4665785,
+        4665786,
+        4749874,
+        4750074,
+        4763597,
+        4786115,
+        5189455,
+        5189456,
+        5189500,
+        5189501,
+        5189572,
+        5409699,
+        5587340,
+        5617782,
+        5633682,
+        5648273,
+        5648274,
+        5661082,
+        5661083,
+        5661084,
+        5692274,
+        5742828,
+        6171130,
+        6171164,
+        6171175,
+        6171193,
+        6171263,
+        6171283,
+        6171284,
+        6172444,
+        6183627,
+        6286479,
+        6286481,
+        6323706,
+        6323707,
+        6336541,
+        6485218,
+        6485219,
+        6504062,
+        6545466,
+        6582965,
+        6582966,
+        6604729,
+        6616903,
+        6666780,
+        6679980,
+        6692571,
+        6692572,
+        6730491,
+        6749430,
+        6787022,
+        6787023,
+        6812439,
+        6814586,
+        6815272,
+        6967089,
+        7006047,
+        7023559,
+        7023560,
+        7130264,
+        7130265,
+        7152119,
+        7409680,
+        7409686,
+        7409703,
+        7409709,
+        7410761,
+        7573751,
+        7573752,
+        7702519,
+        7702520,
+        7705632,
+        7705668,
+        7728725,
+        7728726,
+        7832324,
+        7833970,
+        7898293,
+        7898294,
+        7898732,
+        7913721,
+        7968954,
+        7968955,
+        7968956,
+        7968957,
+        8021091,
+        8021102,
+        8021103,
+        8021104,
+        8021105,
+        8032733,
+        8059889,
+        8210886,
+        8210887,
+        8300862,
+        8312413,
+        8312414,
+        8312415,
+        8312416,
+        8312417,
+        8467441,
+        8467446,
+        8467514,
+        8671529,
+        8671530,
+        9082107,
+        9181537,
+        9204860,
+        9206064,
+        9217292,
+        9255286,
+        9283743,
+        9286361,
+        9286362,
+        9357512,
+        9434100,
+        9584649,
+        9584650,
+        9600511,
+        9600551,
+        9631351,
+        9725779,
+        9726752,
+        9726760,
+        9736634,
+        9940825,
+        10003054,
+        10003055,
+        10068521,
+        10103679,
+        10103680,
+        10379599,
+        10379600,
+        10406565,
+        10406566,
+        10537855,
+        10609778,
+        10609779,
+        10609786,
+        10670932,
+        10671054,
+        10671153,
+        10671154,
+        10671155,
+        10672955,
+        10693446,
+        10807449,
+        11294195,
+        11379809,
+        11529447,
+        11561062,
+        11593003,
+        11604705,
+        11604708,
+        11607962,
+        11607963,
+        11644048,
+        11755131,
+        11917777,
+        11917778,
+        11929616,
+        12222275,
+        12226153,
+        12226278,
+        12229163,
+        12229164,
+        12271401,
+        12316476,
+        12695832,
+        12695833,
+        12696013,
+        12696014,
+        12824257,
+        12828618,
+        12893893,
+        12896377,
+        12940681,
+        12940682,
+        13035324,
+        13046189,
+        13046198,
+        13064486,
+        13199266,
+        13199267,
+        13305613,
+        13350006,
+        13350007,
+        13364068,
+        13408068,
+        13490751,
+        13490752,
+        13571814,
+        13879319,
+        13882494,
+        13883770,
+        14001352,
+        14001353,
+        14004562,
+        14004563,
+        14040038,
+        14040039,
+        14040609,
+        14040610,
+        14048876,
+        14103507,
+        14112553,
+        14300249,
+        14300250,
+        14337418,
+        14337419,
+        14337420,
+        14337421,
+        14412290,
+        14412291,
+        14457151,
+        14460895,
+        14614365,
+        14614366,
+        14623682,
+        14864787,
+        14864788,
+        14864789,
+        14864790,
+        14864791,
+        14864792,
+        14978347,
+        14978348,
+        15046200,
+        15046201,
+        15062140,
+        15066305,
+        15066514,
+        15446398,
+        15545705,
+        15589445,
+        15711260,
+        15775740,
+        15789478,
+        15816038,
+        15824023,
+        15858526,
+        15874031,
+        15874032,
+        15926646,
+        15926647,
+        15951675,
+        15984766,
+        16061931,
+        16172603,
+        16244036,
+        16244037,
+        16316556,
+        16318123,
+        16318124,
+        16337327,
+        16337536,
+        16337799,
+        16337930,
+        16358740,
+        16358830,
+        16694211,
+        16805930,
+        16828138,
+        16828139,
+        16828422,
+        16997911,
+        16997912,
+        17001642,
+        17075185,
+        17135614,
+        17135615,
+        17168709,
+        17186141,
+        17186142,
+        17186143,
+        17186144,
+        17186145,
+        17186146,
+        17186147,
+        17248967,
+        17486839,
+        17504372,
+        17526384,
+        17581553,
+        17649146,
+        17714137,
+        17714146,
+        17739982,
+        17739983,
+        17775265,
+        17787820,
+        17787821,
+        17824814,
+        17825690,
+        17852991,
+        17883966,
+        17885132,
+        17986413,
+        17987362,
+        17987364,
+        18052918,
+        18052921,
+        18052922,
+        18052923,
+        18052940,
+        18052943,
+        18052944,
+        18052946,
+        18054722,
+        18058146,
+        18251231,
+        18251232,
+        18360763,
+        18367296,
+        18420791,
+        18420792,
+        18523160,
+        18523161,
+        18586107,
+        18586108,
+        18586117,
+        18586118,
+        18594750,
+        18621862,
+        18622253,
+        18624687,
+        18624725,
+        18649601,
+        18649602,
+        18651301,
+        18651302,
+        18663751,
+        18663752,
+        18788174,
+        18846885,
+        18846886,
+        18846887,
+        18846888,
+        18850076,
+        19053681,
+        19064976,
+        19131817,
+        19161636,
+        19165543,
+        19206257,
+        19233909,
+        19416960,
+        19427410,
+        19427411,
+        19566688,
+        19659733,
+        19807284,
+        19807285,
+        19905908,
+        19905909,
+        19925415,
+        19937258,
+        19974771,
+        19980660,
+        19983333,
+        19993654,
+        20040971,
+        20042681,
+        20085036,
+        20140335,
+        20141427,
+        20141428,
+        20185321,
+        20185322,
+        20273516,
+        20273517,
+        20669138,
+        20669139,
+        20736865,
+        20804494,
+        20804495,
+        20822301,
+        21038854,
+        21045624,
+        21104772,
+        21208926,
+        21208991,
+        21234053,
+        21239293,
+        21239294,
+        21444787,
+        21444798,
+        21454852,
+        21457251,
+        21500077,
+        21609019,
+        21650667
+      ],
+      "relationsWithUnavailableMemberships": [],
+      "relationsWithPendingEvidence": [],
+      "details": [
+        {
+          "relation": 10003054,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            722211886
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "955c8cbfd2dd25e68171934a7dff4527f32680e3e9fa7af5dfac71dd357ac2f8",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 10003055,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            722211885
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5602a4ac733c58dad596d127a63c6b12fe5b8d71ea650b6b2bc8dad47f278cbf",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 10068521,
+          "status": "partial",
+          "snapshot": "2026-10-21T14:28:23Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            727606094
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "310dc1ace07efafb869d987705d794d43571213981a7a7455d66657a9d5544e9",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-21T14:30:21.077Z",
+              "stage": "europe-c",
+              "pass": "2026-10-21T14:27:27Z",
+              "query": "95c122ea6f03decec9eaeab4d2cdbb7e6d93e6e04e4dc43524af163f15ff8589"
+            }
+          ]
+        },
+        {
+          "relation": 10103679,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            380978531,
+            380978540,
+            380978559,
+            381205032
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "fb895ea4dcd593bb0589a9811387f79ea5063b280c71238630774a16f600b43b",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 10103680,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            380978532,
+            380978557,
+            381205033,
+            1303881780
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "23fe1a160e7193cb70c395fcbfad9503e9ccc5a2d02728a6f5cb18d25587228c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 10379599,
+          "status": "partial",
+          "snapshot": "2026-10-19T08:45:02Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            547647492
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6fea1a58889d19c71bfa7e97389e46cce0ef2c1d02ed8fa091ecce8ea88d17e5",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-19T08:47:07.323Z",
+              "stage": "russia",
+              "pass": "2026-10-19T08:45:47Z",
+              "query": "02fc38f1f23e9f1edf235c9cae22d55e70ae63cdf188d76c39bf52740efde430"
+            }
+          ]
+        },
+        {
+          "relation": 10379600,
+          "status": "partial",
+          "snapshot": "2026-10-19T08:45:02Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            547647492
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "9aca384c682ef586350746a6753f919d74ed6e63eee8abdf60c52654ebb436f6",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-19T08:47:07.323Z",
+              "stage": "russia",
+              "pass": "2026-10-19T08:45:47Z",
+              "query": "02fc38f1f23e9f1edf235c9cae22d55e70ae63cdf188d76c39bf52740efde430"
+            }
+          ]
+        },
+        {
+          "relation": 10406565,
+          "status": "partial",
+          "snapshot": "2026-10-22T14:28:36Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1178578086
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "759259b984deb8383ef6ca65fa91d88bf7661d0860d9596718a8a97537e21534",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T14:30:34.637Z",
+              "stage": "europe-f",
+              "pass": "2026-10-22T14:29:18Z",
+              "query": "f9b0362c51fb86f79ebceff56be7bcf60fbae3ac71e4d2d73bef2d7fe5d1499c"
+            }
+          ]
+        },
+        {
+          "relation": 10406566,
+          "status": "partial",
+          "snapshot": "2026-10-22T14:28:36Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1178578087
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4ac2225f8ff3b005a6ec5c098fd2223d3a6e773bdd7fab92f63d90a6b50cae7c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T14:30:34.637Z",
+              "stage": "europe-f",
+              "pass": "2026-10-22T14:29:18Z",
+              "query": "f9b0362c51fb86f79ebceff56be7bcf60fbae3ac71e4d2d73bef2d7fe5d1499c"
+            }
+          ]
+        },
+        {
+          "relation": 10537855,
+          "status": "partial",
+          "snapshot": "2026-10-16T18:48:37Z",
+          "version": 32,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            377705974,
+            1532613972
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "14b8c2d8d59979b3a3f09748881d02c82d7dda67c5f7b28a57cc062fad5d0613",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-16T18:50:22.121Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "d0cf62d28528e69929cf822621766999041df18d51621c000c6c5d08a7fd1f1f"
+            }
+          ]
+        },
+        {
+          "relation": 105884,
+          "status": "partial",
+          "snapshot": "2026-10-21T14:28:23Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            227487146,
+            727606093
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6feb06b8d11ac54a5ef11956da25a0b1024b15ec4ab7903ed3dc07c7b2e614db",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-21T14:30:21.077Z",
+              "stage": "europe-c",
+              "pass": "2026-10-21T14:27:27Z",
+              "query": "95c122ea6f03decec9eaeab4d2cdbb7e6d93e6e04e4dc43524af163f15ff8589"
+            }
+          ]
+        },
+        {
+          "relation": 10609778,
+          "status": "partial",
+          "snapshot": "2026-10-17T23:06:05Z",
+          "version": 28,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "36ed03e6d6bf0489fde5326e2c8948aa3dac66aa9b4d7e0129bcca5964791cf0",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-17T23:07:57.366Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "f9c2be2914aa60ad78d8373604b832c4ff2afae576f9bbf1c7413193352946e9"
+            }
+          ]
+        },
+        {
+          "relation": 10609779,
+          "status": "partial",
+          "snapshot": "2026-10-17T23:06:05Z",
+          "version": 55,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "24ce5dfc5a4e4fe7aff393ce7ed1509c96b6487681753dba29b138104e148548",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-17T23:07:57.366Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "f9c2be2914aa60ad78d8373604b832c4ff2afae576f9bbf1c7413193352946e9"
+            }
+          ]
+        },
+        {
+          "relation": 10609786,
+          "status": "partial",
+          "snapshot": "2026-10-17T23:06:05Z",
+          "version": 86,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "a781473410d63ffa6d9ecbf05373bd7f86edeaec8256baf6077824d033819205",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-17T23:07:57.366Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "f9c2be2914aa60ad78d8373604b832c4ff2afae576f9bbf1c7413193352946e9"
+            }
+          ]
+        },
+        {
+          "relation": 106244,
+          "status": "partial",
+          "snapshot": "2026-10-16T18:48:37Z",
+          "version": 322,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            99730441,
+            141423454,
+            294842465,
+            411780489,
+            428769645,
+            428888536,
+            642808394
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b4b32eef96787fa66c88e5326d811756ef88ce587080cce85910096f2b172f27",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-16T18:50:22.121Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "d0cf62d28528e69929cf822621766999041df18d51621c000c6c5d08a7fd1f1f"
+            }
+          ]
+        },
+        {
+          "relation": 10670932,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c0e4644a3581fa455d478ba1a7d2d9ffe8445e72c60da0cc47a0a542bbc1ad66",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10671054,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            71145362,
+            435288806,
+            435288807,
+            1270615890
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4bdb14965fc4f9513a0be54c9d8e53fe0815eec6e0a6abfa0976ca69265a833e",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10671153,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 22,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6f0d29344fe0ab8aad47b5e9f0d4ac42d8f335045d5c4c8db7dc4750ddb30e9c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10671154,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "2b6cd747f2da96f005e7fd02d92a85927c9fda7018764b379fcead1e0869f326",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10671155,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "30e648a61555141c25a7525b91669b396e65bd51424c7d56c6b7766168b58ced",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10672955,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "603aa5811b40af45f1a48e7c0284601ee304c5a274d4b7318078bb8c04c1ed82",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 10693446,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 64,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            33868762,
+            42365343,
+            58261572,
+            58390438,
+            146120377,
+            161866000,
+            161883762,
+            183876156,
+            197450373,
+            251979085,
+            362661832,
+            362661840,
+            517016345,
+            566753856,
+            640145102,
+            698887334,
+            965353311,
+            965703642,
+            992813382
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 19,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "aadfbc50c1567bfc6d2cae8128ca98b5ed086c2d5e11854eb040de2898e5afcb",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 10807449,
+          "status": "partial",
+          "snapshot": "2026-10-16T18:48:37Z",
+          "version": 7,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1299128356
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e435d8bb9c27534a7476d9fabf54930b1698b5d4d0747fab4e0eeb30e36211b4",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-16T18:50:22.121Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "d0cf62d28528e69929cf822621766999041df18d51621c000c6c5d08a7fd1f1f"
+            }
+          ]
+        },
+        {
+          "relation": 11004,
+          "status": "partial",
+          "snapshot": "2026-10-14T23:52:29Z",
+          "version": 151,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            225995355,
+            242811794,
+            258905746,
+            306741493,
+            306752157,
+            306815172,
+            532294655,
+            532294661,
+            536061053,
+            631299842,
+            633348760,
+            633644699
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 12,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "9c6078180b6056e730f27b87d60ac74d0740a26ad89395ddf9962745266dee1f",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-14T23:54:37.779Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "7142b7a32ff2a548db7e1e94ab513b118db70a4c9e100fef632d81d80d067709"
+            }
+          ]
+        },
+        {
+          "relation": 110418,
+          "status": "partial",
+          "snapshot": "2026-10-26T08:49:45Z",
+          "version": 80,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            559135465,
+            1119540253
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8be8aff5eb54c370c7c3e3494e6d7f348dd941cc2d42fcfc08e96020ca371f25",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-26T08:52:07.686Z",
+              "stage": "asia",
+              "pass": "2026-10-26T08:48:12Z",
+              "query": "3a55dacbd127a819bbbca04597280e10d87a43b8707653cdcb3a2be73bcc1a7a"
+            }
+          ]
+        },
+        {
+          "relation": 1112285,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 26,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            71145362,
+            435288806,
+            435288807,
+            1270615890
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5221a261eda408f7bf03575e665a28f3572b737aa35864f3bcf26e65ad1f13b7",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 1112307,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 30,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cc86ab54f32b9e938e01943721935552930c5a86c84b9942b8ea64828f6afe6f",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 1112313,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 42,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "2fa8c343968d61ab3293463652a6b1ba1e6167e691c676b17d250ab4252c4cfd",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 1112508,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 46,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7137dcf134e79f63b6ade863c3ab6e17be4e6a0e27fcddc39acffaebdfccad98",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 1112509,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 37,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "743cfc2ef203d6b8c92d339b1dde4157aaa0e95456f097284a54cff8bb89ec3f",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 11294195,
+          "status": "partial",
+          "snapshot": "2026-10-14T14:26:51Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            82741491,
+            82741493,
+            82741494,
+            82741495,
+            82741497,
+            82741498,
+            82741499,
+            760905062,
+            825351231,
+            825351232,
+            825351233,
+            825351234,
+            1064565174,
+            1502524175,
+            1502524178,
+            1502524179,
+            1502524180
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 17,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1b004d2723257ceef39e78653e8a538cbf4d1a3c4ef9e9378617490362d5e9c3",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-14T14:29:09.673Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "72529af4040be9650f91a661bd5471bb9ccca16082b19ea1586c36abbc267bc6"
+            }
+          ]
+        },
+        {
+          "relation": 1133381,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 59,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            251979085,
+            965353311,
+            1292365689
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c4e1c9e3b622597dfaa06efa8d5912b0b29a4e6212ad1e365032e6a674c0f855",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 1133383,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 104,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            33868762
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b6cbab7ff342e2c4e5da480bb807f4bbdb7cfa97e361fc45842f5086487b06b3",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 1133422,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 109,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            4774489,
+            24286478,
+            39823559,
+            58261572,
+            73173002,
+            87379473,
+            87379478,
+            150812648,
+            152451714,
+            160089162,
+            161883762,
+            179642055,
+            179642056,
+            183876156,
+            197450373,
+            251655316,
+            253498832,
+            338164688,
+            338164693,
+            384069947
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 36,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c032b5ba5b73b080c8d1ab8d03d8a811dec5a85ed7f9a3244634211f16910632",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 11379809,
+          "status": "partial",
+          "snapshot": "2026-10-21T08:32:35Z",
+          "version": 14,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            29025995,
+            52007995,
+            52007998,
+            129311547,
+            260816366,
+            337937052,
+            468561746,
+            468561751,
+            468561752,
+            468561755,
+            468561756,
+            833905133,
+            918329797,
+            918329798,
+            941111968,
+            968013648,
+            1018546552,
+            1018546553,
+            1018546554,
+            1018548151
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 46,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "fdaf2b88d0f18ff5fa132fe57a8366fc8a01277bf9d884e6b1a6aeefba11a65a",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-21T08:33:50.213Z",
+              "stage": "europe-b",
+              "pass": "2026-10-21T08:29:08Z",
+              "query": "364fa2b0b7cbef1847bc8b14674b111a09034f3c93fa22fbc09d0191b6d36eff"
+            }
+          ]
+        },
+        {
+          "relation": 11529447,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            199832657,
+            839629296,
+            1193126008,
+            1193126009
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e01269cd9e8b1103fbd94859733da99b9a142f3c935e58529ffec6088ec2ae4b",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 11561062,
+          "status": "partial",
+          "snapshot": "2026-10-18T07:57:30Z",
+          "version": 39,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1009214534,
+            1009214677,
+            1009214774
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "56ddfd4f6a3e31825db7a7e88f6122b691c5558685bfcf52518f79f769397c20",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T07:58:46.296Z",
+              "stage": "japan",
+              "pass": "2026-10-18T07:57:41Z",
+              "query": "d7e86db8de70046e5c4263228795f894dfcfa06461ca788b02edd1558564bdc0"
+            }
+          ]
+        },
+        {
+          "relation": 11593003,
+          "status": "partial",
+          "snapshot": "2026-10-22T14:31:36Z",
+          "version": 85,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            102734815,
+            183052570,
+            335121465,
+            335121467,
+            839286654
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "fcc7f1ca57c65aa45fb2771f38c0b6df3dbcab2276db8185e877a6d5d9cffeff",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T14:33:26.357Z",
+              "stage": "europe-f",
+              "pass": "2026-10-22T14:29:18Z",
+              "query": "da96aaf75d98327c5ba531a4a7e44f2c24fde81a30c1c8e243b3c1275882740c"
+            }
+          ]
+        },
+        {
+          "relation": 11604705,
+          "status": "partial",
+          "snapshot": "2026-10-17T23:04:06Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27575495,
+            148909055,
+            1065699052,
+            1516917002
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6961e71752057b118fb20ff7a922a81e095991edc8ce0729537cacbf21bae94b",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-17T23:05:56.927Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "faf90220445885c5d826d99965a70b44e1faedce0a96592de95a1aeb2fe903f9"
+            }
+          ]
+        },
+        {
+          "relation": 11604708,
+          "status": "partial",
+          "snapshot": "2026-10-17T23:04:06Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            130282760,
+            130282761
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cbd04c3244ce12eb6745fdb9515939c08db0fef3a0c8be73f5946220d62a68c9",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-17T23:05:56.927Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "faf90220445885c5d826d99965a70b44e1faedce0a96592de95a1aeb2fe903f9"
+            }
+          ]
+        },
+        {
+          "relation": 11607962,
+          "status": "partial",
+          "snapshot": "2026-10-19T08:45:02Z",
+          "version": 12,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            182133117,
+            1378163306
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "bcc7e4fc438766bfe57871e17b8720cbefa7744f839593d6ff33a25f72fcf158",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-19T08:47:07.323Z",
+              "stage": "russia",
+              "pass": "2026-10-19T08:45:47Z",
+              "query": "02fc38f1f23e9f1edf235c9cae22d55e70ae63cdf188d76c39bf52740efde430"
+            }
+          ]
+        },
+        {
+          "relation": 11607963,
+          "status": "partial",
+          "snapshot": "2026-10-19T08:45:02Z",
+          "version": 12,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            182133117,
+            1378163306
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8fcc6516444c1e92c9bcebe907a3c4491847d9b816afe364a878bdf5a54f5bf8",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-19T08:47:07.323Z",
+              "stage": "russia",
+              "pass": "2026-10-19T08:45:47Z",
+              "query": "02fc38f1f23e9f1edf235c9cae22d55e70ae63cdf188d76c39bf52740efde430"
+            }
+          ]
+        },
+        {
+          "relation": 11644048,
+          "status": "partial",
+          "snapshot": "2026-10-20T08:24:59Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            848874515
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1e5c5ee45bd6a452f2c1983a44d261ed8493d56580d4865c69c1e1a2134a7601",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-20T08:27:02.207Z",
+              "stage": "europe-a",
+              "pass": "2026-10-20T08:26:13Z",
+              "query": "d1d79e92c08d5c01098971d8297581c2734ec0db0365140ef551ef9ecc57fa78"
+            }
+          ]
+        },
+        {
+          "relation": 1171503,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:23:48Z",
+          "version": 51,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            153930401
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "78517f0e62700a5ed55985ce7a9381cd05300d16483768df43f48538092a5e41",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:25:39.175Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "5aec8d0942d95656f4322295632f2d5bc8d7ea126322c7526120f9bed7644daf"
+            }
+          ]
+        },
+        {
+          "relation": 11755131,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1204580481
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "59930a35a834c088e13a6a522e59c3a3a9b7b598605e040a9779231a0990e7cf",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 1184795,
+          "status": "partial",
+          "snapshot": "2026-10-22T14:28:36Z",
+          "version": 41,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            66356892,
+            267265070,
+            319483070,
+            321282030
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c7ffa21a4f017e015c36fbd0e41d938c809fe8fe45771c4a4cdb679fed07e3a0",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T14:30:34.637Z",
+              "stage": "europe-f",
+              "pass": "2026-10-22T14:29:18Z",
+              "query": "f9b0362c51fb86f79ebceff56be7bcf60fbae3ac71e4d2d73bef2d7fe5d1499c"
+            }
+          ]
+        },
+        {
+          "relation": 11917777,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            874734450,
+            875277082,
+            875311769,
+            1159027772,
+            1159027774,
+            1159027775,
+            1159027778,
+            1523633972
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 8,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cbb0cafbf4160ae8862543730bbc4b28ed554058a20d0fabe72fd3fb22982987",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 11917778,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 14,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23695424,
+            229679623,
+            875311767,
+            1159027771,
+            1159027773,
+            1159027776,
+            1159027777,
+            1480451137,
+            1523633971,
+            1523633973
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c74ecea2fa43dad2d8f616a2a5f271079d2ab1cbd78c1badc9857c58a2b44e33",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 11929616,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            876145443
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "58632c122ceed11800580d2b4389e8a970b9d73797e00b4f0e8eb1ff1690b0cd",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 1221336,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:31:58Z",
+          "version": 88,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            149459699,
+            936244440,
+            965144568,
+            965144569,
+            965144573,
+            1456450900,
+            1506104725
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0b71bb78ffaf647852119a3b55898dc05fb06b44c963803bf6bb1f82674b5b0a",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:33:26.194Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "c14e5dc2c5b01d64b80173547395ae94f5b37e55494f4ef8a2abae72fd912b60"
+            }
+          ]
+        },
+        {
+          "relation": 1221337,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:31:58Z",
+          "version": 82,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            936244438,
+            965144567,
+            965144570,
+            965144571,
+            965144572,
+            1506104724
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4bb193748bc72d7f0af8be1677cc2af723bcd60417020c3b11a26d98515f216b",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:33:26.194Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "c14e5dc2c5b01d64b80173547395ae94f5b37e55494f4ef8a2abae72fd912b60"
+            }
+          ]
+        },
+        {
+          "relation": 12222275,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27011093,
+            85514874,
+            205077351,
+            289213552,
+            289213562,
+            620586514,
+            669189552,
+            875361577,
+            875361590,
+            875361597,
+            893583691,
+            898553673,
+            920117623,
+            1460913162,
+            1523633966,
+            1550349460,
+            1551449350
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 17,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8172189eeddd661017b5f5cd832811c22871d17f94594720d640d3127228d59c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12226153,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27014637,
+            85248656,
+            314463965,
+            893583709,
+            893583719,
+            899302225,
+            948710665,
+            1484394060,
+            1507114219
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 9,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1fb0c2f292f7b96c6d3664fd54c0e71e25875d2164d921c9b51b8cdf92b4a962",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12226278,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23708476,
+            85220813,
+            892445519,
+            899293867,
+            899302221,
+            899302222,
+            948710668,
+            1484394059,
+            1507114221
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 9,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "47309a32b94ad53501af329cddc5aba2c0be58731de0552c84d048e36ca3b7be",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12229163,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            893402878,
+            893402880,
+            893402883,
+            899609681,
+            1225079597,
+            1225079614,
+            1225088965,
+            1225436849,
+            1225436854,
+            1225436860
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0be20f79bfe865d4746d41abbf6c89900e05ded5f8d19c893475dc42c62b93cc",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12229164,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 22,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            3039872,
+            27844758,
+            893402881,
+            1069516665,
+            1225079609,
+            1225088967,
+            1225436851,
+            1225436859,
+            1225436861,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e47d07cf36e3cac7ebb4e4259635fff302a96656c95f3ea14536945d1ae44e6e",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12271401,
+          "status": "partial",
+          "snapshot": "2026-10-16T18:48:37Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            344843994,
+            344843997,
+            344846039,
+            393614894,
+            393615508,
+            437109389,
+            901708831
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "d0babcdacace44e92a47ec5af06aec64ed1e991aea3b8292805615b7072cd8de",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-16T18:50:22.121Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "d0cf62d28528e69929cf822621766999041df18d51621c000c6c5d08a7fd1f1f"
+            }
+          ]
+        },
+        {
+          "relation": 12316476,
+          "status": "partial",
+          "snapshot": "2026-10-26T16:07:35Z",
+          "version": 6,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96708002,
+            96711154,
+            96847170,
+            96847175,
+            96945649,
+            106846299,
+            106846310,
+            106922845,
+            106922853,
+            106922857,
+            106922906,
+            243119878,
+            243119879,
+            335699212,
+            335699213,
+            587354183,
+            587354184,
+            620995129,
+            907143086,
+            907143089
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 32,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7ca5848ff7ebdcdd510ba224cbb69ed9894bb3e69c6cfc149e37eda465d99e14",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-26T16:09:35.339Z",
+              "stage": "north-america",
+              "pass": "2026-10-26T16:05:03Z",
+              "query": "d59bb6fbc40bdead169d1b98d8b3fd90ce94d2567c995c677b6be7b4aa9d2dca"
+            }
+          ]
+        },
+        {
+          "relation": 12695832,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23062705,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "89e28b5c7fb6c4e35051a403328ae754f38a37c3516d3edafdfb02a1ced577e6",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 12695833,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96478611,
+            96493805
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7e8ab800e88af7e83bd57b121de7e09fc73b93630254051c51e165a876d709f5",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 12696013,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23062705,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "087738b7bcc66a56a63ec1b112839282302630eb3f4b03e0be265e3c5d80d171",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 12696014,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96478611,
+            96493805
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b39a25287a274d367abf9983501d89c058e4272d0ddc2e0207b075b02cc5f268",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 1271500,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 61,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23708476,
+            85248023
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "60727232bc22ed970c9419977da9b84fa18e358e7c128970b4dd2c621f7a53e6",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1275400,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 56,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23705325,
+            23708476,
+            85514874,
+            893402881,
+            893583690,
+            893583710,
+            899293866,
+            899293867,
+            982306346,
+            1069516665,
+            1225079609,
+            1225079613,
+            1478790133,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 14,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "30e28e474862a9073a795990c683dc59ee4305cb33dc24dd910fdc736ca8df51",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1278220,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 68,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27009771,
+            27809524,
+            27844758,
+            893402881,
+            1069516665,
+            1126350846,
+            1225079609,
+            1225088967,
+            1225416880,
+            1225416881,
+            1225416883,
+            1225416894,
+            1225416911,
+            1225436841,
+            1225436847,
+            1493496937,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 17,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "713256f034df5e8743777483e2262f6d835135bdfda0ce47e16f43c9e9e4265a",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1279256,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 60,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23583767,
+            23732224,
+            27015521,
+            27015573,
+            893402881,
+            902027546,
+            902027553,
+            1000059014,
+            1069516665,
+            1224993958,
+            1224993974,
+            1224993997,
+            1225324650,
+            1491895033,
+            1498214322,
+            1530972306,
+            1530972310,
+            1530972313,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 19,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "706b88cf8db4a678fe5dfce8b3407f8b489bc7a9cd21f9ceed989507107eb78d",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1279393,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 57,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27009771,
+            27011093,
+            27015903,
+            85514874,
+            205077351,
+            764577781,
+            893583691,
+            902027550,
+            902027551,
+            1224993990,
+            1224993994,
+            1224994006,
+            1224994009,
+            1225048271,
+            1225416880,
+            1225416881,
+            1225416883,
+            1225416887,
+            1225416890,
+            1225416906
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 25,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "a5b1a02dae1ec7ff4429560a7f17ad5478d17226db386144255e9824fee9fb71",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1282338,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 58,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23489764,
+            23489782,
+            23489786,
+            28775182,
+            85855073,
+            231253176,
+            256343304,
+            267004741,
+            875311769,
+            875326500,
+            875352044,
+            875361577,
+            875361587,
+            902455845,
+            902455850,
+            982234610,
+            1076398535,
+            1159027772,
+            1159027774,
+            1159027775
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 28,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "319eb16a533c4b81a598dc9dd6d6ddb6c3b4612f538033e05a038e88fee0c5db",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 1282341,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 53,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            229679623,
+            289213563,
+            875311767,
+            875352043,
+            875361583,
+            1159027771,
+            1159027773,
+            1159027776,
+            1159027777,
+            1523633968,
+            1523633971,
+            1523633973
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 12,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "9c8801e72deff276fa39de7e8d8c54ce26ba1c897291afaceb9efb7f61eb7a60",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 12824257,
+          "status": "partial",
+          "snapshot": "2026-10-25T23:18:21Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952378463,
+            1188056520
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6fe4c74aa3b4aa47f4bd0675f478a80673afbff78e5db40e75be1ab138a1ab1e",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-25T23:19:41.402Z",
+              "stage": "india",
+              "pass": "2026-10-25T23:12:14Z",
+              "query": "5e3d98347833300ff36b373cca805dd273451ee581b39427f9ad15b3692d62f9"
+            }
+          ]
+        },
+        {
+          "relation": 12828618,
+          "status": "partial",
+          "snapshot": "2026-10-25T23:18:21Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952696682,
+            1188056517,
+            1288635109,
+            1533466785,
+            1540116146,
+            1558761543
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "a1efa03416dd994350879474004f3d9e109c7c0c38d9ff82b06d72941cae0f8e",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-25T23:19:41.402Z",
+              "stage": "india",
+              "pass": "2026-10-25T23:12:14Z",
+              "query": "5e3d98347833300ff36b373cca805dd273451ee581b39427f9ad15b3692d62f9"
+            }
+          ]
+        },
+        {
+          "relation": 12893893,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            958863756,
+            958989508,
+            958989509
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "66ea07da5249c04deae1e37accb0e6b550a78732b074b57d0547f518af82d322",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 12896377,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 3,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            958863756,
+            958989509,
+            958989510
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0891ef01512013ec9142bee1ecdc1c12ca11de0e1edbbfeae8ba7fd8098256d8",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 12940681,
+          "status": "partial",
+          "snapshot": "2026-10-25T23:18:21Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952696681,
+            1125364139,
+            1288635108,
+            1533465469,
+            1540116145,
+            1558761542
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "3ebb6ff8ab47d21dfa940a8cbb54999bfdbbf7a8322f570a91db182a9f37fdcc",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-25T23:19:41.402Z",
+              "stage": "india",
+              "pass": "2026-10-25T23:12:14Z",
+              "query": "5e3d98347833300ff36b373cca805dd273451ee581b39427f9ad15b3692d62f9"
+            }
+          ]
+        },
+        {
+          "relation": 12940682,
+          "status": "partial",
+          "snapshot": "2026-10-25T23:18:21Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952378462,
+            1188056521
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "3d49594e8c7665e8e5020166022b34bdec5ea54905d6152843b7f733667d0b04",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-25T23:19:41.402Z",
+              "stage": "india",
+              "pass": "2026-10-25T23:12:14Z",
+              "query": "5e3d98347833300ff36b373cca805dd273451ee581b39427f9ad15b3692d62f9"
+            }
+          ]
+        },
+        {
+          "relation": 13035324,
+          "status": "partial",
+          "snapshot": "2026-10-27T15:20:44Z",
+          "version": 10,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            667068961,
+            667068962,
+            667068963,
+            667068965,
+            771920827
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "77a5f2d1b03e00ef1cdbe58a629482142b236510cf6445d6f0efa15a5fdd6dc8",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T15:23:31.586Z",
+              "stage": "world",
+              "pass": "2026-10-27T15:21:29Z",
+              "query": "eb8115d4c967d61f10c5416b4d99eb1296a1ae631f3505c553ff1c10e7140e1a"
+            }
+          ]
+        },
+        {
+          "relation": 13046189,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            860731279,
+            860731280,
+            860752038,
+            860763274,
+            860764636,
+            860765850,
+            860765851
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8912b5f2a4fcec4fbd6c5289f9aa5d59cae7020a26d44f2ca81aada704de10c8",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 13046198,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            860731279,
+            860731280,
+            860763274,
+            860764636
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "82e2f3861a5a7a9044d26cf8e473bedd149524185baf889281e87cab69cdc727",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 13064486,
+          "status": "partial",
+          "snapshot": "2026-10-14T23:52:29Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            29401228,
+            29401230,
+            971040100
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f2f9175b9bbcb403f21239874847c5604ab99b0d3db0f8ade8086b74b9e0fc32",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-14T23:54:37.779Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "7142b7a32ff2a548db7e1e94ab513b118db70a4c9e100fef632d81d80d067709"
+            }
+          ]
+        },
+        {
+          "relation": 13199266,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23489764,
+            23489782,
+            23489786,
+            28775182,
+            231253176,
+            256343304,
+            267004741,
+            660927528,
+            902455850,
+            911302441,
+            1076398535,
+            1262110923,
+            1550349457,
+            1550349459
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 14,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "d2f0362b7aea90b511789da9ef49c8ba021ac84fef5a26bc710f99037e1f5732",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 13199267,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 6,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            121473054,
+            121473055,
+            231253177,
+            301962419,
+            660927522,
+            660927526,
+            1550349458
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "3aa0befa010f8f7573b698a2ea2da135e456b2098ce97aa20d6f946ca0e02e17",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 13305613,
+          "status": "partial",
+          "snapshot": "2026-10-15T19:04:56Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            154755854,
+            1563806056
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "48e3e2f34797d8188bdbc3bf22b737aea989cd952bf51994db782610364db4af",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-15T19:06:34.848Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "0587fe96910a07a96e98b6a7741b3e4dd58012a9a930ec51bbd13ed19cb9b2be"
+            }
+          ]
+        },
+        {
+          "relation": 13350006,
+          "status": "partial",
+          "snapshot": "2026-10-27T00:23:41Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            344322047
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5dbfe3b2d68e92490dd9070c6126260528726e57400436b997d88addfc91e12b",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T00:25:44.824Z",
+              "stage": "americas",
+              "pass": "2026-10-27T00:23:39Z",
+              "query": "0f5797ac3788b7701b1008323f5ab6888f9d19a79940370b62c8fa7a07cf199b"
+            }
+          ]
+        },
+        {
+          "relation": 13350007,
+          "status": "partial",
+          "snapshot": "2026-10-27T00:23:41Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            361025171
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f9d0bc3ed313a7ca89355991252d93e9c531ec63f1231884ed918953820d860c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-27T00:25:44.824Z",
+              "stage": "americas",
+              "pass": "2026-10-27T00:23:39Z",
+              "query": "0f5797ac3788b7701b1008323f5ab6888f9d19a79940370b62c8fa7a07cf199b"
+            }
+          ]
+        },
+        {
+          "relation": 13364068,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            996021753,
+            996021755,
+            996021763
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6f4fe572ce5c2f381081c6c344199fcaeb2242a70764de5a12eb2f4100daa311",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 13408068,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:52:13Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            999477323,
+            999477325
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "56ce647f509360508a40bf5bf0e93349dd33c3f3cff043cdd0da2509820bf7c4",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:54:16.400Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "02bdd5ba0e04f000311b67cfc067f91bf30a4db41a38bbe2f7a3845c514206b7"
+            }
+          ]
+        },
+        {
+          "relation": 13490751,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            131405872,
+            131922847,
+            204306926,
+            1408228207
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "2666f31cec09d443a426b14f7977fc300b421ce0fc8489d984a68ac0fd68c900",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 13490752,
+          "status": "partial",
+          "snapshot": "2026-10-22T00:14:13Z",
+          "version": 7,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            131326679,
+            486471924,
+            537826392,
+            607633496,
+            1408228208
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8eac74916d5c93fedee6967fa5f1ebaaef42d86343338baa4443d552efb3a6a3",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T00:15:18.317Z",
+              "stage": "europe-d",
+              "pass": "2026-10-21T23:59:02Z",
+              "query": "835fe75ee0f2311e6fe352d540b11fe7f1d4c772e6009f61aed7fc6367d31349"
+            }
+          ]
+        },
+        {
+          "relation": 1353694,
+          "status": "partial",
+          "snapshot": "2026-10-26T16:07:35Z",
+          "version": 95,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            562892831
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b73c4ab47b919cb00d424099b8fd6ad6a874cd2eb012a7b4efb547a50dadd975",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-26T16:09:35.339Z",
+              "stage": "north-america",
+              "pass": "2026-10-26T16:05:03Z",
+              "query": "d59bb6fbc40bdead169d1b98d8b3fd90ce94d2567c995c677b6be7b4aa9d2dca"
+            }
+          ]
+        },
+        {
+          "relation": 1354956,
+          "status": "partial",
+          "snapshot": "2026-10-26T16:07:35Z",
+          "version": 68,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1318810586
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f9280d506faa8cc8cefac93856914a625554f81d12c6dd77f62f1acd7e487004",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-26T16:09:35.339Z",
+              "stage": "north-america",
+              "pass": "2026-10-26T16:05:03Z",
+              "query": "d59bb6fbc40bdead169d1b98d8b3fd90ce94d2567c995c677b6be7b4aa9d2dca"
+            }
+          ]
+        },
+        {
+          "relation": 1354958,
+          "status": "partial",
+          "snapshot": "2026-10-26T16:07:35Z",
+          "version": 63,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            48807708,
+            81275237,
+            1195031187
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4896fd0985ecb7bd3b1c98320f2ecb7531b3a0e0226eaa3423a22cfadaa20d8d",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-26T16:09:35.339Z",
+              "stage": "north-america",
+              "pass": "2026-10-26T16:05:03Z",
+              "query": "d59bb6fbc40bdead169d1b98d8b3fd90ce94d2567c995c677b6be7b4aa9d2dca"
+            }
+          ]
+        },
+        {
+          "relation": 13571814,
+          "status": "partial",
+          "snapshot": "2026-10-16T18:48:37Z",
+          "version": 58,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            221266457,
+            334729466,
+            417737331,
+            417737342,
+            1099829086,
+            1202768345,
+            1202768349,
+            1202768357,
+            1386853587,
+            1414275539,
+            1414275549,
+            1449389963,
+            1460273000
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 13,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4ba2b3b5b77e29f897043c3f5f01e5b935e138c23f73c9091f42d05283cdfdc1",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-16T18:50:22.121Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "d0cf62d28528e69929cf822621766999041df18d51621c000c6c5d08a7fd1f1f"
+            }
+          ]
+        },
+        {
+          "relation": 13879319,
+          "status": "partial",
+          "snapshot": "2026-10-11T08:39:06Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1512198001
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4c0cdae95fce79a29057616d3f29c6d04bf096ba4d29171fb60764637b0a14fe",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-11T08:40:56.161Z",
+              "stage": "europe-g",
+              "pass": "2026-10-08T10:28:11Z",
+              "query": "04e5f3bca06644f5c13d34e71bb0cc548d9135d70c6d5e2fa280acf6605c1993"
+            }
+          ]
+        },
+        {
+          "relation": 13882494,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:39:02Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            480721723
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7f133f443a1e3e9d1311dd94e787cde05c28dabddbd3ae14e7b328d4fd7e3698",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:40:43.553Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "376153bd538dcb6356a42a4ef99fa69b51954ca29221e33e3e5abffd923d5772"
+            }
+          ]
+        },
+        {
+          "relation": 13883770,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:39:02Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            725687674,
+            727572392,
+            1036660696
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "de6262319d7eddd8dc8d9d8616602bc42857e1aba70ad6567b34365f9429ea6e",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:40:43.553Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "376153bd538dcb6356a42a4ef99fa69b51954ca29221e33e3e5abffd923d5772"
+            }
+          ]
+        },
+        {
+          "relation": 1390151,
+          "status": "partial",
+          "snapshot": "2026-10-18T07:57:30Z",
+          "version": 33,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1419611894,
+            1419611895
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "42c32f9ee4d122d090b0ee478f1dfe4a36e657a39217aa813a7ed94d2acd7136",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T07:58:46.296Z",
+              "stage": "japan",
+              "pass": "2026-10-18T07:57:41Z",
+              "query": "d7e86db8de70046e5c4263228795f894dfcfa06461ca788b02edd1558564bdc0"
+            }
+          ]
+        },
+        {
+          "relation": 14001352,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23063275,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7e76388202ef4d4e226e248475c9b1b694a539310c8d18404bcacd9a3b67ba6d",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 14001353,
+          "status": "partial",
+          "snapshot": "2026-10-22T08:51:11Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96493805,
+            96493818
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7b5e219085fcd675ef0c6b281e914df9557c2f8597e81b16360248759aaa5977",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-22T08:53:06.269Z",
+              "stage": "europe-e",
+              "pass": "2026-10-22T08:31:30Z",
+              "query": "ad4539792dbdee0676f6d54860130a06c9f7274cf55a7927547b72e7ed0783ed"
+            }
+          ]
+        },
+        {
+          "relation": 14004562,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 36,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1533534627
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8601af5ac804a721391576bb29882858c976e4d803ece1a070e937bdb0318da2",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        },
+        {
+          "relation": 14004563,
+          "status": "partial",
+          "snapshot": "2026-10-18T18:06:04Z",
+          "version": 34,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1533534628
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c92dd28e31b3b29b6106a94f081b699f8a35691ded4af70425e6ffe882682b3c",
+              "dataset": "openstreetmap",
+              "endpoint": "https://overpass-api.de/api/interpreter",
+              "acquired": "2026-10-18T18:07:51.134Z",
+              "stage": "china",
+              "pass": "2026-10-18T18:03:37Z",
+              "query": "337fb779896d7bae9643f2549d8e5741b36c3825db6a9e711adf318512bbb504"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "generated": "2026-10-27T15:28:18.135Z",
+  "routes": 11722,
+  "retainedRelations": 11765,
+  "ways": 274343,
+  "tiles": 18655,
+  "tileBytes": 17396167,
+  "zooms": [
+    7,
+    12
+  ],
+  "stages": [
+    {
+      "name": "japan",
+      "label": "Japan",
+      "completed": "2026-10-18T07:57:41Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-18T07:58:47Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 1,
+        "splitBoxes": 0,
+        "requests": 1,
+        "downloadedBytes": 15175869
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 7478,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 302,
+          "partial": 8,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          1390151,
+          1940503,
+          3969571,
+          7702519,
+          7702520,
+          9255286,
+          11561062,
+          18788174
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 8
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 7478,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 302,
+            "partial": 8,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            1390151,
+            1940503,
+            3969571,
+            7702519,
+            7702520,
+            9255286,
+            11561062,
+            18788174
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 8
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-18T07:57:41Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 309,
+      "retainedRelations": 310
+    },
+    {
+      "name": "east-asia",
+      "label": "Koreas, Taiwan, Hong Kong, Macau and Guangdong",
+      "completed": "2026-10-18T13:13:45Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-18T13:23:08Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 6,
+        "splitBoxes": 0,
+        "requests": 9,
+        "downloadedBytes": 21042429
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 7537,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 579,
+          "partial": 13,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          6485218,
+          6485219,
+          6582965,
+          6582966,
+          8032733,
+          9283743,
+          9736634,
+          17581553,
+          17787820,
+          17787821,
+          18523160,
+          18523161,
+          20042681
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 13
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 7537,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 579,
+            "partial": 13,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            6485218,
+            6485219,
+            6582965,
+            6582966,
+            8032733,
+            9283743,
+            9736634,
+            17581553,
+            17787820,
+            17787821,
+            18523160,
+            18523161,
+            20042681
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 13
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-18T13:13:45Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 588,
+      "retainedRelations": 592
+    },
+    {
+      "name": "china",
+      "label": "Rest of China",
+      "completed": "2026-10-18T18:03:37Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-18T18:07:52Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 1,
+        "splitBoxes": 0,
+        "requests": 3,
+        "downloadedBytes": 19481309
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 6629,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 751,
+          "partial": 29,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          383717,
+          1722440,
+          1722441,
+          7913721,
+          8300862,
+          9600511,
+          9600551,
+          10003054,
+          10003055,
+          11755131,
+          11929616,
+          12893893,
+          12896377,
+          13046189,
+          13046198,
+          13364068,
+          14004562,
+          14004563,
+          15062140,
+          15711260,
+          16061931,
+          17135614,
+          17135615,
+          17775265,
+          19206257,
+          19905908,
+          19905909,
+          20736865,
+          21045624
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 29
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 6629,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 751,
+            "partial": 29,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            383717,
+            1722440,
+            1722441,
+            7913721,
+            8300862,
+            9600511,
+            9600551,
+            10003054,
+            10003055,
+            11755131,
+            11929616,
+            12893893,
+            12896377,
+            13046189,
+            13046198,
+            13364068,
+            14004562,
+            14004563,
+            15062140,
+            15711260,
+            16061931,
+            17135614,
+            17135615,
+            17775265,
+            19206257,
+            19905908,
+            19905909,
+            20736865,
+            21045624
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 29
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-18T18:03:37Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 779,
+      "retainedRelations": 780
+    },
+    {
+      "name": "russia",
+      "label": "Russia",
+      "completed": "2026-10-19T08:45:47Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-19T08:49:17Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 2,
+        "splitBoxes": 0,
+        "requests": 3,
+        "downloadedBytes": 22085655
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 11169,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 1095,
+          "partial": 28,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          294915,
+          443140,
+          572526,
+          1761541,
+          1955836,
+          1955837,
+          1955937,
+          1955989,
+          1956961,
+          1956963,
+          1956975,
+          1956976,
+          1957029,
+          1957030,
+          1964714,
+          1964715,
+          2170197,
+          2170198,
+          9082107,
+          10379599,
+          10379600,
+          11607962,
+          11607963,
+          15066305,
+          15066514,
+          17986413,
+          17987362,
+          17987364
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 28
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 11169,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 1095,
+            "partial": 28,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            294915,
+            443140,
+            572526,
+            1761541,
+            1955836,
+            1955837,
+            1955937,
+            1955989,
+            1956961,
+            1956963,
+            1956975,
+            1956976,
+            1957029,
+            1957030,
+            1964714,
+            1964715,
+            2170197,
+            2170198,
+            9082107,
+            10379599,
+            10379600,
+            11607962,
+            11607963,
+            15066305,
+            15066514,
+            17986413,
+            17987362,
+            17987364
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 28
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-19T08:45:47Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 1123,
+      "retainedRelations": 1123
+    },
+    {
+      "name": "europe-a",
+      "label": "Turkey, Cyprus and Caucasus",
+      "completed": "2026-10-20T08:26:13Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-20T08:33:37Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 7,
+        "splitBoxes": 0,
+        "requests": 8,
+        "downloadedBytes": 3719075
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 1760,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 154,
+          "partial": 8,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          2230605,
+          11644048,
+          17001642,
+          19053681,
+          19925415,
+          19983333,
+          20040971,
+          20140335
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 8
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 1760,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 154,
+            "partial": 8,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            2230605,
+            11644048,
+            17001642,
+            19053681,
+            19925415,
+            19983333,
+            20040971,
+            20140335
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 8
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-20T08:26:13Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 162,
+      "retainedRelations": 162
+    },
+    {
+      "name": "europe-b",
+      "label": "Spain, Portugal, Andorra, UK and Ireland",
+      "completed": "2026-10-21T08:29:08Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-21T08:47:43Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 9,
+        "splitBoxes": 0,
+        "requests": 14,
+        "downloadedBytes": 49598812
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 30150,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 828,
+          "partial": 13,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          377470,
+          4665783,
+          4665784,
+          4665785,
+          4665786,
+          9181537,
+          9940825,
+          11379809,
+          14614365,
+          14614366,
+          15775740,
+          17248967,
+          21500077
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 13
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 30150,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 828,
+            "partial": 13,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            377470,
+            4665783,
+            4665784,
+            4665785,
+            4665786,
+            9181537,
+            9940825,
+            11379809,
+            14614365,
+            14614366,
+            15775740,
+            17248967,
+            21500077
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 13
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-21T08:29:08Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 839,
+      "retainedRelations": 841
+    },
+    {
+      "name": "europe-c",
+      "label": "Iceland, Denmark, Norway and Sweden",
+      "completed": "2026-10-21T14:27:27Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-21T14:34:21Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 6,
+        "splitBoxes": 0,
+        "requests": 7,
+        "downloadedBytes": 10129482
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 5299,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 155,
+          "partial": 12,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          105884,
+          1452689,
+          2860815,
+          2860816,
+          3218722,
+          3218723,
+          3304344,
+          6286479,
+          6286481,
+          10068521,
+          20085036,
+          21104772
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 12
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 5299,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 155,
+            "partial": 12,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            105884,
+            1452689,
+            2860815,
+            2860816,
+            3218722,
+            3218723,
+            3304344,
+            6286479,
+            6286481,
+            10068521,
+            20085036,
+            21104772
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 12
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-21T14:27:27Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 167,
+      "retainedRelations": 167
+    },
+    {
+      "name": "europe-d",
+      "label": "Finland, Baltic states, Belarus, Ukraine and Moldova",
+      "completed": "2026-10-21T23:59:02Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-22T00:16:12Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 8,
+        "splitBoxes": 0,
+        "requests": 12,
+        "downloadedBytes": 12683687
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 7018,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 428,
+          "partial": 44,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          300003,
+          1133381,
+          1133383,
+          1133422,
+          1405182,
+          1405558,
+          1622359,
+          1622360,
+          1766484,
+          1766485,
+          1769489,
+          1769490,
+          1838775,
+          2152511,
+          2171615,
+          2198036,
+          2548727,
+          2561856,
+          2561857,
+          2561859,
+          2561860,
+          4153861,
+          4153862,
+          6749430,
+          9204860,
+          9206064,
+          9725779,
+          9726752,
+          9726760,
+          10693446,
+          11529447,
+          13490751,
+          13490752,
+          14337418,
+          14337419,
+          14337420,
+          14337421,
+          14457151,
+          14460895,
+          17852991,
+          17883966,
+          21444787,
+          21444798,
+          21454852
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 44
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 7018,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 428,
+            "partial": 44,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            300003,
+            1133381,
+            1133383,
+            1133422,
+            1405182,
+            1405558,
+            1622359,
+            1622360,
+            1766484,
+            1766485,
+            1769489,
+            1769490,
+            1838775,
+            2152511,
+            2171615,
+            2198036,
+            2548727,
+            2561856,
+            2561857,
+            2561859,
+            2561860,
+            4153861,
+            4153862,
+            6749430,
+            9204860,
+            9206064,
+            9725779,
+            9726752,
+            9726760,
+            10693446,
+            11529447,
+            13490751,
+            13490752,
+            14337418,
+            14337419,
+            14337420,
+            14337421,
+            14457151,
+            14460895,
+            17852991,
+            17883966,
+            21444787,
+            21444798,
+            21454852
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 44
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-21T23:59:02Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 471,
+      "retainedRelations": 472
+    },
+    {
+      "name": "europe-e",
+      "label": "Italy, former Yugoslavia, Greece, Bulgaria and Romania",
+      "completed": "2026-10-22T08:31:30Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-22T08:54:17Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 14,
+        "splitBoxes": 0,
+        "requests": 22,
+        "downloadedBytes": 25518778
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 15088,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 540,
+          "partial": 110,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          271401,
+          358087,
+          358088,
+          370849,
+          385215,
+          385217,
+          394393,
+          399971,
+          1221336,
+          1221337,
+          1271500,
+          1275400,
+          1278220,
+          1279256,
+          1279393,
+          1282338,
+          1282341,
+          1525348,
+          1525349,
+          1570939,
+          1570940,
+          1674700,
+          1674754,
+          1722600,
+          2168775,
+          2168776,
+          2168849,
+          2168850,
+          2176340,
+          2176341,
+          2202118,
+          2202704,
+          2203209,
+          2203625,
+          2205365,
+          2206780,
+          2208754,
+          2210741,
+          2211465,
+          2581270,
+          2581271,
+          2653189,
+          2653190,
+          2653193,
+          2653194,
+          2653205,
+          2653206,
+          2703073,
+          3309806,
+          3309807,
+          4621819,
+          4631288,
+          4631289,
+          4633529,
+          10103679,
+          10103680,
+          11917777,
+          11917778,
+          12222275,
+          12226153,
+          12226278,
+          12229163,
+          12229164,
+          12695832,
+          12695833,
+          12696013,
+          12696014,
+          13199266,
+          13199267,
+          13408068,
+          13882494,
+          13883770,
+          14001352,
+          14001353,
+          14412290,
+          14412291,
+          15589445,
+          15926646,
+          15926647,
+          16318123,
+          16318124,
+          16337327,
+          16337536,
+          16337799,
+          16337930,
+          17714137,
+          17714146,
+          18586107,
+          18586108,
+          18586117,
+          18586118,
+          18621862,
+          18622253,
+          18624687,
+          18624725,
+          18649601,
+          18649602,
+          18651301,
+          18651302,
+          21038854
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 110
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 15088,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 540,
+            "partial": 110,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            271401,
+            358087,
+            358088,
+            370849,
+            385215,
+            385217,
+            394393,
+            399971,
+            1221336,
+            1221337,
+            1271500,
+            1275400,
+            1278220,
+            1279256,
+            1279393,
+            1282338,
+            1282341,
+            1525348,
+            1525349,
+            1570939,
+            1570940,
+            1674700,
+            1674754,
+            1722600,
+            2168775,
+            2168776,
+            2168849,
+            2168850,
+            2176340,
+            2176341,
+            2202118,
+            2202704,
+            2203209,
+            2203625,
+            2205365,
+            2206780,
+            2208754,
+            2210741,
+            2211465,
+            2581270,
+            2581271,
+            2653189,
+            2653190,
+            2653193,
+            2653194,
+            2653205,
+            2653206,
+            2703073,
+            3309806,
+            3309807,
+            4621819,
+            4631288,
+            4631289,
+            4633529,
+            10103679,
+            10103680,
+            11917777,
+            11917778,
+            12222275,
+            12226153,
+            12226278,
+            12229163,
+            12229164,
+            12695832,
+            12695833,
+            12696013,
+            12696014,
+            13199266,
+            13199267,
+            13408068,
+            13882494,
+            13883770,
+            14001352,
+            14001353,
+            14412290,
+            14412291,
+            15589445,
+            15926646,
+            15926647,
+            16318123,
+            16318124,
+            16337327,
+            16337536,
+            16337799,
+            16337930,
+            17714137,
+            17714146,
+            18586107,
+            18586108,
+            18586117,
+            18586118,
+            18621862,
+            18622253,
+            18624687,
+            18624725,
+            18649601,
+            18649602,
+            18651301,
+            18651302,
+            21038854
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 110
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-22T08:31:30Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 650,
+      "retainedRelations": 650
+    },
+    {
+      "name": "europe-f",
+      "label": "France and Benelux",
+      "completed": "2026-10-22T14:29:18Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-22T14:35:39Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 5,
+        "splitBoxes": 0,
+        "requests": 6,
+        "downloadedBytes": 36511348
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 19825,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 673,
+          "partial": 27,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          1184795,
+          1838955,
+          1838956,
+          1849404,
+          2804168,
+          3094380,
+          3228455,
+          3287304,
+          3939084,
+          4110002,
+          4139149,
+          6323706,
+          6323707,
+          6616903,
+          7006047,
+          10406565,
+          10406566,
+          11593003,
+          17885132,
+          19937258,
+          20185321,
+          20185322,
+          20804494,
+          20804495,
+          21208926,
+          21208991,
+          21457251
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 27
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 19825,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 673,
+            "partial": 27,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            1184795,
+            1838955,
+            1838956,
+            1849404,
+            2804168,
+            3094380,
+            3228455,
+            3287304,
+            3939084,
+            4110002,
+            4139149,
+            6323706,
+            6323707,
+            6616903,
+            7006047,
+            10406565,
+            10406566,
+            11593003,
+            17885132,
+            19937258,
+            20185321,
+            20185322,
+            20804494,
+            20804495,
+            21208926,
+            21208991,
+            21457251
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 27
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-22T14:29:18Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 698,
+      "retainedRelations": 700
+    },
+    {
+      "name": "europe-g",
+      "label": "Remaining Europe",
+      "completed": "2026-10-17T23:04:59Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-17T23:09:00Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 4,
+        "splitBoxes": 0,
+        "requests": 4,
+        "downloadedBytes": 36393993
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 119025,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 3609,
+          "partial": 201,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          11004,
+          106244,
+          178795,
+          1535561,
+          1535562,
+          1536164,
+          1536165,
+          1809688,
+          1849754,
+          1860361,
+          2064636,
+          2077646,
+          2077647,
+          2077981,
+          2077982,
+          2077984,
+          2078004,
+          2078006,
+          2078078,
+          2078079,
+          2078223,
+          2080356,
+          2080358,
+          2082553,
+          2084109,
+          2084110,
+          2084473,
+          10460911,
+          10486181,
+          10537855,
+          10609778,
+          10609779,
+          10609786,
+          10807449,
+          11294195,
+          11604705,
+          11604708,
+          12271401,
+          13064486,
+          13305613,
+          13571814,
+          13879319,
+          14040038,
+          14040039,
+          14040609,
+          14040610,
+          14048876,
+          14112553,
+          14300249,
+          14300250,
+          14864787,
+          14864788,
+          14864789,
+          14864790,
+          14864791,
+          14864792,
+          14978347,
+          14978348,
+          15046200,
+          15046201,
+          15446398,
+          15858526,
+          15874031,
+          15874032,
+          15984766,
+          16172603,
+          16244036,
+          16244037,
+          16805930,
+          16828138,
+          16828139,
+          16828422,
+          16997911,
+          16997912,
+          17486839,
+          17526384,
+          17649146,
+          17825690,
+          18052918,
+          18052921,
+          18052922,
+          18052923,
+          18052940,
+          18052943,
+          18052944,
+          18052946,
+          18420791,
+          18420792,
+          18594750,
+          19165543,
+          19416960,
+          19659733,
+          19993654,
+          20141427,
+          20141428,
+          20273516,
+          20273517,
+          20669138,
+          20669139,
+          20822301
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 201
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 119025,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 3609,
+            "partial": 201,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            11004,
+            106244,
+            178795,
+            1535561,
+            1535562,
+            1536164,
+            1536165,
+            1809688,
+            1849754,
+            1860361,
+            2064636,
+            2077646,
+            2077647,
+            2077981,
+            2077982,
+            2077984,
+            2078004,
+            2078006,
+            2078078,
+            2078079,
+            2078223,
+            2080356,
+            2080358,
+            2082553,
+            2084109,
+            2084110,
+            2084473,
+            10460911,
+            10486181,
+            10537855,
+            10609778,
+            10609779,
+            10609786,
+            10807449,
+            11294195,
+            11604705,
+            11604708,
+            12271401,
+            13064486,
+            13305613,
+            13571814,
+            13879319,
+            14040038,
+            14040039,
+            14040609,
+            14040610,
+            14048876,
+            14112553,
+            14300249,
+            14300250,
+            14864787,
+            14864788,
+            14864789,
+            14864790,
+            14864791,
+            14864792,
+            14978347,
+            14978348,
+            15046200,
+            15046201,
+            15446398,
+            15858526,
+            15874031,
+            15874032,
+            15984766,
+            16172603,
+            16244036,
+            16244037,
+            16805930,
+            16828138,
+            16828139,
+            16828422,
+            16997911,
+            16997912,
+            17486839,
+            17526384,
+            17649146,
+            17825690,
+            18052918,
+            18052921,
+            18052922,
+            18052923,
+            18052940,
+            18052943,
+            18052944,
+            18052946,
+            18420791,
+            18420792,
+            18594750,
+            19165543,
+            19416960,
+            19659733,
+            19993654,
+            20141427,
+            20141428,
+            20273516,
+            20273517,
+            20669138,
+            20669139,
+            20822301
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 201
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-17T23:04:59Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 1,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 3809,
+      "retainedRelations": 3810
+    },
+    {
+      "name": "india",
+      "label": "India",
+      "completed": "2026-10-25T23:12:14Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-25T23:19:41Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 1,
+        "splitBoxes": 0,
+        "requests": 4,
+        "downloadedBytes": 4606114
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 2277,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 155,
+          "partial": 19,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          2575578,
+          2575601,
+          2575608,
+          2575679,
+          2575704,
+          2576323,
+          2753056,
+          2753085,
+          2753154,
+          2753158,
+          2897488,
+          2901596,
+          2901597,
+          7898732,
+          12824257,
+          12828618,
+          12940681,
+          12940682,
+          19233909
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 19
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 2277,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 155,
+            "partial": 19,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            2575578,
+            2575601,
+            2575608,
+            2575679,
+            2575704,
+            2576323,
+            2753056,
+            2753085,
+            2753154,
+            2753158,
+            2897488,
+            2901596,
+            2901597,
+            7898732,
+            12824257,
+            12828618,
+            12940681,
+            12940682,
+            19233909
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 19
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-25T23:12:14Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 2,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 173,
+      "retainedRelations": 174
+    },
+    {
+      "name": "asia",
+      "label": "Rest of Asia",
+      "completed": "2026-10-26T08:48:12Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-26T08:55:37Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 4,
+        "splitBoxes": 0,
+        "requests": 6,
+        "downloadedBytes": 7152431
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 3800,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 251,
+          "partial": 42,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          110418,
+          443307,
+          2431321,
+          2453918,
+          2453919,
+          2954026,
+          3517270,
+          3788350,
+          5587340,
+          5617782,
+          5692274,
+          7705632,
+          7705668,
+          7832324,
+          8312413,
+          8312414,
+          8312415,
+          8312416,
+          8312417,
+          15545705,
+          17168709,
+          17186141,
+          17186142,
+          17186143,
+          17186144,
+          17186145,
+          17186146,
+          17186147,
+          17504372,
+          17739982,
+          17739983,
+          18058146,
+          18360763,
+          18367296,
+          18663751,
+          18663752,
+          18850076,
+          19161636,
+          19974771,
+          21234053,
+          21239293,
+          21239294
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 42
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 3800,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 251,
+            "partial": 42,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            110418,
+            443307,
+            2431321,
+            2453918,
+            2453919,
+            2954026,
+            3517270,
+            3788350,
+            5587340,
+            5617782,
+            5692274,
+            7705632,
+            7705668,
+            7832324,
+            8312413,
+            8312414,
+            8312415,
+            8312416,
+            8312417,
+            15545705,
+            17168709,
+            17186141,
+            17186142,
+            17186143,
+            17186144,
+            17186145,
+            17186146,
+            17186147,
+            17504372,
+            17739982,
+            17739983,
+            18058146,
+            18360763,
+            18367296,
+            18663751,
+            18663752,
+            18850076,
+            19161636,
+            19974771,
+            21234053,
+            21239293,
+            21239294
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 42
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-26T08:48:12Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 2,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 282,
+      "retainedRelations": 293
+    },
+    {
+      "name": "north-america",
+      "label": "US and Canada",
+      "completed": "2026-10-26T16:05:03Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-26T16:11:48Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 2,
+        "splitBoxes": 0,
+        "requests": 5,
+        "downloadedBytes": 34675219
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 19263,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 770,
+          "partial": 28,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          207814,
+          1353694,
+          1354956,
+          1354958,
+          1783279,
+          3555581,
+          3555582,
+          4473912,
+          4786115,
+          6183627,
+          6504062,
+          6666780,
+          6730491,
+          7573751,
+          7573752,
+          9357512,
+          12316476,
+          14623682,
+          16316556,
+          18054722,
+          18846885,
+          18846886,
+          18846887,
+          18846888,
+          19807284,
+          19807285,
+          19980660,
+          21650667
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 28
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 19263,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 770,
+            "partial": 28,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            207814,
+            1353694,
+            1354956,
+            1354958,
+            1783279,
+            3555581,
+            3555582,
+            4473912,
+            4786115,
+            6183627,
+            6504062,
+            6666780,
+            6730491,
+            7573751,
+            7573752,
+            9357512,
+            12316476,
+            14623682,
+            16316556,
+            18054722,
+            18846885,
+            18846886,
+            18846887,
+            18846888,
+            19807284,
+            19807285,
+            19980660,
+            21650667
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 28
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-26T16:05:03Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 2,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 781,
+      "retainedRelations": 798
+    },
+    {
+      "name": "americas",
+      "label": "Rest of the Americas",
+      "completed": "2026-10-27T00:23:39Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-27T00:25:46Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 1,
+        "splitBoxes": 0,
+        "requests": 2,
+        "downloadedBytes": 12252312
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 7357,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 357,
+          "partial": 15,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          4657180,
+          7833970,
+          13350006,
+          13350007,
+          14103507,
+          15789478,
+          15816038,
+          15824023,
+          15951675,
+          16358740,
+          16358830,
+          17824814,
+          18251231,
+          18251232,
+          19566688
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 15
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 7357,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 357,
+            "partial": 15,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            4657180,
+            7833970,
+            13350006,
+            13350007,
+            14103507,
+            15789478,
+            15816038,
+            15824023,
+            15951675,
+            16358740,
+            16358830,
+            17824814,
+            18251231,
+            18251232,
+            19566688
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 15
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-27T00:23:39Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 2,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 371,
+      "retainedRelations": 372
+    },
+    {
+      "name": "world",
+      "label": "Rest of the world",
+      "completed": "2026-10-27T15:21:29Z",
+      "inProgress": false,
+      "lastAttempt": {
+        "at": "2026-10-27T15:27:38Z",
+        "status": "acquired",
+        "reason": null,
+        "fetchedBoxes": 3,
+        "splitBoxes": 0,
+        "requests": 6,
+        "downloadedBytes": 26433220
+      },
+      "geometry": {
+        "status": "incomplete",
+        "sourceStatus": "incomplete",
+        "counts": {
+          "complete": 14651,
+          "partial": 0,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedWays": [],
+        "relationCounts": {
+          "complete": 614,
+          "partial": 63,
+          "conflict": 0,
+          "unknown": 0
+        },
+        "affectedRelations": [
+          289331,
+          331250,
+          331251,
+          331252,
+          331253,
+          331254,
+          331279,
+          331281,
+          331282,
+          331283,
+          331284,
+          331285,
+          443307,
+          952470,
+          1112285,
+          1112307,
+          1112313,
+          1112508,
+          1112509,
+          1171503,
+          2431321,
+          2954026,
+          3517270,
+          3788350,
+          5587340,
+          5617782,
+          6336541,
+          6545466,
+          7409680,
+          7409686,
+          7409703,
+          7409709,
+          7410761,
+          7705632,
+          7705668,
+          7832324,
+          8210886,
+          8210887,
+          10670932,
+          10671054,
+          10671153,
+          10671154,
+          10671155,
+          10672955,
+          13035324,
+          15545705,
+          16694211,
+          17075185,
+          17168709,
+          17186141,
+          17186142,
+          17186143,
+          17186144,
+          17186145,
+          17186146,
+          17186147,
+          18360763,
+          18367296,
+          18850076,
+          19064976,
+          19131817,
+          19427410,
+          19427411
+        ],
+        "unavailableRelations": [],
+        "reasons": {
+          "unresolved_member_eligibility": 63
+        },
+        "sourceOutcome": {
+          "status": "incomplete",
+          "retry": "next-stage-refresh",
+          "lastFailure": "unresolved-source-relations"
+        },
+        "observed": {
+          "status": "incomplete",
+          "sourceStatus": "incomplete",
+          "counts": {
+            "complete": 14651,
+            "partial": 0,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedWays": [],
+          "relationCounts": {
+            "complete": 614,
+            "partial": 63,
+            "conflict": 0,
+            "unknown": 0
+          },
+          "affectedRelations": [
+            289331,
+            331250,
+            331251,
+            331252,
+            331253,
+            331254,
+            331279,
+            331281,
+            331282,
+            331283,
+            331284,
+            331285,
+            443307,
+            952470,
+            1112285,
+            1112307,
+            1112313,
+            1112508,
+            1112509,
+            1171503,
+            2431321,
+            2954026,
+            3517270,
+            3788350,
+            5587340,
+            5617782,
+            6336541,
+            6545466,
+            7409680,
+            7409686,
+            7409703,
+            7409709,
+            7410761,
+            7705632,
+            7705668,
+            7832324,
+            8210886,
+            8210887,
+            10670932,
+            10671054,
+            10671153,
+            10671154,
+            10671155,
+            10672955,
+            13035324,
+            15545705,
+            16694211,
+            17075185,
+            17168709,
+            17186141,
+            17186142,
+            17186143,
+            17186144,
+            17186145,
+            17186146,
+            17186147,
+            18360763,
+            18367296,
+            18850076,
+            19064976,
+            19131817,
+            19427410,
+            19427411
+          ],
+          "unavailableRelations": [],
+          "reasons": {
+            "unresolved_member_eligibility": 63
+          }
+        },
+        "observedUnknown": 0,
+        "observedUnknownRelations": 0,
+        "checked": "2026-10-27T15:21:29Z",
+        "lastFailure": "unresolved-source-relations",
+        "attempts": 2,
+        "retry": "next-stage-refresh"
+      },
+      "routes": 667,
+      "retainedRelations": 677
+    }
+  ],
+  "run": {
+    "stage": "world",
+    "at": "2026-10-27T15:27:38Z",
+    "status": "acquired",
+    "reason": null,
+    "fetchedBoxes": 3,
+    "splitBoxes": 0,
+    "requests": 6,
+    "downloadedBytes": 26433220
+  },
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view."
+}
