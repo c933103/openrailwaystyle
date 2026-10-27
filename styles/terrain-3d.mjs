@@ -2,17 +2,61 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-3';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-3';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-3';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-terrain-pitch-2';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261027-terrain-pitch-2';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-terrain-pitch-2';
 
 // MapLibre renders its terrain DEM one zoom below the camera tile level.
 // At globe/continent scales even mountains several kilometres high cover
 // fewer than a few display pixels at true 1x elevation. A deliberate press of
 // the 3D control therefore brings the *current centre* to a terrain-inspection
-// scale, without inventing vertical exaggeration or moving to another place.
+// scale, without moving to another place. The separate settings panel
+// explicitly discloses any user-selected vertical exaggeration.
 export const TERRAIN_3D_INSPECTION_ZOOM = 12.3;
-export const TERRAIN_3D_VIEW_PITCH = 60;
+// User gestures may go farther down than the 78° one-tap viewing angle.
+// Pitch and tile quality are independent: do not cap perspective merely to
+// prevent remote tile requests.
+export const TERRAIN_3D_VIEW_PITCH = 78;
+export const TERRAIN_3D_MAX_PITCH = 85;
+// At high pitch, coarsen tiles toward the horizon with MapLibre's native
+// source-tile LOD calculation. Do not suppress, invent, or 404 distant data.
+// The pinned MapLibre v5.24 defaults are [9.314, 3.0].
+export const HIGH_PITCH_THRESHOLD = 65;
+export const HIGH_PITCH_LOD = Object.freeze({
+  // Larger zoom-level span makes resolution decay more quickly with distance.
+  general: Object.freeze([11, 2]),
+  terrain: Object.freeze([12, 1.5]),
+  normal: Object.freeze([9.314, 3]),
+});
+// This bounds per-source *cached* tiles, independently from the LOD limit on
+// requested visible tiles. Cache size does not impose an active-tile limit.
+export const HIGH_PITCH_TILE_CACHE_LIMIT = 96;
+const tileLodStates = new WeakMap();
+export function syncHighPitchTileBudget(map) {
+  const source = map?.getSource?.('terrain3d');
+  if (!source) return false;
+  if (typeof map.setSourceTileLodParams !== 'function')
+    throw new Error('Pinned MapLibre renderer lacks high-pitch tile LOD support');
+  const pitch = map.getPitch();
+  if (!Number.isFinite(pitch)) throw new RangeError('Invalid camera pitch');
+  const high = pitch > HIGH_PITCH_THRESHOLD;
+  const previous = tileLodStates.get(map);
+  if (previous?.source === source && previous.high === high) return false;
+  if (!high && !previous) {
+    // A fresh overhead camera already uses MapLibre's native defaults;
+    // keep all regular zooms and station detail unchanged.
+    tileLodStates.set(map, {source, high:false});
+    return false;
+  }
+  const [levels, ratio] = high ? HIGH_PITCH_LOD.general : HIGH_PITCH_LOD.normal;
+  // One call for all tile sources, including railway and basemap context,
+  // so enabling near-horizon viewing cannot fan out full-resolution rail/
+  // landcover/imagery requests while restricting just the DEM.
+  map.setSourceTileLodParams(levels, ratio);
+  if (high) map.setSourceTileLodParams(...HIGH_PITCH_LOD.terrain, 'terrain3d');
+  tileLodStates.set(map, {source, high});
+  return true;
+}
 export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
   if (!Number.isFinite(zoom) || !Number.isInteger(detail) || detail < 0 || detail > 2) {
     throw new RangeError('Invalid 3D terrain view');
@@ -20,6 +64,17 @@ export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
   if (active) return {pitch: 0};
   const target = TERRAIN_3D_INSPECTION_ZOOM + detail;
   return {pitch: TERRAIN_3D_VIEW_PITCH, ...(zoom < target ? {zoom: target} : {})};
+}
+
+// A deliberately bounded visual exaggeration, not a modification of stored
+// DEM samples. True-scale measurements and contour elevation labels continue
+// to use the original elevation data.
+export const TERRAIN_EXAGGERATION_OPTIONS = Object.freeze([1, 2, 3, 5]);
+export const DEFAULT_TERRAIN_EXAGGERATION = 3;
+export function terrainExaggeration(value) {
+  if (!TERRAIN_EXAGGERATION_OPTIONS.includes(value))
+    throw new RangeError('Invalid 3D vertical exaggeration');
+  return value;
 }
 
 export const TERRAIN_3D_SOURCE = 'terrain3d';
@@ -32,14 +87,19 @@ export function terrain3DEnabled(relief, pitch) {
   return Boolean(relief) && Number.isFinite(pitch) && pitch > 0.25;
 }
 
-export function syncTerrain3D(map, relief) {
+export function syncTerrain3D(map, relief, exaggeration = 1) {
+  // The default remains physical 1× for direct API consumers and isolated
+  // browser fixtures. The app passes its independently validated preference.
+  terrainExaggeration(exaggeration);
   // isStyleLoaded() is false while *any* visible tile is loading, including
   // ordinary rail and imagery tiles. The DEM source only has to be registered.
   if (!map?.getSource?.(TERRAIN_3D_SOURCE)) return;
-  const desired = terrain3DEnabled(relief, map.getPitch()) ? TERRAIN_3D_SOURCE : null;
-  const current = map.getTerrain()?.source || null;
-  if (current === desired) return;
-  map.setTerrain(desired ? {source: desired, exaggeration: 1} : null);
+  const enabled = terrain3DEnabled(relief, map.getPitch());
+  const current = map.getTerrain();
+  const wanted = enabled ? {source: TERRAIN_3D_SOURCE, exaggeration} : null;
+  if (!wanted && !current) return;
+  if (wanted && current?.source === wanted.source && current?.exaggeration === exaggeration) return;
+  map.setTerrain(wanted);
 }
 
 export function needsSeabedRecovery(fine, z) {
