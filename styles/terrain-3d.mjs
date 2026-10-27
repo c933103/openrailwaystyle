@@ -2,9 +2,9 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261026-terrain-3d-1';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261026-terrain-3d-1';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261026-terrain-3d-1';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-map-history-1';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-map-history-1';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
 
 export const TERRAIN_3D_SOURCE = 'terrain3d';
 export const TERRAIN_3D_MAXZOOM = 14;
