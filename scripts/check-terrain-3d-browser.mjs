@@ -62,6 +62,7 @@ try {
          }});
       const map=window.fixtureMap=new maplibregl.Map({
         container:'map',center:[lng(0.5),lat],zoom:${fixture.cameraZoom},pitch:${fixture.pitch},maxPitch:80,
+        canvasContextAttributes:{preserveDrawingBuffer:true},
         style:{version:8,sources:{
           terrain3d:{type:'raster-dem',tiles:['atlas-terrain://{z}/{x}/{y}'],
             tileSize:256,maxzoom:11,encoding:'terrarium'},
@@ -69,10 +70,27 @@ try {
             type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[
               [[-1,-1],[-1,1],[1,1],[1,-1],[-1,-1]]
             ]}
-          }]}}
+          }]}},
+          seaSurface:{type:'geojson',data:{type:'FeatureCollection',features:[{
+            type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[
+              [lng(-1),lat-1],[lng(0.5),lat-1],[lng(0.5),lat+1],[lng(-1),lat+1],[lng(-1),lat-1]
+            ]]},
+          }]}},
+          visualContours:{type:'geojson',data:{type:'FeatureCollection',
+            features:Array.from({length:9},(_,i)=>({
+              type:'Feature',properties:{ele:i<4?-875:340},
+              geometry:{type:'LineString',coordinates:[[lng(i/8),lat-1],[lng(i/8),lat+1]]}
+            }))
+          }}
         },layers:[
           {id:'background',type:'background',paint:{'background-color':'#f2e9d4'}},
-          {id:'ground',type:'fill',source:'ground',paint:{'fill-color':'#d6cfb9'}}
+          {id:'ground',type:'fill',source:'ground',paint:{'fill-color':'#d6cfb9'}},
+          {id:'ocean-fixture',type:'fill',source:'seaSurface',paint:{'fill-color':'#b9d9e8'}},
+          {id:'contours-fixture',type:'line',source:'visualContours',
+            layout:{'line-join':'round'},paint:{
+              'line-color':['case',['<',['get','ele'],0],'#49768c','#927b5a'],
+              'line-width':3
+            }}
         ]}
       });
       map.on('error',event=>window.terrainErrors.push({sourceId:event.sourceId||null,
@@ -102,6 +120,45 @@ try {
   assert.ok(terrain.counts.fine>0&&terrain.counts.coarse>0&&terrain.counts.water>0,
     'the browser must recover real negative ocean mesh cells');
   await page.screenshot({path:'browser-review/terrain-3d-seabed-synthetic.png'});
+  // Renderer acceptance, not merely source/query acceptance: use the real
+  // WebGL output and compare pixels at the SAME pitch, centre and zoom.
+  // Synthetic sea fill and signed contour strokes provide visible reference
+  // geometry that must follow the 3D mesh rather than stay on a flat plane.
+  const captureFrame = async () => page.evaluate(async () => {
+    const map=window.fixtureMap;
+    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+    const source=map.getCanvas(),frame=document.createElement('canvas');
+    frame.width=source.width; frame.height=source.height;
+    const context=frame.getContext('2d',{willReadFrequently:true});
+    context.drawImage(source,0,0);
+    return Array.from(context.getImageData(0,0,frame.width,frame.height).data);
+  });
+  const perspective3D=await captureFrame();
+  await page.evaluate(()=>window.fixtureMap.setTerrain(null));
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
+  const perspectiveFlat=await captureFrame();
+  assert.equal(perspective3D.length,perspectiveFlat.length,'same framebuffer dimensions');
+  let changed=0,significant=0;
+  for(let i=0;i<perspective3D.length;i+=4) {
+    const delta=Math.abs(perspective3D[i]-perspectiveFlat[i])+
+      Math.abs(perspective3D[i+1]-perspectiveFlat[i+1])+
+      Math.abs(perspective3D[i+2]-perspectiveFlat[i+2]);
+    if(delta>6)changed++;
+    if(delta>48)significant++;
+  }
+  const visual={changed,significant,total:perspective3D.length/4,
+    pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
+  console.log('Native 3D vs flat map at identical pitch:',visual);
+  await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
+  assert.ok(significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
+  await page.screenshot({path:'browser-review/terrain-flat-same-pitch-synthetic.png'});
+  // Restore the 3D source to retain the original overhead-release test.
+  await page.evaluate(async()=>{
+    const {syncTerrain3D}=await import('./terrain-3d.mjs');
+    syncTerrain3D(window.fixtureMap,true);
+  });
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.source==='terrain3d');
+
   await page.evaluate(async()=>{
     // evaluate runs outside the fixture module's lexical scope. Import the
     // production helper here too; do not accidentally replace terrain checks
