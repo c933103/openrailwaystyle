@@ -1,0 +1,51 @@
+{
+  "checked_utc": "2026-10-27T06:21:34.170314+00:00",
+  "commit": "934918385a85eca0fa5fc4a47d2ada67bd393050",
+  "files": [
+    {
+      "path": "styles/index.html",
+      "url": "https://c933103.github.io/openrailwaystyle/index.html?v=20261027-3d-visible-1",
+      "bytes": 48210,
+      "expected_git_blob": "07e02f81d508df90cee3b52ca72512412fe4368b",
+      "actual_git_blob": "07e02f81d508df90cee3b52ca72512412fe4368b",
+      "match": true,
+      "sha256": "b2bfb0bdad78b02da5aec5741f84a53bb75d3be59cb6e5c2fe775fef0680c93c"
+    },
+    {
+      "path": "styles/app.mjs",
+      "url": "https://c933103.github.io/openrailwaystyle/app.mjs?v=20261027-3d-visible-1",
+      "bytes": 175048,
+      "expected_git_blob": "8772c77e36affbe6635d230c8454fdcf3bf9acd5",
+      "actual_git_blob": "8772c77e36affbe6635d230c8454fdcf3bf9acd5",
+      "match": true,
+      "sha256": "218449fb0ad660565a2eb359696c246ae8ab0225450aa4610a10e67c5bcd5b8c"
+    },
+    {
+      "path": "styles/app.css",
+      "url": "https://c933103.github.io/openrailwaystyle/app.css?v=20261027-3d-visible-1",
+      "bytes": 23738,
+      "expected_git_blob": "a4bb78738c39bffcb7dc3a6f654705734d643788",
+      "actual_git_blob": "a4bb78738c39bffcb7dc3a6f654705734d643788",
+      "match": true,
+      "sha256": "d88d76a14159f37e8f6de08e6ec5937e8dfddd22ed268380eb0ff2f78b1cc528"
+    },
+    {
+      "path": "styles/terrain-3d.mjs",
+      "url": "https://c933103.github.io/openrailwaystyle/terrain-3d.mjs?v=20261027-3d-visible-1",
+      "bytes": 10695,
+      "expected_git_blob": "36361d7be74c5c839b610509d111a81dc38718ac",
+      "actual_git_blob": "36361d7be74c5c839b610509d111a81dc38718ac",
+      "match": true,
+      "sha256": "de7aea4263fb5993775f02b405edee7a28b10fb1901214dff9ba383131d3ac7f"
+    },
+    {
+      "path": "styles/sw.js",
+      "url": "https://c933103.github.io/openrailwaystyle/sw.js?v=20261027-3d-visible-1",
+      "bytes": 15007,
+      "expected_git_blob": "ad5fc7c49e542b8132b6e41c6a3e971d9f16d35e",
+      "actual_git_blob": "ad5fc7c49e542b8132b6e41c6a3e971d9f16d35e",
+      "match": true,
+      "sha256": "28a93fe08d32291204a2459ff5cef5783ece083ecbde3d663f5af30b25287d5e"
+    }
+  ]
+}

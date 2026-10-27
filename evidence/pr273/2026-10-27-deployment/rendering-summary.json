@@ -1,0 +1,426 @@
+{
+  "mainline": {
+    "scope": "Actual OSM generation; exact chain identities",
+    "assetBase": "https://c933103.github.io/openrailwaystyle/",
+    "generation": "87e1693d26bcf4231da89209",
+    "samples": 840,
+    "appSamples": 18,
+    "profiles": [
+      {
+        "name": "desktop",
+        "engine": "chromium",
+        "width": 800,
+        "height": 450,
+        "assetRequests": 414,
+        "assetBytes": 23385823,
+        "decodedTileBytes": 63303140,
+        "cachedTileBytes": 15888125
+      },
+      {
+        "name": "android",
+        "engine": "chromium",
+        "width": 360,
+        "height": 450,
+        "assetRequests": 328,
+        "assetBytes": 19273352,
+        "decodedTileBytes": 50086807,
+        "cachedTileBytes": 16773148
+      },
+      {
+        "name": "safari",
+        "engine": "webkit",
+        "width": 390,
+        "height": 450,
+        "assetRequests": 335,
+        "assetBytes": 19525375,
+        "decodedTileBytes": 51179403,
+        "cachedTileBytes": 16509504
+      }
+    ],
+    "providerRequests": 0,
+    "timing": {
+      "medianMs": 336,
+      "p95Ms": 891
+    }
+  },
+  "orm": {
+    "base": "https://c933103.github.io/openrailwaystyle/",
+    "libraryAssets": [
+      {
+        "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0-atlas.1.js",
+        "status": 200,
+        "type": "application/javascript",
+        "bytes": 1056809,
+        "sha256": "46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223"
+      },
+      {
+        "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0.css",
+        "status": 200,
+        "type": "text/css",
+        "bytes": 70024,
+        "sha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732"
+      },
+      {
+        "url": "https://c933103.github.io/openrailwaystyle/vendor/pmtiles-4.2.1.js",
+        "status": 200,
+        "type": "application/javascript",
+        "bytes": 19565,
+        "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79"
+      }
+    ],
+    "wuhan": [
+      {
+        "zoom": 6,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-overview",
+        "source": "network",
+        "sourceLayer": "standard_railway_line_low",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 1,
+        "providerPresentRail": 1,
+        "rendered": 1
+      },
+      {
+        "zoom": 7,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-tracks",
+        "source": "railway",
+        "sourceLayer": "railway_line_high",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 1,
+        "providerPresentRail": 1,
+        "rendered": 1
+      },
+      {
+        "zoom": 8,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-tracks",
+        "source": "railway",
+        "sourceLayer": "railway_line_high",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 2,
+        "providerPresentRail": 1,
+        "rendered": 1
+      }
+    ],
+    "recovery": {
+      "settings": {
+        "at": 2501.6999999999534,
+        "center": [
+          114.4,
+          30.55
+        ],
+        "hidden": "none",
+        "shown": "visible",
+        "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing."
+      },
+      "before": {
+        "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+        "pending": true,
+        "at": 2597.0999999999767
+      },
+      "partial": {
+        "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+        "error": true,
+        "pending": true,
+        "at": 7577.29999999993
+      },
+      "after": {
+        "status": "Explore the rail network \u00b7 click a line or station",
+        "pending": true,
+        "loaded": false,
+        "rails": 1,
+        "at": 7907.199999999953,
+        "events": [
+          {
+            "type": "sourcedata",
+            "sourceId": "pendingRecovery",
+            "sourceDataType": "visibility",
+            "isSourceLoaded": false,
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 956
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 53,
+              "key": "5bc77"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1430.7999999999884
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 51,
+              "key": "54877"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1430.899999999965
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 52,
+              "key": "57r77"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1432.7999999999884
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 53,
+              "key": "5bd77"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1433
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 51,
+              "key": "54977"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1451.5999999999767
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 53,
+              "key": "5bb77"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1457.5999999999767
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": false,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 51,
+              "key": "54777"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 1459.399999999965
+          },
+          {
+            "type": "error",
+            "sourceId": "railway",
+            "tileState": "errored",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 52,
+              "key": "57s77"
+            },
+            "message": "Map names returned 520",
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2438.5
+          },
+          {
+            "type": "error",
+            "sourceId": "railway",
+            "tileState": "errored",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 52,
+              "key": "57t77"
+            },
+            "message": "Map names returned 520",
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2485.1999999999534
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 51,
+              "key": "54777"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2817.5999999999767
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 51,
+              "key": "54877"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2841.7999999999884
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 51,
+              "key": "54977"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2859.5999999999767
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 53,
+              "key": "5bc77"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2878.6999999999534
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 52,
+              "key": "57r77"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2897.1999999999534
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 53,
+              "key": "5bd77"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2924.5999999999767
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 103,
+              "y": 53,
+              "key": "5bb77"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 2946.6999999999534
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 104,
+              "y": 52,
+              "key": "57s77"
+            },
+            "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+            "at": 7565.099999999977
+          },
+          {
+            "type": "sourcedata",
+            "sourceId": "railway",
+            "tileState": "loaded",
+            "isSourceLoaded": true,
+            "coordinate": {
+              "z": 7,
+              "x": 105,
+              "y": 52,
+              "key": "57t77"
+            },
+            "status": "Explore the rail network \u00b7 click a line or station",
+            "at": 7873.599999999977
+          }
+        ]
+      },
+      "failedPaths": [
+        "/railway_line_high,railway_text_km/7/104/52",
+        "/railway_line_high,railway_text_km/7/105/52"
+      ],
+      "unknownMetadataFallback": true
+    },
+    "namedEmpty": {
+      "tiles": 18,
+      "namedEmpty": 17,
+      "status": "Explore the rail network \u00b7 click a line or station"
+    }
+  }
+}

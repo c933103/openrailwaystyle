@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-10-27T06:30:29.286Z",
+  "repository": "c933103/openrailwaystyle",
+  "pull_request": 273,
+  "reviewed_head": "f751387a6563b0a2aaa8f5f5e5494338de6c376b",
+  "merge_commit": "934918385a85eca0fa5fc4a47d2ada67bd393050",
+  "merge_parents": [
+    "193ba893d1181a585ca4abb7146b55e9e28dac08",
+    "f751387a6563b0a2aaa8f5f5e5494338de6c376b"
+  ],
+  "reviewed_and_merge_tree": "0d1eb573b461322fe5daef44209c2d3764b7fc62",
+  "release": "20261027-3d-visible-1",
+  "original_push": {
+    "run": 40455184384,
+    "conclusion": "failure",
+    "failed_job": 122030400738,
+    "failure": "service-status-browser-fixture.mjs:46: status stays open after period changes; false !== true",
+    "deployment": "skipped"
+  },
+  "automatic_replacement": {
+    "run": 40456972649,
+    "event": "workflow_dispatch",
+    "head_sha": "934918385a85eca0fa5fc4a47d2ada67bd393050",
+    "conclusion": "success",
+    "completed_at": "2026-10-27T06:25:06Z",
+    "deploy_job": 122042369353
+  },
+  "published_artifact": {
+    "id": 12713988824,
+    "name": "published-map-review",
+    "bytes": 1865750,
+    "sha256": "d0f47f861230f7cd8a29b589e080cf8a65dac811eb900502b8ece6bf284aff66",
+    "downloaded_sha256_verified": true,
+    "created_at": "2026-10-27T06:25:02Z"
+  },
+  "synthetic_terrain_evidence": {
+    "run": 40450130137,
+    "job": 122014454143,
+    "pitch_degrees": 60,
+    "total_pixels": 944000,
+    "significant_terrain_vs_flat": 28213,
+    "significant_dem_1x_vs_0x": 28358,
+    "sea_metres": -875,
+    "land_metres": 340.89453125,
+    "summit_metres": 1440,
+    "overhead_release": "passed",
+    "limitation": "Synthetic terrain fixture, not real-world terrain scenic quality verification."
+  },
+  "published_checks": [
+    {
+      "name": "Deploy to GitHub Pages",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify deployed vector tile bytes",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify deployed independent OSM geometry with live overview unavailable",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify published map with local railway fixture",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "evidence_access_limit": "Final deployment-job raw log retrieval returned Transport closed twice. Terminal job/step records, downloaded artifact contents and independent live source hashes are available; no missing raw log is represented as read.",
+  "known_followup": "The service-details/legend disclosure-state race was independently reproduced; repair is tracked separately in PR274. A later passing run does not erase the original failure."
+}
