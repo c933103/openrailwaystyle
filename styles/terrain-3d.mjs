@@ -2,9 +2,10 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-terrain-pitch-2';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-terrain-pitch-2';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-terrain-pitch-2';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-polar-focus-1';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261027-polar-focus-1';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-polar-focus-1';
+import {globeGroundZoom, zoomForLatitude} from './globe-drag.mjs?v=20261027-polar-focus-1';
 
 // MapLibre renders its terrain DEM one zoom below the camera tile level.
 // At globe/continent scales even mountains several kilometres high cover
@@ -84,13 +85,23 @@ export function syncHighPitchTileBudget(map, changedSourceId = null) {
   tileLodStates.set(map, {source, high, sources:high ? currentTileSources(map) : new Map()});
   return true;
 }
-export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
-  if (!Number.isFinite(zoom) || !Number.isInteger(detail) || detail < 0 || detail > 2) {
+export function terrain3DViewTarget({zoom, detail = 0, active = false, globe = false, latitude = 0}) {
+  if (!Number.isFinite(zoom) || !Number.isInteger(detail) || detail < 0 || detail > 2 ||
+      (globe && (!Number.isFinite(latitude) || Math.abs(latitude) > 90))) {
     throw new RangeError('Invalid 3D terrain view');
   }
   if (active) return {pitch: 0};
-  const target = TERRAIN_3D_INSPECTION_ZOOM + detail;
-  return {pitch: TERRAIN_3D_VIEW_PITCH, ...(zoom < target ? {zoom: target} : {})};
+  // MapLibre's globe zoom is relative to the latitude: near the pole a
+  // ground-scale view of z12.3 can have a NEGATIVE camera zoom. Using the
+  // raw camera zoom to target 12.3 violently zooms in by 20–30 levels,
+  // ruining the polar view and potentially exhausting the renderer.
+  // Convert the desired *ground* scale back into a camera zoom for the
+  // current latitude; this is the inverse of MapLibre's globe compensation.
+  const targetGroundZoom = TERRAIN_3D_INSPECTION_ZOOM + detail;
+  const currentGroundZoom = globe ? globeGroundZoom(zoom, latitude) : zoom;
+  const targetCameraZoom = globe ? zoomForLatitude(targetGroundZoom, 0, latitude) : targetGroundZoom;
+  return {pitch: TERRAIN_3D_VIEW_PITCH,
+    ...(currentGroundZoom + 1e-8 < targetGroundZoom ? {zoom: targetCameraZoom} : {})};
 }
 
 // A deliberately bounded visual exaggeration, not a modification of stored
