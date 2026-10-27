@@ -79,8 +79,9 @@ try {
     assert.deepEqual(removed,withoutDepth,'removing the style layer must hide depth instead of reverting to fallback depth paint');
     await page.evaluate(async()=>{window.background='carto';await window.frame();});
     const carto=await page.evaluate(()=>window.pixel());
-    assert.ok(carto.slice(0,3).some((v,i)=>Math.abs(v-expected[i])>12),
-      'Carto must not be recoloured with custom Map depth palette');
+    const cartoFill=cap==='north'?[170,211,223]:[242,239,233];
+    for(let i=0;i<3;i++)assert.ok(Math.abs(carto[i]-cartoFill[i])<=5,
+      `${cap}: Carto must retain its independent flat cap palette, got ${carto}`);
     await page.evaluate(async()=>{window.background='satellite';await window.frame();});
     const dark=await page.evaluate(()=>window.pixel());
     assert.ok(dark.slice(0,3).every(v=>v<=5),'Satellite retains black no-imagery polar cap');
