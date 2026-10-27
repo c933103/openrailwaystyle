@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-2';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-2';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-2';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-3';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-3';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-2';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-2';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-2';
-import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-2';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-2';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-2';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-2';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-2';
-import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-2';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-2';
-import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-2';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-2';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-2';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-2';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-3';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-3';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-3';
+import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-3';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-3';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-3';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-3';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-3';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-3';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-3';
+import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-3';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-3';
+import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-3';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-3';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-3';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-3';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-3';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -43,8 +43,14 @@ const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
 // with page requests). A link with a position (#zoom/lat/lng) still wins.
 const VIEW_STORE = 'atlas_view';
 const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
-// Capture an incoming map link before its fragment is removed from the address.
-const initialViewHash = parseViewHash(location.hash) ? location.hash : '';
+// Capture the latest valid map link before URL normalization, including
+// explicit navigation while libraries or startup data are still loading.
+let linkedViewHash = parseViewHash(location.hash) ? location.hash : '';
+function captureViewHash() {
+  if (parseViewHash(location.hash)) linkedViewHash = location.hash;
+  return linkedViewHash;
+}
+addEventListener('hashchange', captureViewHash);
 function saveView() {
   if (!map) return;
   const c = map.getCenter();
@@ -64,7 +70,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -537,6 +543,7 @@ function saveSettings() {
   const url = new URL(location.href);
   const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key));
   const hasView = Boolean(parseViewHash(url.hash));
+  if (hasView) linkedViewHash = url.hash;
   // Normalize shared links once, not on every pan/zoom. Preserve unrelated
   // query parameters, non-map anchors and the current browser history state.
   if (hasSettings || hasView) {
@@ -552,9 +559,9 @@ function shareURL() {
   if (map) {
     const {lat, lng} = map.getCenter();
     url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
-  } else if (initialViewHash) {
+  } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
-    url.hash = initialViewHash;
+    url.hash = linkedViewHash;
   } else if (Array.isArray(rememberedView.c) && rememberedView.c.length === 2
       && rememberedView.c.every(Number.isFinite) && Number.isFinite(rememberedView.z)) {
     url.hash = viewHash({zoom: rememberedView.z, lat: rememberedView.c[1], lng: rememberedView.c[0],
@@ -1735,7 +1742,7 @@ async function initialize() {
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linkedView = parseViewHash(initialViewHash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
   // A centre beyond 85.05° exists only on the globe: open there, or the flat
   // map would pull it back to its edge.
@@ -1777,7 +1784,7 @@ async function initialize() {
   const wanted = linked ? linkedView : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && (linked || startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
     // Again once the style has put the map on the globe.
-    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(parseViewHash(captureViewHash()) || wanted));
   }
   // Ordinary navigation updates the persisted local view through updatePolar.
   // Only explicitly navigating to a link fragment changes the browser URL.

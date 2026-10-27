@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-3';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

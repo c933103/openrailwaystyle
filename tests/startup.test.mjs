@@ -85,7 +85,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
       this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
       maps.push(this);
     }
-    once(name,handler) {this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
+    once(name,handler) {((this.onceHandlers ||= {})[name] ||= []).push(handler);this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
     removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
@@ -110,7 +110,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     getZoom() { return this.zoom; }
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
     easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
@@ -1306,6 +1306,66 @@ test('incoming map links are consumed once; sharing still works before map initi
       'navigating the linked map does not bring the fragment back');
     assert.deepEqual(errors,[]);
   }finally{dom.window.close();}
+});
+
+for(const scenario of [
+ {delay:'libraries',initial:'#10/35/139/20/30',share:false},
+ {delay:'labels',initial:'',share:false},
+ {delay:'libraries',initial:'',share:true},
+ {delay:'labels',initial:'#10/35/139/20/30',share:true},
+ {delay:'libraries',initial:'',share:false,invalidCold:'#not-a-map'},
+ {delay:'labels',initial:'#10/35/139/20/30',share:false,invalidCold:''},
+]) test(`cold navigation keeps the newest view during ${scenario.delay} loading, share=${scenario.share}, invalid=${scenario.invalidCold ?? 'none'}`,async()=>{
+ const {dom,window,maps,errors,loadLibraries,loadLabels}=await start({
+   delayLibraries:scenario.delay==='libraries',delayLabels:scenario.delay==='labels',
+   search:'?ref=cold-navigation'+scenario.initial,
+ });
+ try {
+   assert.equal(maps.length,0);
+   const newest='#12/89.7/162/25/40',expected=globeModule.parseViewHash(newest);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   window.location.hash=newest;
+   if(scenario.share){
+     // Copy immediately, before the queued hashchange can run. Saving settings
+     // normalizes the URL, but must not discard this new requested position.
+     let copied='';Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(new URL(copied).hash,newest,'cold share uses the latest requested view');
+     assert.equal(new URL(copied).searchParams.get('ref'),'cold-navigation');
+     assert.equal(window.location.hash,'');
+     assert.equal(writes.length,1,'only explicit link normalization rewrites the URL');
+   }else{
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,newest);assert.deepEqual(writes,[]);
+   }
+   if(scenario.invalidCold!==undefined){
+     window.location.hash=scenario.invalidCold;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,scenario.invalidCold,'invalid or empty cold fragments stay untouched');
+   }
+   const normalizedURL=window.location.href,before=writes.length;
+   loadLibraries();loadLabels();
+   for(let i=0;i<20&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(maps.length,1);const map=maps[0];
+   assert.deepEqual(map.lastJump,expected,'initialization applies the newest complete camera, not the startup snapshot');
+   assert.equal(map.options.style.projection.type,'globe','a newly navigated polar view starts on the globe');
+   map.handlers.moveend();
+   assert.equal(window.location.href,normalizedURL);assert.equal(writes.length,before);
+   for(const hash of ['#not-a-map','']){
+     const calls=map.jumpCalls;window.location.hash=hash;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(map.jumpCalls,calls,'invalid and empty fragments do not move the map');
+   }
+   const later='#9/48/2/35/20';window.location.hash=later;
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'later explicit navigation remains live');
+   map.onceHandlers['style.load'][0]();
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'late style readiness cannot restore an older destination');
+   assert.equal(writes.length,before,'fragment navigation and late readiness add no automatic rewrites');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
 });
 
 test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
