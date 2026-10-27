@@ -1,0 +1,10 @@
+2026-10-27T06:38:48.8914323Z WebKit 27.2 (playwright webkit v2370) downloaded to /home/runner/.cache/ms-playwright/webkit-2370
+2026-10-27T06:38:49.2181977Z Preview http://127.0.0.1:4173
+2026-10-27T08:07:59.4019834Z ##[error]The operation was canceled.
+2026-10-27T08:07:59.5844633Z With the provided path, there will be 3 files uploaded
+2026-10-27T08:07:59.9966616Z SHA256 digest of uploaded artifact zip is a3164b2b45f71eb03a22c6a9852ebdba21be8669b594e1d39c6b19c3ab83a0c3
+2026-10-27T08:08:00.5433717Z Artifact mainline-reference-diagnostics.zip successfully finalized. Artifact ID 12719015431
+2026-10-27T08:08:00.5434895Z Artifact mainline-reference-diagnostics has been successfully uploaded! Final size is 36716 bytes. Artifact ID is 12719015431
+2026-10-27T08:08:00.8154006Z Terminate orphan process: pid (5486) (MiniBrowser)
+2026-10-27T08:08:00.8212129Z Terminate orphan process: pid (5505) (WPENetworkProcess)
+2026-10-27T08:08:00.8235456Z Terminate orphan process: pid (5507) (WPEWebProcess)
