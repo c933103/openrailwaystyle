@@ -1234,6 +1234,9 @@ const mapErrorMessage = () => {
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
       'Independent map references remain where available; detail may be missing.';
   }
+  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
+    return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
+  }
   return 'Some map data could not load. Check your connection or reload to retry.';
 };
 function updateStatus() {
