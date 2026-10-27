@@ -125,6 +125,8 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     isStyleLoaded() { return this.styleLoaded; }
     getTerrain() { return this.options.style.terrain || null; }
     setTerrain(terrain) { this.options.style.terrain = terrain; }
+    setSourceTileLodParams(...args) { (this.tileLodCalls ||= []).push(args); return this; }
+    getMaxPitch() { return this.options.maxPitch ?? 60; }
     projection = {type:'mercator'};
     getProjection() { return this.projection; }
     setProjection(projection) { this.projection = projection; }
@@ -287,7 +289,7 @@ for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 
       assert.equal(dom.window.document.body.dataset.mapReady,'true');
     }
     map.setPitch(55);
-    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
     assert.deepEqual(errors,[]);
   } finally {maps[0]?.handlers.remove?.();dom.window.close();}
 });
@@ -300,9 +302,26 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
     const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
     assert.ok(button,'a live 3D control is registered');
+    assert.equal(map.getMaxPitch(),85,'gesture tilt is allowed down to 85°');
+    assert.equal(map.options.maxTileCacheSize,96,'each rendered source retains bounded tile cache');
     map.setPitch(55);
-    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
     assert.equal(button.getAttribute('aria-pressed'),'true');
+    assert.match(button.getAttribute('aria-label'),/3× vertical/);
+    const scale=window.document.getElementById('terrain-exaggeration');
+    assert.equal(scale.value,'3');
+    scale.value='5';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5},'scale switches without pitching again');
+    assert.match(button.getAttribute('aria-label'),/5× vertical/);
+    assert.equal(button.querySelector('.terrain-scale-indicator').textContent,'5×');
+    scale.value='1';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(map.getTerrain().exaggeration,1,'true-scale 3D can be restored');
+    scale.value='99';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(scale.value,'1','invalid UI input is rejected');
+    assert.equal(map.getTerrain().exaggeration,1,'invalid input cannot poison the mesh');
     assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
     const relief=window.document.getElementById('relief');
     relief.click();
@@ -330,19 +349,32 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    window.document.body.append(control.onAdd());
    const button=window.document.getElementById('terrain-toggle');
    assert.ok(button,'native control must have a stable accessible identifier');
-   assert.equal(button.textContent.trim(),'','3D glyph is vector artwork, not literal text');
+   assert.equal(button.textContent.trim(),'3×','visible badge discloses the default exaggeration');
+   assert.doesNotMatch(button.textContent,/3D/,'mountain icon remains vector art rather than the old 3D text');
+   assert.equal(button.querySelector('.terrain-scale-indicator')?.getAttribute('aria-hidden'),'true');
    assert.equal(button.querySelector('svg')?.getAttribute('viewBox'),'0 0 24 24');
    assert.ok(button.querySelectorAll('svg path').length>=3);
    assert.equal(button.getAttribute('aria-pressed'),'false');
    map.zoom=2;
    button.click();
-   assert.equal(map.lastEase.pitch,60);
+   assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'initial 60° pitch must not enable the over-65° horizon budget');
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
    assert.equal(map.getTerrain()?.source,'terrain3d');
    assert.equal(button.getAttribute('aria-pressed'),'true');
+   // The loading policy responds to actual subsequent manual tilt, not to
+   // the first 3D button press. Cross 65° explicitly before its assertions.
+   map.setPitch(82);
+   assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'tilt beyond 65° enables coarser horizon tiles for all sources');
+   assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
+     '3D DEM uses a stronger distant-tile LOD budget');
    button.click();
    assert.equal(map.lastEase.pitch,0);
    assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
+   assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
+     'overhead view restores MapLibre default LOD after a real high-pitch transition');
    assert.equal(button.getAttribute('aria-pressed'),'false');
    map.zoom=15;
    button.click();
