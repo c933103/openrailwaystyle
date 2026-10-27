@@ -101,7 +101,7 @@ Power shows mapped railway electricity supplies, diesel/fuel and coal facilities
 
 ## Display settings and sharing
 
-Station search and responsive controls. Display settings and the label language are remembered in a cookie; the address carries only the map position, and the link button (🔗, copy map link) adds the display settings so a shared link opens the same view (they are then saved and removed from the address). The satellite button copies the GPS coordinates of the map centre (latitude, longitude in decimal degrees).
+Station search and responsive controls. Display settings and the label language are remembered in a cookie; the last map position, heading and projection are stored locally in the browser. Ordinary panning, zooming and rotation do not rewrite the URL or add map positions to browser history. The link button (🔗, Copy map link) creates a shareable URL with the current map position, orientation and display settings on demand. Opening such a link applies its position and settings, then removes those parameters from the address without discarding the selected view. Copying the address bar instead of using the link button does not capture the current map position. The coordinate button copies the GPS coordinates of the map centre (latitude, longitude in decimal degrees).
 
 The shared language selector offers local names or 12 languages. It uses recorded names and fallbacks, without automatic translation or script conversion; see [label rules](labels.md).
 
