@@ -1,0 +1,47 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "pull_request": 274,
+  "commit": "807b1e09d34f6649e048020130fd5c8989847e92",
+  "parent": "f32cb4aac43f797d0f870cb9cfc054dfb17f15f0",
+  "tree": "ffff86b7841996636cedd3395adecb336b013381",
+  "main": "934918385a85eca0fa5fc4a47d2ada67bd393050",
+  "release": "20261027-clean-history-3d-2",
+  "shell": 53,
+  "patch_sha256": "a34097b1314a92e4c6f60573cdc7233f68838ea636a578efaacd8defebbf13e4",
+  "files_sha256": {
+    "styles/app.mjs": "650474bb84d2eb0fc6e85a4e344b7e410f488e63eadec2bd43f9278de53136ca",
+    "styles/cjk-font.mjs": "26a6e43e16595c087cc3dbb5a1d0e95f2a0c862ed6a594a0d869101974d0703b",
+    "styles/data-check.html": "6b111c5a150995656808b4727dc12295ee257ace9aae6ac5b3a041065e324c1c",
+    "styles/data-check.mjs": "ffd627be32c808dae890437a373d31eb6564c8a5464ac55a7e4b73305b8b50cd",
+    "styles/departures-ui.mjs": "3ab6d85bef0a02f49fb11ea16cacc40a171f93d40b85fc7af04b0f05a4b161f0",
+    "styles/elevation.mjs": "a0649baee2cb51b21ef2ee1bec0c55cc7f71570cf3279da1102b1e19bd6221eb",
+    "styles/index.html": "b93c107f189986006530e76f7b0b4f6395277a6d16ed7ed6be3fdbbada1049d7",
+    "styles/layer-semantics.mjs": "0236b137fec0bb542289de9c96a0a232984cfa9553f97fd69b2a0c0d87a38353",
+    "styles/map-model.mjs": "22933b09286e890f4709a22d811fe1789183ec41b088d5b84a9d9928eef868eb",
+    "styles/station-world.mjs": "73ef60c6c0f1884025c1602896613b748cdb7cd3aff489cc44719a3b68128b84",
+    "styles/sw.js": "24005534bf882d7f834b81a19d9ac43b7833e0a868081e3716663fb89d1f6620",
+    "styles/terrain-3d.mjs": "ab013aaf5ff64e4101f57e7acf1aae225c7e89e7d60a16c3cca1a9bcc36d35ad",
+    "tests/startup.test.mjs": "938ecedd664a89aaba4dd3bb188868668eedace477e10834d7465ab1b72879a3"
+  },
+  "reproduction": "All three final regression cases fail on parent app source: native open-before-toggle state is lost during a period redraw for both legend expanders; a detached status toggle overwrites the saved closed state while another mode is displayed. Exact app source was restored before final build and checks.",
+  "repair": "Read live details.open synchronously before replaceChildren and ignore detached-node toggle notifications. Preserve both open and closed state; do not change browser timing/oracles.",
+  "scope_preserved": [
+    "Clean URL, local view, incoming links and current polar Copy map link behavior",
+    "Visible terrain icon, actual terrain inspection/height semantics, original pixel checks",
+    "scripts/service-status-browser-fixture.mjs and scripts/check-service-frequency-browser.mjs bytes unchanged"
+  ],
+  "validation": {
+    "runtime": "Node 26.12.1 / npm 11.9.0; unchanged dependency lock",
+    "baseline": "3 tests, 0 pass, 3 fail, zero skips/cancellations on parent app",
+    "baseline_command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-reporter=tap --test-name-pattern='legend redraw keeps live|detached service status' tests/startup.test.mjs",
+    "focused": "13/13 pass, zero failures/skips/cancellations",
+    "focused_command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap --test-name-pattern='startup observes|pitch activates|3D mountain|terrain control preserves|every versioned file|map movements persist locally|incoming map links|settings are remembered|legend redraw keeps live|detached service status|service frequency profile' tests/startup.test.mjs",
+    "sw_terrain_globe": "86/86 pass, zero failures/skips/cancellations",
+    "sw_terrain_globe_command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/sw-install.test.mjs tests/terrain-3d.test.mjs tests/globe-drag.test.mjs",
+    "build": "npm run build passes; committed world.style.json/major-stations.geojson unchanged",
+    "syntax": "Modified modules, sw.js and startup tests pass node --check; git diff --check passes",
+    "graph": "All 41 references across 11 files use current release",
+    "local_aggregate_browser": "No new full local aggregate or native-browser pass claimed; fresh hosted exact-head acceptance pending"
+  },
+  "historical_limits": "PR273 postmerge controls failed status-open assertion. This reproduction establishes a real possible path, not the historical event ordering. The f32cb4a combined-head controls job passed; it is not relabeled failed."
+}

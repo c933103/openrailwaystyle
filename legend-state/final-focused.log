@@ -1,0 +1,97 @@
+TAP version 13
+# (node:176) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:176) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Subtest: startup observes cold style readiness
+ok 1 - startup observes cold style readiness
+  ---
+  duration_ms: 263.501435
+  type: 'test'
+  ...
+# Subtest: startup observes already loaded style readiness
+ok 2 - startup observes already loaded style readiness
+  ---
+  duration_ms: 116.878164
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Subtest: pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+ok 3 - pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+  ---
+  duration_ms: 110.103754
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Subtest: 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+ok 4 - 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+  ---
+  duration_ms: 99.612699
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Subtest: terrain control preserves clean history while sharing the current polar 3D view
+ok 5 - terrain control preserves clean history while sharing the current polar 3D view
+  ---
+  duration_ms: 120.6935
+  type: 'test'
+  ...
+# Subtest: legend redraw keeps live \#service-data-status state before native toggle delivery
+ok 6 - legend redraw keeps live \#service-data-status state before native toggle delivery
+  ---
+  duration_ms: 93.506582
+  type: 'test'
+  ...
+# Subtest: legend redraw keeps live \#legend > details.legend-help:not(\#service-data-status) state before native toggle delivery
+ok 7 - legend redraw keeps live \#legend > details.legend-help:not(\#service-data-status) state before native toggle delivery
+  ---
+  duration_ms: 95.993545
+  type: 'test'
+  ...
+# Subtest: detached service status toggle cannot overwrite the closed state while another mode is shown
+ok 8 - detached service status toggle cannot overwrite the closed state while another mode is shown
+  ---
+  duration_ms: 91.209456
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-2
+# Subtest: service frequency profile is applied on the first frame and controls persist independently
+ok 9 - service frequency profile is applied on the first frame and controls persist independently
+  ---
+  duration_ms: 118.679099
+  type: 'test'
+  ...
+# Subtest: settings are remembered in a cookie; a shared link applies once and leaves the address
+ok 10 - settings are remembered in a cookie; a shared link applies once and leaves the address
+  ---
+  duration_ms: 301.778914
+  type: 'test'
+  ...
+# Subtest: map movements persist locally without changing URL or browser history
+ok 11 - map movements persist locally without changing URL or browser history
+  ---
+  duration_ms: 75.651397
+  type: 'test'
+  ...
+# Subtest: incoming map links are consumed once; sharing still works before map initialization
+ok 12 - incoming map links are consumed once; sharing still works before map initialization
+  ---
+  duration_ms: 81.926498
+  type: 'test'
+  ...
+# Subtest: every versioned file the page loads asks for the page version
+ok 13 - every versioned file the page loads asks for the page version
+  ---
+  duration_ms: 523.171352
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3229.654172

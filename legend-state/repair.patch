@@ -1,0 +1,298 @@
+diff --git a/styles/app.mjs b/styles/app.mjs
+index ff9f368..75231ea 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,29 +1,29 @@
+-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-1';
+-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-1';
++import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-2';
++import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-2';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-2';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-2';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-2';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-2';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-2';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-1';
+-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-1';
+-import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-1';
+-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-1';
+-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-1';
+-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-1';
+-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-1';
+-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-1';
+-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-1';
+-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-2';
++import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-2';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-2';
++import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-2';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-2';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-2';
++import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-2';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-2';
++import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-2';
++import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-2';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-2';
++import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-2';
++import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-2';
++import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-2';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-2';
++import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-2';
++import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-2';
++import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-2';
+ 
+ const $ = id => document.getElementById(id);
+ $('help-power').textContent = POWER_FACILITY_EXPLANATION;
+@@ -64,7 +64,7 @@ let powerFacilities, powerMethods;
+ let railRecovery, stationFailures, wakeRailRecovery = () => {};
+ let stationWorldActive = false, stationWorldLifecycle;
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-2';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -438,7 +438,14 @@ function powerFacilitySwatch({color,mark}, includeFormer) {
+   return sample;
+ }
+ function renderLegend() {
+-  const box = $('legend'); box.replaceChildren();
++  const box = $('legend');
++  // Native details toggle events are queued. A settings/metadata redraw can
++  // happen first, so preserve the displayed state before replacing its nodes.
++  const previousHelp = box.querySelector(':scope > details.legend-help:not(#service-data-status)');
++  const previousStatus = box.querySelector('#service-data-status');
++  if (previousHelp) legendHelpOpen = previousHelp.open;
++  if (previousStatus) serviceStatusOpen = previousStatus.open;
++  box.replaceChildren();
+   const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
+   const listed = rows => rows.length ? rows : nothing;
+   const legends = {
+@@ -514,11 +521,11 @@ function renderLegend() {
+   // Collapsed by default, so the legend stays short; stays open once opened.
+   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
+   help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
+-  help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
++  help.addEventListener('toggle', () => { if (help.isConnected) legendHelpOpen = help.open; });
+   box.append(help);
+   if(settings.mode==='service'){
+     const dataStatus=Object.assign(textNode('details','','legend-help'),{open:serviceStatusOpen});dataStatus.id='service-data-status';
+-    dataStatus.addEventListener('toggle',()=>{serviceStatusOpen=dataStatus.open;});
++    dataStatus.addEventListener('toggle',()=>{if(dataStatus.isConnected)serviceStatusOpen=dataStatus.open;});
+     dataStatus.append(textNode('summary','Service data status'));
+     for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
+     const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 6a66d10..97aaded 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-history-3d-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-history-3d-2';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index d7d5d83..9786a41 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-history-3d-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-history-3d-2"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index c92ba09..d148583 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261027-clean-history-3d-1';
++import {SEARCH_API} from './map-model.mjs?v=20261027-clean-history-3d-2';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index 5a460f5..f712f4f 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-2';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 09331e7..7036e9d 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,8 +4,8 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
+-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-history-3d-2';
++import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-history-3d-2';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index 6fa7299..e7ffe70 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261027-clean-history-3d-1" rel="stylesheet">
++  <link href="app.css?v=20261027-clean-history-3d-2" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -222,6 +222,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261027-clean-history-3d-1"></script>
++  <script type="module" src="app.mjs?v=20261027-clean-history-3d-2"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 51feedd..4dd407e 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261027-clean-history-3d-1';
++import { MODES } from './map-model.mjs?v=20261027-clean-history-3d-2';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 499e5d9..d747507 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-history-3d-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-history-3d-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-history-3d-2';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-history-3d-2';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-history-3d-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-history-3d-2';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/styles/station-world.mjs b/styles/station-world.mjs
+index c9dc0e2..856f7e0 100644
+--- a/styles/station-world.mjs
++++ b/styles/station-world.mjs
+@@ -2,7 +2,7 @@
+ // snapshot. Incomplete or missing acquisition never changes live station layers.
+ // Source: station-points-data, built by station-overview.mjs and published only
+ // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
+-import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
++import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-history-3d-2';
+ 
+ export const WORLD_STATION_SOURCE = 'stationWorld';
+ export const WORLD_STATION_DOTS = 'station-world-dots';
+diff --git a/styles/sw.js b/styles/sw.js
+index 69d54c5..1a8fc88 100644
+--- a/styles/sw.js
++++ b/styles/sw.js
+@@ -11,9 +11,9 @@
+ // Their filenames pin the library version, so cached old/new app versions
+ // cannot overwrite one another's dependency bytes. Map tiles and data files
+ // are not handled here.
+-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}52`, KEEP_VERSIONS = 2;
++const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}53`, KEEP_VERSIONS = 2;
+ const FONT_CACHE='atlas-label-fonts-v1';
+-// Shell 52 combines clean map history with the visible 3D terrain control.
++// Shell 53 retains live legend state alongside clean history and 3D controls.
+ // The complete module graph updates together; older open tabs retain their
+ // versioned assets and verified MapLibre attribution backport.
+ // Stored user settings are not touched.
+diff --git a/styles/terrain-3d.mjs b/styles/terrain-3d.mjs
+index 14e8163..c0fbdc8 100644
+--- a/styles/terrain-3d.mjs
++++ b/styles/terrain-3d.mjs
+@@ -2,9 +2,9 @@
+ // the provider has no seabed elevations beyond z10. Restore only genuine sea
+ // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
+ // All elevations remain metres, regardless of the contour-label unit setting.
+-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-1';
+-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
+-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
++import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-2';
++import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-2';
++import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-2';
+ 
+ // MapLibre renders its terrain DEM one zoom below the camera tile level.
+ // At globe/continent scales even mountains several kilometres high cover
+diff --git a/tests/startup.test.mjs b/tests/startup.test.mjs
+index 7c8cec9..70e7320 100644
+--- a/tests/startup.test.mjs
++++ b/tests/startup.test.mjs
+@@ -950,6 +950,50 @@ test('rare Han in infobox body values and later departure text loads only the di
+  }finally{dom.window.close();}
+ });
+ 
++for(const selector of ['#service-data-status','#legend > details.legend-help:not(#service-data-status)']) test(`legend redraw keeps live ${selector} state before native toggle delivery`,async()=>{
++ const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak'});
++ try {
++   const doc=window.document;
++   const period=doc.getElementById('frequency-period');
++   const redraw=value=>{period.value=value;period.dispatchEvent(new window.Event('change'));};
++   let details=doc.querySelector(selector),toggles=0;
++   assert.equal(details.open,false);
++   details.addEventListener('toggle',()=>toggles++);
++   details.open=true;
++   assert.equal(toggles,0,'the native details toggle has not been delivered yet');
++   redraw('offpeak');
++   assert.notEqual(doc.querySelector(selector),details,'period change rebuilds the actual legend');
++   assert.equal(doc.querySelector(selector).open,true,'opening survives a redraw before its queued toggle');
++   await new Promise(resolve=>setTimeout(resolve,0));
++   details=doc.querySelector(selector);details.open=false;
++   redraw('peak');
++   assert.equal(doc.querySelector(selector).open,false,'closing also survives a redraw before its queued toggle');
++   await new Promise(resolve=>setTimeout(resolve,0));
++   assert.equal(doc.querySelector(selector).open,false,'detached-node events cannot undo the live closed state');
++   assert.deepEqual(errors,[]);
++ }finally{dom.window.close();}
++});
++
++test('detached service status toggle cannot overwrite the closed state while another mode is shown',async()=>{
++ const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency'});
++ try {
++   const doc=window.document,retired=doc.getElementById('service-data-status');
++   retired.open=true;retired.dispatchEvent(new window.Event('toggle'));
++   const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
++   const current=doc.getElementById('service-data-status');
++   assert.notEqual(current,retired);assert.equal(current.open,true);
++   current.open=false;current.dispatchEvent(new window.Event('toggle'));
++   doc.querySelector('[data-mode="infrastructure"]').click();
++   assert.equal(doc.getElementById('service-data-status'),null);
++   assert.equal(retired.isConnected,false);
++   // Deliver the old view's queued notification after the live view closed.
++   retired.dispatchEvent(new window.Event('toggle'));
++   doc.querySelector('[data-mode="service"]').click();
++   assert.equal(doc.getElementById('service-data-status').open,false,'returning to Service retains the last live state');
++   assert.deepEqual(errors,[]);
++ }finally{dom.window.close();}
++});
++
+ test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
+   const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
+   try {

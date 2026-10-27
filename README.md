@@ -1,3 +1,10 @@
+# Latest PR274 evidence
+
+- [Legend-state repair 807b1e0](legend-state/README.md), preserving clean history and visible terrain.
+- Earlier stages below remain historical, not acceptance of the latest source.
+
+---
+
 # PR274 source and validation evidence
 
 - [Combined integration f32cb4a](integration/README.md) with merged terrain/icon main9349183.
