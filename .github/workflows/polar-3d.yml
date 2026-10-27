@@ -40,7 +40,7 @@ jobs:
       - run: npm run build
       - name: Keep generated style reproducible
         run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Run synthetic polar 3D WebGL verification
         run: |
           set -euo pipefail
