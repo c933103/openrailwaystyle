@@ -8,6 +8,10 @@
 export const MERCATOR_LIMIT = 85.051129;
 export const KM_PER_DEGREE = 6371.0088 * Math.PI / 180;
 export const CAP_RADIUS = (90 - MERCATOR_LIMIT) * KM_PER_DEGREE; // ≈ 550.3 km
+// Packed RGB sea depth: high/low metre bytes and explicit validity mask.
+// Keep the builder and browser on the same format/schema contract.
+export const POLAR_DEPTH_FORMAT = 'rg8-metres-water-mask-v1';
+export const POLAR_DEPTH_MAX_SIDE = 2048;
 const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
 export function toPolar(cap, [lng, lat]) {
   const r = (cap === 'north' ? 90 - lat : 90 + lat) * KM_PER_DEGREE, a = rad(lng);
