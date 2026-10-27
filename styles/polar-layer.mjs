@@ -5,9 +5,10 @@
 // tiles' edge are simply below 0 (north) or above 1 (south); the shader
 // turns them into points on the sphere like any other.
 import earcut from 'earcut';
+import {DEPTH_COLOURS} from './bathymetry.mjs';
 import {globeGroundZoom} from './globe-drag.mjs';
 import {cssRgba, polarStylePaint} from './polar-paint.mjs';
-import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
+import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX_SIDE, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
@@ -127,6 +128,45 @@ void main() {
   vec4 shadeColor = mix(u_shadow, u_highlight, shade) * sin(scaled) * clamp(intensity * 2.0, 0.0, 1.0);
   fragColor = (accent * (1.0 - shadeColor.a) + shadeColor) * u_opacity;
 }`;
+// Same metres and colour stops as ordinary atlas-depth raster tiles. The
+// texture contains depth high/low bytes and an independent validity byte;
+// texelFetch avoids interpolating the integer bytes before decoding them.
+const DEPTH_LEVELS = new Float32Array(DEPTH_COLOURS.map(([depth]) => depth));
+const DEPTH_RGB = new Float32Array(DEPTH_COLOURS.flatMap(([,hex]) => [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255)));
+const DEPTH_FRAGMENT = `precision highp float;
+in vec2 v_polar; out vec4 fragColor;
+uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_opacity;
+uniform float u_depth_stops[7]; uniform vec3 u_depth_colours[7];
+float metres(vec3 encoded) {
+  return floor(encoded.r * 255.0 + 0.5) * 256.0 + floor(encoded.g * 255.0 + 0.5);
+}
+void main() {
+  vec2 p = (v_polar - vec2(u_grid.x)) / u_grid.y;
+  vec2 f = clamp(fract(p), 0.0, 1.0);
+  ivec2 first = clamp(ivec2(floor(p)), ivec2(0), ivec2(int(u_grid.z)-1));
+  ivec2 last = min(first + ivec2(1), ivec2(int(u_grid.z)-1));
+  vec3 a = texelFetch(u_image, first, 0).rgb;
+  vec3 b = texelFetch(u_image, ivec2(last.x, first.y), 0).rgb;
+  vec3 c = texelFetch(u_image, ivec2(first.x, last.y), 0).rgb;
+  vec3 d = texelFetch(u_image, last, 0).rgb;
+  vec4 weights = vec4((1.0-f.x)*(1.0-f.y), f.x*(1.0-f.y), (1.0-f.x)*f.y, f.x*f.y);
+  weights *= vec4(a.b > 0.5 ? 1.0 : 0.0, b.b > 0.5 ? 1.0 : 0.0,
+                  c.b > 0.5 ? 1.0 : 0.0, d.b > 0.5 ? 1.0 : 0.0);
+  float coverage = dot(weights, vec4(1.0));
+  if (coverage <= 0.0) { fragColor = vec4(0.0); return; }
+  float depth = dot(weights, vec4(metres(a), metres(b), metres(c), metres(d))) / coverage;
+  vec3 colour = u_depth_colours[6];
+  for (int i = 1; i < 7; i++) {
+    if (depth <= u_depth_stops[i]) {
+      float t = clamp((depth - u_depth_stops[i-1]) /
+        (u_depth_stops[i] - u_depth_stops[i-1]), 0.0, 1.0);
+      colour = mix(u_depth_colours[i-1], u_depth_colours[i], t);
+      break;
+    }
+  }
+  float alpha = coverage * u_opacity;
+  fragColor = vec4(colour * alpha, alpha);
+}`;
 const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragColor; void main() { fragColor = vec4(u_color.rgb * u_color.a, u_color.a); }`;
 
 // Split a detail tile's roads/paths by their recorded transportation class.
@@ -166,6 +206,7 @@ export class PolarLayer {
     for (const cap of Object.values(this.caps)) {
       for (const mesh of Object.values(cap)) if (mesh?.buffers) this.freeMesh(mesh);
       if (cap.relief) this.gl.deleteTexture(cap.relief);
+      if (cap.depth) this.gl.deleteTexture(cap.depth);
     }
     for(const {program} of this.programs.values())this.gl.deleteProgram(program);
     this.tiles.clear(); this.caps = {north: {}, south: {}}; this.programs.clear();
@@ -178,18 +219,18 @@ export class PolarLayer {
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){const error=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw new Error(error);}
       return shader;
     };
-    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX}[kind];
+    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX, depth: RELIEF_VERTEX}[kind];
     let vertexShader,fragmentShader;
     try {
       vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${vertex}`);
-      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT}[kind] || FRAGMENT}`);
+      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT, depth: DEPTH_FRAGMENT}[kind] || FRAGMENT}`);
       gl.attachShader(program,vertexShader);gl.attachShader(program,fragmentShader);gl.linkProgram(program);
       if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
     }catch(error){gl.deleteProgram(program);throw error;}
     finally{if(vertexShader)gl.deleteShader(vertexShader);if(fragmentShader)gl.deleteShader(fragmentShader);}
     const uniforms = {};
     for (const name of ['u_projection_matrix', 'u_projection_fallback_matrix', 'u_projection_tile_mercator_coords', 'u_projection_clipping_plane', 'u_projection_transition', 'u_color', 'u_viewport', 'u_width',
-      'u_image', 'u_grid', 'u_south', 'u_zoom', 'u_edge', 'u_light', 'u_shadow', 'u_highlight', 'u_accent', 'u_opacity'])
+      'u_image', 'u_grid', 'u_south', 'u_zoom', 'u_edge', 'u_light', 'u_shadow', 'u_highlight', 'u_accent', 'u_opacity', 'u_depth_stops[0]', 'u_depth_colours[0]'])
       uniforms[name] = gl.getUniformLocation(program, name);
     const entry = {program, uniforms, attributes: Object.fromEntries(['pos', 'other', 'side', 'polar'].map(a => [a, gl.getAttribLocation(program, `a_${a}`)]))};
     this.programs.set(key, entry);
@@ -222,7 +263,7 @@ export class PolarLayer {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 20, 0);
       gl.enableVertexAttribArray(attributes.other); gl.vertexAttribPointer(attributes.other, 2, gl.FLOAT, false, 20, 8);
       gl.enableVertexAttribArray(attributes.side); gl.vertexAttribPointer(attributes.side, 1, gl.FLOAT, false, 20, 16);
-    } else if (mesh.kind === 'relief') {
+    } else if (mesh.kind === 'relief' || mesh.kind === 'depth') {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 16, 0);
       gl.enableVertexAttribArray(attributes.polar); gl.vertexAttribPointer(attributes.polar, 2, gl.FLOAT, false, 16, 8);
     } else {
