@@ -7,11 +7,13 @@ import {mkdir,readFile} from 'node:fs/promises';
 import {expression as styleExpression} from '@maplibre/maplibre-gl-style-spec';
 import {CAP_RADIUS, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {detailTiles} from './polar-features.mjs';
+import {depthFixturePng} from './bathymetry-browser-fixture.mjs';
 
 const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
 const contourLayers=world.layers.filter(layer=>['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))
   .map(({id,type,paint,minzoom,maxzoom,layout,filter})=>({id,type,source:'empty',paint,minzoom,maxzoom,layout,filter}));
 
+const demPng=depthFixturePng(10,0).toString('base64');
 const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   for (const cap of ['south','north']) {
@@ -42,12 +44,19 @@ try {
       <script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres} from './globe-drag.mjs';
+      import {syncHighPitchTileBudget,syncTerrain3D} from './terrain-3d.mjs';
+      const dem=Uint8Array.from(atob('${demPng}'),c=>c.charCodeAt(0)).buffer;
+      maplibregl.addProtocol('atlas-terrain',async()=>({data:dem.slice(0)}));
       window.background='map';window.units='metric';window.labels=[];
-      const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},
-        sources:{empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
+      const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,maxPitch:85,maxTileCacheSize:96,projection:{type:'globe'},style:{version:8,projection:{type:'globe'},
+        sources:{empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},terrain3d:{type:'raster-dem',tiles:['atlas-terrain://{z}/{x}/{y}'],tileSize:256,encoding:'terrarium',maxzoom:14}},
         layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}},
           {id:'water',type:'fill',source:'empty',paint:{'fill-color':'#bfd8e0'}},...${JSON.stringify(contourLayers)}]},canvasContextAttributes:{preserveDrawingBuffer:true}});
       allowPolarCentres(map,maplibregl.LngLat,()=>1);
+      window.polarErrors=[];
+      map.on('error',e=>window.polarErrors.push(e.error?.message||String(e.error)));
+      map.on('pitch',()=>{syncHighPitchTileBudget(map);syncTerrain3D(map,true,3);});
+      map.on('style.load',()=>syncHighPitchTileBudget(map));
       window.contourSamples={};window.contourDraws=[];
       map.on('load',()=>{window.layer=new PolarLayer({data:new URL('./polar-fixture/',location.href),units:()=>window.units,imagery:()=>['satellite','hybrid'].includes(window.background),palette:()=>window.background,places:p=>window.labels=p});
       const line=window.layer.line.bind(window.layer);window.layer.line=(mesh,...args)=>{if(mesh?.properties){const sample={properties:mesh.properties,opacity:args[2][3],zoom:map.getZoom()};window.contourSamples[JSON.stringify(mesh.properties)]=sample;window.contourDraws.push(sample);}return line(mesh,...args);};
@@ -134,6 +143,32 @@ try {
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
     await page.evaluate(()=>{window.background='carto';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
+    // Reproduce polar crash reports under the merged 3D terrain/pitch path.
+    // Previous tests exercised the polar shader only at pitch 0. Check both
+    // poles at the true 60-degree activation and 82/85-degree manual tilt.
+    for(const pitch of [60,82,85]){
+      const actual=await page.evaluate(pitch=>{
+        const map=window.map;
+        map.setPitch(pitch);
+        const current=map.getCenter();
+        return {lat:current.lat,zoom:map.getZoom(),pitch:map.getPitch(),terrain:map.getTerrain()};
+      },pitch);
+      await page.evaluate(()=>new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();}));
+      const state=await page.evaluate(()=>{
+        const map=window.map,cap=map.getCenter().lat>0?'north':'south';
+        return {center:map.getCenter().toArray(),pitch:map.getPitch(),terrain:map.getTerrain(),
+          broken:window.layer.broken||false,loaded:Boolean(window.layer.caps[cap]?.index),
+          visible:window.layer.visible(),errors:window.polarErrors.slice(-5)};
+      });
+      console.log('Polar 3D stress:',cap,pitch,JSON.stringify({actual,state}));
+      assert.ok(Math.abs(state.pitch-pitch)<0.01,`${cap}: tilt lost at ${pitch}°`);
+      assert.ok(Math.abs(Math.abs(state.center[1])-88.5)<0.05,`${cap}: pole location lost`);
+      assert.equal(state.terrain?.source,'terrain3d',`${cap}: missing 3D terrain`);
+      assert.equal(state.broken,false,`${cap}: custom polar GPU draw failed: ${JSON.stringify(state)}`);
+      assert.deepEqual(state.errors,[],`${cap}: terrain/polar error`);
+      await page.screenshot({path:`browser-review/polar-3d-${cap}-pitch${pitch}.png`});
+    }
+    await page.evaluate(()=>{window.map.setPitch(0);window.map.setTerrain(null);});
     assert.deepEqual(errors,[]);assert.ok(!warnings.some(w=>/Polar caps not drawn/.test(w)),warnings.join('\n'));
     console.log(`PASS ${cap}: actual contour GPU weights/classes and live expressions, Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
     await page.close();
