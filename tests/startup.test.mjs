@@ -1119,6 +1119,69 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('map movements persist locally without changing URL or browser history', async () => {
+  const {dom,window,maps,errors}=await start({search:'?ref=history-check'});
+  try {
+    const map=maps[0], originalURL=window.location.href, initialLength=window.history.length;
+    const writes=[];
+    const replace=window.history.replaceState.bind(window.history);
+    window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+    map.getCenter=()=>({lat:35.6813,lng:139.7671});
+    map.getBearing=()=>45;
+    map.getPitch=()=>30;
+    for(const zoom of [8,11,13.25,16]){
+      map.zoom=zoom;
+      map.handlers.moveend();
+    }
+    assert.equal(window.location.href,originalURL,'panning and zooming leave the location unchanged');
+    assert.equal(window.history.length,initialLength,'no session history entries');
+    assert.deepEqual(writes,[],'no replaceState calls or hidden visited-URL mutations during movements');
+    const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+    assert.deepEqual(saved.c,[139.7671,35.6813],'the current centre is still saved locally');
+    assert.equal(saved.z,16);
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const url=new URL(copied);
+    assert.equal(url.hash,globeModule.viewHash({zoom:16,lat:35.6813,lng:139.7671,bearing:45,pitch:30}));
+    assert.equal(url.searchParams.get('ref'),'history-check','unrelated query parameters survive sharing');
+    assert.equal(url.searchParams.get('mode'),'infrastructure','display choices are included in links');
+    assert.equal(window.location.href,originalURL,'sharing does not navigate');
+    assert.deepEqual(writes,[],'sharing does not rewrite the current address');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('incoming map links are consumed once; sharing still works before map initialization',async()=>{
+  const hash='#10/35.68/139.76/25/40';
+  const {dom,window,maps,errors,loadLibraries}=await start({
+    delayLibraries:true,search:`?mode=speed&language=ja&ref=shared${hash}`,
+  });
+  try {
+    assert.equal(maps.length,0,'map libraries are still loading');
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared');
+    assert.equal(window.history.length,1,'normalizing an incoming link does not push a new history entry');
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const share=new URL(copied);
+    assert.equal(share.hash,hash,'the original position remains shareable during startup');
+    assert.equal(share.searchParams.get('mode'),'speed');
+    assert.equal(share.searchParams.get('language'),'ja');
+    assert.equal(share.searchParams.get('ref'),'shared');
+    loadLibraries();
+    for(let i=0;i<10&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(maps.length,1,'the link still opens a map');
+    assert.equal(maps[0].zoom,10,'the deep link wins over default map zoom');
+    maps[0].handlers.moveend();
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared',
+      'navigating the linked map does not bring the fragment back');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
 test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
  const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
