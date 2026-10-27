@@ -1,0 +1,90 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "branch": "fix/terrain-3d-contours-bathymetry-20261026",
+  "expected_head": "1e2958d7a1a27220cee3a568215a23b7f0cc1b9d",
+  "base": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+  "local_commit": "33a533e1967156e1589983f911fa3aca2d22050a",
+  "expected_tree": "896cc38b06de66b261d7399d42ca55b7cd9cd6af",
+  "entries": [
+    {
+      "path": "scripts/check-terrain-3d-browser.mjs",
+      "bytes": 7648,
+      "sha256": "e32d1de589289f99ebdcfa3e758024805553580c6e9bc6327153cda57c05ecee",
+      "blob": "26fa0adb2ee751fa4b80451d4f89f43847bdd0a2",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "26fa0adb2ee751fa4b80451d4f89f43847bdd0a2"
+    },
+    {
+      "path": "scripts/terrain-3d-browser-fixture.mjs",
+      "bytes": 1215,
+      "sha256": "732f8f87096537e425f611597d4c8efc6ea038fc39faf05589b819eeb0b3cb2d",
+      "blob": "dbdde248471c310e28bdd92565ad4c2b8fdea550",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "dbdde248471c310e28bdd92565ad4c2b8fdea550"
+    },
+    {
+      "path": "tests/terrain-3d-browser-fixture.test.mjs",
+      "bytes": 5334,
+      "sha256": "77d6c0f7f8e080a16048e678cd64e852a6ea94fc106b32f5794eb13d321a9455",
+      "blob": "0ea3965db763b6f8adf816224b1e391a33b882b5",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "0ea3965db763b6f8adf816224b1e391a33b882b5"
+    }
+  ],
+  "remote_commit": "f38b73b03ac88b88318664c778658e074e5b40ab",
+  "verified_files": 820,
+  "published_utc": "2026-10-27T00:17:53Z",
+  "prior_context_failure": {
+    "run": 40421738303,
+    "job": 121922431801,
+    "tested_merge": "e0c18eb0a98d503fa62ae16aa03dc24b5f6ab6c5",
+    "artifact": 12698431799,
+    "artifact_sha256": "d8cd1af607f887f333a67b1080f2f0b7e3a1fa60b9073ea0579a8a74f3616315",
+    "actual_failure": "page.waitForFunction timeout after unchanged 45000ms signed-height predicate",
+    "missing_evidence": "The artifact contains no terrain3d state or screenshot; the failed conjunct was not recorded."
+  },
+  "cpu_proof": {
+    "renderer": "maplibre-gl 5.24.0 pinned by package-lock.json",
+    "actual_executed_code": [
+      "Terrain.getElevationForLngLat",
+      "TerrainTileManager.getSourceTile",
+      "MercatorTransform",
+      "coveringTiles",
+      "DEM interpolation"
+    ],
+    "synthetic_boundary": "Cached DEMs and GPU texture handles; no browser/GPU/network acceptance",
+    "old_camera": {
+      "zoom": 11.3,
+      "dem_zoom": 10,
+      "sea": -875,
+      "land": -875
+    },
+    "new_camera": {
+      "zoom": 12.3,
+      "dem_zoom": 11,
+      "sea": -875,
+      "land": 340
+    },
+    "interpretation": "Necessary fixture correction independently proven; not proof that the aggregate hosted timeout had no additional cause."
+  },
+  "source_hashes": {
+    "package-lock.json": "ef51a718a814e47ea2ab6f1b559c8000e8c7418c2e5cfd7a0195b43846614a96",
+    "node_modules/maplibre-gl/src/render/terrain.ts": "5719c16bb7288bae8eccae6e90e5299eff5f118b95a06e01b62cf26d0ff42159",
+    "node_modules/maplibre-gl/src/tile/terrain_tile_manager.ts": "4dc6cbaf5604164234be1de77032deda5d15894a270272937abd28343b955b3b",
+    "node_modules/maplibre-gl/src/geo/projection/mercator_transform.ts": "4dd8793e9632870ba3a64dc180b99cdc500a4a8e81193caf7c5ce51cdb078c63"
+  },
+  "checks": {
+    "node": "26.12.1",
+    "focused": "39 tests passed, 0 failed/skipped; renderer proof, controls painter, terrain and terrain deadlines",
+    "final_diagnostic_refinements": "2 tests passed, 0 failed/skipped",
+    "build": "npm run build passed; world.style.json/major-stations.geojson unchanged; syntax and git diff --check passed",
+    "local_browser": "Not rerun; existing environment restriction remains. No local browser/worker/WebGL acceptance.",
+    "full_local": "Not repeated; previous incomplete SIGKILL/undercount runs remain preserved.",
+    "new_hosted_run": 40425501815,
+    "new_hosted_status": "in progress at publication",
+    "code_review_request_comment": 6430503593
+  }
+}
