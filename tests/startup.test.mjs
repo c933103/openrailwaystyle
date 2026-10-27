@@ -85,7 +85,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
       this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
       maps.push(this);
     }
-    once(name,handler) {this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
+    once(name,handler) {((this.onceHandlers ||= {})[name] ||= []).push(handler);this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
     removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
@@ -110,7 +110,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     getZoom() { return this.zoom; }
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
     easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
@@ -352,6 +352,44 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
    assert.equal(errors.length,1,'the synthetic tile error must also be logged');
    assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('terrain control preserves clean history while sharing the current polar 3D view',async()=>{
+ const cookie='atlas_settings='+encodeURIComponent(JSON.stringify({relief:false}));
+ const {dom,window,maps,errors}=await start({search:'?ref=terrain-history',cookie});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   const initialURL=window.location.href,initialLength=window.history.length,state={retained:'terrain-history'};
+   window.history.replaceState(state,'',initialURL);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+   let focusedZoom;
+   for(const pitch of [60,0]) {
+     button.click();map.handlers.moveend();
+     assert.equal(map.getPitch(),pitch);
+     if(pitch===60){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
+     else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
+     const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     const shared=new URL(copied);
+     assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
+     assert.equal(shared.searchParams.get('ref'),'terrain-history');
+     assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
+     assert.equal(window.location.href,initialURL);
+     assert.equal(window.history.length,initialLength);
+     assert.deepEqual(window.history.state,state);
+     assert.deepEqual(writes,[],'terrain focusing, overhead return and sharing never rewrite history');
+   }
+   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
 
@@ -912,6 +950,50 @@ test('rare Han in infobox body values and later departure text loads only the di
  }finally{dom.window.close();}
 });
 
+for(const selector of ['#service-data-status','#legend > details.legend-help:not(#service-data-status)']) test(`legend redraw keeps live ${selector} state before native toggle delivery`,async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak'});
+ try {
+   const doc=window.document;
+   const period=doc.getElementById('frequency-period');
+   const redraw=value=>{period.value=value;period.dispatchEvent(new window.Event('change'));};
+   let details=doc.querySelector(selector),toggles=0;
+   assert.equal(details.open,false);
+   details.addEventListener('toggle',()=>toggles++);
+   details.open=true;
+   assert.equal(toggles,0,'the native details toggle has not been delivered yet');
+   redraw('offpeak');
+   assert.notEqual(doc.querySelector(selector),details,'period change rebuilds the actual legend');
+   assert.equal(doc.querySelector(selector).open,true,'opening survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   details=doc.querySelector(selector);details.open=false;
+   redraw('peak');
+   assert.equal(doc.querySelector(selector).open,false,'closing also survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(doc.querySelector(selector).open,false,'detached-node events cannot undo the live closed state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('detached service status toggle cannot overwrite the closed state while another mode is shown',async()=>{
+ const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency'});
+ try {
+   const doc=window.document,retired=doc.getElementById('service-data-status');
+   retired.open=true;retired.dispatchEvent(new window.Event('toggle'));
+   const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+   const current=doc.getElementById('service-data-status');
+   assert.notEqual(current,retired);assert.equal(current.open,true);
+   current.open=false;current.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="infrastructure"]').click();
+   assert.equal(doc.getElementById('service-data-status'),null);
+   assert.equal(retired.isConnected,false);
+   // Deliver the old view's queued notification after the live view closed.
+   retired.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="service"]').click();
+   assert.equal(doc.getElementById('service-data-status').open,false,'returning to Service retains the last live state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
   const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
   try {
@@ -1163,6 +1245,129 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('map movements persist locally without changing URL or browser history', async () => {
+  const {dom,window,maps,errors}=await start({search:'?ref=history-check'});
+  try {
+    const map=maps[0], originalURL=window.location.href, initialLength=window.history.length;
+    const writes=[];
+    const replace=window.history.replaceState.bind(window.history);
+    window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+    map.getCenter=()=>({lat:35.6813,lng:139.7671});
+    map.getBearing=()=>45;
+    map.getPitch=()=>30;
+    for(const zoom of [8,11,13.25,16]){
+      map.zoom=zoom;
+      map.handlers.moveend();
+    }
+    assert.equal(window.location.href,originalURL,'panning and zooming leave the location unchanged');
+    assert.equal(window.history.length,initialLength,'no session history entries');
+    assert.deepEqual(writes,[],'no replaceState calls or hidden visited-URL mutations during movements');
+    const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+    assert.deepEqual(saved.c,[139.7671,35.6813],'the current centre is still saved locally');
+    assert.equal(saved.z,16);
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const url=new URL(copied);
+    assert.equal(url.hash,globeModule.viewHash({zoom:16,lat:35.6813,lng:139.7671,bearing:45,pitch:30}));
+    assert.equal(url.searchParams.get('ref'),'history-check','unrelated query parameters survive sharing');
+    assert.equal(url.searchParams.get('mode'),'infrastructure','display choices are included in links');
+    assert.equal(window.location.href,originalURL,'sharing does not navigate');
+    assert.deepEqual(writes,[],'sharing does not rewrite the current address');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('incoming map links are consumed once; sharing still works before map initialization',async()=>{
+  const hash='#10/35.68/139.76/25/40';
+  const {dom,window,maps,errors,loadLibraries}=await start({
+    delayLibraries:true,search:`?mode=speed&language=ja&ref=shared${hash}`,
+  });
+  try {
+    assert.equal(maps.length,0,'map libraries are still loading');
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared');
+    assert.equal(window.history.length,1,'normalizing an incoming link does not push a new history entry');
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const share=new URL(copied);
+    assert.equal(share.hash,hash,'the original position remains shareable during startup');
+    assert.equal(share.searchParams.get('mode'),'speed');
+    assert.equal(share.searchParams.get('language'),'ja');
+    assert.equal(share.searchParams.get('ref'),'shared');
+    loadLibraries();
+    for(let i=0;i<10&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(maps.length,1,'the link still opens a map');
+    assert.equal(maps[0].zoom,10,'the deep link wins over default map zoom');
+    maps[0].handlers.moveend();
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared',
+      'navigating the linked map does not bring the fragment back');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+for(const scenario of [
+ {delay:'libraries',initial:'#10/35/139/20/30',share:false},
+ {delay:'labels',initial:'',share:false},
+ {delay:'libraries',initial:'',share:true},
+ {delay:'labels',initial:'#10/35/139/20/30',share:true},
+ {delay:'libraries',initial:'',share:false,invalidCold:'#not-a-map'},
+ {delay:'labels',initial:'#10/35/139/20/30',share:false,invalidCold:''},
+]) test(`cold navigation keeps the newest view during ${scenario.delay} loading, share=${scenario.share}, invalid=${scenario.invalidCold ?? 'none'}`,async()=>{
+ const {dom,window,maps,errors,loadLibraries,loadLabels}=await start({
+   delayLibraries:scenario.delay==='libraries',delayLabels:scenario.delay==='labels',
+   search:'?ref=cold-navigation'+scenario.initial,
+ });
+ try {
+   assert.equal(maps.length,0);
+   const newest='#12/89.7/162/25/40',expected=globeModule.parseViewHash(newest);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   window.location.hash=newest;
+   if(scenario.share){
+     // Copy immediately, before the queued hashchange can run. Saving settings
+     // normalizes the URL, but must not discard this new requested position.
+     let copied='';Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(new URL(copied).hash,newest,'cold share uses the latest requested view');
+     assert.equal(new URL(copied).searchParams.get('ref'),'cold-navigation');
+     assert.equal(window.location.hash,'');
+     assert.equal(writes.length,1,'only explicit link normalization rewrites the URL');
+   }else{
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,newest);assert.deepEqual(writes,[]);
+   }
+   if(scenario.invalidCold!==undefined){
+     window.location.hash=scenario.invalidCold;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,scenario.invalidCold,'invalid or empty cold fragments stay untouched');
+   }
+   const normalizedURL=window.location.href,before=writes.length;
+   loadLibraries();loadLabels();
+   for(let i=0;i<20&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(maps.length,1);const map=maps[0];
+   assert.deepEqual(map.lastJump,expected,'initialization applies the newest complete camera, not the startup snapshot');
+   assert.equal(map.options.style.projection.type,'globe','a newly navigated polar view starts on the globe');
+   map.handlers.moveend();
+   assert.equal(window.location.href,normalizedURL);assert.equal(writes.length,before);
+   for(const hash of ['#not-a-map','']){
+     const calls=map.jumpCalls;window.location.hash=hash;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(map.jumpCalls,calls,'invalid and empty fragments do not move the map');
+   }
+   const later='#9/48/2/35/20';window.location.hash=later;
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'later explicit navigation remains live');
+   map.onceHandlers['style.load'][0]();
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'late style readiness cannot restore an older destination');
+   assert.equal(writes.length,before,'fragment navigation and late readiness add no automatic rewrites');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
  const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
