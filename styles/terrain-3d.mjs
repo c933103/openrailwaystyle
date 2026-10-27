@@ -13,10 +13,9 @@ import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=2026102
 // scale, without moving to another place. The separate settings panel
 // explicitly discloses any user-selected vertical exaggeration.
 export const TERRAIN_3D_INSPECTION_ZOOM = 12.3;
-// User gestures may go farther down than the 78° one-tap viewing angle.
-// Pitch and tile quality are independent: do not cap perspective merely to
-// prevent remote tile requests.
-export const TERRAIN_3D_VIEW_PITCH = 78;
+// The 3D button uses the original 60° perspective. Gestures can tilt
+// farther without the camera angle being used as a network-load throttle.
+export const TERRAIN_3D_VIEW_PITCH = 60;
 export const TERRAIN_3D_MAX_PITCH = 85;
 // At high pitch, coarsen tiles toward the horizon with MapLibre's native
 // source-tile LOD calculation. Do not suppress, invent, or 404 distant data.
