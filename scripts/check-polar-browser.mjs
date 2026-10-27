@@ -3,7 +3,7 @@
 // providers are needed; fixtures exercise the production bundled custom layer.
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
-import {mkdir,readFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {expression as styleExpression} from '@maplibre/maplibre-gl-style-spec';
 import {CAP_RADIUS, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {detailTiles} from './polar-features.mjs';
@@ -143,31 +143,54 @@ try {
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
     await page.evaluate(()=>{window.background='carto';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));
-    // Reproduce polar crash reports under the merged 3D terrain/pitch path.
-    // Previous tests exercised the polar shader only at pitch 0. Check both
-    // poles at the true 60-degree activation and 82/85-degree manual tilt.
-    for(const pitch of [60,82,85]){
-      const actual=await page.evaluate(pitch=>{
-        const map=window.map;
-        map.setPitch(pitch);
-        const current=map.getCenter();
-        return {lat:current.lat,zoom:map.getZoom(),pitch:map.getPitch(),terrain:map.getTerrain()};
-      },pitch);
-      await page.evaluate(()=>new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();}));
-      const state=await page.evaluate(()=>{
-        const map=window.map,cap=map.getCenter().lat>0?'north':'south';
-        return {center:map.getCenter().toArray(),pitch:map.getPitch(),terrain:map.getTerrain(),
-          broken:window.layer.broken||false,loaded:Boolean(window.layer.caps[cap]?.index),
-          visible:window.layer.visible(),errors:window.polarErrors.slice(-5)};
-      });
-      console.log('Polar 3D stress:',cap,pitch,JSON.stringify({actual,state}));
-      assert.ok(Math.abs(state.pitch-pitch)<0.01,`${cap}: tilt lost at ${pitch}°`);
-      assert.ok(Math.abs(Math.abs(state.center[1])-88.5)<0.05,`${cap}: pole location lost`);
-      assert.equal(state.terrain?.source,'terrain3d',`${cap}: missing 3D terrain`);
-      assert.equal(state.broken,false,`${cap}: custom polar GPU draw failed: ${JSON.stringify(state)}`);
-      assert.deepEqual(state.errors,[],`${cap}: terrain/polar error`);
-      await page.screenshot({path:`browser-review/polar-3d-${cap}-pitch${pitch}.png`});
+    // Reproduce the reported pole failure at the *actual* ±90° caps,
+    // not merely ±88.5°. Retain the legacy ±85.05° edge shader tests.
+    const poleOut=[];
+    await page.evaluate(()=>{
+      const layer=window.layer,orig=layer.fill.bind(layer);
+      window.capDiscDraws={north:0,south:0};
+      layer.fill=(mesh,...args)=>{
+        for(const side of ['north','south'])if(mesh===layer.caps[side].disc)window.capDiscDraws[side]++;
+        return orig(mesh,...args);
+      };
+    });
+    for(const latitude of [85.10,88.5,89.9,89.999,89.99999,90]){
+      for(const pitch of [0,60,82,85]){
+        const state=await page.evaluate(({latitude,pitch,sign})=>{
+          const map=window.map,zoomForLat=(z,oldLat,newLat)=>
+            z+Math.log2(Math.cos((Math.min(90-1e-8,Math.abs(newLat)))*Math.PI/180)/Math.cos(oldLat*Math.PI/180));
+          const lat=sign*latitude;
+          // Keep approximately one ground-scale zoom across the full cap.
+          // The globe's special near-pole minZoom is installed already.
+          const cameraZoom=zoomForLat(12,0,lat);
+          map.jumpTo({center:[0,lat],zoom:cameraZoom,pitch,bearing:0});
+          return {center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),
+            requested:lat,requestedZoom:cameraZoom};
+        },{latitude,pitch,sign:cap==='north'?1:-1});
+        await page.evaluate(()=>new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();}));
+        const result=await page.evaluate(()=>{
+          const map=window.map,cap=map.getCenter().lat>0?'north':'south',projected=map.project(map.getCenter());
+          return {center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),
+            terrain:map.getTerrain(),broken:window.layer.broken||false,
+            visible:window.layer.visible(),draws:window.capDiscDraws[cap],
+            screen:[projected.x,projected.y],errors:window.polarErrors.slice(-8)};
+        });
+        poleOut.push({latitude,pitch,state,result});
+        console.log('Polar 3D at pole:',cap,latitude,pitch,JSON.stringify({state,result}));
+        assert.ok(Math.abs(Math.abs(result.center[1])-Math.min(latitude,90-1e-8))<0.02,
+          `${cap}: pole centre was rejected or moved unexpectedly at ${latitude}°`);
+        assert.ok(Number.isFinite(result.zoom)&&Number.isFinite(result.screen[0])&&Number.isFinite(result.screen[1]),
+          `${cap}: invalid polar projection: ${JSON.stringify(result)}`);
+        assert.ok(Math.abs(result.pitch-pitch)<0.01,`${cap}: tilt clamped at ${latitude}°`);
+        assert.equal(result.broken,false,`${cap}: polar shader failed at ${latitude}°/${pitch}°`);
+        assert.deepEqual(result.errors,[],`${cap}: renderer errors at ${latitude}°/${pitch}°`);
+        assert.deepEqual(errors,[],`${cap}: page errors at ${latitude}°/${pitch}°`);
+        if(pitch>=82){
+          await page.screenshot({path:`browser-review/polar-3d-${cap}-lat${latitude}-pitch${pitch}.png`});
+        }
+      }
     }
+    await writeFile(`browser-review/polar-3d-${cap}-pole-test.json`,JSON.stringify(poleOut,null,2)+'\\n');
     await page.evaluate(()=>{window.map.setPitch(0);window.map.setTerrain(null);});
     assert.deepEqual(errors,[]);assert.ok(!warnings.some(w=>/Polar caps not drawn/.test(w)),warnings.join('\n'));
     console.log(`PASS ${cap}: actual contour GPU weights/classes and live expressions, Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
