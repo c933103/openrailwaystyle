@@ -669,7 +669,6 @@ function applySettings() {
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
-  updateTerrainButton();
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   const frequencyPaint=serviceFrequencyPaint(settings);
@@ -698,6 +697,9 @@ function applySettings() {
   inView = [];
   renderLegend();
   if (ready) { syncTerrain3D(map, settings.relief);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  // The button must reflect the mesh AFTER its state is reconciled. When
+  // relief is re-enabled while already tilted, no new pitch event occurs.
+  updateTerrainButton();
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
