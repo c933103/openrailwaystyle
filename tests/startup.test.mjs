@@ -298,16 +298,23 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     const map=maps[0];
     map.handlers['style.load']();
     assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
+    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+    assert.ok(button,'a live 3D control is registered');
     map.setPitch(55);
     assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
+    assert.equal(button.getAttribute('aria-pressed'),'true');
     assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
     const relief=window.document.getElementById('relief');
     relief.click();
     assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
     relief.click();
     assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
+    assert.match(button.getAttribute('aria-label'),/Overhead map/);
     map.setPitch(0);
     assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
     assert.deepEqual(errors,[]);
   }finally{dom.window.close();}
 });
