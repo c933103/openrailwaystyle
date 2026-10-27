@@ -39,6 +39,7 @@ await copyFile('scripts/licenses/fflate-0.8.2-LICENSE.txt','styles/vendor/fflate
 await build({entryPoints:['styles/track-worker.mjs'],outfile:'styles/vendor/track-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',define:{__ATLAS_BUILD_INFO__:JSON.stringify(buildInfo)},bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/depth-worker.mjs'],outfile:'styles/vendor/depth-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
+await build({entryPoints:['styles/terrain-3d-worker.mjs'],outfile:'styles/vendor/terrain-3d-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/dem-worker.mjs'],outfile:'styles/vendor/dem-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/polar-layer.mjs'],outfile:'styles/vendor/polar-layer.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt');

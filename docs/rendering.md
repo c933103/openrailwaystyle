@@ -23,6 +23,36 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## 3D land and seabed terrain
+
+The map's native MapLibre raster-DEM terrain mesh activates when the camera is
+tilted (including the 3D map button), provided **Terrain, seabed and contours**
+is enabled. An overhead view does not request the additional mesh tiles.
+The 3D button can enable terrain after that setting has been turned off;
+returning overhead or disabling terrain removes the mesh. Pitched camera
+settings persist through the existing view/session restore. Map, satellite and
+hybrid textures and the existing signed above/below-sea contours drape over the
+mesh. Exaggeration stays at 1 (no fabricated vertical scaling).
+
+`terrain3d` is separate from the existing `relief` hillshade DEM and the two
+seabed contour sources. `styles/terrain-3d.mjs` exposes a bounded, abortable,
+cached `atlas-terrain://` tile protocol. `styles/terrain-3d-worker.mjs` performs
+the Terrarium PNG composition off the UI thread, falling back to local canvas
+rendering if the worker fails. Both paths reuse the repaired Mapzen DEM.
+At zoom 10 or below the DEM retains ETOPO1 seabed heights; above that its
+high-resolution ocean cells are zero. The mesh keeps fine land heights but
+replaces sea cells with bilinear z10 samples **only within** independently
+mapped `water.class=ocean` vector polygons, including island holes. Below-sea
+inland locations must never be flooded or treated as ocean. The coarse seabed
+is informative relief, not survey-grade soundings; missing or impossible
+heights fail explicitly instead of becoming artificial sea-level flats.
+
+Source availability and render compatibility have separate checks:
+`tests/terrain-3d.test.mjs` verifies signed-height blending, mask boundaries,
+source selection and pitch/relief activation; `tests/startup.test.mjs` checks
+lifecycle integration. Rendering beyond Web Mercator at the extreme poles
+remains the separate custom polar renderer, not this raster mesh.
+
 ## Hidden-layer tile clipping
 
 The pinned MapLibre 5.24.0 painter prepares clipping masks before its layer
