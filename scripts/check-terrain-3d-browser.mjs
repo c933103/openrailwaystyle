@@ -162,12 +162,19 @@ try {
   await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
   assert.ok(significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
   await page.screenshot({path:'browser-review/terrain-flat-same-pitch-synthetic.png'});
-  // Restore the 3D source to retain the original overhead-release test.
-  await page.evaluate(async()=>{
-    const {syncTerrain3D}=await import('./terrain-3d.mjs');
-    syncTerrain3D(window.fixtureMap,true);
-  });
-  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.source==='terrain3d');
+  // A second, stricter control keeps the *same* terrain source and renderer
+  // enabled, but flattens only its heights. This rules out a false positive
+  // caused solely by the renderer switching from direct to terrain drawing.
+  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:0}));
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===0);
+  const flattened={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
+  console.log('1× DEM vs 0× DEM with terrain renderer still on:',flattened);
+  await writeFile('browser-review/terrain-3d-height-only-difference.json',JSON.stringify(flattened,null,2)+'\n');
+  assert.ok(flattened.significant>=300,'Real height displacement must change the render even when both images use terrain mode: '+JSON.stringify(flattened));
+  await page.screenshot({path:'browser-review/terrain-zero-height-same-pitch-synthetic.png'});
+  // Restore the genuine 1× DEM before testing the original overhead release.
+  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
 
   await page.evaluate(async()=>{
     // evaluate runs outside the fixture module's lexical scope. Import the
