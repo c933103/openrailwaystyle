@@ -35,7 +35,7 @@ control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
 offset), without jumping to a different location; a closer existing zoom is
 left unchanged. This makes 3D hills and sea-floor slopes distinguishable
 rather than just changing perspective over an effectively flat world.
-The 3D button starts at **78° pitch** and touch/keyboard gestures can move
+The 3D button retains its **60° initial pitch** and touch/keyboard gestures can move
 the camera to **85°** (down toward the horizon), rather than limiting it to
 MapLibre's default 60°. Greater-than-60° pitch is experimental in MapLibre
 5.24 and can reveal renderer defects. The pitch limit is **not** used as a
