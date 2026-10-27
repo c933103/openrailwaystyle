@@ -338,7 +338,8 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.equal(map.lastEase.pitch,60);
    map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
-   assert.deepEqual(errors,[]);
+   assert.equal(errors.length,1,'the synthetic tile error must also be logged');
+   assert.match(String(errors[0]),/Map resource error/);
  }finally{dom.window.close();}
 });
 
