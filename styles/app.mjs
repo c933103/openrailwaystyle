@@ -1396,8 +1396,8 @@ terrainIcon.setAttribute('viewBox','0 0 24 24');
 terrainIcon.setAttribute('aria-hidden','true');
 for (const d of [
   'M2 18.5 7.5 7l3.6 6.4L15 4l7 14.5H2Z',
-  'm5.2-7.7 2.3 2.4 1.4-1.3',
-  'm13.3-3.5 1.7 2 1.7-1.6',
+  'M5.2 11.3 7.5 13.7l1.4-1.3',
+  'M13.3 9l1.7 2 1.7-1.6',
   'M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0',
 ]) {
   const path = document.createElementNS('http://www.w3.org/2000/svg','path');
