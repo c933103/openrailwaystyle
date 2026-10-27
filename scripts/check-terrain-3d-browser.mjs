@@ -2,9 +2,10 @@
 // every DEM, water polygon and contour is synthetic, but the production
 // atlas-terrain protocol, Terrarium encode and renderer are real.
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import vtpbf from 'vt-pbf';
+import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure} from './terrain-3d-browser-fixture.mjs';
 
 // Real MVT bytes: the worker must decode ocean polygons itself rather than
 // falling back to the page's stub decoder.
@@ -16,7 +17,7 @@ const MASK_MVT = Buffer.from(vtpbf.fromGeojsonVt({water:{extent:4096,features:[{
 
 const base=(process.env.ATLAS_FIXTURE_BASE_URL||process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
-const context=await browser.newContext({viewport:{width:1180,height:800},serviceWorkers:'block'});
+const context=await browser.newContext({viewport:{width:fixture.width,height:fixture.height},serviceWorkers:'block'});
 const page=await context.newPage(), failures=[];
 await mkdir('browser-review',{recursive:true});
 page.on('pageerror',error=>failures.push(error.message));
@@ -34,7 +35,7 @@ try {
     <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
     <script type="module">
       import {installTerrain3D,syncTerrain3D} from './terrain-3d.mjs';
-      const SIZE=256,z=11,x=1024,y=1024,n=2**z;
+      const {tileSize:SIZE,demZoom:z,tileX:x,tileY:y}=${JSON.stringify(fixture)},n=2**z;
       const lng=(fraction)=>(x+fraction)/n*360-180;
       const lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/n)))*180/Math.PI;
       const makeTile=(coarse)=>{
@@ -47,11 +48,15 @@ try {
       const readTile=()=>({layers:{water:{length:1,feature:()=>({
         type:3,extent:4096,properties:{class:'ocean'},loadGeometry:()=>[coast]
       })}}});
-      const counts={fine:0,coarse:0,water:0};
+      const counts=window.terrainCounts={fine:0,coarse:0,water:0};
+      window.requestedDems=[];
+      window.terrainErrors=[];
       const waterBytes=Uint8Array.from(atob('${MASK_MVT}'),c=>c.charCodeAt(0)).buffer;
       window.workerReplies=[];
-      installTerrain3D(maplibregl,{getDemTile:async (z)=>{
+      window.workerErrors=[];
+      installTerrain3D(maplibregl,{getDemTile:async (z,x,y)=>{
         counts[z<=10?'coarse':'fine']++;
+        window.requestedDems.push({z,x,y});
         return makeTile(z<=10);
       }},{waterTile:async()=>{counts.water++;return {data:waterBytes.slice(0)};},
          readTile,
@@ -60,10 +65,11 @@ try {
            worker.addEventListener('message',event=>window.workerReplies.push({
              encoded:Boolean(event.data?.data),error:event.data?.error||null
            }));
+           worker.addEventListener('error',event=>window.workerErrors.push(event.message));
            return worker;
          }});
       const map=window.fixtureMap=new maplibregl.Map({
-        container:'map',center:[lng(0.5),lat],zoom:11.3,pitch:60,maxPitch:80,
+        container:'map',center:[lng(0.5),lat],zoom:${fixture.cameraZoom},pitch:${fixture.pitch},maxPitch:80,
         style:{version:8,sources:{
           terrain3d:{type:'raster-dem',tiles:['atlas-terrain://{z}/{x}/{y}'],
             tileSize:256,maxzoom:11,encoding:'terrarium'},
@@ -77,6 +83,8 @@ try {
           {id:'ground',type:'fill',source:'ground',paint:{'fill-color':'#d6cfb9'}}
         ]}
       });
+      map.on('error',event=>window.terrainErrors.push({sourceId:event.sourceId||null,
+        message:event.error?.message||String(event.error)}));
       const points={sea:[lng(0.25),lat],land:[lng(0.75),lat]};
       window.terrainState=()=>({points,pitch:map.getPitch(),
         source:map.getTerrain()?.source||null,counts,
@@ -113,4 +121,16 @@ try {
   assert.equal(await page.evaluate(()=>window.fixtureMap.queryTerrainElevation([0,0])),null);
   assert.deepEqual(failures,[]);
   console.log('3D native terrain: signed sea and land elevations, overhead release',terrain);
+} catch(error) {
+  // Preserve the unchanged 45-second predicate's actual state before cleanup.
+  // Every input is synthetic; this adds evidence, never a retry or waiver.
+  const diagnostics=await page.evaluate(captureTerrain3DFailure)
+    .catch(diagnosticError=>({unavailable:diagnosticError.message}));
+  const evidence={error:error.message,pageErrors:failures,...diagnostics};
+  console.error('3D terrain failure diagnostics:',JSON.stringify(evidence));
+  await writeFile('browser-review/terrain-3d-failure.json',JSON.stringify(evidence,null,2)+'\n')
+    .catch(saveError=>console.error('Cannot save terrain diagnostics:',saveError.message));
+  await page.screenshot({path:'browser-review/terrain-3d-failure.png'})
+    .catch(saveError=>console.error('Cannot save terrain failure screenshot:',saveError.message));
+  throw error;
 } finally {await context.close();await browser.close();}
