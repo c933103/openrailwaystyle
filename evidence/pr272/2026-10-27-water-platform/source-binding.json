@@ -1,0 +1,87 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "branch": "fix/terrain-3d-contours-bathymetry-20261026",
+  "expected_head": "f38b73b03ac88b88318664c778658e074e5b40ab",
+  "base": "5d729533f5eef9a2e110cc6da1e8809b8b9769a6",
+  "local_commit": "27f2d766ad6a117ad9880ada6e2edad0cd3282af",
+  "expected_tree": "a06a4559412461465a3c7a261f8780e36145312a",
+  "entries": [
+    {
+      "path": "scripts/check-terrain-3d-browser.mjs",
+      "bytes": 7358,
+      "sha256": "a1c0549a8cab8640795f79693e5034f3c99099b7168b645ebf720c3cce16a879",
+      "blob": "ee88b3e03f821122adc36451e359358fcde7779e",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "ee88b3e03f821122adc36451e359358fcde7779e"
+    },
+    {
+      "path": "scripts/terrain-3d-browser-fixture.mjs",
+      "bytes": 1606,
+      "sha256": "a42df58e50ad22596c94d32d38234aba089c2bcd7ff824825c32d8d923b96c0d",
+      "blob": "0c581a2470ded8a285497e28502830e0a9378e9a",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "0c581a2470ded8a285497e28502830e0a9378e9a"
+    },
+    {
+      "path": "tests/terrain-3d-browser-fixture.test.mjs",
+      "bytes": 6428,
+      "sha256": "5ac9a9e575463bed47330cdb172fe9a20dab2f8b8508c6943baed5813e217b46",
+      "blob": "81ba2a7d4b1cae4854e5db5118249061a31fa51b",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "81ba2a7d4b1cae4854e5db5118249061a31fa51b"
+    },
+    {
+      "path": "scripts/check-platform-browser.mjs",
+      "bytes": 14722,
+      "sha256": "f53fe5bfad9b0c54e688340a543c08d126207301f90a40adba96bf5a7f1a16ac",
+      "blob": "987825c469c42fd01dfa28a2eaf2d215d3ba9e8a",
+      "category": "source-code",
+      "status": "confirmed",
+      "returned_sha": "987825c469c42fd01dfa28a2eaf2d215d3ba9e8a"
+    }
+  ],
+  "remote_commit": "cc428f63a4e741fcabfa07c7dc400394f7087096",
+  "remote_parent": "f38b73b03ac88b88318664c778658e074e5b40ab",
+  "verified_files": 820,
+  "publication": "Non-force expected-head update; combined local commits fc11b2a7 and 27f2d766 published as one remote commit with the same complete tree.",
+  "current_acceptance": {
+    "time_utc": "2026-10-27T00:50:29Z",
+    "run": 40428208575,
+    "validation_job": 121939480469,
+    "tested_merge": "2cb4e6817e96d002f0d21fbf0fc0d45ddb72dd79",
+    "node": "26.12.1",
+    "tests": 2730,
+    "pass": 2730,
+    "fail": 0,
+    "skip": 0,
+    "additionalTests": 4,
+    "code_review_receipt": 6430864254,
+    "code_review": "No major issues on cc428f63a4",
+    "browser": "pending; no browser/worker/WebGL acceptance yet",
+    "merged": false,
+    "deployed": false
+  },
+  "local_checks": {
+    "combined": "11/11 fixture/terrain tests, zero failures/skips",
+    "earlier_focused": "18/18 terrain/bathymetry/MVT/diagnostics tests, overlapping combined set, not additional unique tests",
+    "platform_diagnostics": "Exact integrated file: four boolean conjunct combinations plus query exception; bounded history, save/evaluate/screenshot failure, one poll, original error identity, no capture on success",
+    "platform_cpu": "Immutable original platform controller and exact geometry: desktop/mobile zoom 19\u219218 passed with one request and in-viewport ref; mocked visible-edge input, not browser timing/cause proof",
+    "build": "npm run build; generated world.style.json and major-stations.geojson unchanged; four module syntax checks; git diff --check",
+    "oracles": "Both original predicate strings and platform polling wrapper byte-identical; 45000ms terrain/default30000ms platform deadlines unchanged",
+    "local_limits": "No local browser launch or repeated full resource-limited suite"
+  },
+  "failures_preserved": {
+    "source": "f38b73b03ac88b88318664c778658e074e5b40ab",
+    "run": 40425501815,
+    "terrain_job": 121932226397,
+    "terrain_artifact": 12700785155,
+    "terrain_artifact_sha256": "315a9032c774276ef92c629e27762ba42ee32466eb5cba9192bed097d4457178",
+    "platform_job": 121932226440,
+    "platform_artifact": 12700270694,
+    "platform_artifact_sha256": "be8226c211460ce4443dacda2ced1f6419a7ccc45a9ad39d7857db1c55bc9f98",
+    "prior_rail_fixture": "Cancelled by normal PR concurrency after the corrective push; not passed"
+  }
+}
