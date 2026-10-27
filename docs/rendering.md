@@ -35,11 +35,38 @@ control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
 offset), without jumping to a different location; a closer existing zoom is
 left unchanged. This makes 3D hills and sea-floor slopes distinguishable
 rather than just changing perspective over an effectively flat world.
+The 3D button starts at **78° pitch** and touch/keyboard gestures can move
+the camera to **85°** (down toward the horizon), rather than limiting it to
+MapLibre's default 60°. Greater-than-60° pitch is experimental in MapLibre
+5.24 and can reveal renderer defects. The pitch limit is **not** used as a
+network-load throttle: at pitches above 65°, Atlas uses MapLibre's native
+source-tile level-of-detail algorithm to progressively request *coarser* tiles
+toward the horizon. MapLibre's LOD configuration uses a maximum span of 11 on-screen
+zoom levels and a 2.0× high-pitch to overhead tile-count ratio target;
+the terrain source uses a steeper 12-level span and 1.5× ratio. A **larger**
+span tells MapLibre to reduce zoom level faster as distance increases. The original 9.314/3.0 MapLibre LOD parameters are
+restored below this pitch and when returning overhead. MapLibre also bounds
+each source's completed tile cache to 96 entries; this **does not hard-cap
+active tiles**, but prevents indefinite offscreen cache growth. These are LOD
+and memory budgets, not geographic cutoffs: distant data stays available
+at lower resolution, without intentionally creating blank tiles or false
+zero-height elevations. A style/source replacement reinstalls this policy.
 Returning overhead leaves the focused zoom in place. The 3D button can enable terrain after that setting has been turned off;
 returning overhead or disabling terrain removes the mesh. Pitched camera
 settings persist through the existing view/session restore. Map, satellite and
 hybrid textures and the existing signed above/below-sea contours drape over the
-mesh. Exaggeration stays at 1 (no fabricated vertical scaling).
+mesh. The settings panel discloses a **3× vertical scale by default** so regional
+views (including Himalayan terrain at zoom 7–8) show meaningful elevation.
+1× restores actual proportions; 2× and 5× provide milder and stronger
+presentation. The selection is validated against those four values, saved
+with display settings, and can be shared in the URL. It changes MapLibre's
+mesh exaggeration, never source DEM bytes, feature positions, contour numbers,
+or independently sampled profile/measurement heights. MapLibre's own
+`queryTerrainElevation` reports *exaggerated* values by definition and must
+not be used for physical measurements when the scale is not 1×. Switching
+scales while the map is tilted updates the existing terrain source without
+changing the camera or the base/rail style layers. An overhead view requests
+no additional 3D mesh tiles.
 
 `terrain3d` is separate from the existing `relief` hillshade DEM and the two
 seabed contour sources. `styles/terrain-3d.mjs` exposes a bounded, abortable,
