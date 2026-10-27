@@ -3,9 +3,9 @@
 // surface grid, NOT from contours or a fabricated ocean gradient.
 import {crc32, deflateSync} from 'node:zlib';
 import {DEPTH_COLOURS} from '../styles/bathymetry.mjs';
+import {POLAR_DEPTH_MAX_SIDE, POLAR_DEPTH_FORMAT} from '../styles/polar.mjs';
 
-export const POLAR_DEPTH_FORMAT = 'rg8-metres-water-mask-v1';
-export const POLAR_DEPTH_MAX_SIDE = 2048;
+export {POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX_SIDE};
 export const POLAR_DEPTH_MAX = DEPTH_COLOURS.at(-1)[0];
 
 export function encodePolarDepth(grid) {
