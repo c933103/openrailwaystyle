@@ -29,7 +29,7 @@ try {
     </style></head><body><div id="map"></div>
     <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
     <script type="module">
-      import {installTerrain3D,syncTerrain3D} from './terrain-3d.mjs';
+      import {installTerrain3D,syncTerrain3D,syncHighPitchTileBudget} from './terrain-3d.mjs';
       import {readTile} from './vendor/tile-labels.js';
       const {tileSize:SIZE,demZoom:z,tileX:x,tileY:y}=${JSON.stringify(fixture)},n=2**z;
       const lng=(fraction)=>(x+fraction)/n*360-180;
@@ -66,7 +66,7 @@ try {
            return worker;
          }});
       const map=window.fixtureMap=new maplibregl.Map({
-        container:'map',center:[lng(0.5),lat],zoom:${fixture.cameraZoom},pitch:${fixture.pitch},maxPitch:80,
+        container:'map',center:[lng(0.5),lat],zoom:${fixture.cameraZoom},pitch:${fixture.pitch},maxPitch:85,maxTileCacheSize:96,
         canvasContextAttributes:{preserveDrawingBuffer:true},
         style:{version:8,sources:{
           terrain3d:{type:'raster-dem',tiles:['atlas-terrain://{z}/{x}/{y}'],
@@ -106,7 +106,8 @@ try {
         sea:map.queryTerrainElevation(points.sea),
         land:map.queryTerrainElevation(points.land),
         summit:map.queryTerrainElevation(points.summit)});
-      map.on('load',()=>{syncTerrain3D(map,true);window.terrainLoaded=true;});
+      map.on('load',()=>{syncHighPitchTileBudget(map);syncTerrain3D(map,true);window.terrainLoaded=true;});
+      map.on('pitch',()=>syncHighPitchTileBudget(map));
     </script></body></html>`
   }));
   await page.goto(base+'atlas-terrain-test.html',{waitUntil:'domcontentloaded'});
@@ -175,6 +176,53 @@ try {
   // Restore the genuine 1× DEM before testing the original overhead release.
   await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
+  // User-visible relief strength: same source, same camera, same 3D renderer.
+  // A 3× surface must produce a different framebuffer from the true 1×
+  // surface. Test this independently from the existing 1× vs 0× gate.
+  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:3}));
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===3);
+  const boosted={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
+  console.log('Enhanced 3× vertical relief vs true-scale 1× terrain:',boosted);
+  await writeFile('browser-review/terrain-3d-exaggeration-pixels.json',JSON.stringify(boosted,null,2)+'\n');
+  assert.ok(boosted.significant>=300,'3× vertical scale must change actual mountain and seabed geometry: '+JSON.stringify(boosted));
+  const boostedHeights=await page.evaluate(()=>window.terrainState());
+  assert.ok(boostedHeights.summit>terrain.summit*2.5,'MapLibre returns visually exaggerated DEM values');
+  assert.ok(boostedHeights.sea<terrain.sea*2.5,'negative seabed values are visually exaggerated as well');
+  await page.screenshot({path:'browser-review/terrain-enhanced-3x-same-pitch-synthetic.png'});
+  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
+  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
+
+  // Native MapLibre 5.24 acceptance at near-horizontal camera pitch.
+  // Its tile LOD policy must pick coarser terrain *toward* the horizon,
+  // without fabricating flat or missing PNG tiles. Verify the real source
+  // functions were installed by the production helper, not just a mock.
+  const highPitch=await page.evaluate(() => {
+    const map=window.fixtureMap;
+    map.setPitch(82);
+    const terrain=map.getSource('terrain3d');
+    const basemap=map.getSource('ground');
+    const terrainZoom=terrain.calculateTileZoom;
+    const baseZoom=basemap.calculateTileZoom;
+    return {
+      pitch:map.getPitch(),
+      maxPitch:map.getMaxPitch(),
+      terrainLod:typeof terrainZoom,
+      basemapLod:typeof baseZoom,
+      near:terrainZoom?.(11,0,0.1,0.1,35),
+      far:terrainZoom?.(11,1,0.1,0.1,35),
+      projection:map.getProjection().type,
+    };
+  });
+  assert.equal(highPitch.maxPitch,85,'native map accepts greater than the default 60°');
+  assert.ok(highPitch.pitch>=81.9,'the map can tilt to at least 82°');
+  assert.equal(highPitch.terrainLod,'function','near-horizon terrain uses native tile LOD');
+  assert.equal(highPitch.basemapLod,'function','horizon load budget also governs ordinary map tiles');
+  assert.ok(Number.isFinite(highPitch.near)&&Number.isFinite(highPitch.far)
+    &&highPitch.far<highPitch.near-2,
+    'a distant horizon tile must be requested at a lower LOD: '+JSON.stringify(highPitch));
+  console.log('Native high-pitch bounded LOD:',highPitch);
+  await writeFile('browser-review/terrain-high-pitch-lod.json',JSON.stringify(highPitch,null,2)+'\n');
+  await page.screenshot({path:'browser-review/terrain-high-pitch-82deg.png'});
 
   await page.evaluate(async()=>{
     // evaluate runs outside the fixture module's lexical scope. Import the
