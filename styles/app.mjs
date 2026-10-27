@@ -1884,7 +1884,13 @@ async function initialize() {
   // partial/unpublished OSM crawl leaves the existing dot layers untouched.
   stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
     root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
-    onChange:(active,styleReady)=>{stationWorldActive=active;if(ready&&styleReady)applySettings();},
+    onChange:(active,styleReady)=>{
+      stationWorldActive=active;
+      // This source is installed asynchronously after style.load. MapLibre
+      // does not apply its previous all-source LOD parameters retroactively.
+      if(active&&styleReady)syncHighPitchTileBudget(map,WORLD_STATION_SOURCE);
+      if(ready&&styleReady)applySettings();
+    },
   });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
@@ -1943,6 +1949,11 @@ async function initialize() {
     otherMetadataRetries.noteError(e);
   });
   map.on('sourcedata', e => {
+    // A provider/source can be added after style.load (or replaced under the
+    // same ID). Apply the near-horizon LOD to its new instance once; routine
+    // tile content notifications do not reset LOD or change the camera.
+    if(e.sourceId && ['metadata','content'].includes(e.sourceDataType))
+      syncHighPitchTileBudget(map,e.sourceId);
     if (e.sourceId && e.sourceDataType === 'metadata') otherMetadataRetries.clear(e.sourceId);
     const recovered = railRecovery.noteSourceData(e);
     const stationChanged = stationFailures.noteSourceData(e);
