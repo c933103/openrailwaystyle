@@ -56,6 +56,39 @@ test('high-pitch views extend to 85° while distant tiles switch to lower native
   }),/lacks high-pitch tile LOD support/,'renderer compatibility fails visibly, never silently');
 });
 
+test('dynamically installed sources inherit the active horizon budget without extra pitch events',()=>{
+  const terrain={}, stationA={}, stationB={}, rail={};
+  const sources=new Map([['terrain3d',terrain],['railway',rail]]);
+  const view={pitch:82,calls:[]};
+  const map={
+    getPitch:()=>view.pitch,
+    getSource:id=>sources.get(id)||null,
+    getStyle:()=>({sources:Object.fromEntries([...sources].map(([id])=>[id,{type:'vector'}]))}),
+    setSourceTileLodParams:(...args)=>{view.calls.push(args);return map;},
+  };
+  assert.equal(syncHighPitchTileBudget(map),true,'first 82-degree frame sets global and terrain policies');
+  assert.deepEqual(view.calls,[[11,2],[12,1.5,'terrain3d']]);
+  sources.set('stationWorld',stationA);
+  assert.equal(syncHighPitchTileBudget(map,'stationWorld'),true,'late station markers receive high-pitch budget');
+  assert.deepEqual(view.calls.at(-1),[11,2,'stationWorld']);
+  assert.equal(syncHighPitchTileBudget(map,'stationWorld'),false,'repeat metadata never repeats LOD');
+  assert.equal(syncHighPitchTileBudget(map),false,'unchanged pitch and DEM source remain stable');
+  sources.set('stationWorld',stationB);
+  assert.equal(syncHighPitchTileBudget(map,'stationWorld'),true,'replaced source needs reconfiguration');
+  assert.deepEqual(view.calls.at(-1),[11,2,'stationWorld']);
+  sources.set('newTerrain',{});assert.equal(syncHighPitchTileBudget(map,'newTerrain'),true);
+  assert.deepEqual(view.calls.at(-1),[11,2,'newTerrain']);
+  assert.equal(syncHighPitchTileBudget(map,'missing'),false,'missing source never triggers reloads');
+  view.pitch=40;assert.equal(syncHighPitchTileBudget(map),true);
+  assert.deepEqual(view.calls.at(-1),[9.314,3],'normal-angle LOD resets all sources');
+  sources.set('lateOverhead',{});assert.equal(syncHighPitchTileBudget(map,'lateOverhead'),false);
+  view.pitch=82;assert.equal(syncHighPitchTileBudget(map),true);
+  assert.deepEqual(view.calls.slice(-2),[[11,2],[12,1.5,'terrain3d']]);
+  assert.equal(syncHighPitchTileBudget(map,'stationWorld'),false,'global reset covers existing sources');
+  assert.throws(()=>syncHighPitchTileBudget(map,''),/Invalid updated map source ID/);
+  assert.throws(()=>syncHighPitchTileBudget(map,42),/Invalid updated map source ID/);
+});
+
 test('3D style uses an independent Terrarium source, preserving the original hillshade and contour sources', async () => {
   const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
   assert.equal(style.sources[TERRAIN_3D_SOURCE].type,'raster-dem');
