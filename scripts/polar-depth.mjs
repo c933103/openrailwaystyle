@@ -12,7 +12,8 @@ export function encodePolarDepth(grid) {
   const {cols, rows, values} = grid;
   if (!Number.isSafeInteger(cols) || !Number.isSafeInteger(rows) || cols < 2 || rows < 2 ||
       cols > POLAR_DEPTH_MAX_SIDE || rows > POLAR_DEPTH_MAX_SIDE ||
-      !values || values.length !== cols * rows) throw new Error('Invalid bounded polar depth grid');
+      !values || values.length !== cols * rows || POLAR_DEPTH_MAX > 65535)
+    throw new Error('Invalid bounded polar depth grid');
   const out = new Uint8Array(cols * rows * 3);
   for (let i = 0; i < values.length; i++) {
     const elevation = values[i], at = i * 3;
