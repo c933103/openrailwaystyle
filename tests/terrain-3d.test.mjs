@@ -9,6 +9,7 @@ import {
   sampleSeabed, composeTerrainHeights, encodeTerrainPng,
 } from '../styles/terrain-3d.mjs';
 import {depthTile} from '../styles/bathymetry.mjs';
+import {zoomForLatitude,globeGroundZoom} from '../styles/globe-drag.mjs';
 import {terrarium} from '../styles/dem-repair.mjs';
 
 const SIZE = TERRAIN_TILE_SIZE;
@@ -112,6 +113,29 @@ test('3D icon focuses the current location to visible terrain detail, without ex
     'returning overhead must retain the zoom reached while inspecting terrain');
   assert.throws(()=>terrain3DViewTarget({zoom:NaN,detail:0}),/Invalid 3D/);
   assert.throws(()=>terrain3DViewTarget({zoom:3,detail:9}),/Invalid 3D/);
+});
+
+test('3D focus at the poles uses ground scale, not the raw latitude-adjusted camera zoom',()=>{
+  const physicalStart=12, physicalTarget=12.3;
+  for (const latitude of [-90,-89.99999,-89.99,-89.9,-88.5,-85.2,-60,0,60,85.2,88.5,89.9,89.99,89.99999,90]) {
+    const start=zoomForLatitude(physicalStart,0,latitude);
+    const view=terrain3DViewTarget({zoom:start,globe:true,latitude});
+    assert.equal(view.pitch,60,'enter 3D at original tilt, independent of latitude');
+    assert.ok(Number.isFinite(view.zoom),'must never jump to Infinity at a pole');
+    assert.ok(Math.abs(view.zoom-start-0.3)<1e-7,
+      `3D at ${latitude}° should add only the requested 0.3 levels, not jump to camera zoom 12.3: ${JSON.stringify({start,view})}`);
+    assert.ok(Math.abs(globeGroundZoom(view.zoom,latitude)-physicalTarget)<1e-6);
+    assert.deepEqual(terrain3DViewTarget({zoom:zoomForLatitude(13,0,latitude),globe:true,latitude}),{pitch:60},
+      'already sufficiently detailed polar maps keep their exact camera zoom');
+    assert.deepEqual(terrain3DViewTarget({zoom:start,globe:true,latitude,active:true}),{pitch:0},
+      'return overhead preserves the already focused polar camera scale');
+    const detail=terrain3DViewTarget({zoom:start,globe:true,latitude,detail:2});
+    assert.ok(Math.abs(globeGroundZoom(detail.zoom,latitude)-14.3)<1e-6,'More detail keeps correct ground-scale tier');
+  }
+  assert.deepEqual(terrain3DViewTarget({zoom:3,globe:false,latitude:89.99999}),{pitch:60,zoom:12.3},
+    'flat Mercator still compares ordinary camera zoom');
+  for (const latitude of [91,-91,NaN,Infinity])
+    assert.throws(()=>terrain3DViewTarget({zoom:3,globe:true,latitude}),/Invalid 3D terrain view/);
 });
 
 test('3D activates only on pitched views with relief enabled', () => {
