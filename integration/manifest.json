@@ -1,0 +1,71 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "pull_request": 274,
+  "commit": "f32cb4aac43f797d0f870cb9cfc054dfb17f15f0",
+  "tree": "cdb3a3143146d463edc287286f6876073292b1a6",
+  "parents": [
+    "b5932c2b838aaa2f4021d7563442b660fec39f25",
+    "934918385a85eca0fa5fc4a47d2ada67bd393050"
+  ],
+  "release": "20261027-clean-history-3d-1",
+  "shell": 52,
+  "graph": {
+    "references": 41,
+    "files": 11
+  },
+  "preserved_main_exactly": [
+    "styles/app.css",
+    "scripts/check-terrain-3d-browser.mjs",
+    "tests/terrain-3d.test.mjs",
+    "docs/rendering.md"
+  ],
+  "source_sha256": {
+    "docs/rendering.md": "db207af02d3f92410ab007e7adf90626d8baa45d3e7bdeb64946afab941cdb0d",
+    "scripts/check-terrain-3d-browser.mjs": "9a8f301168239ce2bc78b2232c79a4535fa1079bd2537e0dc338450d9ead919b",
+    "styles/app.css": "d88d76a14159f37e8f6de08e6ec5937e8dfddd22ed268380eb0ff2f78b1cc528",
+    "styles/app.mjs": "123eb42e49498814f67594e0e9dce130c13c3e9ce9ebad7f69694883aadc2a90",
+    "styles/cjk-font.mjs": "0bee5ce5c4750a98890038a9c7860d212764913c75d7513abda3febc9b776335",
+    "styles/data-check.html": "f89df665a5e34774f43478abaeef700216cee332168f37782f53f830a9872102",
+    "styles/data-check.mjs": "43da387cb28eb4ae6c2a440d2107c52db67f7ba5da1062d3ac49d92d400a1e3b",
+    "styles/departures-ui.mjs": "1fe64da156f429430513ebee6b14e8e75137c9957bc9735cc98815788592ffbf",
+    "styles/elevation.mjs": "4b07a2e7e7daeea2006fcba357a3277cd2aade56c11371af6aaad5d11969c80a",
+    "styles/index.html": "72def5090b0b091d74bb564e9b9a4c53dbf737d8a59624d0bf288f3703dbebda",
+    "styles/layer-semantics.mjs": "ed9cf9108648b92c5cafc2e8bdb72b09c16d5eb226bd17880b922ee173861be8",
+    "styles/map-model.mjs": "307016a5720165ee52d836bd0037c349c9ef02bf80e9029df9aed6035be9b7da",
+    "styles/station-world.mjs": "13b000e72a6ec5a3c3ef9619f2fecabcd3bb8522b3b07ed54994b9b3d262cfe1",
+    "styles/sw.js": "35581cf95e0bb263a467cf236d81cd22ae3eba33de58e4f758b8c8320d84adf7",
+    "styles/terrain-3d.mjs": "0828eabd4ed35373ade5279bd84d84dee938d862644a6212e1c530d2d94db540",
+    "tests/startup.test.mjs": "e913d8268c47239f16b9756b104695943befd754be96e6b3b229ecb725b401ce",
+    "tests/terrain-3d.test.mjs": "226de2b6f7371ff8cb38e7a05a727b798c9080136cd1a00ec8b31bb68e6e9485"
+  },
+  "validation": {
+    "runtime": "Node26.12.1 / npm11.9.0; unchanged dependency lock",
+    "startup": {
+      "result": "9/9 pass; zero fail/skipped/cancelled",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap --test-name-pattern='startup observes|pitch activates|3D mountain|terrain control preserves|every versioned file|map movements persist locally|incoming map links|settings are remembered' tests/startup.test.mjs"
+    },
+    "sw_terrain_globe": {
+      "result": "86/86 pass; zero fail/skipped/cancelled",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-concurrency=1 --test-reporter=tap tests/sw-install.test.mjs tests/terrain-3d.test.mjs tests/globe-drag.test.mjs"
+    },
+    "negative_control": {
+      "result": "Expected failure: main app with its routine hash writer adds the polar terrain fragment, failing the new unchanged-URL assertion. Temporary main app was restored to exact integrated bytes before final build/tests/source-tree verification.",
+      "command": "TMPDIR=<task-local> node --experimental-vm-modules --test --test-reporter=tap --test-name-pattern='terrain control preserves' tests/startup.test.mjs"
+    },
+    "build": "npm run build passes; generated world.style.json and major-stations.geojson unchanged",
+    "syntax": "app.mjs, sw.js, modified .mjs files and startup.test.mjs pass node --check; git diff --check passes",
+    "aggregate": "No new local full-aggregate success claimed; prior attempt on pre-integration source was incomplete, interrupted after146 passes. Required hosted combined-head aggregate is pending.",
+    "browser": "Native browser unrun locally; exact merged-main pixel assertions preserved and required hosted combined-head fixture matrix pending."
+  },
+  "historical_hosted_only": {
+    "head": "b5932c2b838aaa2f4021d7563442b660fec39f25",
+    "tested_merge": "6f20c5ea8e7f6b3ce77f95a2f1bee4b838a2ad14",
+    "run": 40453907766,
+    "validation_job": 122024969276,
+    "unit_result": "2732/2732 pass; zero fail/skipped/cancelled; not combined-tree acceptance"
+  },
+  "patch_sha256": {
+    "integration-from-pr.patch": "201e9bdf9859ad55588bac741b64c55f35f453b0e58276b299c079f643278352",
+    "integration-from-main.patch": "68905c451b132b5731012545a2797abfa14b573b822cfb9f02eaef217e8260c1"
+  }
+}

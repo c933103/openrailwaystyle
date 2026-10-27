@@ -1,3 +1,10 @@
+# PR274 source and validation evidence
+
+- [Combined integration f32cb4a](integration/README.md) with merged terrain/icon main9349183.
+- The files below are the historical b5932c2 release-graph repair record.
+
+---
+
 # PR274 clean-history release graph repair
 
 Source: `b5932c2b838aaa2f4021d7563442b660fec39f25`  

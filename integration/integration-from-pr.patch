@@ -1,0 +1,634 @@
+diff --git a/docs/rendering.md b/docs/rendering.md
+index e597041..083c4fb 100644
+--- a/docs/rendering.md
++++ b/docs/rendering.md
+@@ -28,7 +28,14 @@ The migration regression manifest in `tests/fixtures/style-composition-baseline.
+ The map's native MapLibre raster-DEM terrain mesh activates when the camera is
+ tilted (including the 3D map button), provided **Terrain, seabed and contours**
+ is enabled. An overhead view does not request the additional mesh tiles.
+-The 3D button can enable terrain after that setting has been turned off;
++The map control uses a vector mountain/bathymetry glyph (with a native
++pressed state and accessible label). At continental/globe scales, true 1x
++heights are smaller than the screen can resolve. A deliberate press of that
++control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
++offset), without jumping to a different location; a closer existing zoom is
++left unchanged. This makes 3D hills and sea-floor slopes distinguishable
++rather than just changing perspective over an effectively flat world.
++Returning overhead leaves the focused zoom in place. The 3D button can enable terrain after that setting has been turned off;
+ returning overhead or disabling terrain removes the mesh. Pitched camera
+ settings persist through the existing view/session restore. Map, satellite and
+ hybrid textures and the existing signed above/below-sea contours drape over the
+diff --git a/scripts/check-terrain-3d-browser.mjs b/scripts/check-terrain-3d-browser.mjs
+index ee88b3e..eb17db7 100644
+--- a/scripts/check-terrain-3d-browser.mjs
++++ b/scripts/check-terrain-3d-browser.mjs
+@@ -36,8 +36,13 @@ try {
+       const lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/n)))*180/Math.PI;
+       const makeTile=(coarse)=>{
+         const data=new Float32Array(SIZE*SIZE);
+-        for(let iy=0;iy<SIZE;iy++)for(let ix=0;ix<SIZE;ix++)
+-          data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340);
++        for(let iy=0;iy<SIZE;iy++)for(let ix=0;ix<SIZE;ix++){
++          // One prominent land summit makes visual deformation measurable.
++          // The original sea/land sampling locations stay -875/340 m.
++          const dx=(ix-160)/12,dy=(iy-128)/28;
++          const peak=1100*Math.exp(-dx*dx-dy*dy);
++          data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340+peak);
++        }
+         return {width:SIZE,height:SIZE,data};
+       };
+       const counts=window.terrainCounts={fine:0,coarse:0,water:0};
+@@ -62,6 +67,7 @@ try {
+          }});
+       const map=window.fixtureMap=new maplibregl.Map({
+         container:'map',center:[lng(0.5),lat],zoom:${fixture.cameraZoom},pitch:${fixture.pitch},maxPitch:80,
++        canvasContextAttributes:{preserveDrawingBuffer:true},
+         style:{version:8,sources:{
+           terrain3d:{type:'raster-dem',tiles:['atlas-terrain://{z}/{x}/{y}'],
+             tileSize:256,maxzoom:11,encoding:'terrarium'},
+@@ -69,19 +75,37 @@ try {
+             type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[
+               [[-1,-1],[-1,1],[1,1],[1,-1],[-1,-1]]
+             ]}
+-          }]}}
++          }]}},
++          seaSurface:{type:'geojson',data:{type:'FeatureCollection',features:[{
++            type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[
++              [lng(-1),lat-1],[lng(0.5),lat-1],[lng(0.5),lat+1],[lng(-1),lat+1],[lng(-1),lat-1]
++            ]]},
++          }]}},
++          visualContours:{type:'geojson',data:{type:'FeatureCollection',
++            features:Array.from({length:9},(_,i)=>({
++              type:'Feature',properties:{ele:i<4?-875:340},
++              geometry:{type:'LineString',coordinates:[[lng(i/8),lat-1],[lng(i/8),lat+1]]}
++            }))
++          }}
+         },layers:[
+           {id:'background',type:'background',paint:{'background-color':'#f2e9d4'}},
+-          {id:'ground',type:'fill',source:'ground',paint:{'fill-color':'#d6cfb9'}}
++          {id:'ground',type:'fill',source:'ground',paint:{'fill-color':'#d6cfb9'}},
++          {id:'ocean-fixture',type:'fill',source:'seaSurface',paint:{'fill-color':'#b9d9e8'}},
++          {id:'contours-fixture',type:'line',source:'visualContours',
++            layout:{'line-join':'round'},paint:{
++              'line-color':['case',['<',['get','ele'],0],'#49768c','#927b5a'],
++              'line-width':3
++            }}
+         ]}
+       });
+       map.on('error',event=>window.terrainErrors.push({sourceId:event.sourceId||null,
+         message:event.error?.message||String(event.error)}));
+-      const points={sea:[lng(0.25),lat],land:[lng(0.75),lat]};
++      const points={sea:[lng(0.25),lat],land:[lng(0.75),lat],summit:[lng(160/256),lat]};
+       window.terrainState=()=>({points,pitch:map.getPitch(),
+         source:map.getTerrain()?.source||null,counts,
+         sea:map.queryTerrainElevation(points.sea),
+-        land:map.queryTerrainElevation(points.land)});
++        land:map.queryTerrainElevation(points.land),
++        summit:map.queryTerrainElevation(points.summit)});
+       map.on('load',()=>{syncTerrain3D(map,true);window.terrainLoaded=true;});
+     </script></body></html>`
+   }));
+@@ -90,7 +114,7 @@ try {
+   await page.waitForFunction(()=>{
+     const s=window.terrainState();
+     return s.source==='terrain3d'&&s.sea!==null&&s.land!==null
+-      &&s.sea < -750&&s.land > 250;
++      &&s.sea < -750&&s.land > 250&&s.summit > s.land+600;
+   },null,{timeout:45000});
+   const terrain=await page.evaluate(()=>window.terrainState());
+   const workerReplies=await page.evaluate(()=>window.workerReplies);
+@@ -99,9 +123,59 @@ try {
+   assert.equal(terrain.source,'terrain3d');
+   assert.ok(terrain.sea < -750,JSON.stringify(terrain));
+   assert.ok(terrain.land > 250,JSON.stringify(terrain));
++  assert.ok(terrain.summit > terrain.land+600,'a real hill must rise above its surroundings');
+   assert.ok(terrain.counts.fine>0&&terrain.counts.coarse>0&&terrain.counts.water>0,
+     'the browser must recover real negative ocean mesh cells');
+   await page.screenshot({path:'browser-review/terrain-3d-seabed-synthetic.png'});
++  // Renderer acceptance, not merely source/query acceptance: use the real
++  // WebGL output and compare pixels at the SAME pitch, centre and zoom.
++  // Synthetic sea fill and signed contour strokes provide visible reference
++  // geometry that must follow the 3D mesh rather than stay on a flat plane.
++  // Keep the framebuffer bytes inside the browser: crossing the process
++  // boundary would serialize several million RGBA values twice.
++  const captureFrame = async (store3D) => page.evaluate(async ({store3D}) => {
++    const map=window.fixtureMap;
++    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
++    const source=map.getCanvas(),frame=document.createElement('canvas');
++    frame.width=source.width; frame.height=source.height;
++    const context=frame.getContext('2d',{willReadFrequently:true});
++    context.drawImage(source,0,0);
++    const pixels=context.getImageData(0,0,frame.width,frame.height).data;
++    if(store3D) {window.terrain3DFrame=pixels;return {pixels:pixels.length/4};}
++    const original=window.terrain3DFrame;
++    if(!original||original.length!==pixels.length)throw new Error('Mismatched 3D/flat frame dimensions');
++    let changed=0,significant=0;
++    for(let i=0;i<pixels.length;i+=4) {
++      const delta=Math.abs(original[i]-pixels[i])+
++        Math.abs(original[i+1]-pixels[i+1])+
++        Math.abs(original[i+2]-pixels[i+2]);
++      if(delta>6)changed++;
++      if(delta>48)significant++;
++    }
++    return {changed,significant,total:pixels.length/4};
++  },{store3D});
++  await captureFrame(true);
++  await page.evaluate(()=>window.fixtureMap.setTerrain(null));
++  await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
++  const visual={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
++  console.log('Native 3D vs flat map at identical pitch:',visual);
++  await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
++  assert.ok(visual.significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
++  await page.screenshot({path:'browser-review/terrain-flat-same-pitch-synthetic.png'});
++  // A second, stricter control keeps the *same* terrain source and renderer
++  // enabled, but flattens only its heights. This rules out a false positive
++  // caused solely by the renderer switching from direct to terrain drawing.
++  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:0}));
++  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===0);
++  const flattened={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
++  console.log('1× DEM vs 0× DEM with terrain renderer still on:',flattened);
++  await writeFile('browser-review/terrain-3d-height-only-difference.json',JSON.stringify(flattened,null,2)+'\n');
++  assert.ok(flattened.significant>=300,'Real height displacement must change the render even when both images use terrain mode: '+JSON.stringify(flattened));
++  await page.screenshot({path:'browser-review/terrain-zero-height-same-pitch-synthetic.png'});
++  // Restore the genuine 1× DEM before testing the original overhead release.
++  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
++  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
++
+   await page.evaluate(async()=>{
+     // evaluate runs outside the fixture module's lexical scope. Import the
+     // production helper here too; do not accidentally replace terrain checks
+diff --git a/styles/app.css b/styles/app.css
+index dcefd64..a4bb787 100644
+--- a/styles/app.css
++++ b/styles/app.css
+@@ -23,6 +23,10 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+ #map.detail.detail-2 .maplibregl-control-container{width:25%;height:25%;transform:scale(4)}
+ .maplibregl-ctrl-group button.atlas-ctrl{font-size:17px;line-height:29px;color:#203c44}
+ .maplibregl-ctrl-group button.atlas-ctrl[aria-pressed=true]{background:#173e47;color:#fff}
++/* Match the other MapLibre glyph controls and preserve contrast when active. */
++.maplibregl-ctrl-group button.atlas-terrain-toggle{display:flex;align-items:center;justify-content:center}
++.maplibregl-ctrl-group button.atlas-terrain-toggle svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
++
+ .draw-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:min(560px,calc(100% - 420px));background:var(--paper);border-radius:12px;box-shadow:0 6px 30px #28414a22;padding:8px 38px 8px 8px}
+ .draw-group{display:flex;gap:2px;border:1px solid var(--border);border-radius:8px;padding:2px}
+ .draw-group button{border:0;font-size:12px;padding:6px 9px}
+diff --git a/styles/app.mjs b/styles/app.mjs
+index 98ab1fb..ff9f368 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,29 +1,29 @@
+-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-map-history-1';
+-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-map-history-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-map-history-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-map-history-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-map-history-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-map-history-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-map-history-1';
++import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-1';
++import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-map-history-1';
+-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-map-history-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-map-history-1';
+-import {departureItem} from './departures-ui.mjs?v=20261027-clean-map-history-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-map-history-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-map-history-1';
+-import {installTerrain3D, syncTerrain3D, terrain3DEnabled} from './terrain-3d.mjs?v=20261027-clean-map-history-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-map-history-1';
+-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-map-history-1';
+-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-map-history-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-map-history-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-map-history-1';
+-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-map-history-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-map-history-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-map-history-1';
+-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-map-history-1';
+-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-map-history-1';
+-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-map-history-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-1';
++import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-1';
++import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-1';
++import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-1';
++import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-1';
++import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-1';
++import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-1';
++import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-1';
++import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-1';
++import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-1';
+ 
+ const $ = id => document.getElementById(id);
+ $('help-power').textContent = POWER_FACILITY_EXPLANATION;
+@@ -64,7 +64,7 @@ let powerFacilities, powerMethods;
+ let railRecovery, stationFailures, wakeRailRecovery = () => {};
+ let stationWorldActive = false, stationWorldLifecycle;
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-map-history-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -687,7 +687,6 @@ function applySettings() {
+   updateAttribution();
+   for (const key of CHECKBOXES) $(key).checked = settings[key];
+   $('units').value = settings.units;
+-  updateTerrainButton();
+   readout.hidden = !settings.readout; updateReadout();
+   if (ready) clickable = [];
+   const frequencyPaint=serviceFrequencyPaint(settings);
+@@ -716,6 +715,9 @@ function applySettings() {
+   inView = [];
+   renderLegend();
+   if (ready) { syncTerrain3D(map, settings.relief);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
++  // The button must reflect the mesh AFTER its state is reconciled. When
++  // relief is re-enabled while already tilted, no new pitch event occurs.
++  updateTerrainButton();
+   frequencyExpiry?.update();
+   if (ready) wakeRailRecovery();
+ }
+@@ -1252,6 +1254,9 @@ const mapErrorMessage = () => {
+     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
+       'Independent map references remain where available; detail may be missing.';
+   }
++  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
++    return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
++  }
+   return 'Some map data could not load. Check your connection or reload to retry.';
+ };
+ function updateStatus() {
+@@ -1404,18 +1409,38 @@ function updatePolar() {
+ }
+ polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
+ const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+-const terrainButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'3D'});
++// Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
++// rather than rendering the literal text "3D" in a MapLibre icon button.
++const terrainButton = Object.assign(document.createElement('button'), {
++  type:'button', className:'atlas-ctrl atlas-terrain-toggle', id:'terrain-toggle',
++});
++const terrainIcon = document.createElementNS('http://www.w3.org/2000/svg','svg');
++terrainIcon.setAttribute('viewBox','0 0 24 24');
++terrainIcon.setAttribute('aria-hidden','true');
++for (const d of [
++  'M2 18.5 7.5 7l3.6 6.4L15 4l7 14.5H2Z',
++  'M5.2 11.3 7.5 13.7l1.4-1.3',
++  'M13.3 9l1.7 2 1.7-1.6',
++  'M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0',
++]) {
++  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
++  path.setAttribute('d',d); terrainIcon.append(path);
++}
++terrainButton.append(terrainIcon);
+ function updateTerrainButton() {
+-  const enabled = terrain3DEnabled(settings.relief, map?.getPitch());
+-  terrainButton.setAttribute('aria-pressed', String(enabled));
+-  terrainButton.title = enabled ? 'Return to overhead view' : 'Tilt the map for true 3D terrain and seabed';
+-  terrainButton.setAttribute('aria-label', terrainButton.title);
++  const enabled = terrain3DEnabled(settings.relief, map?.getPitch()) &&
++    map?.getTerrain?.()?.source === 'terrain3d';
++  terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
++  terrainButton.title = enabled ? 'Overhead map (keep current zoom)' :
++    'Inspect 3D terrain and seabed (zooms in if too far away)';
++  terrainButton.setAttribute('aria-label',terrainButton.title);
+ }
+ terrainButton.addEventListener('click', () => {
+   if (!map) return;
+   const was3D = terrain3DEnabled(settings.relief, map.getPitch());
+   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+-  map.easeTo({pitch: was3D ? 0 : 60, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600});
++  const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D});
++  map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+ });
+ updateTerrainButton();
+ const MIN_ZOOM = 1, MAX_ZOOM = 20;
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 6d995bb..6a66d10 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-map-history-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-history-3d-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index 6ed28b5..d7d5d83 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-map-history-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-history-3d-1"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index ca7fa79..c92ba09 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261027-clean-map-history-1';
++import {SEARCH_API} from './map-model.mjs?v=20261027-clean-history-3d-1';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index ea6b277..5a460f5 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-map-history-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index e2ef18a..09331e7 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,8 +4,8 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-map-history-1';
+-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
++import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index 5900854..6fa7299 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261027-clean-map-history-1" rel="stylesheet">
++  <link href="app.css?v=20261027-clean-history-3d-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -167,7 +167,7 @@
+     <p>The ⊞ button shows more detail in the same space, drawn at half and then a quarter size; a third press returns to normal, and its tooltip gives the scale. The ✎ button opens drawing tools (points, lines, smooth curves and areas, in a chosen colour and line style); a curve leaves and joins straight stretches without a corner, the small dot in the middle of each segment adds a point there, and with the tools closed, clicking a drawn line gives its elevation profile. Drawings stay in this browser and can be saved or opened as GeoJSON files. The 📏 button measures distances along several segments, with the height difference and gradient between the ends, or the radius of a curve from three or more points clicked along it. Heights are ground or seabed level, not the track on a bridge or in a tunnel. Missing terrain heights leave gaps in an incomplete elevation profile; its statistics use only available samples and connected stretches. Under the scale bar are the coordinates under the cursor and the zoom (the settings can hide them).</p>
+     <h3 id="help-names" tabindex="-1">Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
+     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
+-    <p>Tilting the map enables 3D land and seabed terrain while terrain is switched on; the 3D map button returns to a top-down view. Brown contours show land elevation; blue contours follow the seabed below sea level. Labels use signed metres or feet according to the unit setting. Heavier index contours are labelled. Seabed depth data is much coarser than land elevation. Around the poles on the globe, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
++    <p>The mountain-shaped terrain button opens a 3D view of the current location, zooming closer when needed so actual terrain heights can be seen. It leaves the current zoom in place when returning to the overhead map. Tilting the map also enables 3D land and seabed relief when terrain is switched on. Brown contours show land elevation; blue contours follow the seabed below sea level. Labels use signed metres or feet according to the unit setting. Heavier index contours are labelled. Seabed depth data is much coarser than land elevation. Around the poles on the globe, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
+     <p>Roads, cycling paths and walking trails remain visible beneath the railway network. Protected areas, military grounds, religious institutions and heritage sites provide context for drawing proposals. Purple boundaries show Indigenous territories where mapped as non-administrative jurisdictions, separately from administrative and conservation boundaries. The map does not establish legal boundaries or permission to build.</p>
+     <p>Infrastructure view marks level crossings (dark brown for road crossings, light brown for pedestrian ones), with their mapped equipment; they come from a worldwide OSM table refreshed weekly: <a href="data/level-crossings/manifest.json">snapshot date and counts</a>; <a href="data/level-crossings/crossings.tsv.gz">download the ODbL table</a>. It marks explicitly tagged street-running track with an ochre roadbed. Street running is refreshed weekly from OSM: <a href="data/street-running/manifest.json">snapshot date and query</a>; <a href="data/street-running/street-running.geojson.gz">download the ODbL extract</a>. It is not inferred from every tramway or a nearby road.</p>
+     <p>Zoom in on Infrastructure view for platforms and their boarding edges. Platform numbers and edge references appear from zoom 17; from zoom 19 an edge label pairs its reference with the length of the complete mapped boarding edge, in metres or feet. Platform numbers and lengths can take a moment to load. Signals (purple) appear from zoom 13 in Infrastructure and Train control, with references from zoom 16. Mapped train or subway station entrances (teal) appear from zoom 16; click them for mapped details and an OpenStreetMap link. Signal markers identify their location, not their current aspect. Coverage depends on the provider’s mapped data. Value labels hides their text while keeping the mapped shapes and markers.</p>
+@@ -222,6 +222,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261027-clean-map-history-1"></script>
++  <script type="module" src="app.mjs?v=20261027-clean-history-3d-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index c486e62..51feedd 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261027-clean-map-history-1';
++import { MODES } from './map-model.mjs?v=20261027-clean-history-3d-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 9fd1d44..499e5d9 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-map-history-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-map-history-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-history-3d-1';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-history-3d-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-map-history-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-history-3d-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/styles/station-world.mjs b/styles/station-world.mjs
+index 1eddd33..c9dc0e2 100644
+--- a/styles/station-world.mjs
++++ b/styles/station-world.mjs
+@@ -2,7 +2,7 @@
+ // snapshot. Incomplete or missing acquisition never changes live station layers.
+ // Source: station-points-data, built by station-overview.mjs and published only
+ // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
+-import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-map-history-1';
++import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
+ 
+ export const WORLD_STATION_SOURCE = 'stationWorld';
+ export const WORLD_STATION_DOTS = 'station-world-dots';
+diff --git a/styles/sw.js b/styles/sw.js
+index eabe98b..69d54c5 100644
+--- a/styles/sw.js
++++ b/styles/sw.js
+@@ -11,11 +11,11 @@
+ // Their filenames pin the library version, so cached old/new app versions
+ // cannot overwrite one another's dependency bytes. Map tiles and data files
+ // are not handled here.
+-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}51`, KEEP_VERSIONS = 2;
++const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}52`, KEEP_VERSIONS = 2;
+ const FONT_CACHE='atlas-label-fonts-v1';
+-// Shell 51 includes the URL-history cleanup alongside the existing
+-// full-train schedule renderer and verified MapLibre attribution backport.
+-// Older open tabs retain their versioned assets.
++// Shell 52 combines clean map history with the visible 3D terrain control.
++// The complete module graph updates together; older open tabs retain their
++// versioned assets and verified MapLibre attribution backport.
+ // Stored user settings are not touched.
+ // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
+ const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+diff --git a/styles/terrain-3d.mjs b/styles/terrain-3d.mjs
+index 1612e8b..14e8163 100644
+--- a/styles/terrain-3d.mjs
++++ b/styles/terrain-3d.mjs
+@@ -2,9 +2,25 @@
+ // the provider has no seabed elevations beyond z10. Restore only genuine sea
+ // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
+ // All elevations remain metres, regardless of the contour-label unit setting.
+-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-map-history-1';
+-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-map-history-1';
+-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-map-history-1';
++import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-1';
++import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
++import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
++
++// MapLibre renders its terrain DEM one zoom below the camera tile level.
++// At globe/continent scales even mountains several kilometres high cover
++// fewer than a few display pixels at true 1x elevation. A deliberate press of
++// the 3D control therefore brings the *current centre* to a terrain-inspection
++// scale, without inventing vertical exaggeration or moving to another place.
++export const TERRAIN_3D_INSPECTION_ZOOM = 12.3;
++export const TERRAIN_3D_VIEW_PITCH = 60;
++export function terrain3DViewTarget({zoom, detail = 0, active = false}) {
++  if (!Number.isFinite(zoom) || !Number.isInteger(detail) || detail < 0 || detail > 2) {
++    throw new RangeError('Invalid 3D terrain view');
++  }
++  if (active) return {pitch: 0};
++  const target = TERRAIN_3D_INSPECTION_ZOOM + detail;
++  return {pitch: TERRAIN_3D_VIEW_PITCH, ...(zoom < target ? {zoom: target} : {})};
++}
+ 
+ export const TERRAIN_3D_SOURCE = 'terrain3d';
+ export const TERRAIN_3D_MAXZOOM = 14;
+diff --git a/tests/startup.test.mjs b/tests/startup.test.mjs
+index 72226e9..7c8cec9 100644
+--- a/tests/startup.test.mjs
++++ b/tests/startup.test.mjs
+@@ -111,6 +111,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries =
+     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
+     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
+     jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
++    easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
+     getLayer() {}
+     addLayer(layer) { (this.added ||= []).push(layer.id); }
+     addSource() {}
+@@ -297,20 +298,101 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
+     const map=maps[0];
+     map.handlers['style.load']();
+     assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
++    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
++    assert.ok(button,'a live 3D control is registered');
+     map.setPitch(55);
+     assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:1});
++    assert.equal(button.getAttribute('aria-pressed'),'true');
+     assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
+     const relief=window.document.getElementById('relief');
+     relief.click();
+     assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
++    assert.equal(button.getAttribute('aria-pressed'),'false');
+     relief.click();
+     assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
++    assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
++    assert.match(button.getAttribute('aria-label'),/Overhead map/);
+     map.setPitch(0);
+     assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
++    assert.equal(button.getAttribute('aria-pressed'),'false');
+     assert.deepEqual(errors,[]);
+   }finally{dom.window.close();}
+ });
+ 
++test('3D mountain icon starts an actually detailed terrain view, not just a pitch flag',async()=>{
++ const {dom,window,maps,errors}=await start();
++ try {
++   const map=maps[0];map.handlers['style.load']();
++   // The startup Map mock collects addControl() calls without mounting the
++   // control. Mount this one through its real MapLibre onAdd() interface.
++   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
++   assert.ok(control,'the native terrain control must be registered');
++   window.document.body.append(control.onAdd());
++   const button=window.document.getElementById('terrain-toggle');
++   assert.ok(button,'native control must have a stable accessible identifier');
++   assert.equal(button.textContent.trim(),'','3D glyph is vector artwork, not literal text');
++   assert.equal(button.querySelector('svg')?.getAttribute('viewBox'),'0 0 24 24');
++   assert.ok(button.querySelectorAll('svg path').length>=3);
++   assert.equal(button.getAttribute('aria-pressed'),'false');
++   map.zoom=2;
++   button.click();
++   assert.equal(map.lastEase.pitch,60);
++   assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
++   assert.equal(map.getTerrain()?.source,'terrain3d');
++   assert.equal(button.getAttribute('aria-pressed'),'true');
++   button.click();
++   assert.equal(map.lastEase.pitch,0);
++   assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
++   assert.equal(button.getAttribute('aria-pressed'),'false');
++   map.zoom=15;
++   button.click();
++   assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
++   assert.equal(map.lastEase.pitch,60);
++   map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
++   assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
++   assert.equal(errors.length,1,'the synthetic tile error must also be logged');
++   assert.match(String(errors[0]),/Map resource error/);
++ }finally{dom.window.close();}
++});
++
++test('terrain control preserves clean history while sharing the current polar 3D view',async()=>{
++ const cookie='atlas_settings='+encodeURIComponent(JSON.stringify({relief:false}));
++ const {dom,window,maps,errors}=await start({search:'?ref=terrain-history',cookie});
++ try {
++   const map=maps[0];map.handlers['style.load']();
++   map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
++   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
++   window.document.body.append(control.onAdd());
++   const button=window.document.getElementById('terrain-toggle');
++   const initialURL=window.location.href,initialLength=window.history.length,state={retained:'terrain-history'};
++   window.history.replaceState(state,'',initialURL);
++   const writes=[],replace=window.history.replaceState.bind(window.history);
++   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
++   let copied='';
++   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
++   let focusedZoom;
++   for(const pitch of [60,0]) {
++     button.click();map.handlers.moveend();
++     assert.equal(map.getPitch(),pitch);
++     if(pitch===60){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
++     else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
++     const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
++     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
++     window.document.getElementById('share').click();
++     await new Promise(resolve=>setTimeout(resolve,0));
++     const shared=new URL(copied);
++     assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
++     assert.equal(shared.searchParams.get('ref'),'terrain-history');
++     assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
++     assert.equal(window.location.href,initialURL);
++     assert.equal(window.history.length,initialLength);
++     assert.deepEqual(window.history.state,state);
++     assert.deepEqual(writes,[],'terrain focusing, overhead return and sharing never rewrite history');
++   }
++   assert.deepEqual(errors,[]);
++ }finally{dom.window.close();}
++});
++
+ test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
+  const before=unmockedRequests.length;
+  await assert.rejects(globalThis.fetch('https://example.org/offline-sentinel'),/blocked unmocked network/);
+diff --git a/tests/terrain-3d.test.mjs b/tests/terrain-3d.test.mjs
+index 593b6c2..58c00dd 100644
+--- a/tests/terrain-3d.test.mjs
++++ b/tests/terrain-3d.test.mjs
+@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
+ import {readFile} from 'node:fs/promises';
+ import {
+   TERRAIN_3D_SOURCE, TERRAIN_3D_MAXZOOM, TERRAIN_TILE_SIZE,
++  TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, terrain3DViewTarget,
+   terrain3DEnabled, syncTerrain3D, needsSeabedRecovery,
+   sampleSeabed, composeTerrainHeights, encodeTerrainPng,
+ } from '../styles/terrain-3d.mjs';
+@@ -30,6 +31,18 @@ test('3D style uses an independent Terrarium source, preserving the original hil
+   assert.equal(style.terrain,undefined,'an overhead map must not request a terrain mesh');
+ });
+ 
++test('3D icon focuses the current location to visible terrain detail, without exaggeration', () => {
++  const target=TERRAIN_3D_INSPECTION_ZOOM;
++  assert.equal(target,12.3,'the native DEM manager samples one zoom below camera');
++  assert.deepEqual(terrain3DViewTarget({zoom:2,detail:0,active:false}),{zoom:target,pitch:TERRAIN_3D_VIEW_PITCH});
++  assert.deepEqual(terrain3DViewTarget({zoom:9.9,detail:2,active:false}),{zoom:target+2,pitch:TERRAIN_3D_VIEW_PITCH});
++  assert.deepEqual(terrain3DViewTarget({zoom:15,detail:0,active:false}),{pitch:TERRAIN_3D_VIEW_PITCH});
++  assert.deepEqual(terrain3DViewTarget({zoom:1.5,detail:0,active:true}),{pitch:0},
++    'returning overhead must retain the zoom reached while inspecting terrain');
++  assert.throws(()=>terrain3DViewTarget({zoom:NaN,detail:0}),/Invalid 3D/);
++  assert.throws(()=>terrain3DViewTarget({zoom:3,detail:9}),/Invalid 3D/);
++});
++
+ test('3D activates only on pitched views with relief enabled', () => {
+   const view={sourceRegistered:false,pitch:30,terrain:null,calls:[]};
+   const map={

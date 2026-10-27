@@ -1,0 +1,72 @@
+TAP version 13
+# (node:15) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:15) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Subtest: startup observes cold style readiness
+ok 1 - startup observes cold style readiness
+  ---
+  duration_ms: 243.210393
+  type: 'test'
+  ...
+# Subtest: startup observes already loaded style readiness
+ok 2 - startup observes already loaded style readiness
+  ---
+  duration_ms: 95.495172
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Subtest: pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+ok 3 - pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests
+  ---
+  duration_ms: 99.40876
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Subtest: 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+ok 4 - 3D mountain icon starts an actually detailed terrain view, not just a pitch flag
+  ---
+  duration_ms: 97.357409
+  type: 'test'
+  ...
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Subtest: terrain control preserves clean history while sharing the current polar 3D view
+ok 5 - terrain control preserves clean history while sharing the current polar 3D view
+  ---
+  duration_ms: 123.100817
+  type: 'test'
+  ...
+# Subtest: settings are remembered in a cookie; a shared link applies once and leaves the address
+ok 6 - settings are remembered in a cookie; a shared link applies once and leaves the address
+  ---
+  duration_ms: 314.137179
+  type: 'test'
+  ...
+# Subtest: map movements persist locally without changing URL or browser history
+ok 7 - map movements persist locally without changing URL or browser history
+  ---
+  duration_ms: 86.331133
+  type: 'test'
+  ...
+# Subtest: incoming map links are consumed once; sharing still works before map initialization
+ok 8 - incoming map links are consumed once; sharing still works before map initialization
+  ---
+  duration_ms: 86.106566
+  type: 'test'
+  ...
+# Subtest: every versioned file the page loads asks for the page version
+ok 9 - every versioned file the page loads asks for the page version
+  ---
+  duration_ms: 11.097888
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1935.622474

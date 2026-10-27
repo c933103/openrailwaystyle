@@ -1,0 +1,38 @@
+TAP version 13
+# (node:15) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:15) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261027-clean-history-3d-1
+# Subtest: terrain control preserves clean history while sharing the current polar 3D view
+not ok 1 - terrain control preserves clean history while sharing the current polar 3D view
+  ---
+  duration_ms: 256.028516
+  type: 'test'
+  location: '<checkout>/tests/startup.test.mjs:358:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'https://example.org/openrailwaystyle/?ref=terrain-history#16.34/89.7/162/25/60'
+    - 'https://example.org/openrailwaystyle/?ref=terrain-history'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'https://example.org/openrailwaystyle/?ref=terrain-history'
+  actual: 'https://example.org/openrailwaystyle/?ref=terrain-history#16.34/89.7/162/25/60'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<checkout>/tests/startup.test.mjs:387:13)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 828.683286

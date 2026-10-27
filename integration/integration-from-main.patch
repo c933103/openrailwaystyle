@@ -1,0 +1,429 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index dc74063..0a86635 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -101,7 +101,7 @@ Power shows mapped railway electricity supplies, diesel/fuel and coal facilities
+ 
+ ## Display settings and sharing
+ 
+-Station search and responsive controls. Display settings and the label language are remembered in a cookie; the address carries only the map position, and the link button (🔗, copy map link) adds the display settings so a shared link opens the same view (they are then saved and removed from the address). The satellite button copies the GPS coordinates of the map centre (latitude, longitude in decimal degrees).
++Station search and responsive controls. Display settings and the label language are remembered in a cookie; the last map position, heading and projection are stored locally in the browser. Ordinary panning, zooming and rotation do not rewrite the URL or add map positions to browser history. The link button (🔗, Copy map link) creates a shareable URL with the current map position, orientation and display settings on demand. Opening such a link applies its position and settings, then removes those parameters from the address without discarding the selected view. Copying the address bar instead of using the link button does not capture the current map position. The coordinate button copies the GPS coordinates of the map centre (latitude, longitude in decimal degrees).
+ 
+ The shared language selector offers local names or 12 languages. It uses recorded names and fallbacks, without automatic translation or script conversion; see [label rules](labels.md).
+ 
+diff --git a/styles/app.mjs b/styles/app.mjs
+index 8772c77..ff9f368 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,29 +1,29 @@
+-import {serviceCoverageMessages} from './service-status.mjs?v=20261027-3d-visible-1';
+-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-3d-visible-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-3d-visible-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-3d-visible-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-3d-visible-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-3d-visible-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-3d-visible-1';
++import {serviceCoverageMessages} from './service-status.mjs?v=20261027-clean-history-3d-1';
++import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261027-clean-history-3d-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261027-clean-history-3d-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261027-clean-history-3d-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261027-clean-history-3d-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261027-clean-history-3d-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261027-clean-history-3d-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-3d-visible-1';
+-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-3d-visible-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-3d-visible-1';
+-import {departureItem} from './departures-ui.mjs?v=20261027-3d-visible-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-3d-visible-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-3d-visible-1';
+-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-3d-visible-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-3d-visible-1';
+-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-3d-visible-1';
+-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-3d-visible-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-3d-visible-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261027-3d-visible-1';
+-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-3d-visible-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261027-3d-visible-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261027-3d-visible-1';
+-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-3d-visible-1';
+-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-3d-visible-1';
+-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-3d-visible-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261027-clean-history-3d-1';
++import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261027-clean-history-3d-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261027-clean-history-3d-1';
++import {departureItem} from './departures-ui.mjs?v=20261027-clean-history-3d-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261027-clean-history-3d-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261027-clean-history-3d-1';
++import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget} from './terrain-3d.mjs?v=20261027-clean-history-3d-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261027-clean-history-3d-1';
++import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261027-clean-history-3d-1';
++import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261027-clean-history-3d-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261027-clean-history-3d-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261027-clean-history-3d-1';
++import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261027-clean-history-3d-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261027-clean-history-3d-1';
++import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261027-clean-history-3d-1';
++import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261027-clean-history-3d-1';
++import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261027-clean-history-3d-1';
+ 
+ const $ = id => document.getElementById(id);
+ $('help-power').textContent = POWER_FACILITY_EXPLANATION;
+@@ -43,6 +43,8 @@ const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
+ // with page requests). A link with a position (#zoom/lat/lng) still wins.
+ const VIEW_STORE = 'atlas_view';
+ const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
++// Capture an incoming map link before its fragment is removed from the address.
++const initialViewHash = parseViewHash(location.hash) ? location.hash : '';
+ function saveView() {
+   if (!map) return;
+   const c = map.getCenter();
+@@ -62,7 +64,7 @@ let powerFacilities, powerMethods;
+ let railRecovery, stationFailures, wakeRailRecovery = () => {};
+ let stationWorldActive = false, stationWorldLifecycle;
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-3d-visible-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261027-clean-history-3d-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -526,15 +528,31 @@ function renderLegend() {
+ function saveSettings() {
+   writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
+   const url = new URL(location.href);
+-  if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
++  const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key));
++  const hasView = Boolean(parseViewHash(url.hash));
++  // Normalize shared links once, not on every pan/zoom. Preserve unrelated
++  // query parameters, non-map anchors and the current browser history state.
++  if (hasSettings || hasView) {
+     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
+-    history.replaceState(null, '', url);
++    if (hasView) url.hash = '';
++    history.replaceState(history.state, '', url);
+   }
+ }
+-// The address of this view with its display settings, for sharing.
++// Build a link on demand rather than writing each map position into history.
+ function shareURL() {
+   const url = new URL(location.href);
+   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
++  if (map) {
++    const {lat, lng} = map.getCenter();
++    url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
++  } else if (initialViewHash) {
++    // The share control is available while map libraries are still loading.
++    url.hash = initialViewHash;
++  } else if (Array.isArray(rememberedView.c) && rememberedView.c.length === 2
++      && rememberedView.c.every(Number.isFinite) && Number.isFinite(rememberedView.z)) {
++    url.hash = viewHash({zoom: rememberedView.z, lat: rememberedView.c[1], lng: rememberedView.c[0],
++      bearing: rememberedView.b ?? 0, pitch: rememberedView.p ?? 0});
++  }
+   return url.href;
+ }
+ saveSettings();
+@@ -1710,7 +1728,7 @@ async function initialize() {
+   }
+   // Reopen where the last visit ended, unless the link gives a position; start
+   // on the globe (or as last left) so the first frame is not the flat map.
+-  const linkedView = parseViewHash(location.hash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
++  const linkedView = parseViewHash(initialViewHash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
+   // A centre beyond 85.05° exists only on the globe: open there, or the flat
+   // map would pull it back to its edge.
+@@ -1754,14 +1772,8 @@ async function initialize() {
+     // Again once the style has put the map on the globe.
+     map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+   }
+-  // The view in the address (viewHash in globe-drag.mjs, in place of
+-  // MapLibre's own, which near a pole wrote a negative zoom and rounded the
+-  // latitude to 90°).
+-  const writeHash = () => {
+-    const c = map.getCenter(), hash = viewHash({zoom: map.getZoom(), lat: c.lat, lng: c.lng, bearing: map.getBearing(), pitch: map.getPitch()});
+-    if (hash !== location.hash) { const url = new URL(location.href); url.hash = hash; history.replaceState(history.state, '', url); }
+-  };
+-  map.on('moveend', writeHash);
++  // Ordinary navigation updates the persisted local view through updatePolar.
++  // Only explicitly navigating to a link fragment changes the browser URL.
+   addEventListener('hashchange', () => {
+     const view = parseViewHash(location.hash);
+     if (!view) return;
+@@ -2169,8 +2181,7 @@ $('details-close').addEventListener('click', closeDetails);
+ addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
+ $('about-open').addEventListener('click', () => $('about').showModal());
+ $('about-close').addEventListener('click', () => $('about').close());
+-// The contents links scroll within the dialog; following them would replace
+-// the address's map position (#zoom/lat/lon) with the section's name.
++// Keep contents navigation inside the dialog without changing browser history.
+ $('about').querySelector('.help-contents')?.addEventListener('click', event => {
+   const link = event.target.closest('a[href^="#"]');
+   if (!link) return;
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index ca182be..6a66d10 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-3d-visible-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261027-clean-history-3d-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/data-check.html b/styles/data-check.html
+index 9f1639a..d7d5d83 100644
+--- a/styles/data-check.html
++++ b/styles/data-check.html
+@@ -1,2 +1,2 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-3d-visible-1"></script></body></html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Railway Atlas · Data connection check</title><link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192"><link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180"><meta name="application-name" content="Railway Atlas"><link rel="stylesheet" href="app.css"><style>body{padding:24px;max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ccd5cc;overflow-wrap:anywhere}.pass{color:#247046}.fail{color:#a02b22}button{margin:12px 0}</style></head><body><h1>Data connection check</h1><p>Checks the map’s metadata, font and search connections from this browser. It does not download railway tiles. This developer check works without WebGL.</p><button id="check">Check data connections</button><p id="summary" role="status">Ready.</p><table><thead><tr><th>Service</th><th>Result</th></tr></thead><tbody id="results"></tbody></table><p><a href="./">Return to Railway Atlas</a></p><script type="module" src="data-check.mjs?v=20261027-clean-history-3d-1"></script></body></html>
+diff --git a/styles/data-check.mjs b/styles/data-check.mjs
+index be78dcf..c92ba09 100644
+--- a/styles/data-check.mjs
++++ b/styles/data-check.mjs
+@@ -1,4 +1,4 @@
+-import {SEARCH_API} from './map-model.mjs?v=20261027-3d-visible-1';
++import {SEARCH_API} from './map-model.mjs?v=20261027-clean-history-3d-1';
+ const button = document.getElementById('check');
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index e21b24c..5a460f5 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261027-3d-visible-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261027-clean-history-3d-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 549141d..09331e7 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,8 +4,8 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-3d-visible-1';
+-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-3d-visible-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
++import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index 07e02f8..6fa7299 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261027-3d-visible-1" rel="stylesheet">
++  <link href="app.css?v=20261027-clean-history-3d-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -222,6 +222,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261027-3d-visible-1"></script>
++  <script type="module" src="app.mjs?v=20261027-clean-history-3d-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 4ea6622..51feedd 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261027-3d-visible-1';
++import { MODES } from './map-model.mjs?v=20261027-clean-history-3d-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index a214d8b..499e5d9 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,7 +1,7 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-3d-visible-1';
+-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-3d-visible-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261027-clean-history-3d-1';
++export {referenceDetailEligible} from './railway-visibility.mjs?v=20261027-clean-history-3d-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-3d-visible-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261027-clean-history-3d-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/styles/station-world.mjs b/styles/station-world.mjs
+index 92e79ec..c9dc0e2 100644
+--- a/styles/station-world.mjs
++++ b/styles/station-world.mjs
+@@ -2,7 +2,7 @@
+ // snapshot. Incomplete or missing acquisition never changes live station layers.
+ // Source: station-points-data, built by station-overview.mjs and published only
+ // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
+-import {createBundleReader} from './tile-bundles.mjs?v=20261027-3d-visible-1';
++import {createBundleReader} from './tile-bundles.mjs?v=20261027-clean-history-3d-1';
+ 
+ export const WORLD_STATION_SOURCE = 'stationWorld';
+ export const WORLD_STATION_DOTS = 'station-world-dots';
+diff --git a/styles/sw.js b/styles/sw.js
+index ad5fc7c..69d54c5 100644
+--- a/styles/sw.js
++++ b/styles/sw.js
+@@ -11,11 +11,11 @@
+ // Their filenames pin the library version, so cached old/new app versions
+ // cannot overwrite one another's dependency bytes. Map tiles and data files
+ // are not handled here.
+-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}51`, KEEP_VERSIONS = 2;
++const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}52`, KEEP_VERSIONS = 2;
+ const FONT_CACHE='atlas-label-fonts-v1';
+-// Shell 25 includes the full-train schedule renderer. The hash-pinned
+-// MapLibre attribution backport keeps older open tabs working without
+-// any new legacy request.
++// Shell 52 combines clean map history with the visible 3D terrain control.
++// The complete module graph updates together; older open tabs retain their
++// versioned assets and verified MapLibre attribution backport.
+ // Stored user settings are not touched.
+ // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
+ const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+diff --git a/styles/terrain-3d.mjs b/styles/terrain-3d.mjs
+index 36361d7..14e8163 100644
+--- a/styles/terrain-3d.mjs
++++ b/styles/terrain-3d.mjs
+@@ -2,9 +2,9 @@
+ // the provider has no seabed elevations beyond z10. Restore only genuine sea
+ // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
+ // All elevations remain metres, regardless of the contour-label unit setting.
+-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-3d-visible-1';
+-import {encodeTerrarium} from './dem-repair.mjs?v=20261027-3d-visible-1';
+-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-3d-visible-1';
++import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261027-clean-history-3d-1';
++import {encodeTerrarium} from './dem-repair.mjs?v=20261027-clean-history-3d-1';
++import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261027-clean-history-3d-1';
+ 
+ // MapLibre renders its terrain DEM one zoom below the camera tile level.
+ // At globe/continent scales even mountains several kilometres high cover
+diff --git a/tests/startup.test.mjs b/tests/startup.test.mjs
+index 6a06854..7c8cec9 100644
+--- a/tests/startup.test.mjs
++++ b/tests/startup.test.mjs
+@@ -355,6 +355,44 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
+  }finally{dom.window.close();}
+ });
+ 
++test('terrain control preserves clean history while sharing the current polar 3D view',async()=>{
++ const cookie='atlas_settings='+encodeURIComponent(JSON.stringify({relief:false}));
++ const {dom,window,maps,errors}=await start({search:'?ref=terrain-history',cookie});
++ try {
++   const map=maps[0];map.handlers['style.load']();
++   map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
++   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
++   window.document.body.append(control.onAdd());
++   const button=window.document.getElementById('terrain-toggle');
++   const initialURL=window.location.href,initialLength=window.history.length,state={retained:'terrain-history'};
++   window.history.replaceState(state,'',initialURL);
++   const writes=[],replace=window.history.replaceState.bind(window.history);
++   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
++   let copied='';
++   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
++   let focusedZoom;
++   for(const pitch of [60,0]) {
++     button.click();map.handlers.moveend();
++     assert.equal(map.getPitch(),pitch);
++     if(pitch===60){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
++     else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
++     const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
++     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
++     window.document.getElementById('share').click();
++     await new Promise(resolve=>setTimeout(resolve,0));
++     const shared=new URL(copied);
++     assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
++     assert.equal(shared.searchParams.get('ref'),'terrain-history');
++     assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
++     assert.equal(window.location.href,initialURL);
++     assert.equal(window.history.length,initialLength);
++     assert.deepEqual(window.history.state,state);
++     assert.deepEqual(writes,[],'terrain focusing, overhead return and sharing never rewrite history');
++   }
++   assert.deepEqual(errors,[]);
++ }finally{dom.window.close();}
++});
++
+ test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
+  const before=unmockedRequests.length;
+  await assert.rejects(globalThis.fetch('https://example.org/offline-sentinel'),/blocked unmocked network/);
+@@ -1163,6 +1201,69 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
+     } finally {dom.window.close();}
+   }
+ });
++test('map movements persist locally without changing URL or browser history', async () => {
++  const {dom,window,maps,errors}=await start({search:'?ref=history-check'});
++  try {
++    const map=maps[0], originalURL=window.location.href, initialLength=window.history.length;
++    const writes=[];
++    const replace=window.history.replaceState.bind(window.history);
++    window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
++    map.getCenter=()=>({lat:35.6813,lng:139.7671});
++    map.getBearing=()=>45;
++    map.getPitch=()=>30;
++    for(const zoom of [8,11,13.25,16]){
++      map.zoom=zoom;
++      map.handlers.moveend();
++    }
++    assert.equal(window.location.href,originalURL,'panning and zooming leave the location unchanged');
++    assert.equal(window.history.length,initialLength,'no session history entries');
++    assert.deepEqual(writes,[],'no replaceState calls or hidden visited-URL mutations during movements');
++    const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
++    assert.deepEqual(saved.c,[139.7671,35.6813],'the current centre is still saved locally');
++    assert.equal(saved.z,16);
++    let copied='';
++    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
++    window.document.getElementById('share').click();
++    await new Promise(resolve=>setTimeout(resolve,0));
++    const url=new URL(copied);
++    assert.equal(url.hash,globeModule.viewHash({zoom:16,lat:35.6813,lng:139.7671,bearing:45,pitch:30}));
++    assert.equal(url.searchParams.get('ref'),'history-check','unrelated query parameters survive sharing');
++    assert.equal(url.searchParams.get('mode'),'infrastructure','display choices are included in links');
++    assert.equal(window.location.href,originalURL,'sharing does not navigate');
++    assert.deepEqual(writes,[],'sharing does not rewrite the current address');
++    assert.deepEqual(errors,[]);
++  }finally{dom.window.close();}
++});
++
++test('incoming map links are consumed once; sharing still works before map initialization',async()=>{
++  const hash='#10/35.68/139.76/25/40';
++  const {dom,window,maps,errors,loadLibraries}=await start({
++    delayLibraries:true,search:`?mode=speed&language=ja&ref=shared${hash}`,
++  });
++  try {
++    assert.equal(maps.length,0,'map libraries are still loading');
++    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared');
++    assert.equal(window.history.length,1,'normalizing an incoming link does not push a new history entry');
++    let copied='';
++    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
++    window.document.getElementById('share').click();
++    await new Promise(resolve=>setTimeout(resolve,0));
++    const share=new URL(copied);
++    assert.equal(share.hash,hash,'the original position remains shareable during startup');
++    assert.equal(share.searchParams.get('mode'),'speed');
++    assert.equal(share.searchParams.get('language'),'ja');
++    assert.equal(share.searchParams.get('ref'),'shared');
++    loadLibraries();
++    for(let i=0;i<10&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
++    assert.equal(maps.length,1,'the link still opens a map');
++    assert.equal(maps[0].zoom,10,'the deep link wins over default map zoom');
++    maps[0].handlers.moveend();
++    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared',
++      'navigating the linked map does not bring the fragment back');
++    assert.deepEqual(errors,[]);
++  }finally{dom.window.close();}
++});
++
+ test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
+  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
+  const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
