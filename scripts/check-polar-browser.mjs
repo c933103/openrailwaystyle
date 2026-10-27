@@ -191,6 +191,31 @@ try {
       }
     }
     await writeFile(`browser-review/polar-3d-${cap}-pole-test.json`,JSON.stringify(poleOut,null,2)+'\\n');
+    // The actual regression: the 3D button used to compare a pole's
+    // negative latitude-relative camera zoom with 12.3, then jump straight
+    // to z12.3 (sometimes over twenty zoom levels). Exercise it on the
+    // REAL MapLibre globe with a 12.0 physical ground-zoom opening.
+    for(const latitude of [88.5,89.9,89.99999,90]){
+      const focus=await page.evaluate(async ({sign,latitude})=>{
+        const {zoomForLatitude,globeGroundZoom}=await import('./globe-drag.mjs');
+        const {terrain3DViewTarget}=await import('./terrain-3d.mjs');
+        const map=window.map,lat=sign*latitude;
+        map.jumpTo({center:[0,lat],zoom:zoomForLatitude(12,0,lat),pitch:0});
+        const before=map.getZoom(),trueGround=globeGroundZoom(before,map.getCenter().lat);
+        const target=terrain3DViewTarget({zoom:before,detail:0,globe:true,latitude:map.getCenter().lat});
+        map.easeTo({...target,duration:0});
+        return {before,after:map.getZoom(),target,groundBefore:trueGround,
+          groundAfter:globeGroundZoom(map.getZoom(),map.getCenter().lat),
+          pitch:map.getPitch(),lat:map.getCenter().lat};
+      },{latitude,sign:cap==='north'?1:-1});
+      assert.ok(Math.abs(focus.after-focus.before-0.3)<0.03,
+        `${cap} ${latitude}°: tapping 3D must add only 0.3 zoom levels, not a massive pole jump: ${JSON.stringify(focus)}`);
+      assert.ok(Math.abs(focus.groundAfter-12.3)<0.03);
+      assert.equal(focus.pitch,60);
+      await page.evaluate(()=>new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();}));
+      assert.equal(await page.evaluate(()=>window.layer.broken||false),false,
+        `${cap}: real 3D focus must keep the polar shader running`);
+    }
     await page.evaluate(()=>{window.map.setPitch(0);window.map.setTerrain(null);});
     assert.deepEqual(errors,[]);assert.ok(!warnings.some(w=>/Polar caps not drawn/.test(w)),warnings.join('\n'));
     console.log(`PASS ${cap}: actual contour GPU weights/classes and live expressions, Atlas live paint, Map/Carto detail, Carto pixels/labels, feet, imagery cancellation and old snapshot`);
