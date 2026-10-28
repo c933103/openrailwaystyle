@@ -1,0 +1,60 @@
+{
+  "checked_at_utc": "2026-10-28T07:09:00Z",
+  "code_commit": "c44b7c7efffb30267b21cf761eda61ea14dad36b",
+  "data_commit": "d46bfb079d673a4eebc7b08e15d34b77a63ca4fb",
+  "deployment_run": 40643534194,
+  "deployment_conclusion": "success",
+  "served_assets": [
+    {
+      "name": "north-index.json",
+      "bytes": 802,
+      "sha256": "fd1b19962b50f0d9235a277187ce517a4a730921852b33a40b297e4ad32f5231",
+      "git_blob": "72c25f783bd5122207f7d6d3c9c8c039c556fa33"
+    },
+    {
+      "name": "north-depth.png",
+      "bytes": 657934,
+      "sha256": "bb8fea6285c3547e80776b0b6b8e0987ae5f9f454218d30d76401f51ec3e94f2",
+      "git_blob": "c98c55e8792d1001bee83be052a634ce8a163b02"
+    },
+    {
+      "name": "south-index.json",
+      "bytes": 818,
+      "sha256": "79018cd34055e34aeaf29815c31267f1f025d13f51c070251f87e39530b1821a",
+      "git_blob": "638e519eab92aabe5573fffdad08e6e4eee63113"
+    },
+    {
+      "name": "south-depth.png",
+      "bytes": 1677,
+      "sha256": "cb6eac680f3d01a858537742f034a74e15309e976f6b8c444c9985a291cfdf01",
+      "git_blob": "fb3c23920672a3d483637d5756f0554618ba7702"
+    }
+  ],
+  "exact_git_blob_and_size_match": true,
+  "decoded_rasters": {
+    "north": {
+      "size": [
+        741,
+        741
+      ],
+      "valid_ocean_pixels": 429741,
+      "min_metres": 309,
+      "max_metres": 5203
+    },
+    "south": {
+      "size": [
+        741,
+        741
+      ],
+      "valid_ocean_pixels": 0,
+      "min_metres": null,
+      "max_metres": null
+    }
+  },
+  "limits": [
+    "Live browser rendering of actual deployed raster remains unverified: isolated local preview server repeatedly refused connection, including executor HTTP checks. No rendering pass inferred from asset success.",
+    "Existing exact-head CI fixture WebGL north/south tests passed; this is distinct from visual inspection using generated production rasters.",
+    "Snapshot delta request returned HTTP502 and reused prior data. No fresh worldwide acquisition claim.",
+    "No held external tile-provider request was made."
+  ]
+}
