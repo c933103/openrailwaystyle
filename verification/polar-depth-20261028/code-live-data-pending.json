@@ -1,0 +1,172 @@
+{
+  "checked_at_utc": "2026-10-28T06:07:49Z",
+  "actual_commit": "c44b7c7efffb30267b21cf761eda61ea14dad36b",
+  "actual_tree": "06d07c488e5ddb76dee7577a63d233dfacfcc797",
+  "site_run": 40638125149,
+  "site_run_conclusion": "success",
+  "served_source_files": [
+    {
+      "path": "app.mjs",
+      "bytes": 178714,
+      "sha256": "919ca4f14770905e4c22e3cca39c043dff85a46bad1835a466daf24197c0d792",
+      "git_blob": "145ccde3ad3d9b2e01a16657164516b86e4f49cc",
+      "expected_git_blob": "145ccde3ad3d9b2e01a16657164516b86e4f49cc",
+      "exact": true
+    },
+    {
+      "path": "cjk-font.mjs",
+      "bytes": 4075,
+      "sha256": "6e76803e9829a086445a1efab3a57eb8b36a246e563d95714a365e74e9460fba",
+      "git_blob": "38b6dbd1af29e6d44946af3c7f58ae00cf2c2527",
+      "expected_git_blob": "38b6dbd1af29e6d44946af3c7f58ae00cf2c2527",
+      "exact": true
+    },
+    {
+      "path": "data-check.html",
+      "bytes": 1397,
+      "sha256": "9b6606efeb11f2fa45a255407fe00fe9ef8342f11cafdd170a6f60478f77dc4a",
+      "git_blob": "6150934340e715b4940940a348ab3f8e95daf300",
+      "expected_git_blob": "6150934340e715b4940940a348ab3f8e95daf300",
+      "exact": true
+    },
+    {
+      "path": "data-check.mjs",
+      "bytes": 3832,
+      "sha256": "d20a51cce7a16deb8a8e1cff6d0484ec9607ee164eae1fe2d05b5a9857fc8b3b",
+      "git_blob": "c3514eedad29c32bfe1b66947628ce5142740505",
+      "expected_git_blob": "c3514eedad29c32bfe1b66947628ce5142740505",
+      "exact": true
+    },
+    {
+      "path": "departures-ui.mjs",
+      "bytes": 6971,
+      "sha256": "6c38a85efa0f440618571b92f8acbe8471b8d69822cf031592dae5c5c7e3c7a9",
+      "git_blob": "c05bdcf050129394e746ee2b19700df01aa74002",
+      "expected_git_blob": "c05bdcf050129394e746ee2b19700df01aa74002",
+      "exact": true
+    },
+    {
+      "path": "elevation.mjs",
+      "bytes": 7679,
+      "sha256": "a793f8207252565a1925db30a2038cdcab8f298876d146966d0713cfd29de709",
+      "git_blob": "ffeb035697ec37f630d032b488d4499184b28339",
+      "expected_git_blob": "ffeb035697ec37f630d032b488d4499184b28339",
+      "exact": true
+    },
+    {
+      "path": "index.html",
+      "bytes": 49372,
+      "sha256": "c3a244409fbd72354fe8785472887288648099ae00857ed2b8499e9ef18475e8",
+      "git_blob": "51893cdb6ebdc57a585843ca84a68256deb7d1d1",
+      "expected_git_blob": "51893cdb6ebdc57a585843ca84a68256deb7d1d1",
+      "exact": true
+    },
+    {
+      "path": "layer-semantics.mjs",
+      "bytes": 6069,
+      "sha256": "75ecb56de296d9c35e9d265fc13fe002068bc8218e8483d98829b613ff340939",
+      "git_blob": "6b5f52dd538dd5797812488e81897cba58638d44",
+      "expected_git_blob": "6b5f52dd538dd5797812488e81897cba58638d44",
+      "exact": true
+    },
+    {
+      "path": "map-model.mjs",
+      "bytes": 62185,
+      "sha256": "779cd64a1052e17e690ffa143c74030ee70606dc20f1754891683833ebf73598",
+      "git_blob": "97dd47a8e29b1f87acd84ee1091f9c7efd60154f",
+      "expected_git_blob": "97dd47a8e29b1f87acd84ee1091f9c7efd60154f",
+      "exact": true
+    },
+    {
+      "path": "polar-layer.mjs",
+      "bytes": 40611,
+      "sha256": "42341d3474c5ccd0a613ab585176fab88e9f921597438692881157b4e8af61f6",
+      "git_blob": "8755666b7091562454c6e5f5ebaf40536ac3b71b",
+      "expected_git_blob": "8755666b7091562454c6e5f5ebaf40536ac3b71b",
+      "exact": true
+    },
+    {
+      "path": "polar-paint.mjs",
+      "bytes": 17853,
+      "sha256": "2181968cf30047ebbb939f1d68585f6387c19b04052e5518622404da5bd1c806",
+      "git_blob": "da18bdc5582a5d65d5e241a01b95577f0d88a656",
+      "expected_git_blob": "da18bdc5582a5d65d5e241a01b95577f0d88a656",
+      "exact": true
+    },
+    {
+      "path": "polar.mjs",
+      "bytes": 4876,
+      "sha256": "f1df3f77743226f30303de65d6260ab8994b695e37ce5db3d13325b52843df99",
+      "git_blob": "954279c19af7d82fe1d3a2f1a4db093bac4bd091",
+      "expected_git_blob": "954279c19af7d82fe1d3a2f1a4db093bac4bd091",
+      "exact": true
+    },
+    {
+      "path": "station-world.mjs",
+      "bytes": 7662,
+      "sha256": "0bbf266a36c5df3b27da9e3959ed776f0af3b09fc51f78bcfa6b7baa8d658eb0",
+      "git_blob": "820f8442b4e6eca0113adde7d6057c96b04740fa",
+      "expected_git_blob": "820f8442b4e6eca0113adde7d6057c96b04740fa",
+      "exact": true
+    },
+    {
+      "path": "sw.js",
+      "bytes": 15120,
+      "sha256": "0723eadc73458ab7a5b977a30c2145e9d7ed9826f62df22b482c3cb17ff5e5f9",
+      "git_blob": "8b30540516ba0ecc7371a0a6124e98aad7824962",
+      "expected_git_blob": "8b30540516ba0ecc7371a0a6124e98aad7824962",
+      "exact": true
+    },
+    {
+      "path": "terrain-3d.mjs",
+      "bytes": 15259,
+      "sha256": "da038dc865795bff941c079d92d8a0951cc3bcdf4fa67e19f9c32f86764187f4",
+      "git_blob": "0bbd1650caf35a65a864f6b77f0655eb121a6db6",
+      "expected_git_blob": "0bbd1650caf35a65a864f6b77f0655eb121a6db6",
+      "exact": true
+    }
+  ],
+  "polar_indexes": [
+    {
+      "cap": "north",
+      "sha256": "65c25c7417f9c8edf70376aef2107e15552de0423bf639b015f95493d6d1d1a6",
+      "keys": [
+        "cap",
+        "radius",
+        "units",
+        "relief",
+        "carto",
+        "elevation"
+      ],
+      "has_depth": false,
+      "elevation": {
+        "source": "NOAA ETOPO 2022",
+        "product": "surface",
+        "arcSeconds": 60,
+        "gridStepKm": 1.5
+      }
+    },
+    {
+      "cap": "south",
+      "sha256": "2b5e2ecaa2d35fa673b09284668eaddba26ae69be0e754236ed9a6e1bba0ce05",
+      "keys": [
+        "cap",
+        "radius",
+        "units",
+        "relief",
+        "carto",
+        "elevation"
+      ],
+      "has_depth": false,
+      "elevation": {
+        "source": "NOAA ETOPO 2022",
+        "product": "surface",
+        "arcSeconds": 60,
+        "gridStepKm": 1.5
+      }
+    }
+  ],
+  "production_status": "Application source deployed exactly; required regenerated depth assets still absent from live indexes. Both-cap production colour verification remains open.",
+  "active_snapshot_run": 40638125115,
+  "scope": "Only project-owned static source and index requests; no public-provider tile downloads or benchmark."
+}
