@@ -11,10 +11,10 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}55`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}57`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 55 retains clean browser-history navigation while adding 85° pitch
-// and native high-pitch source-tile LOD with adjustable 3D vertical scale.
+// Shell 56 keeps existing 3D/high-pitch controls and introduces shared
+// polar sea-depth colours in the first-party custom-renderer bundle.
 // The complete module graph updates together; older open tabs retain their
 // versioned assets and verified MapLibre attribution backport.
 // Stored user settings are not touched.

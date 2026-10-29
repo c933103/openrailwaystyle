@@ -5,14 +5,15 @@
 //   {cap}-features.json        OpenStreetMap water, runways and place names
 //   {cap}-carto-{tx}-{ty}.json  Carto-only buildings, roads/paths and facilities
 //   {cap}-relief.png           slopes for the relief shading (ETOPO 2022)
+//   {cap}-depth.png            true sea depths in metres, RGB16 + validity
 // Elevation is fetched once and kept in .snapshot-cache; OpenStreetMap
 // data is re-fetched when older than POLAR_OSM_MAX_AGE_DAYS (default 28).
 import {readFile, writeFile, mkdir, stat, rm, rename} from 'node:fs/promises';
-import {crc32, deflateSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import polygonClipping from 'polygon-clipping';
 import {CAP_RADIUS, POLAR_BANDS, FEET, toPolar, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {DETAIL_SIDE, detailQuery, detailTiles, parseOverpass} from './polar-features.mjs';
+import {png, encodePolarDepth, POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX} from './polar-depth.mjs';
 import {isolineSegments, joinSegments, clipToDisc, clipToRect, simplify, levels} from './polar-contours.mjs';
 const CAPS = ['north', 'south'];
 const USER_AGENT = 'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)';
@@ -21,8 +22,8 @@ const OVERPASS = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interp
 const LON_STRIDE = 10; // every 10th arc-minute of longitude (≤ 1.6 km at 85°)
 const STEP = 1.5;      // km between polar grid points
 const TOLERANCE = [1.2, 0.6, 0.25]; // km, per zoom band
-// Restore all three existing contour bands. The viewer uses the finer two
-// only for Carto; their 2×2 and 4×4 tiles are loaded only where viewed.
+// Restore all three existing contour bands, which the Atlas Map and Carto
+// both sample where visible. Their finer tiles remain view-limited.
 // Contour tiles per side, per zoom band: the cap square is split so the
 // finer bands load only where viewed.
 export const TILES_PER_SIDE = [1, 2, 4];
@@ -125,18 +126,6 @@ function contours(grid, units) {
 // axes, as an RGB PNG over the square around the cap: red for x, green for
 // y, each 128 ± 127·√|slope| (slopes beyond 1 held at 1), which keeps gentle
 // slopes precise and filters smoothly. Blue is unused.
-function png(width, height, rgb) {
-  const chunk = (type, data) => {
-    const out = Buffer.alloc(12 + data.length), body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-    out.writeUInt32BE(data.length, 0); body.copy(out, 4); out.writeUInt32BE(crc32(body), 8 + data.length);
-    return out;
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
-  const raw = Buffer.alloc(height * (1 + 3 * width));
-  for (let y = 0; y < height; y++) rgb.subarray(y * 3 * width, (y + 1) * 3 * width).forEach((v, i) => { raw[y * (1 + 3 * width) + 1 + i] = v; });
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', deflateSync(raw, {level: 9})), chunk('IEND', Buffer.alloc(0))]);
-}
 function relief(grid) {
   const {cols, values} = grid, rgb = new Uint8Array(cols * cols * 3).fill(128);
   const at = (i, j) => { const v = values[Math.max(0, Math.min(cols - 1, j)) * cols + Math.max(0, Math.min(cols - 1, i))]; return Number.isNaN(v) ? null : v; };
@@ -218,7 +207,13 @@ for (const cap of CAPS) {
     }
   }
   await writeFile(`${output}/${cap}-relief.png`, relief(grid));
+  // RGB depth is packed as metres/validity, not baked colours. The viewer
+  // applies the SAME DEPTH_COLOURS stops as the ordinary sea raster, after
+  // bilinear depth interpolation. Land/no-data remains transparent.
+  await writeFile(`${output}/${cap}-depth.png`, png(grid.cols, grid.rows, encodePolarDepth(grid)));
   index.relief = {x0: grid.x0, step: grid.step, size: grid.cols};
+  index.depth = {x0: grid.x0, step: grid.step, size: grid.cols,
+    format: POLAR_DEPTH_FORMAT, maxDepth: POLAR_DEPTH_MAX};
   await writeFile(`${output}/${cap}-index.json`, JSON.stringify(index));
   const data = await features(cap);
   await writeFile(`${output}/${cap}-features.json`, JSON.stringify(data));

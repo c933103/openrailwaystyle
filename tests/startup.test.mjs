@@ -416,7 +416,7 @@ test('terrain control preserves clean history while sharing the current polar 3D
      }
      else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
      const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
-     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
+     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,Number(focusedZoom.toFixed(2)),'stored camera zoom retains the existing two-decimal persistence contract');assert.equal(saved.p,pitch);
      window.document.getElementById('share').click();
      await new Promise(resolve=>setTimeout(resolve,0));
      const shared=new URL(copied);

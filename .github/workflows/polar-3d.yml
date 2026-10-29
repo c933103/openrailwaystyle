@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/polar-3d.yml
+      - scripts/check-polar-depth-browser.mjs
       - scripts/check-polar-browser.mjs
       - scripts/check-polar-parity-browser.mjs
       - styles/app.mjs
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/polar-3d.yml
+      - scripts/check-polar-depth-browser.mjs
       - scripts/check-polar-browser.mjs
       - styles/app.mjs
       - styles/globe-drag.mjs
@@ -34,8 +36,8 @@ jobs:
         with:
           node-version: '26'
           check-latest: true
-      - name: Verify security-patched Node runtime
-        run: node -e 'const [a,b,c]=process.versions.node.split(".").map(Number); if(a!==26||b<12||(b===12&&c<1))throw new Error("Requires Node 26.12.1+")'
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - name: Keep generated style reproducible
@@ -48,6 +50,8 @@ jobs:
           server=$!
           trap 'kill "$server" 2>/dev/null || true' EXIT
           node scripts/check-polar-browser.mjs
+          node scripts/check-polar-depth-browser.mjs
+          node scripts/check-terrain-3d-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

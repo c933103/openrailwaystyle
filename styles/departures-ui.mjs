@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261027-terrain-pitch-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261029-polar-3d-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
