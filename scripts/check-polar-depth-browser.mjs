@@ -63,9 +63,22 @@ try {
           window.draws++;const result=draw(...args),gl=map.getCanvas().getContext('webgl2');
           const point=map.transform.locationToScreenPoint(map.getCenter()),pixel=new Uint8Array(4);
           gl.readPixels(Math.round(point.x),gl.drawingBufferHeight-1-Math.round(point.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
-          window.depthDraw={pixel:[...pixel],depthTest:gl.isEnabled(gl.DEPTH_TEST),viewport:[...gl.getParameter(gl.VIEWPORT)],
+          window.depthDraw={pixel:[...pixel],depthTest:gl.isEnabled(gl.DEPTH_TEST),stencilTest:gl.isEnabled(gl.STENCIL_TEST),scissorTest:gl.isEnabled(gl.SCISSOR_TEST),scissor:[...gl.getParameter(gl.SCISSOR_BOX)],colourMask:gl.getParameter(gl.COLOR_WRITEMASK),viewport:[...gl.getParameter(gl.VIEWPORT)],
             projection:{...args[2],mainMatrix:[...args[2].mainMatrix],fallbackMatrix:[...args[2].fallbackMatrix]},
-            opacity:args[3],glError:gl.getError()};return result;
+            opacity:args[3],glError:gl.getError()};
+          // On-demand diagnostics only, after the original framebuffer was
+          // recorded. Never feed diagnostic redraws into the acceptance gate.
+          window.probeDepth=()=>{
+            const read=()=>{gl.readPixels(Math.round(point.x),gl.drawingBufferHeight-1-Math.round(point.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);return [...pixel];};
+            layer.fill(args[0].disc,args[1],args[2],[1,0,1,1]);
+            const solid=read();
+            draw(...args);const repaint=read();
+            const fb=gl.createFramebuffer(),previous=gl.getParameter(gl.FRAMEBUFFER_BINDING);
+            gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,args[0].depth,0);
+            const texture=new Uint8Array(4);gl.readPixels(4,4,1,1,gl.RGBA,gl.UNSIGNED_BYTE,texture);
+            gl.bindFramebuffer(gl.FRAMEBUFFER,previous);gl.deleteFramebuffer(fb);
+            return {solid,repaint,texture:[...texture],glError:gl.getError()};
+          };return result;
         };
         map.addLayer(layer);map.jumpTo({center:[0,${latitude}],zoom:15+Math.log2(Math.cos(${latitude}*Math.PI/180))});
       });
@@ -103,8 +116,9 @@ try {
           capPoint:window.capPoint(),terrainPoint:map.project(map.getCenter()),
           terrainElevation:map.queryTerrainElevation(map.getCenter()),depthDraw:window.depthDraw,errors:window.rendererErrors};
       },{lat,pitch,sign});
-      await writeFile(`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.json`,JSON.stringify(result,null,2)+'\n');
       await page.screenshot({path:`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.png`});
+      if(result.pixel.slice(0,3).some((value,i)=>Math.abs(value-expected[i])>5))result.probe=await page.evaluate(()=>window.probeDepth());
+      await writeFile(`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.json`,JSON.stringify(result,null,2)+'\n');
       assert.ok(result.draws>before,`${cap} ${lat}/${pitch}: current frame must draw cap depth`);
       assert.equal(result.terrain?.source,'terrain3d','terrain must remain enabled, not masked to pass');
       assert.ok(Math.abs(result.pitch-pitch)<0.01);
