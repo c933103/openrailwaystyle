@@ -63,7 +63,12 @@ try {
         map.addLayer(layer);map.jumpTo({center:[0,${latitude}],zoom:15+Math.log2(Math.cos(${latitude}*Math.PI/180))});
       });
       window.frame=()=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Polar terrain frame did not settle within 30 seconds')),30000);map.once('idle',()=>{clearTimeout(timeout);map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
-      window.pixel=()=>{const point=map.project(map.getCenter()),gl=map.getCanvas().getContext('webgl2'),out=new Uint8Array(4);
+      // The polar shader draws the zero-altitude globe surface. map.project
+      // includes terrain elevation and can point at a different (synthetic
+      // seabed) surface at high pitch. Sample the actual cap coordinate,
+      // retaining both projections as diagnostics; terrain stays enabled.
+      window.capPoint=()=>map.transform.locationToScreenPoint(map.getCenter());
+      window.pixel=()=>{const point=window.capPoint(),gl=map.getCanvas().getContext('webgl2'),out=new Uint8Array(4);
         gl.readPixels(Math.round(point.x),gl.drawingBufferHeight-1-Math.round(point.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,out);return [...out];};
       </script>`}));
     await page.goto('http://127.0.0.1:4173/polar-depth-check.html');
@@ -87,7 +92,9 @@ try {
         map.jumpTo({center:[0,sign*lat],zoom:window.zoomForLatitude(12,0,sign*lat),pitch});
         await window.frame();
         return {pixel:window.pixel(),draws:window.draws,terrain:map.getTerrain(),
-          pitch:map.getPitch(),center:map.getCenter().toArray(),errors:window.rendererErrors};
+          pitch:map.getPitch(),center:map.getCenter().toArray(),
+          capPoint:window.capPoint(),terrainPoint:map.project(map.getCenter()),
+          terrainElevation:map.queryTerrainElevation(map.getCenter()),errors:window.rendererErrors};
       },{lat,pitch,sign});
       await writeFile(`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.json`,JSON.stringify(result,null,2)+'\n');
       await page.screenshot({path:`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.png`});
