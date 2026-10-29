@@ -10,6 +10,8 @@ on:
       - styles/globe-drag.mjs
       - styles/polar-layer.mjs
       - styles/polar-paint.mjs
+      - tests/polar-projection.test.mjs
+      - tests/polar-paint.test.mjs
       - scripts/check-terrain-3d-browser.mjs
       - styles/terrain-3d.mjs
   push:
@@ -22,6 +24,8 @@ on:
       - styles/globe-drag.mjs
       - styles/polar-layer.mjs
       - styles/polar-paint.mjs
+      - tests/polar-projection.test.mjs
+      - tests/polar-paint.test.mjs
       - scripts/check-terrain-3d-browser.mjs
       - styles/terrain-3d.mjs
   workflow_dispatch:
@@ -43,6 +47,7 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test tests/polar-projection.test.mjs tests/polar-paint.test.mjs
       - run: npm run build
       - name: Keep generated style reproducible
         run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
