@@ -77,7 +77,23 @@ try {
             gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,args[0].depth,0);
             const texture=new Uint8Array(4);gl.readPixels(4,4,1,1,gl.RGBA,gl.UNSIGNED_BYTE,texture);
             gl.bindFramebuffer(gl.FRAMEBUFFER,previous);gl.deleteFramebuffer(fb);
-            return {solid,repaint,texture:[...texture],glError:gl.getError()};
+            const sourceProgram=layer.program('depth',args[1]).program;
+            const program=gl.createProgram();
+            for(const old of gl.getAttachedShaders(sourceProgram)){
+              const shader=gl.createShader(gl.getShaderParameter(old,gl.SHADER_TYPE));
+              gl.shaderSource(shader,gl.getShaderSource(old));gl.compileShader(shader);gl.attachShader(program,shader);gl.deleteShader(shader);
+            }
+            gl.transformFeedbackVaryings(program,['gl_Position'],gl.INTERLEAVED_ATTRIBS);gl.linkProgram(program);gl.useProgram(program);
+            for(const name of ['u_projection_matrix','u_projection_fallback_matrix'])gl.uniformMatrix4fv(gl.getUniformLocation(program,name),false,args[2][name==='u_projection_matrix'?'mainMatrix':'fallbackMatrix']);
+            gl.uniform4fv(gl.getUniformLocation(program,'u_projection_tile_mercator_coords'),args[2].tileMercatorCoords);
+            gl.uniform4fv(gl.getUniformLocation(program,'u_projection_clipping_plane'),args[2].clippingPlane);
+            gl.uniform1f(gl.getUniformLocation(program,'u_projection_transition'),args[2].projectionTransition);
+            const feedback=gl.createBuffer();gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER,feedback);gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER,3457*16,gl.STREAM_READ);gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER,0,feedback);
+            const location=gl.getAttribLocation(program,'a_pos');gl.bindBuffer(gl.ARRAY_BUFFER,args[0].reliefMesh.buffers[0]);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,2,gl.FLOAT,false,16,0);
+            gl.enable(gl.RASTERIZER_DISCARD);gl.beginTransformFeedback(gl.POINTS);gl.drawArrays(gl.POINTS,0,3457);gl.endTransformFeedback();gl.disable(gl.RASTERIZER_DISCARD);
+            const positions=new Float32Array(3457*4);gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER,0,positions);
+            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER,0,null);gl.deleteBuffer(feedback);gl.deleteProgram(program);
+            return {solid,repaint,texture:[...texture],vertices:[3204,3349,3205].map(index=>({index,clip:[...positions.slice(index*4,index*4+4)]})),glError:gl.getError()};
           };return result;
         };
         map.addLayer(layer);map.jumpTo({center:[0,${latitude}],zoom:15+Math.log2(Math.cos(${latitude}*Math.PI/180))});
