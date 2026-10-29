@@ -12,7 +12,7 @@ const demPng=depthFixturePng(10,0).toString('base64');
 
 const browser=await launchBrowser();
 try {
-  for(const cap of ['north','south']) for(const depth of [20,3000]) {
+  for(const cap of ['south','north']) for(const depth of [20,3000]) {
     const page=await browser.newPage({viewport:{width:1000,height:700}});
     const errors=[],warnings=[],requests=[];
     page.on('pageerror',e=>errors.push(e.message));
@@ -59,7 +59,14 @@ try {
         const layer=window.layer=new PolarLayer({data:new URL('./depth-fixture/',location.href),units:()=> 'metric',
           relief:()=>false,palette:()=>window.background,imagery:()=>['satellite','hybrid'].includes(window.background)});
         const draw=layer.drawDepth.bind(layer);
-        layer.drawDepth=(...args)=>{window.draws++;return draw(...args);};
+        layer.drawDepth=(...args)=>{
+          window.draws++;const result=draw(...args),gl=map.getCanvas().getContext('webgl2');
+          const point=map.transform.locationToScreenPoint(map.getCenter()),pixel=new Uint8Array(4);
+          gl.readPixels(Math.round(point.x),gl.drawingBufferHeight-1-Math.round(point.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+          window.depthDraw={pixel:[...pixel],depthTest:gl.isEnabled(gl.DEPTH_TEST),viewport:[...gl.getParameter(gl.VIEWPORT)],
+            projection:{...args[2],mainMatrix:[...args[2].mainMatrix],fallbackMatrix:[...args[2].fallbackMatrix]},
+            opacity:args[3],glError:gl.getError()};return result;
+        };
         map.addLayer(layer);map.jumpTo({center:[0,${latitude}],zoom:15+Math.log2(Math.cos(${latitude}*Math.PI/180))});
       });
       window.frame=()=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Polar terrain frame did not settle within 30 seconds')),30000);map.once('idle',()=>{clearTimeout(timeout);map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
@@ -94,7 +101,7 @@ try {
         return {pixel:window.pixel(),draws:window.draws,terrain:map.getTerrain(),
           pitch:map.getPitch(),center:map.getCenter().toArray(),
           capPoint:window.capPoint(),terrainPoint:map.project(map.getCenter()),
-          terrainElevation:map.queryTerrainElevation(map.getCenter()),errors:window.rendererErrors};
+          terrainElevation:map.queryTerrainElevation(map.getCenter()),depthDraw:window.depthDraw,errors:window.rendererErrors};
       },{lat,pitch,sign});
       await writeFile(`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.json`,JSON.stringify(result,null,2)+'\n');
       await page.screenshot({path:`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.png`});

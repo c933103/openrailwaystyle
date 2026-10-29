@@ -9,6 +9,8 @@ on:
       - styles/app.mjs
       - styles/globe-drag.mjs
       - styles/polar-layer.mjs
+      - styles/polar-paint.mjs
+      - scripts/check-terrain-3d-browser.mjs
       - styles/terrain-3d.mjs
   push:
     branches: [main]
@@ -19,6 +21,8 @@ on:
       - styles/app.mjs
       - styles/globe-drag.mjs
       - styles/polar-layer.mjs
+      - styles/polar-paint.mjs
+      - scripts/check-terrain-3d-browser.mjs
       - styles/terrain-3d.mjs
   workflow_dispatch:
 permissions:
@@ -49,8 +53,8 @@ jobs:
           node scripts/serve.mjs &
           server=$!
           trap 'kill "$server" 2>/dev/null || true' EXIT
-          node scripts/check-polar-browser.mjs
           node scripts/check-polar-depth-browser.mjs
+          node scripts/check-polar-browser.mjs
           node scripts/check-terrain-3d-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
