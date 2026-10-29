@@ -246,25 +246,28 @@ try {
   console.log('Late station source high-pitch tile LOD:',lateSource);
 
   await writeFile('browser-review/terrain-high-pitch-lod.json',JSON.stringify(highPitch,null,2)+'\n');
-  await page.waitForFunction(() => {
-    const heights=window.terrainState?.();
-    return heights && heights.sea < -700 && heights.land > 200;
-  },null,{timeout:45000});
-  const atHorizon=await page.evaluate(()=>window.terrainState());
-  assert.ok(atHorizon.sea < -700 && atHorizon.land > 200,
-    'even with coarser horizon tiles, land and seabed retain their sign near the camera');
-  await page.screenshot({path:'browser-review/terrain-high-pitch-82deg.png'});
-  // The higher angle must also render genuine height displacement rather
-  // than merely let the camera tilt over a flat ground plane.
-  await captureFrame(true);
-  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:0}));
-  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===0);
-  const horizonDifference=await captureFrame(false);
-  assert.ok(horizonDifference.significant>=200,
-    'at 82° pitch the rendered 3D surface must differ from zero-height terrain: '+JSON.stringify(horizonDifference));
-  await writeFile('browser-review/terrain-high-pitch-pixels.json',JSON.stringify(horizonDifference,null,2)+'\n');
-  await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
-  await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
+  for (const pitch of [82,85]) {
+    await page.evaluate(pitch=>window.fixtureMap.setPitch(pitch),pitch);
+    await page.waitForFunction(() => {
+      const heights=window.terrainState?.();
+      return heights && heights.sea < -700 && heights.land > 200;
+    },null,{timeout:45000});
+    const atHorizon=await page.evaluate(()=>window.terrainState());
+    assert.ok(atHorizon.sea < -700 && atHorizon.land > 200,
+      'even with coarser horizon tiles, land and seabed retain their sign near the camera');
+    await page.screenshot({path:`browser-review/terrain-high-pitch-${pitch}deg.png`});
+    // The higher angle must also render genuine height displacement rather
+    // than merely let the camera tilt over a flat ground plane.
+    await captureFrame(true);
+    await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:0}));
+    await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===0);
+    const horizonDifference=await captureFrame(false);
+    assert.ok(horizonDifference.significant>=200,
+      `at ${pitch}° pitch the rendered 3D surface must differ from zero-height terrain: `+JSON.stringify(horizonDifference));
+    await writeFile(`browser-review/terrain-high-pitch-${pitch}-pixels.json`,JSON.stringify(horizonDifference,null,2)+'\n');
+    await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
+    await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
+  }
 
 
   await page.evaluate(async()=>{

@@ -428,3 +428,26 @@ test('contour subranges use byte offsets without owning or deleting shared buffe
   layer.draw(mesh,{}, {tileMercatorCoords:[],clippingPlane:[]},()=>{});
   assert.equal(draws[0][1],6);assert.equal(draws[0][3],48);
 });
+
+test('negative polar camera zoom keeps unbounded cap paint visible like MapLibre', () => {
+  const layer={};
+  let visibility='visible';
+  const map={getLayer:()=>layer,getLayoutProperty:()=>visibility,
+    getPaintProperty:(_id,property)=>property==='raster-opacity' ? ['interpolate',['linear'],['zoom'],0,0.8,10,1] : undefined};
+  for(const zoom of [-20.415781984983113,-10.449997438754462,-3.806141251591388,0]) {
+    for(const minzoom of [undefined,0]) {
+      layer.minzoom=minzoom;
+      const paint=polarStylePaint(map,zoom);
+      assert.equal(paint.backgroundVisible,true);
+      assert.equal(paint.waterVisible,true);
+      assert.equal(paint.depthVisible,true,'no positive minzoom means no lower bound, even below camera z0');
+      near(paint.depthOpacity,0.8); // expressions still use the actual camera zoom
+    }
+  }
+  layer.minzoom=1;assert.equal(polarStylePaint(map,-10).depthVisible,false);
+  layer.minzoom=0;layer.maxzoom=3;
+  assert.equal(polarStylePaint(map,3).depthVisible,false,'positive maxzoom remains exclusive');
+  assert.equal(polarStylePaint(map,-10).depthVisible,true);
+  visibility='none';assert.equal(polarStylePaint(map,-10).depthVisible,false);
+  assert.equal(polarStylePaint({...map,getLayer:()=>undefined},-10).depthVisible,false,'removed layer stays absent');
+});

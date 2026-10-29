@@ -393,6 +393,7 @@ test('terrain control preserves clean history while sharing the current polar 3D
  try {
    const map=maps[0];map.handlers['style.load']();
    map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
+   map.projection={type:'globe'}; // the real globe carries latitude-adjusted zoom
    const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
    window.document.body.append(control.onAdd());
    const button=window.document.getElementById('terrain-toggle');
@@ -406,10 +407,16 @@ test('terrain control preserves clean history while sharing the current polar 3D
    for(const pitch of [60,0]) {
      button.click();map.handlers.moveend();
      assert.equal(map.getPitch(),pitch);
-     if(pitch===60){focusedZoom=map.getZoom();assert.ok(focusedZoom>=12.3);}
+     if(pitch===60){
+       focusedZoom=map.getZoom();
+       const target=globeModule.zoomForLatitude(12.3,0,89.7);
+       assert.ok(Math.abs(focusedZoom-target)<1e-7,
+         '3D focus must target polar ground scale, not raw z12.3 camera: '+focusedZoom);
+       assert.ok(focusedZoom<12.3,'no extreme zoom jump at the pole');
+     }
      else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
      const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
-     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,focusedZoom);assert.equal(saved.p,pitch);
+     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,Number(focusedZoom.toFixed(2)),'stored camera zoom retains the existing two-decimal persistence contract');assert.equal(saved.p,pitch);
      window.document.getElementById('share').click();
      await new Promise(resolve=>setTimeout(resolve,0));
      const shared=new URL(copied);

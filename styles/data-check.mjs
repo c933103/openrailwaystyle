@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261027-polar-depth-1';
+import {SEARCH_API} from './map-model.mjs?v=20261029-polar-3d-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

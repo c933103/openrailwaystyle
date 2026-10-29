@@ -81,12 +81,26 @@ function lineMesh(cap, lines) {
   return {data, indices};
 }
 
-const FILL_VERTEX = `in vec2 a_pos; void main() { gl_Position = projectTile(a_pos); }`;
+// GPU sin/cos are not guaranteed to return a unit-length pair. Captured
+// SwiftShader vertices at 85.05 S had radius 0.999847 (about 975 m below
+// the sphere), moving the cap edge past the camera centre at 82 degrees.
+// Restore the unit sphere before MapLibre applies its projection/clipping.
+// Preserve its exact Mercator transition and the flat shader variant.
+const POLAR_PROJECTION = `
+vec4 polarProjectTile(vec2 position) {
+#ifdef GLOBE
+  return interpolateProjection(position, normalize(projectToSphere(position)), 0.0);
+#else
+  return projectTile(position);
+#endif
+}`;
+
+const FILL_VERTEX = `in vec2 a_pos; void main() { gl_Position = polarProjectTile(a_pos); }`;
 // Lines are drawn at least a pixel wide (thinner ones fainter), with half
 // a pixel more on each side over which they fade out, as MapLibre's do.
 const LINE_VERTEX = `in vec2 a_pos; in vec2 a_other; in float a_side; uniform vec2 u_viewport; uniform float u_width; out float v_across;
 void main() {
-  vec4 p = projectTile(a_pos), q = projectTile(a_other);
+  vec4 p = polarProjectTile(a_pos), q = polarProjectTile(a_other);
   vec2 d = (q.xy / q.w - p.xy / p.w) * u_viewport;
   vec2 n = length(d) > 0.0 ? normalize(vec2(-d.y, d.x)) : vec2(0.0);
   float outset = max(u_width, 1.0) / 2.0 + 0.5;
@@ -103,7 +117,7 @@ void main() {
 // east and south, scaled as MapLibre scales its elevation tiles at the zoom
 // it would use at the cap's edge (u_zoom), and shaded alike, so the relief
 // carries on across 85.05°.
-const RELIEF_VERTEX = `in vec2 a_pos; in vec2 a_polar; out vec2 v_polar; void main() { v_polar = a_polar; gl_Position = projectTile(a_pos); }`;
+const RELIEF_VERTEX = `in vec2 a_pos; in vec2 a_polar; out vec2 v_polar; void main() { v_polar = a_polar; gl_Position = polarProjectTile(a_pos); }`;
 const RELIEF_FRAGMENT = `precision highp float; in vec2 v_polar; out vec4 fragColor;
 uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_south; uniform float u_zoom; uniform float u_edge; uniform vec2 u_light;
 uniform vec4 u_shadow; uniform vec4 u_highlight; uniform vec4 u_accent; uniform float u_opacity;
@@ -222,7 +236,7 @@ export class PolarLayer {
     const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX, depth: RELIEF_VERTEX}[kind];
     let vertexShader,fragmentShader;
     try {
-      vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${vertex}`);
+      vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${POLAR_PROJECTION}\n${vertex}`);
       fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT, depth: DEPTH_FRAGMENT}[kind] || FRAGMENT}`);
       gl.attachShader(program,vertexShader);gl.attachShader(program,fragmentShader);gl.linkProgram(program);
       if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
