@@ -190,7 +190,7 @@ try {
         }
       }
     }
-    await writeFile(`browser-review/polar-3d-${cap}-pole-test.json`,JSON.stringify(poleOut,null,2)+'\\n');
+    await writeFile(`browser-review/polar-3d-${cap}-pole-test.json`,JSON.stringify(poleOut,null,2)+'\n');
     // The actual regression: the 3D button used to compare a pole's
     // negative latitude-relative camera zoom with 12.3, then jump straight
     // to z12.3 (sometimes over twenty zoom levels). Exercise it on the
