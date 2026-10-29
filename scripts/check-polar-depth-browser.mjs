@@ -2,7 +2,7 @@
 // production shader + polar depth PNG; zero public-provider requests.
 // Both poles, four sea-depth palette anchors, missing/hidden style and Carto.
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import {DEPTH_COLOURS, depthColour} from '../styles/bathymetry.mjs';
 import {CAP_RADIUS, POLAR_DEPTH_FORMAT} from '../styles/polar.mjs';
@@ -89,6 +89,8 @@ try {
         return {pixel:window.pixel(),draws:window.draws,terrain:map.getTerrain(),
           pitch:map.getPitch(),center:map.getCenter().toArray(),errors:window.rendererErrors};
       },{lat,pitch,sign});
+      await writeFile(`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.json`,JSON.stringify(result,null,2)+'\n');
+      await page.screenshot({path:`browser-review/polar-depth-${cap}-${depth}-lat${lat}-pitch${pitch}.png`});
       assert.ok(result.draws>before,`${cap} ${lat}/${pitch}: current frame must draw cap depth`);
       assert.equal(result.terrain?.source,'terrain3d','terrain must remain enabled, not masked to pass');
       assert.ok(Math.abs(result.pitch-pitch)<0.01);
