@@ -2038,6 +2038,15 @@ test('Power facilities inspect their supply type and source object without train
     map.rendered=[{source:'electricSubstations',sourceLayer:'electrification_substation',layer:{id:'electrification-substation-areas'},properties:{name:'Traction footprint',voltage:'25000'},geometry:{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0,0.001],[0,0]]]}}];
     map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
     assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
+    // A charger mapped as a line or area shares electricMethods with track
+    // strokes but opens the facility inspector, not a track panel.
+    for (const geometry of [{type:'LineString',coordinates:[[0,0],[0.001,0]]},{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0.001,0.001],[0,0]]]}]) {
+      map.rendered=[{source:'electricMethods',layer:{id:geometry.type==='Polygon'?'electrification-charging-areas':'electrification-charging-outlines'},properties:{name:'Shaped charger',amenity:'charging_station',train:'yes',power_kind:'charging_station',power_state:'present',osm_type:'way',osm_id:'95'},geometry}];
+      map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+      const detail=window.document.getElementById('detail-content').textContent;
+      assert.match(detail,/RAILWAY ENERGY SUPPLY/,geometry.type);
+      assert.ok(detail.includes('Shaped charger')&&detail.includes(powerFacilities.POWER_FACILITY_KINDS.charging_station.label),geometry.type);
+    }
     assert.equal(errors.length,0);
   } finally {dom.window.close();}
 });
@@ -2073,13 +2082,13 @@ test('Power details keep train fuel, storage and generation sources distinct',as
  }finally{dom.window.close();}
 });
 
-test('Power help names all point categories and retains the implemented coverage limits',async()=>{
+test('Power help explains the facility drawing and retains the implemented coverage limits',async()=>{
  const {dom,window}=await start();
  try{
   const help=window.document.getElementById('about').textContent;
-  for(const label of ['Battery train charging facility','Train refuelling point (supplies written beside it)','Steam engine coaling','Steam locomotive water crane','Steam locomotive water tower','Traction substation'])assert.ok(help.includes(label),label);
+  for(const words of ['drawn as they are mapped','outlines for areas, small dots for points','substations, power stations','coaling stages, water towers'])assert.ok(help.includes(words),words);
   assert.match(help,/whole electricity grid.*not yet/i);
-  assert.match(help,/storage.*refuelling/i);
+  assert.match(help,/storage alone does not establish a train servicing point/i);
  }finally{dom.window.close();}
 });
 
@@ -2526,36 +2535,35 @@ test('timer retirement reconciles status after its transaction and queued notifi
 
 // Issue #115: execute the actual application/legend against the controlled DOM.
 // No provider data or substitute renderer is needed to expose the line-swatch bug.
-test('Power legend is a fixed key of every pictogram and current system, preserved across setting and view changes', async () => {
+test('Power legend is a fixed key of the facility drawing and current systems, preserved across setting and view changes', async () => {
   const {dom,window,errors} = await start({search:'?mode=electrification&inactive=0'});
   try {
     const doc = window.document, legend = doc.getElementById('legend');
-    const expected = Object.entries(powerFacilities.POWER_FACILITY_KINDS);
     const checkPoints = former => {
       assert.equal(legend.querySelector('h2').textContent,'Railway power','not an in-view list');
       const gradients=[...legend.querySelectorAll('.legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient'));
       assert.equal(gradients.length,model.CURRENT_SYSTEMS.length,'every current system has its voltage shade key');
-      const points = [...legend.querySelectorAll('.point-swatch')];
-      assert.equal(points.length,expected.length,'every kind of point has its pictogram');
-      for (const [index,[kind,definition]] of expected.entries()) {
-        const point = points[index];
-        assert.equal(point.getAttribute('aria-hidden'),'true','pictograms do not duplicate the accessible label');
-        assert.equal(point.classList.contains('swatch'),false,'line CSS cannot flatten a point sample');
-        assert.ok(point.nextElementSibling.textContent.startsWith(definition.label),kind);
-        const symbols = [...point.querySelectorAll('svg')];
-        assert.equal(symbols.length,former ? 2 : 1);
+      const samples = [...legend.querySelectorAll('.point-swatch')];
+      assert.equal(samples.length,2,'one area and one point sample, not one per kind');
+      for (const [index,shape] of ['rect','circle'].entries()) {
+        const sample=samples[index];
+        assert.equal(sample.getAttribute('aria-hidden'),'true');
+        assert.equal(sample.classList.contains('swatch'),false,'line CSS cannot flatten a facility sample');
+        const symbols=[...sample.querySelectorAll('svg')];
+        assert.equal(symbols.length,former?2:1);
         for (const [i,symbol] of symbols.entries()) {
-          assert.equal(symbol.querySelector('path').getAttribute('d'),powerFacilities.POWER_FACILITY_ICONS[kind]);
-          assert.equal(symbol.querySelector('rect').getAttribute('fill'),i ? '#fffef8' : definition.color);
-          assert.equal(symbol.querySelector('rect').getAttribute('stroke-dasharray'),i ? '3 2' : null);
-          assert.equal(symbol.querySelector('path').getAttribute('stroke'),i ? definition.color : '#fffef8');
+          assert.ok(symbol.querySelector(shape),shape);
+          assert.equal(symbol.querySelector('path'),null,'no pictogram');
+          if(shape==='rect')assert.equal(symbol.querySelector('rect').getAttribute('stroke-dasharray'),i?'2 2':null);
         }
       }
+      assert.match(samples[0].nextElementSibling.textContent,/mapped outline/);
+      assert.match(samples[1].nextElementSibling.textContent,/mapped point/);
       const line = label => [...legend.querySelectorAll('.legend-item')].find(row=>row.lastElementChild.textContent===label)?.firstElementChild;
       for (const label of ['Not electrified','Unknown','Bridge','Tunnel']) assert.ok(line(label)?.classList.contains('swatch'),label);
       assert.equal(line('Bridge').classList.contains('bridge'),true);
       assert.equal(line('Tunnel').classList.contains('tunnel'),true);
-      assert.match(legend.querySelector('.legend-note').textContent,/dashed-edged pictograms identify planned or former facilities/);
+      assert.match(legend.querySelector('.legend-note').textContent,/Dashed, faint shapes are planned or former facilities/);
     };
     checkPoints(false);
     const inactive = doc.getElementById('inactive');inactive.checked=true;inactive.dispatchEvent(new window.Event('change'));

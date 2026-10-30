@@ -57714,8 +57714,8 @@
         "Polygon"
       ],
       "paint": {
-        "fill-color": "#d7ae35",
-        "fill-opacity": 0.25
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
       },
       "layout": {
         "visibility": "none"
@@ -57751,15 +57751,14 @@
         "Polygon"
       ],
       "paint": {
-        "line-color": "#b77d00",
-        "line-width": 1.5
+        "line-color": "#3d4247",
+        "line-width": 1
       },
       "layout": {
         "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
       "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -57796,21 +57795,166 @@
             "get",
             "power_minzoom"
           ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
         ]
       ],
+      "source": "electricFacilities",
+      "id": "electrification-supply-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
+      "id": "electrification-supply-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
       "id": "electrification-supply-points",
-      "type": "symbol",
-      "layout": {
-        "icon-image": [
-          "concat",
-          "power-",
-          [
-            "get",
-            "power_kind"
-          ],
-          ""
-        ],
-        "icon-size": [
+      "type": "circle",
+      "paint": {
+        "circle-color": "#3d4247",
+        "circle-radius": [
           "interpolate",
           [
             "linear"
@@ -57819,19 +57963,21 @@
             "zoom"
           ],
           10,
-          0.55,
+          1.6,
           14,
-          0.8,
-          17,
-          1
+          2.6,
+          18,
+          3.6
         ],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 0.8,
+        "circle-opacity": 1
+      },
+      "layout": {
         "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
       "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -57870,21 +58016,96 @@
             "get",
             "power_minzoom"
           ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
         ]
       ],
-      "id": "electrification-former-supply-points",
-      "type": "symbol",
+      "source": "electricFacilities",
+      "id": "electrification-former-supply-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.1
+      },
       "layout": {
-        "icon-image": [
-          "concat",
-          "power-",
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!=",
           [
             "get",
-            "power_kind"
+            "power_state"
           ],
-          "-former"
+          "present"
         ],
-        "icon-size": [
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
+      "id": "electrification-former-supply-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
           "interpolate",
           [
             "linear"
@@ -57893,410 +58114,96 @@
             "zoom"
           ],
           10,
-          0.55,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 0.6,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
+      "id": "electrification-former-supply-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.6,
           14,
-          0.8,
-          17,
-          1
+          2.6,
+          18,
+          3.6
         ],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-        "visibility": "none"
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
+        "circle-stroke-color": "#3d4247",
+        "circle-stroke-width": 1,
+        "circle-opacity": 0.8
       },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-supply-kinds",
-      "type": "symbol",
       "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "power_label"
-          ],
-          [
-            "match",
-            [
-              "get",
-              "power_kind"
-            ],
-            "substation",
-            "Traction substation",
-            "plant",
-            "Railway power station",
-            "generator",
-            "Railway generator",
-            "converter",
-            "Traction power converter",
-            "transformer",
-            "Traction transformer",
-            "feeder",
-            "Traction feeding point",
-            "power_supply",
-            "Railway power supply",
-            "preheating",
-            "Train preheating supply",
-            "charging_station",
-            "Battery train charging facility",
-            "fuel",
-            "Train refuelling point",
-            "fuel_tank",
-            "Railway fuel tank",
-            "coaling_facility",
-            "Steam engine coaling",
-            "water_tower",
-            "Steam locomotive water tower",
-            "water_tank",
-            "Steam locomotive water tank",
-            "water_crane",
-            "Steam locomotive water crane",
-            ""
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 10.5,
-        "text-anchor": "bottom",
-        "text-offset": [
-          0,
-          -1.2
-        ],
-        "text-padding": 2,
-        "text-max-width": 12,
         "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-former-supply-kinds",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "power_label"
-          ],
-          [
-            "concat",
-            [
-              "match",
-              [
-                "get",
-                "power_kind"
-              ],
-              "substation",
-              "Traction substation",
-              "plant",
-              "Railway power station",
-              "generator",
-              "Railway generator",
-              "converter",
-              "Traction power converter",
-              "transformer",
-              "Traction transformer",
-              "feeder",
-              "Traction feeding point",
-              "power_supply",
-              "Railway power supply",
-              "preheating",
-              "Train preheating supply",
-              "charging_station",
-              "Battery train charging facility",
-              "fuel",
-              "Train refuelling point",
-              "fuel_tank",
-              "Railway fuel tank",
-              "coaling_facility",
-              "Steam engine coaling",
-              "water_tower",
-              "Steam locomotive water tower",
-              "water_tank",
-              "Steam locomotive water tank",
-              "water_crane",
-              "Steam locomotive water crane",
-              ""
-            ],
-            " (",
-            [
-              "get",
-              "power_state"
-            ],
-            ")"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 10.5,
-        "text-anchor": "bottom",
-        "text-offset": [
-          0,
-          -1.2
-        ],
-        "text-padding": 2,
-        "text-max-width": 12,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-supply-names",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          1.2
-        ],
-        "text-padding": 4,
-        "text-max-width": 14,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      },
-      "filter": [
-        "all",
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-former-supply-names",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          1.2
-        ],
-        "text-padding": 4,
-        "text-max-width": 14,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
       }
     },
     {
@@ -60082,7 +59989,6 @@
       }
     },
     {
-      "source": "electricMethods",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -60104,95 +60010,105 @@
         "all",
         [
           "==",
-          [
-            "geometry-type"
-          ],
-          "LineString"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-method-labels",
-      "type": "symbol",
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 350,
-        "text-field": [
-          "get",
-          "power_method_label"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 11,
-        "text-offset": [
-          0,
-          1
-        ],
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#26363d",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 2
-      }
-    },
-    {
-      "source": "electricMethods",
-      "minzoom": 12,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-charging-points",
-      "type": "symbol",
-      "layout": {
-        "icon-image": [
-          "concat",
-          "power-",
           [
             "get",
             "power_kind"
           ],
-          ""
+          "charging_station"
         ],
-        "icon-size": [
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-charging-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-charging-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
           "interpolate",
           [
             "linear"
@@ -60201,20 +60117,15 @@
             "zoom"
           ],
           10,
-          0.55,
-          14,
-          0.8,
-          17,
-          1
+          0.6,
+          16,
+          1.4
         ],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-        "visibility": "none"
+        "line-opacity": 1
       }
     },
     {
-      "source": "electricMethods",
-      "minzoom": 14,
+      "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
@@ -60236,9 +60147,10 @@
         [
           "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          "Point"
+          "charging_station"
         ],
         [
           "==",
@@ -60247,145 +60159,46 @@
             "power_state"
           ],
           "present"
-        ]
-      ],
-      "id": "electrification-charging-kinds",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
+        ],
+        [
+          "match",
           [
-            "get",
-            "power_label"
+            "geometry-type"
           ],
           [
-            "match",
-            [
-              "get",
-              "power_kind"
-            ],
-            "substation",
-            "Traction substation",
-            "plant",
-            "Railway power station",
-            "generator",
-            "Railway generator",
-            "converter",
-            "Traction power converter",
-            "transformer",
-            "Traction transformer",
-            "feeder",
-            "Traction feeding point",
-            "power_supply",
-            "Railway power supply",
-            "preheating",
-            "Train preheating supply",
-            "charging_station",
-            "Battery train charging facility",
-            "fuel",
-            "Train refuelling point",
-            "fuel_tank",
-            "Railway fuel tank",
-            "coaling_facility",
-            "Steam engine coaling",
-            "water_tower",
-            "Steam locomotive water tower",
-            "water_tank",
-            "Steam locomotive water tank",
-            "water_crane",
-            "Steam locomotive water crane",
-            ""
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 10.5,
-        "text-anchor": "bottom",
-        "text-offset": [
-          0,
-          -1.2
-        ],
-        "text-max-width": 12,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#008a83",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
       "source": "electricMethods",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-charging-names",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          1.2
-        ],
-        "visibility": "none"
-      },
+      "id": "electrification-charging-points",
+      "type": "circle",
       "paint": {
-        "text-color": "#008a83",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
+        "circle-color": "#3d4247",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.6,
+          14,
+          2.6,
+          18,
+          3.6
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 0.8,
+        "circle-opacity": 1
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -62190,7 +62003,6 @@
       }
     },
     {
-      "source": "electricMethods",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -62214,97 +62026,107 @@
         "all",
         [
           "==",
-          [
-            "geometry-type"
-          ],
-          "LineString"
-        ],
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-former-method-labels",
-      "type": "symbol",
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 350,
-        "text-field": [
-          "get",
-          "power_method_label"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 11,
-        "text-offset": [
-          0,
-          1
-        ],
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#26363d",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 2
-      }
-    },
-    {
-      "source": "electricMethods",
-      "minzoom": 12,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-former-charging-points",
-      "type": "symbol",
-      "layout": {
-        "icon-image": [
-          "concat",
-          "power-",
           [
             "get",
             "power_kind"
           ],
-          "-former"
+          "charging_station"
         ],
-        "icon-size": [
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-former-charging-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-former-charging-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
           "interpolate",
           [
             "linear"
@@ -62313,20 +62135,19 @@
             "zoom"
           ],
           10,
-          0.55,
-          14,
-          0.8,
-          17,
-          1
+          0.6,
+          16,
+          1.4
         ],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-        "visibility": "none"
+        "line-opacity": 0.6,
+        "line-dasharray": [
+          2,
+          2
+        ]
       }
     },
     {
-      "source": "electricMethods",
-      "minzoom": 14,
+      "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
@@ -62350,9 +62171,10 @@
         [
           "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          "Point"
+          "charging_station"
         ],
         [
           "!=",
@@ -62361,156 +62183,46 @@
             "power_state"
           ],
           "present"
-        ]
-      ],
-      "id": "electrification-former-charging-kinds",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
+        ],
+        [
+          "match",
           [
-            "get",
-            "power_label"
+            "geometry-type"
           ],
           [
-            "concat",
-            [
-              "match",
-              [
-                "get",
-                "power_kind"
-              ],
-              "substation",
-              "Traction substation",
-              "plant",
-              "Railway power station",
-              "generator",
-              "Railway generator",
-              "converter",
-              "Traction power converter",
-              "transformer",
-              "Traction transformer",
-              "feeder",
-              "Traction feeding point",
-              "power_supply",
-              "Railway power supply",
-              "preheating",
-              "Train preheating supply",
-              "charging_station",
-              "Battery train charging facility",
-              "fuel",
-              "Train refuelling point",
-              "fuel_tank",
-              "Railway fuel tank",
-              "coaling_facility",
-              "Steam engine coaling",
-              "water_tower",
-              "Steam locomotive water tower",
-              "water_tank",
-              "Steam locomotive water tank",
-              "water_crane",
-              "Steam locomotive water crane",
-              ""
-            ],
-            " (",
-            [
-              "get",
-              "power_state"
-            ],
-            ")"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 10.5,
-        "text-anchor": "bottom",
-        "text-offset": [
-          0,
-          -1.2
-        ],
-        "text-max-width": 12,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#008a83",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
       "source": "electricMethods",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-former-charging-names",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          1.2
-        ],
-        "visibility": "none"
-      },
+      "id": "electrification-former-charging-points",
+      "type": "circle",
       "paint": {
-        "text-color": "#008a83",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
+        "circle-color": "#fffef8",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.6,
+          14,
+          2.6,
+          18,
+          3.6
+        ],
+        "circle-stroke-color": "#3d4247",
+        "circle-stroke-width": 1,
+        "circle-opacity": 0.8
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {

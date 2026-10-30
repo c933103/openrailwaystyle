@@ -16,28 +16,29 @@ At regional zoom, railway power plants appear from zoom 10 and traction
 substations from 11. Generators and converters appear from 12. Train refuelling,
 fuel storage, coaling and water facilities appear from 13, and traction feeding
 points from 14.
-Each point is drawn as a pictogram of what the object is (`POWER_FACILITY_ICONS`
-in `styles/power-facilities.mjs`): a water crane, water tower, water tank, fuel
-dispenser, fuel tank, coaling stage, substation, power station, generator,
-converter, transformer, feeding point, power supply, preheating post or battery
-charger. The tile colour shows the supply it serves. Operating points are filled
-tiles; planned and former points are light tiles with a dashed edge, and follow
-the existing planned/former infrastructure setting. From zoom 14 the kind is
-written above the pictogram (for refuelling points with the recorded supplies,
-such as "diesel, hydrogen") and the mapped name below it. These labels stay with
-the points whatever the value-labels setting; catenary mast numbers still follow
-it. Selecting a point shows its recorded type, status, operator, voltage,
-frequency, contents and output where available.
+Facilities are drawn as they are mapped, the way topographic maps draw built
+structures: a facility mapped as an area (depot, tank footprint, coaling stage,
+substation, power station) is its outline with one neutral man-made fill; one
+mapped as a line is a line; one mapped as a point (water crane, small supply
+point) is a small plain dot. All kinds share the same ink: there are no
+pictograms, no colour by supply group and no type or name text on the map,
+following OpenStreetMap's standard style and OpenInfraMap, which print names
+or values but never type words. Planned and former facilities are fainter with
+a dashed outline and follow the planned/former infrastructure setting.
+Selecting a facility shows its recorded type, status, operator, voltage,
+frequency, supplies, contents and output where available.
+
+The maintenance snapshot keeps each facility's geometry (Overpass `out geom`):
+closed ways and multipolygon relations become areas with their holes, open
+ways lines, nodes points. A relation without rings keeps its centre point.
+Cached Overpass responses are reused only for the exact current query, so
+earlier centre-point responses are not mixed into a shape snapshot.
 
 The Power legend is a fixed key, not a list of what is in view: every current
-system with its voltage range (lighter is lower voltage), every pictogram with
-its planned/former sample when that setting is on, and every means-of-delivery
-stroke. The same table supplies the legend, the help paragraph and the map. Fuel
-and water tanks show mapped railway storage; storage alone does not establish a
-train servicing point. The
-infobox retains the specific facility type, such as Railway fuel tank. The wider
-selection, wording and
-presentation audit remains open in [issue #115](https://github.com/c933103/openrailwaystyle/issues/115).
+system with its voltage range (lighter is lower voltage), the facility drawing
+(an outlined area and a dot, with their planned/former forms when that setting
+is on), and every means-of-delivery stroke. Track strokes are not labelled with
+type words either; the legend explains them.
 
 Supply details preserve independent source attributes. Named `fuel` values and
 positive `fuel:*` declarations are displayed together as **Recorded supplies**.

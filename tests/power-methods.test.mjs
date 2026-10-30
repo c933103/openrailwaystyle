@@ -36,7 +36,7 @@ test('railway chargers are explicit: train/rail tags accepted, station car parks
   assert.equal(powerFacility({railway:'disused',amenity:'charging_station',train:'yes'}).state,'disused');
   assert.equal(powerMethodsGeoJSON({elements:[way({railway:'construction',construction:'subway',electrified:'rail'})]}).features[0].properties.power_state,'construction');
   const polygon=way({amenity:'charging_station',train:'yes'});
-  const f=powerMethodsGeoJSON({elements:[polygon]}).features[0];assert.equal(f.geometry.type,'Point');assert.deepEqual(f.geometry.coordinates,[135.0005,34.0005]);
+  const f=powerMethodsGeoJSON({elements:[polygon]}).features[0];assert.equal(f.geometry.type,'LineString','an open charger way keeps its mapped line');assert.deepEqual(f.geometry.coordinates,[[135,34],[135.001,34.001]]);
 });
 test('supplement query uses literal, bounded lifecycle selectors and requests geometry',()=>{
   const query=powerMethodQuery([-90,-180,0,-90]);
@@ -170,21 +170,17 @@ test('planned or former propulsion and traction keep their own lifecycle on an o
   assert.equal(draws(present,byId['way-31-proposed']),false);
   assert.equal(draws(former,byId['way-31-proposed']),true);
 });
-test('every Power marker and means says what it is, whatever the value-labels setting',async()=>{
-  const {powerFacilityLayers,powerKindText}=await import('../scripts/style/layers/power-facilities.mjs');
-  const {POWER_FACILITY_KINDS}=await import('../styles/power-facilities.mjs');
-  const {expression}=await import('@maplibre/maplibre-gl-style-spec');
-  const layers=[...powerFacilityLayers(),...powerMethodLayers()];
-  for(const id of ['electrification-supply-kinds','electrification-former-supply-kinds','electrification-supply-names','electrification-former-supply-names',
-    'electrification-method-labels','electrification-former-method-labels','electrification-charging-kinds','electrification-former-charging-kinds','electrification-charging-names'])
-    assert.ok(!layers.find(l=>l.id===id).metadata['atlas:settings'].includes('labels'),`${id} does not follow the value-labels setting`);
-  assert.ok(layers.find(l=>l.id==='electrification-catenary-references').metadata['atlas:settings'].includes('labels'),'mast numbers remain value labels');
-  const evaluate=(former,p)=>expression.createExpression(powerKindText(former)).value.evaluate({zoom:14},{properties:p});
-  for(const [kind,{label}] of Object.entries(POWER_FACILITY_KINDS))assert.equal(evaluate(false,{power_kind:kind}),label);
-  assert.equal(evaluate(false,{power_kind:'water_crane'}),'Steam locomotive water crane');
-  assert.equal(evaluate(true,{power_kind:'coaling_facility',power_state:'disused'}),'Steam engine coaling (disused)');
-  const html=(await (await import('node:fs/promises')).readFile(new URL('../styles/index.html',import.meta.url),'utf8')).match(/id="labels"[^>]*>([^<]*)</)[1];
-  assert.match(html,/catenary mast numbers/);
+test('no type words are printed on the Power map; chargers use the shared facility shapes',()=>{
+  const layers=powerMethodLayers();
+  assert.equal(layers.some(l=>l.type==='symbol'&&l.id!=='electrification-catenary-references'),false,'only mast numbers are text');
+  assert.ok(layers.find(l=>l.id==='electrification-catenary-references').metadata['atlas:settings'].includes('labels'));
+  for(const part of ['areas','outlines','points'])assert.ok(layers.some(l=>l.id===`electrification-charging-${part}`),part);
+  const outline=featureFilter(layers.find(l=>l.id==='electrification-charging-outlines').filter).filter;
+  assert.equal(outline({zoom:14},{type:2,properties:{power_state:'present',method_rail:true}}),false,'track lines in the same source are not drawn as charger outlines');
+  assert.equal(outline({zoom:14},{type:3,properties:{power_state:'present',power_kind:'charging_station'}}),true);
+  assert.equal(outline({zoom:14},{type:2,properties:{power_state:'present',power_kind:'charging_station'}}),true,'a charger mapped as an open way is drawn as its line');
+  const dot=featureFilter(layers.find(l=>l.id==='electrification-charging-points').filter).filter;
+  assert.equal(dot({zoom:14},{type:1,properties:{power_state:'present',power_kind:'charging_station'}}),true);
 });
 test('rack railways come from the provider rack=* field, any rack system, with lifecycle',()=>{
   const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-provider-rack'),former=layers.find(l=>l.id==='electrification-former-provider-rack');

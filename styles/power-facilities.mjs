@@ -19,42 +19,6 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
-// One pictogram per kind of object, so the map shows what each point is (a
-// water crane, a water tower, a tank…), not only which supply it serves.
-// Paths are on a 24-unit grid, stroked; colour still shows the supply group.
-export const POWER_FACILITY_ICONS = Object.freeze({
-  substation:'M4 5 H20 V19 H4 Z M13 7 L9 12.5 H13 L11 17',
-  plant:'M3 21 V12 L8 9 V12 L13 9 V12 L18 9 V21 Z M15.5 9 V3 H18 V9',
-  generator:'M20 12 A8 8 0 1 1 4 12 A8 8 0 1 1 20 12 Z M7.5 12 Q9.75 8.5 12 12 Q14.25 15.5 16.5 12',
-  converter:'M4 4 H20 V20 H4 Z M4 20 L20 4 M6.5 9 Q7.75 7 9 9 Q10.25 11 11.5 9 M13 15.5 H18 M13 17.5 H18',
-  transformer:'M14 12 A5 5 0 1 1 4 12 A5 5 0 1 1 14 12 Z M20 12 A5 5 0 1 1 10 12 A5 5 0 1 1 20 12 Z',
-  feeder:'M3 5 H21 M12 21 V8 M8 12 L12 8 L16 12',
-  power_supply:'M8 3 V7 M16 3 V7 M5 7 H19 V11 Q19 17 12 17 Q5 17 5 11 Z M12 17 V21',
-  preheating:'M4 21 V9 H12 V21 Z M8 9 V5 M6 13 H10 M15 8 Q17 10 15 12 Q13 14 15 16 M18.5 8 Q20.5 10 18.5 12 Q16.5 14 18.5 16',
-  charging_station:'M3 7 H18 V17 H3 Z M18 10 H20.5 V14 H18 M11.5 8.5 L8 12.5 H11.5 L9.5 15.5',
-  fuel:'M5 21 V4 H13 V21 Z M3.5 21 H14.5 M7 7 H11 V10.5 H7 Z M13 9 H16 L18 11 V17 Q18 18.5 16.75 18.5 Q15.5 18.5 15.5 17 V13 H13',
-  fuel_tank:'M7 7 H17 Q20 7 20 12 Q20 17 17 17 H7 Q4 17 4 12 Q4 7 7 7 Z M7 7 Q10 7 10 12 Q10 17 7 17 M7 17 V21 M17 17 V21',
-  coaling_facility:'M4 4 H20 L15.5 11 H8.5 Z M8.5 11 L7 21 M15.5 11 L17 21 M12 11 V14 L16 16',
-  water_tower:'M6 4 H18 V11 H6 Z M8 11 L6.5 21 M16 11 L17.5 21 M7.3 16 H16.7',
-  water_tank:'M5 8 Q12 5 19 8 V18 Q12 21 5 18 Z M5 8 Q12 11 19 8 M9 14.5 Q10.5 13 12 14.5 Q13.5 16 15 14.5',
-  water_crane:'M7 21 H13 M10 21 V5 H18 V9 M16.5 9 H19.5 M18 12 V13.5 M18 16 V17.5',
-});
-export const powerIconId = (kind, former=false) => `power-${kind}${former?'-former':''}`;
-// Operating: a filled tile in the supply colour with a light pictogram.
-// Planned or former: a light tile with a dashed edge and a coloured pictogram.
-export function powerIcon(id, document) {
-  const match=/^power-([a-z_]+?)(-former)?$/.exec(id),kind=match?.[1],definition=POWER_FACILITY_KINDS[kind];
-  if (!definition || !POWER_FACILITY_ICONS[kind]) return null;
-  const former=Boolean(match[2]),{paper}=POWER_FACILITY_SYMBOL,canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
-  const ctx=canvas.getContext('2d');ctx.scale(2,2);
-  ctx.fillStyle=former?paper:definition.color;ctx.strokeStyle=former?definition.color:paper;ctx.lineWidth=former?1.5:1;
-  if(former)ctx.setLineDash([3,2]);
-  ctx.beginPath();ctx.roundRect(0.75,0.75,22.5,22.5,5);ctx.fill();ctx.stroke();ctx.setLineDash([]);
-  ctx.save();ctx.translate(2,2);ctx.scale(20/24,20/24);
-  ctx.strokeStyle=former?definition.color:paper;ctx.lineWidth=1.9;ctx.lineJoin='round';ctx.lineCap='round';
-  ctx.stroke(new Path2D(POWER_FACILITY_ICONS[kind]));ctx.restore();
-  return ctx.getImageData(0,0,48,48);
-}
 // Means of power delivery and traction drawn beside or along a track. The
 // map layers and legend samples share this table. A fourth-rail track has
 // conductor rails on both sides. Overhead contact line is the track colour.
@@ -67,18 +31,20 @@ export const POWER_METHOD_STROKES = Object.freeze([
   {id:'rack-traction', when:['traction_rack'], offset:0, width:5, dash:[0.4,1.2], color:'#33302c', label:'Rack railway (ladder ticks)', sample:'rack-traction'},
   {id:'cable-traction', when:['traction_cable'], offset:-3.5, width:1.5, dash:[5,2], color:'#33302c', label:'Cable traction (long dashes, one side)', sample:'cable-traction'},
 ].map(Object.freeze));
-// Shared by the map's point layers and legend; the legend samples the detailed
-// marker size. Lifecycle changes only the fill, stroke and letter colour.
-export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
-// Every kind of point has its own legend row and pictogram; the legend is a
-// fixed key, not a list of what happens to be in view.
-export const POWER_FACILITY_LEGEND = Object.freeze(Object.entries(POWER_FACILITY_KINDS).map(([kind,{label,color}])=>
-  Object.freeze({symbol:'point',kind,color,label:kind==='fuel'?`${label} (supplies written beside it)`:label})));
+// Shared by the map's facility layers and legend: one neutral ink and
+// man-made fill for every kind, as topographic maps draw built structures.
+export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', ink:'#3d4247', fill:'#8c8f92'});
+// The legend keys the drawing, not a list of kinds: what a facility is shows
+// on hover and in its details.
+export const POWER_FACILITY_LEGEND = Object.freeze([
+  {symbol:'shape',geometry:'area',label:'Railway power or servicing facility (mapped outline)'},
+  {symbol:'shape',geometry:'point',label:'Railway power or servicing facility (mapped point)'},
+].map(Object.freeze));
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
-export const POWER_FACILITY_LIMITS = `Fuel and water tanks show mapped railway storage; storage alone does not establish a train refuelling or steam servicing point. Light, dashed-edged pictograms identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
+export const POWER_FACILITY_LIMITS = `Railway power and servicing facilities (substations, power stations, converters, refuelling and charging points, coaling stages, water towers, tanks and cranes) are drawn as they are mapped: outlines for areas, small dots for points. Hover or select one for what it is, its name and supplies. Tanks show mapped railway storage; storage alone does not establish a train servicing point. Dashed, faint shapes are planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing facilities do not establish an absence of supplies; mapped facilities do not establish current availability.`;
 export const POWER_METHOD_NOTE = `Track strokes: overhead contact line is the track colour alone; ${POWER_METHOD_STROKES.map(({label})=>label).join('; ')}.`;
-export const POWER_FACILITY_EXPLANATION = `Each point has a pictogram for what it is, coloured by the supply it serves: ${POWER_FACILITY_LEGEND.map(({label})=>label).join('; ')}. ${POWER_METHOD_NOTE} ${POWER_FACILITY_LIMITS}`;
+export const POWER_FACILITY_EXPLANATION = `${POWER_METHOD_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -152,12 +118,6 @@ const fuelTagsOf=p=>Object.entries(p).filter(([key,value])=>key.startsWith('fuel
 export function powerFacilityFuels(p = {}) {
   const direct=String(p.fuel??'').split(';').map(value=>value.trim()).filter(Boolean);
   return [...new Set([...direct.filter(value=>!/^(yes|no|unknown)$/i.test(value)),...fuelTagsOf(p).filter(([key,value])=>/^fuel:[^:]+$/.test(key)&&String(value).trim().toLowerCase()==='yes').map(([key])=>key.slice(5))])];
-}
-// What the map writes beside a point: its kind, and for fuel the supplies.
-export function powerFacilityDisplay(p = {}) {
-  if (!p.power_kind) return {};
-  const fuels=powerFacilityFuels(p).map(value=>value.replaceAll('_',' '));
-  return {power_label:powerFacilityName(p)+(['fuel','fuel_tank'].includes(p.power_kind)&&fuels.length?` · ${fuels.join(', ')}`:'')+(p.power_state&&p.power_state!=='present'?` (${p.power_state})`:'')};
 }
 export function powerFacilityEnergyRows(properties = {}) {
   const p=properties;
