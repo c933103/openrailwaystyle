@@ -63118,7 +63118,8 @@
           [
             "rail",
             "transit",
-            "ferry"
+            "ferry",
+            "aerialway"
           ],
           true,
           false
@@ -69443,6 +69444,182 @@
           ],
           true
         ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 450,
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          14,
+          13
+        ],
+        "text-offset": [
+          0,
+          -0.85
+        ],
+        "text-padding": 8,
+        "text-max-angle": 35
+      },
+      "paint": {
+        "text-color": "#4a453f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "names",
+        "atlas:views": [],
+        "atlas:settings": [
+          "names"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "aerialway-names",
+      "type": "symbol",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "filter": [
+        "has",
+        "kind"
       ],
       "layout": {
         "symbol-placement": "line",

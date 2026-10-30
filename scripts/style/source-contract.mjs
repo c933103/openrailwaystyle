@@ -45,7 +45,7 @@ export const SOURCE_CONTRACTS = {
   serviceRoutes:{service_routes:[...LABEL, 'colour', 'i', 'n', 'slot']},
   streetRunning:{street_running:[]},
   conveying:{conveying:['arrows', 'kind', 'maxspeed', 'owner_color']},
-  aerialways:{aerialways:['kind', 'maxspeed', 'owner_color']},
+  aerialways:{aerialways:[...LABEL, 'kind', 'maxspeed', 'owner_color']},
   heritageAreas:{heritage:[...LABEL, 'kind']},
   trackCounts:{atlas_track_counts:['station', 'tracks', 'tunnel']},
   platforms:{standard_railway_platforms:[]},

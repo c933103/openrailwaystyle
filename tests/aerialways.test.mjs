@@ -11,7 +11,7 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 
 const style=JSON.parse(readFileSync(new URL('../styles/world.style.json',import.meta.url)));
-const layers=style.layers.filter(l=>l.id.startsWith('aerialway-'));
+const layers=style.layers.filter(l=>l.id.startsWith('aerialway-')&&l.id!=='aerialway-names');
 const draws=(layer,properties,zoom=14)=>featureFilter(layer.filter).filter({zoom},{type:2,properties,geometry:[]});
 const way=(id,tags)=>({type:'way',id,tags,geometry:[{lon:113.9,lat:22.25},{lon:113.94,lat:22.29}]});
 const colour=(paint,properties)=>expression.createExpression(paint).value.evaluate({zoom:14},{properties});
@@ -95,4 +95,19 @@ test('lift ticks are sparser than cableway ticks',()=>{
 test('a clicked aerialway links its OSM way from the snapshot id, and its kind',()=>{
   assert.deepEqual(osmObject({source:'aerialways',properties:{osm_id:'26351045',kind:'cableway'}}),{type:'way',id:'26351045'});
   assert.equal(aerialwayKind('gondola').id,'cableway');assert.equal(aerialwayKind('t-bar').id,'lift');assert.equal(aerialwayKind('zip_line'),undefined);
+});
+
+test('aerialways are named like railways, in every view under the Names setting, and road labels leave them out',()=>{
+  const names=style.layers.find(l=>l.id==='aerialway-names'),rail=style.layers.find(l=>l.id==='railway-names');
+  assert.equal(names.source,'aerialways');assert.equal(names.minzoom,12);
+  assert.deepEqual(names.layout,rail.layout,'the same label layout as railway names');
+  assert.deepEqual(names.paint,rail.paint,'and the same colours');
+  for(const key of ['atlas:group','atlas:category','atlas:views','atlas:settings','atlas:localize'])assert.deepEqual(names.metadata[key],rail.metadata[key],key);
+  const index=id=>style.layers.findIndex(l=>l.id===id);
+  assert.equal(index('aerialway-names'),index('railway-names')+1,'in the railway name group');
+  const road=style.layers.find(l=>l.id==='road-labels');
+  assert.equal(featureFilter(road.filter).filter({zoom:16},{type:2,properties:{class:'aerialway',subclass:'gondola',name:'X'},geometry:[]}),false);
+  assert.equal(featureFilter(road.filter).filter({zoom:16},{type:2,properties:{class:'primary',name:'X'},geometry:[]}),true,'roads keep their labels');
+  const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/style\.sources\.aerialways\.tiles = \[`aerialwaytiles:\/\/\{z\}\/\{x\}\/\{y\}\?lang=\$\{settings\.language\}`\]/,'names follow the chosen language');
 });
