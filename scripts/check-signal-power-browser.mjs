@@ -88,7 +88,7 @@ const conveyingWays=conveyingGeoJSON({elements:[
   {type:'way',id:9502,tags:{highway:'steps',conveying:'backward'},geometry:[{lon:.0008,lat:-.0004},{lon:.0011,lat:-.0004}]},
 ]});
 const snapshotIndexes = {
-  conveying:{tiles:localKeys([12]),index:index(conveyingWays.features),layer:'conveying'},
+  conveying:{tiles:localKeys([14]),index:index(conveyingWays.features),layer:'conveying'},
   'branch-lines':{tiles:localKeys([4,5,6,7,8,9],4),index:branchIndex,layer:'branch_lines'},
   'traction/signals':{tiles:localKeys([12,16]),index:signalIndex,layer:'railway_signals'},
 };

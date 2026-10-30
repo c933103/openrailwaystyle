@@ -1,6 +1,7 @@
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from '../../crossing-data.mjs';
 import {SIGNAL_OVERVIEW_ZOOM, SIGNAL_ZOOM} from '../../signals-data.mjs';
 import {HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM} from '../../heritage-data.mjs';
+import {CONVEYING_ZOOM} from '../../conveying-data.mjs';
 
 const ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>';
 const snapshot = (protocol, minzoom, maxzoom, extra = {}) => ({
@@ -29,7 +30,7 @@ export function atlasSources(majorStationData) {
     serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Frequency sources</a>'},
     streetRunning: snapshot('streettiles', 12, 12),
     // Every escalator, moving walkway and elevator way (conveying.yml).
-    conveying: snapshot('conveyingtiles', 12, 12),
+    conveying: snapshot('conveyingtiles', CONVEYING_ZOOM, CONVEYING_ZOOM),
     // Historic areas the basemap's park layer does not hold (heritage-data.mjs).
     heritageAreas: snapshot('heritagetiles', HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM),
   };

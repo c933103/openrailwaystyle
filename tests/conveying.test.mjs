@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import {conveying} from '../styles/conveying.mjs';
-import {CONVEYING_QUERY,conveyingGeoJSON} from '../scripts/conveying-data.mjs';
+import {CONVEYING_QUERY,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,CONVEYING_EXTENT} from '../scripts/conveying-data.mjs';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
 
 const style=JSON.parse(readFileSync(new URL('../styles/world.style.json',import.meta.url)));
@@ -25,7 +27,7 @@ test('escalators, moving walkways and elevators are read from explicit tags only
 
 test('every such way is kept, with no length threshold; a backward one is stored reversed so its arrow follows the line',()=>{
   assert.match(CONVEYING_QUERY,/way\[conveying\]\[conveying!=no\]/);assert.match(CONVEYING_QUERY,/way\[highway=elevator\]/);assert.match(CONVEYING_QUERY,/out tags geom;$/);
-  const tiny=[[0,0],[0.000001,0]];
+  const tiny=[[0,0],[0.000009,0]]; // about 1 m
   const data=conveyingGeoJSON({elements:[
     way(1,midLevels),way(2,{highway:'steps',conveying:'backward'}),way(3,{highway:'footway',conveying:'yes'}),way(4,{highway:'elevator'},tiny),
     way(5,{highway:'steps'}),way(8,{highway:'steps',conveying:'no;backward'}),{type:'node',id:6,lat:0,lon:0,tags:{highway:'elevator'}},
@@ -43,7 +45,8 @@ test('conveying lines and arrows show in every view and with every setting off, 
   const ids=['conveying-lines','conveying-arrows','conveying-arrows-back'];
   assert.deepEqual(style.layers.filter(l=>l.source==='conveying').map(l=>l.id),ids);
   assert.deepEqual(style.sources.conveying.tiles,['conveyingtiles://{z}/{x}/{y}']);
-  assert.equal(style.sources.conveying.minzoom,12);assert.equal(style.sources.conveying.maxzoom,12);
+  assert.equal(style.sources.conveying.minzoom,CONVEYING_ZOOM);assert.equal(style.sources.conveying.maxzoom,CONVEYING_ZOOM);
+  assert.equal(layer('conveying-lines').minzoom,CONVEYING_ZOOM,'tiles start where the lines start');
   const settings={mode:'speed',labels:false,inactive:false,stations:false,names:false,background:'map'};
   for(const l of ids.map(layer)){
     assert.notEqual(l.layout?.visibility,'none');
@@ -72,4 +75,24 @@ test('the site deploys without a conveying snapshot, and only main publishes one
   assert.match(workflow,/Publish complete data snapshot\n\s+# Only main publishes the shared snapshot\.\n\s+if: github\.ref == 'refs\/heads\/main'/);
   const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');
   assert.match(app,/\['conveyingtiles','conveying',false\]/);assert.match(app,/event\.id === 'conveying-arrow'/);
+});
+
+test('short pieces survive tile encoding: about 1 m stays a line with two distinct ends, also on the renderer grid',()=>{
+  // MapLibre rounds tile coordinates to an 8192 grid, so the stored grid must be at least that fine.
+  assert.equal(CONVEYING_ZOOM,14);assert.ok(CONVEYING_EXTENT>=8192);
+  const pieces=[[1,[[114.15310,22.28170],[114.153109,22.28170]]],[2,[[114.15320,22.28170],[114.15320,22.281705]]],[3,[[114.15330,22.28170],[114.153303,22.28170]]]]; // ~0.9 m, ~0.55 m, ~0.31 m
+  const {features}=conveyingGeoJSON({elements:pieces.map(([id,coords])=>way(id,{highway:'elevator'},coords))});
+  const tiles=conveyingTiles(features);
+  assert.ok([...tiles.keys()].every(key=>key.startsWith(`${CONVEYING_ZOOM}/`)));
+  const seen=new Map();
+  for(const bytes of tiles.values()){
+    const layer=new VectorTile(new Pbf(bytes)).layers.conveying;
+    for(let i=0;i<layer.length;i++){
+      const f=layer.feature(i),[line]=f.loadGeometry(),scale=8192/layer.extent;
+      const ends=[line[0],line.at(-1)].map(p=>[Math.round(p.x*scale),Math.round(p.y*scale)]);
+      if(ends.every(([x,y])=>x>=0&&x<8192&&y>=0&&y<8192))seen.set(f.id,ends);
+    }
+  }
+  assert.deepEqual([...seen.keys()].sort(),[1,2,3],'every piece is in its tile, none simplified away');
+  for(const [id,[a,b]] of seen)assert.notDeepEqual(a,b,`way ${id} keeps two distinct ends`);
 });
