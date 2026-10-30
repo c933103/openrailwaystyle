@@ -26,8 +26,13 @@ outcome, risk and acceptance checks. Keep unrelated investigations separate.
 
 Run relevant tests plus the applicable build and aggregate checks on final source.
 Harness changes need their failure paths checked. Rendering changes need the
-fixture-safe browser checks in the development guide; public-provider tile
-downloads and benchmarks are prohibited. Existing required CI remains binding.
+fixture-safe browser checks in the development guide; committed checks and CI
+stay fixture-only. A few manual, read-only requests to a public provider may
+confirm that a change matches real data, where that provider's published terms
+allow it (see [external services](docs/external-services.md); OpenRailwayMap's
+forbid automated tile retrieval). Do not store, commit or redistribute those
+responses, and do not run bulk downloads or benchmarks against public providers.
+Existing required CI remains binding.
 Set thresholds from the user-visible requirement and risk; changing a gate needs
 a documented replacement contract and independent review. Preserve useful failures.
 
