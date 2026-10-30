@@ -5172,6 +5172,15 @@
       "maxzoom": 12,
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "conveying": {
+      "type": "vector",
+      "tiles": [
+        "conveyingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 14,
+      "maxzoom": 14,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "heritageAreas": {
       "type": "vector",
       "tiles": [
@@ -46290,6 +46299,212 @@
           0.25,
           7.5
         ]
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-lines",
+      "type": "line",
+      "minzoom": 14,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#4a4f55",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.8,
+          18,
+          2
+        ]
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-arrows",
+      "type": "symbol",
+      "minzoom": 16,
+      "filter": [
+        "match",
+        [
+          "get",
+          "arrows"
+        ],
+        [
+          "one_way",
+          "two_way"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "symbol-placement": "line-center",
+        "icon-image": "conveying-arrow",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.7,
+          19,
+          1
+        ],
+        "icon-rotate": 0,
+        "icon-offset": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "arrows"
+            ],
+            "two_way"
+          ],
+          [
+            "literal",
+            [
+              7,
+              0
+            ]
+          ],
+          [
+            "literal",
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-rotation-alignment": "map"
+      },
+      "paint": {
+        "icon-color": "#4a4f55",
+        "icon-halo-color": "rgba(255,255,255,0.85)",
+        "icon-halo-width": 1
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-arrows-back",
+      "type": "symbol",
+      "minzoom": 16,
+      "filter": [
+        "==",
+        [
+          "get",
+          "arrows"
+        ],
+        "two_way"
+      ],
+      "layout": {
+        "symbol-placement": "line-center",
+        "icon-image": "conveying-arrow",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.7,
+          19,
+          1
+        ],
+        "icon-rotate": 180,
+        "icon-offset": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "arrows"
+            ],
+            "two_way"
+          ],
+          [
+            "literal",
+            [
+              7,
+              0
+            ]
+          ],
+          [
+            "literal",
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-rotation-alignment": "map"
+      },
+      "paint": {
+        "icon-color": "#4a4f55",
+        "icon-halo-color": "rgba(255,255,255,0.85)",
+        "icon-halo-width": 1
       }
     },
     {

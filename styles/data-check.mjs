@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261030-aerialways-1';
+import {SEARCH_API} from './map-model.mjs?v=20261030-conveying-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

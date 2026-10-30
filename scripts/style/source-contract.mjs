@@ -44,6 +44,7 @@ export const SOURCE_CONTRACTS = {
   inactiveRegional:{lifecycle:[...LABEL, 'bridge', 'feature', 'maxspeed', 'state', 'tunnel']},
   serviceRoutes:{service_routes:[...LABEL, 'colour', 'i', 'n', 'slot']},
   streetRunning:{street_running:[]},
+  conveying:{conveying:['arrows', 'kind']},
   heritageAreas:{heritage:[...LABEL, 'kind']},
   trackCounts:{atlas_track_counts:['station', 'tracks', 'tunnel']},
   platforms:{standard_railway_platforms:[]},
