@@ -177,7 +177,10 @@ test('no type words are printed on the Power map; chargers use the shared facili
   for(const part of ['areas','outlines','points'])assert.ok(layers.some(l=>l.id===`electrification-charging-${part}`),part);
   const outline=featureFilter(layers.find(l=>l.id==='electrification-charging-outlines').filter).filter;
   assert.equal(outline({zoom:14},{type:2,properties:{power_state:'present',method_rail:true}}),false,'track lines in the same source are not drawn as charger outlines');
-  assert.equal(outline({zoom:14},{type:3,properties:{power_state:'present'}}),true);
+  assert.equal(outline({zoom:14},{type:3,properties:{power_state:'present',power_kind:'charging_station'}}),true);
+  assert.equal(outline({zoom:14},{type:2,properties:{power_state:'present',power_kind:'charging_station'}}),true,'a charger mapped as an open way is drawn as its line');
+  const dot=featureFilter(layers.find(l=>l.id==='electrification-charging-points').filter).filter;
+  assert.equal(dot({zoom:14},{type:1,properties:{power_state:'present',power_kind:'charging_station'}}),true);
 });
 test('rack railways come from the provider rack=* field, any rack system, with lifecycle',()=>{
   const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-provider-rack'),former=layers.find(l=>l.id==='electrification-former-provider-rack');

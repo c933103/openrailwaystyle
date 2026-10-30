@@ -30,8 +30,9 @@ export function powerMethodLayers() {
       filter:['all',former?['!',present]:present,notFerry,byKindZoom,['!',['in',['downcase',['coalesce',['get','rack'],'no']],['literal',['no','']]]]],
       layout:{'line-cap':rack.cap||'butt','line-join':'round'},
       paint:{'line-color':rack.color,'line-width':rack.width,'line-offset':rack.offset,'line-dasharray':rack.dash,'line-opacity':opacity}});
-    // Battery-train chargers: the same mapped shapes as other facilities.
-    const charging={minzoom:12,metadata:meta,filter:['all',['match',['geometry-type'],['Point','MultiPoint','Polygon','MultiPolygon'],true,false],[former?'!=':'==',['get','power_state'],'present']]};
+    // Battery-train chargers, whatever shape they are mapped as; track
+    // features in the same source carry no power_kind.
+    const charging={minzoom:12,metadata:meta,filter:['all',['==',['get','power_kind'],'charging_station'],[former?'!=':'==',['get','power_state'],'present']]};
     layers.push(...facilityShapeLayers(`electrification-${suffix}charging`,'electricMethods',charging,former));
   }
   const catenary={source:'electricCatenary','source-layer':'electrification_catenary',minzoom:16,metadata};

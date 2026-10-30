@@ -60009,18 +60009,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "==",
@@ -60075,18 +60069,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "==",
@@ -60157,18 +60145,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "==",
@@ -62043,18 +62025,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "!=",
@@ -62111,18 +62087,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "!=",
@@ -62199,18 +62169,12 @@
       "filter": [
         "all",
         [
-          "match",
+          "==",
           [
-            "geometry-type"
+            "get",
+            "power_kind"
           ],
-          [
-            "Point",
-            "MultiPoint",
-            "Polygon",
-            "MultiPolygon"
-          ],
-          true,
-          false
+          "charging_station"
         ],
         [
           "!=",
