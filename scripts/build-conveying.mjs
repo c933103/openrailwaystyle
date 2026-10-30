@@ -2,12 +2,15 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM} from './conveying-data.mjs';
-import {overpassRetryDelayMs,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
+import {overpassRetryDelayMs,overpassRetryFits,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
+// Overpass work must end within this budget; the job allows 30 minutes more
+// for tiles and publication (conveying.yml timeout-minutes).
+const REQUEST_MS=960000, deadline=Date.now()+Number(process.env.OVERPASS_BUDGET_MINUTES||120)*60000;
 let data;
 // A busy server waits minutes: 2, 5, then 10 (or its Retry-After).
 for(let attempt=0;attempt<=OVERPASS_RETRY_MINUTES.length;attempt++) {
   try {
-    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(960000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
+    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(REQUEST_MS),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
     if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{retryAfter:response.headers.get('retry-after')});
     data=await response.json();
     if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
@@ -15,6 +18,7 @@ for(let attempt=0;attempt<=OVERPASS_RETRY_MINUTES.length;attempt++) {
   } catch(error) {
     if(attempt===OVERPASS_RETRY_MINUTES.length) throw error;
     const wait=overpassRetryDelayMs(attempt,error.retryAfter);
+    if(!overpassRetryFits(deadline,wait,REQUEST_MS)) throw new Error(`Overpass still failing and no time left in the job budget for another try: ${describeOverpassError(error)}`);
     console.log(describeOverpassError(error),`— retrying in ${Math.round(wait/60000)} min`);await new Promise(r=>setTimeout(r,wait));
   }
 }

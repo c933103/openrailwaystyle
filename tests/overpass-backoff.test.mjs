@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {overpassRetryDelayMs,overpassBusy,OVERPASS_RETRY_MINUTES} from '../scripts/overpass-errors.mjs';
+import {overpassRetryDelayMs,overpassBusy,overpassRetryFits,OVERPASS_RETRY_MINUTES} from '../scripts/overpass-errors.mjs';
 
 test('a busy Overpass server is retried after minutes, or its own longer Retry-After up to 15 minutes',()=>{
   assert.deepEqual(OVERPASS_RETRY_MINUTES,[2,5,10]);
@@ -31,5 +31,18 @@ test('the facility and escalator snapshot builds use the long busy-server wait',
   assert.match(conveying,/overpassRetryDelayMs\(attempt,error\.retryAfter\)/);
   assert.match(conveying,/retryAfter:response\.headers\.get\('retry-after'\)/);
   const workflow=readFileSync(new URL('../.github/workflows/conveying.yml',import.meta.url),'utf8');
-  assert.match(workflow,/timeout-minutes: 90/);
+  // Worst case 4 × 16-minute queries + 3 × 15-minute waits = 109 minutes:
+  // inside the 120-minute script budget, which stops short of the job limit.
+  assert.match(conveying,/overpassRetryFits\(deadline,wait,REQUEST_MS\)/);
+  assert.match(conveying,/OVERPASS_BUDGET_MINUTES\|\|120/);
+  const limit=Number(/timeout-minutes: (\d+)/.exec(workflow)[1]);
+  assert.ok(limit>=120+30,`job limit ${limit} leaves time after the Overpass budget`);
+  assert.ok(4*16+3*15<=120,'the worst retry sequence fits the budget');
+});
+
+test('a retry is skipped when it would not end within the job budget',()=>{
+  const now=0,minute=60000;
+  assert.equal(overpassRetryFits(120*minute,15*minute,16*minute,now),true);
+  assert.equal(overpassRetryFits(120*minute,15*minute,16*minute,90*minute),false,'90 + 15 + 16 > 120');
+  assert.equal(overpassRetryFits(120*minute,2*minute,16*minute,102*minute),true,'exactly at the deadline still fits');
 });

@@ -15,8 +15,10 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    # Up to four 16-minute queries and 17 minutes of busy-server waits.
-    timeout-minutes: 90
+    # build-conveying.mjs keeps Overpass work (queries up to 16 minutes, waits
+    # up to 15) within 120 minutes and stops retrying when the next try would
+    # not fit; 30 more cover tiles and publication.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

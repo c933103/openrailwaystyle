@@ -35,3 +35,6 @@ export function overpassRetryDelayMs(retry, retryAfter, now = Date.now()) {
 }
 // Server busy (429, 502–504) or no connection at all: worth waiting for.
 export const overpassBusy = error => /^HTTP (429|502|503|504)\b/.test(String(error?.message)) || /fetch failed/i.test(String(error?.message));
+// Whether one more wait and a full request still end before a job's own time
+// budget, so a run fails with a clear reason instead of being cancelled.
+export const overpassRetryFits = (deadline, waitMs, requestMs, now = Date.now()) => now + waitMs + requestMs <= deadline;
