@@ -20,6 +20,8 @@ const control = {train_protection0:'atc', train_protection1:'pzb', train_protect
 const rail = {id:'9200-0', name:'Shared protection test track', feature:'rail', railway:'rail', state:'present', usage:'main', service:'', ...control};
 const detailed = feature(rail, 'LineString', [[-.0002,.0005],[.0016,.0005]]);
 // rack=* arrives on the provider's detailed lines (abt, strub, riggenbach…).
+// Funiculars arrive as feature=funicular on the same provider lines.
+const providerFunicular = feature({...rail,id:'9431-0',name:'Provider funicular test line',railway:'funicular',feature:'funicular',usage:''}, 'LineString', [[-.0002,-.00093],[.0016,-.00093]]);
 const providerRack = feature({...rail,id:'9430-0',name:'Provider rack test line',railway:'narrow_gauge',feature:'narrow_gauge',rack:'abt'}, 'LineString', [[-.0002,-.00075],[.0016,-.00075]]);
 const mainOverview = feature({...rail,id:'9201-0'}, 'LineString', [[-4,1],[4,1]]);
 const branchOverview = feature({...rail,id:'9202-0',usage:'branch'}, 'LineString', [[-4,-1],[4,-1]]);
@@ -31,7 +33,7 @@ const culture = [
   feature({name:'Test theatre',class:'theatre',subclass:'theatre',rank:1},'Point',[.00115,-.00085],93011),
 ];
 const datasets = {
-  railway_line_high:[detailed,providerRack],
+  railway_line_high:[detailed,providerRack,providerFunicular],
   signals_railway_line_low:[mainOverview],
   standard_railway_line_low:[mainOverview],
   electrification_railway_line_low:[mainOverview],
@@ -261,7 +263,13 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
       assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`).count(),1);
       assert.match(await page.locator('#detail-content').innerText(),/signal/i);await page.locator('#details-close').click();
     }
-    await mode('infrastructure');await closeControls();
+    await mode('infrastructure');
+    const infraLegend=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].map(row=>row.lastElementChild.textContent));
+    for(const label of ['Funicular','Rack railway (ladder ticks)'])assert.ok(infraLegend.includes(label),`Infrastructure legend has ${label}`);
+    await closeControls();
+    await visible('infrastructure-rack');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['infrastructure-rack']}).map(f=>String(f.properties.id)))]),['9430-0'],'Infrastructure rack ticks only on the rack line');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-tracks']}).some(f=>String(f.properties.id)==='9431-0')),true,'the funicular is drawn as a track');
     await visible('infrastructure-signal-points');await visible('infrastructure-signal-supplement-points');
     for(const [point,id] of [[directed,9004],[undirected,9006]]) {
       await clickCoordinates(point.geometry.coordinates);await page.waitForSelector('#details:not([hidden])');
@@ -284,6 +292,8 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack'])await visible(`electrification-${id}`);
     const providerRackIds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-rack']}).map(f=>String(f.properties.id)))]);
     assert.deepEqual(providerRackIds,['9430-0'],'only the rack=abt provider line gets the rack stroke');
+    await visible('electrification-provider-cable');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-cable']}).map(f=>String(f.properties.id)))]),['9431-0'],'only the funicular gets the cable stroke');
     await clickCoordinates([.0006,-.00075]);assert.match(await page.locator('#detail-content').innerText(),/Rack\s+abt/,'the track inspector names the rack system');await page.locator('#details-close').click();
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-fourth-rails']}).map(f=>f.properties.osm_id))]),['9422'],'only the fourth-rail track has its second conductor rail');
     await clickCoordinates([.0007,.0004]);assert.match(await page.locator('#detail-content').innerText(),/Inductive power supply/);await page.locator('#details-close').click();

@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-facility-shapes-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-facility-shapes-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-funicular-rack-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-funicular-rack-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-facility-shapes-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-funicular-rack-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -192,6 +192,8 @@ export const INFRASTRUCTURE = [
   ['#d7191c', 'High-speed line'], ['#2356b6', 'Railway'],
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
+  // Appended so existing positions stay stable for paint expressions.
+  ['#c2185b', 'Funicular'],
 ];
 // Colours from hue, saturation and lightness (percent).
 export function hsl(h, s, l) {
