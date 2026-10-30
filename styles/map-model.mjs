@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-funicular-rack-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-funicular-rack-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-aerialways-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-aerialways-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-funicular-rack-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-aerialways-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -195,6 +195,15 @@ export const INFRASTRUCTURE = [
   // Appended so existing positions stay stable for paint expressions.
   ['#c2185b', 'Funicular'],
 ];
+// Aerial cableways and lifts come from the basemap's transportation layer
+// (OpenMapTiles class=aerialway). Drawn like OSM Carto: a thin grey cable with
+// dark ticks, sparser ticks for ski and chair lifts. Dashes are in line widths.
+export const AERIALWAY_CABLE = '#808080', AERIALWAY_TICK = '#1f2326';
+export const AERIALWAY_KINDS = Object.freeze([
+  Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),
+  Object.freeze({id:'lift', label:'Ski or chair lift', subclasses:Object.freeze(['chair_lift','drag_lift','t-bar','j-bar','platter']), tickWidth:4, dash:Object.freeze([1/4,30/4])}),
+]);
+export const aerialwayKind = subclass => AERIALWAY_KINDS.find(kind => kind.subclasses.includes(subclass));
 // Colours from hue, saturation and lightness (percent).
 export function hsl(h, s, l) {
   s /= 100; l /= 100;

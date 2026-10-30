@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261030-funicular-rack-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261030-funicular-rack-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261030-funicular-rack-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261030-funicular-rack-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261030-funicular-rack-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261030-funicular-rack-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261030-funicular-rack-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261030-aerialways-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261030-aerialways-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261030-aerialways-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261030-aerialways-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261030-aerialways-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261030-aerialways-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261030-aerialways-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261030-funicular-rack-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261030-funicular-rack-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261030-funicular-rack-1';
-import {departureItem} from './departures-ui.mjs?v=20261030-funicular-rack-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261030-funicular-rack-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261030-funicular-rack-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261030-funicular-rack-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261030-funicular-rack-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261030-funicular-rack-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261030-funicular-rack-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261030-funicular-rack-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261030-funicular-rack-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261030-funicular-rack-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261030-funicular-rack-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261030-funicular-rack-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261030-funicular-rack-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261030-funicular-rack-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261030-funicular-rack-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261030-aerialways-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261030-aerialways-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261030-aerialways-1';
+import {departureItem} from './departures-ui.mjs?v=20261030-aerialways-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261030-aerialways-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261030-aerialways-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261030-aerialways-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261030-aerialways-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261030-aerialways-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261030-aerialways-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261030-aerialways-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261030-aerialways-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261030-aerialways-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261030-aerialways-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261030-aerialways-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261030-aerialways-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261030-aerialways-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261030-aerialways-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -70,7 +70,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261030-funicular-rack-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261030-aerialways-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -464,6 +464,17 @@ function powerMethodSwatch(stroke) {
   for(const s of strokes){const y=7+s.offset;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
   return svg;
 }
+// Cable line with ticks, matching the aerialway layers' dash lengths.
+function aerialwaySwatch(kind) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('aerialway-swatch');
+  for(const attrs of [{stroke:AERIALWAY_CABLE,'stroke-width':1},{stroke:AERIALWAY_TICK,'stroke-width':kind.tickWidth,'stroke-dasharray':kind.dash.map(v=>v*kind.tickWidth).join(' '),'stroke-dashoffset':-2}]){
+    const el=document.createElementNS(ns,'line');
+    for(const [k,v] of Object.entries({x1:0,x2:25,y1:7,y2:7,...attrs}))el.setAttribute(k,v);
+    svg.append(el);
+  }
+  return svg;
+}
 function renderLegend() {
   const box = $('legend');
   // Native details toggle events are queued. A settings/metadata redraw can
@@ -498,13 +509,14 @@ function renderLegend() {
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
   if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
   if (settings.mode === 'infrastructure') rows.push({symbol:'method',stroke:POWER_METHOD_STROKES.find(({id})=>id==='rack-traction'),label:'Rack railway (ladder ticks)'});
+  if (['infrastructure','electrification'].includes(settings.mode)) rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})));
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   // Existing track tuples become explicit line samples. Point categories keep
   // their geometry metadata instead of losing it in a colour/label tuple.
-  for (const {symbol,color,colors,label,extra,geometry,stroke} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
+  for (const {symbol,color,colors,label,extra,geometry,stroke,kind} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : textNode('span', '', `swatch ${extra || ''}`);
+    const swatch = symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : textNode('span', '', `swatch ${extra || ''}`);
     if (symbol === 'gradient') swatch.style.background = `linear-gradient(90deg,${colors.join(',')})`;
     if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
@@ -788,7 +800,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|charging-(?:areas|outlines|points))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|charging-(?:areas|outlines|points))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -854,6 +866,21 @@ function stationObject(osmId) {
   }
   return null;
 }
+// The line has no name; the basemap's name layer carries it under the same id.
+function aerialwayName(feature) {
+  if (!Number.isSafeInteger(feature.id) || !map?.getSource('openmaptiles')) return undefined;
+  const named = map.querySourceFeatures('openmaptiles', {sourceLayer: 'transportation_name', filter: ['==', ['id'], feature.id]})[0];
+  return named ? displayName(named.properties, settings.language) || undefined : undefined;
+}
+function showAerialwayDetails(feature) {
+  const p = feature.properties, panel = $('detail-content'), dl = document.createElement('dl');
+  panel.replaceChildren(textNode('div', 'AERIALWAY', 'eyebrow'), textNode('h2', aerialwayName(feature) || 'Unnamed aerialway'));
+  row(dl, 'Kind', aerialwayKind(p.subclass)?.label);
+  row(dl, 'Type', p.subclass?.replaceAll('_', ' '));
+  panel.append(dl);
+  osmLink(panel, feature);
+  $('details').hidden = false;
+}
 function showDetails(feature) {
   cancelProfile();
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
@@ -874,6 +901,7 @@ function showDetails(feature) {
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
+  if (feature.layer?.id.startsWith('aerialway-')) { showAerialwayDetails(feature); return; }
   if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); frequencyExpiry?.update(); return; }
   const p = feature.properties;
   const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
