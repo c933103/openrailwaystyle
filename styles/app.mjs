@@ -894,6 +894,8 @@ function showDetails(feature) {
     row(dl, 'Track', p.track_ref);
     row(dl, 'Current', describeCurrent(p.voltage, p.frequency));
     row(dl, 'Electrification', p.electrification_state);
+    // rack=* from the provider: the rack system (abt, strub, riggenbach…) or yes.
+    row(dl, 'Rack', p.rack && String(p.rack).toLowerCase() !== 'no' ? p.rack : undefined);
     row(dl, 'Planned current', p.electrification_state === 'present' ? undefined : describeCurrent(p.future_voltage, p.future_frequency));
     controlSystemRow(dl, 'Train protection', trainProtectionSystems(p));
     controlSystemRow(dl, 'Protection being built', trainProtectionSystems({train_protection: p.train_protection_construction}));
