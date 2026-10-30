@@ -129,8 +129,12 @@ OSM ways) have close ticks; chair, drag, T-bar, J-bar and platter lifts have
 sparse ticks. They come from the basemap's `transportation` layer
 (OpenMapTiles `class=aerialway` and its `subclass`), so no snapshot is needed;
 other `aerialway=*` values and stations are not drawn as lines. They stay over
-hybrid imagery and are left to the Carto raster, which already draws them. The
-basemap's `transportation` layer carries no names, so they are not clickable yet.
+hybrid imagery and are left to the Carto raster, which already draws them.
+Clicking one shows its name, kind and OSM way. The name comes from the basemap's
+`transportation_name` layer under the same feature id, and the link uses the
+existing basemap id rule (OSM id × 10 + type), checked for aerialways against the
+live archive and the OSM API. Lines merged at lower zooms carry other ids and get
+no link.
 
 `rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
 `traction=rack`) is read straight from the provider's detailed railway tiles,

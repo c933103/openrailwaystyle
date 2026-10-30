@@ -203,6 +203,7 @@ export const AERIALWAY_KINDS = Object.freeze([
   Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),
   Object.freeze({id:'lift', label:'Ski or chair lift', subclasses:Object.freeze(['chair_lift','drag_lift','t-bar','j-bar','platter']), tickWidth:4, dash:Object.freeze([1/4,30/4])}),
 ]);
+export const aerialwayKind = subclass => AERIALWAY_KINDS.find(kind => kind.subclasses.includes(subclass));
 // Colours from hue, saturation and lightness (percent).
 export function hsl(h, s, l) {
   s /= 100; l /= 100;

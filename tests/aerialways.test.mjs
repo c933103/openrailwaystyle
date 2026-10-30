@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {AERIALWAY_KINDS} from '../styles/map-model.mjs';
+import {AERIALWAY_KINDS,aerialwayKind,osmObject} from '../styles/map-model.mjs';
 import {aerialwayLayers} from '../scripts/style/layers/aerialways.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
 
@@ -52,4 +52,13 @@ test('lift ticks are sparser than cableway ticks',()=>{
   const gap=id=>{const l=layers.find(x=>x.id===`aerialway-${id}-ticks`);return l.paint['line-dasharray'][1]*l.paint['line-width'];};
   assert.ok(gap('lift')>gap('cableway'));
   assert.deepEqual(validateStyleMin({...style,layers}).filter(e=>!/source/.test(e.message)),[]);
+});
+
+test('a clicked aerialway links its OSM way through the shared basemap id rule, and its kind',()=>{
+  // Checked on the live basemap and OSM API: 263510452 is way 26351045 (Ngong Ping 360).
+  const line=id=>({source:'openmaptiles',sourceLayer:'transportation',id,properties:{class:'aerialway',subclass:'gondola'}});
+  assert.deepEqual(osmObject(line(263510452)),{type:'way',id:'26351045'});
+  assert.equal(osmObject(line(231547120)),null,'a merged low-zoom line id names no object');
+  assert.equal(osmObject(line(undefined)),null);
+  assert.equal(aerialwayKind('gondola').id,'cableway');assert.equal(aerialwayKind('t-bar').id,'lift');assert.equal(aerialwayKind('zip_line'),undefined);
 });

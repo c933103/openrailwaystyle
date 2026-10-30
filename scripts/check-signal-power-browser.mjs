@@ -69,10 +69,12 @@ const branchIndex = index([branchOverview,metroOverview]);
 const signalIndex = index([undirected]);
 // Basemap aerialways (OpenMapTiles transportation, class=aerialway).
 const aerialways = [
-  feature({class:'aerialway',subclass:'gondola'},'LineString',[[-.0002,.0003],[.0016,.0003]],93101),
-  feature({class:'aerialway',subclass:'chair_lift'},'LineString',[[-.0002,-.0002],[.0016,-.0002]],93102),
+  // Planetiler ids: OSM way id × 10 + 2. Names sit in transportation_name.
+  feature({class:'aerialway',subclass:'gondola'},'LineString',[[-.0002,.0003],[.0016,.0003]],93102),
+  feature({class:'aerialway',subclass:'chair_lift'},'LineString',[[-.0002,-.0002],[.0016,-.0002]],93112),
 ];
-const basemapIndexes = {poi:index(culture),transportation:index(aerialways)};
+const aerialwayNames = [feature({class:'aerialway',subclass:'gondola',name:'Test gondola'},'LineString',[[-.0002,.0003],[.0016,.0003]],93102)];
+const basemapIndexes = {poi:index(culture),transportation:index(aerialways),transportation_name:index(aerialwayNames)};
 const center = [.0007,0];
 const coordinatesAt = (z,[lon,lat]) => [Math.floor((lon+180)/360*2**z),Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*2**z)];
 function localKeys(zooms,radius=3) {
@@ -100,7 +102,7 @@ function archiveFor(indexes,z=18) {
   const entries=localKeys([z]).map(key=>{const [zoom,x,y]=key.split('/').map(Number),tiles=Object.fromEntries(Object.entries(indexes).map(([layer,index])=>[layer,index.getTile(zoom,x,y)]).filter(([,tile])=>tile));return Object.keys(tiles).length?{id:tileId(zoom,x,y),bytes:Buffer.from(vtpbf.fromGeojsonVt(tiles,{version:2}))}:null;}).filter(Boolean).sort((a,b)=>a.id-b.id);
   let previous=0;
   const directory=Buffer.from([...varint(entries.length),...entries.flatMap(e=>{const delta=e.id-previous;previous=e.id;return varint(delta);}),...entries.flatMap(()=>varint(1)),...entries.flatMap(e=>varint(e.bytes.length)),...entries.flatMap((_,i)=>varint(i?0:1))]);
-  const metadata=Buffer.from(JSON.stringify({vector_layers:[{id:'poi',fields:{name:'String',class:'String',subclass:'String',rank:'Number'}},{id:'transportation',fields:{class:'String',subclass:'String'}}]})),data=Buffer.concat(entries.map(e=>e.bytes));
+  const metadata=Buffer.from(JSON.stringify({vector_layers:[{id:'poi',fields:{name:'String',class:'String',subclass:'String',rank:'Number'}},{id:'transportation',fields:{class:'String',subclass:'String'}},{id:'transportation_name',fields:{class:'String',subclass:'String',name:'String'}}]})),data=Buffer.concat(entries.map(e=>e.bytes));
   const header=Buffer.alloc(127);header.write('PMTiles');header[7]=3;
   for(const [offset,value] of [[8,127],[16,directory.length],[24,127+directory.length],[32,metadata.length],[40,127+directory.length+metadata.length],[48,0],[56,127+directory.length+metadata.length],[64,data.length],[72,entries.length],[80,entries.length],[88,entries.length]])header.writeBigUInt64LE(BigInt(value),offset);
   header[96]=1;header[97]=header[98]=header[99]=1;header[100]=header[101]=z;
@@ -165,6 +167,14 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const aerialwaysDrawn=async()=>{
     for(const id of ['aerialway-cableway-cable','aerialway-cableway-ticks','aerialway-lift-cable','aerialway-lift-ticks'])await visible(id);
     assert.deepEqual(await page.evaluate(()=>Object.fromEntries(['cableway','lift'].map(kind=>[kind,[...new Set(window.reviewMap.queryRenderedFeatures({layers:[`aerialway-${kind}-cable`,`aerialway-${kind}-ticks`]}).map(f=>f.properties.subclass))]]))),{cableway:['gondola'],lift:['chair_lift']});
+    // Clicking opens its name (from the basemap name layer), kind and OSM way.
+    for(const [at,name,kindLabel,way] of [[[.0004,.0003],'Test gondola','Aerial cableway (cable car, gondola)',9310],[[.0004,-.0002],'Unnamed aerialway','Ski or chair lift',9311]]){
+      await clickCoordinates(at);await page.waitForSelector('#details:not([hidden])');
+      const text=await page.locator('#detail-content').innerText();
+      assert.match(text,/AERIALWAY/);assert.ok(text.includes(name),`${name} in ${text}`);assert.ok(text.includes(kindLabel));
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/way/${way}"]`).count(),1);
+      await page.locator('#details-close').click();
+    }
   };
   const legendLayout=()=>page.evaluate(()=>{
     const panel=document.querySelector('.panel'),grid=document.querySelector('#legend .legend-grid');
