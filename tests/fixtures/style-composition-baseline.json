@@ -1917,45 +1917,31 @@
     },
     {
       "id": "electrification-supply-points",
-      "type": "circle",
+      "type": "symbol",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "28e3d0910c3a8a9a1bb7c4a454c3bd4b97567dacd0d48b78fc25695dfa1e66f1"
+      "sha256": "d71936105882f7a605a7ca11a9d2d67a435f9daf9ff14c88023fc7ca6050ec43"
     },
     {
       "id": "electrification-former-supply-points",
-      "type": "circle",
+      "type": "symbol",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "b77ba1596c8a1e01bd6212e46e0504c8c584e69b2649dd48e0fe9804887d009e"
-    },
-    {
-      "id": "electrification-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "6ee5ca2db3e3611b1e0f5651a058de69adf8f7f3670ff02fd61055aa80ee11e4"
-    },
-    {
-      "id": "electrification-former-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "13362cc70f70518d32decc15e2cdc33ce8fe562f2c802b8bd38797318d7e8ffa"
+      "sha256": "e006c660ba9ff5c1d4593e727345c33c1c1d10d12ea88c7ba3519207e5c8ef37"
     },
     {
       "id": "electrification-supply-names",
       "type": "symbol",
       "source": "electricFacilities",
       "minzoom": 14,
-      "sha256": "f9905fb2243348317d130dca7fa302cfea18e5787a1bfaa530b005e441985695"
+      "sha256": "f40e66822ec9b6b3ab22fdba29f805826c8a7c743bd3b7be1305c36f1daaf001"
     },
     {
       "id": "electrification-former-supply-names",
       "type": "symbol",
       "source": "electricFacilities",
       "minzoom": 14,
-      "sha256": "c4c49e4c8dcac59ab7508852a2ec99562e8c99188eb400561a2f0b0e7324fa70"
+      "sha256": "6ae64f9f9479b5687908d2436ed05691f3644563300e57b18360fa342ead84d1"
     },
     {
       "id": "road-labels",
@@ -2534,6 +2520,20 @@
         "place_label_city-placement",
         "place_label_other-placement",
         "state_label-placement"
+      ]
+    },
+    {
+      "reviewed": "2026-10-26",
+      "reason": "Power view points show what each object is: a pictogram per kind (symbol layer, icon drawn by the app) replaces the category circle and letter; names move below the larger tile. The letter layers are removed.",
+      "layers": [
+        "electrification-supply-points",
+        "electrification-former-supply-points",
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ],
+      "removedLayers": [
+        "electrification-supply-marks",
+        "electrification-former-supply-marks"
       ]
     }
   ]

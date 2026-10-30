@@ -57799,13 +57799,18 @@
         ]
       ],
       "id": "electrification-supply-points",
-      "type": "circle",
-      "paint": {
-        "circle-color": [
-          "get",
-          "power_color"
+      "type": "symbol",
+      "layout": {
+        "icon-image": [
+          "concat",
+          "power-",
+          [
+            "get",
+            "power_kind"
+          ],
+          ""
         ],
-        "circle-radius": [
+        "icon-size": [
           "interpolate",
           [
             "linear"
@@ -57814,16 +57819,14 @@
             "zoom"
           ],
           10,
-          3.2,
+          0.55,
           14,
-          5.5,
-          18,
-          6.5
+          0.8,
+          17,
+          1
         ],
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": 1.5
-      },
-      "layout": {
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "visibility": "none"
       }
     },
@@ -57870,10 +57873,18 @@
         ]
       ],
       "id": "electrification-former-supply-points",
-      "type": "circle",
-      "paint": {
-        "circle-color": "#fffef8",
-        "circle-radius": [
+      "type": "symbol",
+      "layout": {
+        "icon-image": [
+          "concat",
+          "power-",
+          [
+            "get",
+            "power_kind"
+          ],
+          "-former"
+        ],
+        "icon-size": [
           "interpolate",
           [
             "linear"
@@ -57882,143 +57893,15 @@
             "zoom"
           ],
           10,
-          3.2,
+          0.55,
           14,
-          5.5,
-          18,
-          6.5
+          0.8,
+          17,
+          1
         ],
-        "circle-stroke-color": [
-          "get",
-          "power_color"
-        ],
-        "circle-stroke-width": 2
-      },
-      "layout": {
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "visibility": "none"
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-supply-marks",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "get",
-          "power_mark"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#fffef8"
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-former-supply-marks",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "get",
-          "power_mark"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ]
       }
     },
     {
@@ -58065,42 +57948,49 @@
       "type": "symbol",
       "layout": {
         "text-field": [
-          "match",
+          "coalesce",
           [
             "get",
-            "power_kind"
+            "power_label"
           ],
-          "substation",
-          "Traction substation",
-          "plant",
-          "Railway power station",
-          "generator",
-          "Railway generator",
-          "converter",
-          "Traction power converter",
-          "transformer",
-          "Traction transformer",
-          "feeder",
-          "Traction feeding point",
-          "power_supply",
-          "Railway power supply",
-          "preheating",
-          "Train preheating supply",
-          "charging_station",
-          "Battery train charging facility",
-          "fuel",
-          "Train refuelling point",
-          "fuel_tank",
-          "Railway fuel tank",
-          "coaling_facility",
-          "Steam engine coaling",
-          "water_tower",
-          "Steam locomotive water tower",
-          "water_tank",
-          "Steam locomotive water tank",
-          "water_crane",
-          "Steam locomotive water crane",
-          ""
+          [
+            "match",
+            [
+              "get",
+              "power_kind"
+            ],
+            "substation",
+            "Traction substation",
+            "plant",
+            "Railway power station",
+            "generator",
+            "Railway generator",
+            "converter",
+            "Traction power converter",
+            "transformer",
+            "Traction transformer",
+            "feeder",
+            "Traction feeding point",
+            "power_supply",
+            "Railway power supply",
+            "preheating",
+            "Train preheating supply",
+            "charging_station",
+            "Battery train charging facility",
+            "fuel",
+            "Train refuelling point",
+            "fuel_tank",
+            "Railway fuel tank",
+            "coaling_facility",
+            "Steam engine coaling",
+            "water_tower",
+            "Steam locomotive water tower",
+            "water_tank",
+            "Steam locomotive water tank",
+            "water_crane",
+            "Steam locomotive water crane",
+            ""
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
@@ -58109,7 +57999,7 @@
         "text-anchor": "bottom",
         "text-offset": [
           0,
-          -0.9
+          -1.2
         ],
         "text-padding": 2,
         "text-max-width": 12,
@@ -58170,51 +58060,58 @@
       "type": "symbol",
       "layout": {
         "text-field": [
-          "concat",
-          [
-            "match",
-            [
-              "get",
-              "power_kind"
-            ],
-            "substation",
-            "Traction substation",
-            "plant",
-            "Railway power station",
-            "generator",
-            "Railway generator",
-            "converter",
-            "Traction power converter",
-            "transformer",
-            "Traction transformer",
-            "feeder",
-            "Traction feeding point",
-            "power_supply",
-            "Railway power supply",
-            "preheating",
-            "Train preheating supply",
-            "charging_station",
-            "Battery train charging facility",
-            "fuel",
-            "Train refuelling point",
-            "fuel_tank",
-            "Railway fuel tank",
-            "coaling_facility",
-            "Steam engine coaling",
-            "water_tower",
-            "Steam locomotive water tower",
-            "water_tank",
-            "Steam locomotive water tank",
-            "water_crane",
-            "Steam locomotive water crane",
-            ""
-          ],
-          " (",
+          "coalesce",
           [
             "get",
-            "power_state"
+            "power_label"
           ],
-          ")"
+          [
+            "concat",
+            [
+              "match",
+              [
+                "get",
+                "power_kind"
+              ],
+              "substation",
+              "Traction substation",
+              "plant",
+              "Railway power station",
+              "generator",
+              "Railway generator",
+              "converter",
+              "Traction power converter",
+              "transformer",
+              "Traction transformer",
+              "feeder",
+              "Traction feeding point",
+              "power_supply",
+              "Railway power supply",
+              "preheating",
+              "Train preheating supply",
+              "charging_station",
+              "Battery train charging facility",
+              "fuel",
+              "Train refuelling point",
+              "fuel_tank",
+              "Railway fuel tank",
+              "coaling_facility",
+              "Steam engine coaling",
+              "water_tower",
+              "Steam locomotive water tower",
+              "water_tank",
+              "Steam locomotive water tank",
+              "water_crane",
+              "Steam locomotive water crane",
+              ""
+            ],
+            " (",
+            [
+              "get",
+              "power_state"
+            ],
+            ")"
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
@@ -58223,7 +58120,7 @@
         "text-anchor": "bottom",
         "text-offset": [
           0,
-          -0.9
+          -1.2
         ],
         "text-padding": 2,
         "text-max-width": 12,
@@ -58304,7 +58201,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.9
+          1.2
         ],
         "text-padding": 4,
         "text-max-width": 14,
@@ -58387,7 +58284,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.9
+          1.2
         ],
         "text-padding": 4,
         "text-max-width": 14,
@@ -60284,71 +60181,35 @@
         ]
       ],
       "id": "electrification-charging-points",
-      "type": "circle",
-      "paint": {
-        "circle-color": [
-          "get",
-          "power_color"
-        ],
-        "circle-radius": 6.5,
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": 1.5
-      },
-      "layout": {
-        "visibility": "none"
-      }
-    },
-    {
-      "source": "electricMethods",
-      "minzoom": 12,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-charging-marks",
       "type": "symbol",
       "layout": {
-        "text-field": "B",
-        "text-font": [
-          "Noto Sans Bold"
+        "icon-image": [
+          "concat",
+          "power-",
+          [
+            "get",
+            "power_kind"
+          ],
+          ""
         ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.55,
+          14,
+          0.8,
+          17,
+          1
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#fffef8"
       }
     },
     {
@@ -60392,42 +60253,49 @@
       "type": "symbol",
       "layout": {
         "text-field": [
-          "match",
+          "coalesce",
           [
             "get",
-            "power_kind"
+            "power_label"
           ],
-          "substation",
-          "Traction substation",
-          "plant",
-          "Railway power station",
-          "generator",
-          "Railway generator",
-          "converter",
-          "Traction power converter",
-          "transformer",
-          "Traction transformer",
-          "feeder",
-          "Traction feeding point",
-          "power_supply",
-          "Railway power supply",
-          "preheating",
-          "Train preheating supply",
-          "charging_station",
-          "Battery train charging facility",
-          "fuel",
-          "Train refuelling point",
-          "fuel_tank",
-          "Railway fuel tank",
-          "coaling_facility",
-          "Steam engine coaling",
-          "water_tower",
-          "Steam locomotive water tower",
-          "water_tank",
-          "Steam locomotive water tank",
-          "water_crane",
-          "Steam locomotive water crane",
-          ""
+          [
+            "match",
+            [
+              "get",
+              "power_kind"
+            ],
+            "substation",
+            "Traction substation",
+            "plant",
+            "Railway power station",
+            "generator",
+            "Railway generator",
+            "converter",
+            "Traction power converter",
+            "transformer",
+            "Traction transformer",
+            "feeder",
+            "Traction feeding point",
+            "power_supply",
+            "Railway power supply",
+            "preheating",
+            "Train preheating supply",
+            "charging_station",
+            "Battery train charging facility",
+            "fuel",
+            "Train refuelling point",
+            "fuel_tank",
+            "Railway fuel tank",
+            "coaling_facility",
+            "Steam engine coaling",
+            "water_tower",
+            "Steam locomotive water tower",
+            "water_tank",
+            "Steam locomotive water tank",
+            "water_crane",
+            "Steam locomotive water crane",
+            ""
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
@@ -60436,7 +60304,7 @@
         "text-anchor": "bottom",
         "text-offset": [
           0,
-          -0.9
+          -1.2
         ],
         "text-max-width": 12,
         "visibility": "none"
@@ -60510,7 +60378,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.9
+          1.2
         ],
         "visibility": "none"
       },
@@ -62425,76 +62293,35 @@
         ]
       ],
       "id": "electrification-former-charging-points",
-      "type": "circle",
-      "paint": {
-        "circle-color": "#fffef8",
-        "circle-radius": 6.5,
-        "circle-stroke-color": [
-          "get",
-          "power_color"
-        ],
-        "circle-stroke-width": 2
-      },
-      "layout": {
-        "visibility": "none"
-      }
-    },
-    {
-      "source": "electricMethods",
-      "minzoom": 12,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "geometry-type"
-          ],
-          "Point"
-        ],
-        [
-          "!=",
-          [
-            "get",
-            "power_state"
-          ],
-          "present"
-        ]
-      ],
-      "id": "electrification-former-charging-marks",
       "type": "symbol",
       "layout": {
-        "text-field": "B",
-        "text-font": [
-          "Noto Sans Bold"
+        "icon-image": [
+          "concat",
+          "power-",
+          [
+            "get",
+            "power_kind"
+          ],
+          "-former"
         ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.55,
+          14,
+          0.8,
+          17,
+          1
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ]
       }
     },
     {
@@ -62540,51 +62367,58 @@
       "type": "symbol",
       "layout": {
         "text-field": [
-          "concat",
-          [
-            "match",
-            [
-              "get",
-              "power_kind"
-            ],
-            "substation",
-            "Traction substation",
-            "plant",
-            "Railway power station",
-            "generator",
-            "Railway generator",
-            "converter",
-            "Traction power converter",
-            "transformer",
-            "Traction transformer",
-            "feeder",
-            "Traction feeding point",
-            "power_supply",
-            "Railway power supply",
-            "preheating",
-            "Train preheating supply",
-            "charging_station",
-            "Battery train charging facility",
-            "fuel",
-            "Train refuelling point",
-            "fuel_tank",
-            "Railway fuel tank",
-            "coaling_facility",
-            "Steam engine coaling",
-            "water_tower",
-            "Steam locomotive water tower",
-            "water_tank",
-            "Steam locomotive water tank",
-            "water_crane",
-            "Steam locomotive water crane",
-            ""
-          ],
-          " (",
+          "coalesce",
           [
             "get",
-            "power_state"
+            "power_label"
           ],
-          ")"
+          [
+            "concat",
+            [
+              "match",
+              [
+                "get",
+                "power_kind"
+              ],
+              "substation",
+              "Traction substation",
+              "plant",
+              "Railway power station",
+              "generator",
+              "Railway generator",
+              "converter",
+              "Traction power converter",
+              "transformer",
+              "Traction transformer",
+              "feeder",
+              "Traction feeding point",
+              "power_supply",
+              "Railway power supply",
+              "preheating",
+              "Train preheating supply",
+              "charging_station",
+              "Battery train charging facility",
+              "fuel",
+              "Train refuelling point",
+              "fuel_tank",
+              "Railway fuel tank",
+              "coaling_facility",
+              "Steam engine coaling",
+              "water_tower",
+              "Steam locomotive water tower",
+              "water_tank",
+              "Steam locomotive water tank",
+              "water_crane",
+              "Steam locomotive water crane",
+              ""
+            ],
+            " (",
+            [
+              "get",
+              "power_state"
+            ],
+            ")"
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
@@ -62593,7 +62427,7 @@
         "text-anchor": "bottom",
         "text-offset": [
           0,
-          -0.9
+          -1.2
         ],
         "text-max-width": 12,
         "visibility": "none"
@@ -62669,7 +62503,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.9
+          1.2
         ],
         "visibility": "none"
       },

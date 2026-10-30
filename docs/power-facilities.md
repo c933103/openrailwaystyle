@@ -16,22 +16,25 @@ At regional zoom, railway power plants appear from zoom 10 and traction
 substations from 11. Generators and converters appear from 12. Train refuelling,
 fuel storage, coaling and water facilities appear from 13, and traction feeding
 points from 14.
-The markers use **E** for electricity, **B** for battery train charging,
-**F** for train refuelling and railway fuel storage, **C** for steam engine
-coaling and **W** for steam engine water and railway water storage. Selecting a
-marker shows its recorded type, status,
-operator, voltage, frequency, contents and output where available. Former and
-planned supplies follow the existing planned/former infrastructure setting;
-former supplies have hollow markers. Text references follow the Labels setting.
+Each point is drawn as a pictogram of what the object is (`POWER_FACILITY_ICONS`
+in `styles/power-facilities.mjs`): a water crane, water tower, water tank, fuel
+dispenser, fuel tank, coaling stage, substation, power station, generator,
+converter, transformer, feeding point, power supply, preheating post or battery
+charger. The tile colour shows the supply it serves. Operating points are filled
+tiles; planned and former points are light tiles with a dashed edge, and follow
+the existing planned/former infrastructure setting. From zoom 14 the kind is
+written above the pictogram (for refuelling points with the recorded supplies,
+such as "diesel, hydrogen") and the mapped name below it. These labels stay with
+the points whatever the value-labels setting; catenary mast numbers still follow
+it. Selecting a point shows its recorded type, status, operator, voltage,
+frequency, contents and output where available.
 
-The legend uses the same circular E/B/F/C/W symbols, colours and lifecycle
-appearance as the map. With planned/former infrastructure enabled, a hollow
-sample appears beside each filled sample; the existing track-line keys remain
-separate. Its servicing labels are “Train refuelling point (fuel type where
-mapped)”, “Steam engine coaling” and “Steam engine water”. These legend categories
-share marker metadata with the mapped facilities. The same category list supplies
-the legend labels and help paragraph, which share their storage and coverage limits. F and W also represent stored
-fuel and water; storage alone does not establish a train servicing point. The
+The Power legend is a fixed key, not a list of what is in view: every current
+system with its voltage range (lighter is lower voltage), every pictogram with
+its planned/former sample when that setting is on, and every means-of-delivery
+stroke. The same table supplies the legend, the help paragraph and the map. Fuel
+and water tanks show mapped railway storage; storage alone does not establish a
+train servicing point. The
 infobox retains the specific facility type, such as Railway fuel tank. The wider
 selection, wording and
 presentation audit remains open in [issue #115](https://github.com/c933103/openrailwaystyle/issues/115).

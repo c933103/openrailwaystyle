@@ -45,7 +45,7 @@ test('point presentation keeps exact source tags and mapped snapshot properties'
 test('static and runtime help stay aligned with the point legend categories and coverage limits',()=>{
  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  assert.equal(html.match(/<p id="help-power">([^<]*)<\/p>/)?.[1],POWER_FACILITY_EXPLANATION);
- for(const {mark,label} of POWER_FACILITY_LEGEND)assert.ok(POWER_FACILITY_EXPLANATION.includes(`${mark}: ${label}`));
+ for(const {label} of POWER_FACILITY_LEGEND)assert.ok(POWER_FACILITY_EXPLANATION.includes(label),label);
  assert.match(POWER_FACILITY_EXPLANATION,/storage alone does not establish/);
  assert.match(POWER_FACILITY_EXPLANATION,/whole electricity grid.*not yet/);
  assert.match(POWER_FACILITY_EXPLANATION,/Missing markers do not establish an absence/);

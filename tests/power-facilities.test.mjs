@@ -289,21 +289,32 @@ test('former railway use does not describe an operating traction supply',()=>{
 });
 
 
-test('each facility category shares its point letter and color with the legend and map paint',()=>{
-  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>row.mark),['E','B','F','C','W']);
+test('each kind of point has its own pictogram and legend row, drawn as on the map',async()=>{
+  const {POWER_FACILITY_ICONS,powerIcon,powerIconId}=await import('../styles/power-facilities.mjs');
+  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>row.kind),Object.keys(POWER_FACILITY_KINDS),'a fixed key: every kind, in table order');
   for (const [kind,definition] of Object.entries(POWER_FACILITY_KINDS)) {
-    const rows=POWER_FACILITY_LEGEND.filter(row=>row.mark===definition.mark);
-    assert.equal(rows.length,1,kind);assert.equal(rows[0].symbol,'point');assert.equal(rows[0].color,definition.color,kind);
+    const row=POWER_FACILITY_LEGEND.find(row=>row.kind===kind);
+    assert.equal(row.symbol,'point');assert.equal(row.color,definition.color,kind);assert.ok(row.label.startsWith(definition.label),kind);
+    assert.match(POWER_FACILITY_ICONS[kind],/^M[\d .MLHVQAZ-]+$/,`${kind} has its own pictogram path`);
   }
-  const layers=powerFacilityLayers(),{paper,radius,textSize,stroke,formerStroke}=POWER_FACILITY_SYMBOL;
+  assert.equal(new Set(Object.values(POWER_FACILITY_ICONS)).size,Object.keys(POWER_FACILITY_ICONS).length,'no two kinds share a pictogram');
+  const layers=powerFacilityLayers();
+  assert.equal(layers.some(layer=>layer.id.endsWith('-marks')),false,'category letters are gone');
   for (const former of [false,true]) {
-    const prefix=former?'electrification-former-supply':'electrification-supply';
-    const point=layers.find(layer=>layer.id===prefix+'-points'),letter=layers.find(layer=>layer.id===prefix+'-marks');
-    assert.equal(point.type,'circle');assert.equal(point.paint['circle-radius'].at(-1),radius);
-    assert.deepEqual(point.paint['circle-color'],former?paper:['get','power_color']);
-    assert.deepEqual(point.paint['circle-stroke-color'],former?['get','power_color']:paper);
-    assert.equal(point.paint['circle-stroke-width'],former?formerStroke:stroke);
-    assert.deepEqual(letter.layout['text-field'],['get','power_mark']);assert.equal(letter.layout['text-size'],textSize);
-    assert.deepEqual(letter.paint['text-color'],former?['get','power_color']:paper);
+    const point=layers.find(layer=>layer.id===(former?'electrification-former-supply-points':'electrification-supply-points'));
+    assert.equal(point.type,'symbol');
+    assert.deepEqual(point.layout['icon-image'],['concat','power-',['get','power_kind'],former?'-former':'']);
+    assert.equal(point.layout['icon-allow-overlap'],true);
   }
+  // Drawing: operating tiles are filled in the supply colour, planned/former
+  // ones are light with a dashed edge; unknown ids draw nothing.
+  const calls=[];const ctx=new Proxy({},{get:(t,key)=>key in t?t[key]:(...args)=>{calls.push([key,args,ctx.fillStyle,ctx.strokeStyle]);return key==='getImageData'?{width:48}:undefined;},set:(t,key,value)=>{t[key]=value;return true;}});
+  const document={createElement:()=>({getContext:()=>ctx})};
+  globalThis.Path2D??=class{constructor(d){this.d=d;}};
+  assert.equal(powerIcon('power-unknown',document),null);
+  assert.equal(powerIcon(powerIconId('water_crane'),document).width,48);
+  assert.equal(calls.find(([key])=>key==='fill')[2],POWER_FACILITY_KINDS.water_crane.color);
+  calls.length=0;powerIcon(powerIconId('water_crane',true),document);
+  assert.equal(calls.find(([key])=>key==='fill')[2],POWER_FACILITY_SYMBOL.paper);
+  assert.deepEqual(calls.find(([key])=>key==='setLineDash')[1][0],[3,2]);
 });
