@@ -132,7 +132,9 @@ come from the project's own aerialway snapshot (see
 
 In the Infrastructure and Power views the cable is thin grey, as OSM Carto
 draws it, and those legends key both kinds. Every other view colours the cable,
-drawn wider, by that view's own value from the way's tags, as it does tracks:
+drawn thinner than that view's thinnest track (sidings, or a dual-gauge half in
+Gauge) so it never reads as ordinary railway, by that view's own value from the
+way's tags, as it does tracks:
 Owner by `owner=*` (the same colour as a track with that owner, listed in the
 "in view" legend), Speed by `maxspeed`, Service as other track, and Gauge,
 Loading, Axle and Control as unknown, since aerialways carry none of those. The

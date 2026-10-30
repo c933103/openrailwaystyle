@@ -550,8 +550,15 @@ export function viewLinePaint(id, mode, units = 'metric') {
   if (mode === 'service') return OTHER_TRACK;
   return UNKNOWN_COLOR;
 }
+// Thinner than the view's own thinnest track, so they never read as ordinary
+// railway: tracks are 2.8/4.8 px (main) and 1.1/2 px (sidings) at zoom 11/16;
+// Gauge splits a dual-gauge track into halves of 1 px at zoom 16 (sidings), so
+// it goes thinner still. Service draws other track at the same widths as the
+// default under its coloured routes.
+const VIEW_LINE_WIDTHS = {gauge: [12, 0.8, 16, 0.9, 20, 1.6], default: [12, 0.9, 16, 1.5, 20, 2.4]};
 export function viewLineWidth(id, mode) {
-  return showsType(mode) ? structuredClone(VIEW_LINE_LAYERS[id].width) : ['interpolate', ['linear'], ['zoom'], 12, 2, 18, 3.5];
+  if (showsType(mode)) return structuredClone(VIEW_LINE_LAYERS[id].width);
+  return ['interpolate', ['linear'], ['zoom'], ...(VIEW_LINE_WIDTHS[mode] || VIEW_LINE_WIDTHS.default)];
 }
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];

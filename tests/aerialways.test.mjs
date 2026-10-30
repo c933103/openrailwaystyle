@@ -75,7 +75,12 @@ test('each view colours aerialway cables and escalator lines by its own value fr
     assert.equal(colour(viewLinePaint(id,'speed','metric'),{}),UNKNOWN_COLOR,'Speed: unknown without one');
     assert.equal(viewLinePaint(id,'service'),OTHER_TRACK,'Service: other track');
     for(const mode of ['gauge','loading','axle','control'])assert.equal(viewLinePaint(id,mode),UNKNOWN_COLOR,`${mode}: none of its values exist on these`);
-    assert.notDeepEqual(viewLineWidth(id,'owner'),viewLineWidth(id,'infrastructure'),'thematic views draw a readable width');
+    // Thinner than each view's thinnest track: sidings (1.1/2 px at zoom 11/16)
+    // in most views; dual-gauge halves (0.55/1 px) in Gauge.
+    const width=(mode,zoom)=>expression.createExpression(viewLineWidth(id,mode)).value.evaluate({zoom},{properties:{}});
+    for(const mode of ['speed','owner','service','loading','axle','control'])assert.ok(width(mode,16)<2&&width(mode,12)<1.28,`${mode}: thinner than a siding`);
+    assert.ok(width('gauge',16)<=1,'Gauge: no wider than a dual-gauge half');
+    assert.ok(width('owner',16)>=1.2,'still wide enough to show its colour');
   }
   // Ticks and arrows keep showing the type in every view.
   for(const id of ['aerialway-cableway-ticks','aerialway-lift-ticks'])assert.equal(VIEW_LINE_LAYERS[id],undefined);
