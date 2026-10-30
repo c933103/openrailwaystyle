@@ -23,6 +23,18 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 #map.detail.detail-2 .maplibregl-control-container{width:25%;height:25%;transform:scale(4)}
 .maplibregl-ctrl-group button.atlas-ctrl{font-size:17px;line-height:29px;color:#203c44}
 .maplibregl-ctrl-group button.atlas-ctrl[aria-pressed=true]{background:#173e47;color:#fff}
+/* Match the other MapLibre glyph controls and preserve contrast when active. */
+.maplibregl-ctrl-group button.atlas-terrain-toggle{position:relative;display:flex;align-items:center;justify-content:center}
+.maplibregl-ctrl-group button.atlas-terrain-toggle .terrain-scale-indicator{position:absolute;right:1px;bottom:1px;padding:0 2px;font-size:10px;font-weight:750;line-height:12px;border-radius:3px;pointer-events:none;color:#203c44;background:#fffef9f0}
+.maplibregl-ctrl-group button.atlas-terrain-toggle[aria-pressed=true] .terrain-scale-indicator{background:#173e47;color:#fff}
+.maplibregl-ctrl-group button.atlas-terrain-toggle svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Rendered vertical scale is explicit: the source DEM and contours remain exact. */
+.terrain-exaggeration-picker{display:grid;gap:5px;margin:7px 0 2px 22px}
+.terrain-exaggeration-picker>label{font-weight:600}
+.terrain-exaggeration-picker select{width:100%;min-width:0;padding:7px 8px;font-size:12px}
+.terrain-exaggeration-picker .hint{margin:0;font-size:11px}
+
+
 .draw-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:min(560px,calc(100% - 420px));background:var(--paper);border-radius:12px;box-shadow:0 6px 30px #28414a22;padding:8px 38px 8px 8px}
 .draw-group{display:flex;gap:2px;border:1px solid var(--border);border-radius:8px;padding:2px}
 .draw-group button{border:0;font-size:12px;padding:6px 9px}

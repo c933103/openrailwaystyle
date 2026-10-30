@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261026-delivery-methods-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261026-delivery-methods-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-delivery-methods-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-delivery-methods-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261026-delivery-methods-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-delivery-methods-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -712,7 +712,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
+export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','terrainExaggeration','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -775,7 +775,9 @@ export function readSettings(search, remembered = {}) {
     background: pick('background', v => BACKGROUNDS.includes(v), 'map'),
     stations: flag('stations', true), stationImportanceColors: flag('stationImportanceColors', false), trackCounts: flag('trackCounts', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
-    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
+    relief: flag('relief', true),
+    terrainExaggeration: Number(pick('terrainExaggeration', value => ['1','2','3','5'].includes(String(value)), '3')),
+    names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     serviceWidth: pick('serviceWidth', v => ['equal','frequency'].includes(v), 'equal'),
     frequencyPeriod: pick('frequencyPeriod', v => ['peak','offpeak','overnight','hour'].includes(v), 'offpeak'),

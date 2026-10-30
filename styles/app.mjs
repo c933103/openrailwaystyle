@@ -1,28 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261026-delivery-methods-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261026-delivery-methods-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261026-delivery-methods-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261026-delivery-methods-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261026-delivery-methods-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261026-delivery-methods-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261026-delivery-methods-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261030-delivery-methods-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261030-delivery-methods-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261030-delivery-methods-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261030-delivery-methods-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261030-delivery-methods-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261030-delivery-methods-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261030-delivery-methods-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261026-delivery-methods-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261026-delivery-methods-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261026-delivery-methods-1';
-import {departureItem} from './departures-ui.mjs?v=20261026-delivery-methods-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261026-delivery-methods-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261026-delivery-methods-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261026-delivery-methods-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261026-delivery-methods-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261026-delivery-methods-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261026-delivery-methods-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261026-delivery-methods-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261026-delivery-methods-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261026-delivery-methods-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261026-delivery-methods-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261026-delivery-methods-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261026-delivery-methods-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261026-delivery-methods-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261030-delivery-methods-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261030-delivery-methods-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261030-delivery-methods-1';
+import {departureItem} from './departures-ui.mjs?v=20261030-delivery-methods-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261030-delivery-methods-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261030-delivery-methods-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261030-delivery-methods-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261030-delivery-methods-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261030-delivery-methods-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261030-delivery-methods-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261030-delivery-methods-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261030-delivery-methods-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261030-delivery-methods-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261030-delivery-methods-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261030-delivery-methods-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261030-delivery-methods-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261030-delivery-methods-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261030-delivery-methods-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -42,6 +43,14 @@ const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
 // with page requests). A link with a position (#zoom/lat/lng) still wins.
 const VIEW_STORE = 'atlas_view';
 const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
+// Capture the latest valid map link before URL normalization, including
+// explicit navigation while libraries or startup data are still loading.
+let linkedViewHash = parseViewHash(location.hash) ? location.hash : '';
+function captureViewHash() {
+  if (parseViewHash(location.hash)) linkedViewHash = location.hash;
+  return linkedViewHash;
+}
+addEventListener('hashchange', captureViewHash);
 function saveView() {
   if (!map) return;
   const c = map.getCenter();
@@ -61,7 +70,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261026-delivery-methods-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261030-delivery-methods-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -449,7 +458,14 @@ function powerMethodSwatch(stroke) {
   return svg;
 }
 function renderLegend() {
-  const box = $('legend'); box.replaceChildren();
+  const box = $('legend');
+  // Native details toggle events are queued. A settings/metadata redraw can
+  // happen first, so preserve the displayed state before replacing its nodes.
+  const previousHelp = box.querySelector(':scope > details.legend-help:not(#service-data-status)');
+  const previousStatus = box.querySelector('#service-data-status');
+  if (previousHelp) legendHelpOpen = previousHelp.open;
+  if (previousStatus) serviceStatusOpen = previousStatus.open;
+  box.replaceChildren();
   const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
   const listed = rows => rows.length ? rows : nothing;
   const legends = {
@@ -525,11 +541,11 @@ function renderLegend() {
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
   help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
-  help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
+  help.addEventListener('toggle', () => { if (help.isConnected) legendHelpOpen = help.open; });
   box.append(help);
   if(settings.mode==='service'){
     const dataStatus=Object.assign(textNode('details','','legend-help'),{open:serviceStatusOpen});dataStatus.id='service-data-status';
-    dataStatus.addEventListener('toggle',()=>{serviceStatusOpen=dataStatus.open;});
+    dataStatus.addEventListener('toggle',()=>{if(dataStatus.isConnected)serviceStatusOpen=dataStatus.open;});
     dataStatus.append(textNode('summary','Service data status'));
     for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
     const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;
@@ -539,15 +555,32 @@ function renderLegend() {
 function saveSettings() {
   writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
   const url = new URL(location.href);
-  if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
+  const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key));
+  const hasView = Boolean(parseViewHash(url.hash));
+  if (hasView) linkedViewHash = url.hash;
+  // Normalize shared links once, not on every pan/zoom. Preserve unrelated
+  // query parameters, non-map anchors and the current browser history state.
+  if (hasSettings || hasView) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
-    history.replaceState(null, '', url);
+    if (hasView) url.hash = '';
+    history.replaceState(history.state, '', url);
   }
 }
-// The address of this view with its display settings, for sharing.
+// Build a link on demand rather than writing each map position into history.
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
+  if (map) {
+    const {lat, lng} = map.getCenter();
+    url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
+  } else if (captureViewHash()) {
+    // The share control is available while map libraries are still loading.
+    url.hash = linkedViewHash;
+  } else if (Array.isArray(rememberedView.c) && rememberedView.c.length === 2
+      && rememberedView.c.every(Number.isFinite) && Number.isFinite(rememberedView.z)) {
+    url.hash = viewHash({zoom: rememberedView.z, lat: rememberedView.c[1], lng: rememberedView.c[0],
+      bearing: rememberedView.b ?? 0, pitch: rememberedView.p ?? 0});
+  }
   return url.href;
 }
 saveSettings();
@@ -682,6 +715,7 @@ function applySettings() {
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
+  $('terrain-exaggeration').value = String(settings.terrainExaggeration);
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   const frequencyPaint=serviceFrequencyPaint(settings);
@@ -709,7 +743,10 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  if (ready) { syncTerrain3D(map, settings.relief, settings.terrainExaggeration);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.(); }
+  // The button must reflect the mesh AFTER its state is reconciled. When
+  // relief is re-enabled while already tilted, no new pitch event occurs.
+  updateTerrainButton();
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -1249,6 +1286,9 @@ const mapErrorMessage = () => {
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
       'Independent map references remain where available; detail may be missing.';
   }
+  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
+    return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
+  }
   return 'Some map data could not load. Check your connection or reload to retry.';
 };
 function updateStatus() {
@@ -1401,6 +1441,48 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+// Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
+// rather than rendering the literal text "3D" in a MapLibre icon button.
+const terrainButton = Object.assign(document.createElement('button'), {
+  type:'button', className:'atlas-ctrl atlas-terrain-toggle', id:'terrain-toggle',
+});
+const terrainIcon = document.createElementNS('http://www.w3.org/2000/svg','svg');
+terrainIcon.setAttribute('viewBox','0 0 24 24');
+terrainIcon.setAttribute('aria-hidden','true');
+for (const d of [
+  'M2 18.5 7.5 7l3.6 6.4L15 4l7 14.5H2Z',
+  'M5.2 11.3 7.5 13.7l1.4-1.3',
+  'M13.3 9l1.7 2 1.7-1.6',
+  'M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0',
+]) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',d); terrainIcon.append(path);
+}
+terrainButton.append(terrainIcon);
+const terrainScaleIndicator = Object.assign(document.createElement('span'),{
+  className:'terrain-scale-indicator',
+});
+terrainScaleIndicator.setAttribute('aria-hidden','true');
+terrainButton.append(terrainScaleIndicator);
+function updateTerrainButton() {
+  const enabled = terrain3DEnabled(settings.relief, map?.getPitch()) &&
+    map?.getTerrain?.()?.source === 'terrain3d';
+  terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
+  const scale = settings.terrainExaggeration;
+  terrainScaleIndicator.textContent = `${scale}×`;
+  terrainButton.title = enabled ? `Overhead map (current 3D relief: ${scale}× vertical; keep current zoom)` :
+    `Inspect 3D terrain and seabed (${scale}× vertical; change in Settings)`;
+  terrainButton.setAttribute('aria-label',terrainButton.title);
+}
+terrainButton.addEventListener('click', () => {
+  if (!map) return;
+  const was3D = terrain3DEnabled(settings.relief, map.getPitch());
+  if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
+    globe:onGlobe(), latitude:map.getCenter().lat});
+  map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+});
+updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(from = settings.detail) {
   const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
@@ -1650,14 +1732,21 @@ async function initialize() {
   const waterArchive = style.sources.openmaptiles.url;
   const waterArchiveKey = waterArchive.replace(/^pmtiles:\/\//,'');
   if (waterArchiveKey !== waterArchive && !protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
+  const readWaterTile = (z, x, y, controller) => {
+    // A label retry may remove the shared archive during its backoff.
+    if (!protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
+    return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
+  };
+  const readWater = data => labelCode.readTile(data, ['water']);
   installBathymetry(maplibregl, dem, {
-    waterTile: (z, x, y, controller) => {
-      // A label retry may remove the shared archive during its backoff.
-      if (!protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
-      return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
-    },
-    readTile: data => labelCode.readTile(data, ['water']),
+    waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
+  });
+  // Distinct 3D mesh: fine DEM loses sea depth above zoom 10. The original
+  // repair and ocean polygons restore correct land and seabed heights.
+  installTerrain3D(maplibregl, dem, {
+    waterTile: readWaterTile, readTile: readWater,
+    createWorker: () => new Worker(new URL(`vendor/terrain-3d-worker.js?v=${assetVersion}`, import.meta.url)),
   });
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
@@ -1679,23 +1768,36 @@ async function initialize() {
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linkedView = parseViewHash(location.hash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
   // A centre beyond 85.05° exists only on the globe: open there, or the flat
   // map would pull it back to its edge.
   const startLat = linked ? linkedView.center[1] : Array.isArray(start.c) ? start.c[1] : 0;
   const startGlobe = Math.abs(startLat) > 85.051129 || (typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4);
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
+  // Restore an already-tilted map directly in 3D. Overhead views do not
+  // request additional terrain mesh tiles.
+  if (terrain3DEnabled(settings.relief, start.p)) style.terrain = {source:'terrain3d', exaggeration:terrainExaggeration(settings.terrainExaggeration)};
   const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
     center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+    maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
     renderWorldCopies: true, attributionControl: false,
   });
   installHiddenTileMaskGuard(map);
   // MapLibre replaces the painter when WebGL recovers. Its public event is
   // synchronous and precedes the next scheduled frame on the new painter.
   map.on('webglcontextrestored', () => installHiddenTileMaskGuard(map));
+  // Tilt may change via touch, compass, keyboard or a linked view.
+  // High-pitch tile detail is bounded separately from the camera angle.
+  // A style replacement recreates source objects, so reapply per style load.
+  map.on('style.load', () => syncHighPitchTileBudget(map));
+  map.on('pitch', () => {
+    syncHighPitchTileBudget(map);
+    syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+    updateTerrainButton();
+  });
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
@@ -1716,16 +1818,10 @@ async function initialize() {
   const wanted = linked ? linkedView : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && (linked || startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
     // Again once the style has put the map on the globe.
-    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(parseViewHash(captureViewHash()) || wanted));
   }
-  // The view in the address (viewHash in globe-drag.mjs, in place of
-  // MapLibre's own, which near a pole wrote a negative zoom and rounded the
-  // latitude to 90°).
-  const writeHash = () => {
-    const c = map.getCenter(), hash = viewHash({zoom: map.getZoom(), lat: c.lat, lng: c.lng, bearing: map.getBearing(), pitch: map.getPitch()});
-    if (hash !== location.hash) { const url = new URL(location.href); url.hash = hash; history.replaceState(history.state, '', url); }
-  };
-  map.on('moveend', writeHash);
+  // Ordinary navigation updates the persisted local view through updatePolar.
+  // Only explicitly navigating to a link fragment changes the browser URL.
   addEventListener('hashchange', () => {
     const view = parseViewHash(location.hash);
     if (!view) return;
@@ -1785,7 +1881,7 @@ async function initialize() {
   // (with the direction of travel where the device reports one); moving the
   // map stops following, and a press resumes it.
   map.addControl(new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, trackUserLocation: true, showUserHeading: true, fitBoundsOptions: {maxZoom: 15 + settings.detail}}), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, terrainButton, polarButton]), 'top-right');
   // Controls in the bottom corners stack upwards: added first, it sits below the scale bar.
   map.addControl({onAdd: () => readout, onRemove: () => readout.remove()}, 'bottom-left');
   map.on('mousemove', event => { readoutPoint = event.point; updateReadout(); });
@@ -1806,7 +1902,13 @@ async function initialize() {
   // partial/unpublished OSM crawl leaves the existing dot layers untouched.
   stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
     root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
-    onChange:(active,styleReady)=>{stationWorldActive=active;if(ready&&styleReady)applySettings();},
+    onChange:(active,styleReady)=>{
+      stationWorldActive=active;
+      // This source is installed asynchronously after style.load. MapLibre
+      // does not apply its previous all-source LOD parameters retroactively.
+      if(active&&styleReady)syncHighPitchTileBudget(map,WORLD_STATION_SOURCE);
+      if(ready&&styleReady)applySettings();
+    },
   });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
@@ -1865,6 +1967,11 @@ async function initialize() {
     otherMetadataRetries.noteError(e);
   });
   map.on('sourcedata', e => {
+    // A provider/source can be added after style.load (or replaced under the
+    // same ID). Apply the near-horizon LOD to its new instance once; routine
+    // tile content notifications do not reset LOD or change the camera.
+    if(e.sourceId && ['metadata','content'].includes(e.sourceDataType))
+      syncHighPitchTileBudget(map,e.sourceId);
     if (e.sourceId && e.sourceDataType === 'metadata') otherMetadataRetries.clear(e.sourceId);
     const recovered = railRecovery.noteSourceData(e);
     const stationChanged = stationFailures.noteSourceData(e);
@@ -1992,6 +2099,16 @@ for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','fre
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));
+$('terrain-exaggeration').addEventListener('change', () => {
+  // Numeric whitelist is shared with readSettings and the terrain runtime.
+  // The choice never edits DEM samples or the elevation/profile measurements.
+  const next = Number($('terrain-exaggeration').value);
+  try { settings.terrainExaggeration = terrainExaggeration(next); }
+  catch { $('terrain-exaggeration').value = String(settings.terrainExaggeration); return; }
+  if (ready) syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+  updateTerrainButton();
+  saveSettings();
+});
 for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
   if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
@@ -2133,8 +2250,7 @@ $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
-// The contents links scroll within the dialog; following them would replace
-// the address's map position (#zoom/lat/lon) with the section's name.
+// Keep contents navigation inside the dialog without changing browser history.
 $('about').querySelector('.help-contents')?.addEventListener('click', event => {
   const link = event.target.closest('a[href^="#"]');
   if (!link) return;
