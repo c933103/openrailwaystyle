@@ -2,15 +2,21 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM} from './conveying-data.mjs';
+import {overpassRetryDelayMs,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 let data;
-for(let attempt=0;attempt<3;attempt++) {
+// A busy server waits minutes: 2, 5, then 10 (or its Retry-After).
+for(let attempt=0;attempt<=OVERPASS_RETRY_MINUTES.length;attempt++) {
   try {
     const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(960000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
-    if(!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
+    if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{retryAfter:response.headers.get('retry-after')});
     data=await response.json();
     if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
     break;
-  } catch(error) {if(attempt===2) throw error;console.log(error.message,'— retrying after two minutes');await new Promise(r=>setTimeout(r,120000));}
+  } catch(error) {
+    if(attempt===OVERPASS_RETRY_MINUTES.length) throw error;
+    const wait=overpassRetryDelayMs(attempt,error.retryAfter);
+    console.log(describeOverpassError(error),`— retrying in ${Math.round(wait/60000)} min`);await new Promise(r=>setTimeout(r,wait));
+  }
 }
 const {features}=conveyingGeoJSON(data);
 // Taginfo counted about 44,000 such ways in October 2026.

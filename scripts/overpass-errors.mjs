@@ -18,3 +18,20 @@ export function describeOverpassError(error) {
 // Untrusted provider messages must stay data in Actions annotations.
 export const workflowWarning = message => '::warning::' + String(message)
   .replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');
+
+// A busy or refusing Overpass server needs minutes, not seconds: its slots
+// stay taken by queries a client already abandoned, and it may stop taking
+// connections for a while. Retry after 2, 5 and then 10 minutes, or the
+// server's own Retry-After (up to 15 minutes) when it sends a longer one.
+export const OVERPASS_RETRY_MINUTES = Object.freeze([2, 5, 10]);
+const RETRY_AFTER_CAP_MS = 15 * 60_000;
+export function overpassRetryDelayMs(retry, retryAfter, now = Date.now()) {
+  const scheduled = OVERPASS_RETRY_MINUTES[Math.min(retry, OVERPASS_RETRY_MINUTES.length - 1)] * 60_000;
+  let asked = 0;
+  const value = String(retryAfter ?? '').trim();
+  if (/^\d+$/.test(value)) asked = Number(value) * 1000;
+  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) asked = date - now; }
+  return Math.max(scheduled, Math.min(Math.max(asked, 0), RETRY_AFTER_CAP_MS));
+}
+// Server busy (429, 502–504) or no connection at all: worth waiting for.
+export const overpassBusy = error => /^HTTP (429|502|503|504)\b/.test(String(error?.message)) || /fetch failed/i.test(String(error?.message));
