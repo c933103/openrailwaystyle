@@ -5,9 +5,10 @@
 // tiles' edge are simply below 0 (north) or above 1 (south); the shader
 // turns them into points on the sphere like any other.
 import earcut from 'earcut';
+import {DEPTH_COLOURS} from './bathymetry.mjs';
 import {globeGroundZoom} from './globe-drag.mjs';
 import {cssRgba, polarStylePaint} from './polar-paint.mjs';
-import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
+import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX_SIDE, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
@@ -80,12 +81,26 @@ function lineMesh(cap, lines) {
   return {data, indices};
 }
 
-const FILL_VERTEX = `in vec2 a_pos; void main() { gl_Position = projectTile(a_pos); }`;
+// GPU sin/cos are not guaranteed to return a unit-length pair. Captured
+// SwiftShader vertices at 85.05 S had radius 0.999847 (about 975 m below
+// the sphere), moving the cap edge past the camera centre at 82 degrees.
+// Restore the unit sphere before MapLibre applies its projection/clipping.
+// Preserve its exact Mercator transition and the flat shader variant.
+const POLAR_PROJECTION = `
+vec4 polarProjectTile(vec2 position) {
+#ifdef GLOBE
+  return interpolateProjection(position, normalize(projectToSphere(position)), 0.0);
+#else
+  return projectTile(position);
+#endif
+}`;
+
+const FILL_VERTEX = `in vec2 a_pos; void main() { gl_Position = polarProjectTile(a_pos); }`;
 // Lines are drawn at least a pixel wide (thinner ones fainter), with half
 // a pixel more on each side over which they fade out, as MapLibre's do.
 const LINE_VERTEX = `in vec2 a_pos; in vec2 a_other; in float a_side; uniform vec2 u_viewport; uniform float u_width; out float v_across;
 void main() {
-  vec4 p = projectTile(a_pos), q = projectTile(a_other);
+  vec4 p = polarProjectTile(a_pos), q = polarProjectTile(a_other);
   vec2 d = (q.xy / q.w - p.xy / p.w) * u_viewport;
   vec2 n = length(d) > 0.0 ? normalize(vec2(-d.y, d.x)) : vec2(0.0);
   float outset = max(u_width, 1.0) / 2.0 + 0.5;
@@ -102,7 +117,7 @@ void main() {
 // east and south, scaled as MapLibre scales its elevation tiles at the zoom
 // it would use at the cap's edge (u_zoom), and shaded alike, so the relief
 // carries on across 85.05°.
-const RELIEF_VERTEX = `in vec2 a_pos; in vec2 a_polar; out vec2 v_polar; void main() { v_polar = a_polar; gl_Position = projectTile(a_pos); }`;
+const RELIEF_VERTEX = `in vec2 a_pos; in vec2 a_polar; out vec2 v_polar; void main() { v_polar = a_polar; gl_Position = polarProjectTile(a_pos); }`;
 const RELIEF_FRAGMENT = `precision highp float; in vec2 v_polar; out vec4 fragColor;
 uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_south; uniform float u_zoom; uniform float u_edge; uniform vec2 u_light;
 uniform vec4 u_shadow; uniform vec4 u_highlight; uniform vec4 u_accent; uniform float u_opacity;
@@ -126,6 +141,45 @@ void main() {
   float shade = abs(mod((aspect + azimuth) / PI + 0.5, 2.0) - 1.0);
   vec4 shadeColor = mix(u_shadow, u_highlight, shade) * sin(scaled) * clamp(intensity * 2.0, 0.0, 1.0);
   fragColor = (accent * (1.0 - shadeColor.a) + shadeColor) * u_opacity;
+}`;
+// Same metres and colour stops as ordinary atlas-depth raster tiles. The
+// texture contains depth high/low bytes and an independent validity byte;
+// texelFetch avoids interpolating the integer bytes before decoding them.
+const DEPTH_LEVELS = new Float32Array(DEPTH_COLOURS.map(([depth]) => depth));
+const DEPTH_RGB = new Float32Array(DEPTH_COLOURS.flatMap(([,hex]) => [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255)));
+const DEPTH_FRAGMENT = `precision highp float;
+in vec2 v_polar; out vec4 fragColor;
+uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_opacity;
+uniform float u_depth_stops[${DEPTH_COLOURS.length}]; uniform vec3 u_depth_colours[${DEPTH_COLOURS.length}];
+float metres(vec3 encoded) {
+  return floor(encoded.r * 255.0 + 0.5) * 256.0 + floor(encoded.g * 255.0 + 0.5);
+}
+void main() {
+  vec2 p = (v_polar - vec2(u_grid.x)) / u_grid.y;
+  vec2 f = clamp(fract(p), 0.0, 1.0);
+  ivec2 first = clamp(ivec2(floor(p)), ivec2(0), ivec2(int(u_grid.z)-1));
+  ivec2 last = min(first + ivec2(1), ivec2(int(u_grid.z)-1));
+  vec3 a = texelFetch(u_image, first, 0).rgb;
+  vec3 b = texelFetch(u_image, ivec2(last.x, first.y), 0).rgb;
+  vec3 c = texelFetch(u_image, ivec2(first.x, last.y), 0).rgb;
+  vec3 d = texelFetch(u_image, last, 0).rgb;
+  vec4 weights = vec4((1.0-f.x)*(1.0-f.y), f.x*(1.0-f.y), (1.0-f.x)*f.y, f.x*f.y);
+  weights *= vec4(a.b > 0.5 ? 1.0 : 0.0, b.b > 0.5 ? 1.0 : 0.0,
+                  c.b > 0.5 ? 1.0 : 0.0, d.b > 0.5 ? 1.0 : 0.0);
+  float coverage = dot(weights, vec4(1.0));
+  if (coverage <= 0.0) { fragColor = vec4(0.0); return; }
+  float depth = dot(weights, vec4(metres(a), metres(b), metres(c), metres(d))) / coverage;
+  vec3 colour = u_depth_colours[${DEPTH_COLOURS.length-1}];
+  for (int i = 1; i < ${DEPTH_COLOURS.length}; i++) {
+    if (depth <= u_depth_stops[i]) {
+      float t = clamp((depth - u_depth_stops[i-1]) /
+        (u_depth_stops[i] - u_depth_stops[i-1]), 0.0, 1.0);
+      colour = mix(u_depth_colours[i-1], u_depth_colours[i], t);
+      break;
+    }
+  }
+  float alpha = coverage * u_opacity;
+  fragColor = vec4(colour * alpha, alpha);
 }`;
 const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragColor; void main() { fragColor = vec4(u_color.rgb * u_color.a, u_color.a); }`;
 
@@ -166,6 +220,7 @@ export class PolarLayer {
     for (const cap of Object.values(this.caps)) {
       for (const mesh of Object.values(cap)) if (mesh?.buffers) this.freeMesh(mesh);
       if (cap.relief) this.gl.deleteTexture(cap.relief);
+      if (cap.depth) this.gl.deleteTexture(cap.depth);
     }
     for(const {program} of this.programs.values())this.gl.deleteProgram(program);
     this.tiles.clear(); this.caps = {north: {}, south: {}}; this.programs.clear();
@@ -178,18 +233,18 @@ export class PolarLayer {
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){const error=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw new Error(error);}
       return shader;
     };
-    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX}[kind];
+    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX, depth: RELIEF_VERTEX}[kind];
     let vertexShader,fragmentShader;
     try {
-      vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${vertex}`);
-      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT}[kind] || FRAGMENT}`);
+      vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${POLAR_PROJECTION}\n${vertex}`);
+      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT, depth: DEPTH_FRAGMENT}[kind] || FRAGMENT}`);
       gl.attachShader(program,vertexShader);gl.attachShader(program,fragmentShader);gl.linkProgram(program);
       if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
     }catch(error){gl.deleteProgram(program);throw error;}
     finally{if(vertexShader)gl.deleteShader(vertexShader);if(fragmentShader)gl.deleteShader(fragmentShader);}
     const uniforms = {};
     for (const name of ['u_projection_matrix', 'u_projection_fallback_matrix', 'u_projection_tile_mercator_coords', 'u_projection_clipping_plane', 'u_projection_transition', 'u_color', 'u_viewport', 'u_width',
-      'u_image', 'u_grid', 'u_south', 'u_zoom', 'u_edge', 'u_light', 'u_shadow', 'u_highlight', 'u_accent', 'u_opacity'])
+      'u_image', 'u_grid', 'u_south', 'u_zoom', 'u_edge', 'u_light', 'u_shadow', 'u_highlight', 'u_accent', 'u_opacity', 'u_depth_stops[0]', 'u_depth_colours[0]'])
       uniforms[name] = gl.getUniformLocation(program, name);
     const entry = {program, uniforms, attributes: Object.fromEntries(['pos', 'other', 'side', 'polar'].map(a => [a, gl.getAttribLocation(program, `a_${a}`)]))};
     this.programs.set(key, entry);
@@ -222,7 +277,7 @@ export class PolarLayer {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 20, 0);
       gl.enableVertexAttribArray(attributes.other); gl.vertexAttribPointer(attributes.other, 2, gl.FLOAT, false, 20, 8);
       gl.enableVertexAttribArray(attributes.side); gl.vertexAttribPointer(attributes.side, 1, gl.FLOAT, false, 20, 16);
-    } else if (mesh.kind === 'relief') {
+    } else if (mesh.kind === 'relief' || mesh.kind === 'depth') {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 16, 0);
       gl.enableVertexAttribArray(attributes.polar); gl.vertexAttribPointer(attributes.polar, 2, gl.FLOAT, false, 16, 8);
     } else {
@@ -239,16 +294,22 @@ export class PolarLayer {
       gl.uniform1f(u.u_width, width * this.map.getPixelRatio());
     });
   }
-  async image(name) {
+  async image(name, {nearest=false, expectedSize}={}) {
     const generation=this.generation;
     const response = await fetch(new URL(name, this.data),{signal:this.pending?.signal});
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
-    const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none', colorSpaceConversion: 'none'});
-    if(generation!==this.generation){bitmap.close?.();return null;}
+    const blob = await response.blob();
+    if (expectedSize && blob.size > 8*1024*1024) throw new Error('Polar depth asset exceeds 8 MiB');
+    const bitmap = await createImageBitmap(blob, {premultiplyAlpha: 'none', colorSpaceConversion: 'none'});
+    if (generation!==this.generation) {bitmap.close?.();return null;}
+    if (expectedSize && (bitmap.width!==expectedSize || bitmap.height!==expectedSize)) {
+      bitmap.close?.();throw new Error('Polar depth image dimensions disagree with index');
+    }
     const gl = this.gl, texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
-    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    const filtering = nearest ? gl.NEAREST : gl.LINEAR;
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, filtering], [gl.TEXTURE_MAG_FILTER, filtering], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
     bitmap.close?.();
     return texture;
   }
@@ -276,6 +337,51 @@ export class PolarLayer {
       }
       this.map.triggerRepaint();
     }).catch(error => { console.warn('Polar map data unavailable:', error.message); });
+  }
+  // Old polar snapshots contain only a relief slope texture, not depths.
+  // Load the optional numeric depth raster once, only for a visible Map cap.
+  // Validation prevents malformed indices from allocating unbounded GPU data.
+  ensureDepth(cap, state) {
+    const info = state.index?.depth, relief = state.index?.relief;
+    if (!info || state.depth || state.depthLoading || state.depthFailed) return;
+    if (info.format !== POLAR_DEPTH_FORMAT || !Number.isSafeInteger(info.size) ||
+        info.size < 2 || info.size > POLAR_DEPTH_MAX_SIDE || !Number.isFinite(info.x0) ||
+        !Number.isFinite(info.step) || info.step <= 0 ||
+        info.size !== relief?.size || info.x0 !== relief?.x0 ||
+        info.step !== relief?.step || info.maxDepth !== DEPTH_LEVELS.at(-1)) {
+      state.depthFailed = true;
+      console.warn('Polar depth index is incompatible; retaining flat water fill');
+      return;
+    }
+    const generation = this.generation;
+    state.depthLoading = true;
+    this.image(`${cap}-depth.png`, {nearest:true, expectedSize:info.size}).then(texture => {
+      if (generation !== this.generation || this.caps[cap] !== state) {
+        if (texture) this.gl.deleteTexture(texture);
+        return;
+      }
+      state.depthLoading = false;
+      if (texture) state.depth = texture;
+      this.map.triggerRepaint();
+    }).catch(error => {
+      if (generation !== this.generation || this.caps[cap] !== state) return;
+      state.depthLoading = false;state.depthFailed = true;
+      console.warn('Polar depth texture unavailable; retaining flat water fill:', error.message);
+    });
+  }
+  // The colour bands and interpolation are taken from bathymetry.mjs, exactly
+  // as the ordinary atlas-depth water tiles. Only actual sampled valid ocean
+  // depths receive paint; land and no-data remain transparent.
+  drawDepth(state, shaderData, projection, fade) {
+    const {x0, step, size} = state.index.depth;
+    this.draw({...state.reliefMesh, kind:'depth'}, shaderData, projection, (gl, u) => {
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D, state.depth);
+      gl.uniform1i(u.u_image, 0);
+      gl.uniform3f(u.u_grid, x0, step, size);
+      gl.uniform1fv(u['u_depth_stops[0]'], DEPTH_LEVELS);
+      gl.uniform3fv(u['u_depth_colours[0]'], DEPTH_RGB);
+      gl.uniform1f(u.u_opacity, fade);
+    });
   }
   // Contour tile: four meshes (land/seabed, fine/emphasised).
   loadTile(key) {
@@ -422,6 +528,16 @@ export class PolarLayer {
         if (cap === 'north' && mapPaint.waterVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.water, mapPaint.waterOpacity * fade));
       } else this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
       if (!custom || mapPaint.waterVisible) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
+      // Ordinary layer order: water -> terrain-bathymetry -> ice shelves ->
+      // hillshade and contours. The custom cap uses the same order.
+      if (custom && mapPaint.depthVisible) {
+        this.ensureDepth(cap, state);
+        if (state.depth && !state.depthFailed) try {
+          this.drawDepth(state, options.shaderData, projection, mapPaint.depthOpacity * fade);
+        } catch (error) {
+          state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining flat water fill:', error.message);
+        }
+      }
       if (!custom || mapPaint.iceShelfVisible) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
       const contours = [];

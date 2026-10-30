@@ -5240,6 +5240,16 @@
       ],
       "tileSize": 512,
       "maxzoom": 14
+    },
+    "terrain3d": {
+      "type": "raster-dem",
+      "tiles": [
+        "atlas-terrain://{z}/{x}/{y}"
+      ],
+      "tileSize": 256,
+      "encoding": "terrarium",
+      "maxzoom": 14,
+      "attribution": "<a href=\"terrain-credits.html\">Terrain: Mapzen / AWS and data contributors</a>"
     }
   },
   "layers": [

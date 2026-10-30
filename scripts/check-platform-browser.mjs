@@ -1,9 +1,49 @@
 import {installEmptyMapProviders,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
-import {readFile,mkdir} from 'node:fs/promises';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
+// Observe only: the unchanged threshold predicate below remains the oracle.
+function observePlatformThreshold(){
+ const map=window.reviewMap,state=window.platformThresholdEvents={startedAt:performance.now(),counts:{},last:{},recent:[]};
+ for(const type of ['movestart','moveend','zoomend','render','idle','sourcedata','error'])map.on(type,event=>{
+  if(type==='sourcedata'&&!['platformEdges','platformLengths','platforms','platformNumbers'].includes(event.sourceId))return;
+  const key=type+(event.sourceId?'/'+event.sourceId:''),entry={type,at:performance.now()-state.startedAt,zoom:map.getZoom()};
+  if(event.sourceId)Object.assign(entry,{sourceId:event.sourceId,sourceDataType:event.sourceDataType,isSourceLoaded:event.isSourceLoaded,tile:event.tile?.tileID?.key});
+  if(event.error)entry.error=event.error.message;
+  state.counts[key]=(state.counts[key]||0)+1;state.last[key]=entry;state.recent.push(entry);if(state.recent.length>64)state.recent.shift();
+ });
+}
+function capturePlatformThresholdFailure(){
+ const map=window.reviewMap,read=fn=>{try{return {value:fn()};}catch(error){return {error:String(error?.message??error)};}};
+ const feature=f=>({id:f.id,source:f.source,sourceLayer:f.sourceLayer,layer:f.layer?.id,geometry:f.geometry,properties:f.properties});
+ // Read the failing conjuncts together, before unrelated diagnostic queries.
+ const rendered=read(()=>map.queryRenderedFeatures({layers:['platform-lengths']}));
+ const predicate='error' in rendered?{queryError:rendered.error}:{referencePresent:rendered.value.some(f=>f.properties.ref==='1'),lengthPropertiesAbsent:rendered.value.every(f=>!('platform_length' in f.properties))};
+ return {
+  capturedAt:Date.now(),phase:'after threshold failure; not an extension of its deadline',
+  predicate,renderedLabels:'error' in rendered?rendered:{value:rendered.value.map(feature)},
+  renderedEdges:read(()=>map.queryRenderedFeatures({layers:['platform-edges']}).map(feature)),
+  sourceLabels:read(()=>map.querySourceFeatures('platformLengths').map(feature)),
+  sourceEdges:read(()=>map.querySourceFeatures('platformEdges',{sourceLayer:'standard_railway_platform_edges'}).map(feature)),
+  // The serialized inline GeoJSON records what setData submitted, separately
+  // from the worker's loaded source tiles and placed/rendered symbols.
+  submittedLabels:read(()=>map.getStyle().sources.platformLengths),
+  layers:read(()=>map.getStyle().layers.filter(layer=>['platform-lengths','platform-edges'].includes(layer.id))),
+  map:read(()=>({zoom:map.getZoom(),center:map.getCenter(),bearing:map.getBearing(),pitch:map.getPitch(),projection:map.getProjection(),terrain:map.getTerrain(),loaded:map.loaded(),styleLoaded:map.isStyleLoaded(),tilesLoaded:map.areTilesLoaded(),moving:map.isMoving(),canvas:{width:map.getCanvas().width,height:map.getCanvas().height},viewport:{width:map.getContainer().clientWidth,height:map.getContainer().clientHeight}})),
+  sourceLoaded:Object.fromEntries(['platformEdges','platformLengths'].map(id=>[id,read(()=>map.isSourceLoaded(id))])),
+  controls:read(()=>({hidden:document.querySelector('#controls').hidden,units:document.querySelector('#units').value,mapReady:document.body.dataset.mapReady})),
+  events:window.platformThresholdEvents
+ };
+}
+async function savePlatformThresholdFailure(page,evidence){
+ // Diagnostics are best-effort and cannot replace the original test error.
+ evidence.state=await page.evaluate(capturePlatformThresholdFailure).catch(error=>({captureError:error.message}));
+ console.error('PLATFORM_THRESHOLD_FAILURE',JSON.stringify(evidence));
+ await writeFile(`browser-review/platform-${evidence.kind}-threshold-failure.json`,JSON.stringify(evidence,null,2)+'\n').catch(error=>console.error('Cannot save platform diagnostics:',error.message));
+ await page.screenshot({path:`browser-review/platform-${evidence.kind}-threshold-failure.png`,timeout:5000}).catch(error=>console.error('Cannot capture platform failure:',error.message));
+}
 const fixture=JSON.parse(await readFile(new URL('../tests/fixtures/platform-edge.json',import.meta.url)));
 const edges=geojsonvt({type:'FeatureCollection',features:[fixture.feature]},{maxZoom:22,indexMaxZoom:17,extent:4096});
 // An empty, valid basemap keeps this focused check independent of planet
@@ -65,8 +105,15 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.locator('#collapse').click();await page.screenshot({path:`browser-review/platform-${kind}-imperial.png`});
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
+ await page.evaluate(observePlatformThreshold);
  await page.selectOption('#units','metric');await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.jumpTo({zoom:18});});
- await settle(()=>{const features=window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']});return features.some(f=>f.properties.ref==='1')&&features.every(f=>!('platform_length' in f.properties));});assert.equal(requests,fetched,'below zoom 19 the length is not fetched again');console.log(`PASS: ${kind} platform reference, length, unit conversion/cache and threshold`);
+ try{
+  await settle(()=>{const features=window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']});return features.some(f=>f.properties.ref==='1')&&features.every(f=>!('platform_length' in f.properties));});
+ }catch(error){
+  await savePlatformThresholdFailure(page,{kind,error:{name:error.name,message:error.message,stack:error.stack},requests,fetched,pageErrors:[...errors]}).catch(diagnosticError=>console.error('Platform diagnostics failed:',diagnosticError.message));
+  throw error;
+ }
+ assert.equal(requests,fetched,'below zoom 19 the length is not fetched again');console.log(`PASS: ${kind} platform reference, length, unit conversion/cache and threshold`);
  await page.locator('[data-mode="axle"]').click();
  await page.evaluate(()=>{const map=window.reviewMap;map.jumpTo({center:[10,50],zoom:5});for(const l of map.getStyle().layers)if(l.id.startsWith('axle-')&&l.id!=='axle-overview')map.setLayoutProperty(l.id,'visibility','none');const layer={...map.getStyle().layers.find(l=>l.id==='axle-overview')};map.removeLayer(layer.id);delete layer['source-layer'];layer.source='reviewAxle';map.addSource('reviewAxle',{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{axle_load:'22500 kg',axle_tonnes:22.5},geometry:{type:'LineString',coordinates:[[9,50],[11,50]]}},{type:'Feature',properties:{axle_load:'50000 lb',axle_tonnes:22.6796185},geometry:{type:'LineString',coordinates:[[9,50.5],[11,50.5]]}}]}});map.addLayer(layer);map.fire('moveend');});
  await settle(()=>window.reviewMap.queryRenderedFeatures({layers:['axle-overview']}).filter(f=>f.source==='reviewAxle').length===2);await page.evaluate(()=>window.reviewMap.fire('moveend'));

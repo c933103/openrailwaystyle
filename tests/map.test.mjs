@@ -44,18 +44,28 @@ test('source mph and directional speed labels are preserved', async () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:false,relief:true,terrainExaggeration:3,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
   assert.equal(readSettings('?mode=invalid').mode, 'infrastructure', 'the Infrastructure view on a first visit');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').background, 'hybrid');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').trackCounts, false);
   assert.equal(readSettings('?stationImportanceColors=1').stationImportanceColors, true);
   assert.equal(readSettings('').stationImportanceColors, false, 'low-zoom station importance colours are opt-in');
   assert.equal(readSettings('?background=photo').background, 'map');
+  assert.equal(readSettings('').terrainExaggeration,3,'3D relief is visually enhanced by default');
+  assert.equal(readSettings('?terrainExaggeration=1').terrainExaggeration,1,'true scale is available');
+  assert.equal(readSettings('?terrainExaggeration=5').terrainExaggeration,5,'strong relief can be selected');
+  assert.equal(readSettings('?terrainExaggeration=2',{terrainExaggeration:5}).terrainExaggeration,2,'shared URL takes precedence');
+  assert.equal(readSettings('',{terrainExaggeration:1}).terrainExaggeration,1,'remembered true scale persists');
+  for (const invalid of ['-1','0','100','3.5','NaN','Infinity','yes','']) {
+    assert.equal(readSettings('?terrainExaggeration='+invalid).terrainExaggeration,3,'invalid scale rejected: '+invalid);
+  }
+  assert.equal(readSettings('',{terrainExaggeration:99}).terrainExaggeration,3,'invalid remembered scale rejected');
+
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false,stationImportanceColors:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false,stationImportanceColors:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:true,relief:true,terrainExaggeration:3,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
 });
 test('cursor readout: hemispheres, longitude wrapped, zoom and the More detail scale', async () => {
   const {formatReadout} = await import('../styles/map-model.mjs');
