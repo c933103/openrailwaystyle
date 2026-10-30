@@ -1,0 +1,56 @@
+name: Refresh aerial cableways and lifts
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '53 2 * * 0'
+  push:
+    branches: [main]
+    paths: ['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'styles/map-model.mjs', 'styles/conveying.mjs', '.github/workflows/aerialways.yml']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: aerialway-data
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Extract every mapped aerial cableway and lift way
+        run: node scripts/build-aerialways.mjs
+      - name: Publish complete data snapshot
+        # Only main publishes the shared snapshot.
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/aerialway-publish
+          cd /tmp/aerialway-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git fetch origin aerialway-data; then git checkout -b aerialway-data FETCH_HEAD; else git checkout --orphan aerialway-data; fi
+          git rm -rf --ignore-unmatch .
+          cp -r "$GITHUB_WORKSPACE/aerialway-data/." .
+          git add .
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh aerial cableways and lifts"
+          if ! git push origin HEAD:aerialway-data; then
+            # The server may have accepted the update before the connection
+            # reported failure. Accept only this exact published commit.
+            test "$(git ls-remote origin refs/heads/aerialway-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Redeploy the site with refreshed data
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

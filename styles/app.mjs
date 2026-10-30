@@ -1724,7 +1724,7 @@ async function initialize() {
   dem.setupMaplibre(maplibregl);
   // Level crossings, branch lines, service routes and signals are served as
   // stored (names not localized); the rare Han in their text still loads.
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false],['aerialwaytiles','conveying/aerialways']]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false],['aerialwaytiles','aerialways']]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {

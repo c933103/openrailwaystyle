@@ -13,6 +13,7 @@ styles/vendor/
 
 street-data/
 conveying-data/
+aerialway-data/
 street-snapshot/
 crossing-data/
 *.tmp.mjs
