@@ -1,25 +1,25 @@
 // Build-time OSM extract of every escalator, moving walkway and elevator way.
 import {mkdir,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM} from './conveying-data.mjs';
-import {overpassRetryDelayMs,overpassRetryFits,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
-// Overpass work must end within this budget; the job allows 30 minutes more
-// for tiles and publication (conveying.yml timeout-minutes).
-const REQUEST_MS=960000, deadline=Date.now()+Number(process.env.OVERPASS_BUDGET_MINUTES||120)*60000;
+import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
+const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
 let data;
-// A busy server waits minutes: 2, 5, then 10 (or its Retry-After).
-for(let attempt=0;attempt<=OVERPASS_RETRY_MINUTES.length;attempt++) {
+for(let attempt=0;attempt<3;attempt++) {
+  if (!conveyingRequestFits(deadline, 0)) throw new Error('Conveying acquisition deferred: no full request fits the 52-minute budget');
   try {
-    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(REQUEST_MS),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
-    if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{retryAfter:response.headers.get('retry-after')});
+    const startedAt = Date.now();
+    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
+    if(!response.ok) throw await conveyingHttpError(response, startedAt);
     data=await response.json();
-    if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
+    if(data.remark) throw new Error(`Overpass HTTP ${response.status} after ${Date.now()-startedAt}ms [${conveyingFailureKind(response.status,String(data.remark))}]: incomplete response`);
+    if(!Array.isArray(data.elements)) throw new Error('Incomplete response');
     break;
   } catch(error) {
-    if(attempt===OVERPASS_RETRY_MINUTES.length) throw error;
-    const wait=overpassRetryDelayMs(attempt,error.retryAfter);
-    if(!overpassRetryFits(deadline,wait,REQUEST_MS)) throw new Error(`Overpass still failing and no time left in the job budget for another try: ${describeOverpassError(error)}`);
-    console.log(describeOverpassError(error),`— retrying in ${Math.round(wait/60000)} min`);await new Promise(r=>setTimeout(r,wait));
+    if(attempt===2) throw error;
+    const wait = conveyingRetryDelay(error, attempt);
+    if (!conveyingRequestFits(deadline, wait)) throw new Error('Conveying acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:error});
+    console.log(error.message, `— retrying after ${wait / 60000} minutes`);
+    await new Promise(r=>setTimeout(r,wait));
   }
 }
 const {features}=conveyingGeoJSON(data);
@@ -38,3 +38,4 @@ const manifest={generated:new Date().toISOString(),osmBase:data.osm3s?.timestamp
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));
+
