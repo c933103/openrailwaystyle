@@ -17,7 +17,8 @@ test('escalators, moving walkways and elevators are read from explicit tags only
   assert.deepEqual(conveying({highway:'steps',conveying:'forward'}),{kind:'escalator',direction:'forward'});
   assert.deepEqual(conveying({highway:'footway',conveying:'backward'}),{kind:'travelator',direction:'backward'});
   assert.deepEqual(conveying({highway:'footway',conveying:'yes'}),{kind:'travelator',direction:''},'no mapped direction, no arrow');
-  assert.deepEqual(conveying({highway:'steps',conveying:'forward;backward'}),{kind:'escalator',direction:''},'mixed values draw no arrow');
+  for(const value of ['forward;backward','forward;yes','no;backward','Backward; yes'])assert.deepEqual(conveying({highway:'steps',conveying:value}),{kind:'escalator',direction:''},`mixed ${value} draws no arrow`);
+  assert.deepEqual(conveying({highway:'steps',conveying:' Backward '}),{kind:'escalator',direction:'backward'},'case and spaces do not matter');
   assert.deepEqual(conveying({highway:'elevator'}),{kind:'elevator',direction:''});
   for(const tags of [{highway:'steps'},{highway:'steps',conveying:'no'},{highway:'footway'},{railway:'funicular'}])assert.equal(conveying(tags),null,JSON.stringify(tags));
 });
@@ -27,9 +28,10 @@ test('every such way is kept, with no length threshold; a backward one is stored
   const tiny=[[0,0],[0.000001,0]];
   const data=conveyingGeoJSON({elements:[
     way(1,midLevels),way(2,{highway:'steps',conveying:'backward'}),way(3,{highway:'footway',conveying:'yes'}),way(4,{highway:'elevator'},tiny),
-    way(5,{highway:'steps'}),{type:'node',id:6,lat:0,lon:0,tags:{highway:'elevator'}},
+    way(5,{highway:'steps'}),way(8,{highway:'steps',conveying:'no;backward'}),{type:'node',id:6,lat:0,lon:0,tags:{highway:'elevator'}},
   ]});
-  assert.deepEqual(data.features.map(f=>[f.id,f.properties.kind,f.properties.arrows]),[[1,'escalator','two_way'],[2,'escalator','one_way'],[3,'travelator',''],[4,'elevator','']]);
+  assert.deepEqual(data.features.map(f=>[f.id,f.properties.kind,f.properties.arrows]),[[1,'escalator','two_way'],[2,'escalator','one_way'],[3,'travelator',''],[4,'elevator',''],[8,'escalator','']]);
+  assert.deepEqual(data.features[4].geometry.coordinates[0],[114.1531,22.2817],'a mixed value is not reversed');
   assert.deepEqual(data.features[1].geometry.coordinates,[[114.1536,22.2812],[114.1533,22.2815],[114.1531,22.2817]],'backward reversed');
   assert.deepEqual(data.features[0].geometry.coordinates[0],[114.1531,22.2817],'reversible keeps its mapped order');
   assert.deepEqual(Object.keys(data.features[0].properties).sort(),['arrows','kind','osm_id'],'tiles carry only what is drawn, plus provenance');

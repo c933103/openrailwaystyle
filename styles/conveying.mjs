@@ -9,8 +9,8 @@ export function conveying(tags = {}) {
   if (tokens(tags.highway).includes('elevator')) return {kind: 'elevator', direction: ''};
   const values = tokens(tags.conveying);
   if (!values.length || values.every(v => v === 'no')) return null;
-  // One plain direction draws an arrow; anything else (yes, mixed) draws none.
-  const known = values.filter(v => CONVEYING_DIRECTIONS.includes(v));
-  const direction = known.length === 1 ? known[0] : '';
+  // Only a single plain direction draws an arrow; yes or any mixed list
+  // (forward;yes, no;backward) draws none.
+  const direction = values.length === 1 && CONVEYING_DIRECTIONS.includes(values[0]) ? values[0] : '';
   return {kind: tokens(tags.highway).includes('steps') ? 'escalator' : 'travelator', direction};
 }
