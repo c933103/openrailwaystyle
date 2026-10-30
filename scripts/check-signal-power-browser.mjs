@@ -11,7 +11,6 @@ import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
-import {POWER_FACILITY_KINDS,POWER_FACILITY_ICONS} from '../styles/power-facilities.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -44,7 +43,8 @@ const supplies=powerFacilitiesGeoJSON({elements:[
   {type:'node',id:9401,lon:.00025,lat:.00095,tags:{name:'Test traction substation',power:'substation',substation:'traction',voltage:'25000',frequency:'50'}},
   {type:'node',id:9402,lon:.0007,lat:.00095,tags:{name:'Test railway power station',power:'plant',usage:'railway','plant:source':'hydro','generator:source':'solar'}},
   {type:'node',id:9403,lon:.00105,lat:.00095,tags:{name:'Test locomotive diesel supply',railway:'fuel',fuel:'diesel','fuel:adblue':'yes','fuel:hydrogen':'yes'}},
-  {type:'node',id:9404,lon:.00025,lat:.00073,tags:{name:'Test coaling facility',railway:'coaling_facility'}},
+  // A facility mapped as an area keeps its outline.
+  {type:'way',id:9404,tags:{name:'Test coaling facility',railway:'coaling_facility'},geometry:[[.00019,.00069],[.00031,.00069],[.00031,.00077],[.00019,.00077],[.00019,.00069]].map(([lon,lat])=>({lon,lat}))},
   {type:'node',id:9405,lon:.0007,lat:.00073,tags:{name:'Test steam water tank',railway:'water_tank',capacity:'100 m³'}},
   {type:'node',id:9406,lon:.00105,lat:.00073,tags:{name:'Test disused water tower','disused:man_made':'water_tower',usage:'railway'}},
   {type:'node',id:9499,lon:.0007,lat:-.0007,tags:{name:'Ordinary roadside fuel station',amenity:'fuel'}},
@@ -169,24 +169,19 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const powerLegend = async former => {
     await openControls();
     if (await page.locator('#settings-view').isVisible()) await page.locator('#settings-close').click();
-    // A fixed key: one pictogram per kind of object, drawn as on the map.
+    // A fixed key of the drawing: an outlined area and a plain dot, no pictograms.
     const samples = await page.evaluate(() => [...document.querySelectorAll('#legend .point-swatch')].map(sample => ({
-      label:sample.nextElementSibling.textContent, hidden:sample.getAttribute('aria-hidden'),
-      line:sample.classList.contains('swatch'),
-      symbols:[...sample.querySelectorAll('svg')].map(svg => {
-        const tile=svg.querySelector('rect'),glyph=svg.querySelector('path'),box=svg.getBoundingClientRect(),g=glyph.getBBox();
-        return {d:glyph.getAttribute('d'),fill:tile.getAttribute('fill'),stroke:glyph.getAttribute('stroke'),dash:tile.getAttribute('stroke-dasharray'),width:box.width,height:box.height,
-          glyphVisible:g.width>0&&g.height>0&&g.x>=0&&g.x+g.width<=24&&g.y>=0&&g.y+g.height<=24};
-      }),
+      label:sample.nextElementSibling.textContent, hidden:sample.getAttribute('aria-hidden'), line:sample.classList.contains('swatch'),
+      shapes:[...sample.querySelectorAll('svg')].map(svg=>({rect:!!svg.querySelector('rect'),circle:!!svg.querySelector('circle'),path:!!svg.querySelector('path'),dash:svg.querySelector('rect')?.getAttribute('stroke-dasharray')??null,width:svg.getBoundingClientRect().width})),
     })));
-    const kinds=Object.entries(POWER_FACILITY_KINDS);
-    assert.equal(samples.length,kinds.length,'every kind of point has its pictogram in the legend');
+    assert.equal(samples.length,2,'one area and one point sample');
     for (const [i,sample] of samples.entries()) {
-      const [kind,{label,color}]=kinds[i];assert.ok(sample.label.startsWith(label),kind);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
-      assert.equal(sample.symbols.length,former?2:1);
-      for (const [j,symbol] of sample.symbols.entries()) {
-        assert.equal(symbol.d,POWER_FACILITY_ICONS[kind]);assert.equal(symbol.fill,j?'#fffef8':color);assert.equal(symbol.stroke,j?color:'#fffef8');assert.equal(symbol.dash,j?'3 2':null);
-        assert.ok(symbol.width>=16&&symbol.height>=16);assert.equal(symbol.glyphVisible,true,'pictogram stays inside its tile');
+      assert.match(sample.label,i?/mapped point/:/mapped outline/);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
+      assert.equal(sample.shapes.length,former?2:1);
+      for (const [j,shape] of sample.shapes.entries()) {
+        assert.equal(shape.path,false,'no pictogram');assert.equal(i?shape.circle:shape.rect,true);
+        if(!i)assert.equal(shape.dash,j?'2 2':null);
+        assert.ok(shape.width>=12);
       }
     }
     const systems=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient')).map(row=>row.lastElementChild.textContent));
@@ -197,7 +192,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     });
     assert.deepEqual(track,{line:true,width:25,height:4,text:''},'ordinary track sample retains its line geometry');
     const accessible=await page.locator('#legend').ariaSnapshot();
-    assert.ok(accessible.includes('Train refuelling point (supplies written beside it)'));
+    assert.ok(accessible.includes('Railway power or servicing facility (mapped outline)'));
     const layouts=[];
     for(const constrained of [false,true]){
       // The observed desktop panel had a 257px content box after its classic
@@ -305,13 +300,16 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
     await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();
     await clickCoordinates([.00095,-.0005]);assert.match(await page.locator('#detail-content').innerText(),/Catenary mast/);assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/node/9410"]').count(),1);await page.locator('#details-close').click();
-    await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_kind)).size===5);
-    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['coal','electricity','fuel','water']);
+    await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points','electrification-supply-areas']}).map(f=>f.properties.power_kind)).size===5);
+    assert.deepEqual(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-areas']}).map(f=>f.properties.power_kind)).then(k=>[...new Set(k)]),['coaling_facility'],'an area-mapped facility is drawn as its outline');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).some(f=>f.properties.power_kind==='coaling_facility')),false,'and not also as a dot');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['electricity','fuel','water']);
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-former-supply-points']}).length),0,'disused supply follows the inactive setting');
     for(const supply of supplies.features.filter(f=>f.properties.power_state==='present')) {
-      await clickCoordinates(supply.geometry.coordinates);await page.waitForSelector('#details:not([hidden])');
+      const at=supply.geometry.type==='Point'?supply.geometry.coordinates:(ring=>[(Math.min(...ring.map(p=>p[0]))+Math.max(...ring.map(p=>p[0])))/2,(Math.min(...ring.map(p=>p[1]))+Math.max(...ring.map(p=>p[1])))/2])(supply.geometry.coordinates[0]);
+      await clickCoordinates(at);await page.waitForSelector('#details:not([hidden])');
       assert.match(await page.locator('#detail-content').innerText(),/RAILWAY ENERGY SUPPLY/);
-      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${supply.properties.osm_id}"]`).count(),1);
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/${supply.properties.osm_type}/${supply.properties.osm_id}"]`).count(),1);
       const detailRows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
       if(supply.properties.fuel){assert.equal(detailRows.Type,'Train refuelling point');assert.equal(detailRows['Recorded supplies'],'diesel, adblue, hydrogen');}
       if(supply.properties.power_kind==='coaling_facility')assert.equal(detailRows.Type,'Steam engine coaling');
@@ -324,7 +322,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openControls();await page.locator('#about-open').click();
     const powerHelp=await page.locator('#help-power').innerText();
-    for(const label of ['Battery train charging facility','Train refuelling point (supplies written beside it)','Steam engine coaling','Steam locomotive water crane'])assert.ok(powerHelp.includes(label));
+    for(const label of ['drawn as they are mapped','outlines for areas, small dots for points','coaling stages, water towers'])assert.ok(powerHelp.includes(label));
     assert.match(powerHelp,/whole electricity grid.*not yet/);
     await page.locator('#help-power').scrollIntoViewIfNeeded();
     await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
@@ -337,13 +335,11 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.locator('#details-close').click();
     await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
-    assert.ok(await page.evaluate(()=>['electrification-supply-kinds','electrification-supply-names','electrification-supply-points','electrification-method-labels'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='visible')),'Power markers keep their kind, name and means labels with value labels off');
+    assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-supply-areas','electrification-supply-outlines'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='visible')),'Power facilities stay drawn with value labels off');
+    assert.equal(await page.evaluate(()=>window.reviewMap.getStyle().layers.filter(l=>l.id.startsWith('electrification-')&&l.type==='symbol'&&!['electrification-catenary-references','electrification-labels'].includes(l.id)).length),0,'no icons or type text on the Power map (only voltage values and mast numbers)');
     await closeControls();
-    const kinds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).map(f=>f.properties.power_kind))]);
-    assert.ok(kinds.length>=2,`kind labels render for several markers: ${kinds}`);
-    const kindLabel=await page.evaluate(()=>{const f=window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).find(f=>f.properties.power_kind==='coaling_facility');if(!f)return null;const p=window.reviewMap.project(f.geometry.coordinates);return {x:p.x,y:p.y-22};});
-    assert.ok(kindLabel,'coaling kind label rendered');
-    await page.locator('#map canvas').click({position:kindLabel});assert.match(await page.locator('#detail-content').innerText(),/coaling/i,'clicking a kind label opens its facility');await page.locator('#details-close').click();
+    const area=await page.evaluate(()=>{const p=window.reviewMap.project([.00025,.00073]);return {x:p.x,y:p.y};});
+    await page.locator('#map canvas').click({position:area});assert.match(await page.locator('#detail-content').innerText(),/coaling/i,'clicking an area opens its facility');await page.locator('#details-close').click();
     await openSettings();
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
     await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));

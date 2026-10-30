@@ -1,7 +1,7 @@
 import {electrificationPaint} from '../../../styles/map-model.mjs';
 import {present,notFerry,byKindZoom} from './railway-expressions.mjs';
-import {POWER_FACILITY_SYMBOL,POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
-import {powerKindText,powerIconLayout} from './power-facilities.mjs';
+import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
+import {facilityShapeLayers} from './power-facilities.mjs';
 
 export function powerMethodLayers() {
   const metadata={'atlas:group':'railway','atlas:category':'energy-supply','atlas:views':['electrification'],'atlas:settings':[],'atlas:initial-hidden':true};
@@ -22,8 +22,6 @@ export function powerMethodLayers() {
       layers.push({...base,id:`electrification-${suffix}${id}`,type:'line',filter:['all',...base.filter.slice(1),['any',...when.map(has)]],
         layout:{'line-cap':cap||'butt','line-join':'round'},
         paint:{'line-color':color||electrificationPaint(),'line-width':width,'line-offset':offset,...(dash?{'line-dasharray':dash}:{}),'line-opacity':opacity}});
-    // Means and charger labels say what the feature is, so they stay with
-    // the features rather than following the value-labels setting.
     // Rack railways are mapped with rack=* (abt, strub, riggenbach, yes…),
     // which the provider's detailed railway tiles already carry; draw them
     // from there rather than only from the rare traction=rack tag.
@@ -32,18 +30,9 @@ export function powerMethodLayers() {
       filter:['all',former?['!',present]:present,notFerry,byKindZoom,['!',['in',['downcase',['coalesce',['get','rack'],'no']],['literal',['no','']]]]],
       layout:{'line-cap':rack.cap||'butt','line-join':'round'},
       paint:{'line-color':rack.color,'line-width':rack.width,'line-offset':rack.offset,'line-dasharray':rack.dash,'line-opacity':opacity}});
-    layers.push({...base,id:`electrification-${suffix}method-labels`,type:'symbol',minzoom:12,
-      metadata:meta,
-      layout:{'symbol-placement':'line','symbol-spacing':350,'text-field':['get','power_method_label'],'text-font':['Noto Sans Bold'],'text-size':11,'text-offset':[0,1]},
-      paint:{'text-color':'#26363d','text-halo-color':'#fffef8','text-halo-width':2}});
-    const point={source:'electricMethods',minzoom:12,metadata:meta,filter:['all',['==',['geometry-type'],'Point'],[former?'!=':'==',['get','power_state'],'present']]};
-    const {paper}=POWER_FACILITY_SYMBOL;
-    layers.push({...point,id:`electrification-${suffix}charging-points`,type:'symbol',layout:powerIconLayout(former)});
-    layers.push({...point,id:`electrification-${suffix}charging-kinds`,type:'symbol',minzoom:14,metadata:{...meta,'atlas:localize':false},
-      layout:{'text-field':powerKindText(former),'text-font':['Noto Sans Bold'],'text-size':10.5,'text-anchor':'bottom','text-offset':[0,-1.2],'text-max-width':12},paint:{'text-color':'#008a83','text-halo-color':paper,'text-halo-width':1.5}});
-    layers.push({...point,id:`electrification-${suffix}charging-names`,type:'symbol',minzoom:14,
-      metadata:{...meta,'atlas:localize':true},
-      layout:{'text-field':['coalesce',['get','atlas_name'],['get','name'],['get','ref'],''],'text-font':['Noto Sans Regular'],'text-size':11,'text-anchor':'top','text-offset':[0,1.2]},paint:{'text-color':'#008a83','text-halo-color':paper,'text-halo-width':1.5}});
+    // Battery-train chargers: the same mapped shapes as other facilities.
+    const charging={minzoom:12,metadata:meta,filter:['all',['match',['geometry-type'],['Point','MultiPoint','Polygon','MultiPolygon'],true,false],[former?'!=':'==',['get','power_state'],'present']]};
+    layers.push(...facilityShapeLayers(`electrification-${suffix}charging`,'electricMethods',charging,former));
   }
   const catenary={source:'electricCatenary','source-layer':'electrification_catenary',minzoom:16,metadata};
   layers.push({...catenary,id:'electrification-catenary-masts',type:'circle',filter:['==',['get','feature'],'mast'],paint:{'circle-color':'#b77d00','circle-radius':2.5,'circle-stroke-color':'#fffef8','circle-stroke-width':1}});

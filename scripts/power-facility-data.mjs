@@ -3,7 +3,7 @@
 // OSM object identity and supply tags available in the infobox.
 import {powerFacility} from '../styles/power-facilities.mjs';
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
-import {createHash} from 'node:crypto';
+import {areaPolygons,bounds,validPoint} from './osm-geometry.mjs';
 
 const SUPPLIES = 'fuel|coaling_facility|water_tower|water_tank|water_crane|power_supply|preheating|power_station|substation';
 const POWER = 'substation|plant|generator|converter|frequency_converter|transformer';
@@ -38,9 +38,9 @@ function powerFacilityQueryBase(box) {
       `nwr${tagFilter(`${prefix}railway`,SUPPLIES)}${bbox};`,
       `nwr${tagFilter(`${prefix}railway:electricity`,'power_supply')}${bbox};`);
   }
-  // tags-only output removes coordinates from nodes. center supplies only
-  // way/relation centres, so body is necessary for mapped supply nodes.
-  return `[out:json][timeout:240][maxsize:134217728];(${hints.join('')})->.hints;(${selectors.join('')});out body center qt;`;
+  // geom keeps each facility's mapped shape (way outline, relation member
+  // rings); body keeps node coordinates and all tags.
+  return `[out:json][timeout:240][maxsize:134217728];(${hints.join('')})->.hints;(${selectors.join('')});out body geom qt;`;
 }
 
 export function powerFacilityQuery(box) {
@@ -50,23 +50,40 @@ export function powerFacilityQuery(box) {
   return withPotentialFilter(powerFacilityQueryBase(box));
 }
 
-const LEGACY_V6_DIGEST='cbb72dda62d31d579edf1cfb86bb4ff51aba969aa851baf9350dfa25ddba5695';
-const PREFILTER_V6_DIGEST='bd1af2628e20bf8003281ba36e28425cf03d165f76f83cc5b3782eb45a2dc920';
-const queryDigest = (query,box) => createHash('sha256').update(query.replaceAll(`(${box.join(',')})`,'(__POWER_FACILITY_BBOX__)')).digest('hex');
 const MAX_CACHE_AGE=28*86400_000;
 
+// A cached response is reused only for the exact current query. Earlier
+// centre-point responses (out center) cannot supply mapped shapes.
 export function powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,refresh=false,now=Date.now()}={}) {
   if(refresh || !Number.isFinite(mtimeMs) || now-mtimeMs>=MAX_CACHE_AGE || typeof saved?.query!=='string')return false;
-  if(saved.query===query)return true;
-  const legacy=powerFacilityQueryBase(box);
-  return saved.query===legacy && query===withPotentialFilter(legacy) &&
-    queryDigest(legacy,box)===LEGACY_V6_DIGEST && queryDigest(query,box)===PREFILTER_V6_DIGEST;
+  return saved.query===query;
 }
 
 export function powerFacilityCachedResponse(box,query,saved,options) {
   if(!powerFacilityCacheRecordAccepted(box,query,saved,options))return undefined;
   powerFacilitiesGeoJSON(saved.response); // Reject cached partial/error responses too.
   return saved.response;
+}
+
+const point=p=>[p.lon,p.lat];
+const inRange=([lon,lat])=>Number.isFinite(lon)&&Number.isFinite(lat)&&Math.abs(lon)<=180&&Math.abs(lat)<=90;
+// The mapped shape: a node is a point, a closed way or multipolygon an area,
+// an open way a line. A centre point remains only where no shape was returned.
+function facilityGeometry(element) {
+  if (element.type==='node') { const c=[element.lon,element.lat]; return inRange(c)?{type:'Point',coordinates:c}:null; }
+  const polygons=areaPolygons(element);
+  if (polygons.length===1) return {type:'Polygon',coordinates:[polygons[0].outer,...polygons[0].inners]};
+  if (polygons.length>1) return {type:'MultiPolygon',coordinates:polygons.map(p=>[p.outer,...p.inners])};
+  if (element.type==='way' && element.geometry?.length>=2 && element.geometry.every(validPoint)) return {type:'LineString',coordinates:element.geometry.map(point)};
+  const box=element.bounds,center=element.center?point(element.center):box?[(box.minlon+box.maxlon)/2,(box.minlat+box.maxlat)/2]:null;
+  return center&&inRange(center)?{type:'Point',coordinates:center}:null;
+}
+// A position inside the facility's extent, for region-dependent naming.
+function representativePoint(element,geometry) {
+  if (geometry.type==='Point') return geometry.coordinates;
+  const ring=geometry.type==='Polygon'?geometry.coordinates[0]:geometry.type==='MultiPolygon'?geometry.coordinates[0][0]:geometry.coordinates;
+  const [minx,miny,maxx,maxy]=bounds(ring);
+  return [(minx+maxx)/2,(miny+maxy)/2];
 }
 
 export function powerFacilitiesGeoJSON(json) {
@@ -76,13 +93,12 @@ export function powerFacilitiesGeoJSON(json) {
     if (!['node','way','relation'].includes(element.type) || !Number.isSafeInteger(element.id)) continue;
     const supply=powerFacility(element.tags);
     if (!supply) continue;
-    const coordinates = element.type==='node' ? [element.lon,element.lat] : [element.center?.lon,element.center?.lat];
-    if (!coordinates.every(Number.isFinite) || Math.abs(coordinates[0])>180 || Math.abs(coordinates[1])>90) {
-      throw new Error(`Incomplete coordinates for railway energy supply ${element.type}-${element.id}`);
-    }
     const id=`${element.type}-${element.id}`;
+    const geometry=facilityGeometry(element);
+    if (!geometry) throw new Error(`Incomplete coordinates for railway energy supply ${id}`);
+    const coordinates=representativePoint(element,geometry);
     const atlas_han=hanRegion(...coordinates);
-    features.set(id,{type:'Feature',id,geometry:{type:'Point',coordinates},properties:{...element.tags,
+    features.set(id,{type:'Feature',id,geometry,properties:{...element.tags,
       atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...coordinates):'',
       osm_type:element.type,osm_id:String(element.id),power_kind:supply.kind,power_group:supply.group,
       power_state:supply.state,power_minzoom:supply.minzoom,power_mark:supply.mark,power_color:supply.color}});
