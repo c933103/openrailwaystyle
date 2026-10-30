@@ -1,0 +1,16 @@
+{
+  "generated": "2026-10-30T12:25:32.044Z",
+  "osmBase": "2026-10-30T12:22:36Z",
+  "features": 44385,
+  "kinds": {
+    "escalator": 32250,
+    "travelator": 3821,
+    "elevator": 8314
+  },
+  "zoom": 14,
+  "tiles": 8666,
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "[out:json][timeout:900][maxsize:1073741824];(way[conveying][conveying!=no];way[highway=elevator];);out tags geom qt;",
+  "license": "ODbL-1.0",
+  "description": "Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line."
+}
