@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261030-facility-shapes-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261030-funicular-rack-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

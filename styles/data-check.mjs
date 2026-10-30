@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261030-facility-shapes-1';
+import {SEARCH_API} from './map-model.mjs?v=20261030-funicular-rack-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

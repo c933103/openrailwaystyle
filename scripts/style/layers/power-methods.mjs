@@ -1,5 +1,5 @@
 import {electrificationPaint} from '../../../styles/map-model.mjs';
-import {present,notFerry,byKindZoom} from './railway-expressions.mjs';
+import {present,notFerry,byKindZoom,hasRack} from './railway-expressions.mjs';
 import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {facilityShapeLayers} from './power-facilities.mjs';
 
@@ -27,9 +27,16 @@ export function powerMethodLayers() {
     // from there rather than only from the rare traction=rack tag.
     const rack=POWER_METHOD_STROKES.find(({id})=>id==='rack-traction');
     layers.push({id:`electrification-${suffix}provider-rack`,type:'line',source:'railway','source-layer':'railway_line_high',minzoom:10,metadata:meta,
-      filter:['all',former?['!',present]:present,notFerry,byKindZoom,['!',['in',['downcase',['coalesce',['get','rack'],'no']],['literal',['no','']]]]],
+      filter:['all',former?['!',present]:present,notFerry,byKindZoom,hasRack],
       layout:{'line-cap':rack.cap||'butt','line-join':'round'},
       paint:{'line-color':rack.color,'line-width':rack.width,'line-offset':rack.offset,'line-dasharray':rack.dash,'line-opacity':opacity}});
+    // Funiculars are cable-hauled by definition (railway=funicular, the
+    // provider's feature=funicular), far more of them than traction=cable.
+    const cable=POWER_METHOD_STROKES.find(({id})=>id==='cable-traction');
+    layers.push({id:`electrification-${suffix}provider-cable`,type:'line',source:'railway','source-layer':'railway_line_high',minzoom:10,metadata:meta,
+      filter:['all',former?['!',present]:present,byKindZoom,['==',['get','feature'],'funicular']],
+      layout:{'line-cap':cable.cap||'butt','line-join':'round'},
+      paint:{'line-color':cable.color,'line-width':cable.width,'line-offset':cable.offset,'line-dasharray':cable.dash,'line-opacity':opacity}});
     // Battery-train chargers, whatever shape they are mapped as; track
     // features in the same source carry no power_kind.
     const charging={minzoom:12,metadata:meta,filter:['all',['==',['get','power_kind'],'charging_station'],[former?'!=':'==',['get','power_state'],'present']]};

@@ -969,7 +969,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "d09e12d44433ca13aac143d7bdc725a90bf63b82ec532fcb5c7ec0121bb8c06e"
+      "sha256": "9f3f46ae4a1f6592eb9e37a63fb5042e4bd32156894d2ccb7541c4980959b263"
     },
     {
       "id": "road-major",
@@ -1034,7 +1034,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "124bddccabea17b60867fbf2a06b6f3a52fcc3d4b91a22a0c26ffea2cc3789b4"
+      "sha256": "6812301d90ac0f9b3a88d69199f1f4abc22a0263a6954aa9d38203567b11a19c"
     },
     {
       "id": "rail-basemap-reference",
@@ -1088,7 +1088,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "58081acd90fb3831b70b5d3906f780b6d232885bfe69b225d02ff7235b218ad3"
+      "sha256": "e4ab28eb056489d32d53c605009e56a81ed19ec5084bd9c923a6d85d5c2a6f0d"
     },
     {
       "id": "infrastructure-metro-overview",
@@ -1097,7 +1097,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "15ef19c177d600ba8f8bf0e7ba48488535bd07e01c4ddff83f591411a54fca69"
+      "sha256": "de17abc447f25cdf4d29baf00f61e46cf368685677358cffe55ecbc81e6cc054"
     },
     {
       "id": "speed-branch-overview",
@@ -2534,6 +2534,16 @@
       "removedLayers": [
         "electrification-supply-names",
         "electrification-former-supply-names"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Infrastructure view gives funiculars (feature=funicular) their own colour, appended to INFRASTRUCTURE so existing class colours keep their positions. Rack ticks are a separate added layer.",
+      "layers": [
+        "infrastructure-branch-overview",
+        "infrastructure-overview",
+        "infrastructure-tracks",
+        "infrastructure-metro-overview"
       ]
     }
   ]

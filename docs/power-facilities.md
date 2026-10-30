@@ -116,6 +116,12 @@ one track (for example `electrified=contact_line;rail`):
 | `rack=*` (`yes`, `abt`, `strub`, `riggenbach`, …; not `no`), or `traction=rack` | dark ladder ticks along the track |
 | `traction=cable` | dark long dashes, one side |
 
+Funiculars (`railway=funicular`, about 2,600 OSM ways) are cable-hauled by
+definition and take the cable stroke from the provider's `feature=funicular`;
+`traction=cable` (about 15 ways, e.g. street cable cars) still comes from the
+snapshot. In the Infrastructure view funiculars have their own track colour
+and rack railways the same ladder ticks as here.
+
 `rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
 `traction=rack`) is read straight from the provider's detailed railway tiles,
 which carry it as `rack`; the track inspector names the rack system. The
