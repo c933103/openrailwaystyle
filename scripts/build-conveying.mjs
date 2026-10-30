@@ -1,14 +1,16 @@
 // Build-time OSM extract of every escalator, moving walkway and elevator way.
 import {mkdir,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM} from './conveying-data.mjs';
+import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind} from './conveying-data.mjs';
 let data;
 for(let attempt=0;attempt<3;attempt++) {
   try {
+    const startedAt = Date.now();
     const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(960000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
-    if(!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
+    if(!response.ok) throw await conveyingHttpError(response, startedAt);
     data=await response.json();
-    if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
+    if(data.remark) throw new Error(`Overpass HTTP ${response.status} after ${Date.now()-startedAt}ms [${conveyingFailureKind(response.status,String(data.remark))}]: incomplete response`);
+    if(!Array.isArray(data.elements)) throw new Error('Incomplete response');
     break;
   } catch(error) {if(attempt===2) throw error;console.log(error.message,'— retrying after two minutes');await new Promise(r=>setTimeout(r,120000));}
 }
@@ -28,3 +30,4 @@ const manifest={generated:new Date().toISOString(),osmBase:data.osm3s?.timestamp
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));
+
