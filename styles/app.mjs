@@ -857,7 +857,8 @@ function showDetails(feature) {
   cancelProfile();
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
-  if (feature.source==='electricMethods' && feature.geometry.type!=='Point') {
+  // Track power methods; chargers in the same source (any mapped shape) carry power_kind.
+  if (feature.source==='electricMethods' && !feature.properties?.power_kind) {
     const p=feature.properties,panel=$('detail-content');
     panel.replaceChildren(textNode('div','RAILWAY POWER','eyebrow'),textNode('h2',p.power_method_label));
     const dl=document.createElement('dl');row(dl,'Status',p.power_state);row(dl,'Electrification method',p.power_method);

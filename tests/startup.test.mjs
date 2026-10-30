@@ -2038,6 +2038,15 @@ test('Power facilities inspect their supply type and source object without train
     map.rendered=[{source:'electricSubstations',sourceLayer:'electrification_substation',layer:{id:'electrification-substation-areas'},properties:{name:'Traction footprint',voltage:'25000'},geometry:{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0,0.001],[0,0]]]}}];
     map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
     assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
+    // A charger mapped as a line or area shares electricMethods with track
+    // strokes but opens the facility inspector, not a track panel.
+    for (const geometry of [{type:'LineString',coordinates:[[0,0],[0.001,0]]},{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0.001,0.001],[0,0]]]}]) {
+      map.rendered=[{source:'electricMethods',layer:{id:geometry.type==='Polygon'?'electrification-charging-areas':'electrification-charging-outlines'},properties:{name:'Shaped charger',amenity:'charging_station',train:'yes',power_kind:'charging_station',power_state:'present',osm_type:'way',osm_id:'95'},geometry}];
+      map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+      const detail=window.document.getElementById('detail-content').textContent;
+      assert.match(detail,/RAILWAY ENERGY SUPPLY/,geometry.type);
+      assert.ok(detail.includes('Shaped charger')&&detail.includes(powerFacilities.POWER_FACILITY_KINDS.charging_station.label),geometry.type);
+    }
     assert.equal(errors.length,0);
   } finally {dom.window.close();}
 });
