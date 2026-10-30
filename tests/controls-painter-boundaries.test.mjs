@@ -19,11 +19,11 @@ test('the actual pinned renderer considers a loaded empty tile renderable',()=>{
 
 test('exact Atlas style at failure-shaped zoom/source counts submits hidden stencil work',()=>{
  const {original,guarded}=compare();
- // Counts follow the composed style: the funicular cable and Infrastructure
- // rack layers (railway source, hidden in the default view) add hidden work
+ // Counts follow the composed style: the funicular cable, Infrastructure
+ // rack and aerialway layers (hidden in the default view) add hidden work
  // only; the guarded, visible work stays 3168.
- assert.equal(original.draws,10560);
- assert.equal(original.hiddenDraws,7392,'sensitivity: unmodified renderer performs hidden-layer work');
+ assert.equal(original.draws,11264);
+ assert.equal(original.hiddenDraws,8096,'sensitivity: unmodified renderer performs hidden-layer work');
  assert.equal(guarded.draws,3168);
  assert.ok(guarded.clears<original.clears);
 });

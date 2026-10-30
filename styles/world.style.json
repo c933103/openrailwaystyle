@@ -46046,6 +46046,270 @@
     },
     {
       "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [
+          "infrastructure",
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [
+          "carto"
+        ],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "id": "aerialway-cableway-cable",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "aerialway"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "cable_car",
+            "gondola",
+            "mixed_lift"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#808080",
+        "line-width": 1
+      }
+    },
+    {
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [
+          "infrastructure",
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [
+          "carto"
+        ],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "id": "aerialway-cableway-ticks",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "aerialway"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "cable_car",
+            "gondola",
+            "mixed_lift"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#1f2326",
+        "line-width": 3,
+        "line-dasharray": [
+          0.13333333333333333,
+          4.333333333333333
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [
+          "infrastructure",
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [
+          "carto"
+        ],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "id": "aerialway-lift-cable",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "aerialway"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "chair_lift",
+            "drag_lift",
+            "t-bar",
+            "j-bar",
+            "platter"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#808080",
+        "line-width": 1
+      }
+    },
+    {
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [
+          "infrastructure",
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [
+          "carto"
+        ],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "id": "aerialway-lift-ticks",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "aerialway"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "chair_lift",
+            "drag_lift",
+            "t-bar",
+            "j-bar",
+            "platter"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#1f2326",
+        "line-width": 4,
+        "line-dasharray": [
+          0.25,
+          7.5
+        ]
+      }
+    },
+    {
+      "type": "line",
       "layout": {
         "line-cap": "butt",
         "line-join": "round"
