@@ -1,4 +1,11 @@
-import {POWER_FACILITY_SYMBOL} from '../../../styles/power-facilities.mjs';
+import {POWER_FACILITY_SYMBOL,POWER_FACILITY_KINDS} from '../../../styles/power-facilities.mjs';
+
+// What each marker is, spelled out above it. Always shown with the markers:
+// the letter alone names only the category.
+export function powerKindText(former=false) {
+  const kind=['match',['get','power_kind'],...Object.entries(POWER_FACILITY_KINDS).flatMap(([key,{label}])=>[key,label]),''];
+  return former?['concat',kind,' (',['get','power_state'],')']:kind;
+}
 
 export function powerFacilityLayers() {
   const {paper,radius,textSize,stroke,formerStroke} = POWER_FACILITY_SYMBOL;
@@ -12,7 +19,11 @@ export function powerFacilityLayers() {
     'circle-stroke-color':former?['get','power_color']:paper,'circle-stroke-width':former?formerStroke:stroke}});
   const letters=(id,base,former=false)=>({...base,id,type:'symbol',minzoom:13,layout:{'text-field':['get','power_mark'],
     'text-font':['Noto Sans Bold'],'text-size':textSize,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':former?['get','power_color']:paper}});
-  const names=(id,base)=>({...base,id,type:'symbol',minzoom:14,metadata:{...base.metadata,'atlas:settings':[...base.metadata['atlas:settings'],'labels'],'atlas:localize':true},
+  const kinds=(id,base,former=false)=>({...base,id,type:'symbol',minzoom:14,metadata:{...base.metadata,'atlas:localize':false},
+    layout:{'text-field':powerKindText(former),'text-font':['Noto Sans Bold'],'text-size':10.5,'text-anchor':'bottom','text-offset':[0,-0.9],'text-padding':2,'text-max-width':12},
+    paint:{'text-color':['get','power_color'],'text-halo-color':paper,'text-halo-width':1.5}});
+  // The mapped name, localised, sits under the marker.
+  const names=(id,base)=>({...base,id,type:'symbol',minzoom:14,metadata:{...base.metadata,'atlas:localize':true},
     layout:{'text-field':['coalesce',['get','atlas_name'],['get','name'],['get','ref'],''],
       'text-font':['Noto Sans Regular'],'text-size':11,'text-anchor':'top','text-offset':[0,0.9],'text-padding':4,'text-max-width':14},
     paint:{'text-color':['get','power_color'],'text-halo-color':paper,'text-halo-width':1.5}});
@@ -24,6 +35,7 @@ export function powerFacilityLayers() {
     {...substation,id:'electrification-substation-edges',type:'line',filter:['==',['geometry-type'],'Polygon'],paint:{'line-color':'#b77d00','line-width':1.5}},
     circle('electrification-supply-points',point),circle('electrification-former-supply-points',former,true),
     letters('electrification-supply-marks',point),letters('electrification-former-supply-marks',former,true),
+    kinds('electrification-supply-kinds',point),kinds('electrification-former-supply-kinds',former,true),
     names('electrification-supply-names',point),names('electrification-former-supply-names',former),
   ];
 }

@@ -19,6 +19,8 @@ const feature = (properties, type, coordinates, id) => ({type:'Feature', ...(id 
 const control = {train_protection0:'atc', train_protection1:'pzb', train_protection2:'etcs_2'};
 const rail = {id:'9200-0', name:'Shared protection test track', feature:'rail', railway:'rail', state:'present', usage:'main', service:'', ...control};
 const detailed = feature(rail, 'LineString', [[-.0002,.0005],[.0016,.0005]]);
+// rack=* arrives on the provider's detailed lines (abt, strub, riggenbach…).
+const providerRack = feature({...rail,id:'9430-0',name:'Provider rack test line',railway:'narrow_gauge',feature:'narrow_gauge',rack:'abt'}, 'LineString', [[-.0002,-.00075],[.0016,-.00075]]);
 const mainOverview = feature({...rail,id:'9201-0'}, 'LineString', [[-4,1],[4,1]]);
 const branchOverview = feature({...rail,id:'9202-0',usage:'branch'}, 'LineString', [[-4,-1],[4,-1]]);
 const metroOverview = feature({...rail,id:'9203-0',feature:'subway',railway:'subway',usage:''}, 'LineString', [[-.5,.2],[.5,.2]]);
@@ -29,7 +31,7 @@ const culture = [
   feature({name:'Test theatre',class:'theatre',subclass:'theatre',rank:1},'Point',[.00115,-.00085],93011),
 ];
 const datasets = {
-  railway_line_high:[detailed],
+  railway_line_high:[detailed,providerRack],
   signals_railway_line_low:[mainOverview],
   standard_railway_line_low:[mainOverview],
   electrification_railway_line_low:[mainOverview],
@@ -51,6 +53,12 @@ const methods=powerMethodsGeoJSON({elements:[
   {type:'node',id:9420,lon:.0011,lat:-.00012,tags:{name:'Test battery train charger',amenity:'charging_station',train:'yes','socket:pantograph:output':'1000 kW'}},
   {type:'way',id:9421,tags:{railway:'subway',electrified:'rail',voltage:'750',frequency:'0','electrified:rail':'bottom'},geometry:[{lon:-.0002,lat:.0002},{lon:.0016,lat:.0002}]},
   {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
+  // Each other means of delivery or traction on its own track.
+  {type:'way',id:9423,tags:{railway:'tram',electrified:'inductive'},geometry:[{lon:-.0002,lat:.0004},{lon:.0016,lat:.0004}]},
+  {type:'way',id:9424,tags:{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line'},geometry:[{lon:-.0002,lat:.0006},{lon:.0016,lat:.0006}]},
+  {type:'way',id:9425,tags:{railway:'narrow_gauge',traction:'rack',electrified:'no'},geometry:[{lon:-.0002,lat:-.001},{lon:.0016,lat:-.001}]},
+  {type:'way',id:9426,tags:{railway:'funicular',traction:'cable'},geometry:[{lon:-.0002,lat:-.0011},{lon:.0016,lat:-.0011}]},
+  {type:'way',id:9427,tags:{railway:'tram',electrified:'ground-level_power_supply'},geometry:[{lon:-.0002,lat:.00112},{lon:.0016,lat:.00112}]},
 ]});
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
@@ -283,6 +291,21 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
     await visible('electrification-conductor-rails');await visible('electrification-charging-points');
+    for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack'])await visible(`electrification-${id}`);
+    const providerRackIds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-rack']}).map(f=>String(f.properties.id)))]);
+    assert.deepEqual(providerRackIds,['9430-0'],'only the rack=abt provider line gets the rack stroke');
+    await clickCoordinates([.0006,-.00075]);assert.match(await page.locator('#detail-content').innerText(),/Rack\s+abt/,'the track inspector names the rack system');await page.locator('#details-close').click();
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-fourth-rails']}).map(f=>f.properties.osm_id))]),['9422'],'only the fourth-rail track has its second conductor rail');
+    await clickCoordinates([.0007,.0004]);assert.match(await page.locator('#detail-content').innerText(),/Inductive power supply/);await page.locator('#details-close').click();
+    await clickCoordinates([.00125,-.001]);assert.match(await page.locator('#detail-content').innerText(),/Rack railway/);assert.match(await page.locator('#detail-content').innerText(),/Traction\s+rack/);await page.locator('#details-close').click();
+    await openControls();
+    const methodSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>row.lastElementChild.textContent));
+    assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
+    const sampleLines=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>[row.lastElementChild.textContent,row.firstElementChild.querySelectorAll('line').length])));
+    assert.equal(sampleLines['Third rail (dashed, one side)'],2,'third-rail sample is the track and one conductor stroke');
+    assert.equal(sampleLines['Fourth rail (dashed, both sides)'],3,'fourth-rail sample shows both conductor strokes as on the map');
+    await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
+    await closeControls();
     await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
     await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
     await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();
@@ -319,7 +342,14 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.locator('#details-close').click();
     await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
-    assert.ok(await page.evaluate(()=>window.reviewMap.getLayoutProperty('electrification-supply-names','visibility')==='none'&&window.reviewMap.getLayoutProperty('electrification-supply-points','visibility')==='visible'));
+    assert.ok(await page.evaluate(()=>['electrification-supply-kinds','electrification-supply-names','electrification-supply-points','electrification-method-labels'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='visible')),'Power markers keep their kind, name and means labels with value labels off');
+    await closeControls();
+    const kinds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).map(f=>f.properties.power_kind))]);
+    assert.ok(kinds.length>=2,`kind labels render for several markers: ${kinds}`);
+    const kindLabel=await page.evaluate(()=>{const f=window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-kinds']}).find(f=>f.properties.power_kind==='coaling_facility');if(!f)return null;const p=window.reviewMap.project(f.geometry.coordinates);return {x:p.x,y:p.y-22};});
+    assert.ok(kindLabel,'coaling kind label rendered');
+    await page.locator('#map canvas').click({position:kindLabel});assert.match(await page.locator('#detail-content').innerText(),/coaling/i,'clicking a kind label opens its facility');await page.locator('#details-close').click();
+    await openSettings();
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
     await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     await openSettings();await page.locator('#labels').uncheck();

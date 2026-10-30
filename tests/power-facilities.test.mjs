@@ -257,7 +257,9 @@ test('Power-only facility layers place symbols by actual supply zoom and gate fo
   const former=layers.find(l=>l.id==='electrification-former-supply-points');
   assert.equal(layerVisibility(former,{mode:'electrification',labels:true,inactive:false}),false);
   const names=layers.find(l=>l.id==='electrification-supply-names');
-  assert.equal(layerVisibility(names,{mode:'electrification',labels:false,inactive:true}),false);
+  // What a marker is and its name stay with the marker, whatever the value-labels setting.
+  assert.equal(layerVisibility(names,{mode:'electrification',labels:false,inactive:true}),true);
+  assert.equal(layerVisibility(layers.find(l=>l.id==='electrification-supply-kinds'),{mode:'electrification',labels:false,inactive:true}),true);
   const style={version:8,glyphs:'https://example.org/{fontstack}/{range}.pbf',sources:{
     electricFacilities:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     electricSubstations:{type:'vector',tiles:['https://example.org/{z}/{x}/{y}']},

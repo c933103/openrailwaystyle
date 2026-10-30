@@ -19,6 +19,18 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
+// Means of power delivery and traction drawn beside or along a track. The
+// map layers and legend samples share this table. A fourth-rail track has
+// conductor rails on both sides. Overhead contact line is the track colour.
+export const POWER_METHOD_STROKES = Object.freeze([
+  {id:'conductor-rails', when:['method_rail','method_fourth_rail'], offset:3.5, width:2, dash:[2,2], label:'Third rail (dashed, one side)', sample:'third-rail'},
+  {id:'fourth-rails', when:['method_fourth_rail'], offset:-3.5, width:2, dash:[2,2], label:'Fourth rail (dashed, both sides)', sample:'fourth-rail'},
+  {id:'ground-supply', when:['method_ground'], offset:0, width:3, dash:[0.1,1.8], color:'#fffef8', cap:'round', label:'Ground-level supply (dotted centre)', sample:'ground-supply'},
+  {id:'inductive-supply', when:['method_inductive'], offset:3.5, width:2, dash:[4,1.5,1,1.5], label:'Inductive supply (dash-dot, one side)', sample:'inductive-supply'},
+  {id:'linear-motors', when:['propulsion_linear_motor'], offset:0, width:1.5, dash:null, color:'#7b3fa0', label:'Linear motor (purple centre line)', sample:'linear-motor'},
+  {id:'rack-traction', when:['traction_rack'], offset:0, width:5, dash:[0.4,1.2], color:'#33302c', label:'Rack railway (ladder ticks)', sample:'rack-traction'},
+  {id:'cable-traction', when:['traction_cable'], offset:-3.5, width:1.5, dash:[5,2], color:'#33302c', label:'Cable traction (long dashes, one side)', sample:'cable-traction'},
+].map(Object.freeze));
 // Shared by the map's point layers and legend; the legend samples the detailed
 // marker size. Lifecycle changes only the fill, stroke and letter colour.
 export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
@@ -35,7 +47,8 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
 export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
-export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${POWER_FACILITY_LIMITS}`;
+export const POWER_METHOD_NOTE = `Track strokes: overhead contact line is the track colour alone; ${POWER_METHOD_STROKES.map(({label})=>label).join('; ')}.`;
+export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${POWER_METHOD_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];

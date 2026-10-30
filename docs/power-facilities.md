@@ -95,15 +95,40 @@ Primary references:
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
 
-## Conductor rails, charging and catenary equipment
+## Means of power delivery and traction, charging and catenary equipment
 
-Power view also draws a dashed parallel line for mapped `electrified=rail`,
-`4th_rail` and `ground-level_power_supply` tracks from zoom 10. Method labels
-appear from zoom 12 and follow Labels; clicking the geometry shows its method,
-recorded voltage/frequency, conductor contact position and OSM way. Colour still
-follows the electrical system. The supplement keeps these methods because the
-provider's railway line tiles carry voltage/frequency but discard `electrified`.
-Unknown method or low DC voltage alone never establishes third rail.
+Power view draws how power reaches the train, and how the train is propelled
+or held, as strokes beside or along the track from zoom 10. Several can show on
+one track (for example `electrified=contact_line;rail`):
+
+| Recorded tag | Stroke |
+|---|---|
+| `electrified=contact_line` | the track colour alone (overhead contact line) |
+| `electrified=rail` | dashed, one side, in the system colour (third rail) |
+| `electrified=4th_rail` | dashed on both sides (third and fourth rail) |
+| `electrified=ground-level_power_supply` | dotted light centre line |
+| `electrified=inductive` | dash-dot, one side, in the system colour |
+| `propulsion=linear_motor` | purple centre line |
+| `rack=*` (`yes`, `abt`, `strub`, `riggenbach`, …; not `no`), or `traction=rack` | dark ladder ticks along the track |
+| `traction=cable` | dark long dashes, one side |
+
+`rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
+`traction=rack`) is read straight from the provider's detailed railway tiles,
+which carry it as `rack`; the track inspector names the rack system. The
+maintenance snapshot keeps the rarer `traction=rack`.
+
+Lifecycle prefixes are honoured; planned and former tracks are faded and follow
+the planned/former setting. The legend draws each sample from the same stroke
+definitions as the map. Method labels appear from zoom 12 and follow Labels;
+clicking a stroke shows its method, propulsion, traction, recorded
+voltage/frequency, conductor contact position (`electrified:rail`) and OSM way.
+Power colours still follow the electrical system. The supplement keeps these
+tags because the provider's railway line tiles carry voltage/frequency but
+discard `electrified`; overhead contact line, by far the most common, is the
+electrified track without another recorded means. Unknown method or low DC
+voltage alone never establishes third rail. Snapshots built before the
+per-method fields existed are read from their recorded method until the next
+snapshot replaces them.
 
 **B** markers show battery train charging from zoom 12. Selection accepts an
 explicit `railway=charging_station`, or `amenity=charging_station` /
