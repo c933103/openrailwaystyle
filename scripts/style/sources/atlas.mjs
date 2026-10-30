@@ -28,6 +28,8 @@ export function atlasSources(majorStationData) {
     branchLines: snapshot('branchtiles', 4, 9),
     serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Frequency sources</a>'},
     streetRunning: snapshot('streettiles', 12, 12),
+    // Every escalator, moving walkway and elevator way (conveying.yml).
+    conveying: snapshot('conveyingtiles', 12, 12),
     // Historic areas the basemap's park layer does not hold (heritage-data.mjs).
     heritageAreas: snapshot('heritagetiles', HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM),
   };

@@ -11,6 +11,7 @@ import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {conveyingGeoJSON} from './conveying-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -80,7 +81,14 @@ const coordinatesAt = (z,[lon,lat]) => [Math.floor((lon+180)/360*2**z),Math.floo
 function localKeys(zooms,radius=3) {
   return zooms.flatMap(z=>{const [x,y]=coordinatesAt(z,center),n=2**z;return Array.from({length:2*radius+1},(_,dx)=>Array.from({length:2*radius+1},(_,dy)=>`${z}/${(x+dx-radius+n)%n}/${Math.max(0,Math.min(n-1,y+dy-radius))}`)).flat();});
 }
+// Escalators from the conveying snapshot: a reversible piece (two arrows)
+// and a backward one (stored reversed, one arrow).
+const conveyingWays=conveyingGeoJSON({elements:[
+  {type:'way',id:9501,tags:{highway:'steps',conveying:'reversible',name:'Test escalator'},geometry:[{lon:.0005,lat:-.0004},{lon:.0008,lat:-.0004}]},
+  {type:'way',id:9502,tags:{highway:'steps',conveying:'backward'},geometry:[{lon:.0008,lat:-.0004},{lon:.0011,lat:-.0004}]},
+]});
 const snapshotIndexes = {
+  conveying:{tiles:localKeys([12]),index:index(conveyingWays.features),layer:'conveying'},
   'branch-lines':{tiles:localKeys([4,5,6,7,8,9],4),index:branchIndex,layer:'branch_lines'},
   'traction/signals':{tiles:localKeys([12,16]),index:signalIndex,layer:'railway_signals'},
 };
@@ -176,6 +184,12 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
       await page.locator('#details-close').click();
     }
   };
+  // Drawn in every view as a plain line with direction arrows, and not clickable.
+  const conveyingDrawn=async()=>{
+    for(const id of ['conveying-lines','conveying-arrows','conveying-arrows-back'])await visible(id);
+    assert.deepEqual(await page.evaluate(()=>['conveying-arrows','conveying-arrows-back'].map(id=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:[id]}).map(f=>f.properties.arrows))].sort())),[['one_way','two_way'],['two_way']]);
+    await clickCoordinates([.00065,-.0004]);assert.equal(await page.locator('#details').isHidden(),true,'no pop-up for escalators');
+  };
   const legendLayout=()=>page.evaluate(()=>{
     const panel=document.querySelector('.panel'),grid=document.querySelector('#legend .legend-grid');
     const bounds=node=>{const {left,right,width}=node.getBoundingClientRect();return {left,right,width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth};};
@@ -251,6 +265,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
 
   try {
     console.log(`CHECK: ${kind} loaded real map; checking control and signal fixtures`);
+    await conveyingDrawn();
     await sharedBands('control-tracks');
     await visible('infrastructure-signal-points');await visible('infrastructure-signal-supplement-points');
     assert.ok(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-signal-points']}).every(f=>f.properties.railway==='signal')),'buffers must not be reported as signals');
@@ -287,6 +302,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     const infraLegend=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].map(row=>row.lastElementChild.textContent));
     for(const label of ['Funicular','Rack railway (ladder ticks)','Aerial cableway (cable car, gondola)','Ski or chair lift'])assert.ok(infraLegend.includes(label),`Infrastructure legend has ${label}`);
     assert.equal(await page.locator('#legend .aerialway-swatch').count(),2,'each aerialway kind has a cable-and-ticks sample');
+    assert.equal(await page.locator('#legend .conveying-swatch').count(),1,'escalators, walkways and elevators share one line-and-arrow sample');
     await closeControls();
     await aerialwaysDrawn();
     await visible('infrastructure-rack');
@@ -311,7 +327,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
-    await aerialwaysDrawn();
+    await aerialwaysDrawn();await conveyingDrawn();
     await visible('electrification-conductor-rails');await visible('electrification-charging-points');
     for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack'])await visible(`electrification-${id}`);
     const providerRackIds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-rack']}).map(f=>String(f.properties.id)))]);
