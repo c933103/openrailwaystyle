@@ -2573,6 +2573,9 @@ test('Power legend is a fixed key of the facility drawing and current systems, p
     for (const mode of ['infrastructure','speed','control','gauge','loading','owner','service','axle']) {
       doc.querySelector(`[data-mode="${mode}"]`).click();
       assert.equal(legend.querySelectorAll('.point-swatch').length,0,`${mode} must not inherit power samples`);
+      // Cable cars, lifts and escalators are drawn in every view, so every legend keys them.
+      assert.equal(legend.querySelectorAll('.aerialway-swatch').length,2,`${mode} keys both aerialway kinds`);
+      assert.equal(legend.querySelectorAll('.conveying-swatch').length,1,`${mode} keys escalators, walkways and elevators`);
       assert.ok(legend.querySelector('.swatch.bridge'));
     }
     doc.querySelector('[data-mode="electrification"]').click();checkPoints(true);

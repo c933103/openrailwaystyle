@@ -518,7 +518,8 @@ function renderLegend() {
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
   if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
   if (settings.mode === 'infrastructure') rows.push({symbol:'method',stroke:POWER_METHOD_STROKES.find(({id})=>id==='rack-traction'),label:'Rack railway (ladder ticks)'});
-  if (['infrastructure','electrification'].includes(settings.mode)) rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})),{symbol:'conveying',label:'Escalator, moving walkway or elevator (arrow: direction)'});
+  // Drawn in every view as part of the transport network, so keyed in every legend.
+  rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})),{symbol:'conveying',label:'Escalator, moving walkway or elevator (arrow: direction)'});
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   // Existing track tuples become explicit line samples. Point categories keep
