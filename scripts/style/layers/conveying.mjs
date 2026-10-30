@@ -1,7 +1,7 @@
 // Escalators, moving walkways and elevators: a thin line in every view, with
 // an arrow for a mapped travel direction (both ways for a reversible one).
 // The arrow image is drawn at runtime (styleimagemissing 'conveying-arrow').
-import {CONVEYING_COLOUR} from '../../../styles/map-model.mjs';
+import {CONVEYING_COLOUR, viewLinePaint, viewLineWidth} from '../../../styles/map-model.mjs';
 export function conveyingLayers() {
   const metadata={'atlas:group':'railway','atlas:category':'conveying','atlas:views':[],'atlas:settings':[],'atlas:initial-hidden':false,'atlas:base-map':false};
   const base={source:'conveying','source-layer':'conveying',metadata};
@@ -14,7 +14,8 @@ export function conveyingLayers() {
     paint:{'icon-color':CONVEYING_COLOUR,'icon-halo-color':'rgba(255,255,255,0.85)','icon-halo-width':1}});
   return [
     {...base,id:'conveying-lines',type:'line',minzoom:14,layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':CONVEYING_COLOUR,'line-width':['interpolate',['linear'],['zoom'],14,0.8,18,2]}},
+      // Thematic views recolour and widen it by their own value (viewLinePaint).
+      paint:{'line-color':viewLinePaint('conveying-lines','infrastructure'),'line-width':viewLineWidth('conveying-lines','infrastructure')}},
     arrow('conveying-arrows',['match',['get','arrows'],['one_way','two_way'],true,false],0),
     arrow('conveying-arrows-back',['==',['get','arrows'],'two_way'],180),
   ];

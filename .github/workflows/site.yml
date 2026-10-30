@@ -316,8 +316,9 @@ jobs:
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
-      # Escalators, moving walkways and elevators (conveying.yml). Until its
-      # first snapshot is published the site deploys without them.
+      # Escalators, moving walkways and elevators, and aerialways under
+      # aerialways/ (conveying.yml). Until the first snapshot is published the
+      # site deploys without them.
       - name: Load escalators, moving walkways and elevators
         run: |
           mkdir -p styles/data/conveying
@@ -327,8 +328,15 @@ jobs:
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin conveying-data
             git archive FETCH_HEAD | tar -x -C styles/data/conveying
+            # A snapshot from before aerialways were added has none yet.
+            if [ ! -f styles/data/conveying/aerialways/index.json ]; then
+              mkdir -p styles/data/conveying/aerialways
+              echo '{"tiles":[]}' > styles/data/conveying/aerialways/index.json
+            fi
           elif [ "$status" = 2 ]; then
+            mkdir -p styles/data/conveying/aerialways
             echo '{"tiles":[]}' > styles/data/conveying/index.json
+            echo '{"tiles":[]}' > styles/data/conveying/aerialways/index.json
           else
             echo "Could not look up the conveying-data snapshot (git exit $status)"
             exit 1

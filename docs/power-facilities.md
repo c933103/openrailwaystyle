@@ -123,19 +123,23 @@ snapshot. In the Infrastructure view funiculars have their own track colour
 and rack railways the same ladder ticks as here.
 
 Aerial cableways and lifts show in every view from zoom 12, as part of the
-transport network even where a view has no data on them, drawn as OSM Carto
-draws them: a thin grey cable with dark ticks. Cable cars,
-gondolas and mixed lifts (`aerialway=cable_car|gondola|mixed_lift`, about 3,200
-OSM ways) have close ticks; chair, drag, T-bar, J-bar and platter lifts have
-sparse ticks. They come from the basemap's `transportation` layer
-(OpenMapTiles `class=aerialway` and its `subclass`), so no snapshot is needed;
-other `aerialway=*` values and stations are not drawn as lines. They stay over
-hybrid imagery and are left to the Carto raster, which already draws them.
-Clicking one shows its name, kind and OSM way. The name comes from the basemap's
-`transportation_name` layer under the same feature id, and the link uses the
-existing basemap id rule (OSM id × 10 + type), checked for aerialways against the
-live archive and the OSM API. Lines merged at lower zooms carry other ids and get
-no link.
+transport network even where a view has no data on them. Cable cars, gondolas
+and mixed lifts (`aerialway=cable_car|gondola|mixed_lift`, about 3,200 OSM ways)
+have close dark ticks; chair, drag, T-bar, J-bar and platter lifts have sparse
+ticks. Other `aerialway=*` values and stations are not drawn as lines. They
+come from the project's own aerialway snapshot (see
+[data maintenance](data-maintenance.md#escalator-moving-walkway-elevator-and-aerialway-snapshot)).
+
+In the Infrastructure and Power views the cable is thin grey, as OSM Carto
+draws it, and those legends key both kinds. Every other view colours the cable,
+drawn wider, by that view's own value from the way's tags, as it does tracks:
+Owner by `owner=*` (the same colour as a track with that owner, listed in the
+"in view" legend), Speed by `maxspeed`, Service as other track, and Gauge,
+Loading, Axle and Control as unknown, since aerialways carry none of those. The
+ticks stay in every view, so the type still reads. Escalators, moving walkways
+and elevators follow the same rule, keeping their arrows. They show on every
+background but satellite. Clicking an aerialway shows its name, kind, type,
+owner, maximum speed and OSM way.
 
 `rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
 `traction=rack`) is read straight from the provider's detailed railway tiles,

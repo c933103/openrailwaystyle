@@ -11,7 +11,7 @@ import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
-import {conveyingGeoJSON} from './conveying-data.mjs';
+import {conveyingGeoJSON,aerialwaysGeoJSON} from './conveying-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -68,14 +68,13 @@ const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
 const branchIndex = index([branchOverview,metroOverview]);
 const signalIndex = index([undirected]);
-// Basemap aerialways (OpenMapTiles transportation, class=aerialway).
-const aerialways = [
-  // Planetiler ids: OSM way id × 10 + 2. Names sit in transportation_name.
-  feature({class:'aerialway',subclass:'gondola'},'LineString',[[-.0002,.0003],[.0016,.0003]],93102),
-  feature({class:'aerialway',subclass:'chair_lift'},'LineString',[[-.0002,-.0002],[.0016,-.0002]],93112),
-];
-const aerialwayNames = [feature({class:'aerialway',subclass:'gondola',name:'Test gondola'},'LineString',[[-.0002,.0003],[.0016,.0003]],93102)];
-const basemapIndexes = {poi:index(culture),transportation:index(aerialways),transportation_name:index(aerialwayNames)};
+// Aerialways from the project snapshot: a named, owned gondola and an
+// unnamed chair lift with no owner.
+const aerialwayWays=aerialwaysGeoJSON({elements:[
+  {type:'way',id:9310,tags:{aerialway:'gondola',name:'Test gondola',owner:'Test Cableway Owner'},geometry:[{lon:-.0002,lat:.0003},{lon:.0016,lat:.0003}]},
+  {type:'way',id:9311,tags:{aerialway:'chair_lift'},geometry:[{lon:-.0002,lat:-.0002},{lon:.0016,lat:-.0002}]},
+]});
+const basemapIndexes = {poi:index(culture)};
 const center = [.0007,0];
 const coordinatesAt = (z,[lon,lat]) => [Math.floor((lon+180)/360*2**z),Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*2**z)];
 function localKeys(zooms,radius=3) {
@@ -89,6 +88,7 @@ const conveyingWays=conveyingGeoJSON({elements:[
 ]});
 const snapshotIndexes = {
   conveying:{tiles:localKeys([14]),index:index(conveyingWays.features),layer:'conveying'},
+  'conveying/aerialways':{tiles:localKeys([12]),index:index(aerialwayWays.features),layer:'aerialways'},
   'branch-lines':{tiles:localKeys([4,5,6,7,8,9],4),index:branchIndex,layer:'branch_lines'},
   'traction/signals':{tiles:localKeys([12,16]),index:signalIndex,layer:'railway_signals'},
 };
@@ -110,7 +110,7 @@ function archiveFor(indexes,z=18) {
   const entries=localKeys([z]).map(key=>{const [zoom,x,y]=key.split('/').map(Number),tiles=Object.fromEntries(Object.entries(indexes).map(([layer,index])=>[layer,index.getTile(zoom,x,y)]).filter(([,tile])=>tile));return Object.keys(tiles).length?{id:tileId(zoom,x,y),bytes:Buffer.from(vtpbf.fromGeojsonVt(tiles,{version:2}))}:null;}).filter(Boolean).sort((a,b)=>a.id-b.id);
   let previous=0;
   const directory=Buffer.from([...varint(entries.length),...entries.flatMap(e=>{const delta=e.id-previous;previous=e.id;return varint(delta);}),...entries.flatMap(()=>varint(1)),...entries.flatMap(e=>varint(e.bytes.length)),...entries.flatMap((_,i)=>varint(i?0:1))]);
-  const metadata=Buffer.from(JSON.stringify({vector_layers:[{id:'poi',fields:{name:'String',class:'String',subclass:'String',rank:'Number'}},{id:'transportation',fields:{class:'String',subclass:'String'}},{id:'transportation_name',fields:{class:'String',subclass:'String',name:'String'}}]})),data=Buffer.concat(entries.map(e=>e.bytes));
+  const metadata=Buffer.from(JSON.stringify({vector_layers:[{id:'poi',fields:{name:'String',class:'String',subclass:'String',rank:'Number'}}]})),data=Buffer.concat(entries.map(e=>e.bytes));
   const header=Buffer.alloc(127);header.write('PMTiles');header[7]=3;
   for(const [offset,value] of [[8,127],[16,directory.length],[24,127+directory.length],[32,metadata.length],[40,127+directory.length+metadata.length],[48,0],[56,127+directory.length+metadata.length],[64,data.length],[72,entries.length],[80,entries.length],[88,entries.length]])header.writeBigUInt64LE(BigInt(value),offset);
   header[96]=1;header[97]=header[98]=header[99]=1;header[100]=header[101]=z;
@@ -174,7 +174,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   // Each basemap aerialway is drawn once, by its own kind's cable and ticks.
   const aerialwaysDrawn=async()=>{
     for(const id of ['aerialway-cableway-cable','aerialway-cableway-ticks','aerialway-lift-cable','aerialway-lift-ticks'])await visible(id);
-    assert.deepEqual(await page.evaluate(()=>Object.fromEntries(['cableway','lift'].map(kind=>[kind,[...new Set(window.reviewMap.queryRenderedFeatures({layers:[`aerialway-${kind}-cable`,`aerialway-${kind}-ticks`]}).map(f=>f.properties.subclass))]]))),{cableway:['gondola'],lift:['chair_lift']});
+    assert.deepEqual(await page.evaluate(()=>Object.fromEntries(['cableway','lift'].map(kind=>[kind,[...new Set(window.reviewMap.queryRenderedFeatures({layers:[`aerialway-${kind}-cable`,`aerialway-${kind}-ticks`]}).map(f=>f.properties.aerialway))]]))),{cableway:['gondola'],lift:['chair_lift']});
     // Clicking opens its name (from the basemap name layer), kind and OSM way.
     for(const [at,name,kindLabel,way] of [[[.0004,.0003],'Test gondola','Aerial cableway (cable car, gondola)',9310],[[.0004,-.0002],'Unnamed aerialway','Ski or chair lift',9311]]){
       await clickCoordinates(at);await page.waitForSelector('#details:not([hidden])');
@@ -322,6 +322,16 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-infrastructure-${kind}.png`});
     console.log(`CHECK: ${kind} shared signals, compact descriptions and cultural context passed; checking energy supplies`);
     await mode('speed');await closeControls();await aerialwaysDrawn();
+    // Thematic views colour the cable by their own value: the gondola's owner
+    // joins the Owner legend; the ownerless lift and escalators stay unknown.
+    await mode('owner');await closeControls();await aerialwaysDrawn();
+    assert.equal(await page.evaluate(()=>JSON.stringify(window.reviewMap.getPaintProperty('aerialway-cableway-cable','line-color'))),JSON.stringify(['coalesce',['get','owner_color'],'#899197']));
+    await openControls();
+    await waitUntil(page,()=>[...document.querySelectorAll('#legend .legend-item')].some(row=>row.lastElementChild.textContent==='Test Cableway Owner'));
+    for(const label of ['Aerial cableway (cable car, gondola)','Ski or chair lift'])assert.equal(await page.evaluate(label=>[...document.querySelectorAll('#legend .legend-item')].some(row=>row.lastElementChild.textContent===label),label),false,'no type rows in the Owner legend');
+    await closeControls();
+    await clickCoordinates([.0004,.0003]);await page.waitForSelector('#details:not([hidden])');assert.match(await page.locator('#detail-content').innerText(),/Owner\s+Test Cableway Owner/);await page.locator('#details-close').click();
+    await page.screenshot({path:`browser-review/aerialway-owner-${kind}.png`});
     assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
     await mode('electrification');await closeControls();
