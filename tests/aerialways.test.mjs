@@ -35,13 +35,13 @@ test('each kind draws only its own aerialway subclasses',()=>{
   assert.equal(new Set(AERIALWAY_KINDS.flatMap(k=>k.subclasses)).size,AERIALWAY_KINDS.flatMap(k=>k.subclasses).length,'no subclass in two kinds');
 });
 
-test('aerialways show in Infrastructure and Power views, over hybrid imagery, but not over the Carto raster',()=>{
+test('aerialways show in every view, over hybrid imagery, but not over the Carto raster',()=>{
   const settings={mode:'infrastructure',labels:true,inactive:true,background:'map'};
   for(const layer of layers){
-    assert.equal(layer.layout.visibility,'none','hidden in the default Speed view');
-    assert.equal(layerVisibility(layer,settings),true);
-    assert.equal(layerVisibility(layer,{...settings,mode:'electrification'}),true);
-    assert.equal(layerVisibility(layer,{...settings,mode:'speed'}),false);
+    assert.notEqual(layer.layout.visibility,'none','drawn from the first frame of the default view');
+    for(const mode of ['speed','infrastructure','electrification','control','gauge','loading','axle','owner','service'])
+      assert.equal(layerVisibility(layer,{...settings,mode}),true,`${layer.id} in ${mode}`);
+    assert.equal(layerVisibility(layer,{...settings,labels:false,inactive:false}),true,'no setting turns them off');
     assert.equal(layerVisibility(layer,{...settings,background:'hybrid'}),true,'not a base-map layer');
     assert.equal(layerVisibility(layer,{...settings,background:'carto'}),false,'Carto already draws them');
     assert.equal(layerVisibility(layer,{...settings,background:'satellite'}),false);

@@ -46053,12 +46053,9 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "aerialway",
-        "atlas:views": [
-          "infrastructure",
-          "electrification"
-        ],
+        "atlas:views": [],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -46069,8 +46066,7 @@
         "atlas:localize": false
       },
       "layout": {
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "id": "aerialway-cableway-cable",
       "filter": [
@@ -46116,12 +46112,9 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "aerialway",
-        "atlas:views": [
-          "infrastructure",
-          "electrification"
-        ],
+        "atlas:views": [],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -46132,8 +46125,7 @@
         "atlas:localize": false
       },
       "layout": {
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "id": "aerialway-cableway-ticks",
       "filter": [
@@ -46183,12 +46175,9 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "aerialway",
-        "atlas:views": [
-          "infrastructure",
-          "electrification"
-        ],
+        "atlas:views": [],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -46199,8 +46188,7 @@
         "atlas:localize": false
       },
       "layout": {
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "id": "aerialway-lift-cable",
       "filter": [
@@ -46248,12 +46236,9 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "aerialway",
-        "atlas:views": [
-          "infrastructure",
-          "electrification"
-        ],
+        "atlas:views": [],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -46264,8 +46249,7 @@
         "atlas:localize": false
       },
       "layout": {
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "id": "aerialway-lift-ticks",
       "filter": [

@@ -305,7 +305,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     }
     await page.screenshot({path:`browser-review/signal-power-infrastructure-${kind}.png`});
     console.log(`CHECK: ${kind} shared signals, compact descriptions and cultural context passed; checking energy supplies`);
-    await mode('speed');assert.ok(await page.evaluate(()=>['aerialway-cableway-cable','aerialway-lift-ticks'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')),'aerialways stay off the Speed view');
+    await mode('speed');await closeControls();await aerialwaysDrawn();
     assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
     await mode('electrification');await closeControls();

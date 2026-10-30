@@ -122,8 +122,9 @@ definition and take the cable stroke from the provider's `feature=funicular`;
 snapshot. In the Infrastructure view funiculars have their own track colour
 and rack railways the same ladder ticks as here.
 
-Aerial cableways and lifts show in the Infrastructure and Power views from zoom
-12, drawn as OSM Carto draws them: a thin grey cable with dark ticks. Cable cars,
+Aerial cableways and lifts show in every view from zoom 12, as part of the
+transport network even where a view has no data on them, drawn as OSM Carto
+draws them: a thin grey cable with dark ticks. Cable cars,
 gondolas and mixed lifts (`aerialway=cable_car|gondola|mixed_lift`, about 3,200
 OSM ways) have close ticks; chair, drag, T-bar, J-bar and platter lifts have
 sparse ticks. They come from the basemap's `transportation` layer
