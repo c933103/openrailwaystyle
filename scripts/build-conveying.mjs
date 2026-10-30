@@ -1,18 +1,26 @@
 // Build-time OSM extract of every escalator, moving walkway and elevator way.
 import {mkdir,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind} from './conveying-data.mjs';
+import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
+const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
 let data;
 for(let attempt=0;attempt<3;attempt++) {
+  if (!conveyingRequestFits(deadline, 0)) throw new Error('Conveying acquisition deferred: no full request fits the 52-minute budget');
   try {
     const startedAt = Date.now();
-    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(960000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
+    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
     if(!response.ok) throw await conveyingHttpError(response, startedAt);
     data=await response.json();
     if(data.remark) throw new Error(`Overpass HTTP ${response.status} after ${Date.now()-startedAt}ms [${conveyingFailureKind(response.status,String(data.remark))}]: incomplete response`);
     if(!Array.isArray(data.elements)) throw new Error('Incomplete response');
     break;
-  } catch(error) {if(attempt===2) throw error;console.log(error.message,'— retrying after two minutes');await new Promise(r=>setTimeout(r,120000));}
+  } catch(error) {
+    if(attempt===2) throw error;
+    const wait = conveyingRetryDelay(error, attempt);
+    if (!conveyingRequestFits(deadline, wait)) throw new Error('Conveying acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:error});
+    console.log(error.message, `— retrying after ${wait / 60000} minutes`);
+    await new Promise(r=>setTimeout(r,wait));
+  }
 }
 const {features}=conveyingGeoJSON(data);
 // Taginfo counted about 44,000 such ways in October 2026.
