@@ -19,6 +19,8 @@ const feature = (properties, type, coordinates, id) => ({type:'Feature', ...(id 
 const control = {train_protection0:'atc', train_protection1:'pzb', train_protection2:'etcs_2'};
 const rail = {id:'9200-0', name:'Shared protection test track', feature:'rail', railway:'rail', state:'present', usage:'main', service:'', ...control};
 const detailed = feature(rail, 'LineString', [[-.0002,.0005],[.0016,.0005]]);
+// rack=* arrives on the provider's detailed lines (abt, strub, riggenbach…).
+const providerRack = feature({...rail,id:'9430-0',name:'Provider rack test line',railway:'narrow_gauge',feature:'narrow_gauge',rack:'abt'}, 'LineString', [[-.0002,-.00075],[.0016,-.00075]]);
 const mainOverview = feature({...rail,id:'9201-0'}, 'LineString', [[-4,1],[4,1]]);
 const branchOverview = feature({...rail,id:'9202-0',usage:'branch'}, 'LineString', [[-4,-1],[4,-1]]);
 const metroOverview = feature({...rail,id:'9203-0',feature:'subway',railway:'subway',usage:''}, 'LineString', [[-.5,.2],[.5,.2]]);
@@ -29,7 +31,7 @@ const culture = [
   feature({name:'Test theatre',class:'theatre',subclass:'theatre',rank:1},'Point',[.00115,-.00085],93011),
 ];
 const datasets = {
-  railway_line_high:[detailed],
+  railway_line_high:[detailed,providerRack],
   signals_railway_line_low:[mainOverview],
   standard_railway_line_low:[mainOverview],
   electrification_railway_line_low:[mainOverview],
@@ -289,7 +291,10 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
     await visible('electrification-conductor-rails');await visible('electrification-charging-points');
-    for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction'])await visible(`electrification-${id}`);
+    for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack'])await visible(`electrification-${id}`);
+    const providerRackIds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-rack']}).map(f=>String(f.properties.id)))]);
+    assert.deepEqual(providerRackIds,['9430-0'],'only the rack=abt provider line gets the rack stroke');
+    await clickCoordinates([.0006,-.00075]);assert.match(await page.locator('#detail-content').innerText(),/Rack\s+abt/,'the track inspector names the rack system');await page.locator('#details-close').click();
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-fourth-rails']}).map(f=>f.properties.osm_id))]),['9422'],'only the fourth-rail track has its second conductor rail');
     await clickCoordinates([.0007,.0004]);assert.match(await page.locator('#detail-content').innerText(),/Inductive power supply/);await page.locator('#details-close').click();
     await clickCoordinates([.00125,-.001]);assert.match(await page.locator('#detail-content').innerText(),/Rack railway/);assert.match(await page.locator('#detail-content').innerText(),/Traction\s+rack/);await page.locator('#details-close').click();

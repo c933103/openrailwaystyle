@@ -60,7 +60,7 @@ test('track and electrification lifecycle both keep conductor rails behind the f
   assert.equal(filter({zoom:14},{type:2,properties:{power_state:'present',method_rail:true}}),true);
   assert.equal(filter({zoom:14},{type:2,properties:{power_state:'present',method_rail:false}}),false,'a line without third rail is not drawn as one');
   assert.equal(filter({zoom:14},{type:1,properties:{power_state:'present',method_rail:true}}),false);
-  assert.deepEqual(validateStyleMin({version:8,glyphs:'https://example.org/{fontstack}/{range}.pbf',sources:{electricMethods:{type:'geojson',data:{type:'FeatureCollection',features:[]}},electricCatenary:{type:'vector',tiles:['https://example.org/{z}/{x}/{y}.pbf']}},layers}),[]);
+  assert.deepEqual(validateStyleMin({version:8,glyphs:'https://example.org/{fontstack}/{range}.pbf',sources:{electricMethods:{type:'geojson',data:{type:'FeatureCollection',features:[]}},railway:{type:'vector',tiles:['https://example.org/{z}/{x}/{y}']},electricCatenary:{type:'vector',tiles:['https://example.org/{z}/{x}/{y}.pbf']}},layers}),[]);
   assert.deepEqual(osmObject({source:'electricCatenary',properties:{id:'123-mast'}}),{type:'node',id:'123'});
   assert.deepEqual(osmObject({source:'electricCatenary',properties:{id:'124-portal'}}),{type:'way',id:'124'});
 });
@@ -185,4 +185,15 @@ test('every Power marker and means says what it is, whatever the value-labels se
   assert.equal(evaluate(true,{power_kind:'coaling_facility',power_state:'disused'}),'Steam engine coaling (disused)');
   const html=(await (await import('node:fs/promises')).readFile(new URL('../styles/index.html',import.meta.url),'utf8')).match(/id="labels"[^>]*>([^<]*)</)[1];
   assert.match(html,/catenary mast numbers/);
+});
+test('rack railways come from the provider rack=* field, any rack system, with lifecycle',()=>{
+  const layers=powerMethodLayers(),present=layers.find(l=>l.id==='electrification-provider-rack'),former=layers.find(l=>l.id==='electrification-former-provider-rack');
+  assert.equal(present.source,'railway');assert.equal(present['source-layer'],'railway_line_high');
+  const draws=(layer,p)=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:{feature:'rail',...p},geometry:[]});
+  for(const rack of ['yes','abt','strub','riggenbach','locher','von_roll','Abt'])assert.equal(draws(present,{state:'present',rack}),true,rack);
+  for(const rack of ['no','NO',''])assert.equal(draws(present,{state:'present',rack}),false,rack);
+  assert.equal(draws(present,{state:'present'}),false,'no rack tag, no rack stroke');
+  assert.equal(draws(present,{state:'disused',rack:'abt'}),false);
+  assert.equal(draws(former,{state:'disused',rack:'abt'}),true);
+  assert.equal(draws(present,{state:'present',rack:'abt',feature:'ferry'}),false);
 });

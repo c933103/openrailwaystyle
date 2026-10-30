@@ -109,8 +109,13 @@ one track (for example `electrified=contact_line;rail`):
 | `electrified=ground-level_power_supply` | dotted light centre line |
 | `electrified=inductive` | dash-dot, one side, in the system colour |
 | `propulsion=linear_motor` | purple centre line |
-| `traction=rack` | dark ladder ticks along the track |
+| `rack=*` (`yes`, `abt`, `strub`, `riggenbach`, …; not `no`), or `traction=rack` | dark ladder ticks along the track |
 | `traction=cable` | dark long dashes, one side |
+
+`rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
+`traction=rack`) is read straight from the provider's detailed railway tiles,
+which carry it as `rack`; the track inspector names the rack system. The
+maintenance snapshot keeps the rarer `traction=rack`.
 
 Lifecycle prefixes are honoured; planned and former tracks are faded and follow
 the planned/former setting. The legend draws each sample from the same stroke

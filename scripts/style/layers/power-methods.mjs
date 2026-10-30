@@ -1,4 +1,5 @@
 import {electrificationPaint} from '../../../styles/map-model.mjs';
+import {present,notFerry,byKindZoom} from './railway-expressions.mjs';
 import {POWER_FACILITY_SYMBOL,POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {powerKindText} from './power-facilities.mjs';
 
@@ -23,6 +24,14 @@ export function powerMethodLayers() {
         paint:{'line-color':color||electrificationPaint(),'line-width':width,'line-offset':offset,...(dash?{'line-dasharray':dash}:{}),'line-opacity':opacity}});
     // Means and charger labels say what the feature is, so they stay with
     // the features rather than following the value-labels setting.
+    // Rack railways are mapped with rack=* (abt, strub, riggenbach, yes…),
+    // which the provider's detailed railway tiles already carry; draw them
+    // from there rather than only from the rare traction=rack tag.
+    const rack=POWER_METHOD_STROKES.find(({id})=>id==='rack-traction');
+    layers.push({id:`electrification-${suffix}provider-rack`,type:'line',source:'railway','source-layer':'railway_line_high',minzoom:10,metadata:meta,
+      filter:['all',former?['!',present]:present,notFerry,byKindZoom,['!',['in',['downcase',['coalesce',['get','rack'],'no']],['literal',['no','']]]]],
+      layout:{'line-cap':rack.cap||'butt','line-join':'round'},
+      paint:{'line-color':rack.color,'line-width':rack.width,'line-offset':rack.offset,'line-dasharray':rack.dash,'line-opacity':opacity}});
     layers.push({...base,id:`electrification-${suffix}method-labels`,type:'symbol',minzoom:12,
       metadata:meta,
       layout:{'symbol-placement':'line','symbol-spacing':350,'text-field':['get','power_method_label'],'text-font':['Noto Sans Bold'],'text-size':11,'text-offset':[0,1]},

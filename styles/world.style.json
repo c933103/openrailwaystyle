@@ -60058,6 +60058,133 @@
       }
     },
     {
+      "id": "electrification-provider-rack",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "downcase",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "rack"
+                ],
+                "no"
+              ]
+            ],
+            [
+              "literal",
+              [
+                "no",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
       "source": "electricMethods",
       "minzoom": 12,
       "metadata": {
@@ -62058,6 +62185,138 @@
         "line-dasharray": [
           5,
           2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "id": "electrification-former-provider-rack",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "downcase",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "rack"
+                ],
+                "no"
+              ]
+            ],
+            [
+              "literal",
+              [
+                "no",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
         ],
         "line-opacity": 0.5
       }
