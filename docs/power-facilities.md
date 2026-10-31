@@ -111,8 +111,8 @@ function and form match the provider's per-country catalogue. On 26 October
 2026 about 3% of mapped values were outside it, mostly French, Portuguese,
 Spanish and Austrian tram signals, which the provider shows as unknown
 signals. The Power view therefore uses its own tag-based snapshot, so every
-country's signals are treated alike. References, or the recorded function when there
-is no reference, appear from zoom 16 and follow Labels. Deactivated signals
+country's signals are treated alike. As with the other Power features, the map
+carries no text for them. Deactivated signals
 (`railway:signal:electricity:deactivated=yes`) are hollow and follow the
 planned/former setting. Selecting a dot shows the recorded signal value,
 function, form, applicability, turn direction, voltage, frequency and facing

@@ -375,7 +375,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
     await closeControls();
     await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
-    await visible('electrification-signal-points');await visible('electrification-signal-labels');
+    await visible('electrification-signal-points');
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-signal-points']}).map(f=>f.properties.osm_id))].sort()),['9460','9461'],'a deactivated signal follows the planned/former setting');
     for(const [coordinates,id,title,value] of [[[.0004,.00115],'9460','End of catenary','FR:end_of_catenary'],[[.0011,.00115],'9461','Signal E7','DE-ESO:el2']]) {
       await clickCoordinates(coordinates);await page.waitForSelector('#details:not([hidden])');

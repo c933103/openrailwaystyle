@@ -63210,69 +63210,6 @@
       }
     },
     {
-      "id": "electrification-signal-labels",
-      "type": "symbol",
-      "source": "electricSignals",
-      "minzoom": 16,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "labels"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      },
-      "filter": [
-        "==",
-        [
-          "get",
-          "power_state"
-        ],
-        "present"
-      ],
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "ref"
-          ],
-          [
-            "get",
-            "electricity_label"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 10,
-        "text-offset": [
-          0,
-          0.9
-        ],
-        "text-anchor": "top",
-        "text-padding": 4,
-        "text-max-width": 10,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#5c3d00",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
       "id": "road-labels",
       "type": "symbol",
       "source": "openmaptiles",
