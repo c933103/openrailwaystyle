@@ -172,9 +172,13 @@ region's raw response: `regions/<stage>/` holds the last complete pass,
   that lost its data.
 - The store is a cache that can be downloaded again, so it is kept as the
   assets of the `railway-ways-store` release (as `traction-facilities-cache`
-  is), not as git history: `stage-<stage>.tar.zst` per stage, then
-  `state.json` (uploaded last, so it never names regions not yet uploaded)
-  and `manifest.json`. A run uploads only the stage it worked on.
+  is), not as git history (`scripts/railway-ways-release.mjs`). Nothing is
+  replaced in place: each run uploads new generation-named assets, the stage
+  archive it changed (`stage-<stage>-<generation>.tar.zst`) and then its state
+  (`state-<generation>.json`, naming every stage's archive). Loading takes the
+  newest state whose archives are all present, so a run that stopped half way
+  leaves the previous generation in use; older generations are deleted after
+  the new state is up, keeping the previous one.
 
 It is started by hand for now; the three datasets still
 download their own data until they are built from this store, and only then
