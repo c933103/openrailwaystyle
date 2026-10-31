@@ -1,6 +1,7 @@
-// Satellite provider selection in the real app and MapLibre: Esri World Imagery
-// when a key is configured, Sentinel-2 (EOX) when Esri refuses it, and the
-// published direct EOX source when no key exists. Provider tiles are local
+// Satellite provider selection in the real app and MapLibre: Sentinel-2 (EOX)
+// where it has native detail, Esri World Imagery only beyond it when a key is
+// configured, EOX when Esri refuses it, and the published direct EOX source
+// when no key exists. Provider tiles are local
 // solid-colour fixtures; no request reaches Esri or EOX.
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser.mjs';
@@ -48,10 +49,17 @@ async function load(page, zoom) {
 const near = (pixel, rgb, label) => assert.ok(rgb.every((v, i) => Math.abs(pixel[i] - v) <= 8), `${label}: ${JSON.stringify(pixel)}`);
 
 try {
+  // Where EOX has native detail (z12 at Tokyo) it draws without any Esri
+  // request; beyond it (z15) Esri draws.
   const healthy = await open({config: {esriKey: KEY}, esri: 'ok'});
   await load(healthy.page, 12);
-  near(await centre(healthy.page), [255, 0, 0], 'Esri imagery draws when configured');
+  near(await centre(healthy.page), [0, 0, 255], 'Sentinel-2 where it has native detail, even with a key');
+  assert.equal(healthy.requests.esri.length, 0, 'no Esri request where EOX covers the view');
+  await healthy.page.evaluate(() => window.imageryMap.jumpTo({zoom: 15}));
+  await healthy.page.evaluate(() => new Promise(resolve => { window.imageryMap.once('idle', resolve); setTimeout(resolve, 20000); }));
+  near(await centre(healthy.page), [255, 0, 0], 'Esri imagery beyond Sentinel-2 detail');
   assert.ok(healthy.requests.esri.length > 0 && healthy.requests.esri.every(url => url.endsWith(`?token=${KEY}`)), 'keyed Esri requests');
+  assert.ok(healthy.requests.esri.every(url => +/\/tile\/(\d+)\//.exec(url)[1] >= 14), 'Esri is requested only at zooms EOX cannot cover here');
   assert.equal(await healthy.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.maxzoom), 18);
   assert.match(await healthy.page.locator('.maplibregl-ctrl-attrib').textContent(), /Powered by Esri.*Vantor/s, 'Esri attribution');
   assert.deepEqual(healthy.errors, []);
@@ -77,7 +85,7 @@ try {
   assert.match(await unconfigured.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.tiles[0]), /^https:\/\/tiles\.maps\.eox\.at\//, 'published EOX source unchanged');
   assert.equal(unconfigured.requests.esri.length, 0);
   await unconfigured.context.close();
-  console.log('PASS: Esri imagery with key, Sentinel-2 after refusal (including z15 crop), direct EOX without key');
+  console.log('PASS: Sentinel-2 where it has native detail, Esri only beyond it with a key, Sentinel-2 after refusal (including z15 crop), direct EOX without key');
 } finally {
   await browser.close();
 }

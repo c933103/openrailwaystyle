@@ -969,7 +969,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "d09e12d44433ca13aac143d7bdc725a90bf63b82ec532fcb5c7ec0121bb8c06e"
+      "sha256": "9f3f46ae4a1f6592eb9e37a63fb5042e4bd32156894d2ccb7541c4980959b263"
     },
     {
       "id": "road-major",
@@ -1034,7 +1034,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "124bddccabea17b60867fbf2a06b6f3a52fcc3d4b91a22a0c26ffea2cc3789b4"
+      "sha256": "6812301d90ac0f9b3a88d69199f1f4abc22a0263a6954aa9d38203567b11a19c"
     },
     {
       "id": "rail-basemap-reference",
@@ -1088,7 +1088,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "58081acd90fb3831b70b5d3906f780b6d232885bfe69b225d02ff7235b218ad3"
+      "sha256": "e4ab28eb056489d32d53c605009e56a81ed19ec5084bd9c923a6d85d5c2a6f0d"
     },
     {
       "id": "infrastructure-metro-overview",
@@ -1097,7 +1097,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "15ef19c177d600ba8f8bf0e7ba48488535bd07e01c4ddff83f591411a54fca69"
+      "sha256": "de17abc447f25cdf4d29baf00f61e46cf368685677358cffe55ecbc81e6cc054"
     },
     {
       "id": "speed-branch-overview",
@@ -1905,7 +1905,7 @@
       "source": "electricSubstations",
       "sourceLayer": "electrification_substation",
       "minzoom": 13,
-      "sha256": "1927237bcefefe9df4f4b8cf4f4a92a83546853da2cf23655d14149f255e76e1"
+      "sha256": "dd97ff8418367a5c22adcd107dfedd5c0855fdba53254640eed0dfeda345a1d3"
     },
     {
       "id": "electrification-substation-edges",
@@ -1913,49 +1913,21 @@
       "source": "electricSubstations",
       "sourceLayer": "electrification_substation",
       "minzoom": 13,
-      "sha256": "08b240b479f649f2f76e47ef4ed190b7323b0a2c9cfb0d23fc3c994c44a7d876"
+      "sha256": "96a474ff4f1067f8fd3159a58010233c387c70d87b0fdca700f95a81a1dc13b7"
     },
     {
       "id": "electrification-supply-points",
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "28e3d0910c3a8a9a1bb7c4a454c3bd4b97567dacd0d48b78fc25695dfa1e66f1"
+      "sha256": "0d361996d6ff3c5fdb80308a3c20118a44c881aa56567e0a3dc767a17fda8a46"
     },
     {
       "id": "electrification-former-supply-points",
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "b77ba1596c8a1e01bd6212e46e0504c8c584e69b2649dd48e0fe9804887d009e"
-    },
-    {
-      "id": "electrification-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "6ee5ca2db3e3611b1e0f5651a058de69adf8f7f3670ff02fd61055aa80ee11e4"
-    },
-    {
-      "id": "electrification-former-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "13362cc70f70518d32decc15e2cdc33ce8fe562f2c802b8bd38797318d7e8ffa"
-    },
-    {
-      "id": "electrification-supply-names",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "sha256": "f9905fb2243348317d130dca7fa302cfea18e5787a1bfaa530b005e441985695"
-    },
-    {
-      "id": "electrification-former-supply-names",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "sha256": "c4c49e4c8dcac59ab7508852a2ec99562e8c99188eb400561a2f0b0e7324fa70"
+      "sha256": "9b01879c26ff6c43d91b06b3a276c11f940a8a77b052bd8dead72a2e81a6b9f2"
     },
     {
       "id": "road-labels",
@@ -1963,7 +1935,7 @@
       "source": "openmaptiles",
       "sourceLayer": "transportation_name",
       "minzoom": 15,
-      "sha256": "fe83e9cba80e337ae57cb14ae6b91762c723c1b3b9d22f3fb1b8fc06c755845a"
+      "sha256": "ae2bbc3cf0138cfa7cac61081362b69c8629641a06491e29d4a117efa630752e"
     },
     {
       "id": "context-constraints-protected-area-label",
@@ -2534,6 +2506,51 @@
         "place_label_city-placement",
         "place_label_other-placement",
         "state_label-placement"
+      ]
+    },
+    {
+      "reviewed": "2026-10-26",
+      "reason": "Power view points show what each object is: a pictogram per kind (symbol layer, icon drawn by the app) replaces the category circle and letter; names move below the larger tile. The letter layers are removed.",
+      "layers": [
+        "electrification-supply-points",
+        "electrification-former-supply-points",
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ],
+      "removedLayers": [
+        "electrification-supply-marks",
+        "electrification-former-supply-marks"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Power facilities are drawn as mapped: neutral outlined areas, lines and plain dots, no pictograms, kind or name text, and no colour by supply group. Names layers and points layers change form; substation areas take the same neutral style.",
+      "layers": [
+        "electrification-substation-areas",
+        "electrification-substation-edges",
+        "electrification-supply-points",
+        "electrification-former-supply-points"
+      ],
+      "removedLayers": [
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Infrastructure view gives funiculars (feature=funicular) their own colour, appended to INFRASTRUCTURE so existing class colours keep their positions. Rack ticks are a separate added layer.",
+      "layers": [
+        "infrastructure-branch-overview",
+        "infrastructure-overview",
+        "infrastructure-tracks",
+        "infrastructure-metro-overview"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Road labels leave out aerialways (class=aerialway): owner decision that aerialways are named like railways, by the aerialway-names layer in the railway name group.",
+      "layers": [
+        "road-labels"
       ]
     }
   ]

@@ -14,8 +14,8 @@ const SOURCE_ORDER = [
   'platformLengths', 'platformNumbers', 'railwaySignals', 'railwaySignalSupplementOverview', 'railwaySignalSupplement', 'electricSubstations', 'electricSignals', 'electricFacilities', 'electricMethods', 'electricCatenary', 'stationEntrances',
   'stationLow', 'stationMed', 'stations', 'inactiveRegional', 'crossings',
   'crossingsOverview', 'crossingsDetail', 'branchLines', 'serviceRoutes',
-  'streetRunning', 'heritageAreas', 'contours', 'seabedContours', 'seabedContoursClose',
-  'satellite', 'carto', 'relief', 'bathymetry',
+  'streetRunning', 'conveying', 'aerialways', 'heritageAreas', 'contours', 'seabedContours', 'seabedContoursClose',
+  'satellite', 'carto', 'relief', 'bathymetry', 'terrain3d',
 ];
 
 export function createSources(majorStationData) {

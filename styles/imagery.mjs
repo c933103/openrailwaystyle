@@ -1,16 +1,35 @@
-// Satellite/Hybrid imagery: Esri World Imagery when the deployment configures
-// an ArcGIS Location Platform key, with Sentinel-2 cloudless (EOX) as the
-// fallback for any tile Esri cannot serve. A quota or authorization failure
-// (the free tier ends with the service privilege removed) switches the whole
-// device to EOX for a while instead of re-requesting every tile from Esri.
+// Satellite/Hybrid imagery: Sentinel-2 cloudless (EOX, free) wherever it has
+// native detail, and Esri World Imagery, when the deployment configures an
+// ArcGIS Location Platform key, only where EOX cannot cover: finer than EOX's
+// 10 m (z14 at the equator) and outside Sentinel-2's acquisition band. EOX
+// remains the fallback for any tile Esri cannot serve. A quota or
+// authorization failure (the free tier ends with the service privilege
+// removed) switches the whole device to EOX for a while instead of
+// re-requesting every tile from Esri.
 export const EOX_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg';
 export const EOX_MAX_ZOOM = 14;
 export const ESRI_TILES = 'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 export const ESRI_MAX_ZOOM = 18;
+// Sentinel-2 systematically acquires land between 56° S and 84° N (ESA mission
+// requirements); EOX documents no coverage of the poles.
+export const EOX_SOUTH = -56, EOX_NORTH = 84;
 export const ESRI_ATTRIBUTION = 'Powered by <a href="https://www.esri.com/">Esri</a> | Esri, Vantor, Earthstar Geographics, and the GIS User Community';
 export const ESRI_OFF_KEY = 'atlas-imagery-esri-off-until';
 export const ESRI_OFF_MS = 6 * 60 * 60 * 1000;
 const AUTH_STATUS = new Set([401, 403, 498, 499]);
+
+// Whether EOX has native detail somewhere in a tile: the tile reaches the
+// acquisition band, and at its edge nearest the equator it is no finer on the
+// ground than EOX's z14 at the equator. Web Mercator tiles grow finer towards
+// the poles, so the zoom at which EOX runs out falls with latitude (z13 from
+// 60°, z12 from 75.5°).
+const tileLatitude = (z, y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI;
+export function eoxCovers(z, y) {
+  const north = tileLatitude(z, y), south = tileLatitude(z, y + 1);
+  if (south > EOX_NORTH || north < EOX_SOUTH) return false;
+  const nearest = south <= 0 && north >= 0 ? 0 : Math.min(Math.abs(south), Math.abs(north));
+  return z <= EOX_MAX_ZOOM + Math.log2(Math.cos(nearest * Math.PI / 180));
+}
 
 const fill = (template, z, x, y) => template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 const imageType = response => /^image\//i.test(response.headers?.get?.('content-type') || '');
@@ -31,7 +50,7 @@ export function applyImageryConfig(source, {esriKey} = {}) {
   if (!esriKey) return source;
   source.tiles = ['atlasimagery://{z}/{x}/{y}'];
   source.maxzoom = ESRI_MAX_ZOOM;
-  source.attribution = `${ESRI_ATTRIBUTION}; where Esri is unavailable: ${source.attribution}`;
+  source.attribution = `${ESRI_ATTRIBUTION}; ${source.attribution}`;
   return source;
 }
 
@@ -69,7 +88,7 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
     const match = /^atlasimagery:\/\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url);
     if (!match) throw new Error('Invalid imagery tile');
     const [z, x, y] = match.slice(1).map(Number), signal = controller?.signal;
-    if (esriActive() && z <= ESRI_MAX_ZOOM) {
+    if (esriActive() && z <= ESRI_MAX_ZOOM && !eoxCovers(z, y)) {
       try {
         const response = await fetcher(`${fill(ESRI_TILES, z, x, y)}?token=${encodeURIComponent(esriKey)}`, {signal});
         if (response.ok && imageType(response)) return {data: await response.arrayBuffer()};

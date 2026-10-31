@@ -126,7 +126,7 @@ test('signal locations share Infrastructure and train-control visibility while r
   }
 });
 
-test('Power facility names follow labels, former supplies follow inactive, and both stay in Power view',()=>{
+test('Power facility kinds and names stay with their markers, former supplies follow inactive, and all stay in Power view',()=>{
   const supplies=style.layers.filter(layer=>layer.source==='electricFacilities');
   assert.equal(supplies.length,6);
   const settings={...Object.fromEntries(booleans.map(key=>[key,true])),mode:'electrification',background:'map',names:false};
@@ -134,7 +134,7 @@ test('Power facility names follow labels, former supplies follow inactive, and b
     const former=supply.id.startsWith('electrification-former-'),name=supply.id.endsWith('-names');
     assert.equal(layerVisibility(supply,settings),true,supply.id);
     assert.equal(layerVisibility(supply,{...settings,mode:'control'}),false,supply.id);
-    assert.equal(layerVisibility(supply,{...settings,labels:false}),!name,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,labels:false}),true,supply.id);
     assert.equal(layerVisibility(supply,{...settings,inactive:false}),!former,supply.id);
     assert.equal(layerVisibility(supply,{...settings,background:'hybrid'}),true,supply.id);
     assert.equal(layerVisibility(supply,{...settings,background:'carto'}),true,supply.id);

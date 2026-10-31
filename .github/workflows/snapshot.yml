@@ -11,6 +11,8 @@ on:
       - scripts/build-loading-gauge-list.mjs
       - styles/loading-gauge-list.mjs
       - scripts/build-polar.mjs
+      - scripts/polar-depth.mjs
+      - styles/bathymetry.mjs
       - scripts/polar-contours.mjs
       - scripts/polar-features.mjs
       - styles/polar.mjs

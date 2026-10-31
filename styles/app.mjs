@@ -1,28 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261026-electricity-signals-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261026-electricity-signals-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261026-electricity-signals-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261026-electricity-signals-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261026-electricity-signals-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261026-electricity-signals-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261026-electricity-signals-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261031-electricity-signals-2';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261031-electricity-signals-2';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261031-electricity-signals-2';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261031-electricity-signals-2';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261031-electricity-signals-2';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261031-electricity-signals-2';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261031-electricity-signals-2';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261026-electricity-signals-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261026-electricity-signals-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261026-electricity-signals-1';
-import {departureItem} from './departures-ui.mjs?v=20261026-electricity-signals-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261026-electricity-signals-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261026-electricity-signals-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261026-electricity-signals-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261026-electricity-signals-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261026-electricity-signals-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261026-electricity-signals-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261026-electricity-signals-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261026-electricity-signals-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261026-electricity-signals-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261026-electricity-signals-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261026-electricity-signals-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261026-electricity-signals-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261026-electricity-signals-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261031-electricity-signals-2';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261031-electricity-signals-2';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261031-electricity-signals-2';
+import {departureItem} from './departures-ui.mjs?v=20261031-electricity-signals-2';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261031-electricity-signals-2';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261031-electricity-signals-2';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261031-electricity-signals-2';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261031-electricity-signals-2';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261031-electricity-signals-2';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261031-electricity-signals-2';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261031-electricity-signals-2';
+import { installWatchGesture } from './watch-map.mjs?v=20261031-electricity-signals-2';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261031-electricity-signals-2';
+import { createBundleReader } from './tile-bundles.mjs?v=20261031-electricity-signals-2';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261031-electricity-signals-2';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261031-electricity-signals-2';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261031-electricity-signals-2';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261031-electricity-signals-2';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -42,6 +43,14 @@ const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
 // with page requests). A link with a position (#zoom/lat/lng) still wins.
 const VIEW_STORE = 'atlas_view';
 const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
+// Capture the latest valid map link before URL normalization, including
+// explicit navigation while libraries or startup data are still loading.
+let linkedViewHash = parseViewHash(location.hash) ? location.hash : '';
+function captureViewHash() {
+  if (parseViewHash(location.hash)) linkedViewHash = location.hash;
+  return linkedViewHash;
+}
+addEventListener('hashchange', captureViewHash);
 function saveView() {
   if (!map) return;
   const c = map.getCenter();
@@ -61,7 +70,7 @@ let powerFacilities, powerMethods, electricitySignals;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261026-electricity-signals-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261031-electricity-signals-2';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -370,12 +379,7 @@ function scheduleLegend() {
 }
 const GAUGE_NAMES = {600:'', 762:'2 ft 6 in', 914:'3 ft', 1000:'metre', 1067:'3 ft 6 in', 1372:'Scotch', 1435:'standard', 1520:'Russian', 1524:'Finnish', 1600:'Irish', 1668:'Iberian', 1676:'Indian'};
 const IN_VIEW = {
-  electrification: p => {
-    if (['no', 'deelectrified'].includes(p.electrification_state) || p.voltage === 0) return null;
-    const label = describeCurrent(p.voltage, p.frequency);
-    // Sorted DC first, then AC by frequency, each by voltage.
-    return label && !/not recorded/.test(label) ? [electrificationColor(p), label, (p.frequency || 0) * 1e6 + (p.voltage || 0)] : null;
-  },
+  // Railway power has a fixed key (see renderLegend), not an in-view list.
   control: p => {
     const drawn = Object.fromEntries([0,1,2].map(i => [`train_protection${i}`,p[`train_protection${i}`]]));
     const rows = trainProtectionSystems(drawn).filter(code => code !== 'none').map(code => {
@@ -403,7 +407,8 @@ const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', m
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
-  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`].filter(id => map.getLayer(id));
+  // Aerialways and escalators carry their own owner, so they join the Owner list.
+  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
     const described = describe(f.properties);
@@ -419,29 +424,83 @@ function updateInView() {
   if (settings.mode === 'control' && counts.size > 12) rows.push(['transparent',`${counts.size-12} less common systems in view; zoom in for them`,'empty']);
   if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
 }
-function powerFacilitySwatch({color,mark}, includeFormer) {
-  const {paper,radius,textSize,stroke,formerStroke} = POWER_FACILITY_SYMBOL;
+// The same pictogram and tile as on the map: filled when operating, light
+// with a dashed edge when planned or former.
+// The same drawing as on the map: a neutral outlined area or a plain dot,
+// with its faint dashed planned/former form beside it when that is shown.
+// A position within a facility's extent (points, lines and areas alike).
+function shapeCenter(geometry) {
+  if (geometry.type==='Point') return geometry.coordinates;
+  const box=[Infinity,Infinity,-Infinity,-Infinity];
+  const walk=c=>{if(typeof c[0]==='number'){box[0]=Math.min(box[0],c[0]);box[1]=Math.min(box[1],c[1]);box[2]=Math.max(box[2],c[0]);box[3]=Math.max(box[3],c[1]);}else c.forEach(walk);};
+  walk(geometry.coordinates);
+  return [(box[0]+box[2])/2,(box[1]+box[3])/2];
+}
+function powerFacilitySwatch({geometry}, includeFormer) {
+  const {paper,ink,fill} = POWER_FACILITY_SYMBOL, ns='http://www.w3.org/2000/svg';
   const sample = textNode('span', '', `point-swatch${includeFormer ? ' paired' : ''}`);
   sample.setAttribute('aria-hidden','true');
   for (const former of includeFormer ? [false,true] : [false]) {
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox','0 0 16 16');
-    const circle=document.createElementNS(svg.namespaceURI,'circle');
-    for (const [key,value] of Object.entries({cx:8,cy:8,r:radius,fill:former?paper:color,stroke:former?color:paper,'stroke-width':former?formerStroke:stroke})) circle.setAttribute(key,value);
-    const letter=document.createElementNS(svg.namespaceURI,'text');
-    for (const [key,value] of Object.entries({x:8,y:8,'text-anchor':'middle','dominant-baseline':'central','font-size':textSize,'font-weight':700,fill:former?color:paper})) letter.setAttribute(key,value);
-    letter.textContent=mark;svg.append(circle,letter);sample.append(svg);
+    const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 16 16');
+    const shape=geometry==='area'?document.createElementNS(ns,'rect'):document.createElementNS(ns,'circle');
+    const attrs=geometry==='area'
+      ?{x:2,y:3,width:12,height:10,fill,'fill-opacity':former?0.1:0.3,stroke:ink,'stroke-width':1,'stroke-opacity':former?0.6:1,...(former?{'stroke-dasharray':'2 2'}:{})}
+      :{cx:8,cy:8,r:2.6,fill:former?paper:ink,stroke:former?ink:paper,'stroke-width':former?1:0.8};
+    for (const [key,value] of Object.entries(attrs)) shape.setAttribute(key,value);
+    svg.append(shape);sample.append(svg);
   }
   return sample;
 }
+// A track sample drawn from the same stroke definition as the map layer: the
+// track in a sample system colour and the method stroke beside or along it.
+// MapLibre dashes are in line widths; positive offsets lie right of the line.
+// Draw every stroke the map draws for a track with only this means: a
+// fourth-rail track shows the conductor-rail stroke as well as its own.
+function powerMethodSwatch(stroke) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),system='#3f6fa8';
+  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
+  const line=(attrs)=>{const el=document.createElementNS(ns,'line');for(const [k,v] of Object.entries({x1:0,x2:25,...attrs}))el.setAttribute(k,v);svg.append(el);};
+  line({y1:7,y2:7,stroke:system,'stroke-width':2.5});
+  const strokes=stroke?POWER_METHOD_STROKES.filter(s=>s.when.includes(stroke.when[0])):[];
+  for(const s of strokes){const y=7+s.offset;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
+  return svg;
+}
+// Cable line with ticks, matching the aerialway layers' dash lengths.
+function aerialwaySwatch(kind) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('aerialway-swatch');
+  for(const attrs of [{stroke:AERIALWAY_CABLE,'stroke-width':1},{stroke:AERIALWAY_TICK,'stroke-width':kind.tickWidth,'stroke-dasharray':kind.dash.map(v=>v*kind.tickWidth).join(' '),'stroke-dashoffset':-2}]){
+    const el=document.createElementNS(ns,'line');
+    for(const [k,v] of Object.entries({x1:0,x2:25,y1:7,y2:7,...attrs}))el.setAttribute(k,v);
+    svg.append(el);
+  }
+  return svg;
+}
+// Thin line with the direction chevron, as the conveying layers draw it.
+function conveyingSwatch() {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('conveying-swatch');
+  const line=document.createElementNS(ns,'line'),arrow=document.createElementNS(ns,'path');
+  for(const [k,v] of Object.entries({x1:1,x2:24,y1:7,y2:7,stroke:CONVEYING_COLOUR,'stroke-width':1.5,'stroke-linecap':'round'}))line.setAttribute(k,v);
+  for(const [k,v] of Object.entries({d:'M10 3 L15 7 L10 11',fill:'none',stroke:CONVEYING_COLOUR,'stroke-width':1.6,'stroke-linejoin':'round','stroke-linecap':'round'}))arrow.setAttribute(k,v);
+  svg.append(line,arrow);return svg;
+}
 function renderLegend() {
-  const box = $('legend'); box.replaceChildren();
+  const box = $('legend');
+  // Native details toggle events are queued. A settings/metadata redraw can
+  // happen first, so preserve the displayed state before replacing its nodes.
+  const previousHelp = box.querySelector(':scope > details.legend-help:not(#service-data-status)');
+  const previousStatus = box.querySelector('#service-data-status');
+  if (previousHelp) legendHelpOpen = previousHelp.open;
+  if (previousStatus) serviceStatusOpen = previousStatus.open;
+  box.replaceChildren();
   const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
   const listed = rows => rows.length ? rows : nothing;
   const legends = {
     speed: { title: `Mapped maximum speed · ${settings.units === 'imperial' ? 'mph' : 'km/h'}`, rows: speedBands(settings.units).map(b => [b.color, b.label]) },
     infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
-    electrification: { title: 'Railway power · in view', rows: [...listed(inView), [NOT_ELECTRIFIED, 'Not electrified']] },
+    // A fixed key: each current system is a hue, its voltages light to dark.
+    electrification: { title: 'Railway power', rows: [...CURRENT_SYSTEMS.map(system=>({symbol:'gradient',colors:currentStops(system).map(([,colour])=>colour),label:`${system.label} · ${currentRange(system)}`})), [NOT_ELECTRIFIED, 'Not electrified']] },
     control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
     gauge: { title: 'Track gauge · in view', rows: listed(inView) },
     axle: {title:'Axle load · in view',rows:listed(inView)},
@@ -458,14 +517,17 @@ function renderLegend() {
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
-  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},['#b77d00','Conductor rail (method labelled)','conductor-rail']);
+  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
+  if (settings.mode === 'infrastructure') rows.push({symbol:'method',stroke:POWER_METHOD_STROKES.find(({id})=>id==='rack-traction'),label:'Rack railway (ladder ticks)'});
+  if (['infrastructure','electrification'].includes(settings.mode)) rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})),{symbol:'conveying',label:'Escalator, moving walkway or elevator (arrow: direction)'});
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   // Existing track tuples become explicit line samples. Point categories keep
   // their geometry metadata instead of losing it in a colour/label tuple.
-  for (const {symbol,color,label,extra,mark} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
+  for (const {symbol,color,colors,label,extra,geometry,stroke,kind} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = symbol === 'point' ? powerFacilitySwatch({color,mark},settings.inactive) : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
+    const swatch = symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : symbol === 'conveying' ? conveyingSwatch() : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
+    if (symbol === 'gradient') swatch.style.background = `linear-gradient(90deg,${colors.join(',')})`;
     if (symbol === 'dot') {swatch.setAttribute('aria-hidden','true');swatch.style.setProperty('--swatch', color);swatch.style.setProperty('--swatch-stroke', ELECTRICITY_SIGNAL_STYLE.stroke);}
     if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
@@ -494,7 +556,7 @@ function renderLegend() {
   }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
-    electrification: `Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS} Dashed parallel lines and text identify third rail, fourth rail and ground-level supply where mapped. Catenary masts and portals appear at close zoom. Grey means not recorded.`,
+    electrification: `Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS} Strokes beside or along the track show how power reaches the train where mapped (third, fourth or ground-level rail, inductive supply; overhead contact line is the track colour alone) and linear motor, rack or cable traction; each has its own legend sample. Catenary masts and portals appear at close zoom. Grey means not recorded.`,
     control: 'Hue groups related systems; darker is more advanced: warning only, spot transmission, continuous, radio. Parallel colour bands show each recorded system on a shared track. Hover a system name for its description, or tap/click it to expand. Purple dots mark mapped signals, not live aspects. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
@@ -512,11 +574,11 @@ function renderLegend() {
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
   help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
-  help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
+  help.addEventListener('toggle', () => { if (help.isConnected) legendHelpOpen = help.open; });
   box.append(help);
   if(settings.mode==='service'){
     const dataStatus=Object.assign(textNode('details','','legend-help'),{open:serviceStatusOpen});dataStatus.id='service-data-status';
-    dataStatus.addEventListener('toggle',()=>{serviceStatusOpen=dataStatus.open;});
+    dataStatus.addEventListener('toggle',()=>{if(dataStatus.isConnected)serviceStatusOpen=dataStatus.open;});
     dataStatus.append(textNode('summary','Service data status'));
     for(const message of serviceCoverageMessages(serviceDataStatus))dataStatus.append(textNode('p',message,'legend-note'));
     const link=textNode('a','Published snapshot status');link.href=new URL('./data/service-routes/frequency-manifest.json',import.meta.url).href;
@@ -526,15 +588,32 @@ function renderLegend() {
 function saveSettings() {
   writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
   const url = new URL(location.href);
-  if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
+  const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key));
+  const hasView = Boolean(parseViewHash(url.hash));
+  if (hasView) linkedViewHash = url.hash;
+  // Normalize shared links once, not on every pan/zoom. Preserve unrelated
+  // query parameters, non-map anchors and the current browser history state.
+  if (hasSettings || hasView) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
-    history.replaceState(null, '', url);
+    if (hasView) url.hash = '';
+    history.replaceState(history.state, '', url);
   }
 }
-// The address of this view with its display settings, for sharing.
+// Build a link on demand rather than writing each map position into history.
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
+  if (map) {
+    const {lat, lng} = map.getCenter();
+    url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
+  } else if (captureViewHash()) {
+    // The share control is available while map libraries are still loading.
+    url.hash = linkedViewHash;
+  } else if (Array.isArray(rememberedView.c) && rememberedView.c.length === 2
+      && rememberedView.c.every(Number.isFinite) && Number.isFinite(rememberedView.z)) {
+    url.hash = viewHash({zoom: rememberedView.z, lat: rememberedView.c[1], lng: rememberedView.c[0],
+      bearing: rememberedView.b ?? 0, pitch: rememberedView.p ?? 0});
+  }
   return url.href;
 }
 saveSettings();
@@ -669,6 +748,7 @@ function applySettings() {
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
+  $('terrain-exaggeration').value = String(settings.terrainExaggeration);
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   const frequencyPaint=serviceFrequencyPaint(settings);
@@ -689,6 +769,7 @@ function applySettings() {
     if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
+    if (VIEW_LINE_LAYERS[layer.id]) { map.setPaintProperty(layer.id, 'line-color', viewLinePaint(layer.id, settings.mode, settings.units)); map.setPaintProperty(layer.id, 'line-width', viewLineWidth(layer.id, settings.mode)); }
     if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   // Clear the previous view's values before drawing the legend: if the new
@@ -696,7 +777,10 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.(); }
+  if (ready) { syncTerrain3D(map, settings.relief, settings.terrainExaggeration);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.(); }
+  // The button must reflect the mesh AFTER its state is reconciled. When
+  // relief is re-enabled while already tilted, no new pitch event occurs.
+  updateTerrainButton();
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
@@ -728,7 +812,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => /^electrification-(?:(?:former-)?(?:conductor-rails|method-labels|charging-(?:points|marks|names)|signal-(?:points|labels))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(points|marks|names))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|charging-(?:areas|outlines|points)|signal-(?:points|labels))|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -794,14 +878,29 @@ function stationObject(osmId) {
   }
   return null;
 }
+function showAerialwayDetails(feature) {
+  const p = feature.properties, panel = $('detail-content'), dl = document.createElement('dl');
+  panel.replaceChildren(textNode('div', 'AERIALWAY', 'eyebrow'), textNode('h2', displayName(p, settings.language) || 'Unnamed aerialway'));
+  row(dl, 'Kind', aerialwayKind(p.aerialway)?.label);
+  row(dl, 'Type', p.aerialway?.replaceAll('_', ' '));
+  row(dl, 'Owner', p.owner);
+  row(dl, 'Maximum speed', typeof p.maxspeed === 'number' ? formatSpeed({maxspeed: p.maxspeed}, settings.units).mapped : undefined);
+  panel.append(dl);
+  osmLink(panel, feature);
+  $('details').hidden = false;
+}
 function showDetails(feature) {
   cancelProfile();
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
-  if (feature.source==='electricMethods' && feature.geometry.type!=='Point') {
+  // Track power methods; chargers in the same source (any mapped shape) carry power_kind.
+  if (feature.source==='electricMethods' && !feature.properties?.power_kind) {
     const p=feature.properties,panel=$('detail-content');
     panel.replaceChildren(textNode('div','RAILWAY POWER','eyebrow'),textNode('h2',p.power_method_label));
     const dl=document.createElement('dl');row(dl,'Status',p.power_state);row(dl,'Electrification method',p.power_method);
+    // Older snapshots lack the per-lifecycle values; read the raw tags there.
+    const own=key=>Object.hasOwn(p,`power_${key}`)?p[`power_${key}`]||undefined:p[key];
+    row(dl,'Propulsion',own('propulsion'));row(dl,'Traction',own('traction'));
     row(dl,'Current',describeCurrent(typeof p.voltage==='number'?p.voltage:undefined,typeof p.frequency==='number'?p.frequency:undefined));
     row(dl,'Voltage',p.voltage);row(dl,'Frequency',p.frequency===undefined?undefined:`${p.frequency} Hz`);
     row(dl,'Conductor contact',p['electrified:rail']);panel.append(dl);osmLink(panel,feature);$('details').hidden=false;return;
@@ -816,6 +915,7 @@ function showDetails(feature) {
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
+  if (feature.layer?.id.startsWith('aerialway-')) { showAerialwayDetails(feature); return; }
   if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); frequencyExpiry?.update(); return; }
   const p = feature.properties;
   const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
@@ -849,6 +949,8 @@ function showDetails(feature) {
     row(dl, 'Track', p.track_ref);
     row(dl, 'Current', describeCurrent(p.voltage, p.frequency));
     row(dl, 'Electrification', p.electrification_state);
+    // rack=* from the provider: the rack system (abt, strub, riggenbach…) or yes.
+    row(dl, 'Rack', p.rack && String(p.rack).toLowerCase() !== 'no' ? p.rack : undefined);
     row(dl, 'Planned current', p.electrification_state === 'present' ? undefined : describeCurrent(p.future_voltage, p.future_frequency));
     controlSystemRow(dl, 'Train protection', trainProtectionSystems(p));
     controlSystemRow(dl, 'Protection being built', trainProtectionSystems({train_protection: p.train_protection_construction}));
@@ -1175,6 +1277,7 @@ function unitStyle(style) {
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
+    if (VIEW_LINE_LAYERS[layer.id]) Object.assign(layer.paint, {'line-color': viewLinePaint(layer.id, settings.mode, settings.units), 'line-width': viewLineWidth(layer.id, settings.mode)});
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
     if (/^terrain-seabed-contours(?:-close)?$/.test(layer.id)) layer.paint['line-opacity'] = seabedContourOpacity(settings.units);
   }
@@ -1239,6 +1342,9 @@ const mapErrorMessage = () => {
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
       'Independent map references remain where available; detail may be missing.';
   }
+  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
+    return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
+  }
   return 'Some map data could not load. Check your connection or reload to retry.';
 };
 function updateStatus() {
@@ -1302,6 +1408,7 @@ function localizeStyle(style) {
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
   style.sources.streetRunning.tiles = [`streettiles://{z}/{x}/{y}?lang=${settings.language}`];
+  style.sources.aerialways.tiles = [`aerialwaytiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.heritageAreas.tiles = [`heritagetiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
@@ -1391,6 +1498,48 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+// Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
+// rather than rendering the literal text "3D" in a MapLibre icon button.
+const terrainButton = Object.assign(document.createElement('button'), {
+  type:'button', className:'atlas-ctrl atlas-terrain-toggle', id:'terrain-toggle',
+});
+const terrainIcon = document.createElementNS('http://www.w3.org/2000/svg','svg');
+terrainIcon.setAttribute('viewBox','0 0 24 24');
+terrainIcon.setAttribute('aria-hidden','true');
+for (const d of [
+  'M2 18.5 7.5 7l3.6 6.4L15 4l7 14.5H2Z',
+  'M5.2 11.3 7.5 13.7l1.4-1.3',
+  'M13.3 9l1.7 2 1.7-1.6',
+  'M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0',
+]) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',d); terrainIcon.append(path);
+}
+terrainButton.append(terrainIcon);
+const terrainScaleIndicator = Object.assign(document.createElement('span'),{
+  className:'terrain-scale-indicator',
+});
+terrainScaleIndicator.setAttribute('aria-hidden','true');
+terrainButton.append(terrainScaleIndicator);
+function updateTerrainButton() {
+  const enabled = terrain3DEnabled(settings.relief, map?.getPitch()) &&
+    map?.getTerrain?.()?.source === 'terrain3d';
+  terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
+  const scale = settings.terrainExaggeration;
+  terrainScaleIndicator.textContent = `${scale}×`;
+  terrainButton.title = enabled ? `Overhead map (current 3D relief: ${scale}× vertical; keep current zoom)` :
+    `Inspect 3D terrain and seabed (${scale}× vertical; change in Settings)`;
+  terrainButton.setAttribute('aria-label',terrainButton.title);
+}
+terrainButton.addEventListener('click', () => {
+  if (!map) return;
+  const was3D = terrain3DEnabled(settings.relief, map.getPitch());
+  if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
+    globe:onGlobe(), latitude:map.getCenter().lat});
+  map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+});
+updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(from = settings.detail) {
   const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
@@ -1583,7 +1732,7 @@ async function initialize() {
   dem.setupMaplibre(maplibregl);
   // Level crossings, branch lines, service routes and signals are served as
   // stored (names not localized); the rare Han in their text still loads.
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false]]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false],['aerialwaytiles','aerialways']]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -1640,14 +1789,21 @@ async function initialize() {
   const waterArchive = style.sources.openmaptiles.url;
   const waterArchiveKey = waterArchive.replace(/^pmtiles:\/\//,'');
   if (waterArchiveKey !== waterArchive && !protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
+  const readWaterTile = (z, x, y, controller) => {
+    // A label retry may remove the shared archive during its backoff.
+    if (!protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
+    return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
+  };
+  const readWater = data => labelCode.readTile(data, ['water']);
   installBathymetry(maplibregl, dem, {
-    waterTile: (z, x, y, controller) => {
-      // A label retry may remove the shared archive during its backoff.
-      if (!protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
-      return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
-    },
-    readTile: data => labelCode.readTile(data, ['water']),
+    waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
+  });
+  // Distinct 3D mesh: fine DEM loses sea depth above zoom 10. The original
+  // repair and ocean polygons restore correct land and seabed heights.
+  installTerrain3D(maplibregl, dem, {
+    waterTile: readWaterTile, readTile: readWater,
+    createWorker: () => new Worker(new URL(`vendor/terrain-3d-worker.js?v=${assetVersion}`, import.meta.url)),
   });
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
@@ -1669,26 +1825,39 @@ async function initialize() {
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linkedView = parseViewHash(location.hash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
   // A centre beyond 85.05° exists only on the globe: open there, or the flat
   // map would pull it back to its edge.
   const startLat = linked ? linkedView.center[1] : Array.isArray(start.c) ? start.c[1] : 0;
   const startGlobe = Math.abs(startLat) > 85.051129 || (typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4);
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
+  // Restore an already-tilted map directly in 3D. Overhead views do not
+  // request additional terrain mesh tiles.
+  if (terrain3DEnabled(settings.relief, start.p)) style.terrain = {source:'terrain3d', exaggeration:terrainExaggeration(settings.terrainExaggeration)};
   const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
     center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+    maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
     renderWorldCopies: true, attributionControl: false,
   });
   installHiddenTileMaskGuard(map);
   // MapLibre replaces the painter when WebGL recovers. Its public event is
   // synchronous and precedes the next scheduled frame on the new painter.
   map.on('webglcontextrestored', () => installHiddenTileMaskGuard(map));
+  // Tilt may change via touch, compass, keyboard or a linked view.
+  // High-pitch tile detail is bounded separately from the camera angle.
+  // A style replacement recreates source objects, so reapply per style load.
+  map.on('style.load', () => syncHighPitchTileBudget(map));
+  map.on('pitch', () => {
+    syncHighPitchTileBudget(map);
+    syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+    updateTerrainButton();
+  });
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
   powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson',import.meta.url),
@@ -1709,16 +1878,10 @@ async function initialize() {
   const wanted = linked ? linkedView : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && (linked || startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
     // Again once the style has put the map on the globe.
-    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(parseViewHash(captureViewHash()) || wanted));
   }
-  // The view in the address (viewHash in globe-drag.mjs, in place of
-  // MapLibre's own, which near a pole wrote a negative zoom and rounded the
-  // latitude to 90°).
-  const writeHash = () => {
-    const c = map.getCenter(), hash = viewHash({zoom: map.getZoom(), lat: c.lat, lng: c.lng, bearing: map.getBearing(), pitch: map.getPitch()});
-    if (hash !== location.hash) { const url = new URL(location.href); url.hash = hash; history.replaceState(history.state, '', url); }
-  };
-  map.on('moveend', writeHash);
+  // Ordinary navigation updates the persisted local view through updatePolar.
+  // Only explicitly navigating to a link fragment changes the browser URL.
   addEventListener('hashchange', () => {
     const view = parseViewHash(location.hash);
     if (!view) return;
@@ -1746,6 +1909,18 @@ async function initialize() {
         data.set([...c.map(Math.round), Math.round(alpha * 255)], (y * size + x) * 4);
       }
       map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, stretchX: [[8, 16]], stretchY: [[8, 16]], content: [6, 5, 18, 19]});
+      return;
+    }
+    if (event.id === 'conveying-arrow') {
+      // Travel-direction chevron pointing along the line (+x): a distance
+      // field, so the style colours it and gives it a halo.
+      const size = 32, stroke = 2.2, data = new Uint8Array(size * size * 4);
+      const segment = (px, py, [ax, ay], [bx, by]) => { const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const px = x + 0.5, py = y + 0.5, d = Math.min(segment(px, py, [11, 8], [21, 16]), segment(px, py, [21, 16], [11, 24])) - stroke;
+        data[(y * size + x) * 4 + 3] = Math.max(0, Math.min(255, Math.round(191 - d * 32)));
+      }
+      map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, sdf: true});
       return;
     }
     if (event.id === 'crossing-x') {
@@ -1778,7 +1953,7 @@ async function initialize() {
   // (with the direction of travel where the device reports one); moving the
   // map stops following, and a press resumes it.
   map.addControl(new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, trackUserLocation: true, showUserHeading: true, fitBoundsOptions: {maxZoom: 15 + settings.detail}}), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, terrainButton, polarButton]), 'top-right');
   // Controls in the bottom corners stack upwards: added first, it sits below the scale bar.
   map.addControl({onAdd: () => readout, onRemove: () => readout.remove()}, 'bottom-left');
   map.on('mousemove', event => { readoutPoint = event.point; updateReadout(); });
@@ -1799,7 +1974,13 @@ async function initialize() {
   // partial/unpublished OSM crawl leaves the existing dot layers untouched.
   stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
     root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
-    onChange:(active,styleReady)=>{stationWorldActive=active;if(ready&&styleReady)applySettings();},
+    onChange:(active,styleReady)=>{
+      stationWorldActive=active;
+      // This source is installed asynchronously after style.load. MapLibre
+      // does not apply its previous all-source LOD parameters retroactively.
+      if(active&&styleReady)syncHighPitchTileBudget(map,WORLD_STATION_SOURCE);
+      if(ready&&styleReady)applySettings();
+    },
   });
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
@@ -1858,6 +2039,11 @@ async function initialize() {
     otherMetadataRetries.noteError(e);
   });
   map.on('sourcedata', e => {
+    // A provider/source can be added after style.load (or replaced under the
+    // same ID). Apply the near-horizon LOD to its new instance once; routine
+    // tile content notifications do not reset LOD or change the camera.
+    if(e.sourceId && ['metadata','content'].includes(e.sourceDataType))
+      syncHighPitchTileBudget(map,e.sourceId);
     if (e.sourceId && e.sourceDataType === 'metadata') otherMetadataRetries.clear(e.sourceId);
     const recovered = railRecovery.noteSourceData(e);
     const stationChanged = stationFailures.noteSourceData(e);
@@ -1985,6 +2171,16 @@ for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','fre
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));
+$('terrain-exaggeration').addEventListener('change', () => {
+  // Numeric whitelist is shared with readSettings and the terrain runtime.
+  // The choice never edits DEM samples or the elevation/profile measurements.
+  const next = Number($('terrain-exaggeration').value);
+  try { settings.terrainExaggeration = terrainExaggeration(next); }
+  catch { $('terrain-exaggeration').value = String(settings.terrainExaggeration); return; }
+  if (ready) syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+  updateTerrainButton();
+  saveSettings();
+});
 for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
   if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
@@ -2126,8 +2322,7 @@ $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
-// The contents links scroll within the dialog; following them would replace
-// the address's map position (#zoom/lat/lon) with the section's name.
+// Keep contents navigation inside the dialog without changing browser history.
 $('about').querySelector('.help-contents')?.addEventListener('click', event => {
   const link = event.target.closest('a[href^="#"]');
   if (!link) return;

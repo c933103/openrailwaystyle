@@ -23,6 +23,70 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## 3D land and seabed terrain
+
+The map's native MapLibre raster-DEM terrain mesh activates when the camera is
+tilted (including the 3D map button), provided **Terrain, seabed and contours**
+is enabled. An overhead view does not request the additional mesh tiles.
+The map control uses a vector mountain/bathymetry glyph (with a native
+pressed state and accessible label). At continental/globe scales, true 1x
+heights are smaller than the screen can resolve. A deliberate press of that
+control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
+offset), without jumping to a different location; a closer existing zoom is
+left unchanged. This makes 3D hills and sea-floor slopes distinguishable
+rather than just changing perspective over an effectively flat world.
+The 3D button retains its **60° initial pitch** and touch/keyboard gestures can move
+the camera to **85°** (down toward the horizon), rather than limiting it to
+MapLibre's default 60°. Greater-than-60° pitch is experimental in MapLibre
+5.24 and can reveal renderer defects. The pitch limit is **not** used as a
+network-load throttle: at pitches above 65°, Atlas uses MapLibre's native
+source-tile level-of-detail algorithm to progressively request *coarser* tiles
+toward the horizon. MapLibre's LOD configuration uses a maximum span of 11 on-screen
+zoom levels and a 2.0× high-pitch to overhead tile-count ratio target;
+the terrain source uses a steeper 12-level span and 1.5× ratio. A **larger**
+span tells MapLibre to reduce zoom level faster as distance increases. The original 9.314/3.0 MapLibre LOD parameters are
+restored below this pitch and when returning overhead. MapLibre also bounds
+each source's completed tile cache to 96 entries; this **does not hard-cap
+active tiles**, but prevents indefinite offscreen cache growth. These are LOD
+and memory budgets, not geographic cutoffs: distant data stays available
+at lower resolution, without intentionally creating blank tiles or false
+zero-height elevations. A style/source replacement reinstalls this policy.
+Returning overhead leaves the focused zoom in place. The 3D button can enable terrain after that setting has been turned off;
+returning overhead or disabling terrain removes the mesh. Pitched camera
+settings persist through the existing view/session restore. Map, satellite and
+hybrid textures and the existing signed above/below-sea contours drape over the
+mesh. The settings panel discloses a **3× vertical scale by default** so regional
+views (including Himalayan terrain at zoom 7–8) show meaningful elevation.
+1× restores actual proportions; 2× and 5× provide milder and stronger
+presentation. The selection is validated against those four values, saved
+with display settings, and can be shared in the URL. It changes MapLibre's
+mesh exaggeration, never source DEM bytes, feature positions, contour numbers,
+or independently sampled profile/measurement heights. MapLibre's own
+`queryTerrainElevation` reports *exaggerated* values by definition and must
+not be used for physical measurements when the scale is not 1×. Switching
+scales while the map is tilted updates the existing terrain source without
+changing the camera or the base/rail style layers. An overhead view requests
+no additional 3D mesh tiles.
+
+`terrain3d` is separate from the existing `relief` hillshade DEM and the two
+seabed contour sources. `styles/terrain-3d.mjs` exposes a bounded, abortable,
+cached `atlas-terrain://` tile protocol. `styles/terrain-3d-worker.mjs` performs
+the Terrarium PNG composition off the UI thread, falling back to local canvas
+rendering if the worker fails. Both paths reuse the repaired Mapzen DEM.
+At zoom 10 or below the DEM retains ETOPO1 seabed heights; above that its
+high-resolution ocean cells are zero. The mesh keeps fine land heights but
+replaces sea cells with bilinear z10 samples **only within** independently
+mapped `water.class=ocean` vector polygons, including island holes. Below-sea
+inland locations must never be flooded or treated as ocean. The coarse seabed
+is informative relief, not survey-grade soundings; missing or impossible
+heights fail explicitly instead of becoming artificial sea-level flats.
+
+Source availability and render compatibility have separate checks:
+`tests/terrain-3d.test.mjs` verifies signed-height blending, mask boundaries,
+source selection and pitch/relief activation; `tests/startup.test.mjs` checks
+lifecycle integration. Rendering beyond Web Mercator at the extreme poles
+remains the separate custom polar renderer, not this raster mesh.
+
 ## Hidden-layer tile clipping
 
 The pinned MapLibre 5.24.0 painter prepares clipping masks before its layer
@@ -305,7 +369,9 @@ Contours are calculated in the browser using the pinned maplibre-contour library
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
-Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
+Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
+
+The polar texture is an optional, format-validated asset (`north-depth.png`/`south-depth.png`) published alongside the existing contour/relief snapshots. Earlier snapshots lack the depth image and keep their flat polar fill without requesting a nonexistent asset; depth image load or shader failure is isolated from the rest of the map. Polar depth uses **ETOPO 2022**, while the ordinary Mercator seabed raster uses a different ETOPO-derived terrain source; the palette is identical but source resolution/depth samples may differ near 85.05° rather than providing artificial continuity. The colour texture is separate from the 3D terrain geometry; full 3D relief remains unavailable within the polar cap.
 
 ### Polar rendering and custom style consistency
 

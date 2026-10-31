@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261026-electricity-signals-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261026-electricity-signals-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261031-electricity-signals-2';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261031-electricity-signals-2';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261026-electricity-signals-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261031-electricity-signals-2';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -192,7 +192,20 @@ export const INFRASTRUCTURE = [
   ['#d7191c', 'High-speed line'], ['#2356b6', 'Railway'],
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
+  // Appended so existing positions stay stable for paint expressions.
+  ['#c2185b', 'Funicular'],
 ];
+// Aerial cableways and lifts come from the basemap's transportation layer
+// (OpenMapTiles class=aerialway). Drawn like OSM Carto: a thin grey cable with
+// dark ticks, sparser ticks for ski and chair lifts. Dashes are in line widths.
+export const AERIALWAY_CABLE = '#808080', AERIALWAY_TICK = '#1f2326';
+// Escalators, moving walkways and elevators (styles/conveying.mjs).
+export const CONVEYING_COLOUR = '#4a4f55';
+export const AERIALWAY_KINDS = Object.freeze([
+  Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),
+  Object.freeze({id:'lift', label:'Ski or chair lift', subclasses:Object.freeze(['chair_lift','drag_lift','t-bar','j-bar','platter']), tickWidth:4, dash:Object.freeze([1/4,30/4])}),
+]);
+export const aerialwayKind = subclass => AERIALWAY_KINDS.find(kind => kind.subclasses.includes(subclass));
 // Colours from hue, saturation and lightness (percent).
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -212,7 +225,8 @@ export const CURRENT_SYSTEMS = [
 ];
 export const NOT_ELECTRIFIED = '#525b62';
 const kv = v => v >= 1000 ? `${Number((v / 1000).toFixed(2))} kV` : `${v} V`;
-export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts.at(-1)[0])}`;
+// No Array.prototype.at: Safari before 15.4 lacks it and the legend runs at startup.
+export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts[system.volts.length - 1][0])}`;
 export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(system.hue, system.sat, l)]);
 export function electrificationPaint() {
   const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
@@ -516,6 +530,36 @@ export function ownerColor(name) {
   return `hsl(${hue}, ${sat}%, ${light}%)`;
 }
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
+// Aerialways and escalators are drawn in every view. Infrastructure and Power
+// show their type (thin line, ticks or arrows); every other view colours the
+// line by that view's own value from the way's tags, wide enough to read:
+// Speed by maxspeed, Owner by owner, Service as other track, and the rest
+// (no gauge, loading gauge, axle load or train protection on these) unknown.
+export const OTHER_TRACK = '#b8c0c5';
+export const VIEW_LINE_LAYERS = Object.freeze({
+  'aerialway-cableway-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'aerialway-lift-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'conveying-lines': {colour: CONVEYING_COLOUR, width: ['interpolate', ['linear'], ['zoom'], 14, 0.8, 18, 2]},
+});
+const showsType = mode => mode === 'infrastructure' || mode === 'electrification';
+export function viewLinePaint(id, mode, units = 'metric') {
+  const own = VIEW_LINE_LAYERS[id];
+  if (showsType(mode)) return own.colour;
+  if (mode === 'speed') return speedPaint(units);
+  if (mode === 'owner') return ownerPaint();
+  if (mode === 'service') return OTHER_TRACK;
+  return UNKNOWN_COLOR;
+}
+// Thinner than the view's own thinnest track, so they never read as ordinary
+// railway: tracks are 2.8/4.8 px (main) and 1.1/2 px (sidings) at zoom 11/16;
+// Gauge splits a dual-gauge track into halves of 1 px at zoom 16 (sidings), so
+// it goes thinner still. Service draws other track at the same widths as the
+// default under its coloured routes.
+const VIEW_LINE_WIDTHS = {gauge: [12, 0.8, 16, 0.9, 20, 1.6], default: [12, 0.9, 16, 1.5, 20, 2.4]};
+export function viewLineWidth(id, mode) {
+  if (showsType(mode)) return structuredClone(VIEW_LINE_LAYERS[id].width);
+  return ['interpolate', ['linear'], ['zoom'], ...(VIEW_LINE_WIDTHS[mode] || VIEW_LINE_WIDTHS.default)];
+}
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
@@ -712,7 +756,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
+export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','terrainExaggeration','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -737,7 +781,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines', 'aerialways'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.
@@ -775,7 +819,9 @@ export function readSettings(search, remembered = {}) {
     background: pick('background', v => BACKGROUNDS.includes(v), 'map'),
     stations: flag('stations', true), stationImportanceColors: flag('stationImportanceColors', false), trackCounts: flag('trackCounts', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
-    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
+    relief: flag('relief', true),
+    terrainExaggeration: Number(pick('terrainExaggeration', value => ['1','2','3','5'].includes(String(value)), '3')),
+    names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     serviceWidth: pick('serviceWidth', v => ['equal','frequency'].includes(v), 'equal'),
     frequencyPeriod: pick('frequencyPeriod', v => ['peak','offpeak','overnight','hour'].includes(v), 'offpeak'),

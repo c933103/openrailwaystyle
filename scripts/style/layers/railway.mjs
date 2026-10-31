@@ -1,5 +1,6 @@
 import { MODES, INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
-import {present, notFerry, hasService, byKindZoom} from './railway-expressions.mjs';
+import {present, notFerry, hasService, byKindZoom, hasRack} from './railway-expressions.mjs';
+import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 
 // Each group has a fixed position in the atlas composition. Returning separate
@@ -11,6 +12,7 @@ export function createRailwayLayers() {
     ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
     ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], INFRASTRUCTURE[3][0],
     ['==', ['get', 'feature'], 'tram'], INFRASTRUCTURE[4][0],
+    ['==', ['get', 'feature'], 'funicular'], INFRASTRUCTURE[6][0],
     hasService, INFRASTRUCTURE[5][0],
     ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
   const electricPaint = electrificationPaint();
@@ -157,6 +159,11 @@ export function createRailwayLayers() {
       groups.overviewPrefix.push(modeLayers[0]);
       groups.overview.push(modeLayers[1]);
       groups.infrastructureTracks.push(modeLayers[2], modeLayers[3]);
+      // Rack railways (rack=*) as ladder ticks over the track, as in the Power view.
+      const rack = POWER_METHOD_STROKES.find(({id}) => id === 'rack-traction');
+      groups.infrastructureTracks.push({id:'infrastructure-rack', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:10,
+        filter:['all', present, notFerry, byKindZoom, hasRack], layout:{'line-cap':rack.cap || 'butt', 'line-join':'round'},
+        paint:{'line-color':rack.color, 'line-width':rack.width, 'line-offset':rack.offset, 'line-dasharray':rack.dash}});
     } else groups.thematic.push(...modeLayers);
   }
   const gaugeDual = {id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
@@ -207,6 +214,9 @@ export function createRailwayLayers() {
   groups.details.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(tunnelPaint)});
   for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
     ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry,byKindZoom]],
+    // Aerialways are named like railways, in every view (their snapshot
+    // carries the name tags; the road labels leave them out).
+    ['aerialway-names','aerialways','aerialways',12,undefined,['has','kind']],
   ]) groups.names.push({
     id, type:'symbol', source, 'source-layer':sourceLayer, minzoom, ...(maxzoom ? {maxzoom} : {}), filter,
     layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},

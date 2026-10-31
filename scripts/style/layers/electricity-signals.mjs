@@ -1,7 +1,7 @@
 import {ELECTRICITY_SIGNAL_STYLE} from '../../../styles/power-facilities.mjs';
 
 // Electrification signals (pantograph, main switch, end of catenary) are small
-// dots, distinct from the lettered supply facility markers. Deactivated
+// dots, distinct from the neutral facility dots. Deactivated
 // signals follow the planned/former setting with hollow dots.
 export function electricitySignalLayers() {
   const {color,stroke,paper}=ELECTRICITY_SIGNAL_STYLE;

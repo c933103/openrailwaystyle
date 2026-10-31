@@ -19,6 +19,7 @@ import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
 import * as rareHanFeatures from '../styles/rare-han.mjs';
 import * as bathymetryModule from '../styles/bathymetry.mjs';
+import * as terrain3dModule from '../styles/terrain-3d.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as serviceStatusModule from '../styles/service-status.mjs';
@@ -57,7 +58,7 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -80,11 +81,11 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   class Map {
     constructor(options) {
       if (failWebGL) throw new Error('Failed to initialize WebGL');
-      this.options = options; this.handlers = {}; this.visibility = {};
+      this.options = options; this.handlers = {}; this.visibility = {}; this.styleLoaded = styleLoaded;
       this.painter={transform:{zoom:options.zoom},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
       maps.push(this);
     }
-    once(name,handler) {this.handlers[name]=handler;}
+    once(name,handler) {((this.onceHandlers ||= {})[name] ||= []).push(handler);this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;return handler(...args);};}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
     removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
@@ -95,7 +96,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     }
     on(name, handler) {
       const listeners=(this.listeners ||= {})[name] ||= new Set();listeners.add(handler);
-      this.handlers[name]=(...args)=>{for(const listener of [...listeners])listener(...args);};
+      this.handlers[name]=(...args)=>{if(name==='style.load')this.styleLoaded=true;for(const listener of [...listeners])listener(...args);};
     }
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
@@ -109,7 +110,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getZoom() { return this.zoom; }
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
     addSource() {}
@@ -119,6 +121,12 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
+    // The terrain fixture must not make a cold map ready before style.load.
+    isStyleLoaded() { return this.styleLoaded; }
+    getTerrain() { return this.options.style.terrain || null; }
+    setTerrain(terrain) { this.options.style.terrain = terrain; }
+    setSourceTileLodParams(...args) { (this.tileLodCalls ||= []).push(args); return this; }
+    getMaxPitch() { return this.options.maxPitch ?? 60; }
     projection = {type:'mercator'};
     getProjection() { return this.projection; }
     setProjection(projection) { this.projection = projection; }
@@ -126,7 +134,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getCenter() { return {lng:0, lat:0}; }
     getBounds() { return {getWest:()=>-180,getEast:()=>180,getSouth:()=>-85,getNorth:()=>85}; }
     getBearing() { return 0; }
-    getPitch() { return 0; }
+    getPitch() { return this.pitch ?? this.options.pitch ?? 0; }
+    setPitch(pitch) { this.pitch=pitch; this.handlers.pitch?.(); }
     unproject() { return {lng:0, lat:0}; }
   }
   // This is the MapLibre 5 surface used by the app, including the pinned
@@ -233,6 +242,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bathymetry = new vm.SyntheticModule(Object.keys(bathymetryModule),function() {
     for (const [key,value] of Object.entries(bathymetryModule)) this.setExport(key,value);
   }, {context});
+  const terrain3d = new vm.SyntheticModule(Object.keys(terrain3dModule),function() {
+    for (const [key,value] of Object.entries(terrain3dModule)) this.setExport(key,value);
+  }, {context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
@@ -257,12 +269,168 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
+
+for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 'already loaded' : 'cold'} style readiness`, async () => {
+  const {dom,maps,errors}=await start({styleLoaded});
+  try {
+    const map=maps[0];
+    assert.equal(map.isStyleLoaded(),styleLoaded);
+    assert.equal(dom.window.document.body.dataset.mapReady,styleLoaded?'true':undefined);
+    if (!styleLoaded) {
+      assert.equal(map.sourceData?.stationMajor,undefined,'cold startup cannot populate the worldwide placeholder viewport');
+      map.handlers['style.load']();
+      assert.equal(map.isStyleLoaded(),true);
+      assert.equal(dom.window.document.body.dataset.mapReady,'true');
+    }
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+    assert.deepEqual(errors,[]);
+  } finally {maps[0]?.handlers.remove?.();dom.window.close();}
+});
+
+test('pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests', async () => {
+  const {dom,window,maps,errors}=await start();
+  try {
+    const map=maps[0];
+    map.handlers['style.load']();
+    assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
+    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+    assert.ok(button,'a live 3D control is registered');
+    assert.equal(map.getMaxPitch(),85,'gesture tilt is allowed down to 85°');
+    assert.equal(map.options.maxTileCacheSize,96,'each rendered source retains bounded tile cache');
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+    assert.equal(button.getAttribute('aria-pressed'),'true');
+    assert.match(button.getAttribute('aria-label'),/3× vertical/);
+    const scale=window.document.getElementById('terrain-exaggeration');
+    assert.equal(scale.value,'3');
+    scale.value='5';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5},'scale switches without pitching again');
+    assert.match(button.getAttribute('aria-label'),/5× vertical/);
+    assert.equal(button.querySelector('.terrain-scale-indicator').textContent,'5×');
+    scale.value='1';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(map.getTerrain().exaggeration,1,'true-scale 3D can be restored');
+    scale.value='99';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(scale.value,'1','invalid UI input is rejected');
+    assert.equal(map.getTerrain().exaggeration,1,'invalid input cannot poison the mesh');
+    assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
+    const relief=window.document.getElementById('relief');
+    relief.click();
+    assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    relief.click();
+    assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
+    assert.match(button.getAttribute('aria-label'),/Overhead map/);
+    map.setPitch(0);
+    assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('3D mountain icon starts an actually detailed terrain view, not just a pitch flag',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   // The startup Map mock collects addControl() calls without mounting the
+   // control. Mount this one through its real MapLibre onAdd() interface.
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   assert.ok(control,'the native terrain control must be registered');
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   assert.ok(button,'native control must have a stable accessible identifier');
+   assert.equal(button.textContent.trim(),'3×','visible badge discloses the default exaggeration');
+   assert.doesNotMatch(button.textContent,/3D/,'mountain icon remains vector art rather than the old 3D text');
+   assert.equal(button.querySelector('.terrain-scale-indicator')?.getAttribute('aria-hidden'),'true');
+   assert.equal(button.querySelector('svg')?.getAttribute('viewBox'),'0 0 24 24');
+   assert.ok(button.querySelectorAll('svg path').length>=3);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   map.zoom=2;
+   button.click();
+   assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'initial 60° pitch must not enable the over-65° horizon budget');
+   assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   // The loading policy responds to actual subsequent manual tilt, not to
+   // the first 3D button press. Cross 65° explicitly before its assertions.
+   map.setPitch(82);
+   assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'tilt beyond 65° enables coarser horizon tiles for all sources');
+   assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
+     '3D DEM uses a stronger distant-tile LOD budget');
+   button.click();
+   assert.equal(map.lastEase.pitch,0);
+   assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
+   assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
+     'overhead view restores MapLibre default LOD after a real high-pitch transition');
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   map.zoom=15;
+   button.click();
+   assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
+   assert.equal(map.lastEase.pitch,60);
+   map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
+   assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
+   assert.equal(errors.length,1,'the synthetic tile error must also be logged');
+   assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('terrain control preserves clean history while sharing the current polar 3D view',async()=>{
+ const cookie='atlas_settings='+encodeURIComponent(JSON.stringify({relief:false}));
+ const {dom,window,maps,errors}=await start({search:'?ref=terrain-history',cookie});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
+   map.projection={type:'globe'}; // the real globe carries latitude-adjusted zoom
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   const initialURL=window.location.href,initialLength=window.history.length,state={retained:'terrain-history'};
+   window.history.replaceState(state,'',initialURL);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+   let focusedZoom;
+   for(const pitch of [60,0]) {
+     button.click();map.handlers.moveend();
+     assert.equal(map.getPitch(),pitch);
+     if(pitch===60){
+       focusedZoom=map.getZoom();
+       const target=globeModule.zoomForLatitude(12.3,0,89.7);
+       assert.ok(Math.abs(focusedZoom-target)<1e-7,
+         '3D focus must target polar ground scale, not raw z12.3 camera: '+focusedZoom);
+       assert.ok(focusedZoom<12.3,'no extreme zoom jump at the pole');
+     }
+     else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
+     const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,Number(focusedZoom.toFixed(2)),'stored camera zoom retains the existing two-decimal persistence contract');assert.equal(saved.p,pitch);
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     const shared=new URL(copied);
+     assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
+     assert.equal(shared.searchParams.get('ref'),'terrain-history');
+     assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
+     assert.equal(window.location.href,initialURL);
+     assert.equal(window.history.length,initialLength);
+     assert.deepEqual(window.history.state,state);
+     assert.deepEqual(writes,[],'terrain focusing, overhead return and sharing never rewrite history');
+   }
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
 
 test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
  const before=unmockedRequests.length;
@@ -821,6 +989,50 @@ test('rare Han in infobox body values and later departure text loads only the di
  }finally{dom.window.close();}
 });
 
+for(const selector of ['#service-data-status','#legend > details.legend-help:not(#service-data-status)']) test(`legend redraw keeps live ${selector} state before native toggle delivery`,async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak'});
+ try {
+   const doc=window.document;
+   const period=doc.getElementById('frequency-period');
+   const redraw=value=>{period.value=value;period.dispatchEvent(new window.Event('change'));};
+   let details=doc.querySelector(selector),toggles=0;
+   assert.equal(details.open,false);
+   details.addEventListener('toggle',()=>toggles++);
+   details.open=true;
+   assert.equal(toggles,0,'the native details toggle has not been delivered yet');
+   redraw('offpeak');
+   assert.notEqual(doc.querySelector(selector),details,'period change rebuilds the actual legend');
+   assert.equal(doc.querySelector(selector).open,true,'opening survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   details=doc.querySelector(selector);details.open=false;
+   redraw('peak');
+   assert.equal(doc.querySelector(selector).open,false,'closing also survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(doc.querySelector(selector).open,false,'detached-node events cannot undo the live closed state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('detached service status toggle cannot overwrite the closed state while another mode is shown',async()=>{
+ const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency'});
+ try {
+   const doc=window.document,retired=doc.getElementById('service-data-status');
+   retired.open=true;retired.dispatchEvent(new window.Event('toggle'));
+   const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+   const current=doc.getElementById('service-data-status');
+   assert.notEqual(current,retired);assert.equal(current.open,true);
+   current.open=false;current.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="infrastructure"]').click();
+   assert.equal(doc.getElementById('service-data-status'),null);
+   assert.equal(retired.isConnected,false);
+   // Deliver the old view's queued notification after the live view closed.
+   retired.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="service"]').click();
+   assert.equal(doc.getElementById('service-data-status').open,false,'returning to Service retains the last live state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
   const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
   try {
@@ -1072,6 +1284,129 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('map movements persist locally without changing URL or browser history', async () => {
+  const {dom,window,maps,errors}=await start({search:'?ref=history-check'});
+  try {
+    const map=maps[0], originalURL=window.location.href, initialLength=window.history.length;
+    const writes=[];
+    const replace=window.history.replaceState.bind(window.history);
+    window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+    map.getCenter=()=>({lat:35.6813,lng:139.7671});
+    map.getBearing=()=>45;
+    map.getPitch=()=>30;
+    for(const zoom of [8,11,13.25,16]){
+      map.zoom=zoom;
+      map.handlers.moveend();
+    }
+    assert.equal(window.location.href,originalURL,'panning and zooming leave the location unchanged');
+    assert.equal(window.history.length,initialLength,'no session history entries');
+    assert.deepEqual(writes,[],'no replaceState calls or hidden visited-URL mutations during movements');
+    const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+    assert.deepEqual(saved.c,[139.7671,35.6813],'the current centre is still saved locally');
+    assert.equal(saved.z,16);
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const url=new URL(copied);
+    assert.equal(url.hash,globeModule.viewHash({zoom:16,lat:35.6813,lng:139.7671,bearing:45,pitch:30}));
+    assert.equal(url.searchParams.get('ref'),'history-check','unrelated query parameters survive sharing');
+    assert.equal(url.searchParams.get('mode'),'infrastructure','display choices are included in links');
+    assert.equal(window.location.href,originalURL,'sharing does not navigate');
+    assert.deepEqual(writes,[],'sharing does not rewrite the current address');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('incoming map links are consumed once; sharing still works before map initialization',async()=>{
+  const hash='#10/35.68/139.76/25/40';
+  const {dom,window,maps,errors,loadLibraries}=await start({
+    delayLibraries:true,search:`?mode=speed&language=ja&ref=shared${hash}`,
+  });
+  try {
+    assert.equal(maps.length,0,'map libraries are still loading');
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared');
+    assert.equal(window.history.length,1,'normalizing an incoming link does not push a new history entry');
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const share=new URL(copied);
+    assert.equal(share.hash,hash,'the original position remains shareable during startup');
+    assert.equal(share.searchParams.get('mode'),'speed');
+    assert.equal(share.searchParams.get('language'),'ja');
+    assert.equal(share.searchParams.get('ref'),'shared');
+    loadLibraries();
+    for(let i=0;i<10&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(maps.length,1,'the link still opens a map');
+    assert.equal(maps[0].zoom,10,'the deep link wins over default map zoom');
+    maps[0].handlers.moveend();
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared',
+      'navigating the linked map does not bring the fragment back');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+for(const scenario of [
+ {delay:'libraries',initial:'#10/35/139/20/30',share:false},
+ {delay:'labels',initial:'',share:false},
+ {delay:'libraries',initial:'',share:true},
+ {delay:'labels',initial:'#10/35/139/20/30',share:true},
+ {delay:'libraries',initial:'',share:false,invalidCold:'#not-a-map'},
+ {delay:'labels',initial:'#10/35/139/20/30',share:false,invalidCold:''},
+]) test(`cold navigation keeps the newest view during ${scenario.delay} loading, share=${scenario.share}, invalid=${scenario.invalidCold ?? 'none'}`,async()=>{
+ const {dom,window,maps,errors,loadLibraries,loadLabels}=await start({
+   delayLibraries:scenario.delay==='libraries',delayLabels:scenario.delay==='labels',
+   search:'?ref=cold-navigation'+scenario.initial,
+ });
+ try {
+   assert.equal(maps.length,0);
+   const newest='#12/89.7/162/25/40',expected=globeModule.parseViewHash(newest);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   window.location.hash=newest;
+   if(scenario.share){
+     // Copy immediately, before the queued hashchange can run. Saving settings
+     // normalizes the URL, but must not discard this new requested position.
+     let copied='';Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(new URL(copied).hash,newest,'cold share uses the latest requested view');
+     assert.equal(new URL(copied).searchParams.get('ref'),'cold-navigation');
+     assert.equal(window.location.hash,'');
+     assert.equal(writes.length,1,'only explicit link normalization rewrites the URL');
+   }else{
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,newest);assert.deepEqual(writes,[]);
+   }
+   if(scenario.invalidCold!==undefined){
+     window.location.hash=scenario.invalidCold;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,scenario.invalidCold,'invalid or empty cold fragments stay untouched');
+   }
+   const normalizedURL=window.location.href,before=writes.length;
+   loadLibraries();loadLabels();
+   for(let i=0;i<20&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(maps.length,1);const map=maps[0];
+   assert.deepEqual(map.lastJump,expected,'initialization applies the newest complete camera, not the startup snapshot');
+   assert.equal(map.options.style.projection.type,'globe','a newly navigated polar view starts on the globe');
+   map.handlers.moveend();
+   assert.equal(window.location.href,normalizedURL);assert.equal(writes.length,before);
+   for(const hash of ['#not-a-map','']){
+     const calls=map.jumpCalls;window.location.hash=hash;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(map.jumpCalls,calls,'invalid and empty fragments do not move the map');
+   }
+   const later='#9/48/2/35/20';window.location.hash=later;
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'later explicit navigation remains live');
+   map.onceHandlers['style.load'][0]();
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'late style readiness cannot restore an older destination');
+   assert.equal(writes.length,before,'fragment navigation and late readiness add no automatic rewrites');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
  const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
@@ -1703,6 +2038,15 @@ test('Power facilities inspect their supply type and source object without train
     map.rendered=[{source:'electricSubstations',sourceLayer:'electrification_substation',layer:{id:'electrification-substation-areas'},properties:{name:'Traction footprint',voltage:'25000'},geometry:{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0,0.001],[0,0]]]}}];
     map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
     assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
+    // A charger mapped as a line or area shares electricMethods with track
+    // strokes but opens the facility inspector, not a track panel.
+    for (const geometry of [{type:'LineString',coordinates:[[0,0],[0.001,0]]},{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0.001,0.001],[0,0]]]}]) {
+      map.rendered=[{source:'electricMethods',layer:{id:geometry.type==='Polygon'?'electrification-charging-areas':'electrification-charging-outlines'},properties:{name:'Shaped charger',amenity:'charging_station',train:'yes',power_kind:'charging_station',power_state:'present',osm_type:'way',osm_id:'95'},geometry}];
+      map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+      const detail=window.document.getElementById('detail-content').textContent;
+      assert.match(detail,/RAILWAY ENERGY SUPPLY/,geometry.type);
+      assert.ok(detail.includes('Shaped charger')&&detail.includes(powerFacilities.POWER_FACILITY_KINDS.charging_station.label),geometry.type);
+    }
     assert.equal(errors.length,0);
   } finally {dom.window.close();}
 });
@@ -1738,13 +2082,13 @@ test('Power details keep train fuel, storage and generation sources distinct',as
  }finally{dom.window.close();}
 });
 
-test('Power help names all point categories and retains the implemented coverage limits',async()=>{
+test('Power help explains the facility drawing and retains the implemented coverage limits',async()=>{
  const {dom,window}=await start();
  try{
   const help=window.document.getElementById('about').textContent;
-  for(const label of ['Battery train charging','Train refuelling point (fuel type where mapped)','Steam engine coaling','Steam engine water'])assert.ok(help.includes(label),label);
+  for(const words of ['drawn as they are mapped','outlines for areas, small dots for points','substations, power stations','coaling stages, water towers'])assert.ok(help.includes(words),words);
   assert.match(help,/whole electricity grid.*not yet/i);
-  assert.match(help,/storage.*refuelling/i);
+  assert.match(help,/storage alone does not establish a train servicing point/i);
  }finally{dom.window.close();}
 });
 
@@ -2032,7 +2376,11 @@ test('rail tile recovery updates visible app status without idle, after bookkeep
   for (const early of [false, true]) {
     const f = await recoveryApp({early});
     try {
-      if (early) f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      if (early) {
+        assert.equal(f.map.isStyleLoaded(),false,'exercise a genuinely cold style');
+        assert.equal(f.window.document.body.dataset.mapReady,undefined);
+        f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      }
       const tile = failedRailTile();f.fail(tile);
       assert.equal(f.status.classList.contains('error'), true);
       tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
@@ -2187,39 +2535,35 @@ test('timer retirement reconciles status after its transaction and queued notifi
 
 // Issue #115: execute the actual application/legend against the controlled DOM.
 // No provider data or substitute renderer is needed to expose the line-swatch bug.
-test('Power legend shows facility point letters and preserves track samples across setting and view changes', async () => {
+test('Power legend is a fixed key of the facility drawing and current systems, preserved across setting and view changes', async () => {
   const {dom,window,errors} = await start({search:'?mode=electrification&inactive=0'});
   try {
     const doc = window.document, legend = doc.getElementById('legend');
-    const expected = [
-      ['substation','Electricity supply'],
-      ['charging_station','Battery train charging'],
-      ['fuel','Train refuelling point (fuel type where mapped)'],
-      ['coaling_facility','Steam engine coaling'],
-      ['water_tank','Steam engine water'],
-    ];
     const checkPoints = former => {
-      const points = [...legend.querySelectorAll('.point-swatch')];
-      assert.equal(points.length,5,'E/B/F/C/W must use point samples, not empty line swatches');
-      for (const [index,[kind,label]] of expected.entries()) {
-        const point = points[index], definition = powerFacilities.POWER_FACILITY_KINDS[kind];
-        assert.equal(point.getAttribute('aria-hidden'),'true','visual letters do not duplicate the accessible label');
-        assert.equal(point.classList.contains('swatch'),false,'line CSS cannot flatten a point sample');
-        assert.equal(point.nextElementSibling.textContent,label);
-        const symbols = [...point.querySelectorAll('svg')];
-        assert.equal(symbols.length,former ? 2 : 1);
+      assert.equal(legend.querySelector('h2').textContent,'Railway power','not an in-view list');
+      const gradients=[...legend.querySelectorAll('.legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient'));
+      assert.equal(gradients.length,model.CURRENT_SYSTEMS.length,'every current system has its voltage shade key');
+      const samples = [...legend.querySelectorAll('.point-swatch')];
+      assert.equal(samples.length,2,'one area and one point sample, not one per kind');
+      for (const [index,shape] of ['rect','circle'].entries()) {
+        const sample=samples[index];
+        assert.equal(sample.getAttribute('aria-hidden'),'true');
+        assert.equal(sample.classList.contains('swatch'),false,'line CSS cannot flatten a facility sample');
+        const symbols=[...sample.querySelectorAll('svg')];
+        assert.equal(symbols.length,former?2:1);
         for (const [i,symbol] of symbols.entries()) {
-          assert.equal(symbol.querySelector('text').textContent,definition.mark);
-          assert.equal(symbol.querySelector('circle').getAttribute('fill'),i ? '#fffef8' : definition.color);
-          assert.equal(symbol.querySelector('circle').getAttribute('stroke'),i ? definition.color : '#fffef8');
-          assert.equal(symbol.querySelector('text').getAttribute('fill'),i ? definition.color : '#fffef8');
+          assert.ok(symbol.querySelector(shape),shape);
+          assert.equal(symbol.querySelector('path'),null,'no pictogram');
+          if(shape==='rect')assert.equal(symbol.querySelector('rect').getAttribute('stroke-dasharray'),i?'2 2':null);
         }
       }
+      assert.match(samples[0].nextElementSibling.textContent,/mapped outline/);
+      assert.match(samples[1].nextElementSibling.textContent,/mapped point/);
       const line = label => [...legend.querySelectorAll('.legend-item')].find(row=>row.lastElementChild.textContent===label)?.firstElementChild;
       for (const label of ['Not electrified','Unknown','Bridge','Tunnel']) assert.ok(line(label)?.classList.contains('swatch'),label);
       assert.equal(line('Bridge').classList.contains('bridge'),true);
       assert.equal(line('Tunnel').classList.contains('tunnel'),true);
-      assert.match(legend.querySelector('.legend-note').textContent,/Hollow markers identify planned or former facilities/);
+      assert.match(legend.querySelector('.legend-note').textContent,/Dashed, faint shapes are planned or former facilities/);
     };
     checkPoints(false);
     const inactive = doc.getElementById('inactive');inactive.checked=true;inactive.dispatchEvent(new window.Event('change'));

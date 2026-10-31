@@ -42,6 +42,16 @@ The workflow [street-running.yml](../.github/workflows/street-running.yml) runs 
 
 Each website build copies `12/`, `index.json`, `manifest.json` and `street-running.geojson.gz` into `styles/data/street-running/`. The manifest and ODbL GeoJSON download are linked under About. Visitors do not make Overpass requests. See [rail-road rendering](rendering.md#rail-road-interfaces) for qualifying tags and display zooms.
 
+## Escalator, moving-walkway, elevator and aerialway snapshot
+
+The workflow [conveying.yml](../.github/workflows/conveying.yml) runs weekly on Sunday at 02:41 UTC, on a push to `main` that changes its scripts, or manually. `scripts/build-conveying.mjs` makes one worldwide Overpass query for every way with `conveying=*` (not `no`) or `highway=elevator`, with no length threshold (taginfo: about 36,000 and 8,300 ways in October 2026). It refuses an extract under 10,000 ways. Tiles are zoom 14 only, where the lines first draw, unsimplified at 8192 units per tile (about 0.3 m at the equator); MapLibre rounds tile coordinates to that grid, so coarser tiles would lose short pieces even when overzoomed. The extract keeps only the values views colour by: `owner` with its owner colour, and `maxspeed` in km/h (mph converted). Only `main` publishes the tiles, index, manifest and ODbL `conveying.geojson.gz` to `conveying-data`; a failed refresh keeps the last snapshot.
+
+Aerial cableways and lifts have their own workflow, [aerialways.yml](../.github/workflows/aerialways.yml) (Sunday 02:53 UTC, on a push to `main` that changes its scripts, or manually), so either snapshot can refresh without the other. `scripts/build-aerialways.mjs` uses the escalator build's bounded acquisition (at most three requests and their waits in one 52-minute budget) for every way with `aerialway=cable_car|gondola|mixed_lift|chair_lift|drag_lift|t-bar|j-bar|platter`. It refuses fewer than 5,000 and writes zoom-12 tiles (where they first draw; they are long lines) with their names, `owner`, owner colour and `maxspeed`. Only `main` publishes them to `aerialway-data`; the site build stages it into `styles/data/aerialways/`, or an empty index until the first snapshot.
+
+`styles/conveying.mjs` reads the tags: an escalator is `highway=steps` with `conveying`, a moving walkway is any other way with `conveying`, and an elevator is a `highway=elevator` way. One plain `forward`, `backward` or `reversible` value gives arrows; `yes` or mixed values give none. A backward way is stored reversed, so each arrow points along its line. The tiles carry only `kind` and `arrows` (plus the OSM id).
+
+Each website build copies the snapshot into `styles/data/conveying/`; until the first one exists it writes an empty index and the map draws none. In every view the lines show from zoom 14 and the arrows from zoom 16, one per mapped piece (both ways for a reversible piece). They are not clickable. Visitors do not make Overpass requests.
+
 ## Level-crossing snapshot
 
 The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwide table of OpenStreetMap level crossings (about 1.2 million `railway=level_crossing` and `railway=crossing` nodes) and publishes it with its tiles to `crossing-data`, one commit replaced each time. `scripts/build-crossings.mjs` queries Overpass one region at a time (45° squares, split into quarters where a query times out, with the split remembered), in CSV with an end marker so a truncated response is rejected. Each crossing is flagged *minor* when every railway way through it is a tram, light rail, funicular or miniature railway, a service track (`service=*`) or street running (`embedded=yes`); the query returns the major crossings, a marker row, then the minor ones. Each row also carries the crossing tags the details panel shows (`styles/crossing-tags.mjs`: barriers, lights, bells, activation, reference, name and so on); the table stores them as JSON and the detail tiles carry them, so clicking a crossing needs no request. Overpass CSV does not escape values and OSM tag values may hold tabs and line breaks, so columns are separated by the unit separator (U+001F); a line that does not start a row continues the previous value. A row with an extra separator keeps its position and kind, with its tags marked unreadable rather than shifted.
@@ -223,6 +233,43 @@ NDJSON resume and retired-Europe migration keep these boundaries. Way geometry
 continues to use its separate source resolver. Pending new-way evidence cannot
 leak into an accepted legacy route's memberships.
 
+Verified complete declarations also retain a separate `supplemental` schema-1
+evidence envelope in NDJSON. It records only bounded service-identity/context
+tags: `brand`, `brand:wikidata`, `network:wikidata`, `operator:wikidata`,
+`wikidata`, `network:short/full`, `operator:short/full`, `from`, `to`, `via`,
+`interval`, `interval:conditional`, `duration`, `opening_hours`,
+`public_transport:version`, `passenger`, `usage`, and
+`gtfs:feed/feed_id/source/route_id` (the slash forms denote separate keys).
+Other tags, contributor identifiers and changesets remain omitted. Values are
+retained exactly, not normalized. Any non-string or over-1,024-code-unit value
+withholds that observation's whole supplemental projection as unobserved,
+never truncating a value or interpreting a rejected field as absent.
+
+The envelope and its tag variants have separate SHA-256 content fingerprints.
+Each variant is bound to the relation ID, version, timestamp and existing core
+declaration key; its source references preserve the actual OSM dataset snapshot
+and acquisition provenance. **No envelope means unobserved**, not that these tags
+were absent at source. An old narrow observation cannot erase compatible richer
+evidence, even at a newer snapshot of the same revision. A new revision never
+inherits the previous revision's tags. The bounded envelope keeps two highest
+revision identities (version, timestamp, then declaration-key order), two
+deterministic contradictory tag witnesses per identity and eight source samples
+per witness; it is not a full history or acquisition log. Contradictions remain
+explicit in each revision's `conflict` flag and do not silently become a selected
+classification. Pending evidence stays pending through resume and migration;
+only commit changes accepted evidence, and discard preserves accepted bytes.
+
+This repair does **not** widen the deployed core `tags` projection, fingerprint,
+observation hash or persisted revision keys. It changes no route view, grouping,
+membership eligibility, matcher, tile bytes, acquisition selector or diagnostic
+schema. The separate `captureOsmServiceEvidence` helper and station-crosswalk
+acquisition described in the [matching contract](timetable-matching-contract.md#osm-and-matching-inputs)
+remain inactive. The archived 115-member fixture proves retention of Southern,
+Epsom, London Bridge, `00:30`, `Q26334` and other observed context, **not** general
+service eligibility. Raw positive/negative classification coverage and the
+broader #109 acceptance remain unresolved; these fields alone are not sufficient
+classification rules.
+
 Geometry diagnostic schema 2 adds a `relations` schema-1 object with sorted
 conflict, unknown-provenance, unresolved-member and pending-evidence relation
 IDs, plus positively observed memberships whose retained table associations
@@ -305,3 +352,15 @@ Run `node scripts/build-power-facilities.mjs`, `node scripts/build-power-methods
 for local maintenance. These builders use the public Overpass service; map
 visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
 for the tag rules and primary references.
+
+### Required aerialway snapshot at deployment
+
+Aerialway geometry comes only from `aerialway-data`. The site build must fetch
+that branch and validate its manifest, nonempty unique tile index and every
+indexed compressed vector tile before publishing. Missing branches, failed
+fetches, empty indexes and missing/corrupt tiles fail the build; they are not
+replaced with an empty snapshot. This preserves the last successful deployment
+when refresh data is unavailable. A new fork must publish its first valid
+snapshot before deploying. The existing 5,000-feature acquisition floor and
+zoom-12 contract are unchanged. This structural check does not claim complete
+worldwide OSM coverage or freshness, and does not start a new extraction.

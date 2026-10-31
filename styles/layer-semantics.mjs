@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261026-electricity-signals-1';
+import { MODES } from './map-model.mjs?v=20261031-electricity-signals-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

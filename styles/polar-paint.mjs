@@ -214,14 +214,18 @@ export function polarStylePaint(map, zoom) {
     }
     return layers.get(id);
   };
+  // Match pinned MapLibre StyleLayer.isHidden: zero/unset zoom limits
+  // are not bounds. A near-pole globe camera can legitimately be below z0;
+  // enforcing an implicit lower bound erased the cap despite a healthy shader.
+  const inRange = (min,max) => (!min || zoom >= min) && (!max || zoom < max);
   const visible = (id, min = 0, max = Infinity) => {
     try {
       const layer = layerFor(id);
       if (layer === null) return false;
       min = layer?.minzoom ?? min; max = layer?.maxzoom ?? max;
-      return zoom >= min && zoom < max &&
+      return inRange(min,max) &&
         map?.getLayoutProperty?.(id, 'visibility') !== 'none';
-    } catch { return zoom >= min && zoom < max; }
+    } catch { return inRange(min,max); }
   };
   const matches = (id, properties) => {
     let filter;
@@ -299,6 +303,8 @@ export function polarStylePaint(map, zoom) {
     backgroundOpacity: number('background', 'background-opacity', 1),
     waterVisible: visible('water'),
     waterOpacity: number('water', 'fill-opacity', 1),
+    depthVisible: visible('terrain-bathymetry'),
+    depthOpacity: Math.min(1, number('terrain-bathymetry', 'raster-opacity', 1)),
     iceShelfVisible: visible('landcover-ice-shelf'),
     reliefVisible: visible('terrain-relief'),
     iceShelfOpacity: number('landcover-ice-shelf', 'fill-opacity', 0.8),

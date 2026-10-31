@@ -13,7 +13,7 @@ test('every native browser bundle entry and its imports affect accepted referenc
   await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const build=await readFile('scripts/build-browser.mjs','utf8');
   const entries=[...build.matchAll(/entryPoints:\s*\[\s*['"]([^'"]+)['"]\s*\]/g)].map(match=>match[1]);
-  assert.equal(entries.length,5,'cover every current esbuild entry');
+  assert.equal(entries.length,6,'cover every current esbuild entry, including the 3D terrain worker');
   entries.sort((a,b)=>Number(b.endsWith('/tile-labels.mjs'))-Number(a.endsWith('/tile-labels.mjs')));
   assert.ok(REFERENCE_INPUTS.includes('package-lock.json'));
   const dem=await readFile(join(root,'styles/dem-worker.mjs'),'utf8');

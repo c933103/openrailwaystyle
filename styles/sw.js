@@ -11,11 +11,12 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}49`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}67`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 25 includes the full-train schedule renderer. The hash-pinned
-// MapLibre attribution backport keeps older open tabs working without
-// any new legacy request.
+// Shell 56 keeps existing 3D/high-pitch controls and introduces shared
+// polar sea-depth colours in the first-party custom-renderer bundle.
+// The complete module graph updates together; older open tabs retain their
+// versioned assets and verified MapLibre attribution backport.
 // Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
@@ -36,7 +37,7 @@ const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'bathymetry.mjs', 'imagery.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'bathymetry.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;

@@ -19,26 +19,36 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
-// Electrification signals: small amber dots with a dark outline.
+// Electrification signals: small amber dots with a dark outline, distinct from
+// the neutral facility dots.
 export const ELECTRICITY_SIGNAL_STYLE = Object.freeze({color:'#e0a21a', stroke:'#5c3d00', paper:'#fffef8'});
-// Shared by the map's point layers and legend; the legend samples the detailed
-// marker size. Lifecycle changes only the fill, stroke and letter colour.
-export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
+// Means of power delivery and traction drawn beside or along a track. The
+// map layers and legend samples share this table. A fourth-rail track has
+// conductor rails on both sides. Overhead contact line is the track colour.
+export const POWER_METHOD_STROKES = Object.freeze([
+  {id:'conductor-rails', when:['method_rail','method_fourth_rail'], offset:3.5, width:2, dash:[2,2], label:'Third rail (dashed, one side)', sample:'third-rail'},
+  {id:'fourth-rails', when:['method_fourth_rail'], offset:-3.5, width:2, dash:[2,2], label:'Fourth rail (dashed, both sides)', sample:'fourth-rail'},
+  {id:'ground-supply', when:['method_ground'], offset:0, width:3, dash:[0.1,1.8], color:'#fffef8', cap:'round', label:'Ground-level supply (dotted centre)', sample:'ground-supply'},
+  {id:'inductive-supply', when:['method_inductive'], offset:3.5, width:2, dash:[4,1.5,1,1.5], label:'Inductive supply (dash-dot, one side)', sample:'inductive-supply'},
+  {id:'linear-motors', when:['propulsion_linear_motor'], offset:0, width:1.5, dash:null, color:'#7b3fa0', label:'Linear motor (purple centre line)', sample:'linear-motor'},
+  {id:'rack-traction', when:['traction_rack'], offset:0, width:5, dash:[0.4,1.2], color:'#33302c', label:'Rack railway (ladder ticks)', sample:'rack-traction'},
+  {id:'cable-traction', when:['traction_cable'], offset:-3.5, width:1.5, dash:[5,2], color:'#33302c', label:'Cable traction (long dashes, one side)', sample:'cable-traction'},
+].map(Object.freeze));
+// Shared by the map's facility layers and legend: one neutral ink and
+// man-made fill for every kind, as topographic maps draw built structures.
+export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', ink:'#3d4247', fill:'#8c8f92'});
+// The legend keys the drawing, not a list of kinds: what a facility is shows
+// on hover and in its details.
 export const POWER_FACILITY_LEGEND = Object.freeze([
-  ['substation','Electricity supply'],
-  ['charging_station','Battery train charging'],
-  ['fuel',`${SERVICING_LABELS.fuel} (fuel type where mapped)`],
-  ['coaling_facility',SERVICING_LABELS.coal],
-  ['water_tank',SERVICING_LABELS.water],
-].map(([kind,label]) => {
-  const {color,mark} = POWER_FACILITY_KINDS[kind];
-  return Object.freeze({symbol:'point',color,mark,label});
-}));
+  {symbol:'shape',geometry:'area',label:'Railway power or servicing facility (mapped outline)'},
+  {symbol:'shape',geometry:'point',label:'Railway power or servicing facility (mapped point)'},
+].map(Object.freeze));
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
-export const POWER_FACILITY_LIMITS = `F and W also include mapped railway fuel and water storage; storage alone does not establish a train refuelling or steam servicing point. Hollow markers identify planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing markers do not establish an absence of supplies; mapped facilities do not establish current availability.`;
-export const ELECTRICITY_SIGNAL_NOTE = `Small amber dots are electrification signals, such as lower pantograph, main switch off and end of catenary, wherever a signal records railway:signal:electricity; they show mapped locations, not live aspects.`;
-export const POWER_FACILITY_EXPLANATION = `Point markers: ${POWER_FACILITY_LEGEND.map(({mark,label})=>`${mark}: ${label}`).join('; ')}. ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS}`;
+export const POWER_FACILITY_LIMITS = `Railway power and servicing facilities (substations, power stations, converters, refuelling and charging points, coaling stages, water towers, tanks and cranes) are drawn as they are mapped: outlines for areas, small dots for points. Hover or select one for what it is, its name and supplies. Tanks show mapped railway storage; storage alone does not establish a train servicing point. Dashed, faint shapes are planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing facilities do not establish an absence of supplies; mapped facilities do not establish current availability.`;
+export const POWER_METHOD_NOTE = `Track strokes: overhead contact line is the track colour alone; ${POWER_METHOD_STROKES.map(({label})=>label).join('; ')}.`;
+export const ELECTRICITY_SIGNAL_NOTE = `Small amber dots with a dark outline are electrification signals, such as lower pantograph, main switch off and end of catenary, wherever a signal records railway:signal:electricity; they show mapped locations, not live aspects.`;
+export const POWER_FACILITY_EXPLANATION = `${POWER_METHOD_NOTE} ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -121,11 +131,16 @@ export function electricitySignalRows(properties = {}) {
 // including negative/unknown values, so a positive tag never conceals a conflict.
 // fuel:* also records non-fuel supplies such as AdBlue; never promote every
 // positive key into a fuel claim or require a fixed vocabulary of supply types.
+const fuelTagsOf=p=>Object.entries(p).filter(([key,value])=>key.startsWith('fuel:')&&key.length>5&&value!=null&&String(value).trim()).sort(([a],[b])=>a.localeCompare(b));
+// Supplies declared by fuel=* values and positive fuel:<type>=yes keys, in the
+// mapper's own words; no fixed vocabulary.
+export function powerFacilityFuels(p = {}) {
+  const direct=String(p.fuel??'').split(';').map(value=>value.trim()).filter(Boolean);
+  return [...new Set([...direct.filter(value=>!/^(yes|no|unknown)$/i.test(value)),...fuelTagsOf(p).filter(([key,value])=>/^fuel:[^:]+$/.test(key)&&String(value).trim().toLowerCase()==='yes').map(([key])=>key.slice(5))])];
+}
 export function powerFacilityEnergyRows(properties = {}) {
   const p=properties;
-  const fuelTags=Object.entries(p).filter(([key,value])=>key.startsWith('fuel:')&&key.length>5&&value!=null&&String(value).trim()).sort(([a],[b])=>a.localeCompare(b));
-  const direct=String(p.fuel??'').split(';').map(value=>value.trim()).filter(Boolean);
-  const types=[...new Set([...direct.filter(value=>!/^(yes|no|unknown)$/i.test(value)),...fuelTags.filter(([key,value])=>/^fuel:[^:]+$/.test(key)&&String(value).trim().toLowerCase()==='yes').map(([key])=>key.slice(5))])];
+  const fuelTags=fuelTagsOf(p),types=powerFacilityFuels(p);
   const refuelling=p.power_kind==='fuel'||String(p.feature||'').replace(/^general\//,'')==='fuel'||has(lifecycleValue(p,'railway').value,['fuel']);
   return [
     ['Recorded supplies',types.join(', ')||(refuelling?'Not recorded':undefined)],

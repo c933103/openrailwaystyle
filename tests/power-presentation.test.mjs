@@ -42,13 +42,13 @@ test('point presentation keeps exact source tags and mapped snapshot properties'
  for(const [key,value] of Object.entries(tags))assert.equal(p[key],value);
  assert.deepEqual(p,before,'display projection never rewrites source evidence');
 });
-test('static and runtime help stay aligned with the point legend categories and coverage limits',()=>{
+test('static and runtime help stay aligned with the facility drawing and coverage limits',()=>{
  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  assert.equal(html.match(/<p id="help-power">([^<]*)<\/p>/)?.[1],POWER_FACILITY_EXPLANATION);
- for(const {mark,label} of POWER_FACILITY_LEGEND)assert.ok(POWER_FACILITY_EXPLANATION.includes(`${mark}: ${label}`));
+ assert.match(POWER_FACILITY_EXPLANATION,/drawn as they are mapped/);
  assert.match(POWER_FACILITY_EXPLANATION,/storage alone does not establish/);
  assert.match(POWER_FACILITY_EXPLANATION,/whole electricity grid.*not yet/);
- assert.match(POWER_FACILITY_EXPLANATION,/Missing markers do not establish an absence/);
+ assert.match(POWER_FACILITY_EXPLANATION,/Missing facilities do not establish an absence/);
 });
 test('railway-use water storage does not claim steam servicing without an explicit facility tag',()=>{
  for(const [kind,storage,label] of [['water_tank','storage_tank','Railway water tank'],['water_tower','water_tower','Railway water tower']]){

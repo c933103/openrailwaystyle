@@ -16,25 +16,29 @@ At regional zoom, railway power plants appear from zoom 10 and traction
 substations from 11. Generators and converters appear from 12. Train refuelling,
 fuel storage, coaling and water facilities appear from 13, and traction feeding
 points from 14.
-The markers use **E** for electricity, **B** for battery train charging,
-**F** for train refuelling and railway fuel storage, **C** for steam engine
-coaling and **W** for steam engine water and railway water storage. Selecting a
-marker shows its recorded type, status,
-operator, voltage, frequency, contents and output where available. Former and
-planned supplies follow the existing planned/former infrastructure setting;
-former supplies have hollow markers. Text references follow the Labels setting.
+Facilities are drawn as they are mapped, the way topographic maps draw built
+structures: a facility mapped as an area (depot, tank footprint, coaling stage,
+substation, power station) is its outline with one neutral man-made fill; one
+mapped as a line is a line; one mapped as a point (water crane, small supply
+point) is a small plain dot. All kinds share the same ink: there are no
+pictograms, no colour by supply group and no type or name text on the map,
+following OpenStreetMap's standard style and OpenInfraMap, which print names
+or values but never type words. Planned and former facilities are fainter with
+a dashed outline and follow the planned/former infrastructure setting.
+Selecting a facility shows its recorded type, status, operator, voltage,
+frequency, supplies, contents and output where available.
 
-The legend uses the same circular E/B/F/C/W symbols, colours and lifecycle
-appearance as the map. With planned/former infrastructure enabled, a hollow
-sample appears beside each filled sample; the existing track-line keys remain
-separate. Its servicing labels are “Train refuelling point (fuel type where
-mapped)”, “Steam engine coaling” and “Steam engine water”. These legend categories
-share marker metadata with the mapped facilities. The same category list supplies
-the legend labels and help paragraph, which share their storage and coverage limits. F and W also represent stored
-fuel and water; storage alone does not establish a train servicing point. The
-infobox retains the specific facility type, such as Railway fuel tank. The wider
-selection, wording and
-presentation audit remains open in [issue #115](https://github.com/c933103/openrailwaystyle/issues/115).
+The maintenance snapshot keeps each facility's geometry (Overpass `out geom`):
+closed ways and multipolygon relations become areas with their holes, open
+ways lines, nodes points. A relation without rings keeps its centre point.
+Cached Overpass responses are reused only for the exact current query, so
+earlier centre-point responses are not mixed into a shape snapshot.
+
+The Power legend is a fixed key, not a list of what is in view: every current
+system with its voltage range (lighter is lower voltage), the facility drawing
+(an outlined area and a dot, with their planned/former forms when that setting
+is on), and every means-of-delivery stroke. Track strokes are not labelled with
+type words either; the legend explains them.
 
 Supply details preserve independent source attributes. Named `fuel` values and
 positive `fuel:*` declarations are displayed together as **Recorded supplies**.
@@ -98,7 +102,7 @@ Primary references:
 ## Electrification signals
 
 Power shows electrification signals from zoom 13 as small amber dots with a
-dark outline, distinct from the lettered supply markers: signals such as
+dark outline, distinct from the neutral facility dots: signals such as
 announce or lower pantograph, main switch off and on, and end of catenary.
 Selection is by tag alone: every `railway=signal` node recording
 `railway:signal:electricity` (other than `no`), whatever its national value.
@@ -121,15 +125,69 @@ conductor-rail supplement (`scripts/staged-overpass.mjs`).
 digest-bearing manifest; site assembly accepts snapshots made before this file
 existed and validates it once present.
 
-## Conductor rails, charging and catenary equipment
+## Means of power delivery and traction, charging and catenary equipment
 
-Power view also draws a dashed parallel line for mapped `electrified=rail`,
-`4th_rail` and `ground-level_power_supply` tracks from zoom 10. Method labels
-appear from zoom 12 and follow Labels; clicking the geometry shows its method,
-recorded voltage/frequency, conductor contact position and OSM way. Colour still
-follows the electrical system. The supplement keeps these methods because the
-provider's railway line tiles carry voltage/frequency but discard `electrified`.
-Unknown method or low DC voltage alone never establishes third rail.
+Power view draws how power reaches the train, and how the train is propelled
+or held, as strokes beside or along the track from zoom 10. Several can show on
+one track (for example `electrified=contact_line;rail`):
+
+| Recorded tag | Stroke |
+|---|---|
+| `electrified=contact_line` | the track colour alone (overhead contact line) |
+| `electrified=rail` | dashed, one side, in the system colour (third rail) |
+| `electrified=4th_rail` | dashed on both sides (third and fourth rail) |
+| `electrified=ground-level_power_supply` | dotted light centre line |
+| `electrified=inductive` | dash-dot, one side, in the system colour |
+| `propulsion=linear_motor` | purple centre line |
+| `rack=*` (`yes`, `abt`, `strub`, `riggenbach`, …; not `no`), or `traction=rack` | dark ladder ticks along the track |
+| `traction=cable` | dark long dashes, one side |
+
+Funiculars (`railway=funicular`, about 2,600 OSM ways) are cable-hauled by
+definition and take the cable stroke from the provider's `feature=funicular`;
+`traction=cable` (about 15 ways, e.g. street cable cars) still comes from the
+snapshot. In the Infrastructure view funiculars have their own track colour
+and rack railways the same ladder ticks as here.
+
+Aerial cableways and lifts show in every view from zoom 12, as part of the
+transport network even where a view has no data on them. Cable cars, gondolas
+and mixed lifts (`aerialway=cable_car|gondola|mixed_lift`, about 3,200 OSM ways)
+have close dark ticks; chair, drag, T-bar, J-bar and platter lifts have sparse
+ticks. Other `aerialway=*` values and stations are not drawn as lines. They
+come from the project's own aerialway snapshot (see
+[data maintenance](data-maintenance.md#escalator-moving-walkway-elevator-and-aerialway-snapshot)).
+
+In the Infrastructure and Power views the cable is thin grey, as OSM Carto
+draws it, and those legends key both kinds. Every other view colours the cable,
+drawn thinner than that view's thinnest track (sidings, or a dual-gauge half in
+Gauge) so it never reads as ordinary railway, by that view's own value from the
+way's tags, as it does tracks:
+Owner by `owner=*` (the same colour as a track with that owner, listed in the
+"in view" legend), Speed by `maxspeed`, Service as other track, and Gauge,
+Loading, Axle and Control as unknown, since aerialways carry none of those. The
+ticks stay in every view, so the type still reads. Escalators, moving walkways
+and elevators follow the same rule, keeping their arrows. They show on every
+background but satellite. Named aerialways are labelled like railways, with the
+same label style, in every view, and follow the railway Names setting; the
+basemap road labels leave them out. Clicking an aerialway shows its name, kind,
+type, owner, maximum speed and OSM way.
+
+`rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
+`traction=rack`) is read straight from the provider's detailed railway tiles,
+which carry it as `rack`; the track inspector names the rack system. The
+maintenance snapshot keeps the rarer `traction=rack`.
+
+Lifecycle prefixes are honoured; planned and former tracks are faded and follow
+the planned/former setting. The legend draws each sample from the same stroke
+definitions as the map. Method labels appear from zoom 12 and follow Labels;
+clicking a stroke shows its method, propulsion, traction, recorded
+voltage/frequency, conductor contact position (`electrified:rail`) and OSM way.
+Power colours still follow the electrical system. The supplement keeps these
+tags because the provider's railway line tiles carry voltage/frequency but
+discard `electrified`; overhead contact line, by far the most common, is the
+electrified track without another recorded means. Unknown method or low DC
+voltage alone never establishes third rail. Snapshots built before the
+per-method fields existed are read from their recorded method until the next
+snapshot replaces them.
 
 **B** markers show battery train charging from zoom 12. Selection accepts an
 explicit `railway=charging_station`, or `amenity=charging_station` /

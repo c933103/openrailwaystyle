@@ -14,6 +14,8 @@ import {infrastructureContextLayers} from './layers/infrastructure.mjs';
 import {powerMethodLayers} from './layers/power-methods.mjs';
 import {powerFacilityLayers} from './layers/power-facilities.mjs';
 import {electricitySignalLayers} from './layers/electricity-signals.mjs';
+import {aerialwayLayers} from './layers/aerialways.mjs';
+import {conveyingLayers} from './layers/conveying.mjs';
 import {roadLayers, constraintLayers} from '../planning-style.mjs';
 import {contextLayers} from '../context-style.mjs';
 import {assertSourceContracts} from './source-contract.mjs';
@@ -38,7 +40,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...contourLayers, ...baseLines, ...contourLabels,
     ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
-    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
+    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details, ...aerialwayLayers(), ...conveyingLayers(),
     ...lifecycle.lines, ...rail.values,
     ...stations.platforms, ...placePlacement, ...infrastructure.crossings,
     // Separate symbol placement priority from the visible paint stack.
