@@ -24,6 +24,13 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Read the regions of the published snapshot
+        run: |
+          # A region split for size last time is asked for in its parts.
+          # Without a readable snapshot the builder uses the 45-degree grid.
+          if git fetch --depth=1 origin heritage-data && git show FETCH_HEAD:manifest.json > "$RUNNER_TEMP/heritage-previous.json"; then
+            echo "HERITAGE_PREVIOUS_MANIFEST=$RUNNER_TEMP/heritage-previous.json" >> "$GITHUB_ENV"
+          fi
       - name: Build historic areas from OpenStreetMap
         run: node scripts/build-heritage.mjs
       - name: Publish complete data snapshot

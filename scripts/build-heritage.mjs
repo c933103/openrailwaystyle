@@ -1,7 +1,7 @@
 // Maintenance only. Build the worldwide historic-area tiles (heritage-data.mjs)
 // from Overpass, region by region. Run: node scripts/build-heritage.mjs
 import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
-import {heritageQuery, heritageFeatures, heritageFailure, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageFailure, heritageRegions, heritageDepth, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -10,8 +10,14 @@ const cache = '.snapshot-cache';
 // Version 2: tiles published in bundles (tile-bundles.mjs) instead of one
 // file per tile.
 const VERSION = 2;
-const regions = [];
-for (let south = -90; south < 90; south += 45) for (let west = -180; west < 180; west += 45) regions.push([south, west, south + 45, west + 45]);
+// Start from the regions of the published snapshot (HERITAGE_PREVIOUS_MANIFEST,
+// its manifest.json), so a region split last time is not requested whole.
+let previousCoverage;
+if (process.env.HERITAGE_PREVIOUS_MANIFEST) {
+  try { previousCoverage = JSON.parse(await readFile(process.env.HERITAGE_PREVIOUS_MANIFEST, 'utf8')).coverage; }
+  catch (error) { console.warn('Previous historic area regions unreadable; using the 45-degree grid:', error.message); }
+}
+const regions = heritageRegions(previousCoverage);
 await mkdir(cache, {recursive:true});
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let requests = 0, downloaded = 0;
@@ -72,7 +78,7 @@ async function collect(box, depth = 0) {
   coverage.push({bbox:box, timestamp:json.osm3s?.timestamp_osm_base || null, features:found.length});
   console.log('Historic area region', box.join(','), found.length, 'areas');
 }
-for (const box of regions) await collect(box);
+for (const box of regions) await collect(box, heritageDepth(box));
 if (!features.size) throw new Error('Refusing to publish an empty worldwide historic area snapshot');
 
 const tiles = heritageTiles([...features.values()]);
