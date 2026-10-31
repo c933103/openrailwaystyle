@@ -25,37 +25,50 @@ jobs:
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Load the stored regions
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Exit status 2 means no such branch (the first run); any other
-          # failure stops the run, so an unreachable remote never leads to an
-          # empty store published over the stored regions.
-          status=0
-          git ls-remote --exit-code --heads origin railway-ways-data || status=$?
-          if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin railway-ways-data
-            mkdir -p /tmp/previous-railway-ways
-            git --work-tree=/tmp/previous-railway-ways checkout FETCH_HEAD -- .
+          # The store is a cache that can be downloaded again, kept as release
+          # assets (as traction-facilities-cache is) rather than as git
+          # history: one archive per stage, and the state, which says which
+          # regions each stage holds. No release yet is the first run; any
+          # other failure stops the run, so an unreachable store never leads
+          # to an empty one published over it.
+          if gh release view railway-ways-store >/dev/null 2>/tmp/release-error; then
+            mkdir -p /tmp/railway-ways-assets /tmp/previous-railway-ways
+            gh release download railway-ways-store --dir /tmp/railway-ways-assets
+            cp /tmp/railway-ways-assets/state.json /tmp/previous-railway-ways/
+            for archive in /tmp/railway-ways-assets/stage-*.tar.zst; do
+              [ -e "$archive" ] || continue
+              tar --zstd -xf "$archive" -C /tmp/previous-railway-ways
+            done
             echo "PREVIOUS_DATA=/tmp/previous-railway-ways" >> "$GITHUB_ENV"
-          elif [ "$status" != 2 ]; then
-            echo "Could not look up the railway-ways-data store (git exit $status)"
+          elif grep -qi 'release not found' /tmp/release-error; then
+            echo 'No stored regions yet: the first run'
+          else
+            cat /tmp/release-error
             exit 1
           fi
       - name: Fetch the next stage's regions from OpenStreetMap
         run: node scripts/build-railway-ways.mjs
       - name: Publish the store
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir /tmp/railway-ways-publish
-          cd /tmp/railway-ways-publish
-          git init
-          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
-          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          # One commit, replaced each time: its history is not needed.
-          git checkout --orphan railway-ways-data
-          cp -r "$GITHUB_WORKSPACE/railway-ways-data/." .
-          git add .
-          git commit -q -m "Railway ways $(date -u +%Y-%m-%dT%H:%MZ)"
-          if ! git push --force origin HEAD:railway-ways-data; then
-            test "$(git ls-remote origin refs/heads/railway-ways-data | cut -f1)" = "$(git rev-parse HEAD)"
+          gh release view railway-ways-store >/dev/null 2>&1 || gh release create railway-ways-store --target "$GITHUB_SHA" --prerelease \
+            --title 'Stored railway-ways regions' --notes 'Raw OpenStreetMap Overpass responses (ODbL), one per region, for branch lines, urban service routes and power-delivery methods. A cache that can be downloaded again; see docs/data-maintenance.md.'
+          cd railway-ways-data
+          # Only the stage this run worked on changed. Its archive goes up
+          # first and the state last, so the state never names regions that
+          # are not uploaded yet.
+          stage=$(node -e 'const m=JSON.parse(require("fs").readFileSync("manifest.json"));process.stdout.write(m.run?.stage||"")')
+          if [ -n "$stage" ]; then
+            paths=()
+            for dir in "regions/$stage" "next/$stage"; do [ -d "$dir" ] && paths+=("$dir"); done
+            if [ "${#paths[@]}" -gt 0 ]; then
+              tar --zstd -cf "/tmp/stage-$stage.tar.zst" "${paths[@]}"
+              gh release upload railway-ways-store "/tmp/stage-$stage.tar.zst" --clobber
+            fi
           fi
+          gh release upload railway-ways-store manifest.json --clobber
+          gh release upload railway-ways-store state.json --clobber
