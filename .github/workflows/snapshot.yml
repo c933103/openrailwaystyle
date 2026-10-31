@@ -1,37 +1,19 @@
 name: Build worldwide railway lifecycle snapshot
 on:
-  push:
-    branches: [main, build/world-lifecycle]
-    paths:
-      - scripts/build-snapshot.mjs
-      - styles/pbf-utf8.mjs
-      - scripts/lifecycle.mjs
-      - scripts/snapshot-delta.mjs
-      - scripts/refresh-snapshot-cache.mjs
-      - scripts/build-loading-gauge-list.mjs
-      - styles/loading-gauge-list.mjs
-      - scripts/build-polar.mjs
-      - scripts/polar-depth.mjs
-      - styles/bathymetry.mjs
-      - scripts/polar-contours.mjs
-      - scripts/polar-features.mjs
-      - styles/polar.mjs
-      - scripts/pack-snapshot.py
   workflow_dispatch:
     inputs:
       refresh:
         description: Re-download the oldest part of the world from Overpass
         type: boolean
         default: false
-  # Monday, Wednesday and Friday at 03:23 UTC, night across Europe, where
+  # Started on Monday and Friday from 03:23 UTC (night across Europe) by
+  # osm-updates.yml, which runs the Overpass datasets one at a time. Europe is where
   # most users of the public Overpass server (overpass-api.de, in Germany)
   # are. Each run fetches the ways changed since the previous run (typically
   # under 1 MB), the loading gauge list (about 4 MB) and renews about 5 MB of
   # the oldest full region responses, which catches what change queries miss
   # (e.g. deleted ways). That keeps each run day near the Overpass API wiki's
   # guidance for regular applications (under 100 queries and 10 MB a day).
-  schedule:
-    - cron: '23 3 * * 1,3,5'
 permissions:
   contents: write
   actions: write

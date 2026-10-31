@@ -1,17 +1,8 @@
 name: Refresh worldwide station-point overview
 on:
   workflow_dispatch:
-  # Each run makes at most one bounded geographic data query.
-  schedule:
-    - cron: '43 2,8,14,20 * * *'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/station-overview.mjs'
-      - 'scripts/station-acquisition.mjs'
-      - 'scripts/build-station-snapshot.mjs'
-      - 'styles/tile-bundles.mjs'
-      - '.github/workflows/station-points.yml'
+  # Started every six hours by osm-updates.yml (one Overpass dataset at a
+  # time). Each run makes at most one bounded geographic data query.
 permissions:
   contents: write
   actions: write

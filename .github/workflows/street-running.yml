@@ -1,11 +1,8 @@
 name: Refresh mapped street-running tracks
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '27 3 * * 0'
-  push:
-    branches: [main, fix/planning-context]
-    paths: ['scripts/build-street-running.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass
+  # dataset at a time).
 permissions:
   contents: write
   actions: write

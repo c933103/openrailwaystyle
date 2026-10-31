@@ -1,0 +1,156 @@
+name: Update OpenStreetMap datasets one at a time
+# Starts the Overpass-based dataset workflows one after another, never in
+# parallel (the public Overpass server asks regular users not to run several
+# scripts at once). Each dataset keeps its own workflow, branch and checks;
+# only their timing lives here. scripts/osm-update-plan.mjs decides what is
+# due from each workflow's last successful run, so a run GitHub starts late
+# or skips is caught up next time instead of being lost. A dataset whose
+# builder changed since its last successful run runs as well.
+on:
+  # Every 6 hours, starting 03:23 UTC (night across Europe).
+  schedule:
+    - cron: '23 3-23/6 * * *'
+  # A builder change on main starts a run straight away (the dataset
+  # workflows have no push trigger); it runs in the same one-at-a-time order.
+  # Kept equal to OSM_UPDATE_PATHS in scripts/osm-update-plan.mjs by a test.
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/service-frequency.yml
+      - scripts/branch-lines.mjs
+      - scripts/build-aerialways.mjs
+      - scripts/build-branch-lines.mjs
+      - scripts/build-conveying.mjs
+      - scripts/build-crossings.mjs
+      - scripts/build-heritage.mjs
+      - scripts/build-loading-gauge-list.mjs
+      - scripts/build-polar.mjs
+      - scripts/build-service-routes.mjs
+      - scripts/build-snapshot.mjs
+      - scripts/build-station-snapshot.mjs
+      - scripts/build-street-running.mjs
+      - scripts/conveying-data.mjs
+      - scripts/crossing-checkpoint.mjs
+      - scripts/crossing-data.mjs
+      - scripts/download-stages.mjs
+      - scripts/heritage-data.mjs
+      - scripts/lifecycle.mjs
+      - scripts/maintain-data-workflows.mjs
+      - scripts/overpass-errors.mjs
+      - scripts/pack-snapshot.py
+      - scripts/polar-contours.mjs
+      - scripts/polar-depth.mjs
+      - scripts/polar-features.mjs
+      - scripts/refresh-snapshot-cache.mjs
+      - scripts/service-acquisition-trigger.mjs
+      - scripts/service-geometry-health.mjs
+      - scripts/service-geometry.mjs
+      - scripts/service-routes.mjs
+      - scripts/snapshot-delta.mjs
+      - scripts/station-acquisition.mjs
+      - scripts/station-overview.mjs
+      - scripts/timetable-frequency-version.mjs
+      - scripts/timetable-frequency.mjs
+      - scripts/timetable-operator-bindings.json
+      - scripts/timetable-operator-bindings.mjs
+      - styles/bathymetry.mjs
+      - styles/conveying.mjs
+      - styles/crossing-tags.mjs
+      - styles/loading-gauge-list.mjs
+      - styles/pbf-utf8.mjs
+      - styles/polar.mjs
+      - styles/street-running.mjs
+      - styles/tile-bundles.mjs
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: Which dataset to update (due = whatever is due now)
+        type: choice
+        default: due
+        options: [due, all, lifecycle, crossings, street-running, conveying, aerialways, heritage, station-points, branch-lines, service-routes]
+permissions:
+  contents: read
+concurrency:
+  group: osm-updates
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      runs: ${{ steps.plan.outputs.runs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - name: Choose the datasets that are due
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATASET: ${{ inputs.dataset }}
+        run: node scripts/osm-update-plan.mjs
+  update:
+    needs: plan
+    if: needs.plan.outputs.runs != '' && needs.plan.outputs.runs != '[]'
+    runs-on: ubuntu-latest
+    # The longest dataset workflow (crossings) may take 330 minutes.
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      actions: write
+    strategy:
+      # One at a time, in the plan's order; a failure does not stop the rest.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.runs) }}
+    name: ${{ matrix.id }}
+    steps:
+      - name: Start ${{ matrix.workflow }} and wait for it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ matrix.workflow }}
+          INPUTS: ${{ matrix.inputs }}
+        run: |
+          set -euo pipefail
+          started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          fields=()
+          for pair in $INPUTS; do fields+=(-f "$pair"); done
+          gh workflow run "$WORKFLOW" --ref main "${fields[@]}"
+          run=''
+          for attempt in $(seq 1 30); do
+            sleep 10
+            # The oldest dispatched run created since this job started it.
+            run=$(gh run list --workflow "$WORKFLOW" --event workflow_dispatch --branch main --limit 10 \
+              --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"$started\")] | last | .databaseId // empty")
+            [ -n "$run" ] && break
+          done
+          [ -n "$run" ] || { echo "No run of $WORKFLOW appeared"; exit 1; }
+          echo "Following https://github.com/$GH_REPO/actions/runs/$run"
+          # Release the slot only once GitHub reports the run completed: a
+          # failed status request is retried, never taken as the end of the
+          # run, so the next dataset cannot start while this one still queries
+          # Overpass. Near this job's time limit the run is cancelled, and the
+          # job still waits for it to stop.
+          deadline=$(( $(date +%s) + ${CANCEL_AFTER_MINUTES:-340} * 60 ))
+          cancelled=''
+          while :; do
+            state=$(gh run view "$run" --json status,conclusion --jq '.status + " " + (.conclusion // "")' 2>/dev/null) || state=''
+            case "$state" in completed\ *) break;; esac
+            if [ -z "$cancelled" ] && [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Cancelling $WORKFLOW before this job's time limit"
+              gh run cancel "$run" && cancelled=yes || true
+            fi
+            sleep "${POLL_SECONDS:-60}"
+          done
+          conclusion=${state#completed }
+          echo "$WORKFLOW finished: $conclusion"
+          [ "$conclusion" = success ]
