@@ -612,6 +612,7 @@ export class Measure {
       {id:'measure-arc', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'arc'], layout:{'line-cap':'round'}, paint:{'line-color':'#e0701b','line-width':3}},
       pointTarget('measure-point-targets', 'atlas-measure', ['has','index']),
       {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':['case', selected, INK, '#fffef8'],'circle-radius':['case', selected, 6.5, 4.5],'circle-stroke-color':['case', selected, '#fffef8', INK],'circle-stroke-width':2}},
+      {id:'measure-spot', type:'circle', source:'atlas-measure', filter:['==',['get','kind'],'spot'], paint:{'circle-color':'#fffef8','circle-radius':5,'circle-stroke-color':INK,'circle-stroke-width':2}},
       {id:'measure-segment-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['get','kind'],'segment'],['has','label']], layout:{...text,'text-field':['get','label'],'symbol-placement':'line-center','text-size':11}, paint:halo},
       {id:'measure-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['geometry-type'],'Point'],['has','label']], layout:{...text,'text-field':['get','label'],'text-offset':[0,-1.3]}, paint:halo},
     ];
@@ -683,6 +684,11 @@ export class Measure {
       const heights = !this.ended || !this.heights ? '' : climbed ? ` End to end: ${formatClimb(climbed, units)}.`
         : this.climb?.pending ? ' Finding heights…' : ' End-to-end heights unavailable. Use Retry heights to try again.';
       this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${heights}${hint}` : `Click points to measure; double-click to end.${hint}`);
+    } else if (this.mode === 'elevation') {
+      const location = this.spot ? `Location: ${formatLocation(this.spot.point)}. Elevation: ${this.spot.pending ? 'finding height…' :
+        Number.isFinite(this.spot.value) ? formatElevation(this.spot.value, units) : 'unavailable (missing or conflicting terrain data)'}.` :
+        'Tap any map location to read its coordinates and elevation, including below sea level.';
+      this.status(location);
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       this.status(fit ? `Curve radius ≈ ${formatRadius(fit.radiusKm, units)}, fitted to ${this.points.length} points. Add more points along the curve to refine it.${hint}`
@@ -690,8 +696,11 @@ export class Measure {
     } else this.status('');
   }
   setMode(mode) {
+    if (!['distance', 'radius', 'elevation'].includes(mode)) throw new RangeError('Invalid measurement mode');
+    this.spot?.controller?.abort(); this.spot = null;
     this.mode = this.mode === mode ? null : mode;
     this.points = []; this.cursor = null; this.ended = false; this.selected = null;
+    this.geometryChanged();
     if (this.mode === 'distance') this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode ? 'crosshair' : '';
     this.refresh(); this.changed();
@@ -701,10 +710,33 @@ export class Measure {
     if (this.selected === null || !this.points[this.selected]) return;
     this.points.splice(this.selected, 1); this.selected = null;
     if (this.points.length < 2) this.ended = false;
-    this.refresh(); this.changed();
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
+  // Only the latest tap owns its result. Repeating a failed tap retries;
+  // closing/swapping modes aborts its tile subscriptions.
+  tap(point) {
+    this.spot?.controller?.abort();
+    const request = this.spot = {point, pending:Boolean(this.heights), value:null, controller:new AbortController()};
+    this.geometryChanged(); this.refresh(); this.changed();
+    if (!this.heights) return;
+    Promise.resolve().then(() => this.spot === request ? this.heights([point], {signal:request.controller.signal}) : null)
+      .then(values => {
+        if (this.spot !== request) return;
+        request.pending = false;
+        request.value = Array.isArray(values) && Number.isFinite(values[0]) ? values[0] : null;
+        this.refresh(); this.changed();
+      }, () => {
+        if (this.spot !== request) return;
+        request.pending = false; request.value = null;
+        this.refresh(); this.changed();
+      });
   }
   click(lngLat, point) {
     if (!this.mode || this.dragging?.()) return;
+    if (this.mode === 'elevation') {
+      this.tap([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
+      return;
+    }
     // A click on a point selects it; the click after a selection clears it.
     const handle = point && this.map.getLayer?.('measure-point-targets') && this.map.queryRenderedFeatures(point, {layers:['measure-point-targets']})[0];
     if (handle) {
@@ -718,10 +750,18 @@ export class Measure {
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     const last = this.points.at(-1);
     if (!last || last[0] !== p[0] || last[1] !== p[1]) { this.points.push(p); this.lastAdd = Date.now(); }
-    this.refresh();
+    this.geometryChanged(); this.refresh(); this.changed();
   }
   move(lngLat) { if (this.mode === 'distance' && !this.ended) { this.cursor = [lngLat.lng, lngLat.lat]; this.refresh(); } }
-  end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.refresh(); } }
-  undo() { this.ended = false; this.selected = null; this.points.pop(); this.refresh(); this.changed(); }
-  clear() { this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.refresh(); this.changed(); }
+  end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.geometryChanged(); this.refresh(); this.changed(); } }
+  undo() {
+    if (this.mode === 'elevation') { this.spot?.controller?.abort(); this.spot = null; }
+    else { this.ended = false; this.selected = null; this.points.pop(); }
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
+  clear() {
+    this.spot?.controller?.abort(); this.spot = null;
+    this.points = []; this.cursor = null; this.ended = false; this.selected = null;
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
 }
