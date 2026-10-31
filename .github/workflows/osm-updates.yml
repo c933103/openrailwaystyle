@@ -135,4 +135,22 @@ jobs:
           done
           [ -n "$run" ] || { echo "No run of $WORKFLOW appeared"; exit 1; }
           echo "Following https://github.com/$GH_REPO/actions/runs/$run"
-          gh run watch "$run" --exit-status --interval 60 > /dev/null
+          # Release the slot only once GitHub reports the run completed: a
+          # failed status request is retried, never taken as the end of the
+          # run, so the next dataset cannot start while this one still queries
+          # Overpass. Near this job's time limit the run is cancelled, and the
+          # job still waits for it to stop.
+          deadline=$(( $(date +%s) + ${CANCEL_AFTER_MINUTES:-340} * 60 ))
+          cancelled=''
+          while :; do
+            state=$(gh run view "$run" --json status,conclusion --jq '.status + " " + (.conclusion // "")' 2>/dev/null) || state=''
+            case "$state" in completed\ *) break;; esac
+            if [ -z "$cancelled" ] && [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Cancelling $WORKFLOW before this job's time limit"
+              gh run cancel "$run" && cancelled=yes || true
+            fi
+            sleep "${POLL_SECONDS:-60}"
+          done
+          conclusion=${state#completed }
+          echo "$WORKFLOW finished: $conclusion"
+          [ "$conclusion" = success ]

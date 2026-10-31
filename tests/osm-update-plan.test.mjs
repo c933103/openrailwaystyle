@@ -68,6 +68,13 @@ test('the scheduler is the only schedule for these Overpass workflows, and start
   assert.match(scheduler, /cron: '23 3-23\/6 \* \* \*'/);
   assert.match(scheduler, /group: osm-updates\n\s+cancel-in-progress: false/);
   assert.match(scheduler, /max-parallel: 1\n\s+fail-fast: false/, 'one at a time; a failure does not stop the rest');
+  // The slot is released only when GitHub reports the dataset run completed;
+  // a failed status request is retried, never read as the end of the run.
+  assert.doesNotMatch(scheduler, /gh run watch/);
+  assert.match(scheduler, /state=\$\(gh run view "\$run" --json status,conclusion [^\n]*\) \|\| state=''/);
+  assert.match(scheduler, /case "\$state" in completed\\ \*\) break;; esac/);
+  assert.match(scheduler, /gh run cancel "\$run"/, 'near the time limit the run is cancelled, and still waited for');
+  assert.match(scheduler, /\[ "\$conclusion" = success \]/);
   const options = /options: \[([^\]]+)\]/.exec(scheduler)[1].split(',').map(s => s.trim());
   assert.deepEqual(options, ['due', 'all', ...OSM_UPDATES.map(e => e.id)]);
   const push = /  push:\n    branches: \[main\]\n    paths:\n((?:      - .+\n)+)/.exec(scheduler)[1].trim().split('\n').map(line => line.replace(/^\s*- /, ''));
