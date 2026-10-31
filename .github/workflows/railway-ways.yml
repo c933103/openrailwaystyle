@@ -1,0 +1,42 @@
+name: Download railway ways (branch lines, service routes, power methods)
+on:
+  # Manual only for now: branch lines, service routes and power methods still
+  # download their own data. Once they are built from this store, the
+  # scheduler (osm-updates.yml) starts it instead of their own downloads.
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: railway-ways-data
+  cancel-in-progress: false
+jobs:
+  stage:
+    # Only main publishes the shared store.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the stored regions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The newest stored generation whose archives are all present
+        # (scripts/railway-ways-release.mjs). No release yet is the first run;
+        # an unreachable or inconsistent store stops the run.
+        run: node scripts/railway-ways-release.mjs load /tmp/previous-railway-ways
+      - name: Fetch the next stage's regions from OpenStreetMap
+        run: node scripts/build-railway-ways.mjs
+      - name: Publish the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GENERATION: ${{ github.run_id }}
+        # New generation-named assets only, never replaced in place; older
+        # generations are deleted after the new state is up.
+        run: GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/railway-ways-release.mjs publish railway-ways-data

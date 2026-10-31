@@ -148,6 +148,42 @@ Each website build copies the bundles, `index.json` and `manifest.json` into `st
 - Until the first snapshot exists the site deploys with an empty index and shows no historic areas.
 - The map still reads a snapshot in the earlier one-file-per-tile layout (manifest version 1), whose index lists `tiles` rather than `bundles`. A site deployed between this change and the next build therefore keeps showing historic areas.
 
+## Railway ways: one download for three datasets
+
+Branch lines, urban service routes and power-delivery methods select many of
+the same ways (a fifth of the service routes' track ways are branch lines;
+nearly half of the power-method ways are in one of the other two).
+`scripts/railway-ways.mjs` asks for all three in one request per stage region,
+each element once, and gives each dataset the view its own query returned.
+`scripts/build-railway-ways.mjs`
+([railway-ways.yml](../.github/workflows/railway-ways.yml)) runs that query
+through the branch lines' stages and pacing (one stage per run, 220 MB per run
+and 900 MB a day, a refresh every two weeks, splits recorded) and keeps each
+region's raw response: `regions/<stage>/` holds the last complete pass,
+`next/<stage>/` a pass in progress, which replaces it only when complete.
+
+- Only the server's own report that a query ran out of time or memory splits a
+  region. Gateway errors, a busy server and stalled or cut-off transfers retry
+  the same region and defer it, since they say nothing about its size and a
+  split is kept for later passes.
+- Every dataset's view must accept a response before it is stored.
+- A stage complete in the store must have every region its pass recorded:
+  reading it stops with an error otherwise, rather than passing for a stage
+  that lost its data.
+- The store is a cache that can be downloaded again, so it is kept as the
+  assets of the `railway-ways-store` release (as `traction-facilities-cache`
+  is), not as git history (`scripts/railway-ways-release.mjs`). Nothing is
+  replaced in place: each run uploads new generation-named assets, the stage
+  archive it changed (`stage-<stage>-<generation>.tar.zst`) and then its state
+  (`state-<generation>.json`, naming every stage's archive). Loading takes the
+  newest state whose archives are all present, so a run that stopped half way
+  leaves the previous generation in use; older generations are deleted after
+  the new state is up, keeping the previous one.
+
+It is started by hand for now; the three datasets still
+download their own data until they are built from this store, and only then
+does the scheduler start it in their place.
+
 ## Branch-line snapshot
 
 OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), and of metro lines (`railway=subway`, not service track), which the provider's tiles hold only from zoom 10, simplified to about 50 m, and publishes it with tiles to `branch-data` (branch lines at z4–6, metro lines at z7–9), one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge and train protection systems), so each view colours them as it colours the detailed tracks. The first three distinct protection systems occupy adjacent colour bands; the full recorded list remains available for inspection.
