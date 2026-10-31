@@ -1,5 +1,5 @@
-// Maintenance extraction only. The browser reads the published files, and
-// the workflow is manual / code-change triggered rather than scheduled.
+// Maintenance extraction only. The browser reads the published files; the
+// traction workflow runs it, started by osm-updates.yml.
 //
 // One download serves both signal supplements: signals without a direction
 // (signal-data/, for the shared signal dots) and electrification signals

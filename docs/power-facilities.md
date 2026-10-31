@@ -84,8 +84,9 @@ not a live power network, operating status feed or proof that a steam facility r
 
 `scripts/build-power-facilities.mjs` queries every world quadrant, preserving
 completed raw responses and splitting resource-limited regions. The snapshot
-publishes only after all regions complete. `traction-facilities.yml` is manual
-or code-change triggered and adds no schedule. It publishes `traction-data`
+publishes only after all regions complete. `traction-facilities.yml` is started
+every six hours, and when its builder changes, by `osm-updates.yml` (one
+Overpass dataset at a time); it republishes only when the data changed. It publishes `traction-data`
 with `power/power-facilities.geojson` and its coverage manifest. The application
 loads this file on demand in the Power view and reuses it after language or
 view changes. Visitors never query Overpass.
