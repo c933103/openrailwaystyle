@@ -179,11 +179,18 @@ export function createStagedSnapshot(config) {
     for(const box of STAGED_REGIONS)await collect(box);
     checkTime();
     if(!features.size)throw fatal(config.emptyMessage);
-    const data={type:'FeatureCollection',features:[...features.values()].sort((a,b)=>a.id.localeCompare(b.id))},body=JSON.stringify(data);
-    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:features.size,coverage,requests,downloadedBytes:downloaded,sha256:digest(body),source:'OpenStreetMap via Overpass',license:'ODbL-1.0'};
+    const data={type:'FeatureCollection',features:[...features.values()].sort((a,b)=>a.id.localeCompare(b.id))};
+    return publish(data,coverage,{output,requests,downloadedBytes:downloaded,now,log});
+  }
+  // Validate and publish a complete worldwide snapshot. Also used by a builder
+  // that acquires the same features as part of a combined download.
+  async function publish(data,coverage,{output,requests,downloadedBytes,now=Date.now,log=console.log}) {
+    const body=JSON.stringify(data);
+    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:data.features.length,coverage,requests,downloadedBytes,sha256:digest(body),source:'OpenStreetMap via Overpass',license:'ODbL-1.0'};
     validate(data,manifest);
     // Stage only after complete acquisition. Publish the digest-bearing manifest
     // last; interrupted file replacement cannot pass the workflow validation.
+    await mkdir(output,{recursive:true});
     const {data:dataFile,gzip:gzipFile,manifest:manifestFile}=config.files;
     const stage=await mkdtemp(join(output,config.stagePrefix));
     try {
@@ -192,8 +199,8 @@ export function createStagedSnapshot(config) {
       await writeFile(join(stage,manifestFile),JSON.stringify(manifest,null,2)+'\n');
       for(const name of [dataFile,gzipFile,manifestFile])await rename(join(stage,name),join(output,name));
     }finally{await rm(stage,{recursive:true,force:true});}
-    log(config.completeMessage,features.size);
+    log(config.completeMessage,data.features.length);
     return {data,manifest};
   }
-  return {build,validate};
+  return {build,validate,publish};
 }

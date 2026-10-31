@@ -55,9 +55,9 @@ jobs:
         run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-facilities.mjs
       - name: Collect conductor rails and battery train charging worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-methods.mjs
-      - name: Collect electrification signals worldwide
-        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-electricity-signals.mjs
-      - name: Collect signals missing provider direction data worldwide
+      # One download per region for both signal snapshots: signals without a
+      # direction, and electrification signals for the Power view.
+      - name: Collect signals missing provider direction data, and electrification signals, worldwide
         run: node --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
       - name: Preserve completed region responses
         if: always()
