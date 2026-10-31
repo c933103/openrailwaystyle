@@ -332,8 +332,8 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
     assert.match(button.getAttribute('aria-label'),/Overhead map/);
     map.setPitch(0);
-    assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
-    assert.equal(button.getAttribute('aria-pressed'),'false');
+    assert.equal(map.getTerrain()?.source,'terrain3d','overhead camera must not switch out of selected 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','3D icon stays selected at zero pitch');
     assert.deepEqual(errors,[]);
   }finally{dom.window.close();}
 });
@@ -363,6 +363,9 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
    assert.equal(map.getTerrain()?.source,'terrain3d');
    assert.equal(button.getAttribute('aria-pressed'),'true');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','manual overhead rotation keeps the 3D mesh');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
    // The loading policy responds to actual subsequent manual tilt, not to
    // the first 3D button press. Cross 65° explicitly before its assertions.
    map.setPitch(82);
@@ -376,6 +379,7 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
      'overhead view restores MapLibre default LOD after a real high-pitch transition');
    assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(map.getTerrain(),null,'explicit 2D icon press releases terrain');
    map.zoom=15;
    button.click();
    assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
@@ -384,6 +388,67 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
    assert.equal(errors.length,1,'the synthetic tile error must also be logged');
    assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('3D stays selected at 90-degree overhead through relief and scale changes',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(0);
+   assert.equal(map.getPitch(),0);
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   const relief=window.document.getElementById('relief');
+   relief.click();
+   assert.equal(map.getTerrain(),null);
+   relief.click();
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3},
+     're-enabling relief restores selected 3D while still overhead');
+   const scale=window.document.getElementById('terrain-exaggeration');
+   scale.value='5';scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5});
+   map.handlers.moveend();
+   const stored=JSON.parse(window.localStorage.getItem('atlas_view'));
+   assert.equal(stored.p,0);
+   assert.equal(stored.t,true,'3D state is persisted independently of pitch');
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{
+     writeText:async value=>{copied=value;}
+   }});
+   window.document.getElementById('share').click();
+   await new Promise(resolve=>setTimeout(resolve,0));
+   const shared=new URL(copied);
+   assert.equal(shared.searchParams.get('terrain3d'),'1',
+     'a zero-pitch shared link explicitly requests the 3D renderer');
+   assert.ok(shared.hash.startsWith('#'));
+   button.click();
+   assert.equal(map.getTerrain(),null,'2D requires a deliberate button press');
+   assert.equal(map.getPitch(),0);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(JSON.parse(window.localStorage.getItem('atlas_view')).t,false);
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d','a new deliberate tilt can enable 3D again');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','removing tilt does not undo 3D');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('shared top-down 3D initializes with the terrain mesh at zero pitch',async()=>{
+ const {dom,window,maps,errors}=await start({search:'?terrain3d=1#12.3/35/139'});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   assert.equal(map.getPitch(),0);
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(window.location.search,'','shared mode is consumed without dirty browser history');
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
 
@@ -423,6 +488,8 @@ test('terrain control preserves clean history while sharing the current polar 3D
      assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
      assert.equal(shared.searchParams.get('ref'),'terrain-history');
      assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
+     assert.equal(shared.searchParams.get('terrain3d'),pitch===60?'1':'0',
+       'share link preserves selected rendering mode separately from the camera');
      assert.equal(window.location.href,initialURL);
      assert.equal(window.history.length,initialLength);
      assert.deepEqual(window.history.state,state);
