@@ -26,7 +26,7 @@ test('escalators, moving walkways and elevators are read from explicit tags only
 });
 
 test('every such way is kept, with no length threshold; a backward one is stored reversed so its arrow follows the line',()=>{
-  assert.match(CONVEYING_QUERY,/way\[conveying\]\[conveying!=no\]/);assert.match(CONVEYING_QUERY,/way\[highway=elevator\]/);assert.match(CONVEYING_QUERY,/out tags geom;$/);
+  assert.match(CONVEYING_QUERY,/way\[conveying\]\[conveying!=no\]/);assert.match(CONVEYING_QUERY,/way\[highway=elevator\]/);assert.match(CONVEYING_QUERY,/out tags geom qt;$/);
   const tiny=[[0,0],[0.000009,0]]; // about 1 m
   const data=conveyingGeoJSON({elements:[
     way(1,midLevels),way(2,{highway:'steps',conveying:'backward'}),way(3,{highway:'footway',conveying:'yes'}),way(4,{highway:'elevator'},tiny),
@@ -96,3 +96,4 @@ test('short pieces survive tile encoding: about 1 m stays a line with two distin
   assert.deepEqual([...seen.keys()].sort(),[1,2,3],'every piece is in its tile, none simplified away');
   for(const [id,[a,b]] of seen)assert.notDeepEqual(a,b,`way ${id} keeps two distinct ends`);
 });
+

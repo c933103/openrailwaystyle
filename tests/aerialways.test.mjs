@@ -111,3 +111,16 @@ test('aerialways are named like railways, in every view under the Names setting,
   const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');
   assert.match(app,/style\.sources\.aerialways\.tiles = \[`aerialwaytiles:\/\/\{z\}\/\{x\}\/\{y\}\?lang=\$\{settings\.language\}`\]/,'names follow the chosen language');
 });
+
+test('the aerialway snapshot has its own bounded workflow; the site deploys without it, and only main publishes',()=>{
+  const site=readFileSync(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
+  assert.match(site,/aerialway-data[\s\S]*echo '\{"tiles":\[\]\}' > styles\/data\/aerialways\/index\.json/);
+  const workflow=readFileSync(new URL('../.github/workflows/aerialways.yml',import.meta.url),'utf8');
+  assert.match(workflow,/run: node scripts\/build-aerialways\.mjs/);
+  assert.match(workflow,/Publish complete data snapshot\n\s+# Only main publishes the shared snapshot\.\n\s+if: github\.ref == 'refs\/heads\/main'/);
+  assert.match(workflow,/git push origin HEAD:aerialway-data/);
+  const build=readFileSync(new URL('../scripts/build-aerialways.mjs',import.meta.url),'utf8');
+  for(const helper of ['conveyingRequestFits(deadline, 0)','conveyingRequestFits(deadline, wait)','conveyingRetryDelay(error, attempt)','conveyingHttpError(response, startedAt)','CONVEYING_ACQUISITION_MS'])assert.ok(build.includes(helper),`same bounded acquisition as the escalator build: ${helper}`);
+  const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/\['aerialwaytiles','aerialways'\]/,'tiles served from data/aerialways with localized names');
+});

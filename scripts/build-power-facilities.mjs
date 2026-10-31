@@ -3,6 +3,7 @@
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
+import {overpassRetryDelayMs,overpassBusy,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output=process.env.POWER_OUTPUT || 'power-data';
@@ -34,8 +35,11 @@ async function collect(box,depth=0) {
       const info=await stat(splitFile),saved=JSON.parse(await readFile(splitFile,'utf8'));
       split=cachedSplit=powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
     } catch {}
-    if(!split)for(let attempt=0;attempt<3;attempt++) {
-      await sleep(requests ? Math.min(60000,attempt?20000*(attempt+1):10000) : 0);
+    // A busy server waits minutes (overpassRetryDelayMs); other retries keep
+    // the short pause. Completed regions are cached, so a later run resumes.
+    let wait=requests?10000:0;const attempts=OVERPASS_RETRY_MINUTES.length+1;
+    if(!split)for(let attempt=0;attempt<attempts;attempt++) {
+      await sleep(wait);
       requests++;
       try {
         console.log('Fetching railway energy supplies',box.join(','),'attempt',attempt+1);
@@ -43,18 +47,20 @@ async function collect(box,depth=0) {
           headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
         const text=await response.text();downloaded+=Buffer.byteLength(text);
         if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
-        if(!response.ok)throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160)}`);
+        if(!response.ok)throw Object.assign(new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160)}`),{retryAfter:response.headers.get('retry-after')});
         json=JSON.parse(text);
         powerFacilitiesGeoJSON(json);
         await writeFile(file,JSON.stringify({query,response:json}));
         break;
       } catch(error) {
         json=undefined;
-        console.warn(box.join(','),error.message);
+        console.warn(box.join(','),describeOverpassError(error));
         if(/budget exceeded/.test(error.message))throw error;
         // Admission HTTP errors can say "timeout" without executing the query.
         if(!/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
-        if(attempt===2)throw error;
+        if(attempt===attempts-1)throw error;
+        wait=overpassBusy(error)?overpassRetryDelayMs(attempt,error.retryAfter):Math.min(60000,20000*(attempt+2));
+        if(overpassBusy(error))console.warn(`Overpass busy or unreachable; retrying in ${Math.round(wait/60000)} min`);
       }
     }
   }
