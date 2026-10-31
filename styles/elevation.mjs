@@ -4,9 +4,9 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261031-electricity-signals-3';
-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261031-electricity-signals-3';
-import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261031-electricity-signals-3';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261101-measure-surface-1';
+import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261101-measure-surface-1';
+import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261101-measure-surface-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
