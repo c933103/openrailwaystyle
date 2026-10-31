@@ -16,7 +16,7 @@ import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addRes
 import {createHash} from 'node:crypto';
 import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
 
-import {selectDownloadStage} from './download-stages.mjs';
+import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -70,7 +70,7 @@ if (!stage) {
 }
 const current = info(stage.name);
 // A new pass starts from nothing of its own in progress.
-if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; discardStage(table, stage.name); }
+if (!current.pending?.length) { startStagePass(current, stage); current.seen = []; current.started = now; discardStage(table, stage.name); }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 
 const BUDGET = Symbol('budget');
@@ -145,6 +145,7 @@ while (current.pending.length) {
     continue;
   }
   fetchedBoxes++;
+  recordStageRegion(current, item);
   addResult(table, result, stage.name);
   console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
 }
@@ -176,6 +177,7 @@ if (!current.pending.length) {
     retry: health.status === 'complete' ? null : 'next-stage-refresh'};
   const declarations = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name));
   const routes = declarations.filter(r => routeView(r).active !== false).length, retainedRelations = declarations.length;
+  finishStagePass(current, stage);
   Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, retainedRelations, kept: suspicious ? stale : 0});
   console.log(`Stage ${stage.name} acquisition complete (${health.status} geometry): ${routes} active routes (${retainedRelations} retained declarations; ${suspicious ? 0 : stale} items removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
