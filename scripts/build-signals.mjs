@@ -11,10 +11,16 @@ import {gzipSync} from 'node:zlib';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {startRegions, quarters} from './crossing-data.mjs';
-import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalFeatures, buildSignalTiles, SIGNAL_ZOOM, SIGNAL_OVERVIEW_ZOOM} from './signals-data.mjs';
+import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery, parseSignalChanges, applySignalChanges, signalFeatures, buildSignalTiles, SIGNAL_ZOOM, SIGNAL_OVERVIEW_ZOOM} from './signals-data.mjs';
 import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
 import {publishElectricitySignals} from './build-electricity-signals.mjs';
 
+// A stored region is brought up to date with the changes since its database
+// timestamp (an Overpass augmented diff), never downloaded again. Signals
+// change slowly, so a region is updated at most once a week.
+const UPDATE_EVERY = Number(process.env.SIGNAL_UPDATE_DAYS || 7) * 86400000;
+// Legacy direction-only responses and remainders count as current for 28
+// days; they are folded into one stored region on first use.
 const AGE = 28 * 86400000;
 const timeoutLike = message => !/^Overpass HTTP \d+:/.test(message) && /timed? ?out|timeout|memory|maxsize/i.test(message);
 
@@ -37,6 +43,11 @@ export async function buildSignals({
   const fresh = (saved, query) => saved?.query === query && now() - Date.parse(saved.generated) < AGE && usable(saved);
 
   async function fetchJson(query) {
+    const data = JSON.parse(await fetchText(query));
+    if (data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete signal response');
+    return data;
+  }
+  async function fetchText(query) {
     for (let attempt = 0; attempt < 3; attempt++) {
       if (requests) await sleep(attempt ? 30000 : 10000);
       requests++;
@@ -45,9 +56,11 @@ export async function buildSignals({
           headers: {'User-Agent': 'RailwayAtlas-signals/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
         const text = await response.text(); downloaded += Buffer.byteLength(text);
         if (!response.ok) throw new Error(`Overpass HTTP ${response.status}: ${text.replace(/<[^>]*>/g, ' ').slice(0, 200)}`);
-        const data = JSON.parse(text);
-        if (data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete signal response');
-        return data;
+        // A result cut short by a timeout or memory limit says so in a remark
+        // (JSON) or <remark> (XML); report it as such, so the region splits.
+        const remark = /"remark"\s*:\s*"([^"]*)"|<remark>([\s\S]*?)<\/remark>/.exec(text);
+        if (remark && /timed? ?out|timeout|memory|maxsize/i.test(remark[1] || remark[2])) throw new Error((remark[1] || remark[2]).trim());
+        return text;
       } catch (error) {
         // An execution timeout or memory limit splits the region instead.
         if (timeoutLike(error.message) || attempt === 2) throw error;
@@ -81,6 +94,22 @@ export async function buildSignals({
     }
   }
 
+  // The changes in a region since `since`. A timeout or memory limit splits
+  // this request into quarters; their changes together are the region's.
+  async function changesSince(box, since, depth = 0) {
+    try {
+      return parseSignalChanges(await fetchText(signalChangesQuery(box, since)));
+    } catch (error) {
+      warn('Signal changes', box.join(','), error.message);
+      if (!timeoutLike(error.message) || depth >= 5) throw error;
+      const parts = [];
+      for (const child of quarters(box)) parts.push(await changesSince(child, since, depth + 1));
+      // The oldest database time of the parts is the region's: no change
+      // after it is assumed to be included.
+      return {timestamp: parts.map(part => part.timestamp).sort()[0], upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes)};
+    }
+  }
+
   // Leaves of the world partition, each with the combined element set.
   async function collect(box, depth = 0) {
     const key = box.join('_'), combinedFile = `signals-v2-${key}.json`, directionFile = `signals-v1-${key}.json`;
@@ -90,19 +119,33 @@ export async function buildSignals({
       for (const child of quarters(box)) results.push(...await collect(child, depth + 1));
       return results;
     };
-    const combined = await read(combinedFile);
-    if (fresh(combined, combinedQuery)) {
-      if (combined.split) return split();
-      return [{box, timestamp: combined.response.osm3s?.timestamp_osm_base || null, elements: combined.response.elements}];
+    const save = record => writeFile(new URL(combinedFile, cacheRoot), JSON.stringify(record));
+    let stored = await read(combinedFile);
+    if (!(stored?.query === combinedQuery && usable(stored))) {
+      stored = undefined;
+      // A region answered before the downloads were combined keeps its
+      // response: the remainder is added and the two are stored as one.
+      const direction = await read(directionFile);
+      if (direction?.query === directionQuery && now() - Date.parse(direction.generated) < AGE && usable(direction)) {
+        if (direction.split) return split();
+        const added = await remainder(box);
+        log('Signal region', box.join(','), 'reused; added', added.length, 'electrification signals with a direction');
+        stored = {query: combinedQuery, generated: direction.generated,
+          response: {osm3s: {timestamp_osm_base: direction.response.osm3s?.timestamp_osm_base}, elements: applySignalChanges(direction.response.elements, {upserts: added, deletes: []})}};
+        await save(stored);
+      }
     }
-    // A region answered before the downloads were combined keeps its response
-    // and fetches only the remainder.
-    const direction = await read(directionFile);
-    if (fresh(direction, directionQuery)) {
-      if (direction.split) return split();
-      const added = await remainder(box);
-      log('Signal region', box.join(','), 'reused; added', added.length, 'electrification signals with a direction');
-      return [{box, timestamp: direction.response.osm3s?.timestamp_osm_base || null, elements: [...direction.response.elements, ...added]}];
+    if (stored?.split) return split();
+    const since = stored?.response?.osm3s?.timestamp_osm_base;
+    if (stored && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since || '')) {
+      if (now() - Date.parse(stored.generated) >= UPDATE_EVERY) {
+        const changes = await changesSince(box, since);
+        const elements = valid(applySignalChanges(stored.response.elements, changes));
+        stored = {query: combinedQuery, generated: new Date(now()).toISOString(), response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements}};
+        await save(stored);
+        log('Signal region', box.join(','), 'updated:', changes.upserts.length, 'added or changed,', changes.deletes.length, 'removed since', since);
+      }
+      return [{box, timestamp: stored.response.osm3s.timestamp_osm_base, elements: stored.response.elements}];
     }
     try {
       const response = await fetchJson(combinedQuery);

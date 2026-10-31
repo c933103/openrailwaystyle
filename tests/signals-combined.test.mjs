@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 import {buildSignals} from '../scripts/build-signals.mjs';
-import {signalQuery, combinedSignalQuery, electricWithDirectionQuery} from '../scripts/signals-data.mjs';
+import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery} from '../scripts/signals-data.mjs';
 import {validateElectricitySignalsSnapshot} from '../scripts/build-electricity-signals.mjs';
 
 // Signals in the region [45,0,90,45]: an undirected main signal, an undirected
@@ -28,6 +28,7 @@ function fakeOverpass(answer) {
     queries.push(query);
     const result = answer(query);
     if (result.status) return {ok: false, status: result.status, text: async () => 'busy'};
+    if (typeof result.raw === 'string') return {ok: true, text: async () => result.raw};
     return {ok: true, text: async () => JSON.stringify({osm3s: {timestamp_osm_base: '2026-10-31T00:00:00Z'}, ...result})};
   };
   return {queries, fetcher};
@@ -73,7 +74,7 @@ test('a cached region whose remainder request times out splits that request alon
   const home = HOME.split(',').map(Number);
   await (await import('node:fs/promises')).mkdir(d.cacheRoot, {recursive: true});
   await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({query: signalQuery(home), generated: '2026-10-25T00:00:00Z',
-    response: {elements: [UNDIRECTED, ELECTRIC]}}));
+    response: {osm3s: {timestamp_osm_base: '2026-10-25T00:00:00Z'}, elements: [UNDIRECTED, ELECTRIC]}}));
   const {queries, fetcher} = fakeOverpass(query => {
     if (query === electricWithDirectionQuery(home)) return {elements: [], remark: 'runtime error: Query ran out of memory in "query"'};
     return {elements: query === electricWithDirectionQuery([45, 0, 67.5, 22.5]) ? [DIRECTED_ELECTRIC] : []};
@@ -125,4 +126,81 @@ test('a region that keeps failing publishes neither snapshot', async t => {
   await assert.rejects(buildSignals({...d, ...quiet, fetcher}), /Overpass HTTP 502/);
   await assert.rejects(readdir(d.output));
   await assert.rejects(readdir(d.powerOutput));
+});
+
+const adiff = (base, actions) => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="${base}"/>\n${actions}\n</osm>\n`;
+const node = ({id, lat, lon, tags}) => `<node id="${id}" lat="${lat}" lon="${lon}" version="2">${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</node>`;
+
+async function seed(d, generated, elements = [UNDIRECTED, ELECTRIC]) {
+  const home = HOME.split(',').map(Number);
+  await (await import('node:fs/promises')).mkdir(d.cacheRoot, {recursive: true});
+  for (const {box} of (await import('../scripts/crossing-data.mjs')).startRegions())
+    await writeFile(new URL(`signals-v2-${box.join('_')}.json`, d.cacheRoot), JSON.stringify({query: combinedSignalQuery(box), generated,
+      response: {osm3s: {timestamp_osm_base: '2026-10-20T00:00:00Z'}, elements: box.join(',') === HOME ? elements : []}}));
+  return home;
+}
+
+test('a stored region is updated with the changes since its database time, never downloaded again', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  const moved = {...UNDIRECTED, lat: 48.81, tags: {...UNDIRECTED.tags, ref: 'C12'}};
+  const {queries, fetcher} = fakeOverpass(query => ({raw: adiff('2026-10-31T11:00:00Z', box(query) !== HOME ? '' : [
+    `<action type="modify"><old>${node(UNDIRECTED)}</old><new>${node(moved)}</new></action>`,
+    `<action type="delete"><old>${node(ELECTRIC)}</old><new><node id="2" visible="true"/></new></action>`,
+    `<action type="create">${node(DIRECTED_ELECTRIC)}</action>`].join('\n'))}));
+  await buildSignals({...d, ...quiet, fetcher});
+  assert.equal(queries.length, 32, 'one change request per stored region');
+  assert.ok(queries.includes(signalChangesQuery(home, '2026-10-20T00:00:00Z')));
+  assert.ok(!queries.some(q => q.includes('[out:json]')), 'no full download');
+  const undirected = JSON.parse(gunzipSync(await readFile(new URL('railway-signals.geojson.gz', d.output))));
+  assert.deepEqual(undirected.features.map(f => [f.id, f.properties.ref]), [[1, 'C12']], 'the modified signal changed, the retagged one left');
+  const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+  assert.deepEqual(electric.features.map(f => f.id), ['node-3'], 'the created signal was added and the removed one dropped');
+  const stored = JSON.parse(await readFile(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot), 'utf8'));
+  assert.equal(stored.response.osm3s.timestamp_osm_base, '2026-10-31T11:00:00Z', 'the next update starts from the new database time');
+  // Within a week of an update, a build makes no requests at all.
+  const again = fakeOverpass(() => ({raw: ''}));
+  await buildSignals({...d, ...quiet, fetcher: again.fetcher});
+  assert.equal(again.queries.length, 0);
+});
+
+test('a change request that times out is split into quarters whose changes together update the region', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  const {queries, fetcher} = fakeOverpass(query => {
+    if (box(query) === HOME) return {raw: adiff('2026-10-31T11:00:00Z', '<remark> runtime error: Query timed out in "query" at line 1 after 181 seconds. </remark>')};
+    const base = box(query) === '45,0,67.5,22.5' ? '2026-10-31T10:59:00Z' : '2026-10-31T11:00:00Z';
+    return {raw: adiff(base, box(query) === '45,0,67.5,22.5' ? `<action type="create">${node(DIRECTED_ELECTRIC)}</action>` : '')};
+  });
+  await buildSignals({...d, ...quiet, fetcher});
+  assert.ok(queries.includes(signalChangesQuery([45, 0, 67.5, 22.5], '2026-10-20T00:00:00Z')));
+  const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+  assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+  const stored = JSON.parse(await readFile(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot), 'utf8'));
+  assert.equal(stored.response.osm3s.timestamp_osm_base, '2026-10-31T10:59:00Z', 'the oldest part decides where the next update starts');
+});
+
+test('a failed or incomplete change request leaves the stored region and publishes nothing', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  const before = await readFile(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot), 'utf8');
+  for (const answer of [{status: 502}, {raw: '<?xml version="1.0"?>\n<osm><meta osm_base="2026-10-31T11:00:00Z"/><action type="create">'}]) {
+    const {fetcher} = fakeOverpass(query => box(query) === HOME ? answer : {raw: adiff('2026-10-31T11:00:00Z', '')});
+    await assert.rejects(buildSignals({...d, ...quiet, fetcher}), /Overpass HTTP 502|Incomplete signal change response/);
+    assert.equal(await readFile(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot), 'utf8'), before);
+    await assert.rejects(readdir(d.powerOutput));
+  }
+});
+
+test('change responses: escaped text, ways ignored, refusals and truncation rejected', async () => {
+  const {parseSignalChanges, signalChangesQuery} = await import('../scripts/signals-data.mjs');
+  const changes = parseSignalChanges(adiff('2026-10-31T11:00:00Z', [
+    '<action type="create"><node id="9" lat="35.6" lon="139.7"><tag k="railway" v="signal"/><tag k="name" v="&quot;A&quot; &amp; &#x4E2D;&#22830;"/></node></action>',
+    '<action type="create"><way id="4"><nd ref="1"/></way></action>'].join('\n')));
+  assert.deepEqual(changes, {timestamp: '2026-10-31T11:00:00Z', upserts: [{type: 'node', id: 9, lat: 35.6, lon: 139.7, tags: {railway: 'signal', name: '"A" & 中央'}}], deletes: []});
+  assert.throws(() => parseSignalChanges(adiff('2026-10-31T11:00:00Z', '<remark> runtime error: something else </remark>')), /runtime error/);
+  assert.throws(() => parseSignalChanges('<osm><meta osm_base="2026-10-31T11:00:00Z"/>'), /Incomplete/);
+  assert.throws(() => parseSignalChanges('<osm></osm>'), /without a database timestamp/);
+  assert.match(signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z'), /^\[out:xml\].*\[adiff:"2026-10-20T00:00:00Z"\];.*out meta;$/, 'XML: the server refuses diff modes in JSON');
+  assert.throws(() => signalChangesQuery([45, 0, 90, 45], 'yesterday'), /Invalid signal change start/);
 });
