@@ -6,6 +6,7 @@
 // zoom included.
 import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261031-electricity-signals-3';
 import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261031-electricity-signals-3';
+import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261031-electricity-signals-3';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -80,6 +81,91 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels,
         if (!tiles.has(key)) tiles.set(key, tile(key, signal));
         const pixels = await tiles.get(key);
         return pixels ? sampleHeight(pixels.data, pixels.size, px, py) : null;
+      }));
+    },
+  };
+}
+
+// Work in tile pixels, rather than world degrees. Per-feature even-odd
+// winding keeps islands as holes; testing each feature separately makes
+// overlapping ocean polygons a UNION instead of cancelling each other.
+// A point within one pixel of a genuine shoreline is indeterminate: do not
+// silently choose an overlapping, coarse seabed/land elevation there.
+// Clipped edges of the vector tile are not shorelines.
+export function oceanAt(polygons, px, py, margin = 1) {
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+  let boundary = false;
+  for (const polygon of polygons) {
+    const scale = TILE / polygon.extent;
+    if (!Number.isFinite(scale) || scale <= 0) return null;
+    let inside = false, ambiguous = false;
+    for (const ring of polygon.rings) {
+      let inRing = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[j], b = ring[i];
+        const ax = a.x * scale, ay = a.y * scale, bx = b.x * scale, by = b.y * scale;
+        if (![ax, ay, bx, by].every(Number.isFinite)) return null;
+        const dx = bx - ax, dy = by - ay;
+        const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+        const clippedEdge = (ax === 0 && bx === 0) || (ay === 0 && by === 0) ||
+          (ax === TILE && bx === TILE) || (ay === TILE && by === TILE);
+        if (!clippedEdge && Math.hypot(px - ax - t * dx, py - ay - t * dy) <= margin) ambiguous = true;
+        if ((ay > py) !== (by > py) && px < (bx - ax) * (py - ay) / (by - ay) + ax) inRing = !inRing;
+      }
+      if (inRing) inside = !inside;
+    }
+    if (ambiguous) boundary = true;
+    else if (inside) return true;
+  }
+  return boundary ? null : false;
+}
+
+// The fine Mapzen DEM loses bathymetry above z10. Classify genuine ocean
+// using the same basemap ocean polygons as the 3D/depth renderer, then sample
+// the repaired coarse DEM only there. Inland negative elevations (Dead Sea,
+// etc.) remain fine land heights, and lakes are not mistaken for ocean.
+// Missing/ambiguous coastlines or failed tiles yield null, never a fake 0 m.
+// Water and DEM calls are shared per tile, bounded and cancellable.
+export function createSurfaceElevation(url, {waterTile, readTile, load, zoom = ELEVATION_ZOOM,
+  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS} = {}) {
+  if (typeof waterTile !== 'function' || typeof readTile !== 'function') throw new TypeError('A basemap water reader is required');
+  const options = {zoom, timeoutMs, repairTimeoutMs, ...(load ? {load} : {})};
+  const fine = createElevation(url, options);
+  const seabed = zoom > DEPTH_ZOOM ? createElevation(url, {...options, zoom: DEPTH_ZOOM}) : fine;
+  const water = sharedTerrainTiles(async (key, signal) => {
+    const [z, x, y] = key.split('/').map(Number);
+    const result = await waterTile(z, x, y, {signal});
+    if (signal.aborted) throw terrainAbort();
+    if (!result?.data?.byteLength) return null; // unknown coverage, not land
+    return oceanPolygons(readTile(result.data));
+  }, {keep: CACHE, timeoutMs});
+  return {
+    async heights(points, {signal} = {}) {
+      if (!Array.isArray(points)) throw new TypeError('Elevation points must be an array');
+      const valid = point => Array.isArray(point) && point.length >= 2 &&
+        point.every(Number.isFinite) && Math.abs(point[1]) <= 85.05112878;
+      const safe = points.filter(valid);
+      const raw = await fine.heights(safe, {signal});
+      let index = 0;
+      return Promise.all(points.map(async point => {
+        if (!valid(point)) return null;
+        const high = raw[index++];
+        if (!Number.isFinite(high) || high < -11500 || high > 9000) return null;
+        const {x, y, px, py} = tilePixel(point[0], point[1], Math.min(zoom, WATER_ZOOM));
+        try {
+          const polygons = await water(`${Math.min(zoom, WATER_ZOOM)}/${x}/${y}`, signal);
+          if (!polygons) return null;
+          const ocean = oceanAt(polygons, px, py);
+          if (ocean === null) return null;
+          if (!ocean) return high;
+          const [depth] = await seabed.heights([point], {signal});
+          // The coarse cell can mix land and water near shore. Never report
+          // a positive land height as a seabed elevation.
+          return Number.isFinite(depth) && depth >= -11500 && depth <= 0 ? depth : null;
+        } catch (error) {
+          if (signal?.aborted) throw error;
+          return null;
+        }
       }));
     },
   };
