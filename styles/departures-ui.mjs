@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261030-aerialway-names-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261031-power-legend-values-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

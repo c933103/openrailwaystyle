@@ -2541,8 +2541,11 @@ test('Power legend is a fixed key of the facility drawing and current systems, p
     const doc = window.document, legend = doc.getElementById('legend');
     const checkPoints = former => {
       assert.equal(legend.querySelector('h2').textContent,'Railway power','not an in-view list');
-      const gradients=[...legend.querySelectorAll('.legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient'));
-      assert.equal(gradients.length,model.CURRENT_SYSTEMS.length,'every current system has its voltage shade key');
+      const items=[...legend.querySelectorAll('.legend-item')];
+      assert.equal(items.filter(row=>row.firstElementChild.style.background.includes('gradient')).length,0,'exact values, no gradient rows');
+      const key=items.map(row=>[row.firstElementChild.style.getPropertyValue('--swatch'),row.lastElementChild.textContent]).filter(([,label])=>/ (DC|AC [\d.]+ Hz)$/.test(label));
+      assert.deepEqual(key,model.currentKey(),'one fixed row per voltage and current, coloured like the track paint');
+      for (const label of ['1.5 kV DC','15 kV AC 16.7 Hz','25 kV AC 50 Hz','12.5 kV AC 60 Hz']) assert.ok(key.some(([,l])=>l===label),label);
       const samples = [...legend.querySelectorAll('.point-swatch')];
       assert.equal(samples.length,2,'one area and one point sample, not one per kind');
       for (const [index,shape] of ['rect','circle'].entries()) {

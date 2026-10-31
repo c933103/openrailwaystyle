@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261030-aerialway-names-1';
+import {SEARCH_API} from './map-model.mjs?v=20261031-power-legend-values-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
