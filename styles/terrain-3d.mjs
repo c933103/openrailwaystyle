@@ -121,18 +121,23 @@ export const TERRAIN_TILE_SIZE = 256;
 const HEIGHT_MIN = -11500, HEIGHT_MAX = 9000;
 const TERRAIN_3D_TIMEOUT_MS = 45_000;
 
-export function terrain3DEnabled(relief, pitch) {
-  return Boolean(relief) && Number.isFinite(pitch) && pitch > 0.25;
+// Tilt can select 3D automatically, but cannot deselect it. Rendering mode
+// is separate from the camera pitch and may stay 3D when viewed overhead.
+export const terrain3DSelectedForPitch = pitch => Number.isFinite(pitch) && pitch > 0.25;
+
+export function terrain3DEnabled(relief, selected) {
+  return Boolean(relief) && selected === true;
 }
 
-export function syncTerrain3D(map, relief, exaggeration = 1) {
+export function syncTerrain3D(map, relief, exaggeration = 1,
+  selected = terrain3DSelectedForPitch(map?.getPitch?.())) {
   // The default remains physical 1× for direct API consumers and isolated
   // browser fixtures. The app passes its independently validated preference.
   terrainExaggeration(exaggeration);
   // isStyleLoaded() is false while *any* visible tile is loading, including
   // ordinary rail and imagery tiles. The DEM source only has to be registered.
   if (!map?.getSource?.(TERRAIN_3D_SOURCE)) return;
-  const enabled = terrain3DEnabled(relief, map.getPitch());
+  const enabled = terrain3DEnabled(relief, selected);
   const current = map.getTerrain();
   const wanted = enabled ? {source: TERRAIN_3D_SOURCE, exaggeration} : null;
   if (!wanted && !current) return;
