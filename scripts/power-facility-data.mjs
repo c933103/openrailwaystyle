@@ -59,6 +59,10 @@ export function powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,refres
   return saved.query===query;
 }
 
+// A split decision stays while the query is unchanged, whatever its age and
+// on a refresh: the region is known to exceed the server's limits.
+export const powerFacilitySplitAccepted=(query,saved)=>typeof saved?.query==='string'&&saved.query===query;
+
 export function powerFacilityCachedResponse(box,query,saved,options) {
   if(!powerFacilityCacheRecordAccepted(box,query,saved,options))return undefined;
   powerFacilitiesGeoJSON(saved.response); // Reject cached partial/error responses too.

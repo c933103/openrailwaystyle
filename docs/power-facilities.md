@@ -83,7 +83,9 @@ trains, nor satisfy the whole-grid requirement. The map shows mapped supplies,
 not a live power network, operating status feed or proof that a steam facility remains usable.
 
 `scripts/build-power-facilities.mjs` queries every world quadrant, preserving
-completed raw responses and splitting resource-limited regions. The snapshot
+completed raw responses and splitting resource-limited regions; a split decision
+stays while its query is unchanged, past the 28-day response cache and on a
+refresh. The snapshot
 publishes only after all regions complete. `traction-facilities.yml` is started
 every six hours, and when its builder changes, by `osm-updates.yml` (one
 Overpass dataset at a time); it republishes only when the data changed. It publishes `traction-data`
@@ -226,8 +228,10 @@ planned/former conductor rails and chargers follow the existing inactive setting
 
 The maintenance-only `build-power-methods.mjs` writes
 `power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
-It covers every world quadrant and caches exact completed queries and spatial
-split decisions for 28 days. Each run has hard limits of 96 requests, 100 MB of
+It covers every world quadrant and caches exact completed queries for 28 days.
+A spatial split decision stays for as long as its query is unchanged, so a
+region known to exceed the server's limits is asked for in its parts, never
+whole again. Each run has hard limits of 96 requests, 100 MB of
 downloaded response bodies and one hour, with at most three attempts per query and at
 most six subdivision levels. HTTP request/authentication failures, malformed
 JSON, unknown error remarks and incomplete geometry terminate immediately.
@@ -241,7 +245,7 @@ Transport and admission failures still retry the same box, without subdivision. 
 honoured up to five minutes; longer waits or an exhausted time budget stop the
 run for later resumption. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
-ignores both kinds of checkpoint.
+ignores completed responses but keeps split decisions.
 
 The query first collects bounded amenity/charge-point candidates, then applies
 the 14 railway-use hints within that named set. This factors the original 240
