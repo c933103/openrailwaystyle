@@ -13,6 +13,7 @@ import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
 import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
+import {resolve} from 'node:path';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -42,11 +43,61 @@ if (previous) {
   }
 }
 
+const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
+// Writes the table, its tiles, state and manifest for publication.
+async function publish({run, redeploy, source = api}) {
+  retireBranchEurope(state, table);
+  await rm(out, {recursive: true, force: true});
+  await mkdir(out, {recursive: true});
+  await writeFile(new URL('branch-lines.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
+  await writeFile(new URL('state.json', out), JSON.stringify(state));
+  const index = [];
+  let tileBytes = 0;
+  for (const [key, data] of buildTiles(table)) {
+    const [z, x] = key.split('/');
+    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
+    const gz = gzipSync(data, {level: 9});
+    tileBytes += gz.length;
+    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
+    index.push(key);
+  }
+  await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
+  const manifest = {generated: new Date().toISOString(), lines: table.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+    stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null,
+      lines: [...table.values()].filter(f => f.stage === s.name).length})),
+    run, source,
+    query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service] and way[railway=subway][!service], by region', license: 'ODbL-1.0',
+    description: 'OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither.'};
+  await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
+  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${redeploy}\n`);
+  console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.lines}`).join(' ')}));
+}
+
 // Format 3 retains concurrent train-protection systems. Old tiles/table only
 // contain the primary code, so re-fetch every region through the existing
 // staged refresh while keeping its previous geometries until it succeeds.
 migrateBranchState(state);
 migrateBranchDownloads(state, table);
+// Built from the stored railway-ways regions (build-railway-ways.mjs), when
+// given, instead of downloading: no Overpass request at all.
+if (process.env.RAILWAY_WAYS_STORE) {
+  const store = process.env.RAILWAY_WAYS_STORE;
+  // Loaded only here: the download path needs none of it.
+  const [{branchTableFromStore}, {storedRegions}] = await Promise.all([import('./railway-ways-branch.mjs'), import('./build-railway-ways.mjs')]);
+  const stored = JSON.parse(await readFile(new URL(`file://${resolve(store)}/state.json`), 'utf8'));
+  const completed = Object.fromEntries(Object.entries(stored.stages || {}).map(([name, s]) => [name, s.completed || null]));
+  const before = writeTable(table);
+  const result = await branchTableFromStore(table, storedRegions(store), completed);
+  table = result.table;
+  for (const item of result.applied) Object.assign(state.stages[item.stage] ||= {seen: []},
+    {completed: item.completed, started: item.completed, pending: null, seen: [], lines: item.lines, kept: item.kept, source: 'railway-ways'});
+  // Retire the old Europe fallback first (publish() would otherwise do it
+  // after this comparison), so a run that only retires it still redeploys.
+  retireBranchEurope(state, table);
+  await publish({run: {source: 'railway-ways', stages: result.applied.map(item => item.stage)}, redeploy: writeTable(table) !== before, source: 'railway-ways-data'});
+  process.exit(0);
+}
+
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -55,7 +106,6 @@ if (BUDGET_BYTES < 10_000_000) {
   process.exit(0);
 }
 // Resume unfinished stages fairly, retaining each stage's accepted data and queue.
-const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
 const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
 if (!stage) {
   console.log('Every stage is current; nothing to fetch.');
@@ -172,29 +222,5 @@ if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SU
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
-retireBranchEurope(state, table);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
-await rm(out, {recursive: true, force: true});
-await mkdir(out, {recursive: true});
-await writeFile(new URL('branch-lines.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('state.json', out), JSON.stringify(state));
-const index = [];
-let tileBytes = 0;
-for (const [key, data] of buildTiles(table)) {
-  const [z, x] = key.split('/');
-  await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-  const gz = gzipSync(data, {level: 9});
-  tileBytes += gz.length;
-  await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-  index.push(key);
-}
-await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const manifest = {generated: new Date().toISOString(), lines: table.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
-  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null,
-    lines: [...table.values()].filter(f => f.stage === s.name).length})),
-  run: {stage: stage.name, ...current.lastAttempt}, source: api,
-  query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service] and way[railway=subway][!service], by region', license: 'ODbL-1.0',
-  description: 'OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither.'};
-await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
-if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${fetchedBoxes > 0}\n`);
-console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.lines}`).join(' ')}));
+await publish({run: {stage: stage.name, ...current.lastAttempt}, redeploy: fetchedBoxes > 0});
