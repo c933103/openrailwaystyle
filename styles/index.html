@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261031-electricity-signals-3" rel="stylesheet">
+  <link href="app.css?v=20261101-measure-surface-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -130,8 +130,9 @@
     <p id="draw-status" class="draw-status" role="status"></p>
   </div>
   <div id="measure-toolbar" class="draw-toolbar" role="toolbar" aria-label="Measuring tools" hidden>
-    <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button></div>
+    <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button><button data-measure="elevation" aria-pressed="false">Point elevation</button></div>
     <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button><button id="measure-delete" hidden>🗑 Delete point</button></div>
+    <button id="measure-profile" hidden>Elevation graph</button>
     <button id="measure-retry" hidden>Retry heights</button>
     <button id="measure-close" class="draw-close" aria-label="Close measuring tools">×</button>
     <p id="measure-status" class="draw-status" role="status"></p>
