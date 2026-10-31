@@ -23,17 +23,17 @@ test('weekly and monthly due times are the latest boundary at or before now', ()
 test('a dataset runs once per due time, and a late or skipped run is caught up', () => {
   const recent = Object.fromEntries(OSM_UPDATES.map(e => [e.id, ran('2026-11-02T03:30:00Z')]));
   // Monday 09:23: weekly and monthly work already done since their boundary.
-  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent)), ['station-points', 'branch-lines', 'service-routes']);
+  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent)), ['station-points', 'branch-lines', 'service-routes', 'traction']);
   // Monday 03:23 with Friday's lifecycle run done: lifecycle is due again.
   assert.deepEqual(ids(dueUpdates(at('2026-11-02T03:23:00Z'), {...recent, lifecycle: ran('2026-10-30T03:40:00Z')})).slice(0, 1), ['lifecycle']);
   // Sunday's run was skipped: Monday's first run still does the Sunday work.
   const missed = {...recent, crossings: ran('2026-10-25T04:00:00Z'), 'street-running': ran('2026-10-25T04:30:00Z')};
-  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), missed)), ['crossings', 'street-running', 'station-points', 'branch-lines', 'service-routes']);
+  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), missed)), ['crossings', 'street-running', 'station-points', 'branch-lines', 'service-routes', 'traction']);
   // Never run: due.
   assert.ok(ids(dueUpdates(at('2026-11-02T09:23:00Z'), {})).includes('heritage'));
   // A changed builder runs its dataset outside its due time, in run order.
   assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent, {rebuilt: ['heritage', 'conveying']})),
-    ['conveying', 'heritage', 'station-points', 'branch-lines', 'service-routes']);
+    ['conveying', 'heritage', 'station-points', 'branch-lines', 'service-routes', 'traction']);
 });
 
 test('a builder counts as changed only when its own files differ since the last successful run', () => {
@@ -59,7 +59,7 @@ test('manual runs choose one dataset or all, in run order, with lifecycle refres
   const now = at('2026-11-04T12:00:00Z');
   assert.deepEqual(dueUpdates(now, {}, {only: 'lifecycle'}), [{id: 'lifecycle', workflow: 'snapshot.yml', inputs: 'refresh=true'}]);
   assert.deepEqual(ids(dueUpdates(now, {}, {only: 'all'})), OSM_UPDATES.map(e => e.id));
-  assert.throws(() => dueUpdates(now, {}, {only: 'traction'}), /Unknown dataset/);
+  assert.throws(() => dueUpdates(now, {}, {only: 'nonexistent'}), /Unknown dataset/);
   assert.throws(() => dueUpdates(new Date('x'), {}), /Invalid time/);
 });
 
@@ -114,4 +114,15 @@ test('last-run lookup takes the latest successful run of any trigger, and fails 
   await assert.rejects(latestRun('o/r', 'token', 'heritage.yml'), /HTTP 502/, 'an API failure fails the plan rather than skipping or running everything');
   globalThis.fetch = async () => ({ok: true, json: async () => ({})});
   await assert.rejects(latestRun('o/r', 'token', 'heritage.yml'), /invalid run list/);
+});
+
+test('traction runs every six hours but republishes and redeploys only when its data changed', async () => {
+  const workflow = await readFile(new URL('traction-facilities.yml', workflows), 'utf8');
+  const publish = workflow.split('- name: Publish validated static facility data')[1].split('- name: Redeploy')[0];
+  assert.match(publish, /id: publish/);
+  assert.match(publish, /diff -rq -x '\*manifest\.json' \/tmp\/traction-previous\/power power && diff -rq -x '\*manifest\.json' \/tmp\/traction-previous\/signals signals/,
+    'only build times in the manifests may differ for an unchanged result');
+  assert.match(publish, /echo "changed=false" >> "\$GITHUB_OUTPUT"\n\s+exit 0/);
+  assert.ok(publish.indexOf('changed=false') < publish.indexOf('git push --force'), 'an unchanged result is not pushed');
+  assert.match(workflow, /- name: Redeploy the site with the new facilities\n\s+if: github\.ref == 'refs\/heads\/main' && steps\.publish\.outputs\.changed == 'true'/);
 });

@@ -10,7 +10,7 @@ The repository code is licensed under [Apache 2.0](../LICENSE). Map data and thi
 
 ## One Overpass dataset at a time
 
-The Overpass-based datasets below (lifecycle, level crossings, street-running, escalators and elevators, aerialways, historic areas, station points, branch lines and urban services) are started by one workflow, [osm-updates.yml](../.github/workflows/osm-updates.yml), every six hours from 03:23 UTC. It runs the due workflows one after another, never in parallel: the public Overpass server asks regular users not to run several scripts at once, and GitHub starts scheduled runs hours late or skips them, so separate schedules could not keep the workflows apart. Each dataset keeps its own workflow, branch, checks and publication.
+The Overpass-based datasets below (lifecycle, level crossings, street-running, escalators and elevators, aerialways, historic areas, station points, branch lines, urban services, and traction facilities and signals) are started by one workflow, [osm-updates.yml](../.github/workflows/osm-updates.yml), every six hours from 03:23 UTC. It runs the due workflows one after another, never in parallel: the public Overpass server asks regular users not to run several scripts at once, and GitHub starts scheduled runs hours late or skips them, so separate schedules could not keep the workflows apart. Each dataset keeps its own workflow, branch, checks and publication.
 
 `scripts/osm-update-plan.mjs` decides what is due from each workflow's last successful run on `main`, whatever started it (a rebuild after a builder change refreshes the data too):
 
@@ -19,9 +19,9 @@ The Overpass-based datasets below (lifecycle, level crossings, street-running, e
 | Lifecycle | Monday and Friday from 03:00 UTC |
 | Level crossings, street-running, escalators and elevators, aerialways | Sunday from 03:00 UTC |
 | Historic areas | The 3rd of each month from 21:00 UTC |
-| Station points, branch lines, urban services | Every run |
+| Station points, branch lines, urban services, traction facilities and signals | Every run |
 
-A due time that passes without a successful run (a late, skipped or failed run) is caught up by the next one. A dataset also runs when one of its builder files changed since the commit its last successful run used; such a push to `main` starts the scheduler at once. The dataset workflows have no schedule or push trigger of their own, so they never run in parallel with it. Two kinds of change are left out on purpose and need a manual run: a dataset's own workflow file, and widely shared files such as `styles/map-model.mjs`, which every asset-version bump touches. A failed dataset does not stop the others. A manual run of the scheduler can update one dataset, or all; each dataset workflow can also still be run on its own. The traction-facility snapshot is not part of the scheduler yet; it runs when its builder changes or manually.
+A due time that passes without a successful run (a late, skipped or failed run) is caught up by the next one. A dataset also runs when one of its builder files changed since the commit its last successful run used; such a push to `main` starts the scheduler at once. The dataset workflows have no schedule or push trigger of their own, so they never run in parallel with it. Two kinds of change are left out on purpose and need a manual run: a dataset's own workflow file, and widely shared files such as `styles/map-model.mjs`, which every asset-version bump touches. A failed dataset does not stop the others. A manual run of the scheduler can update one dataset, or all; each dataset workflow can also still be run on its own. The traction run (energy supplies, means of power delivery and signals) keeps completed region responses for 28 days, so most runs only resume an unfinished first download; it republishes `traction-data` and redeploys the site only when something other than the manifests' build times changed.
 
 ## Railway lifecycle snapshot
 

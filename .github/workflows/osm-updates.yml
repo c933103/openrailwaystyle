@@ -22,10 +22,14 @@ on:
       - scripts/build-branch-lines.mjs
       - scripts/build-conveying.mjs
       - scripts/build-crossings.mjs
+      - scripts/build-electricity-signals.mjs
       - scripts/build-heritage.mjs
       - scripts/build-loading-gauge-list.mjs
       - scripts/build-polar.mjs
+      - scripts/build-power-facilities.mjs
+      - scripts/build-power-methods.mjs
       - scripts/build-service-routes.mjs
+      - scripts/build-signals.mjs
       - scripts/build-snapshot.mjs
       - scripts/build-station-snapshot.mjs
       - scripts/build-street-running.mjs
@@ -33,20 +37,26 @@ on:
       - scripts/crossing-checkpoint.mjs
       - scripts/crossing-data.mjs
       - scripts/download-stages.mjs
+      - scripts/electricity-signal-data.mjs
       - scripts/heritage-data.mjs
       - scripts/lifecycle.mjs
       - scripts/maintain-data-workflows.mjs
+      - scripts/osm-geometry.mjs
       - scripts/overpass-errors.mjs
       - scripts/pack-snapshot.py
       - scripts/polar-contours.mjs
       - scripts/polar-depth.mjs
       - scripts/polar-features.mjs
+      - scripts/power-facility-data.mjs
+      - scripts/power-method-data.mjs
       - scripts/refresh-snapshot-cache.mjs
       - scripts/service-acquisition-trigger.mjs
       - scripts/service-geometry-health.mjs
       - scripts/service-geometry.mjs
       - scripts/service-routes.mjs
+      - scripts/signals-data.mjs
       - scripts/snapshot-delta.mjs
+      - scripts/staged-overpass.mjs
       - scripts/station-acquisition.mjs
       - scripts/station-overview.mjs
       - scripts/timetable-frequency-version.mjs
@@ -56,9 +66,11 @@ on:
       - styles/bathymetry.mjs
       - styles/conveying.mjs
       - styles/crossing-tags.mjs
+      - styles/han-region.mjs
       - styles/loading-gauge-list.mjs
       - styles/pbf-utf8.mjs
       - styles/polar.mjs
+      - styles/power-facilities.mjs
       - styles/street-running.mjs
       - styles/tile-bundles.mjs
   workflow_dispatch:
@@ -67,7 +79,7 @@ on:
         description: Which dataset to update (due = whatever is due now)
         type: choice
         default: due
-        options: [due, all, lifecycle, crossings, street-running, conveying, aerialways, heritage, station-points, branch-lines, service-routes]
+        options: [due, all, lifecycle, crossings, street-running, conveying, aerialways, heritage, station-points, branch-lines, service-routes, traction]
 permissions:
   contents: read
 concurrency:

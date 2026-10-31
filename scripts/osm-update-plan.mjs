@@ -48,6 +48,15 @@ export const OSM_UPDATES = Object.freeze([
       'scripts/timetable-operator-bindings.mjs', 'scripts/timetable-operator-bindings.json', 'scripts/service-acquisition-trigger.mjs',
       '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs',
       'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
+  // Energy supplies, means of power delivery and signals. Its builders keep
+  // completed region responses for 28 days, so a run within that time only
+  // resumes an unfinished first download; the workflow republishes only when
+  // the data changed.
+  {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
+    paths:['scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
+      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/osm-geometry.mjs',
+      'scripts/build-signals.mjs', 'scripts/signals-data.mjs', 'scripts/crossing-data.mjs', 'scripts/electricity-signal-data.mjs',
+      'scripts/build-electricity-signals.mjs', 'styles/power-facilities.mjs', 'styles/han-region.mjs', 'styles/pbf-utf8.mjs']},
 ].map(entry => Object.freeze({...entry, paths:Object.freeze(entry.paths)})));
 // Every builder path, for the scheduler's push filter.
 export const OSM_UPDATE_PATHS = Object.freeze([...new Set(OSM_UPDATES.flatMap(entry => entry.paths))].sort());
