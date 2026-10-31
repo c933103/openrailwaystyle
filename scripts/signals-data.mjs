@@ -25,10 +25,67 @@ const ELECTRIC_WITH_DIRECTION = '[railway=signal]["railway:signal:direction"]["r
 export function combinedSignalQuery(box) {
   return `[out:json][timeout:180][maxsize:268435456];(node[railway=signal][!"railway:signal:direction"](${box.join(',')});node${ELECTRIC_WITH_DIRECTION}(${box.join(',')}););out body;`;
 }
+// What changed in the combined set of a region since `since` (an OSM base
+// timestamp): Overpass augmented diff. The server answers diff and adiff
+// queries only in XML (its JSON output refuses them).
+// The changes from `since` to `until` (or to the database's current time).
+export function signalChangesQuery(box, since, until) {
+  const time = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+  if (!time.test(since || '')) throw new Error('Invalid signal change start');
+  if (until !== undefined && !(time.test(until) && until >= since)) throw new Error('Invalid signal change end');
+  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"${until ? `,"${until}"` : ''}];(node[railway=signal][!"railway:signal:direction"](${box.join(',')});node${ELECTRIC_WITH_DIRECTION}(${box.join(',')}););out meta;`;
+}
+
+const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
+const unescape = text => text.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, code) =>
+  code[0] !== '#' ? ENTITIES[code.toLowerCase()] : String.fromCodePoint(code[1].toLowerCase() === 'x' ? parseInt(code.slice(2), 16) : Number(code.slice(1))));
+const attributes = text => Object.fromEntries([...text.matchAll(/([\w:-]+)="([^"]*)"/g)].map(([, key, value]) => [key, unescape(value)]));
+function xmlNode(text) {
+  const match = /<node\s([^>]*?)(\/>|>([\s\S]*?)<\/node>)/.exec(text || '');
+  if (!match) return null;
+  const attrs = attributes(match[1]), tags = {};
+  for (const [, tag] of (match[3] || '').matchAll(/<tag\s([^>]*?)\/>/g)) { const {k, v} = attributes(tag); if (k !== undefined) tags[k] = v ?? ''; }
+  return {attrs, tags};
+}
+
+// Changes from an augmented-diff response: nodes created or changed (their
+// new state, as Overpass JSON elements) and node ids that were deleted or no
+// longer match the query. A response that did not run to completion throws.
+export function parseSignalChanges(xml) {
+  if (typeof xml !== 'string' || !/<\/osm>\s*$/.test(xml)) throw new Error('Incomplete signal change response');
+  const remark = /<remark>([\s\S]*?)<\/remark>/.exec(xml);
+  if (remark) throw new Error(unescape(remark[1].trim()));
+  const timestamp = /<meta\s[^>]*osm_base="([^"]+)"/.exec(xml)?.[1];
+  if (!timestamp) throw new Error('Signal change response without a database timestamp');
+  const upserts = [], deletes = [];
+  for (const [, type, body] of xml.matchAll(/<action type="(create|modify|delete)">([\s\S]*?)<\/action>/g)) {
+    const node = xmlNode(type === 'create' ? body : /<new>([\s\S]*?)<\/new>/.exec(body)?.[1]);
+    if (!node) continue; // ways and relations are not part of this set
+    const id = Number(node.attrs.id);
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Signal change without a node id');
+    if (type === 'delete') { deletes.push(id); continue; }
+    const lat = Number(node.attrs.lat), lon = Number(node.attrs.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error(`Signal change node ${id} without coordinates`);
+    upserts.push({type: 'node', id, lat, lon, tags: node.tags});
+  }
+  return {timestamp, upserts, deletes};
+}
+
+// Apply changes to a region's stored elements, by node id.
+export function applySignalChanges(elements, {upserts, deletes}) {
+  const byId = new Map(elements.map(element => [element.id, element]));
+  for (const id of deletes) byId.delete(id);
+  for (const element of upserts) byId.set(element.id, element);
+  return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
 // The part of the combined set missing from a region answered by signalQuery
 // alone (direction responses cached before the two downloads were combined).
-export function electricWithDirectionQuery(box) {
-  return `[out:json][timeout:180][maxsize:134217728];node${ELECTRIC_WITH_DIRECTION}(${box.join(',')});out body;`;
+// With `date`, the signals as they were then (the time of the response they
+// are added to), so the two describe one moment.
+export function electricWithDirectionQuery(box, date) {
+  if (date !== undefined && !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(date)) throw new Error('Invalid signal date');
+  return `[out:json][timeout:180][maxsize:134217728]${date ? `[date:"${date}"]` : ''};node${ELECTRIC_WITH_DIRECTION}(${box.join(',')});out body;`;
 }
 
 export function signalFeature(element) {
