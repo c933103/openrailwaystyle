@@ -61,10 +61,10 @@ export const quarters = ([s, w, n, e]) => {
   return [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]];
 };
 
-const SELECTS = ['way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]', 'way[railway=subway][!service]'];
-const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
+export const BRANCH_SELECTS = ['way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]', 'way[railway=subway][!service]'];
+export const branchSelect = filters => BRANCH_SELECTS.map(s => `${s}${filters};`).join('');
 export function partQuery(part, box) {
-  const {areas, set} = partSelection(part, box, select);
+  const {areas, set} = partSelection(part, box, branchSelect);
   return `[out:json][timeout:180][maxsize:536870912];${areas}${set};out tags geom qt;`;
 }
 

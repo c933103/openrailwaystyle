@@ -94,7 +94,7 @@ export function partSelection(part, box, select) {
     return `${filter}(${box.join(',')})`;
   });
   const main = select(filters[0]), exclusions = filters.slice(1).map(select).join('');
-  return {areas: areas.join(''), set: exclusions ? `((${main}); - (${exclusions});)` : `(${main})`};
+  return {areas: areas.join(''), filters, set: exclusions ? `((${main}); - (${exclusions});)` : `(${main})`};
 }
 
 // Layout changes do not change the data schema. Changed queues restart while

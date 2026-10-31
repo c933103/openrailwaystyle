@@ -16,13 +16,15 @@ export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_
 // Light rail, trams and monorails from zoom 10, as in the other views.
 export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail', 'funicular'];
 
-const SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
-const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
+export const SERVICE_SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
+export const serviceSelect = filters => SERVICE_SELECTS.map(s => `${s}${filters};`).join('');
+// The member ways of those routes whose geometry is fetched.
+export const SERVICE_TRACKS = '^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$';
 // Routes with a member in the box (leaving out countries fetched in earlier
 // stages), their tags and members, then the geometry of their track ways.
 export function partQuery(part, box) {
-  const {areas, set} = partSelection(part, box, select);
-  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out meta;way(r.r)[railway~"^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$"];out meta geom qt;`;
+  const {areas, set} = partSelection(part, box, serviceSelect);
+  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out meta;way(r.r)[railway~"${SERVICE_TRACKS}"];out meta geom qt;`;
 }
 
 const colour = value => {
