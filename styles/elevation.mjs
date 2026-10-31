@@ -152,28 +152,45 @@ export function createSurfaceElevation(url, {waterTile, readTile, load, zoom = E
       if (!Array.isArray(points)) throw new TypeError('Elevation points must be an array');
       const valid = point => Array.isArray(point) && point.length >= 2 &&
         point.every(Number.isFinite) && Math.abs(point[1]) <= 85.05112878;
-      const safe = points.filter(valid);
-      const raw = await fine.heights(safe, {signal});
-      let index = 0;
-      return Promise.all(points.map(async point => {
+      // Resolve the land/sea mask first: ocean elevations come from the coarse
+      // DEM alone, so a missing fine terrain tile cannot delay or erase a
+      // sound seabed result. Never infer classification from height sign: dry
+      // land can be below sea level.
+      const sea = await Promise.all(points.map(async point => {
         if (!valid(point)) return null;
-        const high = raw[index++];
         const {x, y, px, py} = tilePixel(point[0], point[1], Math.min(zoom, WATER_ZOOM));
         try {
           const polygons = await water(`${Math.min(zoom, WATER_ZOOM)}/${x}/${y}`, signal);
-          if (!polygons) return null;
-          const ocean = oceanAt(polygons, px, py);
-          if (ocean === null) return null;
-          if (!ocean) return Number.isFinite(high) && high >= -11500 && high <= 9000 ? high : null;
-          const [depth] = await seabed.heights([point], {signal});
-          // The coarse cell can mix land and water near shore. Never report
-          // a positive land height as a seabed elevation.
-          return Number.isFinite(depth) && depth >= -11500 && depth <= 0 ? depth : null;
+          return polygons ? oceanAt(polygons, px, py) : null;
         } catch (error) {
           if (signal?.aborted) throw error;
           return null;
         }
       }));
+      const landPoints = [], seabedPoints = [];
+      for (let i = 0; i < points.length; i++) {
+        if (sea[i] === true) seabedPoints.push(points[i]);
+        else if (sea[i] === false) landPoints.push(points[i]);
+      }
+      // The fine elevation and coarse bathymetry loaders each share pending
+      // tiles across every sample, and independent map/measurement readers
+      // retain cancellation without duplicate downloads.
+      const [ground, depth] = await Promise.all([
+        fine.heights(landPoints, {signal}), seabed.heights(seabedPoints, {signal}),
+      ]);
+      let landIndex = 0, seaIndex = 0;
+      return sea.map(type => {
+        if (type === true) {
+          const value = depth[seaIndex++];
+          // Mixed coastal bathymetry may sample the land side of a pixel.
+          return Number.isFinite(value) && value >= -11500 && value <= 0 ? value : null;
+        }
+        if (type === false) {
+          const value = ground[landIndex++];
+          return Number.isFinite(value) && value >= -11500 && value <= 9000 ? value : null;
+        }
+        return null;
+      });
     },
   };
 }
