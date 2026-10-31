@@ -5,7 +5,7 @@ import {
   TERRAIN_3D_SOURCE, TERRAIN_3D_MAXZOOM, TERRAIN_TILE_SIZE,
   TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, TERRAIN_3D_MAX_PITCH,
   HIGH_PITCH_THRESHOLD, HIGH_PITCH_LOD, HIGH_PITCH_TILE_CACHE_LIMIT, syncHighPitchTileBudget, terrain3DViewTarget,
-  terrain3DEnabled, syncTerrain3D, terrainExaggeration, TERRAIN_EXAGGERATION_OPTIONS, DEFAULT_TERRAIN_EXAGGERATION, needsSeabedRecovery,
+  terrain3DEnabled, terrain3DSelectedForPitch, syncTerrain3D, terrainExaggeration, TERRAIN_EXAGGERATION_OPTIONS, DEFAULT_TERRAIN_EXAGGERATION, needsSeabedRecovery,
   sampleSeabed, composeTerrainHeights, encodeTerrainPng,
 } from '../styles/terrain-3d.mjs';
 import {depthTile} from '../styles/bathymetry.mjs';
@@ -138,21 +138,33 @@ test('3D focus at the poles uses ground scale, not the raw latitude-adjusted cam
     assert.throws(()=>terrain3DViewTarget({zoom:3,globe:true,latitude}),/Invalid 3D terrain view/);
 });
 
-test('3D activates only on pitched views with relief enabled', () => {
+test('3D rendering selection is independent of camera pitch and respects relief', () => {
   const view={sourceRegistered:false,pitch:30,terrain:null,calls:[]};
   const map={
     getSource:()=>view.sourceRegistered?{}:null,getPitch:()=>view.pitch,getTerrain:()=>view.terrain,
     setTerrain: next=>{view.terrain=next;view.calls.push(next);},
   };
-  assert.equal(terrain3DEnabled(true,0),false);
-  assert.equal(terrain3DEnabled(false,60),false);
-  assert.equal(terrain3DEnabled(true,60),true);
-  syncTerrain3D(map,true);assert.equal(view.calls.length,0,'before style load');
-  view.sourceRegistered=true;syncTerrain3D(map,true);
+  assert.equal(terrain3DEnabled(true,false),false);
+  assert.equal(terrain3DEnabled(false,true),false);
+  assert.equal(terrain3DEnabled(true,true),true);
+  assert.equal(terrain3DSelectedForPitch(0),false);
+  assert.equal(terrain3DSelectedForPitch(0.25),false);
+  assert.equal(terrain3DSelectedForPitch(60),true);
+  syncTerrain3D(map,true,1,true);assert.equal(view.calls.length,0,'before style load');
+  view.sourceRegistered=true;syncTerrain3D(map,true,1,true);
   assert.deepEqual(view.terrain,{source:TERRAIN_3D_SOURCE,exaggeration:1});
-  syncTerrain3D(map,true);assert.equal(view.calls.length,1,'must not reset terrain on each pitch frame');
-  syncTerrain3D(map,false);assert.deepEqual(view.calls,[{source:TERRAIN_3D_SOURCE,exaggeration:1},null]);
-  view.pitch=0;syncTerrain3D(map,true);assert.equal(view.calls.length,2);
+  view.pitch=0;syncTerrain3D(map,true,1,true);
+  assert.equal(view.calls.length,1,'overhead 3D must not remove or rebuild the mesh');
+  syncTerrain3D(map,false,1,true);
+  assert.deepEqual(view.calls,[{source:TERRAIN_3D_SOURCE,exaggeration:1},null]);
+  syncTerrain3D(map,true,1,true);
+  assert.equal(view.terrain.source,TERRAIN_3D_SOURCE,'mode restoration works at zero pitch');
+  syncTerrain3D(map,true,1,false);
+  assert.equal(view.terrain,null,'explicit 2D removes terrain independently of camera pitch');
+  view.pitch=45;syncTerrain3D(map,true);
+  assert.equal(view.terrain.source,TERRAIN_3D_SOURCE,'direct callers retain tilt activation by default');
+  view.pitch=0;syncTerrain3D(map,true);
+  assert.equal(view.terrain,null,'direct callers retain overhead cleanup if no explicit mode is supplied');
 });
 
 test('terrain exaggeration changes a live 3D mesh without replacing DEM samples, camera or source', () => {
@@ -178,12 +190,15 @@ test('terrain exaggeration changes a live 3D mesh without replacing DEM samples,
   assert.equal(view.updates,2,'scale adjustment updates the mesh without removing its source');
   syncTerrain3D(map,true,1);
   assert.equal(view.terrain.exaggeration,1,'true physical 1× rendering remains available');
-  view.pitch=0;syncTerrain3D(map,true,5);
-  assert.equal(view.terrain,null,'overhead view remains 2D');
+  view.pitch=0;syncTerrain3D(map,true,5,true);
+  assert.deepEqual(view.terrain,{source:'terrain3d',exaggeration:5},
+    'a directly overhead camera retains 3D rendering and its relief strength');
   assert.equal(view.updates,4);
-  syncTerrain3D(map,true,5);
-  assert.equal(view.updates,4,'overhead zoom and settings changes cannot trigger mesh work');
-  view.pitch=55;syncTerrain3D(map,false,5);
+  syncTerrain3D(map,true,5,true);
+  assert.equal(view.updates,4,'unchanged overhead 3D does not rebuild its mesh');
+  syncTerrain3D(map,true,5,false);
+  assert.equal(view.terrain,null,'explicit 2D selection releases the mesh');
+  view.pitch=55;syncTerrain3D(map,false,5,true);
   assert.equal(view.terrain,null,'surroundings setting still disables 3D');
 });
 
