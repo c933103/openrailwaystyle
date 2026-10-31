@@ -1,0 +1,61 @@
+name: Download railway ways (branch lines, service routes, power methods)
+on:
+  # Manual only for now: branch lines, service routes and power methods still
+  # download their own data. Once they are built from this store, the
+  # scheduler (osm-updates.yml) starts it instead of their own downloads.
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: railway-ways-data
+  cancel-in-progress: false
+jobs:
+  stage:
+    # Only main publishes the shared store.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the stored regions
+        run: |
+          # Exit status 2 means no such branch (the first run); any other
+          # failure stops the run, so an unreachable remote never leads to an
+          # empty store published over the stored regions.
+          status=0
+          git ls-remote --exit-code --heads origin railway-ways-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin railway-ways-data
+            mkdir -p /tmp/previous-railway-ways
+            git --work-tree=/tmp/previous-railway-ways checkout FETCH_HEAD -- .
+            echo "PREVIOUS_DATA=/tmp/previous-railway-ways" >> "$GITHUB_ENV"
+          elif [ "$status" != 2 ]; then
+            echo "Could not look up the railway-ways-data store (git exit $status)"
+            exit 1
+          fi
+      - name: Fetch the next stage's regions from OpenStreetMap
+        run: node scripts/build-railway-ways.mjs
+      - name: Publish the store
+        run: |
+          mkdir /tmp/railway-ways-publish
+          cd /tmp/railway-ways-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time: its history is not needed.
+          git checkout --orphan railway-ways-data
+          cp -r "$GITHUB_WORKSPACE/railway-ways-data/." .
+          git add .
+          git commit -q -m "Railway ways $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:railway-ways-data; then
+            test "$(git ls-remote origin refs/heads/railway-ways-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi

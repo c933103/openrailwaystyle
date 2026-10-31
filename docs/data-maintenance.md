@@ -148,6 +148,23 @@ Each website build copies the bundles, `index.json` and `manifest.json` into `st
 - Until the first snapshot exists the site deploys with an empty index and shows no historic areas.
 - The map still reads a snapshot in the earlier one-file-per-tile layout (manifest version 1), whose index lists `tiles` rather than `bundles`. A site deployed between this change and the next build therefore keeps showing historic areas.
 
+## Railway ways: one download for three datasets
+
+Branch lines, urban service routes and power-delivery methods select many of
+the same ways (a fifth of the service routes' track ways are branch lines;
+nearly half of the power-method ways are in one of the other two).
+`scripts/railway-ways.mjs` asks for all three in one request per stage region,
+each element once, and gives each dataset the view its own query returned.
+`scripts/build-railway-ways.mjs`
+([railway-ways.yml](../.github/workflows/railway-ways.yml)) runs that query
+through the branch lines' stages and pacing (one stage per run, 220 MB per run
+and 900 MB a day, a refresh every two weeks, splits recorded) and publishes
+each region's raw response to `railway-ways-data`: `regions/<stage>/` holds
+the last complete pass, `next/<stage>/` a pass in progress, which replaces it
+only when complete. It is started by hand for now; the three datasets still
+download their own data until they are built from this store, and only then
+does the scheduler start it in their place.
+
 ## Branch-line snapshot
 
 OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), and of metro lines (`railway=subway`, not service track), which the provider's tiles hold only from zoom 10, simplified to about 50 m, and publishes it with tiles to `branch-data` (branch lines at z4–6, metro lines at z7–9), one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge and train protection systems), so each view colours them as it colours the detailed tracks. The first three distinct protection systems occupy adjacent colour bands; the full recorded list remains available for inspection.
