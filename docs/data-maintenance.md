@@ -184,6 +184,14 @@ It is started by hand for now; the three datasets still
 download their own data until they are built from this store, and only then
 does the scheduler start it in their place.
 
+Branch lines can already be built from the store: with `RAILWAY_WAYS_STORE`
+set to a copy of `railway-ways-data`, `scripts/build-branch-lines.mjs` makes no
+Overpass request (`scripts/railway-ways-branch.mjs`). Each stage complete in
+the store replaces the lines it owns; a line belongs to the first stage whose
+regions return it; stages not yet in the store keep their lines; a stage that
+would lose over a fifth of its lines keeps them. Without the variable it
+downloads as before, which stays the fallback.
+
 Service routes can be built from the store too: with `RAILWAY_WAYS_STORE` set,
 `scripts/build-service-routes.mjs` makes no Overpass request. Each stage
 complete in the store and not yet taken (`storeCompleted` in its state) goes
