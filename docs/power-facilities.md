@@ -124,7 +124,9 @@ nodes for both: signals without a direction, plus electrification signals with
 one), and publishes them with the validation and digest-bearing manifest shared
 with the conductor-rail supplement (`scripts/staged-overpass.mjs`). Regions
 answered before the two downloads were combined are reused and only fetch the
-electrification signals that have a direction.
+electrification signals that have a direction, as they were at the reused
+response's database time (`[date:"<time>"]`), so the stored region describes
+one moment.
 
 Each region's response is stored and kept: it is downloaded once, then brought
 up to date at most once a week (`SIGNAL_UPDATE_DAYS`, default 7) with only what

@@ -81,8 +81,11 @@ export function applySignalChanges(elements, {upserts, deletes}) {
 
 // The part of the combined set missing from a region answered by signalQuery
 // alone (direction responses cached before the two downloads were combined).
-export function electricWithDirectionQuery(box) {
-  return `[out:json][timeout:180][maxsize:134217728];node${ELECTRIC_WITH_DIRECTION}(${box.join(',')});out body;`;
+// With `date`, the signals as they were then (the time of the response they
+// are added to), so the two describe one moment.
+export function electricWithDirectionQuery(box, date) {
+  if (date !== undefined && !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(date)) throw new Error('Invalid signal date');
+  return `[out:json][timeout:180][maxsize:134217728]${date ? `[date:"${date}"]` : ''};node${ELECTRIC_WITH_DIRECTION}(${box.join(',')});out body;`;
 }
 
 export function signalFeature(element) {

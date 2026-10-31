@@ -57,9 +57,9 @@ test('a region cached before the downloads were combined is reused; only its dir
   await (await import('node:fs/promises')).mkdir(d.cacheRoot, {recursive: true});
   await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({query: signalQuery(home), generated: '2026-10-25T00:00:00Z',
     response: {osm3s: {timestamp_osm_base: '2026-10-25T00:00:00Z'}, elements: [UNDIRECTED, ELECTRIC]}}));
-  const {queries, fetcher} = fakeOverpass(query => ({elements: query === electricWithDirectionQuery(home) ? [DIRECTED_ELECTRIC] : []}));
+  const {queries, fetcher} = fakeOverpass(query => ({elements: query === electricWithDirectionQuery(home, '2026-10-25T00:00:00Z') ? [DIRECTED_ELECTRIC] : []}));
   await buildSignals({...d, ...quiet, fetcher});
-  assert.ok(queries.includes(electricWithDirectionQuery(home)));
+  assert.ok(queries.includes(electricWithDirectionQuery(home, '2026-10-25T00:00:00Z')), 'the remainder is asked as of the cached response\'s database time');
   assert.ok(!queries.includes(combinedSignalQuery(home)) && !queries.includes(signalQuery(home)), 'the cached direction response is not downloaded again');
   const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
   assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
@@ -76,12 +76,12 @@ test('a cached region whose remainder request times out splits that request alon
   await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({query: signalQuery(home), generated: '2026-10-25T00:00:00Z',
     response: {osm3s: {timestamp_osm_base: '2026-10-25T00:00:00Z'}, elements: [UNDIRECTED, ELECTRIC]}}));
   const {queries, fetcher} = fakeOverpass(query => {
-    if (query === electricWithDirectionQuery(home)) return {elements: [], remark: 'runtime error: Query ran out of memory in "query"'};
-    return {elements: query === electricWithDirectionQuery([45, 0, 67.5, 22.5]) ? [DIRECTED_ELECTRIC] : []};
+    if (query === electricWithDirectionQuery(home, '2026-10-25T00:00:00Z')) return {elements: [], remark: 'runtime error: Query ran out of memory in "query"'};
+    return {elements: query === electricWithDirectionQuery([45, 0, 67.5, 22.5], '2026-10-25T00:00:00Z') ? [DIRECTED_ELECTRIC] : []};
   });
   await buildSignals({...d, ...quiet, fetcher});
   assert.ok(!queries.includes(signalQuery(home)) && !queries.includes(combinedSignalQuery(home)), 'the cached response is kept');
-  for (const quarter of [[45, 0, 67.5, 22.5], [45, 22.5, 67.5, 45], [67.5, 0, 90, 22.5], [67.5, 22.5, 90, 45]]) assert.ok(queries.includes(electricWithDirectionQuery(quarter)));
+  for (const quarter of [[45, 0, 67.5, 22.5], [45, 22.5, 67.5, 45], [67.5, 0, 90, 22.5], [67.5, 22.5, 90, 45]]) assert.ok(queries.includes(electricWithDirectionQuery(quarter, '2026-10-25T00:00:00Z')));
   const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
   const manifest = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals-manifest.json'), 'utf8'));
   assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);

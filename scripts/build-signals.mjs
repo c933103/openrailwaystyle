@@ -70,14 +70,17 @@ export async function buildSignals({
   }
 
   // The electrification signals with a direction in a region whose other
-  // signals are already cached. A timeout or memory limit splits this request
-  // alone; the cached response is kept.
-  async function remainder(box, depth = 0) {
-    const file = `signals-electric-v1-${box.join('_')}.json`, query = electricWithDirectionQuery(box);
+  // signals are already cached, as they were at that response's database
+  // time: the two are stored as one region with that time, where its next
+  // change request starts, so a signal added and removed since then is never
+  // left behind. A timeout or memory limit splits this request alone; the
+  // cached response is kept.
+  async function remainder(box, date, depth = 0) {
+    const file = `signals-electric-v1-${box.join('_')}.json`, query = electricWithDirectionQuery(box, date);
     const saved = await read(file);
     const split = async () => {
       const elements = [];
-      for (const child of quarters(box)) elements.push(...await remainder(child, depth + 1));
+      for (const child of quarters(box)) elements.push(...await remainder(child, date, depth + 1));
       return elements;
     };
     if (fresh(saved, query)) return saved.split ? split() : saved.response.elements;
@@ -133,13 +136,14 @@ export async function buildSignals({
       stored = undefined;
       // A region answered before the downloads were combined keeps its
       // response: the remainder is added and the two are stored as one.
-      const direction = await read(directionFile);
-      if (direction?.query === directionQuery && now() - Date.parse(direction.generated) < AGE && usable(direction)) {
+      const direction = await read(directionFile), base = direction?.response?.osm3s?.timestamp_osm_base;
+      if (direction?.query === directionQuery && now() - Date.parse(direction.generated) < AGE && usable(direction)
+        && (direction.split || /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(base || ''))) {
         if (direction.split) return split();
-        const added = await remainder(box);
+        const added = await remainder(box, base);
         log('Signal region', box.join(','), 'reused; added', added.length, 'electrification signals with a direction');
         stored = {query: combinedQuery, generated: direction.generated,
-          response: {osm3s: {timestamp_osm_base: direction.response.osm3s?.timestamp_osm_base}, elements: applySignalChanges(direction.response.elements, {upserts: added, deletes: []})}};
+          response: {osm3s: {timestamp_osm_base: base}, elements: applySignalChanges(direction.response.elements, {upserts: added, deletes: []})}};
         await save(stored);
       }
     }
