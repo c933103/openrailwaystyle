@@ -2,6 +2,7 @@
 // builders. Each snapshot supplies its own query, response transform, cache
 // naming and published file names; the acquisition, retry, budget, checkpoint
 // and publication rules are common and tested through every caller.
+import {STAGES} from './download-stages.mjs';
 import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
@@ -58,6 +59,8 @@ export function createStagedSnapshot(config) {
     const ids=new Set(data.features.map(f=>f.id));
     if(ids.size!==data.features.length||data.features.some(f=>typeof f.id!=='string'||f.type!=='Feature'||!f.geometry||!f.properties))throw fatal(`Invalid or duplicate ${noun} features`);
     if(!Array.isArray(manifest.coverage))throw fatal(`Missing worldwide ${noun} coverage`);
+    if(manifest.partition==='railway-ways-stages')return validateStageCoverage(manifest);
+    if(manifest.partition!==undefined)throw fatal(`Unknown ${noun} coverage partition`);
     const leaves=new Map();
     for(const leaf of manifest.coverage) {
       snapshotQuery(leaf.bbox);
@@ -186,11 +189,35 @@ export function createStagedSnapshot(config) {
     const data={type:'FeatureCollection',features:[...features.values()].sort((a,b)=>a.id.localeCompare(b.id))};
     return publish(data,coverage,{output,requests,downloadedBytes:downloaded,now,log});
   }
+  // Built from the stored railway-ways regions (build-railway-ways.mjs): every
+  // stage part's regions must tile its box exactly (quarters, at most six
+  // levels deep), as the quadrant leaves must tile the world above.
+  function validateStageCoverage(manifest) {
+    const leaves=new Map();
+    for(const leaf of manifest.coverage) {
+      const part=STAGES.find(stage=>stage.name===leaf.stage)?.parts[leaf.part];
+      if(!part||!Array.isArray(leaf.bbox)||leaf.bbox.length!==4||!leaf.bbox.every(Number.isFinite))throw fatal(`Invalid ${noun} stage coverage`);
+      const key=`${leaf.stage}|${leaf.part}|${leaf.bbox.join(',')}`;
+      if(leaves.has(key)||!Number.isSafeInteger(leaf.features)||leaf.features<0)throw fatal(`Invalid or duplicate ${noun} coverage`);
+      leaves.set(key,leaf);
+    }
+    let visited=0;
+    for(const stage of STAGES)stage.parts.forEach((part,index)=>{
+      const visit=(box,depth=0)=>{
+        if(leaves.has(`${stage.name}|${index}|${box.join(',')}`)){visited++;return;}
+        if(depth===STAGED_LIMITS.depth)throw fatal(`Incomplete worldwide ${noun} coverage: ${stage.name} ${box}`);
+        for(const child of children(box))visit(child,depth+1);
+      };
+      visit(part.box);
+    });
+    if(visited!==leaves.size)throw fatal(`Overlapping or non-partition ${noun} coverage`);
+    return manifest;
+  }
   // Validate and publish a complete worldwide snapshot. Also used by a builder
   // that acquires the same features as part of a combined download.
-  async function publish(data,coverage,{output,requests,downloadedBytes,now=Date.now,log=console.log}) {
+  async function publish(data,coverage,{output,requests,downloadedBytes,now=Date.now,log=console.log,partition}) {
     const body=JSON.stringify(data);
-    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:data.features.length,coverage,requests,downloadedBytes,sha256:digest(body),source:'OpenStreetMap via Overpass',license:'ODbL-1.0'};
+    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:data.features.length,coverage,requests,downloadedBytes,sha256:digest(body),source:'OpenStreetMap via Overpass',license:'ODbL-1.0',...(partition?{partition}:{})};
     validate(data,manifest);
     // Stage only after complete acquisition. Publish the digest-bearing manifest
     // last; interrupted file replacement cannot pass the workflow validation.

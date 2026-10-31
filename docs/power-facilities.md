@@ -247,6 +247,15 @@ run for later resumption. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
 ignores completed responses but keeps split decisions.
 
+With `RAILWAY_WAYS_STORE` set to a copy of `railway-ways-data` in which every
+stage is complete, `build-power-methods.mjs` builds the same features from the
+stored merged responses (`scripts/railway-ways.mjs`) and makes no Overpass
+request. Its manifest then has `partition: "railway-ways-stages"` and one
+coverage leaf per stored region (`stage`, `part`, `bbox`); validation requires
+those leaves to tile every stage part's box exactly (quarters, at most six
+levels), in place of the world quadrants. While the store is incomplete, the
+builder downloads as before.
+
 The query first collects bounded amenity/charge-point candidates, then applies
 the 14 railway-use hints within that named set. This factors the original 240
 selectors into 32 spatial primary searches and 14 local hint filters without
