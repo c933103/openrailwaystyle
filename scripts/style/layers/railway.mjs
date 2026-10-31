@@ -214,6 +214,9 @@ export function createRailwayLayers() {
   groups.details.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(tunnelPaint)});
   for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
     ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry,byKindZoom]],
+    // Aerialways are named like railways, in every view (their snapshot
+    // carries the name tags; the road labels leave them out).
+    ['aerialway-names','aerialways','aerialways',12,undefined,['has','kind']],
   ]) groups.names.push({
     id, type:'symbol', source, 'source-layer':sourceLayer, minzoom, ...(maxzoom ? {maxzoom} : {}), filter,
     layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},

@@ -1935,7 +1935,7 @@
       "source": "openmaptiles",
       "sourceLayer": "transportation_name",
       "minzoom": 15,
-      "sha256": "fe83e9cba80e337ae57cb14ae6b91762c723c1b3b9d22f3fb1b8fc06c755845a"
+      "sha256": "ae2bbc3cf0138cfa7cac61081362b69c8629641a06491e29d4a117efa630752e"
     },
     {
       "id": "context-constraints-protected-area-label",
@@ -2544,6 +2544,13 @@
         "infrastructure-overview",
         "infrastructure-tracks",
         "infrastructure-metro-overview"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Road labels leave out aerialways (class=aerialway): owner decision that aerialways are named like railways, by the aerialway-names layer in the railway name group.",
+      "layers": [
+        "road-labels"
       ]
     }
   ]

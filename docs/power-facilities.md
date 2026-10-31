@@ -140,8 +140,10 @@ Owner by `owner=*` (the same colour as a track with that owner, listed in the
 Loading, Axle and Control as unknown, since aerialways carry none of those. The
 ticks stay in every view, so the type still reads. Escalators, moving walkways
 and elevators follow the same rule, keeping their arrows. They show on every
-background but satellite. Clicking an aerialway shows its name, kind, type,
-owner, maximum speed and OSM way.
+background but satellite. Named aerialways are labelled like railways, with the
+same label style, in every view, and follow the railway Names setting; the
+basemap road labels leave them out. Clicking an aerialway shows its name, kind,
+type, owner, maximum speed and OSM way.
 
 `rack=*` (about 2,100 positive OSM ways in October 2026, against 34 for
 `traction=rack`) is read straight from the provider's detailed railway tiles,

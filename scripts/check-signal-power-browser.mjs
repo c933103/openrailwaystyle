@@ -305,6 +305,13 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     assert.equal(await page.locator('#legend .conveying-swatch').count(),1,'escalators, walkways and elevators share one line-and-arrow sample');
     await closeControls();
     await aerialwaysDrawn();
+    // Aerialway names follow the railway Names setting, like railway names.
+    await openSettings();await page.locator('#names').check();await closeControls();
+    await visible('aerialway-names');await visible('railway-names');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['aerialway-names']}).map(f=>f.properties.atlas_name||f.properties.name))]),['Test gondola'],'only the named gondola is labelled');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['road-labels']}).length),0,'no road label for an aerialway');
+    await openSettings();await page.locator('#names').uncheck();await closeControls();
+    assert.equal(await page.evaluate(()=>window.reviewMap.getLayoutProperty('aerialway-names','visibility')),'none','Names off hides them, as railway names');
     await visible('infrastructure-rack');
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['infrastructure-rack']}).map(f=>String(f.properties.id)))]),['9430-0'],'Infrastructure rack ticks only on the rack line');
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-tracks']}).some(f=>String(f.properties.id)==='9431-0')),true,'the funicular is drawn as a track');
