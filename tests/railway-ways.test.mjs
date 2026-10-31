@@ -34,10 +34,16 @@ test('a part with excluded areas leaves them out of all three selections', () =>
   assert.ok(query.includes(`${partSelection(china, china.box, serviceSelect).set}->.r;`), 'service routes: as their own query');
   for (const [i, filter] of branch.filters.slice(1).entries())
     assert.ok(query.includes(powerMethodSelection(filter, {charging: `pc${i}`, potential: `pp${i}`, result: `px${i}`})), 'each excluded area has its own power sets');
-  assert.ok(query.includes(`(.pm; - (${branch.filters.slice(1).map((_, i) => `.px${i};`).join('')}););->.p;`));
+  assert.ok(query.includes(`(.pm; - (${branch.filters.slice(1).map((_, i) => `.px${i};`).join('')});)->.p;`));
   assert.ok(balanced(query));
   // Every stage part builds a query.
-  for (const stage of STAGES) for (const p of stage.parts) assert.ok(balanced(railwayWaysQuery(p, p.box)), `${stage.name}`);
+  for (const stage of STAGES) for (const p of stage.parts) {
+    const text = railwayWaysQuery(p, p.box);
+    assert.ok(balanced(text), `${stage.name}`);
+    // An assignment belongs to the statement it ends: "...)->.x;", never
+    // ";->.x" (a statement of its own, which the server rejects).
+    assert.doesNotMatch(text.replace(/"[^"]*"/g, ''), /;\s*->/, `${stage.name}: an assignment after a terminated statement`);
+  }
 });
 
 // A synthetic merged response: no captured provider data.
