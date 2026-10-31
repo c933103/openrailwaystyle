@@ -14,3 +14,12 @@ export function conveying(tags = {}) {
   const direction = values.length === 1 && CONVEYING_DIRECTIONS.includes(values[0]) ? values[0] : '';
   return {kind: tokens(tags.highway).includes('steps') ? 'escalator' : 'travelator', direction};
 }
+// The values each thematic view colours by, from the way's own tags only:
+// owner (Owner view; its colour as for tracks) and maxspeed in km/h (Speed).
+export function viewValues(tags = {}, ownerColor) {
+  const values = {}, owner = String(tags.owner ?? '').trim();
+  if (owner) { values.owner = owner; const colour = ownerColor(owner); if (colour) values.owner_color = colour; }
+  const speed = /^\s*(\d+(?:\.\d+)?)\s*(mph|km\/h|kmh|kph)?\s*$/i.exec(String(tags.maxspeed ?? ''));
+  if (speed) values.maxspeed = Math.round(Number(speed[1]) * (/mph/i.test(speed[2] || '') ? 1.609344 : 1));
+  return values;
+}

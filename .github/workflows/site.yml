@@ -333,6 +333,23 @@ jobs:
             echo "Could not look up the conveying-data snapshot (git exit $status)"
             exit 1
           fi
+      # Aerial cableways and lifts (aerialways.yml). Until its first snapshot
+      # is published the site deploys without them.
+      - name: Load aerial cableways and lifts
+        run: |
+          mkdir -p styles/data/aerialways
+          # Exit status 2: no snapshot yet. Any other failure stops the deploy.
+          status=0
+          git ls-remote --exit-code --heads origin aerialway-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin aerialway-data
+            git archive FETCH_HEAD | tar -x -C styles/data/aerialways
+          elif [ "$status" = 2 ]; then
+            echo '{"tiles":[]}' > styles/data/aerialways/index.json
+          else
+            echo "Could not look up the aerialway-data snapshot (git exit $status)"
+            exit 1
+          fi
       # Historic areas (heritage.yml); without them the planning context
       # shows no historic areas.
       - name: Load historic areas

@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-conveying-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-conveying-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261030-view-colours-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261030-view-colours-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-conveying-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261030-view-colours-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -530,6 +530,36 @@ export function ownerColor(name) {
   return `hsl(${hue}, ${sat}%, ${light}%)`;
 }
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
+// Aerialways and escalators are drawn in every view. Infrastructure and Power
+// show their type (thin line, ticks or arrows); every other view colours the
+// line by that view's own value from the way's tags, wide enough to read:
+// Speed by maxspeed, Owner by owner, Service as other track, and the rest
+// (no gauge, loading gauge, axle load or train protection on these) unknown.
+export const OTHER_TRACK = '#b8c0c5';
+export const VIEW_LINE_LAYERS = Object.freeze({
+  'aerialway-cableway-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'aerialway-lift-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'conveying-lines': {colour: CONVEYING_COLOUR, width: ['interpolate', ['linear'], ['zoom'], 14, 0.8, 18, 2]},
+});
+const showsType = mode => mode === 'infrastructure' || mode === 'electrification';
+export function viewLinePaint(id, mode, units = 'metric') {
+  const own = VIEW_LINE_LAYERS[id];
+  if (showsType(mode)) return own.colour;
+  if (mode === 'speed') return speedPaint(units);
+  if (mode === 'owner') return ownerPaint();
+  if (mode === 'service') return OTHER_TRACK;
+  return UNKNOWN_COLOR;
+}
+// Thinner than the view's own thinnest track, so they never read as ordinary
+// railway: tracks are 2.8/4.8 px (main) and 1.1/2 px (sidings) at zoom 11/16;
+// Gauge splits a dual-gauge track into halves of 1 px at zoom 16 (sidings), so
+// it goes thinner still. Service draws other track at the same widths as the
+// default under its coloured routes.
+const VIEW_LINE_WIDTHS = {gauge: [12, 0.8, 16, 0.9, 20, 1.6], default: [12, 0.9, 16, 1.5, 20, 2.4]};
+export function viewLineWidth(id, mode) {
+  if (showsType(mode)) return structuredClone(VIEW_LINE_LAYERS[id].width);
+  return ['interpolate', ['linear'], ['zoom'], ...(VIEW_LINE_WIDTHS[mode] || VIEW_LINE_WIDTHS.default)];
+}
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
@@ -751,7 +781,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines', 'aerialways'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.

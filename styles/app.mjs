@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261030-conveying-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261030-conveying-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261030-conveying-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261030-conveying-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261030-conveying-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261030-conveying-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261030-conveying-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261030-view-colours-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261030-view-colours-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261030-view-colours-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261030-view-colours-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261030-view-colours-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261030-view-colours-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, CURRENT_SYSTEMS, currentStops, currentRange, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261030-view-colours-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261030-conveying-1';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261030-conveying-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261030-conveying-1';
-import {departureItem} from './departures-ui.mjs?v=20261030-conveying-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261030-conveying-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261030-conveying-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261030-conveying-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261030-conveying-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261030-conveying-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261030-conveying-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261030-conveying-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261030-conveying-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261030-conveying-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261030-conveying-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261030-conveying-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261030-conveying-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261030-conveying-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261030-conveying-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261030-view-colours-1';
+import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261030-view-colours-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261030-view-colours-1';
+import {departureItem} from './departures-ui.mjs?v=20261030-view-colours-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261030-view-colours-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261030-view-colours-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261030-view-colours-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261030-view-colours-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261030-view-colours-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261030-view-colours-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261030-view-colours-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261030-view-colours-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261030-view-colours-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261030-view-colours-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261030-view-colours-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261030-view-colours-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261030-view-colours-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261030-view-colours-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -70,7 +70,7 @@ let powerFacilities, powerMethods;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261030-conveying-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261030-view-colours-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -407,7 +407,8 @@ const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', m
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
-  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`].filter(id => map.getLayer(id));
+  // Aerialways and escalators carry their own owner, so they join the Owner list.
+  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
     const described = describe(f.properties);
@@ -767,6 +768,7 @@ function applySettings() {
     if (enabled !== undefined) map.setLayoutProperty(layer.id, 'visibility', enabled ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
+    if (VIEW_LINE_LAYERS[layer.id]) { map.setPaintProperty(layer.id, 'line-color', viewLinePaint(layer.id, settings.mode, settings.units)); map.setPaintProperty(layer.id, 'line-width', viewLineWidth(layer.id, settings.mode)); }
     if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   // Clear the previous view's values before drawing the legend: if the new
@@ -875,17 +877,13 @@ function stationObject(osmId) {
   }
   return null;
 }
-// The line has no name; the basemap's name layer carries it under the same id.
-function aerialwayName(feature) {
-  if (!Number.isSafeInteger(feature.id) || !map?.getSource('openmaptiles')) return undefined;
-  const named = map.querySourceFeatures('openmaptiles', {sourceLayer: 'transportation_name', filter: ['==', ['id'], feature.id]})[0];
-  return named ? displayName(named.properties, settings.language) || undefined : undefined;
-}
 function showAerialwayDetails(feature) {
   const p = feature.properties, panel = $('detail-content'), dl = document.createElement('dl');
-  panel.replaceChildren(textNode('div', 'AERIALWAY', 'eyebrow'), textNode('h2', aerialwayName(feature) || 'Unnamed aerialway'));
-  row(dl, 'Kind', aerialwayKind(p.subclass)?.label);
-  row(dl, 'Type', p.subclass?.replaceAll('_', ' '));
+  panel.replaceChildren(textNode('div', 'AERIALWAY', 'eyebrow'), textNode('h2', displayName(p, settings.language) || 'Unnamed aerialway'));
+  row(dl, 'Kind', aerialwayKind(p.aerialway)?.label);
+  row(dl, 'Type', p.aerialway?.replaceAll('_', ' '));
+  row(dl, 'Owner', p.owner);
+  row(dl, 'Maximum speed', typeof p.maxspeed === 'number' ? formatSpeed({maxspeed: p.maxspeed}, settings.units).mapped : undefined);
   panel.append(dl);
   osmLink(panel, feature);
   $('details').hidden = false;
@@ -1272,6 +1270,7 @@ function unitStyle(style) {
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
+    if (VIEW_LINE_LAYERS[layer.id]) Object.assign(layer.paint, {'line-color': viewLinePaint(layer.id, settings.mode, settings.units), 'line-width': viewLineWidth(layer.id, settings.mode)});
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
     if (/^terrain-seabed-contours(?:-close)?$/.test(layer.id)) layer.paint['line-opacity'] = seabedContourOpacity(settings.units);
   }
@@ -1725,7 +1724,7 @@ async function initialize() {
   dem.setupMaplibre(maplibregl);
   // Level crossings, branch lines, service routes and signals are served as
   // stored (names not localized); the rare Han in their text still loads.
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false]]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false],['aerialwaytiles','aerialways']]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {

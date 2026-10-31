@@ -5181,6 +5181,15 @@
       "maxzoom": 14,
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "aerialways": {
+      "type": "vector",
+      "tiles": [
+        "aerialwaytiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 12,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "heritageAreas": {
       "type": "vector",
       "tiles": [
@@ -46055,8 +46064,8 @@
     },
     {
       "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
+      "source": "aerialways",
+      "source-layer": "aerialways",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -46069,9 +46078,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
-        "atlas:hide-backgrounds": [
-          "carto"
-        ],
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -46079,33 +46086,12 @@
       },
       "id": "aerialway-cableway-cable",
       "filter": [
-        "all",
+        "==",
         [
-          "==",
-          [
-            "get",
-            "class"
-          ],
-          "aerialway"
+          "get",
+          "kind"
         ],
-        [
-          "match",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          [
-            "cable_car",
-            "gondola",
-            "mixed_lift"
-          ],
-          true,
-          false
-        ]
+        "cableway"
       ],
       "paint": {
         "line-color": "#808080",
@@ -46114,8 +46100,8 @@
     },
     {
       "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
+      "source": "aerialways",
+      "source-layer": "aerialways",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -46128,9 +46114,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
-        "atlas:hide-backgrounds": [
-          "carto"
-        ],
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -46138,33 +46122,12 @@
       },
       "id": "aerialway-cableway-ticks",
       "filter": [
-        "all",
+        "==",
         [
-          "==",
-          [
-            "get",
-            "class"
-          ],
-          "aerialway"
+          "get",
+          "kind"
         ],
-        [
-          "match",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          [
-            "cable_car",
-            "gondola",
-            "mixed_lift"
-          ],
-          true,
-          false
-        ]
+        "cableway"
       ],
       "paint": {
         "line-color": "#1f2326",
@@ -46177,8 +46140,8 @@
     },
     {
       "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
+      "source": "aerialways",
+      "source-layer": "aerialways",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -46191,9 +46154,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
-        "atlas:hide-backgrounds": [
-          "carto"
-        ],
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -46201,35 +46162,12 @@
       },
       "id": "aerialway-lift-cable",
       "filter": [
-        "all",
+        "==",
         [
-          "==",
-          [
-            "get",
-            "class"
-          ],
-          "aerialway"
+          "get",
+          "kind"
         ],
-        [
-          "match",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          [
-            "chair_lift",
-            "drag_lift",
-            "t-bar",
-            "j-bar",
-            "platter"
-          ],
-          true,
-          false
-        ]
+        "lift"
       ],
       "paint": {
         "line-color": "#808080",
@@ -46238,8 +46176,8 @@
     },
     {
       "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
+      "source": "aerialways",
+      "source-layer": "aerialways",
       "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -46252,9 +46190,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
-        "atlas:hide-backgrounds": [
-          "carto"
-        ],
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -46262,35 +46198,12 @@
       },
       "id": "aerialway-lift-ticks",
       "filter": [
-        "all",
+        "==",
         [
-          "==",
-          [
-            "get",
-            "class"
-          ],
-          "aerialway"
+          "get",
+          "kind"
         ],
-        [
-          "match",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          [
-            "chair_lift",
-            "drag_lift",
-            "t-bar",
-            "j-bar",
-            "platter"
-          ],
-          true,
-          false
-        ]
+        "lift"
       ],
       "paint": {
         "line-color": "#1f2326",
