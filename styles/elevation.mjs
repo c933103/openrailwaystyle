@@ -4,8 +4,9 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261031-electricity-signals-3';
-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261031-electricity-signals-3';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261101-measure-surface-1';
+import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261101-measure-surface-1';
+import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261101-measure-surface-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -81,6 +82,115 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels,
         const pixels = await tiles.get(key);
         return pixels ? sampleHeight(pixels.data, pixels.size, px, py) : null;
       }));
+    },
+  };
+}
+
+// Work in tile pixels, rather than world degrees. Per-feature even-odd
+// winding keeps islands as holes; testing each feature separately makes
+// overlapping ocean polygons a UNION instead of cancelling each other.
+// A point within one pixel of a genuine shoreline is indeterminate: do not
+// silently choose an overlapping, coarse seabed/land elevation there.
+// Clipped edges of the vector tile are not shorelines.
+export function oceanAt(polygons, px, py, margin = 1) {
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+  let boundary = false, insideAny = false;
+  for (const polygon of polygons) {
+    const scale = TILE / polygon.extent;
+    if (!Number.isFinite(scale) || scale <= 0) return null;
+    let inside = false, ambiguous = false;
+    for (const ring of polygon.rings) {
+      let inRing = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[j], b = ring[i];
+        const ax = a.x * scale, ay = a.y * scale, bx = b.x * scale, by = b.y * scale;
+        if (![ax, ay, bx, by].every(Number.isFinite)) return null;
+        const dx = bx - ax, dy = by - ay;
+        const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+        const clippedEdge = (ax === 0 && bx === 0) || (ay === 0 && by === 0) ||
+          (ax === TILE && bx === TILE) || (ay === TILE && by === TILE);
+        if (!clippedEdge && Math.hypot(px - ax - t * dx, py - ay - t * dy) <= margin) ambiguous = true;
+        if ((ay > py) !== (by > py) && px < (bx - ax) * (py - ay) / (by - ay) + ax) inRing = !inRing;
+      }
+      if (inRing) inside = !inside;
+    }
+    if (ambiguous) boundary = true;
+    else if (inside) insideAny = true;
+  }
+  return boundary ? null : insideAny;
+}
+
+// The fine Mapzen DEM loses bathymetry above z10. Classify genuine ocean
+// using the same basemap ocean polygons as the 3D/depth renderer, then sample
+// the repaired coarse DEM only there. Inland negative elevations (Dead Sea,
+// etc.) remain fine land heights, and lakes are not mistaken for ocean.
+// Missing/ambiguous coastlines or failed tiles yield null, never a fake 0 m.
+// Water and DEM calls are shared per tile, bounded and cancellable.
+export function createSurfaceElevation(url, {waterTile, readTile, load, zoom = ELEVATION_ZOOM,
+  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS} = {}) {
+  if (typeof waterTile !== 'function' || typeof readTile !== 'function') throw new TypeError('A basemap water reader is required');
+  const options = {zoom, timeoutMs, repairTimeoutMs, ...(load ? {load} : {})};
+  const fine = createElevation(url, options);
+  const seabed = zoom > DEPTH_ZOOM ? createElevation(url, {...options, zoom: DEPTH_ZOOM}) : fine;
+  const water = sharedTerrainTiles(async (key, signal) => {
+    const [z, x, y] = key.split('/').map(Number);
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal.addEventListener('abort', abort, {once:true});
+    try {
+      if (signal.aborted) throw terrainAbort();
+      const result = await waterTile(z, x, y, controller);
+      if (signal.aborted) throw terrainAbort();
+      if (!result?.data?.byteLength) return null; // unknown coverage, not land
+      return oceanPolygons(readTile(result.data));
+    } finally {
+      signal.removeEventListener('abort', abort);
+      controller.abort();
+    }
+  }, {keep: CACHE, timeoutMs});
+  return {
+    async heights(points, {signal} = {}) {
+      if (!Array.isArray(points)) throw new TypeError('Elevation points must be an array');
+      const valid = point => Array.isArray(point) && point.length >= 2 &&
+        point.every(Number.isFinite) && Math.abs(point[1]) <= 85.05112878;
+      // Resolve the land/sea mask first: ocean elevations come from the coarse
+      // DEM alone, so a missing fine terrain tile cannot delay or erase a
+      // sound seabed result. Never infer classification from height sign: dry
+      // land can be below sea level.
+      const sea = await Promise.all(points.map(async point => {
+        if (!valid(point)) return null;
+        const {x, y, px, py} = tilePixel(point[0], point[1], Math.min(zoom, WATER_ZOOM));
+        try {
+          const polygons = await water(`${Math.min(zoom, WATER_ZOOM)}/${x}/${y}`, signal);
+          return polygons ? oceanAt(polygons, px, py) : null;
+        } catch (error) {
+          if (signal?.aborted) throw error;
+          return null;
+        }
+      }));
+      const landPoints = [], seabedPoints = [];
+      for (let i = 0; i < points.length; i++) {
+        if (sea[i] === true) seabedPoints.push(points[i]);
+        else if (sea[i] === false) landPoints.push(points[i]);
+      }
+      // The fine elevation and coarse bathymetry loaders each share pending
+      // tiles across every sample, and independent map/measurement readers
+      // retain cancellation without duplicate downloads.
+      const [ground, depth] = await Promise.all([
+        fine.heights(landPoints, {signal}), seabed.heights(seabedPoints, {signal}),
+      ]);
+      let landIndex = 0, seaIndex = 0;
+      return sea.map(type => {
+        if (type === true) {
+          const value = depth[seaIndex++];
+          // Mixed coastal bathymetry may sample the land side of a pixel.
+          return Number.isFinite(value) && value >= -11500 && value <= 0 ? value : null;
+        }
+        if (type === false) {
+          const value = ground[landIndex++];
+          return Number.isFinite(value) && value >= -11500 && value <= 9000 ? value : null;
+        }
+        return null;
+      });
     },
   };
 }

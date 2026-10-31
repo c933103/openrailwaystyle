@@ -1,29 +1,29 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261031-electricity-signals-3';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261031-electricity-signals-3';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261031-electricity-signals-3';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261031-electricity-signals-3';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261031-electricity-signals-3';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261031-electricity-signals-3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261031-electricity-signals-3';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261101-measure-surface-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261101-measure-surface-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261101-measure-surface-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261101-measure-surface-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261101-measure-surface-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261101-measure-surface-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261101-measure-surface-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261031-electricity-signals-3';
-import { createElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261031-electricity-signals-3';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261031-electricity-signals-3';
-import {departureItem} from './departures-ui.mjs?v=20261031-electricity-signals-3';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261031-electricity-signals-3';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261031-electricity-signals-3';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261031-electricity-signals-3';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261031-electricity-signals-3';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261031-electricity-signals-3';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261031-electricity-signals-3';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261031-electricity-signals-3';
-import { installWatchGesture } from './watch-map.mjs?v=20261031-electricity-signals-3';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261031-electricity-signals-3';
-import { createBundleReader } from './tile-bundles.mjs?v=20261031-electricity-signals-3';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261031-electricity-signals-3';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261031-electricity-signals-3';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261031-electricity-signals-3';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261031-electricity-signals-3';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261101-measure-surface-1';
+import { createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261101-measure-surface-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261101-measure-surface-1';
+import {departureItem} from './departures-ui.mjs?v=20261101-measure-surface-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261101-measure-surface-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261101-measure-surface-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261101-measure-surface-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261101-measure-surface-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261101-measure-surface-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261101-measure-surface-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261101-measure-surface-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261101-measure-surface-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261101-measure-surface-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261101-measure-surface-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261101-measure-surface-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261101-measure-surface-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261101-measure-surface-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261101-measure-surface-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -70,7 +70,7 @@ let powerFacilities, powerMethods, electricitySignals;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261031-electricity-signals-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261101-measure-surface-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1584,6 +1584,7 @@ function updateDrawing() {
     $('node-extend').hidden = !selected.canExtend;
   }
   $('measure-delete').hidden = measuring?.selected === null || measuring?.selected === undefined;
+  $('measure-profile').hidden = !measuring?.profileCoordinates();
   if ($('measure-retry')) $('measure-retry').hidden = !measuring?.canRetryHeights;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
@@ -1593,6 +1594,7 @@ function openTools(id) {
     const show = toolbar === id && $(toolbar).hidden;
     $(toolbar).hidden = !show;
     if (!show && tool?.active) tool.setMode(tool.mode);
+    if (show && toolbar === 'measure-toolbar' && measuring && !measuring.active) measuring.setMode('distance');
   }
   updateDrawing();
 }
@@ -1604,6 +1606,12 @@ document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('cli
 $('measure-undo').addEventListener('click', () => measuring?.undo());
 $('measure-clear').addEventListener('click', () => measuring?.clear());
 $('measure-retry')?.addEventListener('click', () => measuring?.retryHeights());
+$('measure-profile').addEventListener('click', () => {
+  const coordinates = measuring?.profileCoordinates();
+  if (!coordinates) return;
+  const name = measuring.mode === 'radius' ? 'Curve radius elevation profile' : 'Distance elevation profile';
+  void showProfile({geometry: {type:'LineString', coordinates}, properties: {name}}, {measured:true});
+});
 // Selected points: delete after confirmation.
 $('measure-delete').addEventListener('click', () => { if (confirm('Delete this point?')) measuring?.deleteSelected(); });
 $('node-delete').addEventListener('click', () => { if (confirm('Delete this point?')) drawing?.deleteSelected(); });
@@ -1794,6 +1802,7 @@ async function initialize() {
     return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
   };
   const readWater = data => labelCode.readTile(data, ['water']);
+  surfaceElevation = createSurfaceElevation(DEM_URL, {waterTile:readWaterTile, readTile:readWater});
   installBathymetry(maplibregl, dem, {
     waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
@@ -1966,7 +1975,10 @@ async function initialize() {
   map.on('remove', () => {controlLayout.destroy(); attributionStateCleanup?.();});
   installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches, pan: (dx, dy, eventData) => globePan(dx, dy, eventData)});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
-  measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
+  measuring = new Measure(map, {units: () => settings.units,
+    status: text => { $('measure-status').textContent = text; },
+    changed: updateDrawing, geometryChanged: () => { if (profileFromMeasure) closeDetails(); },
+    heights: (points, options) => surfaceElevation.heights(points, options)});
   map.on('style.load', installDrawing);
   // Do not install or request the optional point tiles until the complete
   // release manifest and bundle index are verified against each other. A
@@ -2217,6 +2229,7 @@ function reloadLanguage() {
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
   applyUnits(); updateInView(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
+  if (profileFromMeasure) closeDetails();
   if (currentFeature) showDetails(currentFeature);
 });
 const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
@@ -2248,21 +2261,24 @@ if (compactControls()) setControlsExpanded(false);
 // (20 to 200 samples), from the terrain tiles. Hovering the chart marks the
 // place on the map.
 const elevation = createElevation(DEM_URL);
-let profileMarker, profileController, profileRequest = 0;
+let surfaceElevation = elevation;
+let profileMarker, profileController, profileRequest = 0, profileFromMeasure = false;
 function cancelProfile() {
+  profileFromMeasure = false;
   profileRequest++; profileController?.abort(); profileController = null; profileMarker?.remove();
 }
-async function showProfile(feature) {
+async function showProfile(feature, {measured = false} = {}) {
   cancelProfile();
+  profileFromMeasure = measured;
   const controller = profileController = new AbortController();
   const coordinates = feature.geometry.coordinates, units = settings.units, km = lengthKm(coordinates);
   const panel = $('detail-content'), request = ++profileRequest;
   const waiting = textNode('p', 'Finding heights…', 'small');
-  panel.replaceChildren(textNode('div', 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), waiting);
+  panel.replaceChildren(textNode('div', measured ? 'MEASUREMENT' : 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), waiting);
   $('details').hidden = false; currentFeature = null;
   const samples = alongLine(coordinates, Math.max(20, Math.min(200, Math.round(km * 100))), lengthKm);
   let heights;
-  try { heights = await elevation.heights(samples.map(s => s.point), {signal: controller.signal}); }
+  try { heights = await surfaceElevation.heights(samples.map(s => s.point), {signal: controller.signal}); }
   catch (error) { if (controller.signal.aborted) return; throw error; }
   finally { if (profileController === controller) profileController = null; }
   // Only if this profile is still what the panel shows: not replaced by
@@ -2280,7 +2296,7 @@ async function showProfile(feature) {
   row(dl, incomplete ? 'Ascent / descent (known stretches)' : 'Ascent / descent', stats.ascent === null ? 'Unavailable' : `${height(stats.ascent)} / ${height(stats.descent)}`);
   if (ends) row(dl, 'End to end', formatClimb(ends, units));
   row(dl, incomplete ? 'Steepest (known stretches)' : 'Steepest', stats.steepest === null ? 'Unavailable: no continuous height samples over the required distance' : `${(stats.steepest * 100).toFixed(1)}% (${(stats.steepest * 1000).toFixed(0)}‰) over ${formatLength(stats.over, units)}`);
-  panel.append(profileChart(profile, km, units), dl, textNode('p', 'Heights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.', 'small'));
+  panel.append(profileChart(profile, km, units), dl, textNode('p', 'Ground and seabed elevations from repaired terrain data. Ocean depths use coarser bathymetry and a coastline mask, while overlapping or unavailable data leave gaps. These are not rail-track heights on bridges or in tunnels; ascent and descent include terrain noise.', 'small'));
 }
 function profileChart(profile, km, units) {
   const W = 280, H = 150, L = 44, R = 8, T = 10, B = 24, ns = 'http://www.w3.org/2000/svg';
