@@ -1,0 +1,15 @@
+{
+  "generated": "2026-10-31T00:49:34.347Z",
+  "osmBase": "2026-10-31T00:46:34Z",
+  "features": 24166,
+  "kinds": {
+    "cableway": 3306,
+    "lift": 20860
+  },
+  "zoom": 12,
+  "tiles": 8535,
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "[out:json][timeout:900][maxsize:1073741824];way[aerialway~\"^(cable_car|gondola|mixed_lift|chair_lift|drag_lift|t-bar|j-bar|platter)$\"];out tags geom;",
+  "license": "ODbL-1.0",
+  "description": "Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed."
+}
