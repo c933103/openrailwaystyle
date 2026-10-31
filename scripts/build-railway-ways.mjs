@@ -19,6 +19,7 @@ import {quarters, toFeatures} from './branch-lines.mjs';
 import {toTable} from './service-routes.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {railwayWaysQuery, branchView, serviceView, powerView} from './railway-ways.mjs';
+import {stationQueryExceededLimits} from './station-acquisition.mjs';
 
 export const RAILWAY_WAYS_VERSION = 1;
 export const regionKey = item => `${item.part}_${item.box.join('_')}`;
@@ -107,14 +108,21 @@ export async function buildRailwayWays({
           return response.ok && fresh && received > runBudget ? null : BUDGET;
         }
         const text = Buffer.concat(chunks).toString();
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
-        return validRailwayWays(JSON.parse(text));
+        // Only the server's own report that the query ran out of time or
+        // memory shows the region needs a smaller area. A gateway error, a
+        // busy server, a stalled or cut-off transfer say nothing about its
+        // size: the same region is retried, and deferred if that fails.
+        if (!response.ok) {
+          if (stationQueryExceededLimits(response.status, text.slice(0, 65536))) return null;
+          throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
+        }
+        let json;
+        try { json = JSON.parse(text); } catch { throw new Error('Incomplete response (cut-off JSON)'); }
+        if (typeof json?.remark === 'string' && stationQueryExceededLimits(200, json.remark)) return null;
+        return validRailwayWays(json);
       } catch (error) {
         lastFailure = error.message;
         warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
-        if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(lastFailure)) continue;
-        // A query that ran out of time or memory needs a smaller area.
-        if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(lastFailure)) return null;
       }
     }
     throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
@@ -153,13 +161,25 @@ export async function buildRailwayWays({
   return finish(stage, current);
 }
 
-// The stored regions of every stage, for the datasets built from them.
+// The stored regions of every stage complete in the store, for the datasets
+// built from them. A complete stage must have all the regions its pass
+// recorded: a missing or unreadable region stops the build, rather than
+// passing for a stage that lost its data.
 export async function* storedRegions(store) {
+  const state = JSON.parse(await readFile(join(store, 'state.json'), 'utf8'));
   for (const stage of STAGES) {
+    const info = state.stages?.[stage.name];
+    if (!info?.completed) continue;
     const dir = join(store, 'regions', stage.name);
-    let names = [];
-    try { names = (await readdir(dir)).filter(name => name.endsWith('.json.gz')).sort(); } catch {}
-    for (const name of names) yield JSON.parse(gunzipSync(await readFile(join(dir, name))));
+    const names = (await readdir(dir)).filter(name => name.endsWith('.json.gz')).sort();
+    const expected = info.leaves?.regions?.length;
+    if (!names.length || (expected && names.length !== expected))
+      throw new Error(`Stored stage ${stage.name} has ${names.length} region(s), ${expected || 'at least one'} expected`);
+    for (const name of names) {
+      const region = JSON.parse(gunzipSync(await readFile(join(dir, name))));
+      if (region.stage !== stage.name || !Array.isArray(region.response?.elements)) throw new Error(`Invalid stored region ${stage.name}/${name}`);
+      yield region;
+    }
   }
 }
 

@@ -158,10 +158,25 @@ each element once, and gives each dataset the view its own query returned.
 `scripts/build-railway-ways.mjs`
 ([railway-ways.yml](../.github/workflows/railway-ways.yml)) runs that query
 through the branch lines' stages and pacing (one stage per run, 220 MB per run
-and 900 MB a day, a refresh every two weeks, splits recorded) and publishes
-each region's raw response to `railway-ways-data`: `regions/<stage>/` holds
-the last complete pass, `next/<stage>/` a pass in progress, which replaces it
-only when complete. It is started by hand for now; the three datasets still
+and 900 MB a day, a refresh every two weeks, splits recorded) and keeps each
+region's raw response: `regions/<stage>/` holds the last complete pass,
+`next/<stage>/` a pass in progress, which replaces it only when complete.
+
+- Only the server's own report that a query ran out of time or memory splits a
+  region. Gateway errors, a busy server and stalled or cut-off transfers retry
+  the same region and defer it, since they say nothing about its size and a
+  split is kept for later passes.
+- Every dataset's view must accept a response before it is stored.
+- A stage complete in the store must have every region its pass recorded:
+  reading it stops with an error otherwise, rather than passing for a stage
+  that lost its data.
+- The store is a cache that can be downloaded again, so it is kept as the
+  assets of the `railway-ways-store` release (as `traction-facilities-cache`
+  is), not as git history: `stage-<stage>.tar.zst` per stage, then
+  `state.json` (uploaded last, so it never names regions not yet uploaded)
+  and `manifest.json`. A run uploads only the stage it worked on.
+
+It is started by hand for now; the three datasets still
 download their own data until they are built from this store, and only then
 does the scheduler start it in their place.
 

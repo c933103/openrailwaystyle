@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp, readFile, readdir, rm, writeFile, mkdir} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {STAGES} from '../scripts/download-stages.mjs';
@@ -86,17 +87,17 @@ test('until a pass is complete, the stage keeps its previous regions; a stopped 
   const partial = overpass((query, n) => n === 1 ? ok([way(2, {railway: 'subway'})]) : {status: 500, text: 'Internal error'});
   const manifest = await run(root, partial.fetcher, {previous});
   assert.equal(manifest.run.status, 'partial');
-  const stored = [];
-  for await (const region of storedRegions(join(root, 'out'))) stored.push(region.response.elements[0].id);
+  // Japan's stored regions (the other stages are marked current without any).
+  const japanIds = async () => Promise.all((await readdir(join(root, 'out', 'regions', 'japan'))).map(async name =>
+    JSON.parse(gunzipSync(await readFile(join(root, 'out', 'regions', 'japan', name)))).response.elements[0].id));
+  const stored = await japanIds();
   assert.deepEqual(stored, [1, 1, 1, 1], 'the previous pass stays until the new one is complete');
   assert.equal((await readdir(join(root, 'out', 'next', 'japan'))).length, 1, 'the new region is kept for the next run');
   const resumed = await publish(root);
   const rest = overpass(() => ok([way(3, {railway: 'subway'})]));
   await run(root, rest.fetcher, {previous: resumed});
   assert.equal(rest.queries.length, 3, 'only the remaining regions');
-  const after = [];
-  for await (const region of storedRegions(join(root, 'out'))) after.push(region.response.elements[0].id);
-  assert.deepEqual(after.sort(), [2, 3, 3, 3], 'the complete pass replaced the stage');
+  assert.deepEqual((await japanIds()).sort(), [2, 3, 3, 3], 'the complete pass replaced the stage');
 });
 
 test('a malformed or refused response is never stored, and an unreadable store stops the run', async t => {
@@ -109,4 +110,35 @@ test('a malformed or refused response is never stored, and an unreadable store s
   await mkdir(join(root, 'broken'));
   await writeFile(join(root, 'broken', 'state.json'), '{');
   await assert.rejects(run(root, bad.fetcher, {previous: join(root, 'broken')}), /could not be read/);
+});
+
+test('only the server\'s own time or memory limit splits a region; gateway errors and cut-off responses do not', async t => {
+  const root = await fixture(t);
+  const whole = railwayWaysQuery(part, part.box);
+  for (const reply of [{status: 504, text: '<html>504 Gateway Time-out</html>'}, {text: '{"elements": [{"type": "way"'}, {status: 502, text: 'server at capacity; All query workers are busy'}]) {
+    const {queries, fetcher} = overpass(() => reply);
+    const manifest = await run(root, fetcher);
+    assert.equal(manifest.run.splitBoxes, 0, JSON.stringify(reply));
+    assert.equal(manifest.run.status, 'deferred');
+    assert.deepEqual(new Set(queries), new Set([whole]), 'the same region, retried');
+  }
+  // A remark with the server's limit, with HTTP 200, does split.
+  const limit = overpass(query => query === whole ? {text: JSON.stringify({elements: [], remark: 'runtime error: Query run out of memory using about 2048 MB of RAM.'})} : ok([]));
+  assert.equal((await run(root, limit.fetcher)).run.splitBoxes, 1);
+});
+
+test('a stage complete in the store must have every region its pass recorded', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([way(1, {railway: 'subway'})])).fetcher);
+  const store = join(root, 'out'), read = async () => { for await (const region of storedRegions(store)) void region; };
+  await read();
+  await rm(join(store, 'regions', 'japan'), {recursive: true});
+  await assert.rejects(read, /ENOENT/, 'a missing folder is an error, not an empty stage');
+  await mkdir(join(store, 'regions', 'japan'));
+  await assert.rejects(read, /japan has 0 region/);
+  const state = JSON.parse(await readFile(join(store, 'state.json'), 'utf8'));
+  state.stages.japan.leaves.regions.push({part: 0, box: [0, 0, 1, 1]});
+  await writeFile(join(store, 'state.json'), JSON.stringify(state));
+  await writeFile(join(store, 'regions', 'japan', 'x.json.gz'), (await import('node:zlib')).gzipSync(JSON.stringify({stage: 'japan', response: {elements: []}})));
+  await assert.rejects(read, /japan has 1 region\(s\), 2 expected/);
 });
