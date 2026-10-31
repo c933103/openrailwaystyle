@@ -230,8 +230,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
         assert.ok(shape.width>=12);
       }
     }
-    const systems=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient')).map(row=>row.lastElementChild.textContent));
-    assert.equal(systems.length,5,`fixed current-system key: ${systems}`);
+    const values=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].map(row=>({gradient:row.firstElementChild.style.background.includes('gradient'),label:row.lastElementChild.textContent})));
+    assert.equal(values.filter(row=>row.gradient).length,0,'exact values, no gradient rows');
+    assert.equal(values.filter(row=>/ (DC|AC [\d.]+ Hz)$/.test(row.label)).length,15,`fixed key of exact values: ${values.map(row=>row.label)}`);
     const track=await page.evaluate(()=>{
       const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Not electrified');
       const sample=row.firstElementChild,box=sample.getBoundingClientRect();return {line:sample.classList.contains('swatch'),width:box.width,height:box.height,text:sample.textContent};

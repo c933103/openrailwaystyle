@@ -1,7 +1,7 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261031-electricity-signals-2';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261031-electricity-signals-2';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261031-electricity-signals-3';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261031-electricity-signals-3';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261031-electricity-signals-2';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261031-electricity-signals-3';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -225,9 +225,10 @@ export const CURRENT_SYSTEMS = [
 ];
 export const NOT_ELECTRIFIED = '#525b62';
 const kv = v => v >= 1000 ? `${Number((v / 1000).toFixed(2))} kV` : `${v} V`;
-// No Array.prototype.at: Safari before 15.4 lacks it and the legend runs at startup.
-export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts[system.volts.length - 1][0])}`;
 export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(system.hue, system.sat, l)]);
+// The Power legend's fixed key: each exact value drawn, e.g. "15 kV AC 16.7 Hz",
+// in the colour the track paint gives it. No gradient rows.
+export const currentKey = () => CURRENT_SYSTEMS.flatMap(system => currentStops(system).map(([v, colour]) => [colour, `${kv(v)} ${system.label}`]));
 export function electrificationPaint() {
   const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
   const hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];

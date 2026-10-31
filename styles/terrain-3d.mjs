@@ -2,10 +2,10 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261031-electricity-signals-2';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261031-electricity-signals-2';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261031-electricity-signals-2';
-import {globeGroundZoom, zoomForLatitude} from './globe-drag.mjs?v=20261031-electricity-signals-2';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261031-electricity-signals-3';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261031-electricity-signals-3';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261031-electricity-signals-3';
+import {globeGroundZoom, zoomForLatitude} from './globe-drag.mjs?v=20261031-electricity-signals-3';
 
 // MapLibre renders its terrain DEM one zoom below the camera tile level.
 // At globe/continent scales even mountains several kilometres high cover
