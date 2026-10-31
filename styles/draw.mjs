@@ -564,20 +564,43 @@ export function formatClimb({rise, gradient}, units = 'metric') {
   const sign = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
   return `${sign(Math.round(value))} ${unit} · ${sign(Number((gradient * 100).toFixed(2)))}% (${Math.abs(gradient * 1000).toFixed(1)}‰)`;
 }
+// A tap reads actual ground/seabed elevation, not the visual 3D scale.
+export function formatLocation(point) {
+  const [lng, lat] = point;
+  const wrapped = ((lng + 180) % 360 + 360) % 360 - 180;
+  return `Lat ${lat.toFixed(6)}, Lon ${wrapped.toFixed(6)}`;
+}
+export function formatElevation(height, units = 'metric') {
+  if (!Number.isFinite(height)) return 'unavailable';
+  const size = Math.abs(height) * (units === 'imperial' ? 3.28084 : 1);
+  const amount = size < 1 && size > 0 ? size.toFixed(1) : Math.round(size).toLocaleString('en');
+  const unit = units === 'imperial' ? 'ft' : 'm';
+  return `${amount} ${unit} ${height > 0 ? 'above sea level' : height < 0 ? 'below sea level' : '(sea level)'}`;
+}
 export class Measure {
   // heights(points): a promise of the height at each point, for the rise
   // and gradient between a distance's ends (none when not given).
-  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, heights = null} = {}) {
-    Object.assign(this, {map, units, status, changed, heights});
-    this.climb = null;
+  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, geometryChanged = () => {}, heights = null} = {}) {
+    Object.assign(this, {map, units, status, changed, geometryChanged, heights});
+    this.climb = null; this.spot = null;
     this.mode = null; this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.lastAdd = 0;
     this.dragging = dragPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
-      move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.refresh(); } },
+      move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.geometryChanged(); this.refresh(); this.changed(); } },
       done: () => {},
     });
   }
   get active() { return this.mode !== null; }
+  // Use the actual measured polyline or the fitted, visible curve arc.
+  // A radius is not a straight chord through the three control points.
+  profileCoordinates() {
+    if (this.mode === 'distance' && this.points.length >= 2) return this.points.map(p => [...p]);
+    if (this.mode === 'radius' && this.points.length >= 3) {
+      const fit = fitCircle(this.points);
+      return fit ? circleArc(fit, this.points) : null;
+    }
+    return null;
+  }
   install() {
     const map = this.map;
     if (!map.getSource('atlas-measure')) map.addSource('atlas-measure', {type:'geojson', data:this.collection()});
@@ -602,6 +625,10 @@ export class Measure {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
       const climbed = this.ended && this.climbFor() && this.climb?.key === this.climbFor() ? this.climb.value : null;
       if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units) + (climbed ? `\n${formatClimb(climbed, units)}` : '')}));
+    } else if (this.mode === 'elevation' && this.spot) {
+      const result = this.spot.pending ? 'Finding elevation…' :
+        Number.isFinite(this.spot.value) ? formatElevation(this.spot.value, units) : 'Elevation unavailable';
+      features.push(feature({type:'Point', coordinates:this.spot.point}, {kind:'spot', label:`${formatLocation(this.spot.point)}\n${result}`}));
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       if (fit) {
@@ -614,11 +641,15 @@ export class Measure {
   }
   // The finished distance's ends, as a key for its heights.
   climbFor() { return this.mode === 'distance' && this.points.length >= 2 ? JSON.stringify([this.points[0], this.points.at(-1), lengthKm(this.points)]) : null; }
-  get canRetryHeights() { return Boolean(this.ended && this.heights && this.climb?.key === this.climbFor() && !this.climb.pending && this.climb.value === null); }
+  get canRetryHeights() {
+    if (this.mode === 'elevation') return Boolean(this.heights && this.spot && !this.spot.pending && this.spot.value === null);
+    return Boolean(this.ended && this.heights && this.climb?.key === this.climbFor() && !this.climb.pending && this.climb.value === null);
+  }
   // Retrying the finished endpoints is explicit: clicking their handles
   // must remain an edit selection rather than silently starting over.
   retryHeights() {
     if (!this.canRetryHeights) return;
+    if (this.mode === 'elevation') { this.tap([...this.spot.point]); return; }
     this.climb = null; this.refresh();
   }
   // Heights for this finished distance, shared until explicitly retried.
