@@ -334,6 +334,9 @@ diagnostic in a JSON remark or HTTP 5xx body checkpoints a geographic subdivisio
 for a later run. A busy dispatcher, generic gateway error, HTTP 429/503,
 permission/syntax failure, truncated diagnostic or network abort retains the
 same region. No outcome adds an immediate retry or publishes partial tiles.
+The next generation asks for the regions the previous complete one fetched
+(their boxes and split depth), so a region once subdivided for an executed-query
+limit is not requested whole again every cycle.
 `requestBytes` includes consumed error-body bytes. These decisions are exercised
 against the actual executable in `tests/station-builder.test.mjs` with synthetic
 responses and no public-provider requests. See the provider's distinction between
