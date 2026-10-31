@@ -19,7 +19,15 @@ export async function validateAerialwaySnapshot(root) {
       throw new Error('Invalid aerialway tile coordinate');
     const bytes = gunzipSync(await readFile(resolve(root, `${key}.pbf.gz`)));
     const tile = new VectorTile(new Pbf(bytes));
-    if (!tile.layers.aerialways?.length) throw new Error(`Missing aerialway geometry: ${key}`);
+    const layer = tile.layers.aerialways;
+    if (!layer?.length) throw new Error(`Missing aerialway geometry: ${key}`);
+    // The vector-tile decoder is lazy: a counted feature message alone is not
+    // evidence of geometry. Force feature and geometry decoding before publish.
+    for (let i = 0; i < layer.length; i++) {
+      const feature = layer.feature(i), lines = feature.loadGeometry();
+      if (feature.type !== 2 || !lines.length || lines.some(line => line.length < 2 || line.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y))))
+        throw new Error(`Invalid aerialway line geometry: ${key} feature ${i}`);
+    }
   }
   return {features: manifest.features, tiles: index.tiles.length};
 }

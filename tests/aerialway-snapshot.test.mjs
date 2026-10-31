@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gzipSync} from 'node:zlib';
+import Pbf from 'pbf';
 import {validateAerialwaySnapshot} from '../scripts/validate-aerialway-snapshot.mjs';
 import {conveyingTiles} from '../scripts/conveying-data.mjs';
 
@@ -56,3 +57,26 @@ test('actual deployment step stops before archive/validation on missing branch o
     await assert.rejects(readFile(join(f.root,'styles/data/aerialways/index.json')));
   }
 });
+
+// Structurally valid layer/gzip with a counted but unusable feature message.
+function brokenFeatureTile(geometry) {
+  const pbf = new Pbf();
+  pbf.writeMessage(3, (_, layer) => {
+    layer.writeStringField(1, 'aerialways');
+    layer.writeVarintField(15, 2);
+    layer.writeMessage(2, (_, feature) => {
+      if (geometry !== undefined) {
+        feature.writeVarintField(3, 2);
+        feature.writeBytesField(4, Uint8Array.from(geometry));
+      }
+    });
+  });
+  return gzipSync(pbf.finish());
+}
+for (const [name, geometry] of [['empty feature', undefined], ['missing geometry', []], ['invalid geometry command', [15]], ['one point line', [9, 0, 0]]]) {
+  test(`rejects valid gzip/layer header with ${name}`, async t => {
+    const f = await fixture(t);
+    await writeFile(join(f.root, `${f.index.tiles[0]}.pbf.gz`), brokenFeatureTile(geometry));
+    await assert.rejects(validateAerialwaySnapshot(f.root));
+  });
+}
