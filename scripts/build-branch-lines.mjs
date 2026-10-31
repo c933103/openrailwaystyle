@@ -91,6 +91,9 @@ if (process.env.RAILWAY_WAYS_STORE) {
   table = result.table;
   for (const item of result.applied) Object.assign(state.stages[item.stage] ||= {seen: []},
     {completed: item.completed, started: item.completed, pending: null, seen: [], lines: item.lines, kept: item.kept, source: 'railway-ways'});
+  // Retire the old Europe fallback first (publish() would otherwise do it
+  // after this comparison), so a run that only retires it still redeploys.
+  retireBranchEurope(state, table);
   await publish({run: {source: 'railway-ways', stages: result.applied.map(item => item.stage)}, redeploy: writeTable(table) !== before, source: 'railway-ways-data'});
   process.exit(0);
 }

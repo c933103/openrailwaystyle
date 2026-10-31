@@ -78,3 +78,27 @@ test('the builder, given the store, publishes from it without any Overpass reque
   assert.equal(manifest.stages.find(s => s.name === 'japan').completed, '2026-10-31T00:00:00Z');
   assert.equal(await readFile(join(root, 'output'), 'utf8'), 'publish=true\nredeploy=true\n');
 });
+
+test('a store run that only retires the old Europe fallback still redeploys the site', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'branch-store-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  await mkdir(join(root, 'store'), {recursive: true});
+  await writeFile(join(root, 'store', 'state.json'), JSON.stringify({version: 1, stages: {}, runs: []}));
+  // Every stage current, Asia and the world refetched after the Europe migration: the fallback can go.
+  const {STAGES} = await import('../scripts/download-stages.mjs');
+  const stages = Object.fromEntries(STAGES.map(stage => [stage.name, {completed: '2026-10-20T00:00:00Z', started: '2026-10-10T00:00:00Z', pending: null, seen: []}]));
+  await mkdir(join(root, 'previous'));
+  await writeFile(join(root, 'previous', 'branch-lines.ndjson.gz'), gzipSync(writeTable(new Map([[9, line(9, 'europe:europe-a')]]))));
+  await writeFile(join(root, 'previous', 'state.json'), JSON.stringify({version: 3, downloadStages: 3, stages, runs: [],
+    legacyEurope: {completed: '2026-01-01T00:00:00Z', migrated: '2026-02-01T00:00:00Z', requireAsia: true, branchStages: {'europe:europe-a': 1}, lines: 1}}));
+  await writeFile(join(root, 'no-fetch.mjs'), 'globalThis.fetch = async () => { throw new Error("Overpass requested"); };');
+  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), {recursive: true});
+  await symlink(resolve('node_modules'), join(root, 'app', 'node_modules'), 'dir');
+  const child = spawnSync(process.execPath, ['--import', join(root, 'no-fetch.mjs'), join(root, 'app', 'scripts', 'build-branch-lines.mjs')], {
+    cwd: root, encoding: 'utf8', timeout: 60_000,
+    env: {...process.env, PREVIOUS_DATA: join(root, 'previous'), RAILWAY_WAYS_STORE: join(root, 'store'), GITHUB_OUTPUT: join(root, 'output')}});
+  assert.equal(child.status, 0, child.stderr);
+  const table = readTable(gunzipSync(await readFile(join(root, 'app', 'branch-data', 'branch-lines.ndjson.gz'))).toString());
+  assert.equal(table.size, 0, 'the fallback line was retired');
+  assert.equal(await readFile(join(root, 'output'), 'utf8'), 'publish=true\nredeploy=true\n');
+});
