@@ -10,6 +10,7 @@
 // in, each run refreshes the stage checked longest ago if it is older than
 // REFRESH_DAYS, which also removes deleted and retagged routes.
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
+import {join} from 'node:path';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
 import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
@@ -54,6 +55,104 @@ if (state.version !== VERSION) {
   state.version = VERSION;
 }
 migrateServiceDownloads(state, table);
+const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
+// A complete stage: what its pass found replaces its part of the table.
+function completeStage(stage, current) {
+  // A complete stage: what it found replaces its part, so routes and
+  // memberships it no longer found go (other stages' parts stay). A refresh
+  // that would remove over a fifth of the stage's items points to an
+  // incomplete response: it is dropped whole, the previous part stays, and
+  // the stage is tried again at its next refresh (the run's downloads are
+  // still recorded).
+  const observed = stageGeometryHealth(table, stage.name, {pending: true});
+  const change = stageChange(table, stage.name), {stale, total} = change;
+  const suspicious = Boolean(current.completed || current.previousCompleted) && suspiciousChange(change);
+  if (suspicious) { console.warn(`Refresh of ${stage.name} would remove ${stale} of ${total} items; keeping the previous data`); discardStage(table, stage.name); }
+  else commitStage(table, stage.name);
+  // Acquisition finished, but source gaps/conflicts are not a fully covered
+  // refresh. Keep a bounded, persisted repair record; retry on the existing
+  // stage refresh cadence, without increasing the public-server budgets.
+  const health = stageGeometryHealth(table, stage.name);
+  if (observed.status !== 'complete' || suspicious) health.status = 'incomplete';
+  const sourceIncomplete = suspicious || observed.status !== 'complete' || health.sourceStatus !== 'complete';
+  const sourceOutcome = {status: sourceIncomplete ? 'incomplete' : 'complete', retry: sourceIncomplete ? 'next-stage-refresh' : null,
+    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source'
+      : [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown) ? 'unresolved-source-relations'
+        : sourceIncomplete ? 'unresolved-source-geometry' : null};
+  const relationProblem = [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown);
+  current.geometry = {...health, sourceOutcome, observed, observedUnknown: observed.counts.unknown, observedUnknownRelations: observed.relationCounts.unknown, checked: now,
+    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source' : relationProblem ? 'unresolved-source-relations' : health.status === 'incomplete' ? 'unresolved-source-geometry' : null, attempts: (current.geometry?.attempts || 0) + 1,
+    retry: health.status === 'complete' ? null : 'next-stage-refresh'};
+  const declarations = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name));
+  const routes = declarations.filter(r => routeView(r).active !== false).length, retainedRelations = declarations.length;
+  finishStagePass(current, stage);
+  Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, retainedRelations, kept: suspicious ? stale : 0});
+  console.log(`Stage ${stage.name} acquisition complete (${health.status} geometry): ${routes} active routes (${retainedRelations} retained declarations; ${suspicious ? 0 : stale} items removed)`);
+}
+
+// Writes the table, its tiles, state and manifest for publication.
+async function publish({run, redeploy, source = api}) {
+  retireServiceEurope(state, table);
+  refreshRelationDependencyHealth(state, table, now);
+  await rm(out, {recursive: true, force: true});
+  await mkdir(out, {recursive: true});
+  await writeFile(new URL('service-routes.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
+  await writeFile(new URL('state.json', out), JSON.stringify(state));
+  const index = [];
+  let tileBytes = 0;
+  for (const [key, data] of buildTiles(table)) {
+    const [z, x] = key.split('/');
+    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
+    const gz = gzipSync(data, {level: 9});
+    tileBytes += gz.length;
+    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
+    index.push(key);
+  }
+  await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
+  const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+    stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
+      routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
+      retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
+    run, source,
+    query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
+    description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
+  await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
+  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${redeploy}\n`);
+  console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.routes}`).join(' ')}));
+}
+
+// Built from the stored railway-ways regions (build-railway-ways.mjs), when
+// given, instead of downloading: no Overpass request at all. A stage complete
+// in the store not yet taken goes through the same pass and completion as a
+// downloaded one.
+if (process.env.RAILWAY_WAYS_STORE) {
+  const store = process.env.RAILWAY_WAYS_STORE;
+  // Loaded only here: the download path needs none of it.
+  const [{storedRegions}, {serviceView}] = await Promise.all([import('./build-railway-ways.mjs'), import('./railway-ways.mjs')]);
+  const stored = JSON.parse(await readFile(join(store, 'state.json'), 'utf8')).stages || {};
+  const taken = name => stored[name]?.completed && info(name).storeCompleted !== stored[name].completed;
+  for (const stage of STAGES.filter(stage => taken(stage.name))) {
+    const current = info(stage.name);
+    current.started = stored[stage.name].completed;
+    discardStage(table, stage.name);
+  }
+  const applied = [];
+  for await (const region of storedRegions(store)) {
+    if (!taken(region.stage)) continue;
+    addResult(table, toTable(serviceView(region.response), {endpoint: 'railway-ways-data', acquired: region.generated, stage: region.stage,
+      pass: stored[region.stage].completed, query: createHash('sha256').update(region.query).digest('hex')}), region.stage);
+    if (!applied.includes(region.stage)) applied.push(region.stage);
+  }
+  for (const stage of STAGES.filter(stage => taken(stage.name))) {
+    const current = info(stage.name);
+    current.pending = [];
+    completeStage(stage, current);
+    Object.assign(current, {completed: stored[stage.name].completed, storeCompleted: stored[stage.name].completed, source: 'railway-ways'});
+  }
+  await publish({run: {source: 'railway-ways', stages: applied}, redeploy: applied.length > 0, source: 'railway-ways-data'});
+  process.exit(0);
+}
+
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -62,7 +161,6 @@ if (BUDGET_BYTES < 10_000_000) {
   process.exit(0);
 }
 // Resume unfinished stages fairly, retaining each stage's accepted data and queue.
-const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
 const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
 if (!stage) {
   console.log('Every stage is current; nothing to fetch.');
@@ -149,38 +247,8 @@ while (current.pending.length) {
   addResult(table, result, stage.name);
   console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
 }
-if (!current.pending.length) {
-  // A complete stage: what it found replaces its part, so routes and
-  // memberships it no longer found go (other stages' parts stay). A refresh
-  // that would remove over a fifth of the stage's items points to an
-  // incomplete response: it is dropped whole, the previous part stays, and
-  // the stage is tried again at its next refresh (the run's downloads are
-  // still recorded).
-  const observed = stageGeometryHealth(table, stage.name, {pending: true});
-  const change = stageChange(table, stage.name), {stale, total} = change;
-  const suspicious = Boolean(current.completed || current.previousCompleted) && suspiciousChange(change);
-  if (suspicious) { console.warn(`Refresh of ${stage.name} would remove ${stale} of ${total} items; keeping the previous data`); discardStage(table, stage.name); }
-  else commitStage(table, stage.name);
-  // Acquisition finished, but source gaps/conflicts are not a fully covered
-  // refresh. Keep a bounded, persisted repair record; retry on the existing
-  // stage refresh cadence, without increasing the public-server budgets.
-  const health = stageGeometryHealth(table, stage.name);
-  if (observed.status !== 'complete' || suspicious) health.status = 'incomplete';
-  const sourceIncomplete = suspicious || observed.status !== 'complete' || health.sourceStatus !== 'complete';
-  const sourceOutcome = {status: sourceIncomplete ? 'incomplete' : 'complete', retry: sourceIncomplete ? 'next-stage-refresh' : null,
-    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source'
-      : [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown) ? 'unresolved-source-relations'
-        : sourceIncomplete ? 'unresolved-source-geometry' : null};
-  const relationProblem = [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown);
-  current.geometry = {...health, sourceOutcome, observed, observedUnknown: observed.counts.unknown, observedUnknownRelations: observed.relationCounts.unknown, checked: now,
-    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source' : relationProblem ? 'unresolved-source-relations' : health.status === 'incomplete' ? 'unresolved-source-geometry' : null, attempts: (current.geometry?.attempts || 0) + 1,
-    retry: health.status === 'complete' ? null : 'next-stage-refresh'};
-  const declarations = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name));
-  const routes = declarations.filter(r => routeView(r).active !== false).length, retainedRelations = declarations.length;
-  finishStagePass(current, stage);
-  Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, retainedRelations, kept: suspicious ? stale : 0});
-  console.log(`Stage ${stage.name} acquisition complete (${health.status} geometry): ${routes} active routes (${retainedRelations} retained declarations; ${suspicious ? 0 : stale} items removed)`);
-} else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
+if (!current.pending.length) completeStage(stage, current);
+else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
 // published data as it was; bytes it did download are still recorded (the
 // state is published with the table unchanged, and the site not redeployed).
@@ -199,31 +267,5 @@ if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SU
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
-retireServiceEurope(state, table);
-refreshRelationDependencyHealth(state, table, now);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
-await rm(out, {recursive: true, force: true});
-await mkdir(out, {recursive: true});
-await writeFile(new URL('service-routes.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('state.json', out), JSON.stringify(state));
-const index = [];
-let tileBytes = 0;
-for (const [key, data] of buildTiles(table)) {
-  const [z, x] = key.split('/');
-  await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-  const gz = gzipSync(data, {level: 9});
-  tileBytes += gz.length;
-  await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-  index.push(key);
-}
-await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
-  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
-    routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
-    retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
-  run: {stage: stage.name, ...current.lastAttempt}, source: api,
-  query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
-  description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
-await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
-if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${fetchedBoxes > 0}\n`);
-console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.routes}`).join(' ')}));
+await publish({run: {stage: stage.name, ...current.lastAttempt}, redeploy: fetchedBoxes > 0});

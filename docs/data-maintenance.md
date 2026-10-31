@@ -192,6 +192,13 @@ regions return it; stages not yet in the store keep their lines; a stage that
 would lose over a fifth of its lines keeps them. Without the variable it
 downloads as before, which stays the fallback.
 
+Service routes can be built from the store too: with `RAILWAY_WAYS_STORE` set,
+`scripts/build-service-routes.mjs` makes no Overpass request. Each stage
+complete in the store and not yet taken (`storeCompleted` in its state) goes
+through the same pass and completion as a downloaded one (the route and way
+evidence, the 20% guard, geometry health), with the stored region's time and
+query as its provenance. Without the variable it downloads as before.
+
 ## Branch-line snapshot
 
 OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), and of metro lines (`railway=subway`, not service track), which the provider's tiles hold only from zoom 10, simplified to about 50 m, and publishes it with tiles to `branch-data` (branch lines at z4–6, metro lines at z7–9), one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge and train protection systems), so each view colours them as it colours the detailed tracks. The first three distinct protection systems occupy adjacent colour bands; the full recorded list remains available for inspection.
