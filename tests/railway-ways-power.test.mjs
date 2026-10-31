@@ -33,7 +33,7 @@ const quiet = {log: () => {}};
 
 test('power methods are built from a complete store, with every stage part covered', async t => {
   const root = await store(t, {split: true});
-  const {data, manifest} = await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), ...quiet});
+  const {data, manifest} = await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), ...quiet, stagesCoverWorld: true});
   assert.deepEqual(data.features.map(f => f.id), ['way-1']);
   assert.equal(manifest.partition, 'railway-ways-stages');
   assert.equal(manifest.requests, 0);
@@ -53,7 +53,17 @@ test('power methods are built from a complete store, with every stage part cover
 test('an incomplete store publishes nothing, so the download stays in use', async t => {
   const root = await store(t, {complete: false});
   const logs = [];
-  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' '))}), undefined);
+  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' ')), stagesCoverWorld: true}), undefined);
   await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
   assert.match(logs[0], /incomplete; not built from the store: world/);
+});
+
+test('while the stages leave parts of the world uncovered, a complete store is not used for power methods', async t => {
+  const root = await store(t);
+  const logs = [];
+  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' '))}), undefined);
+  await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
+  assert.match(logs[0], /do not cover the whole world/);
+  const {STAGES_COVER_WORLD} = await import('../scripts/download-stages.mjs');
+  assert.equal(STAGES_COVER_WORLD, false, 'Mauritius, Réunion and central Greenland are in no stage yet');
 });

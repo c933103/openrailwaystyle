@@ -18,9 +18,12 @@ export const buildPowerMethods=snapshot.build;
 // Built from the stored railway-ways regions (build-railway-ways.mjs) once
 // every stage is complete there: no Overpass request. Returns undefined, and
 // publishes nothing, while the store is incomplete.
-export async function buildPowerMethodsFromStore(store,{output=process.env.POWER_OUTPUT||'power-data',now=Date.now,log=console.log}={}) {
-  const [{readFile},{join},{STAGES},{storedRegions},{powerView}]=await Promise.all([import('node:fs/promises'),import('node:path'),
+export async function buildPowerMethodsFromStore(store,{output=process.env.POWER_OUTPUT||'power-data',now=Date.now,log=console.log,stagesCoverWorld}={}) {
+  const [{readFile},{join},{STAGES,STAGES_COVER_WORLD},{storedRegions},{powerView}]=await Promise.all([import('node:fs/promises'),import('node:path'),
     import('./download-stages.mjs'),import('./build-railway-ways.mjs'),import('./railway-ways.mjs')]);
+  // The download covers every world quadrant; the stages do not cover the
+  // whole world yet, so the store could not give a complete snapshot.
+  if(!(stagesCoverWorld??STAGES_COVER_WORLD)){log('The stages do not cover the whole world; power methods are downloaded instead of built from the store.');return undefined;}
   const stages=JSON.parse(await readFile(join(store,'state.json'),'utf8')).stages||{};
   const missing=STAGES.filter(stage=>!stages[stage.name]?.completed).map(stage=>stage.name);
   if(missing.length){log('Stored railway-ways regions incomplete; not built from the store:',missing.join(' '));return undefined;}

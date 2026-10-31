@@ -47,6 +47,12 @@ export const STAGES = [
     {box: [-35, -20, 37.5, 52], exclude: caucasus}, {box: [-50, 110, -11, 180]}, {box: [-50, -180, 0, -150]}]},
 ];
 
+// Whether the stages' parts cover the whole world. They do not yet: places
+// outside every part (Mauritius, Réunion, central Greenland, open sea) are in
+// no stage. A dataset that must be worldwide (power methods) is built from
+// the stored railway-ways regions only once this holds.
+export const STAGES_COVER_WORLD = false;
+
 // Give each unfinished stage a turn. A permanently busy or oversized region
 // must not monopolize all runs while later continents remain unqueried.
 // Last-attempt metadata is independent of completion and never clears queues.

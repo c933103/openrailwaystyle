@@ -253,7 +253,10 @@ stored merged responses (`scripts/railway-ways.mjs`) and makes no Overpass
 request. Its manifest then has `partition: "railway-ways-stages"` and one
 coverage leaf per stored region (`stage`, `part`, `bbox`); validation requires
 those leaves to tile every stage part's box exactly (quarters, at most six
-levels), in place of the world quadrants. While the store is incomplete, the
+levels), in place of the world quadrants. While the store is incomplete, or
+while the stages leave parts of the world uncovered (`STAGES_COVER_WORLD` in
+`scripts/download-stages.mjs`, false until the stages gain a region for places
+in no country stage, such as Mauritius, Réunion or central Greenland), the
 builder downloads as before.
 
 The query first collects bounded amenity/charge-point candidates, then applies
