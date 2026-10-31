@@ -112,9 +112,10 @@ test('aerialways are named like railways, in every view under the Names setting,
   assert.match(app,/style\.sources\.aerialways\.tiles = \[`aerialwaytiles:\/\/\{z\}\/\{x\}\/\{y\}\?lang=\$\{settings\.language\}`\]/,'names follow the chosen language');
 });
 
-test('the aerialway snapshot has its own bounded workflow; the site deploys without it, and only main publishes',()=>{
+test('the aerialway snapshot has its own bounded workflow; the site requires it, and only main publishes',()=>{
   const site=readFileSync(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
-  assert.match(site,/aerialway-data[\s\S]*echo '\{"tiles":\[\]\}' > styles\/data\/aerialways\/index\.json/);
+  assert.match(site,/node scripts\/validate-aerialway-snapshot\.mjs styles\/data\/aerialways/);
+  assert.doesNotMatch(site,/echo .* > styles\/data\/aerialways\/index\.json/);
   const workflow=readFileSync(new URL('../.github/workflows/aerialways.yml',import.meta.url),'utf8');
   assert.match(workflow,/run: node scripts\/build-aerialways\.mjs/);
   assert.match(workflow,/Publish complete data snapshot\n\s+# Only main publishes the shared snapshot\.\n\s+if: github\.ref == 'refs\/heads\/main'/);

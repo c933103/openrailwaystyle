@@ -350,3 +350,15 @@ Run `node scripts/build-power-facilities.mjs` and `node scripts/build-signals.mj
 for local maintenance. These builders use the public Overpass service; map
 visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
 for the tag rules and primary references.
+
+### Required aerialway snapshot at deployment
+
+Aerialway geometry comes only from `aerialway-data`. The site build must fetch
+that branch and validate its manifest, nonempty unique tile index and every
+indexed compressed vector tile before publishing. Missing branches, failed
+fetches, empty indexes and missing/corrupt tiles fail the build; they are not
+replaced with an empty snapshot. This preserves the last successful deployment
+when refresh data is unavailable. A new fork must publish its first valid
+snapshot before deploying. The existing 5,000-feature acquisition floor and
+zoom-12 contract are unchanged. This structural check does not claim complete
+worldwide OSM coverage or freshness, and does not start a new extraction.
