@@ -373,7 +373,20 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
      'tilt beyond 65° enables coarser horizon tiles for all sources');
    assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
      '3D DEM uses a stronger distant-tile LOD budget');
+   // Mock the intermediate frames of MapLibre's 750 ms exit animation.
+   // They must not reselect 3D merely because their pitch remains nonzero.
+   const nativeEase=map.easeTo.bind(map);
+   map.easeTo=options=>{
+     if(options.pitch!==0)return nativeEase(options);
+     map.lastEase=options;
+     for(const pitch of [70,35,0]){
+       map.setPitch(pitch);
+       assert.equal(map.getTerrain(),null,`2D remains selected during exit at ${pitch}°`);
+       assert.equal(button.getAttribute('aria-pressed'),'false');
+     }
+   };
    button.click();
+   map.easeTo=nativeEase;
    assert.equal(map.lastEase.pitch,0);
    assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
    assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
@@ -388,6 +401,32 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
    assert.equal(errors.length,1,'the synthetic tile error must also be logged');
    assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('an interrupted explicit switch to 2D does not lock out later intentional 3D tilt',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(80);
+   map.easeTo=options=>{
+     assert.equal(options.pitch,0);
+     map.setPitch(45);
+     assert.equal(map.getTerrain(),null,'interrupted exit remains 2D');
+     map.handlers.moveend();
+   };
+   button.click();
+   assert.equal(map.getTerrain(),null,'the explicit 2D transition remains selected');
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d',
+     'a later user tilt can select 3D after an interrupted exit');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','returning overhead retains new 3D mode');
+   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
 
