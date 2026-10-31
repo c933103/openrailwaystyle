@@ -131,6 +131,25 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
 // outlasts the retries fails: smaller queries would only add requests to a
 // limit that applies to the whole endpoint. Anything else (a
 // rejected query, the download budget, a local error) fails the run.
+// The regions to fetch: those the previous complete snapshot covered (its
+// manifest's coverage), so a region once split for exceeding the server's
+// limits is asked for in its parts, not whole again every month. Coverage
+// that does not tile the world exactly falls back to the 45-degree grid.
+export function heritageRegions(previousCoverage) {
+  const grid = [];
+  for (let south = -90; south < 90; south += 45) for (let west = -180; west < 180; west += 45) grid.push([south, west, south + 45, west + 45]);
+  const boxes = Array.isArray(previousCoverage) ? previousCoverage.map(row => row?.bbox) : [];
+  const valid = box => Array.isArray(box) && box.length === 4 && box.every(Number.isFinite)
+    && box[0] >= -90 && box[2] <= 90 && box[1] >= -180 && box[3] <= 180 && box[0] < box[2] && box[1] < box[3];
+  const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+  if (!boxes.length || boxes.length > 4096 || !boxes.every(valid)) return grid;
+  for (let i = 0; i < boxes.length; i++) for (let j = 0; j < i; j++) if (overlaps(boxes[i], boxes[j])) return grid;
+  if (Math.abs(boxes.reduce((sum, [s, w, n, e]) => sum + (n - s) * (e - w), 0) - 360 * 180) > 1e-7) return grid;
+  return boxes.map(box => [...box]);
+}
+// A region's split depth below the 45-degree grid.
+export const heritageDepth = ([, west, , east]) => Math.max(0, Math.round(Math.log2(45 / (east - west))));
+
 export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
 export function heritageFailure(failure, attempt, depth, maxDepth = 6) {
   const message = typeof failure === 'string' ? failure : failure.message;
