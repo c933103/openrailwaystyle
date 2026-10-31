@@ -29,7 +29,12 @@ export async function buildSignals({
   let requests = 0, downloaded = 0;
   await mkdir(cacheRoot, {recursive: true});
   const read = async name => { try { return JSON.parse(await readFile(new URL(name, cacheRoot), 'utf8')); } catch { return undefined; } };
-  const fresh = (saved, query) => saved?.query === query && now() - Date.parse(saved.generated) < AGE;
+  // Both projections must accept a response before it is saved or reused, so
+  // a malformed response is never checkpointed and a bad cached one is
+  // fetched again instead of blocking every later build.
+  const valid = elements => { signalFeatures({elements}); electricitySignalsGeoJSON({elements}); return elements; };
+  const usable = saved => { if (saved.split) return true; try { valid(saved.response?.elements); return true; } catch { return false; } };
+  const fresh = (saved, query) => saved?.query === query && now() - Date.parse(saved.generated) < AGE && usable(saved);
 
   async function fetchJson(query) {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -65,6 +70,7 @@ export async function buildSignals({
     if (fresh(saved, query)) return saved.split ? split() : saved.response.elements;
     try {
       const response = await fetchJson(query);
+      valid(response.elements);
       await writeFile(new URL(file, cacheRoot), JSON.stringify({query, generated: new Date(now()).toISOString(), response}));
       return response.elements;
     } catch (error) {
@@ -100,6 +106,7 @@ export async function buildSignals({
     }
     try {
       const response = await fetchJson(combinedQuery);
+      valid(response.elements);
       // Retain each completed region immediately: a stopped run resumes
       // without querying it again or publishing a partial map.
       await writeFile(new URL(combinedFile, cacheRoot), JSON.stringify({query: combinedQuery, generated: new Date(now()).toISOString(), response}));

@@ -101,6 +101,24 @@ test('a region that times out is split into quarters that still partition the wo
   assert.equal(result.electricity.features, 1);
 });
 
+test('a malformed response is never checkpointed, and a malformed cached one is fetched again', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const broken = {...ELECTRIC, lat: undefined};
+  const bad = fakeOverpass(query => ({elements: box(query) === HOME ? [UNDIRECTED, broken] : []}));
+  await assert.rejects(buildSignals({...d, ...quiet, fetcher: bad.fetcher}), /Incomplete/);
+  const good = fakeOverpass(query => ({elements: box(query) === HOME ? [UNDIRECTED, ELECTRIC] : []}));
+  await buildSignals({...d, ...quiet, fetcher: good.fetcher});
+  assert.ok(good.queries.some(q => q.includes(`(${HOME})`)), 'the region is requested again rather than read from a bad checkpoint');
+  // A malformed response cached before the downloads were combined is not reused.
+  const home = HOME.split(',').map(Number);
+  await rm(d.cacheRoot, {recursive: true, force: true});
+  await (await import('node:fs/promises')).mkdir(d.cacheRoot, {recursive: true});
+  await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({query: signalQuery(home), generated: '2026-10-25T00:00:00Z', response: {elements: [broken]}}));
+  const again = fakeOverpass(query => ({elements: box(query) === HOME ? [UNDIRECTED, ELECTRIC] : []}));
+  await buildSignals({...d, ...quiet, fetcher: again.fetcher});
+  assert.ok(again.queries.includes(combinedSignalQuery(home)));
+});
+
 test('a region that keeps failing publishes neither snapshot', async t => {
   const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
   const {fetcher} = fakeOverpass(query => box(query) === HOME ? {status: 502} : {elements: [ELECTRIC]});
