@@ -128,6 +128,29 @@ for (const pipeline of pipelines) {
       assert.deepEqual(result.saved.stages.japan.pending, [queue[1]]);
     }));
   }
+  test(`${pipeline.name} acquisition: a refresh starts from the regions the last complete pass fetched, never repeating a split request`, async () => fixture(pipeline, async run => {
+    const fresh = {version: pipeline.version, downloadStages: 3, runs: [],
+      stages: {...Object.fromEntries(STAGES.map(stage => [stage.name, {completed: new Date().toISOString(), pending: null, seen: []}])), japan: {completed: '2000-01-01T00:00:00Z', pending: null, seen: []}}};
+    const timedOut = {status: 504, text: 'runtime error: Query timed out in "query" at line 1 after 180 seconds.'};
+    const first = await run([timedOut, {body}, {body}, {body}, {body}], {state: fresh});
+    assert.equal(first.attempt.splitBoxes, 1); assert.equal(first.attempt.fetchedBoxes, 4); assert.equal(first.attempt.status, 'acquired');
+    assert.deepEqual(first.saved.stages.japan.leaves.regions, quarters(part.box).map(box => ({part: 0, box, depth: 1})), 'the fetched quarters are recorded');
+    const state = structuredClone(first.saved);
+    state.stages.japan.completed = '2000-01-01T00:00:00Z'; state.runs = [];
+    const again = await run([{body}, {body}, {body}, {body}], {state, previous: first.table});
+    assert.equal(again.requests.length, 4); assert.equal(again.attempt.splitBoxes, 0); assert.equal(again.attempt.status, 'acquired');
+    assert.deepEqual(again.requests.map(item => item.query), first.requests.slice(1).map(item => item.query), 'the next pass asks for the quarters directly');
+    assert.ok(!again.requests.some(item => item.query === first.requests[0].query), 'the request that timed out is not repeated');
+    // Changed stage parts (another layout) start from the parts again.
+    const moved = structuredClone(state); moved.stages.japan.leaves.key = '[]';
+    const reset = await run([{body}], {state: moved, previous: first.table});
+    assert.equal(reset.requests[0].query, first.requests[0].query);
+  }));
+  test(`${pipeline.name} acquisition: a pass begun before regions were recorded records none`, async () => fixture(pipeline, async run => {
+    const result = await run([{body}, {body}]);
+    assert.equal(result.attempt.status, 'acquired');
+    assert.equal(result.saved.stages.japan.leaves, undefined, 'its earlier regions are unknown, so the next pass starts from the parts');
+  }));
   test(`${pipeline.name} acquisition: an oversized response after progress defers the remaining region`, async () => fixture(pipeline, async run => {
     const result = await run([{body}, {body, bytes: 20_000_001}]);
     assert.equal(result.attempt.splitBoxes, 0); assert.equal(result.attempt.fetchedBoxes, 1);

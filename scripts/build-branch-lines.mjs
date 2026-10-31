@@ -12,7 +12,7 @@ import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
-import {selectDownloadStage} from './download-stages.mjs';
+import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -62,7 +62,7 @@ if (!stage) {
   process.exit(0);
 }
 const current = info(stage.name);
-if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; }
+if (!current.pending?.length) { startStagePass(current, stage); current.seen = []; current.started = now; }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 
 const BUDGET = Symbol('budget');
@@ -130,6 +130,7 @@ while (current.pending.length) {
     continue;
   }
   fetchedBoxes++;
+  recordStageRegion(current, item);
   for (const feature of features) {
     // A line keeps the stage that first fetched it (stages overlap at edges).
     const owner = branchStageOwner(table.get(feature.id)?.stage, stage.name);
@@ -149,6 +150,7 @@ if (!current.pending.length) {
   const suspicious = (current.completed || current.previousCompleted) && before > 100 && stale.length > before * 0.2;
   if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${before} lines; keeping them`);
   else for (const f of stale) table.delete(f.id);
+  finishStagePass(current, stage);
   Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], lines: before - (suspicious ? 0 : stale.length), ...(suspicious ? {kept: stale.length} : {kept: 0})});
   console.log(`Stage ${stage.name} complete: ${current.lines} lines (${suspicious ? 0 : stale.length} removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);

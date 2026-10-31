@@ -116,3 +116,24 @@ test('next worldwide refresh is fresh and cannot erase an immutable published ge
  assert.equal(records.length,1,'last complete generation remains immutable in memory');
  assert.deepEqual(complete.pending,[]);
 });
+
+test('the next cycle asks for the regions the last one fetched, so a split region is not requested whole again',()=>{
+ let state=newStationAcquisition();
+ const first=state.pending[0].box;
+ state=postponeStationRegion(state,first);
+ state=postponeStationRegion(state,state.pending[0].box);
+ const leaves=state.pending.slice(0,7).map(r=>({...r}));
+ // Every pending region completes, in order.
+ while(state.pending.length)state=applyStationRegion(state,[],state.pending[0].box,{elements:[]}).state;
+ const next=nextStationAcquisitionCycle(state,[]).state;
+ assert.equal(next.pending.length,32-1+3+4,'two splits: one base region became seven regions');
+ assert.deepEqual(next.pending.slice(0,7),leaves,'split regions keep their boxes and depth');
+ assert.ok(!next.pending.some(r=>JSON.stringify(r.box)===JSON.stringify(first)),'the split base region is not asked again');
+ assert.deepEqual(next.completed,[]);
+ assert.equal(checkStationAcquisition(next,[]),true);
+ // A deeper split still stops at the depth limit.
+ assert.throws(()=>postponeStationRegion(next,next.pending[0].box,{maxDepth:2}),/after 2 splits/);
+ // Regions recorded before depths were stored get theirs from their size.
+ const legacy={...state,completed:state.completed.map(({depth,...r})=>r)};
+ assert.deepEqual(nextStationAcquisitionCycle(legacy,[]).state.pending.slice(0,7),leaves);
+});

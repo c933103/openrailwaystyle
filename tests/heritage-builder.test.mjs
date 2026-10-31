@@ -33,7 +33,7 @@ const response = (status, body) => new Response(typeof body === 'string' ? body 
 
 // Evaluate the unchanged executable, linking its real classifier/geometry/tile
 // modules. Only external effects (fetch, time, filesystem root) are controlled.
-async function run(t, reply, {writeError, byteLength} = {}) {
+async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}) {
   const root = await fs.mkdtemp(join(tmpdir(), 'heritage-builder-'));
   t.after(() => fs.rm(root, {recursive:true, force:true}));
   await fs.mkdir(join(root, '.snapshot-cache'));
@@ -42,6 +42,7 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     if (String(box) === String(parent)) continue;
     await fs.writeFile(join(root, `.snapshot-cache/heritage-v2-${box.join('_')}.json`), JSON.stringify({query:heritage.heritageQuery(box), response:empty}));
   }
+  for (const [path, data] of Object.entries(files)) await fs.writeFile(join(root, path), data);
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
@@ -57,7 +58,7 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     },
   };
   const context = vm.createContext({
-    process:{env:{}}, URLSearchParams,
+    process:{env}, URLSearchParams,
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
     setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
@@ -233,4 +234,34 @@ test('builder accumulates download bytes across failed attempts', async t => {
   const result = await run(t, () => response(504, 'Gateway timeout'), {byteLength:() => 750_000_001});
   await checkUnpublished(result, /download budget exceeded/, 2);
   assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'fail']);
+});
+
+const quarters = ([s, w, n, e]) => { const a = (s + n) / 2, b = (w + e) / 2; return [[s, w, a, b], [s, b, a, e], [a, w, n, b], [a, b, n, e]]; };
+const grid = heritage.heritageRegions();
+const splitCoverage = grid.flatMap(box => String(box) === String(parent) ? quarters(box) : [box]).map(bbox => ({bbox, timestamp:null, features:0}));
+
+test('regions come from the previous snapshot coverage when it tiles the world, else the 45-degree grid', () => {
+  assert.equal(grid.length, 32);
+  assert.deepEqual(heritage.heritageRegions(splitCoverage), splitCoverage.map(row => row.bbox));
+  assert.deepEqual(heritage.heritageRegions(splitCoverage.slice(1)), grid, 'a gap');
+  assert.deepEqual(heritage.heritageRegions([...splitCoverage, {bbox:parent}]), grid, 'an overlap');
+  assert.deepEqual(heritage.heritageRegions([{bbox:[0, 0, 'x', 1]}]), grid);
+  assert.deepEqual(heritage.heritageRegions(undefined), grid);
+  assert.deepEqual([parent, quarters(parent)[0], quarters(quarters(parent)[0])[3]].map(heritage.heritageDepth), [0, 1, 2]);
+});
+
+test('builder asks for a region split last month in its parts, never the whole region again', async t => {
+  const previous = JSON.stringify({coverage:splitCoverage});
+  const result = await run(t, () => response(200, complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  await checkPublished(result);
+  assert.deepEqual(result.calls, quarters(parent).map(heritage.heritageQuery), 'only the four uncached parts are requested');
+  // The split depth carries over: one more split level is left before the limit of six.
+  const deep = await run(t, query => response(504, timeout), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  assert.ok(deep.error);
+  assert.ok(deep.decisions.every(item => item.depth >= 1), 'parts start at their own depth');
+  // An unreadable snapshot falls back to the grid with a warning.
+  const missing = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? timeout : complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'absent.json'}});
+  await checkPublished(missing);
+  assert.equal(missing.calls[0], parentQuery);
+  assert.ok(missing.warnings.some(line => /unreadable/.test(line)));
 });

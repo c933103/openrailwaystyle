@@ -59,6 +59,26 @@ export function selectDownloadStage(state, {now = Date.now(), refreshDays = 14} 
   return now - time(state.stages[oldest.name].completed) >= refreshDays * 86400_000 ? oldest : null;
 }
 
+// A region too large for one request is split into quarters. The regions a
+// complete pass fetched are recorded with the stage, and the next pass of
+// the same parts starts from them, so a refresh never repeats a request
+// already known to exceed the server's limits. A pass that began before
+// regions were recorded (no `fetched` list) records nothing.
+const partsKey = stage => JSON.stringify(stage.parts);
+export function startStagePass(current, stage) {
+  const recorded = current.leaves?.key === partsKey(stage) && current.leaves.regions?.length ? current.leaves.regions : null;
+  current.pending = recorded ? recorded.map(region => ({...region, box: [...region.box]}))
+    : stage.parts.map((part, index) => ({part: index, box: part.box}));
+  current.fetched = [];
+}
+export function recordStageRegion(current, item) {
+  current.fetched?.push({part: item.part, box: item.box, ...(item.depth ? {depth: item.depth} : {})});
+}
+export function finishStagePass(current, stage) {
+  if (Array.isArray(current.fetched)) current.leaves = {key: partsKey(stage), regions: current.fetched};
+  current.fetched = null;
+}
+
 // Country filters must survive automatic subdivision. Use the
 // same selection construction for railway ways and urban route relations.
 export function partSelection(part, box, select) {

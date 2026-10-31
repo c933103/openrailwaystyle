@@ -61,8 +61,14 @@ export function stationWorldCoverage(completed){
    if(overlaps(boxes[i],boxes[j]))return false;
  return Math.abs(boxes.reduce((s,b)=>s+area(b),0)-FULL_WORLD_AREA)<1e-7;
 }
-export function newStationAcquisition(){
- return {schema:REGION_SCHEMA,pending:stationBaseRegions().map(box=>({box,depth:0})),completed:[],
+// A region's split depth below the 45-degree base regions.
+const regionDepth=r=>Number.isInteger(r.depth)?r.depth:Math.max(0,Math.round(Math.log2(45/(r.box[3]-r.box[1]))));
+// With the regions a complete cycle fetched, the next cycle asks for those
+// regions: a region once split for exceeding the server's limits stays split
+// instead of being requested whole again every cycle.
+export function newStationAcquisition(regions){
+ const start=regions?.length?regions.map(r=>({box:[...r.box],depth:regionDepth(r)})):stationBaseRegions().map(box=>({box,depth:0}));
+ return {schema:REGION_SCHEMA,pending:start,completed:[],
    fetchedBytes:0,started:new Date().toISOString(),lastUpdate:null};
 }
 // One entire verified source generation is immutable to map readers.
@@ -72,7 +78,7 @@ export function nextStationAcquisitionCycle(state,records){
  checkStationAcquisition(state,records);
  if(state.pending.length)return {state,records,refreshed:false};
  if(!stationWorldCoverage(state.completed))throw new Error('Cannot refresh incomplete station inventory');
- return {state:newStationAcquisition(),records:[],refreshed:true};
+ return {state:newStationAcquisition(state.completed),records:[],refreshed:true};
 }
 export function checkStationAcquisition(state,records){
  if(!state||state.schema!==REGION_SCHEMA||!Array.isArray(state.pending)||
@@ -127,7 +133,7 @@ export function applyStationRegion(state,records,region,json){
  }
  if(byId.size>MAX_STATION_RECORDS)throw new Error('Station inventory over configured limit');
  const updated={...state,pending:state.pending.slice(1),
-   completed:[...state.completed,{box:region,at:new Date().toISOString(),count:additions.length}],
+   completed:[...state.completed,{box:region,depth:first.depth,at:new Date().toISOString(),count:additions.length}],
    lastUpdate:new Date().toISOString()};
  const nextRows=[...byId.values()].sort((a,b)=>a.id.localeCompare(b.id));
  checkStationAcquisition(updated,nextRows);
