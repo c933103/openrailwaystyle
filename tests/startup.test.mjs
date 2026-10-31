@@ -294,7 +294,7 @@ for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 
   } finally {maps[0]?.handlers.remove?.();dom.window.close();}
 });
 
-test('pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests', async () => {
+test('pitch activates 3D terrain and overhead preserves mode until explicitly disabled', async () => {
   const {dom,window,maps,errors}=await start();
   try {
     const map=maps[0];
@@ -330,7 +330,7 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     relief.click();
     assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
     assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
-    assert.match(button.getAttribute('aria-label'),/Overhead map/);
+    assert.match(button.getAttribute('aria-label'),/Switch to 2D map/);
     map.setPitch(0);
     assert.equal(map.getTerrain()?.source,'terrain3d','overhead camera must not switch out of selected 3D');
     assert.equal(button.getAttribute('aria-pressed'),'true','3D icon stays selected at zero pitch');
