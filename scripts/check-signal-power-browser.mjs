@@ -11,6 +11,7 @@ import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
 import {conveyingGeoJSON,aerialwaysGeoJSON} from './conveying-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
@@ -63,6 +64,14 @@ const methods=powerMethodsGeoJSON({elements:[
   {type:'way',id:9425,tags:{railway:'narrow_gauge',traction:'rack',electrified:'no'},geometry:[{lon:-.0002,lat:-.001},{lon:.0016,lat:-.001}]},
   {type:'way',id:9426,tags:{railway:'funicular',traction:'cable'},geometry:[{lon:-.0002,lat:-.0011},{lon:.0016,lat:-.0011}]},
   {type:'way',id:9427,tags:{railway:'tram',electrified:'ground-level_power_supply'},geometry:[{lon:-.0002,lat:.00112},{lon:.0016,lat:.00112}]},
+]});
+// Electrification signals by tag, whatever the national value: a French end of
+// catenary sign the provider catalogue lacks, a German El 2, and a deactivated
+// one that follows the planned/former setting.
+const electricitySignals=electricitySignalsGeoJSON({elements:[
+  {type:'node',id:9460,lon:.0004,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'FR:end_of_catenary','railway:signal:electricity:type':'end_of_catenary','railway:signal:electricity:form':'sign'}},
+  {type:'node',id:9461,lon:.0011,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el2','railway:signal:electricity:type':'power_on',ref:'E7'}},
+  {type:'node',id:9462,lon:.0007,lat:-.001,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el1','railway:signal:electricity:deactivated':'yes'}},
 ]});
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
@@ -127,7 +136,7 @@ await mkdir('browser-review',{recursive:true});
 try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:2,serviceWorkers:'block'});setDefaultTimeout(page,60000);
   await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
-  const errors=[];let supplyRequests=0;page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];let supplyRequests=0,signalRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
@@ -139,6 +148,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson')){await route.fulfill({json:methods});return;}
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/electricity-signals.geojson')){signalRequests++;await route.fulfill({json:electricitySignals});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
     const [,folder,file]=match,snapshot=snapshotIndexes[folder];
@@ -342,6 +352,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/aerialway-owner-${kind}.png`});
     assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
+    assert.equal(signalRequests,0,'electrification signals are deferred until Power view');
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
@@ -365,6 +376,20 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
     await closeControls();
     await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
+    await visible('electrification-signal-points');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-signal-points']}).map(f=>f.properties.osm_id))].sort()),['9460','9461'],'a deactivated signal follows the planned/former setting');
+    for(const [coordinates,id,title,value] of [[[.0004,.00115],'9460','End of catenary','FR:end_of_catenary'],[[.0011,.00115],'9461','Signal E7','DE-ESO:el2']]) {
+      await clickCoordinates(coordinates);await page.waitForSelector('#details:not([hidden])');
+      assert.match(await page.locator('#detail-content').innerText(),/ELECTRIFICATION SIGNAL/);
+      assert.equal(await page.locator('#detail-content h2').innerText(),title);
+      const rows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
+      assert.equal(rows.Signal,value);
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`).count(),1);
+      if(id==='9460')await page.locator('#details').screenshot({path:`browser-review/power-electricity-signal-details-${kind}.png`});
+      await page.locator('#details-close').click();
+    }
+    const dotSample=await page.evaluate(()=>{const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Electrification signal');return row&&{dot:row.firstElementChild.classList.contains('dot-swatch'),hidden:row.firstElementChild.getAttribute('aria-hidden')};});
+    assert.deepEqual(dotSample,{dot:true,hidden:'true'},'the legend shows electrification signals as a dot sample');
     await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
     await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();
     await clickCoordinates([.00095,-.0005]);assert.match(await page.locator('#detail-content').innerText(),/Catenary mast/);assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/node/9410"]').count(),1);await page.locator('#details-close').click();
@@ -390,13 +415,13 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openControls();await page.locator('#about-open').click();
     const powerHelp=await page.locator('#help-power').innerText();
-    for(const label of ['drawn as they are mapped','outlines for areas, small dots for points','coaling stages, water towers'])assert.ok(powerHelp.includes(label));
+    for(const label of ['drawn as they are mapped','outlines for areas, small dots for points','coaling stages, water towers','electrification signals'])assert.ok(powerHelp.includes(label));
     assert.match(powerHelp,/whole electricity grid.*not yet/);
     await page.locator('#help-power').scrollIntoViewIfNeeded();
     await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
     await page.locator('#about-close').click();await closeControls();
     await openSettings();await page.locator('#inactive').check();
-    await visible('electrification-former-supply-points');
+    await visible('electrification-former-supply-points');await visible('electrification-former-signal-points');
     await closeControls();await clickCoordinates([.00105,.00073]);
     assert.match(await page.locator('#detail-content').innerText(),/Railway water tower/);
     assert.doesNotMatch(await page.locator('#detail-content').innerText(),/Steam locomotive water tower/);
@@ -414,7 +439,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await openSettings();await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>['infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')&&window.reviewMap.getLayoutProperty('infrastructure-signal-points','visibility')==='visible'));
     await page.locator('#labels').check();
-    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');await powerLegend(false);
+    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');assert.equal(signalRequests,1,'electrification signals are downloaded once');await powerLegend(false);
     await mode('control');await closeControls();
     console.log(`CHECK: ${kind} energy supplies passed; checking overview control bands`);
     await jump([0,0],5);console.log(`CHECK: ${kind} moved to overview`);await sharedBands('control-overview');await sharedBands('control-branch-overview');

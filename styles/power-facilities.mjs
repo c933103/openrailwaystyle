@@ -19,6 +19,9 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
+// Electrification signals: small amber dots with a dark outline, distinct from
+// the neutral facility dots.
+export const ELECTRICITY_SIGNAL_STYLE = Object.freeze({color:'#e0a21a', stroke:'#5c3d00', paper:'#fffef8'});
 // Means of power delivery and traction drawn beside or along a track. The
 // map layers and legend samples share this table. A fourth-rail track has
 // conductor rails on both sides. Overhead contact line is the track colour.
@@ -44,7 +47,8 @@ export const POWER_FACILITY_LEGEND = Object.freeze([
 // Storage and generation are evidence about a supply, not proof of servicing.
 export const POWER_FACILITY_LIMITS = `Railway power and servicing facilities (substations, power stations, converters, refuelling and charging points, coaling stages, water towers, tanks and cranes) are drawn as they are mapped: outlines for areas, small dots for points. Hover or select one for what it is, its name and supplies. Tanks show mapped railway storage; storage alone does not establish a train servicing point. Dashed, faint shapes are planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing facilities do not establish an absence of supplies; mapped facilities do not establish current availability.`;
 export const POWER_METHOD_NOTE = `Track strokes: overhead contact line is the track colour alone; ${POWER_METHOD_STROKES.map(({label})=>label).join('; ')}.`;
-export const POWER_FACILITY_EXPLANATION = `${POWER_METHOD_NOTE} ${POWER_FACILITY_LIMITS}`;
+export const ELECTRICITY_SIGNAL_NOTE = `Small amber dots with a dark outline are electrification signals, such as lower pantograph, main switch off and end of catenary, wherever a signal records railway:signal:electricity; they show mapped locations, not live aspects.`;
+export const POWER_FACILITY_EXPLANATION = `${POWER_METHOD_NOTE} ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS}`;
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','charging_station']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -104,6 +108,21 @@ export function powerFacilityName(properties = {}) {
   const steam=['',...STATES.map(state=>`${state}:`)].some(prefix=>has(properties[`${prefix}railway`],['water_tower','water_tank','water_crane']));
   if (['water_tower','water_tank'].includes(kind) && storage && !steam) return kind==='water_tower'?'Railway water tower':'Railway water tank';
   return POWER_FACILITY_KINDS[kind]?.label || (!properties.power_kind && properties.power === 'substation' ? 'Traction substation' : 'Railway energy supply');
+}
+
+// Electrification signal details: the recorded signal value and its
+// electricity attributes. A marker is a mapped location, not a live aspect.
+export function electricitySignalRows(properties = {}) {
+  const p=properties,human=value=>value==null||String(value).trim()===''?undefined:String(value).replaceAll('_',' ');
+  return [
+    ['Signal',p['railway:signal:electricity']],['Function',human(p['railway:signal:electricity:type'])],
+    ['Form',human(p['railway:signal:electricity:form'])],['Applies to',human(p['railway:signal:electricity:for'])],
+    ['Turn direction',human(p['railway:signal:electricity:turn_direction'])],
+    ['Voltage',p['railway:signal:electricity:voltage']],
+    ['Frequency',p['railway:signal:electricity:frequency']?`${p['railway:signal:electricity:frequency']} Hz`:undefined],
+    ['Status',p.power_state==='deactivated'?'Deactivated':undefined],['Reference',p.ref],
+    ['Facing',human(p['railway:signal:direction'])],
+  ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 
 // Keep independent source attributes independent. A generating source (solar,

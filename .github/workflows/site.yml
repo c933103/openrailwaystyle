@@ -425,6 +425,15 @@ jobs:
             assert.ok(methods!==null && methodData!==null,'Incomplete power-method files');
             validatePowerMethodsSnapshot(JSON.parse(methodData),JSON.parse(methods));
           }
+          // Electrification signals arrive with the first snapshot built after
+          // they were added; once either file exists, require both, complete.
+          const signals=await readOptional('styles/data/traction/power/electricity-signals-manifest.json');
+          const signalData=await readOptional('styles/data/traction/power/electricity-signals.geojson');
+          if(signals!==null || signalData!==null) {
+            const {validateElectricitySignalsSnapshot}=await import('./scripts/build-electricity-signals.mjs');
+            assert.ok(signals!==null && signalData!==null,'Incomplete electricity-signal files');
+            validateElectricitySignalsSnapshot(JSON.parse(signalData),JSON.parse(signals));
+          }
           JS
       # The code tree and a digest of the assembled data: a pull request
       # records it when its checks pass, and main skips the browser checks
