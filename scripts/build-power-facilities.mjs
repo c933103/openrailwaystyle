@@ -2,7 +2,7 @@
 // snapshot. Visitors fetch the published GeoJSON rather than querying Overpass.
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
+import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
 import {overpassRetryDelayMs,overpassBusy,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -32,8 +32,7 @@ async function collect(box,depth=0) {
   let split=false,cachedSplit=false;
   if (!json) {
     try {
-      const info=await stat(splitFile),saved=JSON.parse(await readFile(splitFile,'utf8'));
-      split=cachedSplit=powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
+      split=cachedSplit=powerFacilitySplitAccepted(query,JSON.parse(await readFile(splitFile,'utf8')));
     } catch {}
     // A busy server waits minutes (overpassRetryDelayMs); other retries keep
     // the short pause. Completed regions are cached, so a later run resumes.
