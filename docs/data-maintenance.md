@@ -362,9 +362,10 @@ partial/error Overpass responses are rejected. Complete raw regions are kept
 for retries. The site workflow validates both manifests before copying
 `power/` and `signals/` under `styles/data/traction/`.
 
-Run `node scripts/build-power-facilities.mjs`, `node scripts/build-power-methods.mjs`,
-`node scripts/build-electricity-signals.mjs` and `node scripts/build-signals.mjs`
-for local maintenance. These builders use the public Overpass service; map
+Run `node scripts/build-power-facilities.mjs`, `node scripts/build-power-methods.mjs`
+and `node scripts/build-signals.mjs` (which also builds the electrification
+signals; `node scripts/build-electricity-signals.mjs` builds those alone, as a
+fallback) for local maintenance. These builders use the public Overpass service; map
 visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
 for the tag rules and primary references.
 

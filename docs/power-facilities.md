@@ -118,9 +118,14 @@ planned/former setting. Selecting a dot shows the recorded signal value,
 function, form, applicability, turn direction, voltage, frequency and facing
 direction. A dot is a mapped location, not a live aspect.
 
-`scripts/build-electricity-signals.mjs` collects the signals worldwide with the
-staged acquisition, retry, budget and publication checks shared with the
-conductor-rail supplement (`scripts/staged-overpass.mjs`).
+`scripts/build-signals.mjs` collects them worldwide in the same request per
+region as the signals without a direction (one download of `railway=signal`
+nodes for both: signals without a direction, plus electrification signals with
+one), and publishes them with the validation and digest-bearing manifest shared
+with the conductor-rail supplement (`scripts/staged-overpass.mjs`). Regions
+answered before the two downloads were combined are reused and only fetch the
+electrification signals that have a direction. `scripts/build-electricity-signals.mjs`
+still builds the snapshot on its own, as a manual fallback.
 `traction-facilities.yml` publishes `power/electricity-signals.geojson` with its
 digest-bearing manifest; site assembly accepts snapshots made before this file
 existed and validates it once present.
