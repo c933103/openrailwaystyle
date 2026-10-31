@@ -94,7 +94,7 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels,
 // Clipped edges of the vector tile are not shorelines.
 export function oceanAt(polygons, px, py, margin = 1) {
   if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
-  let boundary = false;
+  let boundary = false, insideAny = false;
   for (const polygon of polygons) {
     const scale = TILE / polygon.extent;
     if (!Number.isFinite(scale) || scale <= 0) return null;
@@ -115,9 +115,9 @@ export function oceanAt(polygons, px, py, margin = 1) {
       if (inRing) inside = !inside;
     }
     if (ambiguous) boundary = true;
-    else if (inside) return true;
+    else if (inside) insideAny = true;
   }
-  return boundary ? null : false;
+  return boundary ? null : insideAny;
 }
 
 // The fine Mapzen DEM loses bathymetry above z10. Classify genuine ocean
@@ -134,10 +134,18 @@ export function createSurfaceElevation(url, {waterTile, readTile, load, zoom = E
   const seabed = zoom > DEPTH_ZOOM ? createElevation(url, {...options, zoom: DEPTH_ZOOM}) : fine;
   const water = sharedTerrainTiles(async (key, signal) => {
     const [z, x, y] = key.split('/').map(Number);
-    const result = await waterTile(z, x, y, {signal});
-    if (signal.aborted) throw terrainAbort();
-    if (!result?.data?.byteLength) return null; // unknown coverage, not land
-    return oceanPolygons(readTile(result.data));
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal.addEventListener('abort', abort, {once:true});
+    try {
+      if (signal.aborted) throw terrainAbort();
+      const result = await waterTile(z, x, y, controller);
+      if (signal.aborted) throw terrainAbort();
+      if (!result?.data?.byteLength) return null; // unknown coverage, not land
+      return oceanPolygons(readTile(result.data));
+    } finally {
+      signal.removeEventListener('abort', abort);
+      controller.abort();
+    }
   }, {keep: CACHE, timeoutMs});
   return {
     async heights(points, {signal} = {}) {
