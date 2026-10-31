@@ -159,14 +159,20 @@ test('changed, expired, partial and refresh-requested checkpoints cannot suppres
   assert.equal((await run()).manifest.requests,1);
   assert.equal((await run(undefined,{refresh:true})).manifest.requests,8);
 }));
-test('stale or wrong-query split decisions are ignored',()=>fixture(async({run,options})=>{
+test('a wrong-query split decision is ignored; an old one, or one on a refresh, still splits',()=>fixture(async({run,options,calls})=>{
   const file=join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json.split`);
   await import('node:fs/promises').then(fs=>fs.mkdir(options.cache,{recursive:true}));
   await writeFile(file,JSON.stringify({query:'obsolete',kind:'spatial-split',version:1}));
   assert.equal((await run()).manifest.coverage.length,8);
   await rm(file.slice(0,-6));await writeFile(file,JSON.stringify({query:powerMethodQuery(POWER_METHOD_REGIONS[0]),kind:'spatial-split',version:1}));
   const old=new Date(options.now()-29*86400_000);await utimes(file,old,old);
-  assert.equal((await run()).manifest.coverage.length,8);
+  // The region is known to exceed the server's limits: its parts are asked
+  // for, never the whole region again, after 28 days and on a refresh.
+  for(const refresh of [false,true]) {
+    calls.length=0;
+    assert.equal((await run(undefined,{refresh})).manifest.coverage.length,11);
+    assert.equal(calls.some(c=>c.query===powerMethodQuery(POWER_METHOD_REGIONS[0])),false);
+  }
 }));
 test('incomplete rebuild leaves the last published files byte-identical',()=>fixture(async({run,options})=>{
   await run();

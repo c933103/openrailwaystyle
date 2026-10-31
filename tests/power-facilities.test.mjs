@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {powerFacility,createPowerFacilityLoader,POWER_FACILITY_KINDS,POWER_FACILITY_LEGEND,POWER_FACILITY_SYMBOL} from '../styles/power-facilities.mjs';
-import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from '../scripts/power-facility-data.mjs';
+import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse,powerFacilitySplitAccepted} from '../scripts/power-facility-data.mjs';
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
 import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
 
@@ -248,4 +248,17 @@ test('every facility kind shares one neutral drawing; the legend keys shapes, no
     const colours=JSON.stringify(layer.paint);
     assert.ok(!colours.includes('power_color')&&!colours.includes('power_kind'),`${layer.id} does not colour by kind or supply group`);
   }
+});
+
+test('an energy-supply split decision stays while its query is unchanged, whatever its age and on a refresh',()=>{
+  const query=powerFacilityQuery([-90,-180,0,-90]);
+  assert.equal(powerFacilitySplitAccepted(query,{query}),true);
+  assert.equal(powerFacilitySplitAccepted(query,{query:query+' '}),false);
+  assert.equal(powerFacilitySplitAccepted(query,{}),false);
+  assert.equal(powerFacilitySplitAccepted(query,null),false);
+  // The builder reads its split files through this check alone: no file age
+  // and no POWER_REFRESH, so a known oversized region is not asked again.
+  const source=readFileSync(new URL('../scripts/build-power-facilities.mjs',import.meta.url),'utf8');
+  const read=/split=cachedSplit=([^;]+);/.exec(source)[1];
+  assert.equal(read,"powerFacilitySplitAccepted(query,JSON.parse(await readFile(splitFile,'utf8')))");
 });

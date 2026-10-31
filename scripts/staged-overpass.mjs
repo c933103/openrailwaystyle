@@ -121,11 +121,15 @@ export function createStagedSnapshot(config) {
         checkTime();completedResponse(json);return json;
       }catch(error){throw transportError(error,signal);}
     }
+    // A response is reused for CACHE_AGE and never on a refresh. A split
+    // decision stays for as long as the query is unchanged: the region is
+    // known to exceed the server's limits, so a refresh or an expired cache
+    // asks for its parts, never the whole region again.
     async function checkpoint(file,query,split=false) {
-      if(refresh)return undefined;
+      if(refresh&&!split)return undefined;
       try {
         const info=await stat(file),saved=JSON.parse(await readFile(file,'utf8'));
-        if(saved.query!==query||now()-info.mtimeMs>=CACHE_AGE)return undefined;
+        if(saved.query!==query||!split&&now()-info.mtimeMs>=CACHE_AGE)return undefined;
         if(split)return saved.kind==='spatial-split'&&saved.version===1?true:undefined;
         completedResponse(saved.response);return saved.response;
       }catch{return undefined;}
