@@ -158,14 +158,13 @@ export function createSurfaceElevation(url, {waterTile, readTile, load, zoom = E
       return Promise.all(points.map(async point => {
         if (!valid(point)) return null;
         const high = raw[index++];
-        if (!Number.isFinite(high) || high < -11500 || high > 9000) return null;
         const {x, y, px, py} = tilePixel(point[0], point[1], Math.min(zoom, WATER_ZOOM));
         try {
           const polygons = await water(`${Math.min(zoom, WATER_ZOOM)}/${x}/${y}`, signal);
           if (!polygons) return null;
           const ocean = oceanAt(polygons, px, py);
           if (ocean === null) return null;
-          if (!ocean) return high;
+          if (!ocean) return Number.isFinite(high) && high >= -11500 && high <= 9000 ? high : null;
           const [depth] = await seabed.heights([point], {signal});
           // The coarse cell can mix land and water near shore. Never report
           // a positive land height as a seabed elevation.
