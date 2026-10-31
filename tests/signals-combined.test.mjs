@@ -164,20 +164,26 @@ test('a stored region is updated with the changes since its database time, never
   assert.equal(again.queries.length, 0);
 });
 
-test('a change request that times out is split into quarters whose changes together update the region', async t => {
+test('a change request that times out is split into quarters, all ending at the same database time', async t => {
   const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
   const home = await seed(d, '2026-10-20T01:00:00Z');
+  const first = '45,0,67.5,22.5';
   const {queries, fetcher} = fakeOverpass(query => {
     if (box(query) === HOME) return {raw: adiff('2026-10-31T11:00:00Z', '<remark> runtime error: Query timed out in "query" at line 1 after 181 seconds. </remark>')};
-    const base = box(query) === '45,0,67.5,22.5' ? '2026-10-31T10:59:00Z' : '2026-10-31T11:00:00Z';
-    return {raw: adiff(base, box(query) === '45,0,67.5,22.5' ? `<action type="create">${node(DIRECTED_ELECTRIC)}</action>` : '')};
+    // The database moves on while the quarters are asked one after another.
+    const base = box(query) === first ? '2026-10-31T11:00:00Z' : '2026-10-31T11:07:00Z';
+    return {raw: adiff(base, box(query) === '67.5,0,90,22.5' ? `<action type="create">${node(DIRECTED_ELECTRIC)}</action>` : '')};
   });
   await buildSignals({...d, ...quiet, fetcher});
-  assert.ok(queries.includes(signalChangesQuery([45, 0, 67.5, 22.5], '2026-10-20T00:00:00Z')));
+  const {quarters} = await import('../scripts/crossing-data.mjs');
+  const [head, ...rest] = quarters(home);
+  assert.ok(queries.includes(signalChangesQuery(head, '2026-10-20T00:00:00Z')), 'the first quarter asks up to the current database time');
+  for (const child of rest)
+    assert.ok(queries.includes(signalChangesQuery(child, '2026-10-20T00:00:00Z', '2026-10-31T11:00:00Z')), `quarter ${child} ends where the first one did`);
   const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
   assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
   const stored = JSON.parse(await readFile(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot), 'utf8'));
-  assert.equal(stored.response.osm3s.timestamp_osm_base, '2026-10-31T10:59:00Z', 'the oldest part decides where the next update starts');
+  assert.equal(stored.response.osm3s.timestamp_osm_base, '2026-10-31T11:00:00Z', 'the region is stored as of that one time, where the next update starts');
 });
 
 test('a failed or incomplete change request leaves the stored region and publishes nothing', async t => {
@@ -203,4 +209,6 @@ test('change responses: escaped text, ways ignored, refusals and truncation reje
   assert.throws(() => parseSignalChanges('<osm></osm>'), /without a database timestamp/);
   assert.match(signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z'), /^\[out:xml\].*\[adiff:"2026-10-20T00:00:00Z"\];.*out meta;$/, 'XML: the server refuses diff modes in JSON');
   assert.throws(() => signalChangesQuery([45, 0, 90, 45], 'yesterday'), /Invalid signal change start/);
+  assert.match(signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z', '2026-10-31T11:00:00Z'), /\[adiff:"2026-10-20T00:00:00Z","2026-10-31T11:00:00Z"\];/, 'an explicit end time');
+  assert.throws(() => signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z', '2026-10-19T00:00:00Z'), /Invalid signal change end/);
 });

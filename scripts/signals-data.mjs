@@ -28,9 +28,12 @@ export function combinedSignalQuery(box) {
 // What changed in the combined set of a region since `since` (an OSM base
 // timestamp): Overpass augmented diff. The server answers diff and adiff
 // queries only in XML (its JSON output refuses them).
-export function signalChangesQuery(box, since) {
-  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since || '')) throw new Error('Invalid signal change start');
-  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"];(node[railway=signal][!"railway:signal:direction"](${box.join(',')});node${ELECTRIC_WITH_DIRECTION}(${box.join(',')}););out meta;`;
+// The changes from `since` to `until` (or to the database's current time).
+export function signalChangesQuery(box, since, until) {
+  const time = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+  if (!time.test(since || '')) throw new Error('Invalid signal change start');
+  if (until !== undefined && !(time.test(until) && until >= since)) throw new Error('Invalid signal change end');
+  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"${until ? `,"${until}"` : ''}];(node[railway=signal][!"railway:signal:direction"](${box.join(',')});node${ELECTRIC_WITH_DIRECTION}(${box.join(',')}););out meta;`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};

@@ -95,18 +95,26 @@ export async function buildSignals({
   }
 
   // The changes in a region since `since`. A timeout or memory limit splits
-  // this request into quarters; their changes together are the region's.
-  async function changesSince(box, since, depth = 0) {
+  // this request into quarters. The first quarter to answer fixes the end
+  // time and the others ask up to that same time, so the region's stored
+  // elements are exactly its state then: a diff compares two moments only,
+  // so a signal that appeared and went again between different quarter end
+  // times would otherwise never be removed.
+  async function changesSince(box, since, until, depth = 0) {
     try {
-      return parseSignalChanges(await fetchText(signalChangesQuery(box, since)));
+      const changes = parseSignalChanges(await fetchText(signalChangesQuery(box, since, until)));
+      // With an end time the response still carries the current database time.
+      return until ? {...changes, timestamp: until} : changes;
     } catch (error) {
       warn('Signal changes', box.join(','), error.message);
       if (!timeoutLike(error.message) || depth >= 5) throw error;
       const parts = [];
-      for (const child of quarters(box)) parts.push(await changesSince(child, since, depth + 1));
-      // The oldest database time of the parts is the region's: no change
-      // after it is assumed to be included.
-      return {timestamp: parts.map(part => part.timestamp).sort()[0], upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes)};
+      for (const child of quarters(box)) {
+        const part = await changesSince(child, since, until, depth + 1);
+        until ||= part.timestamp;
+        parts.push(part);
+      }
+      return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes)};
     }
   }
 
