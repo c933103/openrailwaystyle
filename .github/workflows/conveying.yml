@@ -1,11 +1,8 @@
 name: Refresh escalators, moving walkways and elevators
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '41 2 * * 0'
-  push:
-    branches: [main]
-    paths: ['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'styles/conveying.mjs', '.github/workflows/conveying.yml']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass
+  # dataset at a time).
 permissions:
   contents: write
   actions: write

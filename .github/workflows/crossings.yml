@@ -1,13 +1,9 @@
 name: Refresh worldwide level crossings
 on:
   workflow_dispatch:
-  # Sunday at 04:17 UTC: the crossings changed in the week, plus a full
-  # refresh of the longest-unchecked regions (about 5 MB).
-  schedule:
-    - cron: '17 4 * * 0'
-  push:
-    branches: [main]
-    paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs', '.github/workflows/crossings.yml']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass dataset
+  # at a time): the crossings changed in the week, plus a full refresh of the
+  # longest-unchecked regions (about 5 MB).
 permissions:
   contents: write
   actions: write
