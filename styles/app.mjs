@@ -1869,6 +1869,9 @@ async function initialize() {
     syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);
     updateTerrainButton();
   });
+  // Reset the temporary suppression even if the 2D transition is interrupted
+  // before reaching 0°; a later intentional tilt may enter 3D as normal.
+  map.on('moveend', () => { terrain3DExitPending = false; });
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
