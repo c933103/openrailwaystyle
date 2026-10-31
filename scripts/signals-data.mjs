@@ -17,6 +17,19 @@ const CATEGORIES = {
 export function signalQuery(box) {
   return `[out:json][timeout:180][maxsize:268435456];node[railway=signal][!"railway:signal:direction"](${box.join(',')});out body;`;
 }
+// One download for both signal supplements: every signal without a direction
+// (this supplement) and every electrification signal (the Power view's
+// snapshot, electricity-signal-data.mjs). Electrification signals without a
+// direction are in the first set already, so only those with one are added.
+const ELECTRIC_WITH_DIRECTION = '[railway=signal]["railway:signal:direction"]["railway:signal:electricity"]["railway:signal:electricity"!="no"]';
+export function combinedSignalQuery(box) {
+  return `[out:json][timeout:180][maxsize:268435456];(node[railway=signal][!"railway:signal:direction"](${box.join(',')});node${ELECTRIC_WITH_DIRECTION}(${box.join(',')}););out body;`;
+}
+// The part of the combined set missing from a region answered by signalQuery
+// alone (direction responses cached before the two downloads were combined).
+export function electricWithDirectionQuery(box) {
+  return `[out:json][timeout:180][maxsize:134217728];node${ELECTRIC_WITH_DIRECTION}(${box.join(',')});out body;`;
+}
 
 export function signalFeature(element) {
   const tags = element.tags || {};
