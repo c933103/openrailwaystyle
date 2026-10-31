@@ -51,10 +51,34 @@ export async function buildSignals({
     }
   }
 
+  // The electrification signals with a direction in a region whose other
+  // signals are already cached. A timeout or memory limit splits this request
+  // alone; the cached response is kept.
+  async function remainder(box, depth = 0) {
+    const file = `signals-electric-v1-${box.join('_')}.json`, query = electricWithDirectionQuery(box);
+    const saved = await read(file);
+    const split = async () => {
+      const elements = [];
+      for (const child of quarters(box)) elements.push(...await remainder(child, depth + 1));
+      return elements;
+    };
+    if (fresh(saved, query)) return saved.split ? split() : saved.response.elements;
+    try {
+      const response = await fetchJson(query);
+      await writeFile(new URL(file, cacheRoot), JSON.stringify({query, generated: new Date(now()).toISOString(), response}));
+      return response.elements;
+    } catch (error) {
+      warn('Signal remainder', box.join(','), error.message);
+      if (!timeoutLike(error.message) || depth >= 5) throw error;
+      await writeFile(new URL(file, cacheRoot), JSON.stringify({query, generated: new Date(now()).toISOString(), split: true}));
+      return split();
+    }
+  }
+
   // Leaves of the world partition, each with the combined element set.
   async function collect(box, depth = 0) {
-    const key = box.join('_'), combinedFile = `signals-v2-${key}.json`, directionFile = `signals-v1-${key}.json`, electricFile = `signals-electric-v1-${key}.json`;
-    const combinedQuery = combinedSignalQuery(box), directionQuery = signalQuery(box), electricQuery = electricWithDirectionQuery(box);
+    const key = box.join('_'), combinedFile = `signals-v2-${key}.json`, directionFile = `signals-v1-${key}.json`;
+    const combinedQuery = combinedSignalQuery(box), directionQuery = signalQuery(box);
     const split = async () => {
       const results = [];
       for (const child of quarters(box)) results.push(...await collect(child, depth + 1));
@@ -70,14 +94,9 @@ export async function buildSignals({
     const direction = await read(directionFile);
     if (fresh(direction, directionQuery)) {
       if (direction.split) return split();
-      let electric = await read(electricFile);
-      if (!fresh(electric, electricQuery)) {
-        const response = await fetchJson(electricQuery);
-        electric = {query: electricQuery, generated: new Date(now()).toISOString(), response};
-        await writeFile(new URL(electricFile, cacheRoot), JSON.stringify(electric));
-      }
-      log('Signal region', box.join(','), 'reused; added', electric.response.elements.length, 'electrification signals with a direction');
-      return [{box, timestamp: direction.response.osm3s?.timestamp_osm_base || null, elements: [...direction.response.elements, ...electric.response.elements]}];
+      const added = await remainder(box);
+      log('Signal region', box.join(','), 'reused; added', added.length, 'electrification signals with a direction');
+      return [{box, timestamp: direction.response.osm3s?.timestamp_osm_base || null, elements: [...direction.response.elements, ...added]}];
     }
     try {
       const response = await fetchJson(combinedQuery);

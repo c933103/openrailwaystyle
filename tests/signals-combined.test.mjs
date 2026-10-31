@@ -68,6 +68,28 @@ test('a region cached before the downloads were combined is reused; only its dir
   assert.ok(again.queries.every(q => !q.includes(`(${HOME})`)));
 });
 
+test('a cached region whose remainder request times out splits that request alone and keeps the cached response', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = HOME.split(',').map(Number);
+  await (await import('node:fs/promises')).mkdir(d.cacheRoot, {recursive: true});
+  await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({query: signalQuery(home), generated: '2026-10-25T00:00:00Z',
+    response: {elements: [UNDIRECTED, ELECTRIC]}}));
+  const {queries, fetcher} = fakeOverpass(query => {
+    if (query === electricWithDirectionQuery(home)) return {elements: [], remark: 'runtime error: Query ran out of memory in "query"'};
+    return {elements: query === electricWithDirectionQuery([45, 0, 67.5, 22.5]) ? [DIRECTED_ELECTRIC] : []};
+  });
+  await buildSignals({...d, ...quiet, fetcher});
+  assert.ok(!queries.includes(signalQuery(home)) && !queries.includes(combinedSignalQuery(home)), 'the cached response is kept');
+  for (const quarter of [[45, 0, 67.5, 22.5], [45, 22.5, 67.5, 45], [67.5, 0, 90, 22.5], [67.5, 22.5, 90, 45]]) assert.ok(queries.includes(electricWithDirectionQuery(quarter)));
+  const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+  const manifest = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals-manifest.json'), 'utf8'));
+  assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+  validateElectricitySignalsSnapshot(electric, manifest);
+  const again = fakeOverpass(() => ({elements: []}));
+  await buildSignals({...d, ...quiet, fetcher: again.fetcher});
+  assert.ok(again.queries.every(q => !q.includes(`(${HOME})`) && !q.includes('(45,0,67.5,22.5)')), 'the split and its quarters are checkpointed');
+});
+
 test('a region that times out is split into quarters that still partition the world', async t => {
   const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
   const {fetcher} = fakeOverpass(query => box(query) === HOME ? {elements: [], remark: 'runtime error: Query timed out in "query"'}
