@@ -23,7 +23,7 @@ export function railwayWaysQuery(part, box) {
   const [main, ...excluded] = branch.filters;
   const power = excluded.length
     ? `${powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'pm'})}${excluded.map((filter, i) =>
-      powerMethodSelection(filter, {charging: `pc${i}`, potential: `pp${i}`, result: `px${i}`})).join('')}(.pm; - (${excluded.map((_, i) => `.px${i};`).join('')}););->.p;`
+      powerMethodSelection(filter, {charging: `pc${i}`, potential: `pp${i}`, result: `px${i}`})).join('')}(.pm; - (${excluded.map((_, i) => `.px${i};`).join('')});)->.p;`
     : powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'p'});
   return `[out:json][timeout:180][maxsize:536870912];${branch.areas}${branch.set}->.b;${service.set}->.r;${power}`
     + `.r out meta;(way(r.r)[railway~"${SERVICE_TRACKS}"];.b;.p;);out meta geom qt;`;

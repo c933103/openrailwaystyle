@@ -27,48 +27,16 @@ jobs:
       - name: Load the stored regions
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          # The store is a cache that can be downloaded again, kept as release
-          # assets (as traction-facilities-cache is) rather than as git
-          # history: one archive per stage, and the state, which says which
-          # regions each stage holds. No release yet is the first run; any
-          # other failure stops the run, so an unreachable store never leads
-          # to an empty one published over it.
-          if gh release view railway-ways-store >/dev/null 2>/tmp/release-error; then
-            mkdir -p /tmp/railway-ways-assets /tmp/previous-railway-ways
-            gh release download railway-ways-store --dir /tmp/railway-ways-assets
-            cp /tmp/railway-ways-assets/state.json /tmp/previous-railway-ways/
-            for archive in /tmp/railway-ways-assets/stage-*.tar.zst; do
-              [ -e "$archive" ] || continue
-              tar --zstd -xf "$archive" -C /tmp/previous-railway-ways
-            done
-            echo "PREVIOUS_DATA=/tmp/previous-railway-ways" >> "$GITHUB_ENV"
-          elif grep -qi 'release not found' /tmp/release-error; then
-            echo 'No stored regions yet: the first run'
-          else
-            cat /tmp/release-error
-            exit 1
-          fi
+        # The newest stored generation whose archives are all present
+        # (scripts/railway-ways-release.mjs). No release yet is the first run;
+        # an unreachable or inconsistent store stops the run.
+        run: node scripts/railway-ways-release.mjs load /tmp/previous-railway-ways
       - name: Fetch the next stage's regions from OpenStreetMap
         run: node scripts/build-railway-ways.mjs
       - name: Publish the store
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view railway-ways-store >/dev/null 2>&1 || gh release create railway-ways-store --target "$GITHUB_SHA" --prerelease \
-            --title 'Stored railway-ways regions' --notes 'Raw OpenStreetMap Overpass responses (ODbL), one per region, for branch lines, urban service routes and power-delivery methods. A cache that can be downloaded again; see docs/data-maintenance.md.'
-          cd railway-ways-data
-          # Only the stage this run worked on changed. Its archive goes up
-          # first and the state last, so the state never names regions that
-          # are not uploaded yet.
-          stage=$(node -e 'const m=JSON.parse(require("fs").readFileSync("manifest.json"));process.stdout.write(m.run?.stage||"")')
-          if [ -n "$stage" ]; then
-            paths=()
-            for dir in "regions/$stage" "next/$stage"; do [ -d "$dir" ] && paths+=("$dir"); done
-            if [ "${#paths[@]}" -gt 0 ]; then
-              tar --zstd -cf "/tmp/stage-$stage.tar.zst" "${paths[@]}"
-              gh release upload railway-ways-store "/tmp/stage-$stage.tar.zst" --clobber
-            fi
-          fi
-          gh release upload railway-ways-store manifest.json --clobber
-          gh release upload railway-ways-store state.json --clobber
+          GENERATION: ${{ github.run_id }}
+        # New generation-named assets only, never replaced in place; older
+        # generations are deleted after the new state is up.
+        run: GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/railway-ways-release.mjs publish railway-ways-data
