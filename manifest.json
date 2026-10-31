@@ -1,14 +1,14 @@
 {
-  "generated": "2026-10-30T12:25:32.044Z",
-  "osmBase": "2026-10-30T12:22:36Z",
-  "features": 44385,
+  "generated": "2026-10-31T16:28:31.241Z",
+  "osmBase": "2026-10-31T16:25:36Z",
+  "features": 44414,
   "kinds": {
-    "escalator": 32250,
+    "escalator": 32271,
     "travelator": 3821,
-    "elevator": 8314
+    "elevator": 8322
   },
   "zoom": 14,
-  "tiles": 8666,
+  "tiles": 8671,
   "source": "https://overpass-api.de/api/interpreter",
   "query": "[out:json][timeout:900][maxsize:1073741824];(way[conveying][conveying!=no];way[highway=elevator];);out tags geom qt;",
   "license": "ODbL-1.0",
