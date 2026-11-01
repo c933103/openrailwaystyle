@@ -99,3 +99,11 @@ test('the conveying build updates from changes and keeps the full download as it
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
 });
+
+test('street running updates from changes, with the full download as its fallback', () => {
+  const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  assert.match(source, /const features=update\?update\.features:toFeatures\(data\.elements\);/, 'one conversion for both paths');
+  const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
+});

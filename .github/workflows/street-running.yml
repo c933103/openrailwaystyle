@@ -22,6 +22,18 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the published snapshot
+        # Its database time is where the change request starts; without it
+        # the build downloads everything, as before.
+        run: |
+          if git fetch --depth=1 origin street-data; then
+            mkdir -p /tmp/previous-street
+            if git --work-tree=/tmp/previous-street checkout FETCH_HEAD -- street-running.geojson.gz manifest.json; then
+              echo "PREVIOUS_DATA=/tmp/previous-street" >> "$GITHUB_ENV"
+            else
+              echo "::warning::The published snapshot could not be read; downloading in full"
+            fi
+          fi
       - name: Extract explicitly mapped shared roadway
         run: node scripts/build-street-running.mjs
       - name: Publish complete data snapshot
