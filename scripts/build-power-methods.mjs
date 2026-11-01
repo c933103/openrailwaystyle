@@ -19,14 +19,17 @@ export const buildPowerMethods=snapshot.build;
 // every stage is complete there: no Overpass request. Returns undefined, and
 // publishes nothing, while the store is incomplete.
 export async function buildPowerMethodsFromStore(store,{output=process.env.POWER_OUTPUT||'power-data',now=Date.now,log=console.log,stagesCoverWorld}={}) {
-  const [{readFile},{join},{STAGES,STAGES_COVER_WORLD},{storedRegions},{powerView}]=await Promise.all([import('node:fs/promises'),import('node:path'),
+  const [{readFile},{join},{STAGES,STAGES_COVER_WORLD,stageLayoutKey},{storedRegions},{powerView}]=await Promise.all([import('node:fs/promises'),import('node:path'),
     import('./download-stages.mjs'),import('./build-railway-ways.mjs'),import('./railway-ways.mjs')]);
   // The download covers every world quadrant; the stages do not cover the
   // whole world yet, so the store could not give a complete snapshot.
   if(!(stagesCoverWorld??STAGES_COVER_WORLD)){log('The stages do not cover the whole world; power methods are downloaded instead of built from the store.');return undefined;}
   const stages=JSON.parse(await readFile(join(store,'state.json'),'utf8')).stages||{};
-  const missing=STAGES.filter(stage=>!stages[stage.name]?.completed).map(stage=>stage.name);
-  if(missing.length){log('Stored railway-ways regions incomplete; not built from the store:',missing.join(' '));return undefined;}
+  // Each stage complete, with regions fetched by its current parts: a stage
+  // last fetched with an earlier layout (the world stage before it became the
+  // remainder of the others) could leave places out.
+  const missing=STAGES.filter(stage=>!stages[stage.name]?.completed||stages[stage.name].leaves?.key!==stageLayoutKey(stage)).map(stage=>stage.name);
+  if(missing.length){log('Stored railway-ways regions incomplete or of an earlier stage layout; not built from the store:',missing.join(' '));return undefined;}
   const features=new Map(),coverage=[];
   for await(const region of storedRegions(store)) {
     const data=powerMethodsGeoJSON(powerView(region.response));

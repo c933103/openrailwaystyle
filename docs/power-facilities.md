@@ -265,11 +265,13 @@ stored merged responses (`scripts/railway-ways.mjs`) and makes no Overpass
 request. Its manifest then has `partition: "railway-ways-stages"` and one
 coverage leaf per stored region (`stage`, `part`, `bbox`); validation requires
 those leaves to tile every stage part's box exactly (quarters, at most six
-levels), in place of the world quadrants. While the store is incomplete, or
-while `STAGES_COVER_WORLD` in `scripts/download-stages.mjs` is false, the
-builder downloads as before. The stages now cover the whole world through the
-rest-of-the-world remainder; it stays false until the builder checks that the
-stored regions were made with it.
+levels), in place of the world quadrants. The stages cover the whole world
+through the rest-of-the-world remainder (`STAGES_COVER_WORLD` in
+`scripts/download-stages.mjs`). The store is used only when every stage in it
+is complete with its current parts (its recorded `leaves.key`): a world stage
+last fetched with its earlier boxes could leave places out. Until then, and
+whenever the store cannot be loaded, the builder downloads as before.
+`traction-facilities.yml` loads the store before this step.
 
 The query first collects bounded amenity/charge-point candidates, then applies
 the 14 railway-use hints within that named set. This factors the original 240
