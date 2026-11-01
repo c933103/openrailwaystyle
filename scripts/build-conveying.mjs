@@ -23,10 +23,11 @@ if(process.env.PREVIOUS_DATA) {
       since:manifest.osmBase,previousQuery:manifest.query};
   } catch(error) { console.log('No usable published elements:', error.message); }
   // Elements the conversion cannot use mean the full download, not a failed run.
-  if(previous) update=await updateElements({...previous,query,pick,validate:elements=>conveyingGeoJSON({elements}),
+  if(previous) update=await updateElements({...previous,query,pick,validate:elements=>conveyingGeoJSON({elements}),maxRequests:3,
     fetchText:async request=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
+      if (requests >= 3) throw new Error('The three requests of this run are used');
       requests++;
       const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
