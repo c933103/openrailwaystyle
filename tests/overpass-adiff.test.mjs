@@ -134,15 +134,24 @@ test('aerialways are updated the same way, with names and kinds as a full downlo
     }});
   assert.deepEqual(result.features, aerialwaysGeoJSON({elements: [lift(1, {aerialway: 'gondola', name: 'New'}),
     ...Array.from({length: 40}, (_, i) => lift(100 + i, {aerialway: 't-bar'}))]}).features);
+});
+
+test('the aerialway build keeps its elements and converts all of them on every run', () => {
   const source = readFileSync(new URL('../scripts/build-aerialways.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0,attempts=3-requests;attempt<attempts;attempt\+\+\)/);
-  assert.match(source, /const extraction=extractionVersion\(query,new URL\('\.\/conveying-data\.mjs',import\.meta\.url\)\);/);
-  assert.match(source, /previousVersion:manifest\.extraction/);
+  assert.match(source, /elements:JSON\.parse\(gunzipSync\(await readFile\(join\(process\.env\.PREVIOUS_DATA,'elements\.json\.gz'\)\)\)\),\n\s*since:manifest\.osmBase,previousQuery:manifest\.query/);
+  assert.match(source, /updateElements\(\{\.\.\.previous,query,pick,validate:elements=>aerialwaysGeoJSON\(\{elements\}\),maxRequests:3,/);
+  assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)/);
+  assert.match(source, /const \{features\}=aerialwaysGeoJSON\(\{elements\}\);/);
+  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
   const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
-  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;attempt<attempts;attempt++)'), 'a refused change request\'s wait comes first');
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'), 'a refused change request\'s wait comes first');
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/aerialways.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node scripts/build-aerialways.mjs'));
+  const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
+  assert.match(site, /tar -x -C styles\/data\/aerialways --exclude=elements\.json\.gz/, 'the stored elements are not deployed');
 });
 
 test('street running keeps its elements, updates from changes and the query difference, with the full download as its fallback', () => {
@@ -371,26 +380,37 @@ test('the conveying build makes at most three requests, its change requests incl
   }
 });
 
-test('the aerialway build makes at most three requests, its change request included', async t => {
+test('the aerialway build makes at most three requests, its change requests included', async t => {
   const {spawnSync} = await import('node:child_process');
   const {mkdtemp, writeFile, rm, readFile: read} = await import('node:fs/promises');
   const {tmpdir} = await import('node:os');
   const {join} = await import('node:path');
   const {gzipSync} = await import('node:zlib');
-  const {AERIALWAY_QUERY, aerialwaysGeoJSON} = await import('../scripts/conveying-data.mjs');
-  const dir = await mkdtemp(join(tmpdir(), 'aerialway-requests-'));
-  t.after(() => rm(dir, {recursive: true, force: true}));
-  const features = aerialwaysGeoJSON({elements: [sample(1, {aerialway: 'gondola'}, [[46, 7], [46.01, 7]])]}).features;
-  await writeFile(join(dir, 'aerialways.geojson.gz'), gzipSync(JSON.stringify({type: 'FeatureCollection', features})));
-  await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z',
-    extraction: extractionVersion(AERIALWAY_QUERY, new URL('../scripts/conveying-data.mjs', import.meta.url))}));
-  // Every request is refused; timers run at once.
-  await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs'); let n = 0;
-    globalThis.setTimeout = f => { f(); return 0; };
-    globalThis.fetch = async (url, {body}) => { fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, body.get('data').slice(0, 12) + '\\n'); return new Response('busy', {status: 503}); };`);
-  const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-aerialways.mjs', import.meta.url))],
-    {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
-  assert.notEqual(result.status, 0);
-  const requests = (await read(join(dir, 'requests'), 'utf8')).trim().split('\n');
-  assert.deepEqual(requests, ['[out:xml][ti', '[out:json][t', '[out:json][t'], 'one change request, then two full attempts');
+  const {AERIALWAY_QUERY} = await import('../scripts/conveying-data.mjs');
+  const changed = 'return new Response(q.startsWith(\'[out:xml]\') ? \'<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>\' : ';
+  for (const [name, answer, previousQuery, expected] of [
+    ['refused', `return new Response('busy', {status: 503});`, AERIALWAY_QUERY, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query whose new elements need more than the one request left: the third request is the full download.
+    ['query changed, too many new elements', `${changed}q.endsWith('out ids;') ? JSON.stringify({elements: Array.from({length: 2001}, (_, i) => ({type: 'way', id: i + 1}))}) : 'busy', {status: q.endsWith('out ids;') ? 200 : 503});`,
+      AERIALWAY_QUERY.replace('|platter', ''), ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query: the change request, the ids and the new elements use all three.
+    ['query changed, elements unusable', `${changed}q.endsWith('out ids;') ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]}) : JSON.stringify({elements: [{type: 'way', id: 2, tags: {aerialway: 'platter'}}]}));`,
+      AERIALWAY_QUERY.replace('|platter', ''), ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+  ]) {
+    const dir = await mkdtemp(join(tmpdir(), 'aerialway-requests-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {aerialway: 'gondola'}, [[46, 7], [46.01, 7]])])));
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
+    // Timers run at once.
+    await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
+      globalThis.setTimeout = f => { f(); return 0; };
+      globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
+    const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-aerialways.mjs', import.meta.url))],
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+    assert.notEqual(result.status, 0, name);
+    const requests = await read(join(dir, 'requests'), 'utf8');
+    assert.deepEqual(requests.trim().split('\n'), expected, name);
+    if (name === 'query changed, elements unusable') assert.match(result.stderr, /no request left of the three/, name);
+    if (name === 'query changed, too many new elements') assert.ok(!requests.includes('(id:'), 'no element batch: the full download instead');
+  }
 });
