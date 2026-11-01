@@ -353,7 +353,7 @@ jobs:
           git ls-remote --exit-code --heads origin heritage-data || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin heritage-data
-            git archive FETCH_HEAD | tar -x -C styles/data/heritage
+            git archive FETCH_HEAD | tar -x -C styles/data/heritage --exclude=elements
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/heritage/index.json
           else

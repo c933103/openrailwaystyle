@@ -135,6 +135,7 @@ The basemap's `park` layer holds only national parks, protected areas and nature
 - Regions are 45° squares, split into quarters where a query times out or runs out of memory.
 - A busy or failing server (HTTP 5xx, 429 or no response) is retried after 30 s, 1 min and 2 min. If the region still fails with a server error or no response, it is split into quarters, down to six levels, because smaller queries may still succeed. A rate limit (429) that outlasts the retries fails the run instead, since smaller queries would only add requests. One region therefore cannot fail the whole run, as it did in run 37254966281.
 - The workflow keeps no cache between runs, so each run starts from the regions the published snapshot covered (`coverage` in its `manifest.json`): a region split last month is asked for in its parts, with their split depth, not whole again. Coverage that does not tile the world exactly, or a missing snapshot, falls back to the 45° squares. A rejected query (other 4xx) still fails the run.
+- The snapshot also keeps each region's elements (`elements/`, with the region's query and database time), which the site does not deploy. A region with them takes only its changes since that time, an Overpass augmented diff, however long ago; when its query changed, only the difference (`updateElements` in `scripts/overpass-adiff.mjs`). Only a region without stored elements, or whose change request fails, is downloaded in full, and `HERITAGE_REFRESH=1` forces that. A changed way without geometry is refused rather than dropped from the map. Change requests count towards the 1.5 GB cap.
 - A response with an Overpass remark (partial data) is rejected. An empty world is not published.
 - Multipolygon rings are joined from their member ways. Each hole goes to the outer ring around it, and holes outside every outer ring are dropped. An area crossing the antimeridian is kept as one shape.
 - Each area keeps its OSM id, its kind and the `name` keys the label languages read; other tags are dropped.
@@ -386,7 +387,7 @@ under #112. No merge, deployment or fresh worldwide extraction is implied.
 | `axle-data` branch | Compact railway axle capacity/load-category lookup and snapshot date | `axle-load.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
 | `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
-| `heritage-data` branch | Historic-area static tiles, index and manifest | `heritage.yml` |
+| `heritage-data` branch | Historic-area static tiles, index, manifest and each region's elements | `heritage.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 
