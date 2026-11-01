@@ -37,13 +37,26 @@ function regionQuery(box) {
 // them, so a stale neighbouring region cannot bring back what the download
 // removed or changed. Removed only after the log is saved: a run stopped in
 // between logs them again next time.
-async function reconcile(box, elements, time, log) {
+// `parts`: what the download gave, each with its box and database time (one
+// part, or the parts of a region that split). Each part is compared with the
+// earlier elements that reach into it and logged at its own time, oldest
+// first, so a newer part's observation is never dated earlier.
+const reaches=(element,[s,w,n,e])=>{
+  if(!Array.isArray(element.geometry) || !element.geometry.length) return true;
+  const lats=element.geometry.map(p=>p.lat), lons=element.geometry.map(p=>p.lon);
+  return Math.max(...lats)>=s && Math.min(...lats)<=n && Math.max(...lons)>=w && Math.min(...lons)<=e;
+};
+async function reconcile(box, parts, log) {
   const previous=regionFile(box)+'.previous';
   let before;
   try {before=JSON.parse(await readFile(previous,'utf8')).elements;} catch {return log;}
-  if(Array.isArray(before) && Array.isArray(elements) && time) {
+  const usable=Array.isArray(before) ? parts.filter(part=>Array.isArray(part.elements) && part.time).sort((a,b)=>a.time<b.time ? -1 : a.time>b.time ? 1 : 0) : [];
+  if(usable.length) {
     if(log===undefined) try {log=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
-    log=recordChanges(log,time,before,elements,box);
+    for(const part of usable) {
+      const ids=new Set(part.elements.map(e=>e.id));
+      log=recordChanges(log,part.time,before.filter(e=>ids.has(e.id) || reaches(e,part.box)),part.elements,part.box);
+    }
     await writeFile(DELTA_FILE,JSON.stringify(log));
   }
   await unlink(previous);
@@ -85,23 +98,19 @@ async function collect(box, depth=0) {
       if(depth>=5) throw new Error(`Could not complete region ${box}`);
       await writeFile(file+'.split','Oversized region; use complete child regions.');
       const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-      const elements=[], times=[];
-      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) {
-        const part=await collect(child,depth+1);
-        elements.push(...part.elements); times.push(part.time);
-      }
-      // The oldest part's time: no part's data is older than what is logged.
-      const time=times.includes(undefined) ? undefined : times.sort()[0];
-      await reconcile(box,elements,time);
-      return {elements,time};
+      const leaves=[];
+      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) leaves.push(...await collect(child,depth+1));
+      await reconcile(box,leaves);
+      return leaves;
     }
   }
-  await reconcile(box,json.elements,json.osm3s?.timestamp_osm_base);
+  await reconcile(box,[{box,elements:json.elements,time:json.osm3s?.timestamp_osm_base}]);
   const data=toGeoJSON(json);
   for(const f of data.features) { features.set(f.id,f); base.set(f.id,json.osm3s?.timestamp_osm_base); }
   const part={bbox:box,timestamp:json.osm3s?.timestamp_osm_base,features:data.features.length};
   parts.push(part);console.log(JSON.stringify(part));
-  return {elements:json.elements,time:part.timestamp};
+  // The parts this region's data came from, for a parent that split.
+  return [{box,elements:json.elements,time:part.timestamp}];
 }
 // Split the already-observed eastern-US bottleneck before querying it again.
 await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
@@ -129,7 +138,7 @@ async function updateRegion(box) {
     return;
   }
   // Earlier data left by a full download stopped before it was logged.
-  changeLog=await reconcile(box,json.elements,json.osm3s?.timestamp_osm_base,changeLog);
+  changeLog=await reconcile(box,[{box,elements:json.elements,time:json.osm3s?.timestamp_osm_base}],changeLog);
   const query=regionQuery(box);
   let failure;
   const update=await updateElements({elements:json.elements,since:json.osm3s?.timestamp_osm_base,
