@@ -152,6 +152,7 @@ try{
   await page.mouse.click(570,420);
   await page.waitForFunction(()=>/Location: Lat .+ Lon .+ Elevation: unavailable/.test(document.querySelector('#measure-status').textContent));
   assert.equal(await page.locator('#measure-retry').isVisible(),true,'failed point height can be retried');
+  await mkdir('browser-review',{recursive:true});
   await page.screenshot({path:'browser-review/map-measure-point.png'});
   await page.locator('#measure-close').click();
   assert.equal(await page.locator('#measure-toolbar').isHidden(),true);
