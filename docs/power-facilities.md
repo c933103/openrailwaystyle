@@ -84,12 +84,13 @@ not a live power network, operating status feed or proof that a steam facility r
 
 `scripts/build-power-facilities.mjs` queries every world quadrant, preserving
 completed raw responses and splitting resource-limited regions; a split decision
-stays while its query is unchanged, past the 28-day response cache and on a
-refresh. A cached region a week old takes the changes since its database time
+stays while its query is unchanged, and on a refresh. A cached region a week old takes the changes since its database time
 (an Overpass augmented diff of the same query, `scripts/overpass-adiff.mjs`),
 applied to its stored elements; a changed way or multipolygon without its
-geometry is refused. A failed change request keeps the cached response, so a
-region is downloaded again only when it reaches 28 days. The snapshot
+geometry is refused. A failed change request keeps the cached response and the
+next run asks again from the same time; a cached region has no age limit,
+since its changes keep it exact, and is downloaded again only when its query
+changes or on a refresh. The snapshot
 publishes only after all regions complete. `traction-facilities.yml` is started
 every six hours, and when its builder changes, by `osm-updates.yml` (one
 Overpass dataset at a time); it republishes only when the data changed. It publishes `traction-data`

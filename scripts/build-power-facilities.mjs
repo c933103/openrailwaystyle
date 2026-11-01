@@ -32,8 +32,8 @@ async function collect(box,depth=0) {
     if(json)since=powerFacilityChangesSince(box,query,saved,{mtimeMs:info.mtimeMs});
   } catch {json=undefined;}
   // A cached region a week old takes the changes since its database time.
-  // One request; a failure keeps the cached response, still valid, and the
-  // region is downloaded again only once that is 28 days old.
+  // One request; a failure keeps the cached response, and the next run asks
+  // again from the same time.
   if(json&&since) {
     try {
       await sleep(requests?10000:0);

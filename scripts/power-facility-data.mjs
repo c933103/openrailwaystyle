@@ -50,10 +50,10 @@ export function powerFacilityQuery(box) {
   return withPotentialFilter(powerFacilityQueryBase(box));
 }
 
-const MAX_CACHE_AGE=28*86400_000;
-// A cached region is brought up to date with its changes once a week, so it
-// never reaches MAX_CACHE_AGE and is downloaded again only when its change
-// requests keep failing.
+// A cached region is brought up to date with its changes once a week. It
+// has no age limit: the changes since its database time make it exact
+// however old it is, so it is downloaded again only when its query changes
+// or on a refresh.
 export const POWER_FACILITY_UPDATE_EVERY=7*86400_000;
 export function powerFacilityChangesSince(box,query,saved,{mtimeMs,now=Date.now()}={}) {
   if(!powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,now}) || now-mtimeMs<POWER_FACILITY_UPDATE_EVERY)return null;
@@ -64,7 +64,7 @@ export function powerFacilityChangesSince(box,query,saved,{mtimeMs,now=Date.now(
 // A cached response is reused only for the exact current query. Earlier
 // centre-point responses (out center) cannot supply mapped shapes.
 export function powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,refresh=false,now=Date.now()}={}) {
-  if(refresh || !Number.isFinite(mtimeMs) || now-mtimeMs>=MAX_CACHE_AGE || typeof saved?.query!=='string')return false;
+  if(refresh || !Number.isFinite(mtimeMs) || typeof saved?.query!=='string')return false;
   return saved.query===query;
 }
 

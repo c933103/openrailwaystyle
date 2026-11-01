@@ -41,7 +41,7 @@ test('a cached region takes its changes once a week, by element, as a full downl
   ]}};
   assert.equal(powerFacilityChangesSince(box, query, saved, {mtimeMs: now - 8 * DAY, now}), '2026-10-20T00:00:00Z');
   assert.equal(powerFacilityChangesSince(box, query, saved, {mtimeMs: now - 2 * DAY, now}), null, 'updated this week');
-  assert.equal(powerFacilityChangesSince(box, query, saved, {mtimeMs: now - 29 * DAY, now}), null, 'too old: downloaded again');
+  assert.equal(powerFacilityChangesSince(box, query, saved, {mtimeMs: now - 400 * DAY, now}), '2026-10-20T00:00:00Z', 'no age limit');
   assert.equal(powerFacilityChangesSince(box, query, {...saved, query: query + ' '}, {mtimeMs: now - 8 * DAY, now}), null, 'another query');
   assert.equal(POWER_FACILITY_UPDATE_EVERY, 7 * DAY);
   assert.match(adiffQuery(query, '2026-10-20T00:00:00Z'), /\[adiff:"2026-10-20T00:00:00Z"\];[\s\S]*out meta geom qt;$/);

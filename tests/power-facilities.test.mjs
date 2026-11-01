@@ -147,7 +147,8 @@ test('cached responses are reused only for the exact current query; centre-point
   assert.equal(powerFacilityCachedResponse(box,query,saved,options),response);
   assert.deepEqual(saved,copy,'acceptance does not migrate or rewrite saved records');
   assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,refresh:true}),undefined);
-  assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:now-28*86400_000}),undefined);
+  // No age limit: a region takes its changes weekly, which keep it exact.
+  assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:now-400*86400_000}),response);
   assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:NaN}),undefined);
   assert.throws(()=>powerFacilityCachedResponse(box,query,{query,response:{remark:'runtime error: timed out',elements:[]}},options),/timed out/);
   assert.throws(()=>powerFacilityCachedResponse(box,query,{query,response:{elements:[{type:'node',id:12,tags:{railway:'fuel'}}]}},options),/Incomplete coordinates/);
