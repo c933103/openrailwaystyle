@@ -145,24 +145,60 @@ test('aerialways are updated the same way, with names and kinds as a full downlo
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node scripts/build-aerialways.mjs'));
 });
 
-test('street running updates from changes, with the full download as its fallback', () => {
+test('street running keeps its elements, updates from changes and the query difference, with the full download as its fallback', () => {
   const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
   assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
-  assert.match(source, /const features=update\?update\.features:toFeatures\(data\.elements\);/, 'one conversion for both paths');
-  assert.match(source, /const extraction=extractionVersion\(query,new URL\(import\.meta\.url\)\);/, 'this build and its imports convert the ways');
-  assert.match(source, /previousVersion:manifest\.extraction/);
+  assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)[^\n]*\nconst features=toFeatures\(elements\);/, 'every element converted on every run');
+  assert.match(source, /elements:JSON\.parse\(gunzipSync\(await readFile\(join\(process\.env\.PREVIOUS_DATA,'elements\.json\.gz'\)\)\)\),\n\s*since:manifest\.osmBase,previousQuery:manifest\.query/);
+  assert.match(source, /updateElements\(\{\.\.\.previous,query,pick,validate:toFeatures,/);
+  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
   assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
   const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
-  // The worst case (change request timed out, a pause, three full attempts
-  // timed out, two pauses) leaves at least ten minutes for the build and
-  // publication within the job's time limit.
-  const [change, full] = [...source.matchAll(/AbortSignal\.timeout\((\d+)\)/g)].map(m => Number(m[1]));
+  const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
+  assert.match(site, /cp -r street-snapshot\/12 street-snapshot\/index\.json street-snapshot\/manifest\.json street-snapshot\/street-running\.geojson\.gz styles/, 'the stored elements are not deployed');
+  // The worst case (the change requests' shared time used, a pause, three
+  // full attempts timed out, two pauses) leaves at least ten minutes for the
+  // build and publication within the job's time limit.
+  const changes = Number(/const CHANGE_MS=(\d+);/.exec(source)[1]);
+  assert.match(source, /signal:AbortSignal\.timeout\(left\)/, 'each change request within the time left');
+  const [full] = [...source.matchAll(/AbortSignal\.timeout\((\d+)\)/g)].map(m => Number(m[1]));
   const pauses = [...source.matchAll(/setTimeout\(r,(\d+)\)/g)].map(m => Number(m[1]));
-  assert.deepEqual([change, full, pauses], [300000, 660000, [120000, 120000]]);
-  const worst = (change + pauses[0] + 3 * full + 2 * pauses[1]) / 60000;
-  assert.equal(worst, 44);
+  assert.deepEqual([changes, full, pauses], [360000, 660000, [120000, 120000]]);
+  const worst = (changes + pauses[0] + 3 * full + 2 * pauses[1]) / 60000;
+  assert.equal(worst, 45);
   assert.ok(worst + 10 <= Number(/timeout-minutes: (\d+)/.exec(workflow)[1]));
+});
+
+test('a changed street-running query downloads only the newly selected ways', async t => {
+  const {spawnSync} = await import('node:child_process');
+  const {mkdtemp, writeFile, rm, readFile: read} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {gzipSync} = await import('node:zlib');
+  const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
+  const query = /const query='([^']+)'/.exec(source)[1];
+  const dir = await mkdtemp(join(tmpdir(), 'street-requests-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {railway: 'tram', embedded: 'yes'}, [[46, 7], [46.01, 7]])])));
+  await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: query.replace('way[embedded_rails];', '')}));
+  await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
+    globalThis.setTimeout = f => { f(); return 0; };
+    globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, JSON.stringify(q) + '\\n');
+      return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;')
+        ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]})
+        : JSON.stringify({elements: [{type: 'way', id: 2, tags: {highway: 'primary', embedded_rails: 'tram'}, geometry: [{lat: 46, lon: 7}, {lat: 46.01, lon: 7}]}]})); };`);
+  const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-street-running.mjs', import.meta.url))],
+    {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+  // Two ways are far below the plausible worldwide count, so the run stops before writing anything.
+  assert.match(result.stderr, /Suspiciously small worldwide extract: 2/);
+  const requests = (await read(join(dir, 'requests'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(requests.length, 3, 'the changes, the ids and the one new way; no full download');
+  assert.match(requests[0], /^\[out:xml\].*\[adiff:"2026-10-30T00:00:00Z"\];\(way\[embedded=yes\];\);out meta geom;$/);
+  assert.match(requests[1], /way\[embedded_rails\];\);out ids;$/);
+  assert.match(requests[2], /\(way\(id:2\);\);out tags geom;$/);
 });
 
 test('a snapshot made by another query or conversion code is downloaded in full, never patched', async () => {
