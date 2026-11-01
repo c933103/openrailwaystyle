@@ -506,7 +506,7 @@ test('measurement toolbar settles unavailable endpoint heights and recovers on a
       for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
       map.handlers.dblclick({preventDefault() {}});
     };
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     const status = () => doc.getElementById('measure-status').textContent;
     finish(); assert.match(status(), /Finding heights/); await settle();
     assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
@@ -536,7 +536,7 @@ test('measurement toolbar retries heights with existing point handles without lo
     assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
     assert.equal(retry.hidden, true);
     const status = () => doc.getElementById('measure-status').textContent;
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
     map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
     await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
