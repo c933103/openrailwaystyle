@@ -124,16 +124,16 @@ export function applyFeatureChanges(features, {upserts, deletes}, toFeatures, {k
 }
 
 // A published snapshot (`features`, as of the database time `since`) brought
-// up to date with one change request, or null when it cannot be: no usable
-// time, a time older than `maxAgeDays` (a full download is then cheaper and
-// as exact), a failed or unreadable request, or a result that would lose
-// more than `maxDrop` of the features. The caller then downloads in full.
+// up to date with one change request, or null when it cannot be: no
+// snapshot or database time, a failed or unreadable request, or a result
+// that would lose more than `maxDrop` of the features. The caller then
+// downloads in full. The snapshot's age is no reason: the changes since its
+// time make it exact however old it is.
 // `failed` receives the error of a change request that was made and failed,
 // so the caller can honour a delay the server asked for before its fallback.
-export async function updateFromChanges({features, since, query, toFeatures, fetchText, now = Date.now(), maxAgeDays = 28, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
+export async function updateFromChanges({features, since, query, toFeatures, fetchText, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
   if (!Array.isArray(features) || !features.length) return null;
   if (!TIME.test(since || '')) { warn('No database time for the published snapshot: downloading in full'); return null; }
-  if (now - Date.parse(since) > maxAgeDays * 86400000) { warn(`The published snapshot is older than ${maxAgeDays} days: downloading in full`); return null; }
   try {
     const changes = parseAdiff(await fetchText(adiffQuery(query, since)));
     const next = applyFeatureChanges(features, changes, toFeatures).sort((a, b) => a.id - b.id);
