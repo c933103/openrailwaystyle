@@ -65,5 +65,5 @@ test('while the stages leave parts of the world uncovered, a complete store is n
   await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
   assert.match(logs[0], /do not cover the whole world/);
   const {STAGES_COVER_WORLD} = await import('../scripts/download-stages.mjs');
-  assert.equal(STAGES_COVER_WORLD, false, 'Mauritius, Réunion and central Greenland are in no stage yet');
+  assert.equal(STAGES_COVER_WORLD, false, 'not until the builder checks the stored regions were made with the remainder parts');
 });

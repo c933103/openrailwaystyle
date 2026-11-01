@@ -266,10 +266,10 @@ request. Its manifest then has `partition: "railway-ways-stages"` and one
 coverage leaf per stored region (`stage`, `part`, `bbox`); validation requires
 those leaves to tile every stage part's box exactly (quarters, at most six
 levels), in place of the world quadrants. While the store is incomplete, or
-while the stages leave parts of the world uncovered (`STAGES_COVER_WORLD` in
-`scripts/download-stages.mjs`, false until the stages gain a region for places
-in no country stage, such as Mauritius, Réunion or central Greenland), the
-builder downloads as before.
+while `STAGES_COVER_WORLD` in `scripts/download-stages.mjs` is false, the
+builder downloads as before. The stages now cover the whole world through the
+rest-of-the-world remainder; it stays false until the builder checks that the
+stored regions were made with it.
 
 The query first collects bounded amenity/charge-point candidates, then applies
 the 14 railway-use hints within that named set. This factors the original 240

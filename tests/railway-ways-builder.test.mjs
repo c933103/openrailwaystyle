@@ -326,3 +326,21 @@ test('stored elements split at the end of the route relations\' output', async (
   assert.deepEqual(ids(storedOutputs({response: {elements: [route(1), charger(4)]}})), [[1], [4]], 'no node or way: at the first relation no route selection chose');
   assert.deepEqual(ids(storedOutputs({response: {elements: [route(1), route(1)]}})), [[1], [1]], 'or at a relation output twice');
 });
+
+test('a world pass begun with the earlier three boxes is started again with the current tiles', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([way(1, {railway: 'subway'})])).fetcher);
+  const previous = await publish(root);
+  // Every stage current except the world, whose pass stopped partway through the old boxes.
+  const state = JSON.parse(await readFile(join(previous, 'state.json'), 'utf8'));
+  for (const stage of STAGES) state.stages[stage.name] = {completed: new Date().toISOString(), pending: null, seen: []};
+  state.stages.world = {completed: null, started: '2026-10-20T00:00:00Z', seen: [], fetched: [{part: 0, box: [-35, -20, 37.5, 52]}],
+    pending: [{part: 1, box: [-50, 110, -11, 180]}, {part: 2, box: [-50, -180, 0, -150]}]};
+  await writeFile(join(previous, 'state.json'), JSON.stringify(state));
+  const world = STAGES.find(stage => stage.name === 'world');
+  const {queries, fetcher} = overpass(() => ok([]));
+  await run(root, fetcher, {previous});
+  assert.deepEqual(queries, world.parts.map(part => railwayWaysQuery(part, part.box)), 'the eight tiles, none of the old boxes');
+  const after = JSON.parse(await readFile(join(root, 'out', 'state.json'), 'utf8')).stages.world;
+  assert.deepEqual(after.leaves.regions.map(region => region.box), world.parts.map(part => part.box), 'recorded under the tiles it fetched');
+});

@@ -14,7 +14,7 @@ import {mkdir, readFile, readdir, rename, rm, writeFile, cp} from 'node:fs/promi
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {STAGES, selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
+import {STAGES, selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
 import {quarters, toFeatures} from './branch-lines.mjs';
 import {toTable} from './service-routes.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
@@ -77,6 +77,7 @@ export async function buildRailwayWays({
   if (!stage) { log('Every stage is current; nothing to fetch.'); return finish(null); }
   const current = state.stages[stage.name] ||= {completed: null, pending: null, seen: []};
   const nextDir = join(output, 'next', stage.name), regionsDir = join(output, 'regions', stage.name);
+  if (dropStalePass(current, stage)) log(`Stage ${stage.name}: its layout changed; starting a new pass`);
   const BUDGET = Symbol('budget');
   // A complete stage is brought up to date region by region from its stored
   // elements, not downloaded again: the route relations, then the ways, each
