@@ -12,7 +12,7 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    # Up to 44 minutes of Overpass requests and pauses (build-street-running.mjs),
+    # Up to 45 minutes of Overpass requests and pauses (build-street-running.mjs),
     # then the build and publication.
     timeout-minutes: 55
     steps:
@@ -25,12 +25,13 @@ jobs:
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Load the published snapshot
-        # Its database time is where the change request starts; without it
-        # the build downloads everything, as before.
+        # The elements it was made from, with their database time and query:
+        # the change requests start there. Without them the build downloads
+        # everything.
         run: |
           if git fetch --depth=1 origin street-data; then
             mkdir -p /tmp/previous-street
-            if git --work-tree=/tmp/previous-street checkout FETCH_HEAD -- street-running.geojson.gz manifest.json; then
+            if git --work-tree=/tmp/previous-street checkout FETCH_HEAD -- elements.json.gz manifest.json; then
               echo "PREVIOUS_DATA=/tmp/previous-street" >> "$GITHUB_ENV"
             else
               echo "::warning::The published snapshot could not be read; downloading in full"
