@@ -96,11 +96,23 @@ export async function buildRailwayWays({
       return !!(before && after && selectionChangeQueries(before.relations, after.relations, region.response.osm3s.timestamp_osm_base)
         && selectionChangeQueries(before.ways, after.ways, region.response.osm3s.timestamp_osm_base));
     };
-    if (regions.length && regions.every(comparable)) {
+    // The stored regions must tile the stage's current part boxes exactly: a
+    // part added or a box grown has area no stored region covers, which only
+    // a full pass fetches.
+    const area = ([s, w, n, e]) => (n - s) * (e - w);
+    const tiles = stage.parts.every((part, index) => {
+      const own = regions.filter(({region}) => region.part === index);
+      const [s, w, n, e] = part.box;
+      return own.length && own.every(({region: {box: [rs, rw, rn, re]}}) => rs >= s && rw >= w && rn <= n && re <= e)
+        && Math.abs(own.reduce((sum, {region}) => sum + area(region.box), 0) - area(part.box)) < 1e-9;
+    }) && regions.every(({region}) => stage.parts[region.part]);
+    if (regions.length && tiles && regions.every(comparable)) {
       current.changePass ||= {started: iso(now), done: []};
       log(`Stage ${stage.name} (${stage.label}): changes for ${regions.length - current.changePass.done.length} region(s)`);
       for (const {name, region} of regions) {
-        if (current.changePass.done.includes(name)) continue;
+        // Done in this pass, and still made by the current query (one that
+        // changed since is brought to it like the rest).
+        if (current.changePass.done.includes(name) && region.query === railwayWaysQuery(stage.parts[region.part], region.box)) continue;
         if (downloaded >= budget) { stopped = `download budget reached (${downloaded} bytes)`; break; }
         if (now() - started > timeBudgetMs) { stopped = 'time budget reached'; break; }
         const since = region.response.osm3s.timestamp_osm_base, query = railwayWaysQuery(stage.parts[region.part], region.box);
@@ -124,7 +136,7 @@ export async function buildRailwayWays({
             elements: [...relations.elements, ...ways.elements]});
         } catch (error) { stopped = `changes for region ${region.box.join(',')} deferred: ${error.message}`; break; }
         await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, query, generated: iso(now), response}), {level: 9}));
-        current.changePass.done.push(name);
+        if (!current.changePass.done.includes(name)) current.changePass.done.push(name);
         fetched++;
         log(`Region ${region.box.join(',')}: changes since ${since}, ${relations.upserts + ways.upserts} added or changed, ${relations.deletes + ways.deletes} removed; query change: ${relations.added + ways.added} added, ${relations.dropped + ways.dropped} dropped`);
       }

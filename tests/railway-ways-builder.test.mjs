@@ -245,3 +245,43 @@ test('a stored region of another, comparable query takes only the difference, no
   assert.deepEqual(region.response.elements.map(e => e.id).sort(), [1, 3]);
   assert.equal(region.query, current, 'stored under the current query');
 });
+
+test('a stage whose part boxes no longer match its stored regions takes a full pass, not changes', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([way(1, {railway: 'subway'})])).fetcher);
+  const previous = await publish(root);
+  await currentExceptJapan(previous);
+  // As if the stage's box had grown since: the stored region covers less than the part.
+  const dir = join(previous, 'regions', 'japan');
+  for (const name of await readdir(dir)) {
+    const region = JSON.parse(gunzipSync(await readFile(join(dir, name))));
+    const box = [region.box[0], region.box[1], region.box[2] - 1, region.box[3]];
+    await writeFile(join(dir, name), gzipSync(JSON.stringify({...region, box, query: railwayWaysQuery(part, box)})));
+  }
+  const full = overpass(() => ok([way(1, {railway: 'subway'})]));
+  await run(root, full.fetcher, {previous});
+  assert.ok(full.queries.length && full.queries.every(q => q.startsWith('[out:json]') && !q.includes('[adiff:')), 'the whole part, downloaded');
+  assert.equal(full.queries[0], railwayWaysQuery(part, part.box));
+});
+
+test('a change pass resumed after the query changed brings its done regions to the new query too', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([way(1, {railway: 'subway'})])).fetcher);
+  const previous = await publish(root);
+  await currentExceptJapan(previous);
+  const current = railwayWaysQuery(part, part.box), older = current.replace('|funicular)$"];.b;.p;);out meta geom qt;', ')$"];.b;.p;);out meta geom qt;');
+  const dir = join(previous, 'regions', 'japan'), names = await readdir(dir);
+  for (const name of names) {
+    const region = JSON.parse(gunzipSync(await readFile(join(dir, name))));
+    await writeFile(join(dir, name), gzipSync(JSON.stringify({...region, query: older})));
+  }
+  // The earlier run of this pass had done every region, under the older query.
+  const state = JSON.parse(await readFile(join(previous, 'state.json'), 'utf8'));
+  state.stages.japan.changePass = {started: '2026-10-31T00:00:00Z', done: names};
+  await writeFile(join(previous, 'state.json'), JSON.stringify(state));
+  const changes = overpass(query => query.includes('[adiff:') ? adiff('2026-11-01T05:00:00Z') : ok([{type: 'way', id: 1}]));
+  await run(root, changes.fetcher, {previous});
+  assert.ok(changes.queries.some(q => q.includes('[adiff:')), 'not skipped');
+  const [region] = await japanRegions(root);
+  assert.equal(region.query, current);
+});
