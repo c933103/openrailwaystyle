@@ -4,9 +4,11 @@
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
-import {updateFromChanges} from './overpass-adiff.mjs';
+import {updateFromChanges,extractionVersion} from './overpass-adiff.mjs';
 import {AERIALWAY_QUERY as query,AERIALWAY_ZOOM,aerialwaysGeoJSON,conveyingTiles,conveyingHttpError,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
 const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
+// The query and conversion code this snapshot is made with (manifest.extraction).
+const extraction=extractionVersion(query,new URL('./conveying-data.mjs',import.meta.url));
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
 // Since the published snapshot (PREVIOUS_DATA: its aerialways.geojson.gz and
 // manifest.json), only what changed; the full download below is the fallback.
@@ -14,10 +16,11 @@ let data, update=null, changeError=null;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
+    const manifest=JSON.parse(await readFile(join(process.env.PREVIOUS_DATA,'manifest.json'),'utf8'));
     previous={features:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'aerialways.geojson.gz')))).features,
-      since:JSON.parse(await readFile(join(process.env.PREVIOUS_DATA,'manifest.json'),'utf8')).osmBase};
+      since:manifest.osmBase,previousVersion:manifest.extraction};
   } catch(error) { console.log('No usable published snapshot:', error.message); }
-  if(previous) update=await updateFromChanges({...previous,query,toFeatures:elements=>aerialwaysGeoJSON({elements}).features,
+  if(previous) update=await updateFromChanges({...previous,query,version:extraction,toFeatures:elements=>aerialwaysGeoJSON({elements}).features,
     fetchText:async changeQuery=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
@@ -65,7 +68,7 @@ for(const [key,bytes] of conveyingTiles(features,{z:AERIALWAY_ZOOM,layer:'aerial
  await writeFile(new URL(key+'.pbf.gz',root),gzipSync(bytes,{level:9}));tiles.push(key);
 }
 const kinds=Object.fromEntries(['cableway','lift'].map(kind=>[kind,features.filter(f=>f.properties.kind===kind).length]));
-const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes}:'full',features:features.length,kinds,zoom:AERIALWAY_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed.'};
+const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,extraction,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes}:'full',features:features.length,kinds,zoom:AERIALWAY_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed.'};
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));
