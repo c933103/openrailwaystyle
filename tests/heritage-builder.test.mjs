@@ -299,10 +299,10 @@ test('a region whose query changed takes only the difference, not a full downloa
   assert.notEqual(older, parentQuery);
   const added = {type:'way', id:43, tags:{heritage:'1'}, geometry:ring.map(([lon, lat]) => ({lat:lat + 1, lon}))};
   const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''))
-    : query.endsWith('out ids;') ? response(200, {elements:[]}) : response(200, {elements:[added]}), {env:previousEnv, files:storedParent(older)});
+    : query.endsWith('out ids;') ? response(200, {elements:[{type:'way', id:42}, {type:'way', id:43}]}) : response(200, {elements:[added]}), {env:previousEnv, files:storedParent(older)});
   assert.ifError(result.error);
-  const {added:addQuery, dropped} = adiff.selectionChangeQueries(older, parentQuery, BASE);
-  assert.deepEqual(result.calls, [adiff.adiffQuery(older, SINCE), dropped, addQuery]);
+  const {ids, elements} = adiff.selectionChangeQueries(older, parentQuery, BASE);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(older, SINCE), ids, elements(['way/43'])], 'the new ids, then only the new area');
   assert.deepEqual((await publishedParent(result.root)).elements.map(e => e.id), [42, 43]);
   assert.equal((await publishedParent(result.root)).query, parentQuery, 'the next run compares with the new query');
 });
