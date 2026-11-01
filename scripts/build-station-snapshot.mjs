@@ -27,10 +27,9 @@ if(input){
   if(loaded!==2)throw Error('Station checkpoint incomplete');
   existing=true;
 }
-// A complete generation updated within 28 days takes the changes since its
-// database time instead of a new cycle. Otherwise refreshed generations are
-// built in the work branch, never over the already-complete public
-// station-points-data branch.
+// A complete generation takes the changes since its database time instead
+// of a new cycle. Otherwise generations are built in the work branch, never
+// over the already-complete public station-points-data branch.
 const changesSince=stationChangesSince(state);
 let refreshStarted=false,changedRecords=0;
 if(!changesSince){
@@ -95,8 +94,8 @@ if(changesSince){
   status='changes deferred to the next maintenance run';
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),360000);
   try{
-    // One request; a failure keeps the generation as it is and is retried
-    // next run, and only 28 days without a successful update start a cycle.
+    // One request; a failure keeps the generation as it is, and the next
+    // run asks again from the same time.
     const response=await fetch(url,{method:'POST',redirect:'error',signal:controller.signal,
       headers:{'User-Agent':'RailwayAtlas-station-snapshot/1 (+https://github.com/c933103/openrailwaystyle)',
         'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},

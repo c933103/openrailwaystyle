@@ -24,13 +24,13 @@ const base = Array.from({length: 40}, (_, i) => node(100 + i, -170 + i / 10, -80
 const osm = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="2026-11-01T05:00:00Z"/>\n${actions}\n</osm>\n`;
 const xmlNode = ({id, lon, lat, version, tags}) => `<node id="${id}" lat="${lat}" lon="${lon}" version="${version}" timestamp="2026-10-31T00:00:00Z">${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</node>`;
 
-test('a complete generation updated within 28 days takes changes; otherwise a full cycle is due', () => {
+test('a complete generation always takes changes, however old; only without one is a full cycle due', () => {
   const {state} = complete(base);
-  assert.equal(acquisition.stationChangesSince(state, NOW), '2026-10-20T00:00:00Z', 'from its cycle start, at first');
-  assert.equal(acquisition.stationChangesSince({...state, changesSince: '2026-10-31T00:00:00Z'}, NOW), '2026-10-31T00:00:00Z');
-  assert.equal(acquisition.stationChangesSince({...state, changesSince: '2026-09-01T00:00:00Z'}, NOW), null, 'too long without an update');
-  assert.equal(acquisition.stationChangesSince({...state, pending: [{box: [-90, -180, -45, -135], depth: 0}]}, NOW), null, 'incomplete');
-  assert.equal(acquisition.stationChangesSince(acquisition.newStationAcquisition(), NOW), null);
+  assert.equal(acquisition.stationChangesSince(state), '2026-10-20T00:00:00Z', 'from its cycle start, at first');
+  assert.equal(acquisition.stationChangesSince({...state, changesSince: '2026-10-31T00:00:00Z'}), '2026-10-31T00:00:00Z');
+  assert.equal(acquisition.stationChangesSince({...state, changesSince: '2025-06-01T00:00:00Z'}), '2025-06-01T00:00:00Z', 'no age limit');
+  assert.equal(acquisition.stationChangesSince({...state, pending: [{box: [-90, -180, -45, -135], depth: 0}]}), null, 'incomplete');
+  assert.equal(acquisition.stationChangesSince(acquisition.newStationAcquisition()), null);
   assert.match(acquisition.stationChangesQuery('2026-10-20T00:00:00Z'),
     /^\[out:xml\]\[timeout:300\]\[maxsize:268435456\]\[adiff:"2026-10-20T00:00:00Z"\];\(nwr\[railway~"\^\(station\|halt\|tram_stop\)\$"\]\(-90,-180,90,180\);.*\);out meta center qt;$/);
 });

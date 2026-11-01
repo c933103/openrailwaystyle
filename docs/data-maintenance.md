@@ -395,8 +395,8 @@ ones no longer tagged as stations leave, changed ones replace their record
 unless older, and new ones join; a result losing over 5% of the stations is
 refused. The generation is published, and the site redeployed, only when a
 cycle completed or the changes altered its stations. A failed change request
-keeps the generation and is retried next run; only 28 days without a
-successful update start a new cycle.
+keeps the generation and the next run asks again from the same time; its
+age never starts a new cycle, since the changes make it exact.
 
 The builder reads successful responses up to 15 MiB, and HTTP error diagnostics
 up to a separate 64 KiB limit. An explicit executed-query timeout or memory-limit

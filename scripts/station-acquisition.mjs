@@ -152,14 +152,12 @@ export function postponeStationRegion(state,region,{maxDepth=6}={}){
 // A complete generation is kept up to date with the changes since its
 // database time instead of being downloaded again region by region: the
 // time it is current to (`changesSince`, at first its cycle's start), or
-// null when a full cycle is due (no complete generation, or no successful
-// change update for STATION_CHANGE_MAX_DAYS).
-export const STATION_CHANGE_MAX_DAYS=28;
-export function stationChangesSince(state,now=Date.now()){
+// null when there is no complete generation yet. Its age is no reason for a
+// new cycle: the changes since that time make it exact however old it is.
+export function stationChangesSince(state){
  if(!state||!Array.isArray(state.pending)||state.pending.length||!stationWorldCoverage(state.completed))return null;
  const since=state.changesSince||(typeof state.started==='string'?state.started.replace(/\.\d+Z$/,'Z'):'');
- if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since))return null;
- return now-Date.parse(since)<=STATION_CHANGE_MAX_DAYS*86400000?since:null;
+ return /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since)?since:null;
 }
 // The changes worldwide, as one augmented diff of the region query, with the
 // time and size a worldwide request needs.
