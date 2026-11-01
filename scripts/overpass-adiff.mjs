@@ -258,13 +258,14 @@ export async function updateElements({elements, since, previousQuery, query, fet
   if (!Array.isArray(elements)) return null;
   if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
   if (!previousQuery) { warn('The stored elements do not record their query: downloading in full'); return null; }
+  // Known before any request: a query that cannot be compared is downloaded in full.
+  if (previousQuery !== query && !selectionChangeQueries(previousQuery, query, since)) { warn('The query changed its output or form: downloading in full'); return null; }
   try {
     const changes = parseAdiff(await fetchText(adiffQuery(previousQuery, since)));
     const at = changes.timestamp;
     let next = applyElementChanges(elements, {upserts: changes.upserts.map(pick), deletes: changes.deletes});
     if (next.length < elements.length * (1 - maxDrop)) throw new Error(`The changes would drop the elements from ${elements.length} to ${next.length}`);
-    const selection = selectionChangeQueries(previousQuery, query, at);
-    if (!selection) { warn('The query changed its output or form: downloading in full'); return null; }
+    const selection = previousQuery === query ? {} : selectionChangeQueries(previousQuery, query, at);
     let added = [], dropped = [];
     if (selection.added) {
       dropped = elementsOf(await fetchText(selection.dropped)).map(e => `${e.type}/${e.id}`);
