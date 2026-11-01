@@ -16,13 +16,15 @@
 const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
 
 // The augmented diff of a JSON selection query ([out:json]...;...;out ...;),
-// from `since` to now: the same selection and output, in XML.
+// from `since` to now: the same selection, in XML. XML output prints a way's
+// nodes (and so its geometry) only in modes that include members, which
+// `out tags` does not, so it is asked for as `out body`.
 export function adiffQuery(query, since) {
   if (!TIME.test(since || '')) throw new Error('Invalid change start');
   const settings = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || '');
   if (!settings) throw new Error('A change query needs an [out:json] selection query');
   if (/\[(?:adiff|diff|date):/.test(settings[1])) throw new Error('The selection query already sets a date');
-  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length)}`;
+  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout tags\b/g, 'out body')}`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
@@ -114,7 +116,9 @@ export function applyFeatureChanges(features, {upserts, deletes}, toFeatures, {k
 // time, a time older than `maxAgeDays` (a full download is then cheaper and
 // as exact), a failed or unreadable request, or a result that would lose
 // more than `maxDrop` of the features. The caller then downloads in full.
-export async function updateFromChanges({features, since, query, toFeatures, fetchText, now = Date.now(), maxAgeDays = 28, maxDrop = 0.05, warn = console.warn}) {
+// `failed` receives the error of a change request that was made and failed,
+// so the caller can honour a delay the server asked for before its fallback.
+export async function updateFromChanges({features, since, query, toFeatures, fetchText, now = Date.now(), maxAgeDays = 28, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
   if (!Array.isArray(features) || !features.length) return null;
   if (!TIME.test(since || '')) { warn('No database time for the published snapshot: downloading in full'); return null; }
   if (now - Date.parse(since) > maxAgeDays * 86400000) { warn(`The published snapshot is older than ${maxAgeDays} days: downloading in full`); return null; }
@@ -125,6 +129,7 @@ export async function updateFromChanges({features, since, query, toFeatures, fet
     return {features: next, osmBase: changes.timestamp, since, upserts: changes.upserts.length, deletes: changes.deletes.length};
   } catch (error) {
     warn('Changes unavailable, downloading in full:', error.message);
+    failed(error);
     return null;
   }
 }
