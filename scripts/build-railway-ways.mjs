@@ -18,7 +18,7 @@ import {STAGES, selectDownloadStage, startStagePass, recordStageRegion, finishSt
 import {quarters, toFeatures} from './branch-lines.mjs';
 import {toTable} from './service-routes.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
-import {railwayWaysQuery, railwayWaysQueries, branchView, serviceView, powerView} from './railway-ways.mjs';
+import {railwayWaysQuery, railwayWaysQueries, storedOutputs, branchView, serviceView, powerView} from './railway-ways.mjs';
 import {updateElements, selectionChangeQueries, requireGeometry} from './overpass-adiff.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
 
@@ -125,7 +125,7 @@ export async function buildRailwayWays({
           return text;
         };
         const common = {since, fetchText, maxDrop: 1, warn: (...args) => log(region.box.join(','), ...args), failed: error => { failure = error; }};
-        const relationElements = region.response.elements.filter(e => e.type === 'relation'), wayElements = region.response.elements.filter(e => e.type !== 'relation');
+        const {relations: relationElements, ways: wayElements} = storedOutputs(region);
         const relations = await updateElements({...common, elements: relationElements, previousQuery: before.relations, query: after.relations});
         const ways = relations && await updateElements({...common, elements: wayElements, previousQuery: before.ways, query: after.ways,
           until: relations.osmBase, pick: element => requireGeometry([element])[0]});
@@ -135,7 +135,7 @@ export async function buildRailwayWays({
           response = validRailwayWays({...region.response, osm3s: {...region.response.osm3s, timestamp_osm_base: relations.osmBase},
             elements: [...relations.elements, ...ways.elements]});
         } catch (error) { stopped = `changes for region ${region.box.join(',')} deferred: ${error.message}`; break; }
-        await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, query, generated: iso(now), response}), {level: 9}));
+        await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, query, generated: iso(now), response, relations: relations.elements.length}), {level: 9}));
         if (!current.changePass.done.includes(name)) current.changePass.done.push(name);
         fetched++;
         log(`Region ${region.box.join(',')}: changes since ${since}, ${relations.upserts + ways.upserts} added or changed, ${relations.deletes + ways.deletes} removed; query change: ${relations.added + ways.added} added, ${relations.dropped + ways.dropped} dropped`);

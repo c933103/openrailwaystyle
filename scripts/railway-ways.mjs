@@ -43,6 +43,25 @@ export function railwayWaysQueries(query) {
   return {relations: `${prefix}(.r;);out meta;`, ways: `${prefix}${ways}`};
 }
 
+// A stored region's elements by the output that selected them: the route
+// relations (the first output) and the rest, whose power selection can hold
+// relations too (charging stations). A region the change pass wrote records
+// the first output's length (`relations`). In a full download the first
+// output is relations only and the second, sorted by quadtile, begins with
+// its nodes and ways. If it has none, its relations follow the route
+// relations, which all match the service-route selection; each element there
+// appears once.
+export function storedOutputs(region) {
+  const elements = region.response.elements;
+  let split = Number.isSafeInteger(region.relations) ? region.relations : elements.findIndex(e => e.type !== 'relation');
+  if (split < 0) {
+    const seen = new Set();
+    split = elements.findIndex(e => !isServiceRoute(e) || seen.has(e.id) || !seen.add(e.id));
+    if (split < 0) split = elements.length;
+  }
+  return {relations: elements.slice(0, split), ways: elements.slice(split)};
+}
+
 const tagsOf = element => element.tags || {};
 // The branch-line selection (BRANCH_SELECTS), element by element.
 export function isBranchWay(element) {

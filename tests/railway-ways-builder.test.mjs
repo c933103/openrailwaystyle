@@ -285,3 +285,32 @@ test('a change pass resumed after the query changed brings its done regions to t
   const [region] = await japanRegions(root);
   assert.equal(region.query, current);
 });
+
+test('a relation the power selection chose takes the changes of that query, not the route relations\'', async t => {
+  const root = await fixture(t);
+  const route = {type: 'relation', id: 10, version: 1, timestamp: '2026-10-01T00:00:00Z', tags: {type: 'route', route: 'subway', name: 'Line'}, members: []};
+  const charger = {type: 'relation', id: 20, version: 1, timestamp: '2026-10-01T00:00:00Z', tags: {type: 'multipolygon', amenity: 'charging_station', railway: 'charging_station'},
+    members: [{type: 'way', ref: 5, role: 'outer', geometry: [{lon: 139.7, lat: 35.6}, {lon: 139.701, lat: 35.6}, {lon: 139.701, lat: 35.601}, {lon: 139.7, lat: 35.6}]}]};
+  // As the merged query outputs them: the route relations, then the rest.
+  await run(root, overpass(() => ok([route, way(1, {railway: 'subway'}), charger])).fetcher);
+  const previous = await publish(root);
+  await currentExceptJapan(previous);
+  const changes = overpass(query => query.includes('(.r;);out meta;')
+    ? adiff('2026-11-01T05:00:00Z')
+    : adiff('2026-11-01T05:00:00Z', '<action type="delete"><old/><new><relation id="20" visible="false"/></new></action>'));
+  await run(root, changes.fetcher, {previous});
+  const [region] = await japanRegions(root);
+  assert.deepEqual(region.response.elements.map(e => `${e.type}/${e.id}`), ['relation/10', 'way/1'], 'the deleted charger goes; the route stays, once');
+  assert.equal(region.relations, 1, 'where the route relations end, for the next pass');
+});
+
+test('stored elements split at the end of the route relations\' output', async () => {
+  const {storedOutputs} = await import('../scripts/railway-ways.mjs');
+  const route = id => ({type: 'relation', id, tags: {type: 'route', route: 'tram'}}), charger = id => ({type: 'relation', id, tags: {amenity: 'charging_station'}});
+  const ids = ({relations, ways}) => [relations.map(e => e.id), ways.map(e => e.id)];
+  const elements = [route(1), route(2), {type: 'node', id: 3}, charger(4)];
+  assert.deepEqual(ids(storedOutputs({response: {elements}})), [[1, 2], [3, 4]], 'a full download: at its first node or way');
+  assert.deepEqual(ids(storedOutputs({relations: 1, response: {elements}})), [[1], [2, 3, 4]], 'as the change pass recorded');
+  assert.deepEqual(ids(storedOutputs({response: {elements: [route(1), charger(4)]}})), [[1], [4]], 'no node or way: at the first relation no route selection chose');
+  assert.deepEqual(ids(storedOutputs({response: {elements: [route(1), route(1)]}})), [[1], [1]], 'or at a relation output twice');
+});
