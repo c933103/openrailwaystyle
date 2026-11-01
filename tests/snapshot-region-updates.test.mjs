@@ -1,0 +1,93 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {mkdtemp, readFile, readdir, rm, writeFile, mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+// Runs the unchanged lifecycle builder's update step (SNAPSHOT_REGION=delta)
+// in a temporary folder, with fetch and timers replaced before it loads.
+// Synthetic responses in the documented augmented diff form; no provider data.
+const builder = fileURLToPath(new URL('../scripts/build-snapshot.mjs', import.meta.url));
+const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-01T00:00:00Z';
+const way = (id, tags) => ({type:'way', id, tags, geometry:[{lat:10, lon:100}, {lat:10.1, lon:100.1}]});
+const region = elements => JSON.stringify({osm3s:{timestamp_osm_base:SINCE}, elements});
+
+async function run(t, files, replies) {
+  const root = await mkdtemp(join(tmpdir(), 'lifecycle-updates-'));
+  t.after(() => rm(root, {recursive:true, force:true}));
+  await mkdir(join(root, '.snapshot-cache'));
+  for (const [name, data] of Object.entries(files)) await writeFile(join(root, '.snapshot-cache', name), data);
+  await writeFile(join(root, 'fake.mjs'), `
+    const replies = ${JSON.stringify(replies)}, log = [];
+    globalThis.setTimeout = f => { f(); return 0; };
+    globalThis.fetch = async (url, {body}) => {
+      const query = body.get('data'); log.push(query);
+      (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
+      const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
+      return new Response(reply.text, {status:reply.status || 200});
+    };`);
+  const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:'delta', GITHUB_RUN_ID:'1'}, encoding:'utf8'});
+  let requests = [];
+  try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
+  const read = async name => { try { return JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8')); } catch { return null; } };
+  return {result, requests, read, names:await readdir(join(root, '.snapshot-cache'))};
+}
+
+const reopened = `<osm><meta osm_base="${BASE}"/>`
+  + `<action type="modify"><old><way id="1"/></old><new><way id="1" version="3"><nd ref="1" lat="10" lon="100"/><nd ref="2" lat="10.2" lon="100.2"/><tag k="railway" v="rail"/><tag k="disused:railway" v="rail"/></way></new></action>`
+  + `<action type="delete"><old><way id="100"/></old><new><way id="100" visible="false"/></new></action>`
+  + `<action type="delete"><old><way id="101"/></old><new><way id="101" visible="true"/></new></action></osm>`;
+
+test('each cached region takes only its changes, deleted and retagged ways included, and records its query', async t => {
+  const {result, requests, read} = await run(t, {
+    '0_90_45_135.json': region([way(1, {railway:'construction', construction:'rail'}), ...Array.from({length:40}, (_, i) => way(100 + i, {railway:'abandoned'}))]),
+  }, {'0,90,45,135': {text:reopened}});
+  assert.equal(result.status, 0, result.stderr);
+  const asked = requests.filter(q => q.includes('(0,90,45,135)'));
+  assert.equal(asked.length, 1, 'one change request, no full download');
+  assert.match(asked[0], /^\[out:xml\]\[timeout:300\]\[maxsize:134217728\]\[adiff:"2026-10-01T00:00:00Z"\];\(way\[railway~/);
+  const updated = await read('0_90_45_135.json');
+  assert.equal(updated.osm3s.timestamp_osm_base, BASE, 'the next run starts from the new database time');
+  assert.match(updated.query, /^\[out:json\]\[timeout:90\]\[maxsize:134217728\];\(way\[railway~"\^\(proposed\|construction/);
+  assert.deepEqual(updated.elements.find(e => e.id === 1).tags, {railway:'rail', 'disused:railway':'rail'}, 'reopened: the assembly no longer draws it');
+  assert.ok(!updated.elements.some(e => e.id === 100 || e.id === 101), 'deleted, and no longer tagged as former');
+  assert.equal(updated.elements.length, 39);
+  assert.match(result.stdout, /REGIONS UPDATED \{"updated":1,"changed":3,"unanswered":0,"redownload":0/);
+});
+
+test('a region Overpass does not answer is kept; one whose changes cannot be used is downloaded in full', async t => {
+  const {result, read} = await run(t, {
+    '-90_-180.json': region([way(7, {railway:'proposed'})]),
+    '0_-180_45_-135.json': region([way(5, {railway:'proposed'})]),
+  }, {
+    '-90,-180,0,-90': {status:429, text:''},
+    '0,-180,45,-135': {text:`<osm><meta osm_base="${BASE}"/><remark> runtime error: Query timed out in "query" at line 1 after 301 seconds. </remark></osm>`},
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal((await read('-90_-180.json')).osm3s.timestamp_osm_base, SINCE, 'unchanged, asked again next run');
+  assert.equal(await read('0_-180_45_-135.json'), null, 'removed, so the region step downloads it in full');
+  assert.match(result.stdout, /"unanswered":1,"redownload":1/);
+});
+
+test('a split region is updated in its parts', async t => {
+  const {result, requests, read} = await run(t, {
+    '45_0_90_45.json.split': 'split',
+    '45_0_67.5_22.5.json.split': 'split',
+    '67.5_0_90_22.5.json': region([way(9, {railway:'proposed'})]),
+  }, {});
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(requests.some(q => q.includes('(67.5,0,90,22.5)')));
+  assert.ok(!requests.some(q => q.includes('(45,0,90,45)')), 'never the whole region');
+  assert.equal((await read('67.5_0_90_22.5.json')).osm3s.timestamp_osm_base, BASE);
+});
+
+test('the download budget stops the update', async t => {
+  const big = `<osm><meta osm_base="${BASE}"/><note>${'x'.repeat(1000)}</note></osm>`;
+  const files = {'budget-1.json': JSON.stringify({bytes:499_999_999}), '0_90_45_135.json': region([way(9, {railway:'proposed'})])};
+  const {result, read} = await run(t, files, {'0,90,45,135': {text:big}});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Download budget exceeded/);
+  assert.equal((await read('0_90_45_135.json')).osm3s.timestamp_osm_base, SINCE);
+});

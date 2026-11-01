@@ -9,11 +9,10 @@ on:
   # Started on Monday and Friday from 03:23 UTC (night across Europe) by
   # osm-updates.yml, which runs the Overpass datasets one at a time. Europe is where
   # most users of the public Overpass server (overpass-api.de, in Germany)
-  # are. Each run fetches the ways changed since the previous run (typically
-  # under 1 MB), the loading gauge list (about 4 MB) and renews about 5 MB of
-  # the oldest full region responses, which catches what change queries miss
-  # (e.g. deleted ways). That keeps each run day near the Overpass API wiki's
-  # guidance for regular applications (under 100 queries and 10 MB a day).
+  # are. Each run brings every cached region up to date with its changes
+  # since its own database time (augmented diffs, which include deleted and
+  # retagged ways) and fetches the loading gauge list (about 4 MB). No region
+  # is re-downloaded on a timer.
 permissions:
   contents: write
   actions: write
@@ -57,14 +56,18 @@ jobs:
           else
             echo "No stored Overpass responses in the release"
           fi
+      # Only on request: every run brings each cached region up to date
+      # with its changes (next step), including deleted and retagged ways.
       - name: Choose regions to refresh
-        if: github.event_name == 'schedule' || inputs.refresh
+        if: inputs.refresh == true
         env:
           REFRESH_BYTES: '5000000'
         run: node scripts/refresh-snapshot-cache.mjs
-      # If Overpass is busy, the snapshot is built with the changes recorded
-      # so far and the next run catches up from the same point.
-      - name: Fetch ways changed since the previous run
+      # Each cached region takes only its changes since its own database
+      # time. A region Overpass does not answer keeps its data and catches up
+      # next run; one whose changes cannot be used is downloaded in full by
+      # the region steps below.
+      - name: Bring cached regions up to date
         continue-on-error: true
         env:
           SNAPSHOT_REGION: delta

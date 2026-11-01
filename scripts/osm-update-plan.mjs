@@ -26,8 +26,8 @@ const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
 // The railway-ways store's reader and views, which the datasets built from it use.
 const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];
 export const OSM_UPDATES = Object.freeze([
-  {id:'lifecycle', workflow:'snapshot.yml', due:{weekly:[1,5], hour:3}, inputs:{refresh:'true'},
-    paths:['scripts/build-snapshot.mjs', 'styles/pbf-utf8.mjs', 'scripts/lifecycle.mjs', 'scripts/snapshot-delta.mjs',
+  {id:'lifecycle', workflow:'snapshot.yml', due:{weekly:[1,5], hour:3},
+    paths:['scripts/build-snapshot.mjs', 'styles/pbf-utf8.mjs', 'scripts/lifecycle.mjs', 'scripts/snapshot-delta.mjs', 'scripts/overpass-adiff.mjs',
       'scripts/refresh-snapshot-cache.mjs', 'scripts/build-loading-gauge-list.mjs', 'styles/loading-gauge-list.mjs',
       'scripts/build-polar.mjs', 'scripts/polar-depth.mjs', 'styles/bathymetry.mjs', 'scripts/polar-contours.mjs',
       'scripts/polar-features.mjs', 'styles/polar.mjs', 'scripts/pack-snapshot.py']},

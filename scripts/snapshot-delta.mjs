@@ -1,42 +1,9 @@
-// Weekly incremental update of the lifecycle snapshot. Instead of waiting for
-// a region's turn in the monthly rotation, each run asks Overpass only for
-// ways changed since the previous run:
-//   1. lifecycle ways (planned, construction, former) changed since then,
-//      with geometry: added or updated;
-//   2. IDs of operating railways changed since then: any of them still in
-//      the snapshot has opened (or reopened) and is removed.
-// Changes are kept in .snapshot-cache/delta.json, keyed by way ID with the
-// OSM time of the response, and applied over the cached regions whenever
-// they are newer than the region's own data.
-import {toGeoJSON} from './lifecycle.mjs';
-
+// Change log of the lifecycle snapshot's earlier weekly update, which asked
+// for ways changed since the previous run with the `changed` filter. Runs
+// now bring each cached region up to date instead (build-snapshot.mjs), so
+// no new entries are recorded; a log kept in the cache is still applied
+// where it is newer than a region's data, and pruned once superseded.
 export const DELTA_FILE = '.snapshot-cache/delta.json';
-const LIFECYCLE = 'proposed|construction|disused|abandoned|razed|demolished|removed';
-const TRACKS = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
-
-export function deltaQueries(since, bbox = '') {
-  const area = bbox ? `(${bbox})` : '';
-  const changed = `(changed:"${since}")`;
-  return {
-    // One key-regex selector covers every "<state>:railway" tag.
-    lifecycle: `[out:json][timeout:300];(way[railway~"^(${LIFECYCLE})$"]${changed}${area};way[~"^(${LIFECYCLE}):railway$"~"^(${TRACKS})$"]${changed}${area};);out tags geom qt;`,
-    opened: `[out:json][timeout:300];way[railway~"^(${TRACKS})$"]${changed}${area};out ids qt;`,
-  };
-}
-
-// Record one run's responses: lifecycle features replace older entries;
-// opened IDs become removals.
-export function mergeDelta(delta, lifecycleJson, openedJson) {
-  const time = lifecycleJson.osm3s?.timestamp_osm_base;
-  if (!time) throw new Error('Overpass response has no timestamp');
-  const changes = {...(delta?.changes || {})};
-  for (const f of toGeoJSON(lifecycleJson).features) changes[f.id] = {time, feature: f};
-  const lifecycleIds = new Set(Object.keys(changes).filter(id => changes[id].time === time && changes[id].feature));
-  for (const el of openedJson.elements || []) {
-    if (el.type === 'way' && !lifecycleIds.has(String(el.id))) changes[el.id] = {time, feature: null};
-  }
-  return {since: time, changes};
-}
 
 // Apply recorded changes over the assembled features. base maps way ID to
 // the OSM time of the region response it came from. Returns the counts and

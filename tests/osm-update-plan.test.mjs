@@ -55,9 +55,9 @@ test('a builder counts as changed only when its own files differ since the last 
   assert.throws(() => builderChanged('bad', head, ['a.mjs'], git(false, '')), /Invalid commit/);
 });
 
-test('manual runs choose one dataset or all, in run order, with lifecycle refresh input', () => {
+test('manual runs choose one dataset or all, in run order; lifecycle runs take changes, with no forced refresh', () => {
   const now = at('2026-11-04T12:00:00Z');
-  assert.deepEqual(dueUpdates(now, {}, {only: 'lifecycle'}), [{id: 'lifecycle', workflow: 'snapshot.yml', inputs: 'refresh=true'}]);
+  assert.deepEqual(dueUpdates(now, {}, {only: 'lifecycle'}), [{id: 'lifecycle', workflow: 'snapshot.yml', inputs: ''}]);
   assert.deepEqual(ids(dueUpdates(now, {}, {only: 'all'})), OSM_UPDATES.map(e => e.id));
   assert.throws(() => dueUpdates(now, {}, {only: 'nonexistent'}), /Unknown dataset/);
   assert.throws(() => dueUpdates(new Date('x'), {}), /Invalid time/);
@@ -91,7 +91,7 @@ test('the scheduler is the only schedule for these Overpass workflows, and start
     assert.match(triggers, /^  workflow_dispatch:/m, `${workflow} must accept the scheduler's dispatch`);
   }
   const snapshot = await readFile(new URL('snapshot.yml', workflows), 'utf8');
-  assert.match(snapshot, /if: github\.event_name == 'schedule' \|\| inputs\.refresh/, 'the dispatched lifecycle run still renews the oldest regions');
+  assert.match(snapshot, /- name: Choose regions to refresh\n        if: inputs\.refresh == true\n/, 'regions are re-downloaded only on request: each run takes their changes');
 });
 
 test('last-run lookup takes the latest successful run of any trigger, and fails on API errors', async t => {
