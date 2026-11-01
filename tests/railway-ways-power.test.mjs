@@ -4,7 +4,7 @@ import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
-import {STAGES} from '../scripts/download-stages.mjs';
+import {STAGES, stageLayoutKey} from '../scripts/download-stages.mjs';
 import {quarters} from '../scripts/branch-lines.mjs';
 import {buildPowerMethodsFromStore, validatePowerMethodsSnapshot} from '../scripts/build-power-methods.mjs';
 import {regionKey} from '../scripts/build-railway-ways.mjs';
@@ -18,7 +18,7 @@ async function store(t, {complete = true, split = false} = {}) {
   t.after(() => rm(root, {recursive: true, force: true}));
   const stages = {};
   for (const stage of STAGES) {
-    stages[stage.name] = {completed: complete || stage.name !== 'world' ? '2026-10-31T00:00:00Z' : null};
+    stages[stage.name] = {completed: complete || stage.name !== 'world' ? '2026-10-31T00:00:00Z' : null, leaves: {key: stageLayoutKey(stage), regions: []}};
     await mkdir(join(root, 'store', 'regions', stage.name), {recursive: true});
     for (const [part, {box}] of stage.parts.entries()) {
       const boxes = split && stage.name === 'japan' ? quarters(box) : [box];
@@ -55,15 +55,40 @@ test('an incomplete store publishes nothing, so the download stays in use', asyn
   const logs = [];
   assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' ')), stagesCoverWorld: true}), undefined);
   await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
-  assert.match(logs[0], /incomplete; not built from the store: world/);
+  assert.match(logs[0], /incomplete or of an earlier stage layout; not built from the store: world/);
+});
+
+test('a world stage last fetched with its earlier boxes is not used for power methods', async t => {
+  const root = await store(t);
+  const state = JSON.parse(await readFile(join(root, 'store', 'state.json'), 'utf8'));
+  state.stages.world.leaves = {key: JSON.stringify([{box: [-35, -20, 37.5, 52]}, {box: [-50, 110, -11, 180]}, {box: [-50, -180, 0, -150]}]), regions: []};
+  await writeFile(join(root, 'store', 'state.json'), JSON.stringify(state));
+  const logs = [];
+  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' '))}), undefined);
+  await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
+  assert.match(logs[0], /earlier stage layout; not built from the store: world$/);
+  // Without any record of its layout, likewise.
+  delete state.stages.world.leaves;
+  await writeFile(join(root, 'store', 'state.json'), JSON.stringify(state));
+  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: () => {}}), undefined);
 });
 
 test('while the stages leave parts of the world uncovered, a complete store is not used for power methods', async t => {
   const root = await store(t);
   const logs = [];
-  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' '))}), undefined);
+  assert.equal(await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: (...args) => logs.push(args.join(' ')), stagesCoverWorld: false}), undefined);
   await assert.rejects(readFile(join(root, 'out', 'methods-manifest.json')));
   assert.match(logs[0], /do not cover the whole world/);
+  // The stages do cover it, through the rest-of-the-world remainder: a
+  // complete store of the current layout is used.
   const {STAGES_COVER_WORLD} = await import('../scripts/download-stages.mjs');
-  assert.equal(STAGES_COVER_WORLD, false, 'not until the builder checks the stored regions were made with the remainder parts');
+  assert.equal(STAGES_COVER_WORLD, true);
+  const built = await buildPowerMethodsFromStore(join(root, 'store'), {output: join(root, 'out'), log: () => {}});
+  assert.equal(built.manifest.partition, 'railway-ways-stages');
+});
+
+test('the facilities workflow loads the store before it builds the power methods', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/traction-facilities.yml', import.meta.url), 'utf8');
+  const load = workflow.indexOf('railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE'), build = workflow.indexOf('scripts/build-power-methods.mjs');
+  assert.ok(load > 0 && build > load);
 });

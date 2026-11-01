@@ -200,10 +200,11 @@ routes. Their workflows load the newest usable generation
 (`railway-ways-release.mjs load <directory> RAILWAY_WAYS_STORE`) and are built
 from it with no Overpass request; when it cannot be loaded (no release yet, or
 GitHub unreachable), the run warns and downloads as before. Power methods keep
-their own world-quadrant download for now (`STAGES_COVER_WORLD` in
-`scripts/download-stages.mjs`). The stages now cover the whole world, through
-the rest-of-the-world remainder below; the power methods switch once they check
-that the stored regions were made with it.
+their own world-quadrant download until every stage in the store is complete
+with its current parts (`leaves.key`, `stageLayoutKey` in
+`scripts/download-stages.mjs`); the stages cover the whole world through the
+rest-of-the-world remainder below (`STAGES_COVER_WORLD`).
+`traction-facilities.yml` loads the store for them.
 
 Branch lines can already be built from the store: with `RAILWAY_WAYS_STORE`
 set to a copy of `railway-ways-data`, `scripts/build-branch-lines.mjs` makes no

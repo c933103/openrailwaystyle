@@ -54,9 +54,9 @@ export const STAGES = [
 
 // Whether the stages' parts cover the whole world. They do, through the
 // remainder parts above. A dataset that must be worldwide (power methods) is
-// still downloaded until it checks that the stored regions were made with
-// these parts.
-export const STAGES_COVER_WORLD = false;
+// built from the stored regions once each stage's were fetched with these
+// parts (stageLayoutKey).
+export const STAGES_COVER_WORLD = true;
 
 // Give each unfinished stage a turn. A permanently busy or oversized region
 // must not monopolize all runs while later continents remain unqueried.
@@ -76,6 +76,8 @@ export function selectDownloadStage(state, {now = Date.now(), refreshDays = 14} 
 // already known to exceed the server's limits. A pass that began before
 // regions were recorded (no `fetched` list) records nothing.
 const partsKey = stage => JSON.stringify(stage.parts);
+// The layout a stage's regions were last fetched with (`leaves.key`).
+export const stageLayoutKey = partsKey;
 export function startStagePass(current, stage) {
   const recorded = current.leaves?.key === partsKey(stage) && current.leaves.regions?.length ? current.leaves.regions : null;
   current.pending = recorded ? recorded.map(region => ({...region, box: [...region.box]}))
