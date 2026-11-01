@@ -193,3 +193,89 @@ export function requireGeometry(upserts) {
   }
   return upserts;
 }
+
+// A selection query in a form whose selection can be compared with
+// another's: settings, then one statement or one top-level union of
+// statements, then one output: [out:json][...];( ... );out ...; or
+// [out:json][...];way[...];out ...; `union` is the selection as a union.
+// Anything else (several statements in sequence, several outputs) is null:
+// a sequence's result is not the union of its statements.
+export function selectionParts(query) {
+  const head = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || ''), tail = /;(out(?: [a-z]+)*);$/.exec(query || '');
+  if (!head || !tail || /\[(?:adiff|diff|date):/.test(head[1])) return null;
+  const body = query.slice(head[0].length, tail.index);
+  // Top-level statement ends (`;` outside brackets and quotes) and whether the
+  // body is one bracketed union.
+  let depth = 0, quote = null, ends = 0, closedAt = -1;
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') { if (--depth < 0) return null; if (!depth && c === ')' && closedAt < 0 && body[0] === '(') closedAt = i; }
+    else if (c === ';' && !depth) ends++;
+  }
+  if (depth || quote || !body) return null;
+  if (body[0] === '(' && closedAt === body.length - 1) return {settings: head[1], union: body, out: tail[1]};
+  if (ends === 0 && body[0] !== '(') return {settings: head[1], union: `(${body};)`, out: tail[1]};
+  return null;
+}
+
+// The two requests that bring elements selected by `previous` to what
+// `query` selects, both at the database time `at`: the elements only `query`
+// selects (`added`, in its own output form) and the ids of those only
+// `previous` selected (`dropped`). Null when the queries cannot be compared
+// or give their elements in different forms: the caller then downloads in
+// full. An empty object when the selections are the same.
+export function selectionChangeQueries(previous, query, at) {
+  if (!TIME.test(at || '')) throw new Error('Invalid selection time');
+  const old = selectionParts(previous), next = selectionParts(query);
+  if (!old || !next || old.out !== next.out) return null;
+  if (old.union === next.union) return {};
+  const sets = `[out:json]${next.settings}[date:"${at}"];${old.union}->.previous;${next.union}->.current;`;
+  return {added: `${sets}(.current; - .previous;);${next.out};`, dropped: `${sets}(.previous; - .current;);out ids;`};
+}
+
+const elementsOf = text => {
+  const data = JSON.parse(text);
+  if (data.remark) throw new Error(String(data.remark).trim());
+  if (!Array.isArray(data.elements)) throw new Error('Incomplete response');
+  return data.elements;
+};
+
+// Stored Overpass elements (the full response of `previousQuery` as of the
+// database time `since`) brought to what `query` selects now, or null when
+// they cannot be and the caller downloads in full:
+// 1. the changes to `previousQuery` since `since` (one augmented diff), which
+//    gives the database time `at` of the result;
+// 2. when `query` selects differently, only the difference at `at`: the
+//    elements it newly selects and the ids of those it no longer selects.
+// The conversion of the elements into features is not part of the stored
+// state: the caller converts all of them on every run, so new conversion
+// code needs no download at all.
+// `pick` keeps what the conversion needs of an element; `maxDrop` bounds the
+// share the changes in step 1 may remove (a selection change may remove any).
+export async function updateElements({elements, since, previousQuery, query, fetchText, pick = element => element, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
+  if (!Array.isArray(elements) || !elements.length) return null;
+  if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
+  if (!previousQuery) { warn('The stored elements do not record their query: downloading in full'); return null; }
+  try {
+    const changes = parseAdiff(await fetchText(adiffQuery(previousQuery, since)));
+    const at = changes.timestamp;
+    let next = applyElementChanges(elements, {upserts: changes.upserts.map(pick), deletes: changes.deletes});
+    if (next.length < elements.length * (1 - maxDrop)) throw new Error(`The changes would drop the elements from ${elements.length} to ${next.length}`);
+    const selection = selectionChangeQueries(previousQuery, query, at);
+    if (!selection) { warn('The query changed its output or form: downloading in full'); return null; }
+    let added = [], dropped = [];
+    if (selection.added) {
+      dropped = elementsOf(await fetchText(selection.dropped)).map(e => `${e.type}/${e.id}`);
+      added = elementsOf(await fetchText(selection.added)).map(pick);
+      next = applyElementChanges(next, {upserts: added, deletes: dropped});
+    }
+    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, added: added.length, dropped: dropped.length};
+  } catch (error) {
+    warn('Changes unavailable, downloading in full:', error.message);
+    failed(error);
+    return null;
+  }
+}

@@ -2,27 +2,30 @@
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
-import {updateFromChanges,extractionVersion} from './overpass-adiff.mjs';
+import {updateElements} from './overpass-adiff.mjs';
 import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
 const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
-// The query and conversion code this snapshot is made with (manifest.extraction).
-const extraction=extractionVersion(query,new URL('./conveying-data.mjs',import.meta.url));
+// What the conversion reads of an element; the stored elements keep only this.
+const pick=({type,id,tags,geometry})=>({type,id,tags,geometry});
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
-// Since the published snapshot (PREVIOUS_DATA: its conveying.geojson.gz and
-// manifest.json), only what changed; the full download below is the fallback.
+// Since the published snapshot (PREVIOUS_DATA: its elements.json.gz, the
+// elements it was made from, and manifest.json, with their database time and
+// query), only what changed and what a changed query selects differently;
+// the full download below is the fallback. The features are converted from
+// all elements on every run, so changed conversion code needs no download.
 let data, update=null, changeError=null;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
     const manifest=JSON.parse(await readFile(join(process.env.PREVIOUS_DATA,'manifest.json'),'utf8'));
-    previous={features:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'conveying.geojson.gz')))).features,
-      since:manifest.osmBase,previousVersion:manifest.extraction};
-  } catch(error) { console.log('No usable published snapshot:', error.message); }
-  if(previous) update=await updateFromChanges({...previous,query,version:extraction,toFeatures:elements=>conveyingGeoJSON({elements}).features,
-    fetchText:async changeQuery=>{
+    previous={elements:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'elements.json.gz')))),
+      since:manifest.osmBase,previousQuery:manifest.query};
+  } catch(error) { console.log('No usable published elements:', error.message); }
+  if(previous) update=await updateElements({...previous,query,pick,
+    fetchText:async request=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
-      const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
+      const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
       return response.text();
     },failed:error=>{changeError=error;}});
@@ -35,7 +38,7 @@ if(!update && changeError?.status) {
   console.log(`Waiting ${wait / 60000} minutes before the full download`);
   await new Promise(r=>setTimeout(r,wait));
 }
-if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed`);
+if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed; query change: ${update.added} added, ${update.dropped} dropped`);
 else for(let attempt=0;attempt<3;attempt++) {
   if (!conveyingRequestFits(deadline, 0)) throw new Error('Conveying acquisition deferred: no full request fits the 52-minute budget');
   try {
@@ -54,10 +57,12 @@ else for(let attempt=0;attempt<3;attempt++) {
     await new Promise(r=>setTimeout(r,wait));
   }
 }
-const {features}=update||conveyingGeoJSON(data);
+const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id-b.id);
+const {features}=conveyingGeoJSON({elements});
 // Taginfo counted about 44,000 such ways in October 2026.
 if(features.length<10000) throw new Error(`Suspiciously small worldwide extract: ${features.length}`);
 const root=new URL('../conveying-data/',import.meta.url);await mkdir(root,{recursive:true});
+await writeFile(new URL('elements.json.gz',root),gzipSync(JSON.stringify(elements),{level:9}));
 await writeFile(new URL('conveying.geojson.gz',root),gzipSync(JSON.stringify({type:'FeatureCollection',features}),{level:9}));
 const tiles=[];
 for(const [key,bytes] of conveyingTiles(features)) {
@@ -66,7 +71,7 @@ for(const [key,bytes] of conveyingTiles(features)) {
  await writeFile(new URL(key+'.pbf.gz',root),gzipSync(bytes,{level:9}));tiles.push(key);
 }
 const kinds=Object.fromEntries(['escalator','travelator','elevator'].map(kind=>[kind,features.filter(f=>f.properties.kind===kind).length]));
-const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,extraction,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes}:'full',features:features.length,kinds,zoom:CONVEYING_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line.'};
+const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes,added:update.added,dropped:update.dropped}:'full',features:features.length,kinds,zoom:CONVEYING_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line.'};
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));
