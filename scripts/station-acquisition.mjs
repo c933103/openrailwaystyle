@@ -1,6 +1,8 @@
 // Pure world-coverage, checkpoint and bounded query logic for the scheduled
 // OSM station-point acquisition. No network I/O occurs in this module.
-import {parseStationRegion} from './station-overview.mjs';
+import {parseStationRegion,stationPoint} from './station-overview.mjs';
+import {adiffQuery,parseAdiff,extractionVersion} from './overpass-adiff.mjs';
+import {createHash} from 'node:crypto';
 
 export const REGION_SCHEMA=1;
 export const FULL_WORLD_AREA=360*180;
@@ -74,8 +76,14 @@ export function newStationAcquisition(regions){
 // One entire verified source generation is immutable to map readers.
 // The next collection starts with an empty table; its progress stays in
 // station-points-work until a *separate* complete-generation publication.
-export function nextStationAcquisitionCycle(state,records){
+// An incomplete cycle made by another region query or record conversion
+// (`extraction`, see stationExtraction) restarts, keeping its regions, so a
+// generation never mixes records of two conversions. One without a recorded
+// version predates them and counts as current.
+export function nextStationAcquisitionCycle(state,records,extraction){
  checkStationAcquisition(state,records);
+ if(state.pending.length&&extraction!==undefined&&state.extraction!==undefined&&state.extraction!==extraction)
+   return {state:newStationAcquisition([...state.completed,...state.pending]),records:[],refreshed:true};
  if(state.pending.length)return {state,records,refreshed:false};
  if(!stationWorldCoverage(state.completed))throw new Error('Cannot refresh incomplete station inventory');
  return {state:newStationAcquisition(state.completed),records:[],refreshed:true};
@@ -146,4 +154,74 @@ export function postponeStationRegion(state,region,{maxDepth=6}={}){
  const next={...state,pending:[...splitStationRegion(region).map(box=>({box,depth:first.depth+1})),...state.pending.slice(1)]};
  if(next.pending.length>MAX_PENDING_REGIONS)throw new Error('Too many pending station regions');
  return next;
+}
+
+// What makes a station record of OSM data: the region query's selection and
+// the record conversion (station-point.mjs with its imports). A generation
+// made by another one starts a new cycle rather than taking changes, which
+// the current code would convert alone.
+export const stationExtraction=()=>extractionVersion(stationRegionQuery([-90,-180,90,180]),new URL('./station-point.mjs',import.meta.url));
+// A complete generation is kept up to date with the changes since its
+// database time instead of being downloaded again region by region: the
+// time it is current to (`changesSince`, at first its cycle's start), or
+// null when there is no complete generation yet or it was made by another
+// extraction. Its age is no reason for a new cycle: the changes since that
+// time make it exact however old it is.
+export function stationChangesSince(state,extraction=stationExtraction()){
+ if(!state||!Array.isArray(state.pending)||state.pending.length||!stationWorldCoverage(state.completed))return null;
+ // A state without a version predates them and was made by this conversion.
+ if((state.extraction??extraction)!==extraction)return null;
+ const since=state.changesSince||(typeof state.started==='string'?state.started.replace(/\.\d+Z$/,'Z'):'');
+ return /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since)?since:null;
+}
+// The changes worldwide, as one augmented diff of the region query, with the
+// time and size a worldwide request needs.
+export const stationChangesQuery=since=>adiffQuery(stationRegionQuery([-90,-180,90,180])
+ .replace('[timeout:120][maxsize:67108864]','[timeout:300][maxsize:268435456]'),since);
+export const parseStationChanges=parseAdiff;
+// The generation brought up to date: deleted elements and ones that are no
+// longer stations leave, changed ones replace their record unless an older
+// version, new ones join. A result losing over `maxDrop` of the stations
+// throws, as does anything the full download would refuse.
+//
+// The first changes after a cycle start from the cycle's start, but the
+// regions were read over days. A record edited after that start which the
+// changes do not mention matched the query at neither end: it was created
+// (or became a station) and went again while the regions were read, so it
+// leaves too. Any other record edited since then is a created, changed or
+// deleted element of the changes.
+export function applyStationChanges(state,records,{timestamp,upserts,deletes},{now=new Date().toISOString(),maxDrop=0.05}={}){
+ checkStationAcquisition(state,records);
+ if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(timestamp||''))throw new Error('Station changes without a database time');
+ const byId=new Map(records.map(r=>[r.id,r]));
+ let changed=0;
+ if(!state.changesSince){
+   const since=Date.parse(state.started),mentioned=new Set([...upserts.map(e=>`${e.type}-${e.id}`),...deletes.map(key=>key.replace('/','-'))]);
+   if(!Number.isFinite(since))throw new Error('Station cycle without a start time');
+   for(const [id,record] of byId)
+     if(Date.parse(record.osm_timestamp)>since&&!mentioned.has(id)){byId.delete(id);changed++;}
+ }
+ for(const key of deletes)if(byId.delete(key.replace('/','-')))changed++;
+ for(const element of upserts){
+   const id=`${element.type}-${element.id}`,point=stationPoint(element);
+   if(!point){if(byId.delete(id))changed++;continue;}
+   if(point.osm_version===null)throw new Error(`OSM object ${id} lacks version metadata`);
+   const prior=byId.get(id);
+   if(prior&&(prior.osm_version??0)>point.osm_version)continue;
+   if(JSON.stringify(prior)!==JSON.stringify(point)){byId.set(id,point);changed++;}
+ }
+ if(byId.size<records.length*(1-maxDrop))throw new Error(`Station changes would drop the stations from ${records.length} to ${byId.size}`);
+ if(byId.size>MAX_STATION_RECORDS)throw new Error('Station inventory over configured limit');
+ const updated={...state,changesSince:timestamp,lastUpdate:now};
+ const rows=[...byId.values()].sort((a,b)=>a.id.localeCompare(b.id));
+ checkStationAcquisition(updated,rows);
+ return {state:updated,records:rows,changed};
+}
+
+// A digest of a generation's tile archives (path → bytes), to publish tiles
+// that changed without any station changing (a change to the tile code).
+export function stationTilesDigest(archives){
+ const hash=createHash('sha256');
+ for(const [path,bytes] of [...archives].sort(([a],[b])=>a.localeCompare(b)))hash.update(`${path}\n`).update(bytes);
+ return hash.digest('hex');
 }

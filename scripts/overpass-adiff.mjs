@@ -87,6 +87,13 @@ function element(text) {
       else if (nds.some(nd => nd.lat !== undefined)) throw new Error(`Change way ${id} with a partial geometry`);
     }
   }
+  // `out center`: a way's or relation's centre, as Overpass JSON gives it.
+  const center = type !== 'node' && /<center\s([^>]*?)\/>/.exec(body);
+  if (center) {
+    const {lat, lon} = attributes(center[1]);
+    result.center = {lat: Number(lat), lon: Number(lon)};
+    if (!Number.isFinite(result.center.lat) || !Number.isFinite(result.center.lon)) throw new Error(`Change ${type} ${id} with an invalid centre`);
+  }
   if (type === 'relation') {
     // With `out geom`, a node member carries its position and a way member
     // its points (<nd lat lon/> inside the member), as Overpass JSON gives
