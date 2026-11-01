@@ -233,7 +233,10 @@ export function selectionChangeQueries(previous, query, at) {
   if (!TIME.test(at || '')) throw new Error('Invalid selection time');
   const old = selectionParts(previous), next = selectionParts(query);
   if (!old || !next || old.out !== next.out) return null;
-  if (old.body === next.body) return {};
+  // Only the time and memory limits leave the selection as it is; any other
+  // setting ([bbox:], for instance) is part of it.
+  const selecting = parts => parts.settings.replace(/\[(?:timeout|maxsize):\d+\]/g, '') + parts.body;
+  if (selecting(old) === selecting(next)) return {};
   const head = `[out:json]${next.settings}[date:"${at}"];`;
   return {ids: `${head}${next.body};out ids;`, elements: keys => {
     const byType = {node: [], way: [], relation: []};

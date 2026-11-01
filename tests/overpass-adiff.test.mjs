@@ -165,7 +165,9 @@ test('a changed selection is asked as its ids, and the new elements by id, at on
   // A query's own sets and default set never meet another query's: each runs alone.
   assert.equal(selectionChangeQueries('[out:json];way[highway=elevator];out;', '[out:json];(._;way[conveying];);out;', at).ids,
     `[out:json][date:"${at}"];(._;way[conveying];);out ids;`);
-  assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'settings alone select nothing new');
+  assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'time and memory limits select nothing new');
+  assert.equal(selectionChangeQueries('[out:json][bbox:0,0,1,1];way[a];out;', '[out:json][bbox:0,0,2,2];way[a];out;', at).ids,
+    `[out:json][bbox:0,0,2,2][date:"${at}"];way[a];out ids;`, 'a bounding box is part of the selection');
   assert.equal(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), at), null, 'another output form: in full');
   assert.equal(selectionChangeQueries('[out:json];way[a];out;node[b];out;', CONVEYING_QUERY, at), null);
 });
