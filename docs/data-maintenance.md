@@ -162,6 +162,15 @@ and 900 MB a day, a refresh every two weeks, splits recorded) and keeps each
 region's raw response: `regions/<stage>/` holds the last complete pass,
 `next/<stage>/` a pass in progress, which replaces it only when complete.
 
+A complete stage due for its refresh is not downloaded again: each stored
+region takes the changes since its database time, two Overpass augmented
+diffs (`railwayWaysQueries`: the route relations, then the ways up to the
+same time, since Overpass documents augmented diffs for one output), applied
+to its stored elements (`scripts/overpass-adiff.mjs`). A stopped pass keeps
+every region as it was and resumes with the rest; when every region is done
+the stage's `completed` time advances, so the datasets built from the store
+take it again. Only a region whose query changed needs a full pass.
+
 - Only the server's own report that a query ran out of time or memory splits a
   region. Gateway errors, a busy server and stalled or cut-off transfers retry
   the same region and defer it, since they say nothing about its size and a

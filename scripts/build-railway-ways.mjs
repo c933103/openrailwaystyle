@@ -18,7 +18,8 @@ import {STAGES, selectDownloadStage, startStagePass, recordStageRegion, finishSt
 import {quarters, toFeatures} from './branch-lines.mjs';
 import {toTable} from './service-routes.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
-import {railwayWaysQuery, branchView, serviceView, powerView} from './railway-ways.mjs';
+import {railwayWaysQuery, railwayWaysQueries, branchView, serviceView, powerView} from './railway-ways.mjs';
+import {adiffQuery, parseAdiff, applyElementChanges} from './overpass-adiff.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
 
 export const RAILWAY_WAYS_VERSION = 1;
@@ -76,6 +77,54 @@ export async function buildRailwayWays({
   if (!stage) { log('Every stage is current; nothing to fetch.'); return finish(null); }
   const current = state.stages[stage.name] ||= {completed: null, pending: null, seen: []};
   const nextDir = join(output, 'next', stage.name), regionsDir = join(output, 'regions', stage.name);
+  const BUDGET = Symbol('budget');
+  // A complete stage whose stored regions still match the current queries is
+  // brought up to date with the changes since each region's database time,
+  // not downloaded again: two change requests per region (the route
+  // relations, then the ways, ending at the same time), applied to its
+  // stored elements. A region whose query changed needs a full pass.
+  if (current.completed && !current.pending?.length) {
+    const names = (await readdir(regionsDir).catch(() => [])).filter(name => name.endsWith('.json.gz')).sort();
+    const regions = [];
+    for (const name of names) regions.push({name, region: JSON.parse(gunzipSync(await readFile(join(regionsDir, name))))});
+    const current_ = regions.length && regions.every(({region}) => stage.parts[region.part]
+      && region.query === railwayWaysQuery(stage.parts[region.part], region.box)
+      && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(region.response?.osm3s?.timestamp_osm_base || ''));
+    if (current_) {
+      current.changePass ||= {started: iso(now), done: []};
+      log(`Stage ${stage.name} (${stage.label}): changes for ${regions.length - current.changePass.done.length} region(s)`);
+      for (const {name, region} of regions) {
+        if (current.changePass.done.includes(name)) continue;
+        if (downloaded >= budget) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+        if (now() - started > timeBudgetMs) { stopped = 'time budget reached'; break; }
+        const since = region.response.osm3s.timestamp_osm_base, queries = railwayWaysQueries(stage.parts[region.part], region.box);
+        try {
+          const relationsText = await overpass(adiffQuery(queries.relations, since), {text: true});
+          if (relationsText === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+          if (relationsText === null) throw new Error('the change request ran out of time or memory');
+          const relations = parseAdiff(relationsText);
+          const waysText = await overpass(adiffQuery(queries.ways, since, relations.timestamp), {text: true});
+          if (waysText === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+          if (waysText === null) throw new Error('the change request ran out of time or memory');
+          const ways = parseAdiff(waysText);
+          for (const element of ways.upserts) if (element.type === 'way' && !(element.geometry?.length >= 2)) throw new Error(`Change way ${element.id} without geometry`);
+          const response = validRailwayWays({...region.response, osm3s: {...region.response.osm3s, timestamp_osm_base: relations.timestamp},
+            elements: applyElementChanges(region.response.elements, {upserts: [...relations.upserts, ...ways.upserts], deletes: [...relations.deletes, ...ways.deletes]})});
+          await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, generated: iso(now), response}), {level: 9}));
+          current.changePass.done.push(name);
+          fetched++;
+          log(`Region ${region.box.join(',')}: changes since ${since}, ${relations.upserts.length + ways.upserts.length} added or changed, ${relations.deletes.length + ways.deletes.length} removed`);
+        } catch (error) { stopped = `changes for region ${region.box.join(',')} deferred: ${error.message}`; break; }
+      }
+      if (current.changePass.done.length === regions.length) {
+        // The stage is current as of this pass: the datasets built from the
+        // store take it again.
+        Object.assign(current, {completed: iso(now), changePass: null});
+        log(`Stage ${stage.name} brought up to date: ${regions.length} regions`);
+      } else log(`Stage ${stage.name} changes continue next run (${regions.length - current.changePass.done.length} region(s) left): ${stopped}`);
+      return finish(stage, current);
+    }
+  }
   if (!current.pending?.length) {
     startStagePass(current, stage);
     current.started = iso(now);
@@ -84,8 +133,7 @@ export async function buildRailwayWays({
   await mkdir(nextDir, {recursive: true});
   log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 
-  const BUDGET = Symbol('budget');
-  async function overpass(query) {
+  async function overpass(query, {text: asText = false} = {}) {
     let lastFailure;
     for (let attempt = 0; attempt < 5; attempt++) {
       if (downloaded >= budget) return BUDGET;
@@ -108,6 +156,7 @@ export async function buildRailwayWays({
           return response.ok && fresh && received > runBudget ? null : BUDGET;
         }
         const text = Buffer.concat(chunks).toString();
+        if (asText && response.ok) return text;
         // Only the server's own report that the query ran out of time or
         // memory shows the region needs a smaller area. A gateway error, a
         // busy server, a stalled or cut-off transfer say nothing about its

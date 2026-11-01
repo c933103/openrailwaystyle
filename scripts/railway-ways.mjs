@@ -29,6 +29,16 @@ export function railwayWaysQuery(part, box) {
     + `.r out meta;(way(r.r)[railway~"${SERVICE_TRACKS}"];.b;.p;);out meta geom qt;`;
 }
 
+// The same selection as two queries with one output each, the route
+// relations and the ways, for change requests (augmented diffs): Overpass
+// documents those for a single output, not for several.
+export function railwayWaysQueries(part, box) {
+  const query = railwayWaysQuery(part, box), split = query.lastIndexOf('.r out meta;');
+  const prefix = query.slice(0, split), outputs = query.slice(split);
+  const ways = outputs.slice('.r out meta;'.length);
+  return {relations: `${prefix}.r out meta;`, ways: `${prefix}${ways}`};
+}
+
 const tagsOf = element => element.tags || {};
 // The branch-line selection (BRANCH_SELECTS), element by element.
 export function isBranchWay(element) {

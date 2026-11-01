@@ -109,3 +109,15 @@ test('the datasets\' own queries are unchanged, so their cached responses stay v
   assert.equal(sha(branchQuery(part('china'), part('china').box)), '62091ebd5e7286c60bf892b7071f112ccf8fbc034d0b191198a3c80e1c828317');
   assert.equal(sha(serviceQuery(part('china'), [0, 0, 1, 1])), '69d25326a572efbd5a5c514b9c4b96335e7f58afad97697948ff1f0956aaa5a7');
 });
+
+test('the change requests split the query into its two outputs, nothing else', async () => {
+  const {railwayWaysQueries} = await import('../scripts/railway-ways.mjs');
+  for (const stage of STAGES) for (const p of stage.parts) {
+    const whole = railwayWaysQuery(p, p.box), {relations, ways} = railwayWaysQueries(p, p.box);
+    const prefix = whole.slice(0, whole.lastIndexOf('.r out meta;'));
+    assert.equal(relations, `${prefix}.r out meta;`, stage.name);
+    assert.equal(`${prefix}.r out meta;${ways.slice(prefix.length)}`, whole, stage.name);
+    assert.equal(ways.match(/out meta/g).length, 1, `${stage.name}: one output each`);
+    assert.equal(relations.match(/out meta/g).length, 1, `${stage.name}: one output each`);
+  }
+});

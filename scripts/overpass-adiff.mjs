@@ -22,12 +22,15 @@ const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
 // meaningful only with `out meta` (or `out geom meta`): without the meta data
 // they are no better than a plain diff
 // (dev.overpass-api.de/overpass-doc/en/analysis/museum.html).
-export function adiffQuery(query, since) {
+// With `until`, the changes up to that time ([adiff:"since","until"]), so
+// several requests can describe one moment.
+export function adiffQuery(query, since, until) {
   if (!TIME.test(since || '')) throw new Error('Invalid change start');
+  if (until !== undefined && !(TIME.test(until) && until >= since)) throw new Error('Invalid change end');
   const settings = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || '');
   if (!settings) throw new Error('A change query needs an [out:json] selection query');
   if (/\[(?:adiff|diff|date):/.test(settings[1])) throw new Error('The selection query already sets a date');
-  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
+  return `[out:xml]${settings[1]}[adiff:"${since}"${until ? `,"${until}"` : ''}];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
