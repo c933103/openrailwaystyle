@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {mkdtemp, readFile, readdir, rm, writeFile, mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -133,4 +134,18 @@ test('a way that only moved out of a region into another is not logged as remove
   assert.equal(recordChanges(undefined, '2026-11-01T06:00:00Z', [at(9, 10, 100)], [], A).changes[9].feature, null);
   const stillHere = recordChanges(undefined, '2026-11-01T05:00:00Z', [], [at(9, 10, 100)], B);
   assert.equal(recordChanges(stillHere, '2026-11-01T06:00:00Z', [at(9, 10, 100)], [], A).changes[9].feature, null);
+});
+
+test('a way deleted from OSM is logged as removed even where a moved copy was logged elsewhere', async () => {
+  const {recordChanges} = await import('../scripts/snapshot-delta.mjs');
+  const at = (id, lat, lon) => ({type:'way', id, tags:{railway:'proposed'}, geometry:[{lat, lon}, {lat, lon: lon + 0.1}]});
+  const A = [0, 90, 45, 135], B = [0, 45, 45, 90];
+  const log = recordChanges(undefined, '2026-11-01T05:00:00Z', [], [at(8, 10, 80)], B);
+  assert.equal(recordChanges(log, '2026-11-01T06:00:00Z', [at(8, 10, 100)], [], A, ['8']).changes[8].feature, null);
+});
+
+test('the change log is saved before each region advances', () => {
+  const source = readFileSync(builder, 'utf8');
+  const log = source.indexOf('await writeFile(DELTA_FILE,JSON.stringify(changeLog));'), region = source.indexOf("await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase}");
+  assert.ok(log > 0 && region > log);
 });

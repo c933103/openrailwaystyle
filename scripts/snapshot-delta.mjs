@@ -14,12 +14,14 @@ export const DELTA_FILE = '.snapshot-cache/delta.json';
 // A way that left the region (`box`) may only have moved into another one:
 // when another region already logged it lying outside this box, that copy
 // stands and no removal is logged. (When that region updates later, its
-// newer entry replaces the removal.)
+// newer entry replaces the removal.) A way deleted from OSM (`deleted`, its
+// way IDs) is removed in any case.
 const touches = (feature, [s, w, n, e]) => {
   const lines = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
   return lines.some(line => line.some(([lon, lat]) => lat >= s && lat <= n && lon >= w && lon <= e));
 };
-export function recordChanges(delta, time, before, after, box) {
+export function recordChanges(delta, time, before, after, box, deleted = []) {
+  const gone = new Set(deleted.map(Number));
   const changes = {...(delta?.changes || {})};
   const old = new Map(before.filter(e => e.type === 'way').map(e => [e.id, JSON.stringify(e)]));
   const now = new Set();
@@ -32,7 +34,7 @@ export function recordChanges(delta, time, before, after, box) {
   for (const id of old.keys()) {
     if (now.has(id)) continue;
     const logged = changes[id]?.feature;
-    if (box && logged && !touches(logged, box)) continue;
+    if (!gone.has(id) && box && logged && !touches(logged, box)) continue;
     changes[id] = {time, feature: null};
   }
   return {...(delta || {}), changes};

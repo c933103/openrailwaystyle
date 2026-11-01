@@ -126,9 +126,13 @@ async function updateRegion(box) {
     },failed:error=>{failure=error;}});
   if(failure?.budget) throw failure;
   if(update) {
+    // For ways this region shares with one whose update failed (see
+    // snapshot-delta.mjs). Saved before the region advances, so a run stopped
+    // in between never leaves a region past changes the log lacks.
+    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements,box,
+      update.deleted.filter(key=>key.startsWith('way/')).map(key=>key.slice(4)));
+    await writeFile(DELTA_FILE,JSON.stringify(changeLog));
     await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
-    // For ways this region shares with one whose update failed (see snapshot-delta.mjs).
-    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements,box);
     updates.updated++; updates.changed+=update.upserts+update.deletes+update.added+update.dropped;
     return;
   }
@@ -143,8 +147,7 @@ const updates={updated:0,changed:0,unanswered:0,redownload:0};
 let changeLog;
 if(region==='delta') {
   try {changeLog=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
-  try {for(const box of boxes) await updateRegion(box);}
-  finally {if(changeLog) await writeFile(DELTA_FILE,JSON.stringify(changeLog));}
+  for(const box of boxes) await updateRegion(box);
   console.log('REGIONS UPDATED',JSON.stringify({...updates,downloaded}));
   process.exit(0);
 }
