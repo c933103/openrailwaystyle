@@ -38,11 +38,11 @@ export const OSM_UPDATES = Object.freeze([
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'styles/conveying.mjs']},
+    paths:['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'heritage', workflow:'heritage.yml', due:{monthly:3, hour:21},
     paths:['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},
-    paths:['scripts/station-overview.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'styles/tile-bundles.mjs']},
+    paths:['scripts/station-overview.mjs', 'scripts/station-point.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'scripts/overpass-adiff.mjs', 'styles/tile-bundles.mjs']},
   // One download for branch lines, service routes and power methods
   // (build-railway-ways.mjs), kept as a release; it runs before the datasets
   // built from it, which download on their own only when it cannot be loaded.

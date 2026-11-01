@@ -90,6 +90,13 @@ function element(text) {
       else if (nds.some(nd => nd.lat !== undefined)) throw new Error(`Change way ${id} with a partial geometry`);
     }
   }
+  // `out center`: a way's or relation's centre, as Overpass JSON gives it.
+  const center = type !== 'node' && /<center\s([^>]*?)\/>/.exec(body);
+  if (center) {
+    const {lat, lon} = attributes(center[1]);
+    result.center = {lat: Number(lat), lon: Number(lon)};
+    if (!Number.isFinite(result.center.lat) || !Number.isFinite(result.center.lon)) throw new Error(`Change ${type} ${id} with an invalid centre`);
+  }
   if (type === 'relation') {
     // With `out geom`, a node member carries its position and a way member
     // its points (<nd lat lon/> inside the member), as Overpass JSON gives
@@ -117,17 +124,26 @@ export function parseAdiff(xml) {
   const timestamp = /<meta\s[^>]*osm_base="([^"]+)"/.exec(xml)?.[1];
   if (!TIME.test(timestamp || '')) throw new Error('Change response without a database timestamp');
   // `deleted`: those of `deletes` deleted from OSM (visible="false"), not
-  // only no longer selected.
-  const upserts = [], deletes = [], deleted = [];
+  // only no longer selected. `actions` keeps each change's state before
+  // (`old`, null for a created element) as well as after, for callers that
+  // need what an element was: the nodes of a way that was deleted, for
+  // instance.
+  const upserts = [], deletes = [], deleted = [], actions = [];
   for (const [, type, body] of xml.matchAll(/<action type="([^"]*)">([\s\S]*?)<\/action>/g)) {
-    if (type === 'create') { const created = element(body); if (!created) throw new Error('Empty create action'); upserts.push(created); continue; }
+    if (type === 'create') {
+      const created = element(body);
+      if (!created) throw new Error('Empty create action');
+      upserts.push(created); actions.push({type, old: null, new: created});
+      continue;
+    }
     if (type !== 'modify' && type !== 'delete') throw new Error(`Unknown change action ${type}`);
     const next = element(/<new>([\s\S]*?)<\/new>/.exec(body)?.[1]);
     if (!next) throw new Error(`A ${type} action without its new state`);
     if (type === 'delete') { deletes.push(`${next.type}/${next.id}`); if (next.visible === false) deleted.push(`${next.type}/${next.id}`); }
     else upserts.push(next);
+    actions.push({type, old: element(/<old>([\s\S]*?)<\/old>/.exec(body)?.[1]), new: next});
   }
-  return {timestamp, upserts, deletes, deleted};
+  return {timestamp, upserts, deletes, deleted, actions};
 }
 
 // A feature collection with features keyed by OSM element (`keyOf`, by
