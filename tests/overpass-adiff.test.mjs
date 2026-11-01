@@ -249,6 +249,12 @@ test('stored elements follow changes and a changed query without a full download
     `<action type="delete"><old/><new><way id="${e.id}" visible="false"/></new></action>`).join(''))}), null, 'changes losing over 5% are not trusted');
   assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? idsOf([...stored, funicular]) : json([])}), null, 'a new element that does not come back');
   assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : json([{type: 'count', id: 0}])}), null, 'not an OSM element');
+  // New elements that would need more requests than allowed: none is asked.
+  const many = Array.from({length: 2001}, (_, i) => ({type: 'way', id: 10000 + i}));
+  asked.length = 0;
+  assert.equal(await updateElements({...base, query: wider, maxRequests: 3, fetchText: async q => { asked.push(q); return q.includes('[adiff:') ? diff : idsOf([...stored, ...many]); }}), null);
+  assert.equal(asked.length, 2, 'the changes and the ids, then nothing more');
+  assert.ok(warnings.some(w => /need more requests than the 3 allowed/.test(w)));
   // A result the caller cannot use is a full download, not a failed run.
   assert.equal(await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async () => diff, validate: () => { throw new Error('Incomplete geometry'); }}), null);
   assert.ok(warnings.some(w => /output or form/.test(w)) && warnings.some(w => /timed out/.test(w)) && warnings.some(w => /Incomplete geometry/.test(w)));
@@ -276,6 +282,8 @@ test('the conveying build makes at most three requests, its change requests incl
   const {fileURLToPath} = await import('node:url');
   for (const [name, answer, expected] of [
     ['refused', `return new Response('busy', {status: 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query whose new elements need more than the one request left: the third request is the full download.
+    ['query changed, too many new elements', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: Array.from({length: 2001}, (_, i) => ({type: 'way', id: i + 1}))}) : 'busy', {status: q.endsWith('out ids;') ? 200 : 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
     // A changed query: the change request, the ids and the new elements use all three.
     ['query changed, elements unusable', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]}) : JSON.stringify({elements: [{type: 'way', id: 2, tags: {highway: 'elevator'}}]}));`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
   ]) {
@@ -291,6 +299,7 @@ test('the conveying build makes at most three requests, its change requests incl
       {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
     assert.notEqual(result.status, 0, name);
     assert.deepEqual((await read(join(dir, 'requests'), 'utf8')).trim().split('\n'), expected, name);
-    if (name !== 'refused') assert.match(result.stderr, /no request left of the three/, name);
+    if (name === 'query changed, elements unusable') assert.match(result.stderr, /no request left of the three/, name);
+    if (name === 'query changed, too many new elements') assert.ok(!(await read(join(dir, 'requests'), 'utf8')).includes('(id:'), 'no element batch: the full download instead');
   }
 });
