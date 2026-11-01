@@ -251,15 +251,16 @@ test('every facility kind shares one neutral drawing; the legend keys shapes, no
   }
 });
 
-test('an energy-supply split decision stays while its query is unchanged, whatever its age and on a refresh',()=>{
+test('an energy-supply split decision stays whatever its age, on a refresh while its query is unchanged, and under a changed query except on a refresh',()=>{
   const query=powerFacilityQuery([-90,-180,0,-90]);
   assert.equal(powerFacilitySplitAccepted(query,{query}),true);
   assert.equal(powerFacilitySplitAccepted(query,{query:query+' '}),false);
   assert.equal(powerFacilitySplitAccepted(query,{}),false);
   assert.equal(powerFacilitySplitAccepted(query,null),false);
-  // The builder reads its split files through this check alone: no file age
-  // and no POWER_REFRESH, so a known oversized region is not asked again.
+  // No file age: a known oversized region is not asked again. Under another
+  // query its parts are kept (they take the query difference) and the split
+  // is recorded again for the current query; a refresh drops only those.
   const source=readFileSync(new URL('../scripts/build-power-facilities.mjs',import.meta.url),'utf8');
-  const read=/split=cachedSplit=([^;]+);/.exec(source)[1];
-  assert.equal(read,"powerFacilitySplitAccepted(query,JSON.parse(await readFile(splitFile,'utf8')))");
+  assert.match(source,/split=powerFacilitySplitAccepted\(query,saved\)\|\|\(process\.env\.POWER_REFRESH!=='1'&&typeof saved\?\.query==='string'\);\n\s*cachedSplit=powerFacilitySplitAccepted\(query,saved\);/);
+  assert.match(source,/if\(!cachedSplit\)await writeFile\(splitFile,JSON\.stringify\(\{query\}\)\);/);
 });

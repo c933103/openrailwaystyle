@@ -59,11 +59,12 @@ test('a cached region takes its changes once a week, by element, as a full downl
   assert.deepEqual(updated, full);
 });
 
-test('the builder asks for a week-old region\'s changes and keeps the cached response when that fails', () => {
+test('the builder asks for a week-old region\'s changes, or another query\'s difference, through updateElements', () => {
   const source = readFileSync(new URL('../scripts/build-power-facilities.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if\(json\)since=powerFacilityChangesSince\(box,query,saved,\{mtimeMs:info\.mtimeMs\}\);/);
-  assert.match(source, /data:adiffQuery\(query,since\)/);
-  assert.match(source, /upserts:requireGeometry\(changes\.upserts\)/);
-  // A failure only warns (the cached response stays); the budget still stops the run.
-  assert.match(source, /if\(\/budget exceeded\/\.test\(error\.message\)\)throw error;\n\s+console\.warn\('Energy supply changes'/);
+  assert.match(source, /if\(json\)\{since=powerFacilityChangesSince\(box,query,saved,\{mtimeMs:info\.mtimeMs\}\);stored=saved;\}/);
+  assert.match(source, /updateElements\(\{elements:stored\.response\.elements,since,previousQuery:stored\.query,query,\n\s*pick:element=>requireGeometry\(\[element\]\)\[0\]/);
+  // A failure keeps a response of the current query; the budget still stops the run.
+  assert.match(source, /if\(failure&&\/budget exceeded\/\.test\(failure\.message\)\)throw failure;/);
+  assert.match(source, /\} else if\(stored\.query!==query\) json=undefined;/);
+  // Behaviour: tests/power-facility-builder.test.mjs.
 });
