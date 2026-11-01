@@ -16,15 +16,18 @@
 const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
 
 // The augmented diff of a JSON selection query ([out:json]...;...;out ...;),
-// from `since` to now: the same selection, in XML. XML output prints a way's
-// nodes (and so its geometry) only in modes that include members, which
-// `out tags` does not, so it is asked for as `out body`.
+// from `since` to now: the same selection, in XML. Every output asks for
+// `meta`: XML prints a way's nodes (and so its geometry) only in modes with
+// members, which `out tags` lacks, and Overpass documents augmented diffs as
+// meaningful only with `out meta` (or `out geom meta`): without the meta data
+// they are no better than a plain diff
+// (dev.overpass-api.de/overpass-doc/en/analysis/museum.html).
 export function adiffQuery(query, since) {
   if (!TIME.test(since || '')) throw new Error('Invalid change start');
   const settings = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || '');
   if (!settings) throw new Error('A change query needs an [out:json] selection query');
   if (/\[(?:adiff|diff|date):/.test(settings[1])) throw new Error('The selection query already sets a date');
-  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout tags\b/g, 'out body')}`;
+  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
