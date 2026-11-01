@@ -9,7 +9,8 @@
 // previous generation in use. Older generations are deleted only after the
 // new state is uploaded; the previous one is kept as well.
 //
-//   node scripts/railway-ways-release.mjs load <directory>
+//   node scripts/railway-ways-release.mjs load <directory> [VARIABLE]
+//     (VARIABLE, PREVIOUS_DATA by default, names the directory in GITHUB_ENV)
 //   node scripts/railway-ways-release.mjs publish <store directory>
 import {execFileSync} from 'node:child_process';
 import {appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
@@ -59,7 +60,8 @@ function downloader(directory) {
   };
 }
 
-export function load(directory) {
+export function load(directory, variable = 'PREVIOUS_DATA') {
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(variable)) throw new Error(`Invalid variable name ${variable}`);
   const names = assets();
   if (!names) { console.log('No stored regions yet: the first run'); return null; }
   const work = mkdtempSync(join(tmpdir(), 'railway-ways-release-'));
@@ -76,7 +78,7 @@ export function load(directory) {
   }
   writeFileSync(join(directory, 'state.json'), JSON.stringify(found.state));
   console.log(`Loaded ${found.name}`);
-  if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `PREVIOUS_DATA=${resolve(directory)}\n`);
+  if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `${variable}=${resolve(directory)}\n`);
   return found;
 }
 
@@ -117,8 +119,8 @@ export function publish(store, generation) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [command, directory] = process.argv.slice(2);
-  if (command === 'load') load(directory);
+  const [command, directory, variable] = process.argv.slice(2);
+  if (command === 'load') load(directory, variable);
   else if (command === 'publish') publish(directory, process.env.GENERATION || `${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}-${process.env.GITHUB_RUN_ID || 0}`);
-  else throw new Error('Usage: railway-ways-release.mjs load|publish <directory>');
+  else throw new Error('Usage: railway-ways-release.mjs load <directory> [VARIABLE] | publish <directory>');
 }

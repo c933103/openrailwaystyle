@@ -23,6 +23,8 @@ import {execFileSync} from 'node:child_process';
 // (touched by every asset-version bump) are left out on purpose: those
 // rebuilds are started by hand.
 const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
+// The railway-ways store's reader and views, which the datasets built from it use.
+const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];
 export const OSM_UPDATES = Object.freeze([
   {id:'lifecycle', workflow:'snapshot.yml', due:{weekly:[1,5], hour:3}, inputs:{refresh:'true'},
     paths:['scripts/build-snapshot.mjs', 'styles/pbf-utf8.mjs', 'scripts/lifecycle.mjs', 'scripts/snapshot-delta.mjs',
@@ -41,13 +43,19 @@ export const OSM_UPDATES = Object.freeze([
     paths:['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},
     paths:['scripts/station-overview.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'styles/tile-bundles.mjs']},
+  // One download for branch lines, service routes and power methods
+  // (build-railway-ways.mjs), kept as a release; it runs before the datasets
+  // built from it, which download on their own only when it cannot be loaded.
+  {id:'railway-ways', workflow:'railway-ways.yml', due:{every:true},
+    paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/service-routes.mjs',
+      'scripts/power-method-data.mjs', 'scripts/station-acquisition.mjs']},
   {id:'branch-lines', workflow:'branch-lines.yml', due:{every:true},
-    paths:[...STAGES, 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
+    paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-branch.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
   {id:'service-routes', workflow:'service-routes.yml', due:{every:true},
     paths:[...STAGES, 'scripts/maintain-data-workflows.mjs', 'scripts/timetable-frequency.mjs', 'scripts/timetable-frequency-version.mjs',
       'scripts/timetable-operator-bindings.mjs', 'scripts/timetable-operator-bindings.json', 'scripts/service-acquisition-trigger.mjs',
       '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs',
-      'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
+      'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', ...RAILWAY_WAYS]},
   // Energy supplies, means of power delivery and signals. Its builders keep
   // completed region responses for 28 days, so a run within that time only
   // resumes an unfinished first download; the workflow republishes only when
