@@ -120,16 +120,25 @@ export function parseAdiff(xml) {
   if (remark) throw new Error(unescape(remark[1].trim()));
   const timestamp = /<meta\s[^>]*osm_base="([^"]+)"/.exec(xml)?.[1];
   if (!TIME.test(timestamp || '')) throw new Error('Change response without a database timestamp');
-  const upserts = [], deletes = [];
+  // `actions` keeps each change's state before (`old`, null for a created
+  // element) as well as after, for callers that need what an element was:
+  // the nodes of a way that was deleted, for instance.
+  const upserts = [], deletes = [], actions = [];
   for (const [, type, body] of xml.matchAll(/<action type="([^"]*)">([\s\S]*?)<\/action>/g)) {
-    if (type === 'create') { const created = element(body); if (!created) throw new Error('Empty create action'); upserts.push(created); continue; }
+    if (type === 'create') {
+      const created = element(body);
+      if (!created) throw new Error('Empty create action');
+      upserts.push(created); actions.push({type, old: null, new: created});
+      continue;
+    }
     if (type !== 'modify' && type !== 'delete') throw new Error(`Unknown change action ${type}`);
     const next = element(/<new>([\s\S]*?)<\/new>/.exec(body)?.[1]);
     if (!next) throw new Error(`A ${type} action without its new state`);
     if (type === 'delete') deletes.push(`${next.type}/${next.id}`);
     else upserts.push(next);
+    actions.push({type, old: element(/<old>([\s\S]*?)<\/old>/.exec(body)?.[1]), new: next});
   }
-  return {timestamp, upserts, deletes};
+  return {timestamp, upserts, deletes, actions};
 }
 
 // A feature collection with features keyed by OSM element (`keyOf`, by
