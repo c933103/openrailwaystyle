@@ -485,7 +485,7 @@ test('measurement toolbar settles unavailable endpoint heights and recovers on a
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
     assert.equal(doc.getElementById('measure-toolbar').hidden, false);
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const finish = () => {
       for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
       map.handlers.dblclick({preventDefault() {}});
@@ -514,7 +514,7 @@ test('measurement toolbar retries heights with existing point handles without lo
     const map = maps[0], doc = window.document;
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const retry = doc.getElementById('measure-retry');
     assert.ok(retry, 'the toolbar exposes an explicit endpoint-height retry');
     assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
