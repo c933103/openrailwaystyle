@@ -1,6 +1,7 @@
 // Pure world-coverage, checkpoint and bounded query logic for the scheduled
 // OSM station-point acquisition. No network I/O occurs in this module.
-import {parseStationRegion} from './station-overview.mjs';
+import {parseStationRegion,stationPoint} from './station-overview.mjs';
+import {adiffQuery,parseAdiff} from './overpass-adiff.mjs';
 
 export const REGION_SCHEMA=1;
 export const FULL_WORLD_AREA=360*180;
@@ -146,4 +147,47 @@ export function postponeStationRegion(state,region,{maxDepth=6}={}){
  const next={...state,pending:[...splitStationRegion(region).map(box=>({box,depth:first.depth+1})),...state.pending.slice(1)]};
  if(next.pending.length>MAX_PENDING_REGIONS)throw new Error('Too many pending station regions');
  return next;
+}
+
+// A complete generation is kept up to date with the changes since its
+// database time instead of being downloaded again region by region: the
+// time it is current to (`changesSince`, at first its cycle's start), or
+// null when a full cycle is due (no complete generation, or no successful
+// change update for STATION_CHANGE_MAX_DAYS).
+export const STATION_CHANGE_MAX_DAYS=28;
+export function stationChangesSince(state,now=Date.now()){
+ if(!state||!Array.isArray(state.pending)||state.pending.length||!stationWorldCoverage(state.completed))return null;
+ const since=state.changesSince||(typeof state.started==='string'?state.started.replace(/\.\d+Z$/,'Z'):'');
+ if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since))return null;
+ return now-Date.parse(since)<=STATION_CHANGE_MAX_DAYS*86400000?since:null;
+}
+// The changes worldwide, as one augmented diff of the region query, with the
+// time and size a worldwide request needs.
+export const stationChangesQuery=since=>adiffQuery(stationRegionQuery([-90,-180,90,180])
+ .replace('[timeout:120][maxsize:67108864]','[timeout:300][maxsize:268435456]'),since);
+export const parseStationChanges=parseAdiff;
+// The generation brought up to date: deleted elements and ones that are no
+// longer stations leave, changed ones replace their record unless an older
+// version, new ones join. A result losing over `maxDrop` of the stations
+// throws, as does anything the full download would refuse.
+export function applyStationChanges(state,records,{timestamp,upserts,deletes},{now=new Date().toISOString(),maxDrop=0.05}={}){
+ checkStationAcquisition(state,records);
+ if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(timestamp||''))throw new Error('Station changes without a database time');
+ const byId=new Map(records.map(r=>[r.id,r]));
+ let changed=0;
+ for(const key of deletes)if(byId.delete(key.replace('/','-')))changed++;
+ for(const element of upserts){
+   const id=`${element.type}-${element.id}`,point=stationPoint(element);
+   if(!point){if(byId.delete(id))changed++;continue;}
+   if(point.osm_version===null)throw new Error(`OSM object ${id} lacks version metadata`);
+   const prior=byId.get(id);
+   if(prior&&(prior.osm_version??0)>point.osm_version)continue;
+   if(JSON.stringify(prior)!==JSON.stringify(point)){byId.set(id,point);changed++;}
+ }
+ if(byId.size<records.length*(1-maxDrop))throw new Error(`Station changes would drop the stations from ${records.length} to ${byId.size}`);
+ if(byId.size>MAX_STATION_RECORDS)throw new Error('Station inventory over configured limit');
+ const updated={...state,changesSince:timestamp,lastUpdate:now};
+ const rows=[...byId.values()].sort((a,b)=>a.id.localeCompare(b.id));
+ checkStationAcquisition(updated,rows);
+ return {state:updated,records:rows,changed};
 }

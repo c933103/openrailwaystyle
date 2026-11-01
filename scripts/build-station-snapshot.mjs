@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {newStationAcquisition,checkStationAcquisition,stationRegionQuery,
  applyStationRegion,postponeStationRegion,stationWorldCoverage,nextStationAcquisitionCycle,
- stationQueryExceededLimits} from './station-acquisition.mjs';
+ stationQueryExceededLimits,stationChangesSince,stationChangesQuery,parseStationChanges,applyStationChanges} from './station-acquisition.mjs';
 import {stationOverviewData} from './station-overview.mjs';
 
 const endpoint=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter';
@@ -27,11 +27,17 @@ if(input){
   if(loaded!==2)throw Error('Station checkpoint incomplete');
   existing=true;
 }
-// Refreshed generations are built in the work branch, never over the
-// already-complete public station-points-data branch.
-const rotated=nextStationAcquisitionCycle(state,records);
-({state,records}=rotated);
-const refreshStarted=rotated.refreshed;
+// A complete generation updated within 28 days takes the changes since its
+// database time instead of a new cycle. Otherwise refreshed generations are
+// built in the work branch, never over the already-complete public
+// station-points-data branch.
+const changesSince=stationChangesSince(state);
+let refreshStarted=false,changedRecords=0;
+if(!changesSince){
+  const rotated=nextStationAcquisitionCycle(state,records);
+  ({state,records}=rotated);
+  refreshStarted=rotated.refreshed;
+}
 const pending=state.pending[0];
 const url=new URL(endpoint),query=pending&&stationRegionQuery(pending.box);
 let accepted=false,status='already complete',received=0;
@@ -85,6 +91,30 @@ if(pending){
     console.warn('Station acquisition deferred:',error.message);
   }finally{clearTimeout(timer)}
 }
+if(changesSince){
+  status='changes deferred to the next maintenance run';
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),360000);
+  try{
+    // One request; a failure keeps the generation as it is and is retried
+    // next run, and only 28 days without a successful update start a cycle.
+    const response=await fetch(url,{method:'POST',redirect:'error',signal:controller.signal,
+      headers:{'User-Agent':'RailwayAtlas-station-snapshot/1 (+https://github.com/c933103/openrailwaystyle)',
+        'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body:new URLSearchParams({data:stationChangesQuery(changesSince)})});
+    const chunks=[],limit=response.ok?MAX_RESPONSE_BYTES:MAX_ERROR_BYTES;
+    for await(const chunk of response.body){
+      received+=chunk.byteLength;
+      if(received>limit)throw Error('Oversized station change response');
+      chunks.push(chunk);
+    }
+    if(!response.ok)throw Error(`Unexpected OSM HTTP ${response.status}`);
+    const update=applyStationChanges(state,records,parseStationChanges(Buffer.concat(chunks).toString('utf8')));
+    state=update.state;records=update.records;changedRecords=update.changed;
+    status=`changes since ${changesSince} applied`;
+  }catch(error){
+    console.warn('Station changes deferred:',error.message);
+  }finally{clearTimeout(timer)}
+}
 checkStationAcquisition(state,records);
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
@@ -94,7 +124,8 @@ await publish('stations.json.gz',gzipSync(JSON.stringify(records),{level:6}));
 const complete=!state.pending.length&&stationWorldCoverage(state.completed);
 const manifest={schema:1,complete,source:'OpenStreetMap via Overpass',license:'ODbL-1.0',
   stations:records.length,pendingRegions:state.pending.length,completedRegions:state.completed.length,
-  started:state.started,updated:state.lastUpdate,status,requestBytes:received,regionUpdated:accepted};
+  started:state.started,updated:state.lastUpdate,status,requestBytes:received,regionUpdated:accepted,
+  changesSince:state.changesSince||null,changedRecords};
 if(complete){
   const tiles=stationOverviewData(records);
   for(const [path,bytes] of tiles.archives){

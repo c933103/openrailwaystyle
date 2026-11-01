@@ -66,13 +66,16 @@ jobs:
             assert.ok(index.zoom===3&&index.bundles.length>0,'Complete data must include non-empty z3–7 tiles');
             assert.ok(manifest.tiles>0&&manifest.bundles>0);
           }
-          await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\n`);
+          // A complete generation is published when it was completed by this
+          // run's region, or when this run's changes altered its stations.
+          const publish=complete&&(manifest.regionUpdated===true||manifest.changedRecords>0);
+          await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\npublish=${publish}\n`);
           JS
       # Production readers must use ONLY station-points-data; it is never
       # touched by a partial refresh. The complete generation replaces it
       # atomically as one branch update.
       - name: Publish complete worldwide tile generation
-        if: steps.verify.outputs.complete == 'true'
+        if: steps.verify.outputs.publish == 'true'
         run: |
           set -eu
           mkdir /tmp/station-release
@@ -110,7 +113,7 @@ jobs:
           fi
       # Only a completed, atomically published generation can update the map.
       - name: Redeploy site after complete OSM station snapshot publication
-        if: steps.verify.outputs.complete == 'true'
+        if: steps.verify.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main

@@ -386,6 +386,18 @@ most one Overpass region per run. Only a complete generation is published to
 [rendering contract](rendering.md#completed-worldwide-osm-station-marker-source)
 describes the complete-only runtime integration and remaining coverage limits.
 
+A complete generation is then kept current with changes instead of a new
+cycle: each run makes one worldwide request for the changes since the
+generation's database time (`changesSince` in its state, at first its cycle's
+start), an Overpass augmented diff of the region query
+(`stationChangesQuery`, `scripts/overpass-adiff.mjs`). Deleted stations and
+ones no longer tagged as stations leave, changed ones replace their record
+unless older, and new ones join; a result losing over 5% of the stations is
+refused. The generation is published, and the site redeployed, only when a
+cycle completed or the changes altered its stations. A failed change request
+keeps the generation and is retried next run; only 28 days without a
+successful update start a new cycle.
+
 The builder reads successful responses up to 15 MiB, and HTTP error diagnostics
 up to a separate 64 KiB limit. An explicit executed-query timeout or memory-limit
 diagnostic in a JSON remark or HTTP 5xx body checkpoints a geographic subdivision
