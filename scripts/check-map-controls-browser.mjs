@@ -127,6 +127,34 @@ try{
   await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129',{waitUntil:'domcontentloaded'});await ready();
   assert.equal(await opened(),false,'fresh visit defaults to collapsed, not absent');
   await check('fresh desktop');
+  // Exercise the real MapLibre click handlers, toolbar state and profile
+  // panel with fixture-only terrain (the empty basemap intentionally yields
+  // unavailable elevations, never manufactured zero-metre observations).
+  const measureControl=page.locator('button.atlas-ctrl[title="Measure"]');
+  await measureControl.click();
+  assert.equal(await page.locator('#measure-toolbar').isVisible(),true);
+  assert.equal(await page.locator('[data-measure="distance"]').getAttribute('aria-pressed'),'true',
+    'opening the toolbar activates Distance immediately');
+  await page.mouse.click(570,420);
+  await page.mouse.click(660,420);
+  assert.equal(await page.locator('#measure-profile').isVisible(),true,'two distance points expose the chart');
+  await page.locator('#measure-profile').click();
+  assert.equal(await page.locator('#detail-content .eyebrow').textContent(),'MEASUREMENT');
+  assert.match(await page.locator('#detail-content h2').textContent(),/Distance elevation profile/);
+  await page.locator('#details-close').click();
+  await page.locator('[data-measure="radius"]').click();
+  for(const point of [[570,420],[615,470],[660,420]])await page.mouse.click(...point);
+  assert.equal(await page.locator('#measure-profile').isVisible(),true,'a fitted curve exposes the chart');
+  await page.locator('#measure-profile').click();
+  assert.match(await page.locator('#detail-content h2').textContent(),/Curve radius elevation profile/);
+  await page.locator('#details-close').click();
+  await page.locator('[data-measure="elevation"]').click();
+  await page.mouse.click(570,420);
+  await page.waitForFunction(()=>/Location: Lat .+ Lon .+ Elevation: unavailable/.test(document.querySelector('#measure-status').textContent));
+  assert.equal(await page.locator('#measure-retry').isVisible(),true,'failed point height can be retried');
+  await page.screenshot({path:'browser-review/map-measure-point.png'});
+  await page.locator('#measure-close').click();
+  assert.equal(await page.locator('#measure-toolbar').isHidden(),true);
   // Insets move the status pill without resizing it. The observed inset
   // probe must move the control stack too, even before any status text change.
   await page.evaluate(()=>document.documentElement.style.setProperty('--map-safe-bottom','24px'));
