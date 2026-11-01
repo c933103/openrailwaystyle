@@ -13,7 +13,8 @@ const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'Open
 // query), only what changed and what a changed query selects differently;
 // the full download below is the fallback. The features are converted from
 // all elements on every run, so changed conversion code needs no download.
-let data, update=null, changeError=null;
+// Requests made, the change requests included: at most three in all.
+let data, update=null, changeError=null, requests=0;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
@@ -26,6 +27,7 @@ if(process.env.PREVIOUS_DATA) {
     fetchText:async request=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
+      requests++;
       const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
       return response.text();
@@ -40,7 +42,9 @@ if(!update && changeError?.status) {
   await new Promise(r=>setTimeout(r,wait));
 }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed; query change: ${update.added} added, ${update.dropped} dropped`);
-else for(let attempt=0;attempt<3;attempt++) {
+else for(let attempt=0,attempts=3-requests;;attempt++) {
+  // Reached only when the change requests used all three requests.
+  if (attempt >= attempts) throw new Error('Conveying acquisition deferred: no request left of the three for this run', {cause:changeError});
   if (!conveyingRequestFits(deadline, 0)) throw new Error('Conveying acquisition deferred: no full request fits the 52-minute budget');
   try {
     const startedAt = Date.now();
@@ -51,7 +55,7 @@ else for(let attempt=0;attempt<3;attempt++) {
     if(!Array.isArray(data.elements)) throw new Error('Incomplete response');
     break;
   } catch(error) {
-    if(attempt===2) throw error;
+    if(attempt===attempts-1) throw error;
     const wait = conveyingRetryDelay(error, attempt);
     if (!conveyingRequestFits(deadline, wait)) throw new Error('Conveying acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:error});
     console.log(error.message, `— retrying after ${wait / 60000} minutes`);
