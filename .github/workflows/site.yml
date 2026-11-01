@@ -326,7 +326,7 @@ jobs:
           git ls-remote --exit-code --heads origin conveying-data || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin conveying-data
-            git archive FETCH_HEAD | tar -x -C styles/data/conveying
+            git archive FETCH_HEAD | tar -x -C styles/data/conveying --exclude=elements.json.gz
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/conveying/index.json
           else

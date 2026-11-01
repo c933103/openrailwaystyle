@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {adiffQuery, parseAdiff, applyFeatureChanges, updateFromChanges, extractionVersion} from '../scripts/overpass-adiff.mjs';
+import {adiffQuery, parseAdiff, applyFeatureChanges, updateFromChanges, extractionVersion, selectionParts, selectionChangeQueries, updateElements} from '../scripts/overpass-adiff.mjs';
+import {AERIALWAY_QUERY} from '../scripts/conveying-data.mjs';
 import {CONVEYING_QUERY, conveyingGeoJSON} from '../scripts/conveying-data.mjs';
 
 // Synthetic augmented diffs in the documented form; no captured provider data.
@@ -44,7 +45,7 @@ test('created, modified and deleted elements, with way geometry and escaped text
 
 test('a response that did not finish, was cut short, or cannot be read in full throws', () => {
   const ok = osm(BASE, '');
-  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: [], actions: []});
+  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: [], deleted: [], actions: []});
   assert.throws(() => parseAdiff(ok.replace('</osm>\n', '')), /Incomplete/);
   assert.throws(() => parseAdiff(osm(BASE, '<remark> runtime error: Query timed out in "query" at line 1 after 901 seconds. </remark>')), /timed out/);
   assert.throws(() => parseAdiff(ok.replace(/<meta[^>]*\/>/, '')), /database timestamp/);
@@ -108,11 +109,11 @@ test('the snapshot is updated from its database time, and any doubt falls back t
 
 test('the conveying build updates from changes and keeps the full download as its fallback', () => {
   const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
   assert.match(source, /if \(!conveyingRequestFits\(deadline, 0\)\) throw new Error\('No request fits/);
   // A refused change request's wait (Retry-After) comes before the full download, within the budget.
   const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
-  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'));
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'));
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
@@ -186,10 +187,152 @@ test('a snapshot made by another query or conversion code is downloaded in full,
     await writeFile(join(root, 'styles', 'rule.mjs'), 'export const rule = x => !x;\n');
     assert.notEqual(extractionVersion('q', entry), v1, 'an imported module counts');
   } finally { await rm(root, {recursive: true, force: true}); }
-  // The conveying build records and checks it.
+});
+
+test('a selection query in a comparable form: statements, then one output of the default set', () => {
+  assert.deepEqual(selectionParts(CONVEYING_QUERY), {settings: '[timeout:900][maxsize:1073741824]',
+    body: '(way[conveying][conveying!=no];way[highway=elevator];)', out: 'out tags geom qt'});
+  assert.equal(selectionParts(AERIALWAY_QUERY).body, AERIALWAY_QUERY.slice(AERIALWAY_QUERY.indexOf(';') + 1, AERIALWAY_QUERY.indexOf(';out')));
+  // Statements in sequence, named sets included: the selection is the default set at the output.
+  assert.equal(selectionParts('[out:json];way[a]->.x;rel[x];way(r);out geom;').body, 'way[a]->.x;rel[x];way(r)');
+  assert.equal(selectionParts('[out:json];way["name"="out"];out;').body, 'way["name"="out"]', 'a quoted word is no output');
+  // An output before the last, another format or a date cannot be compared.
+  for (const q of ['[out:json];way[a];out;node[b];out;', '[out:json];way[a];.x out;way[b];out;',
+    '[out:xml];way[a];out;', '[out:json][date:"2026-01-01T00:00:00Z"];way[a];out;', '[out:json];(way[a];out;'])
+    assert.equal(selectionParts(q), null, q);
+});
+
+test('a changed selection is asked as its ids, and the new elements by id, at one database time', () => {
+  const at = '2026-11-01T06:00:00Z', wider = CONVEYING_QUERY.replace('way[highway=elevator];', 'way[highway=elevator];way[railway=funicular];');
+  const {ids, elements} = selectionChangeQueries(CONVEYING_QUERY, wider, at);
+  const head = '[out:json][timeout:900][maxsize:1073741824][date:"2026-11-01T06:00:00Z"];';
+  assert.equal(ids, `${head}(way[conveying][conveying!=no];way[highway=elevator];way[railway=funicular];);out ids;`, 'the new query alone');
+  assert.equal(elements(['way/7', 'node/3', 'way/9', 'relation/5']), `${head}(node(id:3);way(id:7,9);relation(id:5););out tags geom qt;`);
+  assert.throws(() => elements(['area/1']), /Invalid element/);
+  // A query's own sets and default set never meet another query's: each runs alone.
+  assert.equal(selectionChangeQueries('[out:json];way[highway=elevator];out;', '[out:json];(._;way[conveying];);out;', at).ids,
+    `[out:json][date:"${at}"];(._;way[conveying];);out ids;`);
+  assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'time and memory limits select nothing new');
+  assert.equal(selectionChangeQueries('[out:json][bbox:0,0,1,1];way[a];out;', '[out:json][bbox:0,0,2,2];way[a];out;', at).ids,
+    `[out:json][bbox:0,0,2,2][date:"${at}"];way[a];out ids;`, 'a bounding box is part of the selection');
+  assert.equal(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), at), null, 'another output form: in full');
+  assert.equal(selectionChangeQueries('[out:json];way[a];out;node[b];out;', CONVEYING_QUERY, at), null);
+});
+
+test('stored elements follow changes and a changed query without a full download', async () => {
+  const pick = ({type, id, tags, geometry}) => ({type, id, tags, geometry});
+  const stored = [sample(1, {conveying: 'forward'}, [[0, 0], [0, 1]]), sample(2, {highway: 'elevator'}, [[1, 1], [1, 2]]),
+    ...Array.from({length: 40}, (_, i) => sample(100 + i, {conveying: 'forward'}, [[3, i], [3, i + 0.5]]))];
+  const since = '2026-10-30T12:22:36Z', asked = [], warnings = [];
+  const json = elements => JSON.stringify({osm3s: {timestamp_osm_base: BASE}, elements});
+  const base = {elements: stored, since, previousQuery: CONVEYING_QUERY, warn: (...m) => warnings.push(m.join(' '))};
+  const diff = osm(BASE, `<action type="modify"><old>${way(1, {conveying: 'forward'}, [[1, 0, 0], [2, 0, 1]])}</old><new>${way(1, {conveying: 'backward'}, [[1, 0, 0], [2, 0, 1]])}</new></action>`);
+  // Same query: one change request.
+  const same = await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async q => { asked.push(q); return diff; }});
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since)]);
+  assert.equal(same.osmBase, BASE);
+  assert.deepEqual(same.elements.find(e => e.id === 1), sample(1, {conveying: 'backward'}, [[0, 0], [0, 1]]), 'the new state, as the full download gives it');
+  assert.equal(same.elements.length, stored.length);
+  // Changed query: the changes of the old one, then only the difference, at the database time of those changes.
+  const narrower = CONVEYING_QUERY.replace('way[highway=elevator];', ''), wider = CONVEYING_QUERY.replace('way[highway=elevator];', 'way[highway=elevator];way[railway=funicular];');
+  asked.length = 0;
+  const funicular = {...sample(7, {railway: 'funicular', conveying: 'yes'}, [[4, 4], [4, 5]]), bounds: {}};
+  const idsOf = elements => json(elements.map(({type, id}) => ({type, id})));
+  const grown = await updateElements({...base, query: wider, pick, fetchText: async q => {
+    asked.push(q);
+    return q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? idsOf([...stored, funicular]) : json([funicular]);
+  }});
+  const {ids, elements} = selectionChangeQueries(CONVEYING_QUERY, wider, BASE);
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since), ids, elements(['way/7'])], 'only the new element is downloaded');
+  assert.deepEqual(grown.elements.find(e => e.id === 7), pick(funicular), 'kept as the conversion reads it');
+  assert.deepEqual([grown.added, grown.dropped, grown.elements.length], [1, 0, stored.length + 1]);
+  const shrunk = await updateElements({...base, query: narrower, pick, fetchText: async q =>
+    q.includes('[adiff:') ? osm(BASE, '') : q.endsWith('out ids;') ? idsOf(stored.filter(e => e.id !== 2)) : assert.fail('nothing new to download')});
+  assert.ok(!shrunk.elements.some(e => e.id === 2), 'an element the query no longer selects goes, however many');
+  assert.equal(shrunk.dropped, 1);
+  // The conversion is applied to every stored element on each run, so it never needs a download.
+  assert.deepEqual(conveyingGeoJSON({elements: grown.elements}).features.map(f => f.id), [1, 2, 7, ...stored.slice(2).map(e => e.id)]);
+  // Up to a given time: the changes end there, and so does the result.
+  asked.length = 0;
+  const until = '2026-11-01T05:00:00Z', ended = await updateElements({...base, until, query: CONVEYING_QUERY, pick, fetchText: async q => { asked.push(q); return diff; }});
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since, until)]);
+  assert.match(asked[0], /\[adiff:"2026-10-30T12:22:36Z","2026-11-01T05:00:00Z"\]/);
+  assert.equal(ended.osmBase, until);
+  assert.equal(await updateElements({...base, until: '2026-11-01T07:00:00Z', query: CONVEYING_QUERY, fetchText: async () => diff}), null, 'a server whose data ends earlier');
+  assert.throws(() => adiffQuery(CONVEYING_QUERY, since, '2026-10-01T00:00:00Z'), /Invalid change end/);
+  // Deleted from OSM, as opposed to no longer selected, is reported.
+  const both = await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async () => osm(BASE,
+    '<action type="delete"><old/><new><way id="100" visible="false"/></new></action><action type="delete"><old/><new><way id="101" visible="true"/></new></action>')});
+  assert.deepEqual(both.deleted, ['way/100']);
+  // A region with no elements yet takes its changes too.
+  const empty = await updateElements({...base, elements: [], query: CONVEYING_QUERY, pick, fetchText: async () => diff});
+  assert.deepEqual(empty.elements.map(e => e.id), [1]);
+  assert.equal(await updateElements({...base, elements: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
+  // Anything doubtful: null, and the caller downloads in full.
+  const fail = async () => { throw Object.assign(new Error('Overpass HTTP 429'), {status: 429}); }, seen = [];
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY, fetchText: fail, failed: e => seen.push(e)}), null);
+  assert.equal(seen.length, 1, 'a refused request is passed on, for its Retry-After');
+  assert.equal(await updateElements({...base, previousQuery: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
+  assert.equal(await updateElements({...base, since: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), fetchText: async () => assert.fail('no request for a query that cannot be compared')}), null);
+  assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : JSON.stringify({remark: 'runtime error: Query timed out'})}), null);
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY, fetchText: async () => osm(BASE, stored.slice(0, 10).map(e =>
+    `<action type="delete"><old/><new><way id="${e.id}" visible="false"/></new></action>`).join(''))}), null, 'changes losing over 5% are not trusted');
+  assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? idsOf([...stored, funicular]) : json([])}), null, 'a new element that does not come back');
+  assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : json([{type: 'count', id: 0}])}), null, 'not an OSM element');
+  // New elements that would need more requests than allowed: none is asked.
+  const many = Array.from({length: 2001}, (_, i) => ({type: 'way', id: 10000 + i}));
+  asked.length = 0;
+  assert.equal(await updateElements({...base, query: wider, maxRequests: 3, fetchText: async q => { asked.push(q); return q.includes('[adiff:') ? diff : idsOf([...stored, ...many]); }}), null);
+  assert.equal(asked.length, 2, 'the changes and the ids, then nothing more');
+  assert.ok(warnings.some(w => /need more requests than the 3 allowed/.test(w)));
+  // A result the caller cannot use is a full download, not a failed run.
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async () => diff, validate: () => { throw new Error('Incomplete geometry'); }}), null);
+  assert.ok(warnings.some(w => /output or form/.test(w)) && warnings.some(w => /timed out/.test(w)) && warnings.some(w => /Incomplete geometry/.test(w)));
+});
+
+test('the conveying build keeps its elements and converts all of them on every run', () => {
   const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
-  assert.match(source, /previousVersion:manifest\.extraction/);
-  assert.match(source, /osmBase:update\?update\.osmBase:data\.osm3s\?\.timestamp_osm_base,extraction,/);
+  assert.match(source, /elements:JSON\.parse\(gunzipSync\(await readFile\(join\(process\.env\.PREVIOUS_DATA,'elements\.json\.gz'\)\)\)\),\n\s*since:manifest\.osmBase,previousQuery:manifest\.query/);
+  assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)/);
+  assert.match(source, /const \{features\}=conveyingGeoJSON\(\{elements\}\);/);
+  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
+  const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
+  const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
+  assert.match(site, /tar -x -C styles\/data\/conveying --exclude=elements\.json\.gz/, 'the stored elements are not deployed');
+});
+
+test('the conveying build makes at most three requests, its change requests included', async t => {
+  const {spawnSync} = await import('node:child_process');
+  const {mkdtemp, writeFile, rm, readFile: read} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {gzipSync} = await import('node:zlib');
+  const {fileURLToPath} = await import('node:url');
+  for (const [name, answer, expected] of [
+    ['refused', `return new Response('busy', {status: 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query whose new elements need more than the one request left: the third request is the full download.
+    ['query changed, too many new elements', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: Array.from({length: 2001}, (_, i) => ({type: 'way', id: i + 1}))}) : 'busy', {status: q.endsWith('out ids;') ? 200 : 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query: the change request, the ids and the new elements use all three.
+    ['query changed, elements unusable', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]}) : JSON.stringify({elements: [{type: 'way', id: 2, tags: {highway: 'elevator'}}]}));`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+  ]) {
+    const dir = await mkdtemp(join(tmpdir(), 'conveying-requests-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {conveying: 'forward'}, [[0, 0], [0, 1]])])));
+    const previousQuery = name === 'refused' ? CONVEYING_QUERY : CONVEYING_QUERY.replace('way[highway=elevator];', '');
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
+    await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
+      globalThis.setTimeout = f => { f(); return 0; };
+      globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
+    const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-conveying.mjs', import.meta.url))],
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+    assert.notEqual(result.status, 0, name);
+    assert.deepEqual((await read(join(dir, 'requests'), 'utf8')).trim().split('\n'), expected, name);
+    if (name === 'query changed, elements unusable') assert.match(result.stderr, /no request left of the three/, name);
+    if (name === 'query changed, too many new elements') assert.ok(!(await read(join(dir, 'requests'), 'utf8')).includes('(id:'), 'no element batch: the full download instead');
+  }
 });
 
 test('the aerialway build makes at most three requests, its change request included', async t => {

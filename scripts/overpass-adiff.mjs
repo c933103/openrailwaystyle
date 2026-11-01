@@ -46,12 +46,15 @@ export function extractionVersion(query, ...entries) {
 // meaningful only with `out meta` (or `out geom meta`): without the meta data
 // they are no better than a plain diff
 // (dev.overpass-api.de/overpass-doc/en/analysis/museum.html).
-export function adiffQuery(query, since) {
+// With `until`, the changes up to that time ([adiff:"since","until"]), so
+// several requests can describe one moment.
+export function adiffQuery(query, since, until) {
   if (!TIME.test(since || '')) throw new Error('Invalid change start');
+  if (until !== undefined && !(TIME.test(until) && until >= since)) throw new Error('Invalid change end');
   const settings = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || '');
   if (!settings) throw new Error('A change query needs an [out:json] selection query');
   if (/\[(?:adiff|diff|date):/.test(settings[1])) throw new Error('The selection query already sets a date');
-  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
+  return `[out:xml]${settings[1]}[adiff:"${since}"${until ? `,"${until}"` : ''}];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
@@ -120,10 +123,12 @@ export function parseAdiff(xml) {
   if (remark) throw new Error(unescape(remark[1].trim()));
   const timestamp = /<meta\s[^>]*osm_base="([^"]+)"/.exec(xml)?.[1];
   if (!TIME.test(timestamp || '')) throw new Error('Change response without a database timestamp');
-  // `actions` keeps each change's state before (`old`, null for a created
-  // element) as well as after, for callers that need what an element was:
-  // the nodes of a way that was deleted, for instance.
-  const upserts = [], deletes = [], actions = [];
+  // `deleted`: those of `deletes` deleted from OSM (visible="false"), not
+  // only no longer selected. `actions` keeps each change's state before
+  // (`old`, null for a created element) as well as after, for callers that
+  // need what an element was: the nodes of a way that was deleted, for
+  // instance.
+  const upserts = [], deletes = [], deleted = [], actions = [];
   for (const [, type, body] of xml.matchAll(/<action type="([^"]*)">([\s\S]*?)<\/action>/g)) {
     if (type === 'create') {
       const created = element(body);
@@ -134,11 +139,11 @@ export function parseAdiff(xml) {
     if (type !== 'modify' && type !== 'delete') throw new Error(`Unknown change action ${type}`);
     const next = element(/<new>([\s\S]*?)<\/new>/.exec(body)?.[1]);
     if (!next) throw new Error(`A ${type} action without its new state`);
-    if (type === 'delete') deletes.push(`${next.type}/${next.id}`);
+    if (type === 'delete') { deletes.push(`${next.type}/${next.id}`); if (next.visible === false) deleted.push(`${next.type}/${next.id}`); }
     else upserts.push(next);
     actions.push({type, old: element(/<old>([\s\S]*?)<\/old>/.exec(body)?.[1]), new: next});
   }
-  return {timestamp, upserts, deletes, actions};
+  return {timestamp, upserts, deletes, deleted, actions};
 }
 
 // A feature collection with features keyed by OSM element (`keyOf`, by
@@ -208,4 +213,121 @@ export function requireGeometry(upserts) {
       throw new Error(`Change relation ${element.id} with a way member without geometry`);
   }
   return upserts;
+}
+
+// A selection query in a form whose selection can be compared with
+// another's: settings, then statements, then one output of the default set:
+// [out:json][...];<statements>;out ...; Its selection is what that output
+// prints: the default set after the statements, whatever named sets they
+// build on the way. Anything else (another format, a date, an output before
+// the last) is null.
+export function selectionParts(query) {
+  const head = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || ''), tail = /;(out(?: [a-z]+)*);$/.exec(query || '');
+  if (!head || !tail || /\[(?:adiff|diff|date):/.test(head[1])) return null;
+  const body = query.slice(head[0].length, tail.index);
+  // Brackets and quotes balance, and no output statement precedes the last.
+  let depth = 0, quote = null, bare = '';
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === '(' || c === '[') depth++;
+    else if ((c === ')' || c === ']') && --depth < 0) return null;
+    if (!depth) bare += c;
+  }
+  if (depth || quote || !body || /(?:^|[;)])\s*(?:\.\w+\s+)?out\b/.test(bare)) return null;
+  return {settings: head[1], body, out: tail[1]};
+}
+
+// What brings elements selected by `previous` to what `query` selects at
+// the database time `at`, both queries' outputs in the same form:
+// - `ids`: the ids `query` selects at `at`, by its own statements alone (no
+//   other query's sets or default set can reach it);
+// - `elements(keys)`: the given `type/id` elements at `at`, in `query`'s
+//   output form.
+// The elements `previous` selects at `at` are the stored ones once its
+// changes up to `at` are applied, so the difference needs nothing more.
+// Null when the queries cannot be compared or give their elements in
+// different forms: the caller then downloads in full. An empty object when
+// they select the same.
+export function selectionChangeQueries(previous, query, at) {
+  if (!TIME.test(at || '')) throw new Error('Invalid selection time');
+  const old = selectionParts(previous), next = selectionParts(query);
+  if (!old || !next || old.out !== next.out) return null;
+  // Only the time and memory limits leave the selection as it is; any other
+  // setting ([bbox:], for instance) is part of it.
+  const selecting = parts => parts.settings.replace(/\[(?:timeout|maxsize):\d+\]/g, '') + parts.body;
+  if (selecting(old) === selecting(next)) return {};
+  const head = `[out:json]${next.settings}[date:"${at}"];`;
+  return {ids: `${head}${next.body};out ids;`, elements: keys => {
+    const byType = {node: [], way: [], relation: []};
+    for (const key of keys) {
+      const [type, id] = key.split('/');
+      if (!byType[type] || !/^[1-9]\d*$/.test(id)) throw new Error(`Invalid element ${key}`);
+      byType[type].push(id);
+    }
+    return `${head}(${Object.entries(byType).filter(([, ids]) => ids.length).map(([type, ids]) => `${type}(id:${ids.join(',')});`).join('')});${next.out};`;
+  }};
+}
+
+const elementsOf = text => {
+  const data = JSON.parse(text);
+  if (data.remark) throw new Error(String(data.remark).trim());
+  if (!Array.isArray(data.elements)) throw new Error('Incomplete response');
+  return data.elements;
+};
+
+// Stored Overpass elements (the full response of `previousQuery` as of the
+// database time `since`) brought to what `query` selects now, or null when
+// they cannot be and the caller downloads in full:
+// 1. the changes to `previousQuery` since `since` (one augmented diff), which
+//    gives the database time `at` of the result;
+// 2. when `query` selects differently, only the difference at `at`: the ids
+//    it selects, and the elements among them not stored, by id.
+// The conversion of the elements into features is not part of the stored
+// state: the caller converts all of them on every run, so new conversion
+// code needs no download at all.
+// `pick` keeps what the conversion needs of an element; `maxDrop` bounds the
+// share the changes in step 1 may remove (a selection change may remove any);
+// `validate` checks the result (the caller's conversion, for instance), so
+// elements it cannot use mean a full download rather than a failed run.
+// `until` ends the changes at that database time instead of now, so the
+// parts of one store can be brought to the same moment. `maxRequests` bounds
+// the requests: when the new elements of a changed query would need more,
+// none of them is asked and the caller downloads in full instead.
+export async function updateElements({elements, since, until, previousQuery, query, fetchText, pick = element => element, validate = () => {}, maxDrop = 0.05, maxRequests = Infinity, warn = console.warn, failed = () => {}}) {
+  // A region with no elements is a valid state: its changes may add some.
+  if (!Array.isArray(elements)) return null;
+  if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
+  if (!previousQuery) { warn('The stored elements do not record their query: downloading in full'); return null; }
+  // Known before any request: a query that cannot be compared is downloaded in full.
+  if (previousQuery !== query && !selectionChangeQueries(previousQuery, query, since)) { warn('The query changed its output or form: downloading in full'); return null; }
+  try {
+    const changes = parseAdiff(await fetchText(adiffQuery(previousQuery, since, until)));
+    // The server's data must reach `until`; the changes then end there.
+    if (until && changes.timestamp < until) throw new Error(`The server's data ends at ${changes.timestamp}, before ${until}`);
+    const at = until || changes.timestamp;
+    let next = applyElementChanges(elements, {upserts: changes.upserts.map(pick), deletes: changes.deletes});
+    if (next.length < elements.length * (1 - maxDrop)) throw new Error(`The changes would drop the elements from ${elements.length} to ${next.length}`);
+    const selection = previousQuery === query ? {} : selectionChangeQueries(previousQuery, query, at);
+    let added = [], dropped = [];
+    if (selection.ids) {
+      // Anything but an OSM element cannot be asked by id and throws there.
+      const current = new Set(elementsOf(await fetchText(selection.ids)).map(e => `${e.type}/${e.id}`));
+      const stored = new Set(next.map(e => `${e.type}/${e.id}`)), missing = [...current].filter(key => !stored.has(key));
+      dropped = [...stored].filter(key => !current.has(key));
+      if (2 + Math.ceil(missing.length / 2000) > maxRequests) throw new Error(`The ${missing.length} newly selected elements need more requests than the ${maxRequests} allowed`);
+      for (let i = 0; i < missing.length; i += 2000) added.push(...elementsOf(await fetchText(selection.elements(missing.slice(i, i + 2000)))).map(pick));
+      const got = new Set(added.map(e => `${e.type}/${e.id}`));
+      if (got.size !== missing.length || missing.some(key => !got.has(key))) throw new Error('The newly selected elements did not all come back');
+      next = applyElementChanges(next, {upserts: added, deletes: dropped});
+    }
+    validate(next);
+    // Deleted from OSM (visible="false"), as opposed to only no longer selected.
+    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, deleted: changes.deleted, added: added.length, dropped: dropped.length};
+  } catch (error) {
+    warn('Changes unavailable, downloading in full:', error.message);
+    failed(error);
+    return null;
+  }
 }
