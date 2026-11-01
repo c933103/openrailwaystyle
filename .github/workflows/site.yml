@@ -340,7 +340,7 @@ jobs:
           set -euo pipefail
           mkdir -p styles/data/aerialways
           git fetch --depth=1 origin refs/heads/aerialway-data
-          git archive FETCH_HEAD | tar -x -C styles/data/aerialways
+          git archive FETCH_HEAD | tar -x -C styles/data/aerialways --exclude=elements.json.gz
           node scripts/validate-aerialway-snapshot.mjs styles/data/aerialways
       # Historic areas (heritage.yml); without them the planning context
       # shows no historic areas.
