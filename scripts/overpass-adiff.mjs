@@ -88,8 +88,17 @@ function element(text) {
     }
   }
   if (type === 'relation') {
-    const members = [...body.matchAll(/<member\s([^>]*?)(?:\/>|>[\s\S]*?<\/member>)/g)].map(([, m]) => attributes(m));
-    if (members.length) result.members = members.map(m => ({type: m.type, ref: Number(m.ref), role: m.role ?? ''}));
+    // With `out geom`, a node member carries its position and a way member
+    // its points (<nd lat lon/> inside the member), as Overpass JSON gives
+    // them in `lat`/`lon` and `geometry`.
+    const members = [...body.matchAll(/<member\s([^>]*?)(?:\/>|>([\s\S]*?)<\/member>)/g)].map(([, m, inner = '']) => {
+      const attrs = attributes(m), member = {type: attrs.type, ref: Number(attrs.ref), role: attrs.role ?? ''};
+      if (attrs.lat !== undefined) { member.lat = Number(attrs.lat); member.lon = Number(attrs.lon); }
+      const points = [...inner.matchAll(/<nd\s([^>]*?)\/>/g)].map(([, nd]) => attributes(nd));
+      if (points.length) member.geometry = points.map(p => ({lat: Number(p.lat), lon: Number(p.lon)}));
+      return member;
+    });
+    if (members.length) result.members = members;
   }
   return result;
 }
@@ -171,4 +180,25 @@ export async function updateFromChanges({features, since, query, toFeatures, fet
     failed(error);
     return null;
   }
+}
+
+// Stored Overpass elements (one region's response) brought up to date by
+// element: deleted ones go, changed and new ones take their new state.
+export function applyElementChanges(elements, {upserts, deletes}) {
+  const byKey = new Map(elements.map(element => [`${element.type}/${element.id}`, element]));
+  for (const key of deletes) byKey.delete(key);
+  for (const element of upserts) byKey.set(`${element.type}/${element.id}`, element);
+  return [...byKey.values()];
+}
+
+// A query with `out geom` gives every way and relation its geometry; a
+// change whose way, or a relation's way member, came without it cannot be
+// drawn as mapped and throws rather than silently becoming a point.
+export function requireGeometry(upserts) {
+  for (const element of upserts) {
+    if (element.type === 'way' && !(element.geometry?.length >= 2)) throw new Error(`Change way ${element.id} without geometry`);
+    if (element.type === 'relation' && (element.members || []).some(m => m.type === 'way' && !(m.geometry?.length >= 2)))
+      throw new Error(`Change relation ${element.id} with a way member without geometry`);
+  }
+  return upserts;
 }
