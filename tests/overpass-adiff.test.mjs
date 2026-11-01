@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {adiffQuery, parseAdiff, applyFeatureChanges, updateFromChanges} from '../scripts/overpass-adiff.mjs';
+import {adiffQuery, parseAdiff, applyFeatureChanges, updateFromChanges, extractionVersion} from '../scripts/overpass-adiff.mjs';
 import {CONVEYING_QUERY, conveyingGeoJSON} from '../scripts/conveying-data.mjs';
 
 // Synthetic augmented diffs in the documented form; no captured provider data.
@@ -77,7 +77,7 @@ test('changes replace, add and remove features by OSM way, as a full download wo
 test('the snapshot is updated from its database time, and any doubt falls back to the full download', async () => {
   const now = Date.parse('2026-11-01T07:00:00Z'), warnings = [], asked = [];
   const fetchText = async query => { asked.push(query); return osm(BASE, `<action type="create">${way(4, {conveying: 'forward'}, [[1, 5, 5], [2, 5, 6]])}</action>`); };
-  const base = {features: previous, since: '2026-10-30T12:22:36Z', query: CONVEYING_QUERY, toFeatures, now, warn: (...m) => warnings.push(m.join(' '))};
+  const base = {features: previous, since: '2026-10-30T12:22:36Z', query: CONVEYING_QUERY, toFeatures, now, version: 'v1', previousVersion: 'v1', warn: (...m) => warnings.push(m.join(' '))};
   const result = await updateFromChanges({...base, fetchText});
   assert.equal(asked[0], adiffQuery(CONVEYING_QUERY, '2026-10-30T12:22:36Z'));
   assert.equal(result.osmBase, BASE, 'the next update starts from the new database time');
@@ -115,4 +115,32 @@ test('the conveying build updates from changes and keeps the full download as it
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
+});
+
+test('a snapshot made by another query or conversion code is downloaded in full, never patched', async () => {
+  const asked = [];
+  const result = await updateFromChanges({features: previous, since: '2026-10-30T12:22:36Z', query: CONVEYING_QUERY, toFeatures, warn: () => {},
+    version: 'new', previousVersion: undefined, fetchText: async q => { asked.push(q); return osm(BASE, ''); }});
+  assert.equal(result, null);
+  assert.deepEqual(asked, [], 'no change request');
+  // The version covers the query and every local module the converter imports.
+  const {mkdtemp, writeFile, mkdir, rm} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {pathToFileURL} = await import('node:url');
+  const root = await mkdtemp(join(tmpdir(), 'extraction-'));
+  try {
+    await mkdir(join(root, 'scripts')); await mkdir(join(root, 'styles'));
+    await writeFile(join(root, 'scripts', 'convert.mjs'), "import {rule} from '../styles/rule.mjs';\nexport const convert = x => rule(x);\n");
+    await writeFile(join(root, 'styles', 'rule.mjs'), 'export const rule = x => x;\n');
+    const entry = pathToFileURL(join(root, 'scripts', 'convert.mjs')), v1 = extractionVersion('q', entry);
+    assert.equal(extractionVersion('q', entry), v1, 'stable');
+    assert.notEqual(extractionVersion('q2', entry), v1, 'the query counts');
+    await writeFile(join(root, 'styles', 'rule.mjs'), 'export const rule = x => !x;\n');
+    assert.notEqual(extractionVersion('q', entry), v1, 'an imported module counts');
+  } finally { await rm(root, {recursive: true, force: true}); }
+  // The conveying build records and checks it.
+  const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
+  assert.match(source, /previousVersion:manifest\.extraction/);
+  assert.match(source, /osmBase:update\?update\.osmBase:data\.osm3s\?\.timestamp_osm_base,extraction,/);
 });
