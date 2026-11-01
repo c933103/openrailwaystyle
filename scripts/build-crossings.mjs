@@ -8,7 +8,7 @@
 // are read again by id.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -106,15 +106,17 @@ let startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/,
 // Table format version: 2 adds the minor-track flag and 3 the crossing tags,
 // which a change query cannot fill in for unchanged crossings, so an older
 // table is fetched anew.
-const VERSION = 3;
+const VERSION = 3, extraction = crossingExtraction();
 let table = new Map(), regions = startRegions(), since, changes, changesFrom, deferred = [];
 if (previous) {
   try {
     const saved = JSON.parse(await readFile(new URL('regions.json', previous), 'utf8'));
-    if (saved.version === VERSION) {
+    // A table without a recorded extraction predates it and was made by this
+    // same code (only its change requests changed since).
+    if (saved.version === VERSION && (saved.extraction ?? extraction) === extraction) {
       table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
       ({regions, since, changes} = saved);
-    } else console.log('Previous table has an older format: fetching everything');
+    } else console.log('Previous table has an older format or was made by other code: fetching everything');
   } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); regions = startRegions(); since = undefined; changes = undefined; }
 }
 const before = table.size;
@@ -149,7 +151,7 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: changes ? since : startedAt, ...(changes ? {changes} : {}), regions,
+await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, extraction, since: changes ? since : startedAt, ...(changes ? {changes} : {}), regions,
   ...(checkpoint ? {acquisition: checkpoint.summary()} : {})}));
 const index = [];
 let bytes = 0;

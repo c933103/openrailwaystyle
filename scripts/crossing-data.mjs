@@ -5,7 +5,7 @@
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
-import {parseAdiff} from './overpass-adiff.mjs';
+import {parseAdiff, extractionVersion} from './overpass-adiff.mjs';
 
 export const TAG_KEYS = CROSSING_TAGS.map(([key]) => key);
 
@@ -67,6 +67,11 @@ export function crossingChangesQuery(box, since) {
   const bbox = `(${box.join(',')})`;
   return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"];(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.c;(.c;way(bn.c)[railway];);out meta;`;
 }
+// What makes a crossing row of OSM data: the region query (selection, columns
+// and minor logic) and this module's parsing, with its imports. A table made
+// by another one is downloaded in full: changes alone would leave unchanged
+// crossings with the old rows.
+export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180, 90, 180]), new URL(import.meta.url));
 export function crossingChanges(xml) {
   const {timestamp, actions} = parseAdiff(xml), deleted = new Set(), affected = new Set();
   for (const action of actions) {

@@ -96,7 +96,7 @@ test('a crossing\'s changes, and those of the railway ways through it, deletions
   assert.throws(() => crossingData.crossingChangesQuery([0, 0, 1, 1], 'yesterday'), /Invalid/);
 });
 
-test('the builder applies a region\'s changes and reads the affected crossings again, with no scheduled full download', async t => {
+async function changeRun(t, extra = {}) {
   const {mkdtemp, writeFile, rm} = await import('node:fs/promises');
   const {tmpdir} = await import('node:os');
   const {join} = await import('node:path');
@@ -106,7 +106,7 @@ test('the builder applies a region\'s changes and reads the affected crossings a
   const previous = await mkdtemp(join(tmpdir(), 'crossing-changes-'));
   t.after(() => rm(previous, {recursive: true, force: true}));
   const since = '2026-10-01T00:00:00Z', roots = crossingData.startRegions();
-  await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since}))}));
+  await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra}));
   await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
   const SEP = crossingData.SEP, calls = [];
   const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
@@ -136,9 +136,26 @@ test('the builder applies a region\'s changes and reads the affected crossings a
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
+  return {error, calls, roots, since};
+}
+
+test('the builder applies a region\'s changes and reads the affected crossings again, with no scheduled full download', async t => {
+  const {error, calls, roots, since} = await changeRun(t, {extraction: crossingData.crossingExtraction()});
   // The tiny fixture stops at the worldwide size guard, before any output.
   assert.match(error?.message || '', /Suspiciously few crossings worldwide: 1/, 'crossing 1 removed, crossing 2 kept');
   assert.equal(calls[0], crossingData.crossingChangesQuery(roots[0].box, since));
   assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3]), 'the crossings on the changed way, read again');
   assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since)), 'every other region\'s changes; nothing downloaded in full');
+});
+
+test('a table made by another query or row code is rebuilt in full, never patched; one predating versions counts as current', async t => {
+  const other = await changeRun(t, {extraction: 'another'});
+  assert.equal(other.calls[0], crossingData.regionQuery(other.roots[0].box), 'a full download, no change request');
+  const legacy = await changeRun(t);
+  assert.equal(legacy.calls[0], crossingData.crossingChangesQuery(legacy.roots[0].box, legacy.since));
+  assert.equal(crossingData.crossingExtraction(), crossingData.crossingExtraction());
+  const workflow = readFileSync(new URL('../.github/workflows/crossings.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /saved\.version === 3 && \(saved\.extraction \?\? crossingExtraction\(\)\) === crossingExtraction\(\)/, 'the workflow decides as the builder');
+  const builder = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
+  assert.match(builder, /JSON\.stringify\(\{version: VERSION, extraction, since:/);
 });
