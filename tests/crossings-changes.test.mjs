@@ -218,3 +218,18 @@ test('a region deferred midway changes nothing: its changes apply only when all 
   assert.equal(calls.length, 1 + 5 + roots.length - 1, 'the other regions still took their changes');
   assert.match(error?.message || '', /Suspiciously few crossings worldwide: 2/, 'crossing 1 kept until the region succeeds');
 });
+
+test('a crossing elsewhere, reached through a way that also runs in this region, is left to its own region', async t => {
+  const extraction = crossingData.crossingExtraction(), SEP = crossingData.SEP;
+  const {error, calls, roots} = await changeRun(t, {extraction, reply: (query, roots, since) => {
+    // A way through crossing 2 (here) and node 3 (in another region) changed.
+    if (query === crossingData.crossingChangesQuery(roots[0].box, since, AT))
+      return new Response(osmXml(`<action type="modify"><old>${xmlWay(60, [2])}</old><new>${xmlWay(60, [2, 3])}</new></action>`));
+    if (query === crossingData.crossingRowsQuery([2, 3], AT))
+      return new Response(`2${SEP}-80${SEP}-169${SEP}level_crossing\n3${SEP}10${SEP}10${SEP}level_crossing\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`);
+    return null;
+  }});
+  assert.ok(!crossingData.inBox(roots[0].box, 10, 10), 'node 3 lies outside the first region');
+  assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3], AT));
+  assert.match(error?.message || '', /Suspiciously few crossings worldwide: 2/, 'crossing 3 not added by this region');
+});

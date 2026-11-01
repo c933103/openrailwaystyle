@@ -8,7 +8,7 @@
 // are read again by id.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -94,7 +94,10 @@ async function readCrossings(stage, ids, box, recheck = new Set()) {
 async function readGroup(stage, ids, box, recheck) {
   const rows = await request(crossingRowsQuery(ids, startedAt), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
   if (rows) {
-    stage.set(rows);
+    // Only crossings in this region: one elsewhere, reached through a way
+    // that also runs here, belongs to its own region's changes and watermark
+    // (that region's diff reports the same way through it).
+    stage.set(rows.filter(row => inBox(box, row.lat, row.lon)));
     const found = new Set(rows.map(row => row.id));
     for (const id of ids) if (recheck.has(id) && !found.has(id)) stage.delete(id);
     return;
