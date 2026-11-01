@@ -113,21 +113,23 @@ export async function buildSignals({
     } catch (error) {
       warn('Signal changes', box.join(','), error.message);
       if (!timeoutLike(error.message) || depth >= 5) throw error;
-      return changesOver(quarters(box), since, until, depth + 1);
+      return changesOver(quarters(box), since, until, () => depth + 1);
     }
   }
-  // The changes over several boxes, all ending at the time the first gives.
-  async function changesOver(boxes, since, until, depth) {
+  // The changes over several boxes, all ending at the time the first gives;
+  // depthOf gives each box's split depth.
+  async function changesOver(boxes, since, until, depthOf) {
     const parts = [];
     for (const child of boxes) {
-      const part = await changesSince(child, since, until, depth);
+      const part = await changesSince(child, since, until, depthOf(child));
       until ||= part.timestamp;
       parts.push(part);
     }
     return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes), parts: parts.flatMap(part => part.parts)};
   }
-  // A region's recorded change boxes, when they still partition it; its
-  // depth counts from the region, so the split limit stays the same.
+  // A region's recorded change boxes, when they still partition it. Each
+  // box's depth counts from the region by its own width, so the split limit
+  // stays the same for every box.
   const recordedParts = (box, parts) => {
     if (!Array.isArray(parts) || parts.length < 2) return null;
     const area = ([s, w, n, e]) => (n - s) * (e - w), [s, w, n, e] = box;
@@ -167,7 +169,7 @@ export async function buildSignals({
       if (now() - Date.parse(stored.generated) >= UPDATE_EVERY) {
         const known = recordedParts(box, stored.changeParts);
         const changes = known
-          ? await changesOver(known, since, undefined, Math.round(Math.log2((box[3] - box[1]) / Math.min(...known.map(p => p[3] - p[1])))))
+          ? await changesOver(known, since, undefined, part => Math.round(Math.log2((box[3] - box[1]) / (part[3] - part[1]))))
           : await changesSince(box, since);
         const elements = valid(applySignalChanges(stored.response.elements, changes));
         stored = {query: combinedQuery, generated: new Date(now()).toISOString(), response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements},

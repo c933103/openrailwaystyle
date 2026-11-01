@@ -238,3 +238,26 @@ test('a change split is recorded with the region, so its next update asks the qu
   assert.ok(third.queries.includes(signalChangesQuery(home, '2026-11-08T11:00:00Z')));
   assert.equal(JSON.parse(await readFile(file, 'utf8')).changeParts, undefined, 'the whole region answered: no split recorded');
 });
+
+test('each recorded box keeps its own split allowance, whatever the depth of the others', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  const {quarters} = await import('../scripts/crossing-data.mjs');
+  // A partition with one branch split five times and three depth-1 quarters.
+  const parts = [];
+  let deepest = home;
+  for (let depth = 1; depth <= 5; depth++) {
+    const [first, ...rest] = quarters(deepest);
+    parts.push(...rest);
+    if (depth === 5) parts.push(first); else deepest = first;
+  }
+  const file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+  await writeFile(file, JSON.stringify({...JSON.parse(await readFile(file, 'utf8')), changeParts: parts}));
+  // A depth-1 quarter now times out: it still splits, into its own quarters.
+  const big = quarters(home)[3].join(','), timedOut = adiff('2026-10-31T11:00:00Z', '<remark> runtime error: Query timed out in "query" at line 1 after 181 seconds. </remark>');
+  const {queries, fetcher} = fakeOverpass(query => ({raw: box(query) === big ? timedOut : adiff('2026-10-31T11:00:00Z', '')}));
+  await buildSignals({...d, ...quiet, fetcher});
+  for (const child of quarters(quarters(home)[3])) assert.ok(queries.some(q => box(q) === child.join(',')), `asked ${child}`);
+  const stored = JSON.parse(await readFile(file, 'utf8')).changeParts;
+  assert.equal(stored.length, parts.length + 3, 'the new split is recorded with the old ones');
+});
