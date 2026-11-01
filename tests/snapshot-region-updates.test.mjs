@@ -26,6 +26,7 @@ async function run(t, files, replies) {
       const query = body.get('data'); log.push(query);
       (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
       const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
+      if (reply.cut) return {ok:true, status:200, text:async () => { throw new TypeError('terminated'); }};
       return new Response(reply.text, {status:reply.status || 200});
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:'delta', GITHUB_RUN_ID:'1'}, encoding:'utf8'});
@@ -61,14 +62,17 @@ test('a region Overpass does not answer is kept; one whose changes cannot be use
   const {result, read} = await run(t, {
     '-90_-180.json': region([way(7, {railway:'proposed'})]),
     '0_-180_45_-135.json': region([way(5, {railway:'proposed'})]),
+    '0_-135_45_-90.json': region([way(6, {railway:'proposed'})]),
   }, {
     '-90,-180,0,-90': {status:429, text:''},
+    '0,-135,45,-90': {cut:true},
     '0,-180,45,-135': {text:`<osm><meta osm_base="${BASE}"/><remark> runtime error: Query timed out in "query" at line 1 after 301 seconds. </remark></osm>`},
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal((await read('-90_-180.json')).osm3s.timestamp_osm_base, SINCE, 'unchanged, asked again next run');
+  assert.equal((await read('0_-135_45_-90.json')).osm3s.timestamp_osm_base, SINCE, 'an answer cut off midway: kept too');
   assert.equal(await read('0_-180_45_-135.json'), null, 'removed, so the region step downloads it in full');
-  assert.match(result.stdout, /"unanswered":1,"redownload":1/);
+  assert.match(result.stdout, /"unanswered":2,"redownload":1/);
 });
 
 test('a split region is updated in its parts', async t => {

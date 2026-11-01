@@ -110,11 +110,16 @@ async function updateRegion(box) {
     previousQuery:json.query||query,query,pick,warn:(...args)=>console.warn(String(box),...args),
     fetchText:async request=>{
       await new Promise(r=>setTimeout(r,5000));
-      let response;
-      try {response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request.replace('[timeout:90]',CHANGE_TIMEOUT)}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(330000)});}
-      catch(error) {throw Object.assign(new Error(`Network: ${error.message}`),{unanswered:true});}
+      // A request that fails before its whole answer arrived (connection,
+      // HTTP status, or the body cut off or timed out) says nothing about the
+      // region: it keeps its data and is asked again next run.
+      let response, text;
+      try {
+        response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request.replace('[timeout:90]',CHANGE_TIMEOUT)}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(330000)});
+        if(response.ok) text=await response.text();
+      } catch(error) {throw Object.assign(new Error(`Network: ${error.message}`),{unanswered:true});}
       if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{unanswered:true});
-      const text=await response.text();downloaded+=Buffer.byteLength(text);
+      downloaded+=Buffer.byteLength(text);
       await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
       if(downloaded>500_000_000) throw Object.assign(new Error('Download budget exceeded'),{budget:true});
       return text;
