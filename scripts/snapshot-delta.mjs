@@ -11,7 +11,15 @@ export const DELTA_FILE = '.snapshot-cache/delta.json';
 // Log the differences between a region's elements before and after its
 // update at `time`: a changed or new way with its feature (null when it is
 // no longer a planned, construction or former line), a removed one as null.
-export function recordChanges(delta, time, before, after) {
+// A way that left the region (`box`) may only have moved into another one:
+// when another region already logged it lying outside this box, that copy
+// stands and no removal is logged. (When that region updates later, its
+// newer entry replaces the removal.)
+const touches = (feature, [s, w, n, e]) => {
+  const lines = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+  return lines.some(line => line.some(([lon, lat]) => lat >= s && lat <= n && lon >= w && lon <= e));
+};
+export function recordChanges(delta, time, before, after, box) {
   const changes = {...(delta?.changes || {})};
   const old = new Map(before.filter(e => e.type === 'way').map(e => [e.id, JSON.stringify(e)]));
   const now = new Set();
@@ -21,7 +29,12 @@ export function recordChanges(delta, time, before, after) {
     if (old.get(element.id) === JSON.stringify(element)) continue;
     changes[element.id] = {time, feature: toGeoJSON({elements: [element]}).features[0] || null};
   }
-  for (const id of old.keys()) if (!now.has(id)) changes[id] = {time, feature: null};
+  for (const id of old.keys()) {
+    if (now.has(id)) continue;
+    const logged = changes[id]?.feature;
+    if (box && logged && !touches(logged, box)) continue;
+    changes[id] = {time, feature: null};
+  }
   return {...(delta || {}), changes};
 }
 

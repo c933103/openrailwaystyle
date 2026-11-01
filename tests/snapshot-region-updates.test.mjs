@@ -116,3 +116,21 @@ test('a way shared with a region whose update failed takes the newer state, dele
   const later = applyDelta(new Map(), new Map([[7, '2026-12-01T00:00:00Z']]), log);
   assert.deepEqual(later.delta.changes, {});
 });
+
+test('a way that only moved out of a region into another is not logged as removed', async () => {
+  const {recordChanges, applyDelta} = await import('../scripts/snapshot-delta.mjs');
+  const {toGeoJSON} = await import('../scripts/lifecycle.mjs');
+  const at = (id, lat, lon) => ({type:'way', id, tags:{railway:'proposed'}, geometry:[{lat, lon}, {lat, lon: lon + 0.1}]});
+  const A = [0, 90, 45, 135], B = [0, 45, 45, 90];
+  // Way 8 moved from A (lon 100) to B (lon 80). B updated first and logged it there; then A, which lost it.
+  let log = recordChanges(undefined, '2026-11-01T05:00:00Z', [], [at(8, 10, 80)], B);
+  log = recordChanges(log, '2026-11-01T06:00:00Z', [at(8, 10, 100)], [], A);
+  assert.equal(log.changes[8].feature.geometry.coordinates[0][0], 80, 'the moved copy stands');
+  const features = new Map([[8, toGeoJSON({elements:[at(8, 10, 80)]}).features[0]]]);
+  applyDelta(features, new Map([[8, '2026-11-01T05:00:00Z']]), log);
+  assert.ok(features.has(8), 'still drawn');
+  // A way gone for good (no copy logged elsewhere, or one still in the box) is logged as removed.
+  assert.equal(recordChanges(undefined, '2026-11-01T06:00:00Z', [at(9, 10, 100)], [], A).changes[9].feature, null);
+  const stillHere = recordChanges(undefined, '2026-11-01T05:00:00Z', [], [at(9, 10, 100)], B);
+  assert.equal(recordChanges(stillHere, '2026-11-01T06:00:00Z', [at(9, 10, 100)], [], A).changes[9].feature, null);
+});

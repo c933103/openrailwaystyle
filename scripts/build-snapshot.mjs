@@ -128,7 +128,7 @@ async function updateRegion(box) {
   if(update) {
     await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
     // For ways this region shares with one whose update failed (see snapshot-delta.mjs).
-    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements);
+    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements,box);
     updates.updated++; updates.changed+=update.upserts+update.deletes+update.added+update.dropped;
     return;
   }
