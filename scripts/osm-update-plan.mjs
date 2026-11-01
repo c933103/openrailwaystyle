@@ -47,7 +47,7 @@ export const OSM_UPDATES = Object.freeze([
   // (build-railway-ways.mjs), kept as a release; it runs before the datasets
   // built from it, which download on their own only when it cannot be loaded.
   {id:'railway-ways', workflow:'railway-ways.yml', due:{every:true},
-    paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/service-routes.mjs',
+    paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/overpass-adiff.mjs', 'scripts/service-routes.mjs',
       'scripts/power-method-data.mjs', 'scripts/station-acquisition.mjs']},
   {id:'branch-lines', workflow:'branch-lines.yml', due:{every:true},
     paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-branch.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
