@@ -131,3 +131,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
+      # The published data has every other region's changes; ending red makes
+      # the scheduler ask again for the regions Overpass stayed unavailable for.
+      - name: Retry deferred regions in the next run
+        if: steps.update.outputs.deferred != '' && steps.update.outputs.deferred != '0'
+        env:
+          DEFERRED: ${{ steps.update.outputs.deferred }}
+        run: |
+          echo "::error::$DEFERRED region(s) deferred: Overpass stayed unavailable for them"
+          exit 1
