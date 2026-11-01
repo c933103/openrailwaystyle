@@ -7,7 +7,7 @@
 // regions up to REFRESH_BYTES, which removes deleted and retagged crossings.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, UNAVAILABLE, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, refreshRegions, regionQuery, replaceRegion, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -111,19 +111,10 @@ if (!since) {
   ({changes, deferred, since, from: changesFrom} = update);
   // Then refresh the regions checked longest ago, unless the server is down.
   const start = downloaded;
-  regions.sort((a, b) => a.fetched.localeCompare(b.fetched));
-  const refreshed = [];
-  while (!update.stopped && regions.length && downloaded - start < refreshBytes) {
-    const region = regions.shift();
-    try { refreshed.push(...await fetchRegion(table, region)); }
-    catch (error) {
-      if (!UNAVAILABLE.test(error.message)) throw error;
-      console.warn('Refresh deferred to the next run:', error.message);
-      regions.unshift(region);
-      break;
-    }
-  }
-  regions.push(...refreshed);
+  const refresh = await refreshRegions({regions, fetch: region => fetchRegion(table, region),
+    more: () => !update.stopped && downloaded - start < refreshBytes});
+  regions = refresh.regions;
+  deferred = [...deferred, ...refresh.deferred];
 }
 // Guards against publishing a partial table.
 if (table.size < 900_000) throw new Error(`Suspiciously few crossings worldwide: ${table.size}`);

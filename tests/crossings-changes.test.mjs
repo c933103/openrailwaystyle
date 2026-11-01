@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {startRegions, regionKey, updateRegionChanges} from '../scripts/crossing-data.mjs';
+import {startRegions, regionKey, updateRegionChanges, refreshRegions} from '../scripts/crossing-data.mjs';
 
 const regions = startRegions(), keys = regions.map(r => regionKey(r.box));
 const down = box => new Error(`Overpass stayed unavailable for region ${box}`);
@@ -63,4 +63,23 @@ test('the workflow publishes the other regions\' changes and then ends red for t
   assert.match(workflow.slice(retry), /if: steps\.update\.outputs\.deferred != '' && steps\.update\.outputs\.deferred != '0'[\s\S]*exit 1/);
   const builder = await readFile(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   assert.match(builder, /`deferred=\$\{deferred\.length\}\\n`/);
+  assert.match(builder, /deferred = \[\.\.\.deferred, \.\.\.refresh\.deferred\]/, 'a deferred refresh counts too');
+});
+
+test('a refresh Overpass stayed unavailable for is reported and stays first in the queue', async () => {
+  const queue = [{box: [0, 0, 45, 45], fetched: '2026-10-10T00:00:00Z'}, {box: [0, 45, 45, 90], fetched: '2026-10-01T00:00:00Z'},
+    {box: [45, 0, 90, 45], fetched: '2026-10-20T00:00:00Z'}];
+  const asked = [];
+  const result = await refreshRegions({regions: queue, more: () => true, warn: () => {},
+    fetch: async region => { asked.push(regionKey(region.box)); if (asked.length === 2) throw down(region.box); return [{box: region.box, fetched: NOW}]; }});
+  assert.deepEqual(asked, ['0,45,45,90', '0,0,45,45'], 'oldest first; stops at the unavailable one');
+  assert.deepEqual(result.deferred, ['refresh 0,0,45,45']);
+  assert.deepEqual(result.regions.map(r => [regionKey(r.box), r.fetched]),
+    [['0,0,45,45', '2026-10-10T00:00:00Z'], ['45,0,90,45', '2026-10-20T00:00:00Z'], ['0,45,45,90', NOW]]);
+  // Within its allowance and without failures, nothing is deferred.
+  let n = 0;
+  const done = await refreshRegions({regions: queue, more: () => n < 2, fetch: async region => { n++; return [{box: region.box, fetched: NOW}]; }});
+  assert.deepEqual(done.deferred, []);
+  assert.equal(done.regions.length, 3);
+  await assert.rejects(refreshRegions({regions: queue, more: () => true, fetch: async () => { throw new Error('Download budget exceeded'); }}), /budget/);
 });

@@ -134,6 +134,25 @@ export async function updateRegionChanges({regions, changes = {}, since, started
   if (deferred.length === order.length) throw new Error('Overpass stayed unavailable for every region; nothing to publish');
   return {changes: next, deferred, stopped: unavailable >= 2, from: order[0]?.since, since: Object.values(next).sort()[0]};
 }
+// The full refresh of the regions checked longest ago, while `more()` allows.
+// A region the server stayed unavailable for goes back to the front of the
+// queue and is reported (as `refresh <box>`), so the run still ends red and
+// is retried; the refresh stops there.
+export async function refreshRegions({regions, fetch, more, warn = console.warn}) {
+  const queue = [...regions].sort((a, b) => a.fetched.localeCompare(b.fetched)), refreshed = [], deferred = [];
+  while (queue.length && more()) {
+    const region = queue.shift();
+    try { refreshed.push(...await fetch(region)); }
+    catch (error) {
+      if (!UNAVAILABLE.test(error.message)) throw error;
+      warn('Refresh deferred to the next run:', error.message);
+      queue.unshift(region);
+      deferred.push(`refresh ${regionKey(region.box)}`);
+      break;
+    }
+  }
+  return {regions: [...queue, ...refreshed], deferred};
+}
 export function applyChanges(table, rows) {
   for (const row of rows) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);
 }
