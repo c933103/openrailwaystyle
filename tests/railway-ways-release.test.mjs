@@ -74,6 +74,11 @@ test('publishing and loading generations; a half-finished publication leaves the
   assert.equal(await readFile(join(root, 'loaded', 'regions', 'japan', '1.json.gz'), 'utf8'), '1');
   assert.equal(await readFile(join(root, 'loaded', 'regions', 'china', '2.json.gz'), 'utf8'), '2');
   assert.match(await readFile(join(root, 'env'), 'utf8'), /^PREVIOUS_DATA=.*loaded\n$/);
+  // The datasets built from the store take it under their own variable.
+  out = cli(['load', join(root, 'loaded'), 'RAILWAY_WAYS_STORE'], {GITHUB_ENV: join(root, 'env')});
+  assert.equal(out.status, 0, out.stderr);
+  assert.match(await readFile(join(root, 'env'), 'utf8'), /\nRAILWAY_WAYS_STORE=.*loaded\n$/);
+  assert.notEqual(cli(['load', join(root, 'loaded'), 'X=1']).status, 0, 'a variable name only');
   // Japan again, but the state upload fails after its archive is up.
   const failed = cli(['publish', await store('c', 'japan', 3, JSON.parse(await readFile(join(root, 'loaded', 'state.json'), 'utf8')).archives)],
     {GENERATION: '20261031T180000Z-3', FAIL_UPLOAD: 'state-*'});
@@ -90,4 +95,17 @@ test('publishing and loading generations; a half-finished publication leaves the
   await rm(join(root, 'loaded'), {recursive: true});
   out = cli(['load', join(root, 'loaded')]);
   assert.match(out.stdout, /Loaded state-20261031T120000Z-2\.json/);
+});
+
+test('branch lines and service routes load the store, and download themselves when it cannot be loaded', async () => {
+  for (const name of ['branch-lines.yml', 'service-routes.yml']) {
+    const workflow = await readFile(new URL(`../.github/workflows/${name}`, import.meta.url), 'utf8');
+    const load = workflow.indexOf('railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE');
+    assert.ok(load > 0 && load < workflow.indexOf('node scripts/build-'), `${name}: the store is loaded before the build`);
+    assert.match(workflow, /if ! node scripts\/railway-ways-release\.mjs load [^\n]+; then\n\s+echo "::warning::/, `${name}: a failed load warns and falls back`);
+  }
+  // A failed load names no store (the variable is written last).
+  const source = await readFile(new URL('../scripts/railway-ways-release.mjs', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('export function load'), source.indexOf('export function publish'));
+  assert.ok(body.indexOf('GITHUB_ENV') > body.lastIndexOf("execFileSync('tar'"));
 });

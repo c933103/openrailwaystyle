@@ -28,6 +28,7 @@ on:
       - scripts/build-polar.mjs
       - scripts/build-power-facilities.mjs
       - scripts/build-power-methods.mjs
+      - scripts/build-railway-ways.mjs
       - scripts/build-service-routes.mjs
       - scripts/build-signals.mjs
       - scripts/build-snapshot.mjs
@@ -49,6 +50,9 @@ on:
       - scripts/polar-features.mjs
       - scripts/power-facility-data.mjs
       - scripts/power-method-data.mjs
+      - scripts/railway-ways-branch.mjs
+      - scripts/railway-ways-release.mjs
+      - scripts/railway-ways.mjs
       - scripts/refresh-snapshot-cache.mjs
       - scripts/service-acquisition-trigger.mjs
       - scripts/service-geometry-health.mjs
@@ -79,7 +83,7 @@ on:
         description: Which dataset to update (due = whatever is due now)
         type: choice
         default: due
-        options: [due, all, lifecycle, crossings, street-running, conveying, aerialways, heritage, station-points, branch-lines, service-routes, traction]
+        options: [due, all, lifecycle, crossings, street-running, conveying, aerialways, heritage, station-points, railway-ways, branch-lines, service-routes, traction]
 permissions:
   contents: read
 concurrency:

@@ -23,17 +23,17 @@ test('weekly and monthly due times are the latest boundary at or before now', ()
 test('a dataset runs once per due time, and a late or skipped run is caught up', () => {
   const recent = Object.fromEntries(OSM_UPDATES.map(e => [e.id, ran('2026-11-02T03:30:00Z')]));
   // Monday 09:23: weekly and monthly work already done since their boundary.
-  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent)), ['station-points', 'branch-lines', 'service-routes', 'traction']);
+  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent)), ['station-points', 'railway-ways', 'branch-lines', 'service-routes', 'traction']);
   // Monday 03:23 with Friday's lifecycle run done: lifecycle is due again.
   assert.deepEqual(ids(dueUpdates(at('2026-11-02T03:23:00Z'), {...recent, lifecycle: ran('2026-10-30T03:40:00Z')})).slice(0, 1), ['lifecycle']);
   // Sunday's run was skipped: Monday's first run still does the Sunday work.
   const missed = {...recent, crossings: ran('2026-10-25T04:00:00Z'), 'street-running': ran('2026-10-25T04:30:00Z')};
-  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), missed)), ['crossings', 'street-running', 'station-points', 'branch-lines', 'service-routes', 'traction']);
+  assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), missed)), ['crossings', 'street-running', 'station-points', 'railway-ways', 'branch-lines', 'service-routes', 'traction']);
   // Never run: due.
   assert.ok(ids(dueUpdates(at('2026-11-02T09:23:00Z'), {})).includes('heritage'));
   // A changed builder runs its dataset outside its due time, in run order.
   assert.deepEqual(ids(dueUpdates(at('2026-11-02T09:23:00Z'), recent, {rebuilt: ['heritage', 'conveying']})),
-    ['conveying', 'heritage', 'station-points', 'branch-lines', 'service-routes', 'traction']);
+    ['conveying', 'heritage', 'station-points', 'railway-ways', 'branch-lines', 'service-routes', 'traction']);
 });
 
 test('a builder counts as changed only when its own files differ since the last successful run', () => {
