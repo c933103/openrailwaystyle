@@ -212,3 +212,29 @@ test('change responses: escaped text, ways ignored, refusals and truncation reje
   assert.match(signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z', '2026-10-31T11:00:00Z'), /\[adiff:"2026-10-20T00:00:00Z","2026-10-31T11:00:00Z"\];/, 'an explicit end time');
   assert.throws(() => signalChangesQuery([45, 0, 90, 45], '2026-10-20T00:00:00Z', '2026-10-19T00:00:00Z'), /Invalid signal change end/);
 });
+
+test('a change split is recorded with the region, so its next update asks the quarters directly', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  const {quarters} = await import('../scripts/crossing-data.mjs');
+  const parts = quarters(home), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+  const timedOut = adiff('2026-10-31T11:00:00Z', '<remark> runtime error: Query timed out in "query" at line 1 after 181 seconds. </remark>');
+  const first = fakeOverpass(query => ({raw: box(query) === HOME ? timedOut : adiff('2026-10-31T11:00:00Z', '')}));
+  await buildSignals({...d, ...quiet, fetcher: first.fetcher});
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')).changeParts, parts);
+  // A week later: the quarters only, the first fixing the end time.
+  const later = {...quiet, now: () => Date.parse('2026-11-08T12:00:00Z')};
+  const next = fakeOverpass(query => ({raw: box(query) === HOME ? timedOut : adiff('2026-11-08T11:00:00Z', '')}));
+  await buildSignals({...d, ...later, fetcher: next.fetcher});
+  const asked = next.queries.filter(q => parts.some(p => box(q) === p.join(',')) || box(q) === HOME);
+  assert.deepEqual(asked, [signalChangesQuery(parts[0], '2026-10-31T11:00:00Z'),
+    ...parts.slice(1).map(p => signalChangesQuery(p, '2026-10-31T11:00:00Z', '2026-11-08T11:00:00Z'))], 'never the whole region again');
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')).changeParts, parts, 'kept for the update after');
+  // A record that no longer partitions the region is not trusted: the whole region is asked.
+  const stored = JSON.parse(await readFile(file, 'utf8'));
+  await writeFile(file, JSON.stringify({...stored, changeParts: parts.slice(1)}));
+  const third = fakeOverpass(() => ({raw: adiff('2026-11-15T11:00:00Z', '')}));
+  await buildSignals({...d, ...quiet, now: () => Date.parse('2026-11-15T12:00:00Z'), fetcher: third.fetcher});
+  assert.ok(third.queries.includes(signalChangesQuery(home, '2026-11-08T11:00:00Z')));
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).changeParts, undefined, 'the whole region answered: no split recorded');
+});

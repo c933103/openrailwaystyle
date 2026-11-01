@@ -103,23 +103,37 @@ export async function buildSignals({
   // elements are exactly its state then: a diff compares two moments only,
   // so a signal that appeared and went again between different quarter end
   // times would otherwise never be removed.
+  // `parts` are the boxes that answered, recorded with the region so its next
+  // update asks them directly instead of timing out on the whole region again.
   async function changesSince(box, since, until, depth = 0) {
     try {
       const changes = parseSignalChanges(await fetchText(signalChangesQuery(box, since, until)));
       // With an end time the response still carries the current database time.
-      return until ? {...changes, timestamp: until} : changes;
+      return {...changes, ...(until ? {timestamp: until} : {}), parts: [box]};
     } catch (error) {
       warn('Signal changes', box.join(','), error.message);
       if (!timeoutLike(error.message) || depth >= 5) throw error;
-      const parts = [];
-      for (const child of quarters(box)) {
-        const part = await changesSince(child, since, until, depth + 1);
-        until ||= part.timestamp;
-        parts.push(part);
-      }
-      return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes)};
+      return changesOver(quarters(box), since, until, depth + 1);
     }
   }
+  // The changes over several boxes, all ending at the time the first gives.
+  async function changesOver(boxes, since, until, depth) {
+    const parts = [];
+    for (const child of boxes) {
+      const part = await changesSince(child, since, until, depth);
+      until ||= part.timestamp;
+      parts.push(part);
+    }
+    return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes), parts: parts.flatMap(part => part.parts)};
+  }
+  // A region's recorded change boxes, when they still partition it; its
+  // depth counts from the region, so the split limit stays the same.
+  const recordedParts = (box, parts) => {
+    if (!Array.isArray(parts) || parts.length < 2) return null;
+    const area = ([s, w, n, e]) => (n - s) * (e - w), [s, w, n, e] = box;
+    const inside = parts.every(p => Array.isArray(p) && p.length === 4 && p[0] >= s && p[1] >= w && p[2] <= n && p[3] <= e && p[0] < p[2] && p[1] < p[3]);
+    return inside && Math.abs(parts.reduce((sum, p) => sum + area(p), 0) - area(box)) < 1e-9 ? parts : null;
+  };
 
   // Leaves of the world partition, each with the combined element set.
   async function collect(box, depth = 0) {
@@ -151,9 +165,13 @@ export async function buildSignals({
     const since = stored?.response?.osm3s?.timestamp_osm_base;
     if (stored && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since || '')) {
       if (now() - Date.parse(stored.generated) >= UPDATE_EVERY) {
-        const changes = await changesSince(box, since);
+        const known = recordedParts(box, stored.changeParts);
+        const changes = known
+          ? await changesOver(known, since, undefined, Math.round(Math.log2((box[3] - box[1]) / Math.min(...known.map(p => p[3] - p[1])))))
+          : await changesSince(box, since);
         const elements = valid(applySignalChanges(stored.response.elements, changes));
-        stored = {query: combinedQuery, generated: new Date(now()).toISOString(), response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements}};
+        stored = {query: combinedQuery, generated: new Date(now()).toISOString(), response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements},
+          ...(changes.parts.length > 1 ? {changeParts: changes.parts} : {})};
         await save(stored);
         log('Signal region', box.join(','), 'updated:', changes.upserts.length, 'added or changed,', changes.deletes.length, 'removed since', since);
       }

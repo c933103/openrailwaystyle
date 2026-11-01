@@ -139,8 +139,11 @@ signal nodes replace the stored ones by id; deleted nodes, and nodes that no
 longer match (for example a removed `railway:signal:electricity`), are dropped.
 A change request that times out is split into quarters. The first quarter to
 answer fixes the end time and the others ask up to that same time
-(`[adiff:"<start>","<end>"]`), so the region is stored as of one moment; a
-failed or incomplete one leaves the stored region unchanged and publishes nothing.
+(`[adiff:"<start>","<end>"]`), so the region is stored as of one moment. The
+boxes that answered are recorded with the region (`changeParts`), and its next
+update asks them directly rather than timing out on the whole region again; a
+record that no longer partitions the region is ignored. A failed or incomplete
+change request leaves the stored region unchanged and publishes nothing.
 `scripts/build-electricity-signals.mjs` still builds the electrification
 snapshot on its own with a full download, as a manual fallback.
 `traction-facilities.yml` publishes `power/electricity-signals.geojson` with its
