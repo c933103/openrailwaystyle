@@ -254,7 +254,8 @@ const elementsOf = text => {
 // `pick` keeps what the conversion needs of an element; `maxDrop` bounds the
 // share the changes in step 1 may remove (a selection change may remove any).
 export async function updateElements({elements, since, previousQuery, query, fetchText, pick = element => element, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
-  if (!Array.isArray(elements) || !elements.length) return null;
+  // A region with no elements is a valid state: its changes may add some.
+  if (!Array.isArray(elements)) return null;
   if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
   if (!previousQuery) { warn('The stored elements do not record their query: downloading in full'); return null; }
   try {
