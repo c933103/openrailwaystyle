@@ -258,10 +258,22 @@ test('a stage whose part boxes no longer match its stored regions takes a full p
     const box = [region.box[0], region.box[1], region.box[2] - 1, region.box[3]];
     await writeFile(join(dir, name), gzipSync(JSON.stringify({...region, box, query: railwayWaysQuery(part, box)})));
   }
+  // A change pass had stopped partway: its progress must not outlive the full pass.
+  const names = await readdir(dir);
+  const state = JSON.parse(await readFile(join(previous, 'state.json'), 'utf8'));
+  state.stages.japan.changePass = {started: '2026-10-31T00:00:00Z', done: names};
+  await writeFile(join(previous, 'state.json'), JSON.stringify(state));
   const full = overpass(() => ok([way(1, {railway: 'subway'})]));
   await run(root, full.fetcher, {previous});
   assert.ok(full.queries.length && full.queries.every(q => q.startsWith('[out:json]') && !q.includes('[adiff:')), 'the whole part, downloaded');
   assert.equal(full.queries[0], railwayWaysQuery(part, part.box));
+  assert.equal(JSON.parse(await readFile(join(root, 'out', 'state.json'), 'utf8')).stages.japan.changePass, null, 'the stopped change pass forgotten');
+  // The next refresh asks every region for its changes, none skipped.
+  const next = await publish(root);
+  await currentExceptJapan(next);
+  const changes = overpass(() => adiff('2026-11-02T05:00:00Z'));
+  await run(root, changes.fetcher, {previous: next});
+  assert.equal(changes.queries.filter(q => q.includes('[adiff:')).length, 2 * names.length, 'relations and ways for each region');
 });
 
 test('a change pass resumed after the query changed brings its done regions to the new query too', async t => {

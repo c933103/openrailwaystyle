@@ -151,6 +151,9 @@ export async function buildRailwayWays({
   }
   if (!current.pending?.length) {
     startStagePass(current, stage);
+    // A full pass replaces every region: a stopped change pass's progress no
+    // longer applies to any of them.
+    current.changePass = null;
     current.started = iso(now);
     await rm(nextDir, {recursive: true, force: true});
   }
