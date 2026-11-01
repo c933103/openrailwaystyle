@@ -12,7 +12,9 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Up to 44 minutes of Overpass requests and pauses (build-street-running.mjs),
+    # then the build and publication.
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

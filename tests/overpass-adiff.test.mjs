@@ -126,6 +126,15 @@ test('street running updates from changes, with the full download as its fallbac
   assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
   const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
+  // The worst case (change request timed out, a pause, three full attempts
+  // timed out, two pauses) leaves at least ten minutes for the build and
+  // publication within the job's time limit.
+  const [change, full] = [...source.matchAll(/AbortSignal\.timeout\((\d+)\)/g)].map(m => Number(m[1]));
+  const pauses = [...source.matchAll(/setTimeout\(r,(\d+)\)/g)].map(m => Number(m[1]));
+  assert.deepEqual([change, full, pauses], [300000, 660000, [120000, 120000]]);
+  const worst = (change + pauses[0] + 3 * full + 2 * pauses[1]) / 60000;
+  assert.equal(worst, 44);
+  assert.ok(worst + 10 <= Number(/timeout-minutes: (\d+)/.exec(workflow)[1]));
 });
 
 test('a snapshot made by another query or conversion code is downloaded in full, never patched', async () => {

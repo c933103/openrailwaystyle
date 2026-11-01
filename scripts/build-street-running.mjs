@@ -29,8 +29,12 @@ if(process.env.PREVIOUS_DATA) {
     previous={features:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'street-running.geojson.gz')))).features,
       since:manifest.osmBase,previousVersion:manifest.extraction};
   } catch(error) { console.log('No usable published snapshot:', error.message); }
+  // A week's changes are small; a change request that takes over five
+  // minutes is given up for the full download. Worst case before the build:
+  // 5 + 2 (pause) + 3 × 11 (full attempts) + 2 × 2 (pauses) = 44 minutes,
+  // within the workflow's time limit.
   if(previous) update=await updateFromChanges({...previous,query,version:extraction,toFeatures,fetchText:async changeQuery=>{
-    const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(660000),headers});
+    const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(300000),headers});
     if(!response.ok) throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});
     return response.text();
   },failed:error=>{changeError=error;}});
