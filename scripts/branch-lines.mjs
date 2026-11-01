@@ -56,10 +56,7 @@ export function retireBranchEurope(state, table) {
 }
 export {branchStageOwner};
 
-export const quarters = ([s, w, n, e]) => {
-  const lat = (s + n) / 2, lon = (w + e) / 2;
-  return [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]];
-};
+export {quarters} from './world-regions.mjs';
 
 export const BRANCH_SELECTS = ['way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]', 'way[railway=subway][!service]'];
 export const branchSelect = filters => BRANCH_SELECTS.map(s => `${s}${filters};`).join('');

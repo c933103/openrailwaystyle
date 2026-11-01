@@ -4,6 +4,7 @@ import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse,powerFacilityChangesSince} from './power-facility-data.mjs';
 import {updateElements,requireGeometry} from './overpass-adiff.mjs';
+import {quarters,worldRegions} from './world-regions.mjs';
 import {overpassRetryDelayMs,overpassBusy,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -12,8 +13,7 @@ const cache='.snapshot-cache';
 // v6 caches remain valid for the reviewed equivalent key-presence prefilter.
 // Exact query/digest, original age and payload validation protect their reuse.
 const VERSION=6;
-const regions=[];
-for (let south=-90;south<90;south+=90) for(let west=-180;west<180;west+=90) regions.push([south,west,south+90,west+90]);
+const regions=worldRegions(90);
 await mkdir(cache,{recursive:true});
 await mkdir(output,{recursive:true});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -104,8 +104,7 @@ async function collect(box,depth=0) {
   if(split) {
     if(depth>=6)throw new Error(`Energy facility region could not complete: ${box}`);
     if(!cachedSplit)await writeFile(splitFile,JSON.stringify({query}));
-    const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-    for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]])await collect(child,depth+1);
+    for(const child of quarters(box))await collect(child,depth+1);
     return;
   }
   const data=powerFacilitiesGeoJSON(json);

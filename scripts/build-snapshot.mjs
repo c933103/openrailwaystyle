@@ -9,6 +9,7 @@ import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES, toGeoJSON} from './lifecycle.mjs';
 import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
 import {updateElements} from './overpass-adiff.mjs';
+import {quarters, worldRegions} from './world-regions.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
 const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 await mkdir('.snapshot-cache', {recursive:true});
@@ -19,10 +20,8 @@ let downloaded=0;
 try {downloaded=JSON.parse(await readFile(budgetFile,'utf8')).bytes;} catch {}
 // Disjoint world regions, serial requests with a quiet interval.
 // Full way geometry is retained across quadrant boundaries and deduplicated.
-const boxes = [
-  ...[-180,-90,0,90].map(w=>[-90,w,0,w+90]),
-  ...[0,45].flatMap(s=>[-180,-135,-90,-45,0,45,90,135].map(w=>[s,w,s+45,w+45])),
-];
+// Whole quadrants in the south, 45-degree quarters in the denser north.
+const boxes = worldRegions(([south]) => south < 0 ? 90 : 45);
 // Start East Asia first among remaining regions, so the reported line is
 // diagnosed early. Cached completed quadrants are reused without re-querying.
 boxes.sort((a,b)=>(b[0]===0 && b[1]===90 ? 1:0)-(a[0]===0 && a[1]===90 ? 1:0));
@@ -100,9 +99,8 @@ async function collect(box, depth=0) {
     if(split) {
       if(depth>=5) throw new Error(`Could not complete region ${box}`);
       await writeFile(file+'.split','Oversized region; use complete child regions.');
-      const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
       const leaves=[];
-      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) leaves.push(...await collect(child,depth+1));
+      for(const child of quarters(box)) leaves.push(...await collect(child,depth+1));
       await reconcile(box,leaves);
       return leaves;
     }
@@ -136,8 +134,7 @@ async function updateRegion(box) {
     // Not cached: a split region is updated in its parts; otherwise the
     // region step downloads it in full.
     try {await readFile(file+'.split');} catch {return;}
-    const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-    for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await updateRegion(child);
+    for(const child of quarters(box)) await updateRegion(child);
     return;
   }
   // Earlier data left by a full download stopped before it was logged.

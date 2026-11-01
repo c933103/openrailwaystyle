@@ -4,6 +4,7 @@ import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {heritageQuery, heritageFeatures, heritageFailure, heritageRegions, heritageDepth, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 import {updateElements, requireGeometry} from './overpass-adiff.mjs';
+import {quarters} from './world-regions.mjs';
 import {gzipSync, gunzipSync} from 'node:zlib';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -104,8 +105,7 @@ async function collect(box, depth = 0) {
   }
   if (split) {
     console.log('Splitting historic area region', box.join(','));
-    const [s, w, n, e] = box, lat = (s + n) / 2, lon = (w + e) / 2;
-    for (const child of [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]]) await collect(child, depth + 1);
+    for (const child of quarters(box)) await collect(child, depth + 1);
     return;
   }
   const found = heritageFeatures(json);
