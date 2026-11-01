@@ -10,7 +10,7 @@ const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
 // Since the published snapshot (PREVIOUS_DATA: its aerialways.geojson.gz and
 // manifest.json), only what changed; the full download below is the fallback.
-let data, update=null;
+let data, update=null, changeError=null;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
@@ -24,7 +24,15 @@ if(process.env.PREVIOUS_DATA) {
       const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
       return response.text();
-    }});
+    },failed:error=>{changeError=error;}});
+}
+// A server that refused the change request is given the wait it asked for
+// (Retry-After) before the full download, as between full attempts.
+if(!update && changeError?.status) {
+  const wait = conveyingRetryDelay(changeError, 0);
+  if (!conveyingRequestFits(deadline, wait)) throw new Error('Aerialway acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:changeError});
+  console.log(`Waiting ${wait / 60000} minutes before the full download`);
+  await new Promise(r=>setTimeout(r,wait));
 }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed`);
 else for(let attempt=0;attempt<3;attempt++) {

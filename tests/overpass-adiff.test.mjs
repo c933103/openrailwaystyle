@@ -121,7 +121,7 @@ test('aerialways are updated the same way, with names and kinds as a full downlo
   const result = await updateFromChanges({features: before, since: '2026-10-30T12:00:00Z', query: AERIALWAY_QUERY, toFeatures: toAerial,
     now: Date.parse('2026-11-01T07:00:00Z'), warn: () => {},
     fetchText: async query => {
-      assert.match(query, /^\[out:xml\]\[timeout:900\]\[maxsize:1073741824\]\[adiff:"2026-10-30T12:00:00Z"\];way\[aerialway~/);
+      assert.match(query, /^\[out:xml\]\[timeout:900\]\[maxsize:1073741824\]\[adiff:"2026-10-30T12:00:00Z"\];way\[aerialway~[^;]+;out body geom;$/);
       return osm(BASE, [`<action type="modify"><old/><new>${way(1, {aerialway: 'gondola', name: 'New'}, [[1, 46, 7.01], [2, 46.01, 7.01]])}</new></action>`,
         '<action type="delete"><old/><new><way id="2" visible="true"/></new></action>'].join(''));
     }});
@@ -129,6 +129,9 @@ test('aerialways are updated the same way, with names and kinds as a full downlo
     ...Array.from({length: 40}, (_, i) => lift(100 + i, {aerialway: 't-bar'}))]}).features);
   const source = readFileSync(new URL('../scripts/build-aerialways.mjs', import.meta.url), 'utf8');
   assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request\'s wait comes first');
+  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/aerialways.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node scripts/build-aerialways.mjs'));
 });
