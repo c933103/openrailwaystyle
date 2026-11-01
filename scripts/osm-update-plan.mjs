@@ -38,7 +38,7 @@ export const OSM_UPDATES = Object.freeze([
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'styles/conveying.mjs']},
+    paths:['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'heritage', workflow:'heritage.yml', due:{monthly:3, hour:21},
     paths:['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},

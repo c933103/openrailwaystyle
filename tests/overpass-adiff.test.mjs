@@ -99,3 +99,24 @@ test('the conveying build updates from changes and keeps the full download as it
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
 });
+
+test('aerialways are updated the same way, with names and kinds as a full download gives them', async () => {
+  const {AERIALWAY_QUERY, aerialwaysGeoJSON} = await import('../scripts/conveying-data.mjs');
+  const lift = (id, tags) => sample(id, tags, [[46, 7 + id / 100], [46.01, 7 + id / 100]]);
+  const before = aerialwaysGeoJSON({elements: [lift(1, {aerialway: 'gondola', name: 'Old'}), lift(2, {aerialway: 'chair_lift'}),
+    ...Array.from({length: 40}, (_, i) => lift(100 + i, {aerialway: 't-bar'}))]}).features;
+  const toAerial = elements => aerialwaysGeoJSON({elements}).features;
+  const result = await updateFromChanges({features: before, since: '2026-10-30T12:00:00Z', query: AERIALWAY_QUERY, toFeatures: toAerial,
+    now: Date.parse('2026-11-01T07:00:00Z'), warn: () => {},
+    fetchText: async query => {
+      assert.match(query, /^\[out:xml\]\[timeout:900\]\[maxsize:1073741824\]\[adiff:"2026-10-30T12:00:00Z"\];way\[aerialway~/);
+      return osm(BASE, [`<action type="modify"><old/><new>${way(1, {aerialway: 'gondola', name: 'New'}, [[1, 46, 7.01], [2, 46.01, 7.01]])}</new></action>`,
+        '<action type="delete"><old/><new><way id="2" visible="true"/></new></action>'].join(''));
+    }});
+  assert.deepEqual(result.features, aerialwaysGeoJSON({elements: [lift(1, {aerialway: 'gondola', name: 'New'}),
+    ...Array.from({length: 40}, (_, i) => lift(100 + i, {aerialway: 't-bar'}))]}).features);
+  const source = readFileSync(new URL('../scripts/build-aerialways.mjs', import.meta.url), 'utf8');
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  const workflow = readFileSync(new URL('../.github/workflows/aerialways.yml', import.meta.url), 'utf8');
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node scripts/build-aerialways.mjs'));
+});
