@@ -6,6 +6,7 @@ import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
 import {parseAdiff, extractionVersion} from './overpass-adiff.mjs';
+import {quarters, worldRegions} from './world-regions.mjs';
 
 export const TAG_KEYS = CROSSING_TAGS.map(([key]) => key);
 
@@ -22,14 +23,9 @@ export const KINDS = {level_crossing: 'road', crossing: 'foot'};
 // Start regions: 45° squares; a region that times out is split into quarters
 // and the split is remembered (regions.json).
 export function startRegions() {
-  const regions = [];
-  for (let s = -90; s < 90; s += 45) for (let w = -180; w < 180; w += 45) regions.push({box: [s, w, s + 45, w + 45]});
-  return regions;
+  return worldRegions(45).map(box => ({box}));
 }
-export const quarters = ([s, w, n, e]) => {
-  const lat = (s + n) / 2, lon = (w + e) / 2;
-  return [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]];
-};
+export {quarters};
 export const inBox = ([s, w, n, e], lat, lon) => lat >= s && lat < n && lon >= w && lon < e;
 
 // Tracks whose crossings wait for street zooms: trams, light rail,

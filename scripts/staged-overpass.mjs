@@ -8,15 +8,16 @@ import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises'
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
+import {WORLD_QUADRANTS,quarters} from './world-regions.mjs';
 
 export const STAGED_LIMITS=Object.freeze({requests:96,bytes:100_000_000,elapsedMs:3600_000,depth:6,attempts:3,timeoutMs:300_000,pauseMs:10_000,retryMs:40_000,maxRetryAfterMs:300_000});
-export const STAGED_REGIONS=Object.freeze(Array.from({length:8},(_,i)=>Object.freeze([i<4?-90:0,-180+(i%4)*90,i<4?0:90,-90+(i%4)*90])));
+export const STAGED_REGIONS=WORLD_QUADRANTS;
 // A cached response a week old is brought up to date with the changes since
 // its database time. It has no age limit: the changes make it exact however
 // old it is, so it is downloaded again only when its query changes or on a
 // refresh.
 export const STAGED_UPDATE_EVERY=7*86400_000;
-const children=([s,w,n,e])=>{const lat=(s+n)/2,lon=(w+e)/2;return [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]];};
+const children=quarters;
 const digest=body=>createHash('sha256').update(body).digest('hex');
 export class AcquisitionError extends Error {
   constructor(message,category,{retry=false,split=false,retryAfterMs=0,cause}={}) {super(message,{cause});Object.assign(this,{category,retry,split,retryAfterMs});}

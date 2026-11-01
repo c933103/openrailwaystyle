@@ -11,6 +11,7 @@ import Pbf from 'pbf';
 import * as heritage from '../scripts/heritage-data.mjs';
 import * as bundles from '../styles/tile-bundles.mjs';
 import * as adiff from '../scripts/overpass-adiff.mjs';
+import * as worldRegions from '../scripts/world-regions.mjs';
 import * as zlib from 'node:zlib';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
@@ -83,6 +84,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     }},
     '../styles/tile-bundles.mjs':bundles,
     './overpass-adiff.mjs':adiff,
+    './world-regions.mjs':worldRegions,
     'node:zlib':zlib,
   };
   const module = new vm.SourceTextModule(source, {context});

@@ -3,6 +3,7 @@
 import {parseStationRegion,stationPoint} from './station-overview.mjs';
 import {adiffQuery,parseAdiff,extractionVersion} from './overpass-adiff.mjs';
 import {createHash} from 'node:crypto';
+import {regionDepth as depthBelow, tilesWorld, worldRegions} from './world-regions.mjs';
 
 export const REGION_SCHEMA=1;
 export const FULL_WORLD_AREA=360*180;
@@ -12,11 +13,8 @@ export const MAX_STATION_RECORDS=750000;
 export const MAX_QUERY_ELEMENTS=180000;
 
 export function stationBaseRegions(){
- const result=[];
  // 45-degree disjoint geographic rectangles (8 columns × 4 rows).
- for(let s=-90;s<90;s+=45)for(let w=-180;w<180;w+=45)
-   result.push([s,w,s+45,w+45]);
- return result;
+ return worldRegions(45);
 }
 export function validRegion(box){
  return Array.isArray(box)&&box.length===4&&box.every(Number.isFinite)&&
@@ -57,14 +55,10 @@ const area=([s,w,n,e])=>(n-s)*(e-w);
 const overlaps=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
 export function stationWorldCoverage(completed){
  if(!Array.isArray(completed)||completed.length>MAX_COMPLETED_REGIONS)return false;
- const boxes=completed.map(r=>r.box);
- if(!boxes.every(validRegion))return false;
- for(let i=0;i<boxes.length;i++)for(let j=0;j<i;j++)
-   if(overlaps(boxes[i],boxes[j]))return false;
- return Math.abs(boxes.reduce((s,b)=>s+area(b),0)-FULL_WORLD_AREA)<1e-7;
+ return tilesWorld(completed.map(r=>r.box));
 }
 // A region's split depth below the 45-degree base regions.
-const regionDepth=r=>Number.isInteger(r.depth)?r.depth:Math.max(0,Math.round(Math.log2(45/(r.box[3]-r.box[1]))));
+const regionDepth=r=>Number.isInteger(r.depth)?r.depth:depthBelow(r.box,45);
 // With the regions a complete cycle fetched, the next cycle asks for those
 // regions: a region once split for exceeding the server's limits stays split
 // instead of being requested whole again every cycle.
