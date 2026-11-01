@@ -148,15 +148,17 @@ test('incomplete runs reuse completed leaves and split checkpoints without re-qu
   const body=await readFile(join(options.output,'power-methods.geojson'));
   assert.deepEqual(gunzipSync(await readFile(join(options.output,'power-methods.geojson.gz'))),body);
 }));
-test('changed, expired, partial and refresh-requested checkpoints cannot suppress requests',()=>fixture(async({run,options})=>{
+test('changed, partial and refresh-requested checkpoints cannot suppress requests; an old one takes its changes',()=>fixture(async({run,options,calls})=>{
   await run();
   const file=join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`);
   const saved=await readFile(file,'utf8');
   for(const record of [{query:'changed',response:complete},{query:powerMethodQuery(POWER_METHOD_REGIONS[0]),response:{remark:'Query timed out',elements:[]}}]) {
     await writeFile(file,JSON.stringify(record));assert.equal((await run()).manifest.requests,1);
   }
-  await writeFile(file,saved);const old=new Date(options.now()-29*86400_000);await utimes(file,old,old);
+  // An old checkpoint is no reason to download again: one change request.
+  await writeFile(file,saved);const old=new Date(options.now()-400*86400_000);await utimes(file,old,old);
   assert.equal((await run()).manifest.requests,1);
+  assert.match(calls.at(-1).query,/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);
   assert.equal((await run(undefined,{refresh:true})).manifest.requests,8);
 }));
 test('a wrong-query split decision is ignored; an old one, or one on a refresh, still splits',()=>fixture(async({run,options,calls})=>{
@@ -245,4 +247,32 @@ test('optimized query leaves v1 responses and expensive-query split evidence unt
   const result=await run();assert.equal(result.manifest.requests,8);assert.equal(result.manifest.coverage.length,8);
   assert.equal(await readFile(stem,'utf8'),legacy);assert.equal(await readFile(stem+'.split','utf8'),split);
   assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
+}));
+
+// Synthetic augmented diff: the cached way moved, a new one added.
+const changeXml=`<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="2026-10-20T00:00:00Z"/>\n`
+  +'<action type="modify"><old/><new><way id="12" version="2"><nd ref="1" lat="34" lon="135"/><nd ref="2" lat="34.002" lon="135.002"/><tag k="railway" v="subway"/><tag k="electrified" v="rail"/></way></new></action>\n'
+  +'<action type="create"><way id="13" version="1"><nd ref="3" lat="35" lon="136"/><nd ref="4" lat="35.001" lon="136.001"/><tag k="railway" v="tram"/><tag k="electrified" v="rail"/></way></action>\n</osm>\n';
+test('a week-old cached region takes one change request instead of a new download',()=>fixture(async({run,calls,options,advance})=>{
+  await run();
+  const first=calls.length;
+  advance(8*86400000);
+  await run((n,init)=>{assert.match(init.body.get('data'),/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);return response(changeXml);});
+  const changeCalls=calls.slice(first);
+  assert.equal(changeCalls.length,first,'one change request per cached region');
+  assert.ok(changeCalls.every(c=>/\[adiff:/.test(c.query)&&/out meta geom qt;$/.test(c.query)),'no region downloaded again');
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id).sort(),['way-12','way-13']);
+  assert.deepEqual(data.features.find(f=>f.id==='way-12').geometry.coordinates.at(-1),[135.002,34.002],'the moved way');
+  const cached=JSON.parse(await readFile(join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`),'utf8'));
+  assert.equal(cached.response.osm3s.timestamp_osm_base,'2026-10-20T00:00:00Z','the next update starts from the new database time');
+}));
+test('a refused change request keeps the cached region and still publishes it',()=>fixture(async({run,calls,options,advance})=>{
+  await run();
+  const first=calls.length;
+  advance(8*86400000);
+  await run(()=>response('busy',{status:503}));
+  assert.equal(calls.length-first,first,'one change attempt per region, no retries, no new download');
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id),['way-12']);
 }));

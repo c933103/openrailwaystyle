@@ -3,6 +3,7 @@
 // naming and published file names; the acquisition, retry, budget, checkpoint
 // and publication rules are common and tested through every caller.
 import {STAGES} from './download-stages.mjs';
+import {adiffQuery,parseAdiff,applyElementChanges,requireGeometry} from './overpass-adiff.mjs';
 import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
@@ -10,7 +11,11 @@ import {createHash} from 'node:crypto';
 
 export const STAGED_LIMITS=Object.freeze({requests:96,bytes:100_000_000,elapsedMs:3600_000,depth:6,attempts:3,timeoutMs:300_000,pauseMs:10_000,retryMs:40_000,maxRetryAfterMs:300_000});
 export const STAGED_REGIONS=Object.freeze(Array.from({length:8},(_,i)=>Object.freeze([i<4?-90:0,-180+(i%4)*90,i<4?0:90,-90+(i%4)*90])));
-const CACHE_AGE=28*86400_000;
+// A cached response a week old is brought up to date with the changes since
+// its database time. It has no age limit: the changes make it exact however
+// old it is, so it is downloaded again only when its query changes or on a
+// refresh.
+export const STAGED_UPDATE_EVERY=7*86400_000;
 const children=([s,w,n,e])=>{const lat=(s+n)/2,lon=(w+e)/2;return [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]];};
 const digest=body=>createHash('sha256').update(body).digest('hex');
 export class AcquisitionError extends Error {
@@ -92,7 +97,7 @@ export function createStagedSnapshot(config) {
       if(ms)await sleep(ms);
       checkTime();
     }
-    async function request(query) {
+    async function request(query,{text=false}={}) {
       checkTime();
       if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
       const signal=AbortSignal.timeout(Math.max(1,Math.min(policy.timeoutMs,remaining())));
@@ -119,20 +124,21 @@ export function createStagedSnapshot(config) {
             checkTime();chunks.push(chunk);
           }
         }catch(error){throw transportError(error,signal);}
+        if(text){checkTime();return Buffer.concat(chunks).toString('utf8');}
         let json;
         try {json=JSON.parse(Buffer.concat(chunks));}catch(error){throw fatal(`Malformed ${noun} JSON`,'parsing',error);}
         checkTime();completedResponse(json);return json;
       }catch(error){throw transportError(error,signal);}
     }
-    // A response is reused for CACHE_AGE and never on a refresh. A split
-    // decision stays for as long as the query is unchanged: the region is
-    // known to exceed the server's limits, so a refresh or an expired cache
-    // asks for its parts, never the whole region again.
+    // A response is reused while its query is unchanged, never on a
+    // refresh. A split decision stays for as long as the query is unchanged:
+    // the region is known to exceed the server's limits, so a refresh asks
+    // for its parts, never the whole region again.
     async function checkpoint(file,query,split=false) {
       if(refresh&&!split)return undefined;
       try {
         const info=await stat(file),saved=JSON.parse(await readFile(file,'utf8'));
-        if(saved.query!==query||!split&&now()-info.mtimeMs>=CACHE_AGE)return undefined;
+        if(saved.query!==query)return undefined;
         if(split)return saved.kind==='spatial-split'&&saved.version===1?true:undefined;
         completedResponse(saved.response);return saved.response;
       }catch{return undefined;}
@@ -145,6 +151,29 @@ export function createStagedSnapshot(config) {
       checkTime();
       const query=snapshotQuery(box),file=join(cache,`${config.cachePrefix}-v${config.cacheVersion}-${box.join('_')}.json`),splitFile=`${file}.split`;
       let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
+      // One change request for a cached response a week old (never on a
+      // refresh, which downloads again). A failure keeps the cached response;
+      // only a run budget stops the build.
+      if(json&&!refresh) {
+        let since=null;
+        try {
+          const info=await stat(file);
+          if(now()-info.mtimeMs>=STAGED_UPDATE_EVERY&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(json.osm3s?.timestamp_osm_base||''))since=json.osm3s.timestamp_osm_base;
+        }catch{}
+        if(since)try {
+          if(requests)await delay(policy.pauseMs);
+          log(`Collecting ${config.label} changes`,box.join(','),'since',since);
+          const changes=parseAdiff(await request(adiffQuery(query,since),{text:true}));
+          const next={...json,osm3s:{...json.osm3s,timestamp_osm_base:changes.timestamp},
+            elements:applyElementChanges(json.elements,{...changes,upserts:requireGeometry(changes.upserts)})};
+          completedResponse(next);
+          await save(file,{query,response:next});
+          json=next;
+        }catch(error) {
+          if(error.category==='budget')throw error;
+          log(box.join(','),'changes deferred:',error.message);
+        }
+      }
       // One request with retries. Returns the response, or the execution-limit
       // failure that proves this box needs less work.
       const attempt=async body=>{
