@@ -116,6 +116,7 @@ test('street running updates from changes, with the full download as its fallbac
   const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
   assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
   assert.match(source, /const features=update\?update\.features:toFeatures\(data\.elements\);/, 'one conversion for both paths');
+  assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
   const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
 });

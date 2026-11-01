@@ -18,7 +18,7 @@ const toFeatures=elements=>elements.flatMap(e=>{
 });
 // Since the published snapshot (PREVIOUS_DATA: its street-running.geojson.gz
 // and manifest.json), only what changed; the full download is the fallback.
-let data, update=null;
+let data, update=null, changeError=null;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
@@ -27,10 +27,13 @@ if(process.env.PREVIOUS_DATA) {
   } catch(error) { console.log('No usable published snapshot:', error.message); }
   if(previous) update=await updateFromChanges({...previous,query,toFeatures,fetchText:async changeQuery=>{
     const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(660000),headers});
-    if(!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
+    if(!response.ok) throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});
     return response.text();
-  }});
+  },failed:error=>{changeError=error;}});
 }
+// A server that refused the change request gets the same two-minute pause
+// as between full attempts before the full download.
+if(!update && changeError?.status) { console.log('Waiting two minutes before the full download'); await new Promise(r=>setTimeout(r,120000)); }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed`);
 else for(let attempt=0;attempt<3;attempt++) {
   try {
