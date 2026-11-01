@@ -108,14 +108,34 @@ test('the snapshot is updated from its database time, and any doubt falls back t
 
 test('the conveying build updates from changes and keeps the full download as its fallback', () => {
   const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
   assert.match(source, /if \(!conveyingRequestFits\(deadline, 0\)\) throw new Error\('No request fits/);
   // A refused change request's wait (Retry-After) comes before the full download, within the budget.
   const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
-  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'));
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'));
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
+});
+
+test('street running updates from changes, with the full download as its fallback', () => {
+  const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  assert.match(source, /const features=update\?update\.features:toFeatures\(data\.elements\);/, 'one conversion for both paths');
+  assert.match(source, /const extraction=extractionVersion\(query,new URL\(import\.meta\.url\)\);/, 'this build and its imports convert the ways');
+  assert.match(source, /previousVersion:manifest\.extraction/);
+  assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
+  const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
+  // The worst case (change request timed out, a pause, three full attempts
+  // timed out, two pauses) leaves at least ten minutes for the build and
+  // publication within the job's time limit.
+  const [change, full] = [...source.matchAll(/AbortSignal\.timeout\((\d+)\)/g)].map(m => Number(m[1]));
+  const pauses = [...source.matchAll(/setTimeout\(r,(\d+)\)/g)].map(m => Number(m[1]));
+  assert.deepEqual([change, full, pauses], [300000, 660000, [120000, 120000]]);
+  const worst = (change + pauses[0] + 3 * full + 2 * pauses[1]) / 60000;
+  assert.equal(worst, 44);
+  assert.ok(worst + 10 <= Number(/timeout-minutes: (\d+)/.exec(workflow)[1]));
 });
 
 test('a snapshot made by another query or conversion code is downloaded in full, never patched', async () => {
@@ -205,6 +225,14 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(shrunk.dropped, 1);
   // The conversion is applied to every stored element on each run, so it never needs a download.
   assert.deepEqual(conveyingGeoJSON({elements: grown.elements}).features.map(f => f.id), [1, 2, 7, ...stored.slice(2).map(e => e.id)]);
+  // Up to a given time: the changes end there, and so does the result.
+  asked.length = 0;
+  const until = '2026-11-01T05:00:00Z', ended = await updateElements({...base, until, query: CONVEYING_QUERY, pick, fetchText: async q => { asked.push(q); return diff; }});
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since, until)]);
+  assert.match(asked[0], /\[adiff:"2026-10-30T12:22:36Z","2026-11-01T05:00:00Z"\]/);
+  assert.equal(ended.osmBase, until);
+  assert.equal(await updateElements({...base, until: '2026-11-01T07:00:00Z', query: CONVEYING_QUERY, fetchText: async () => diff}), null, 'a server whose data ends earlier');
+  assert.throws(() => adiffQuery(CONVEYING_QUERY, since, '2026-10-01T00:00:00Z'), /Invalid change end/);
   // A region with no elements yet takes its changes too.
   const empty = await updateElements({...base, elements: [], query: CONVEYING_QUERY, pick, fetchText: async () => diff});
   assert.deepEqual(empty.elements.map(e => e.id), [1]);
@@ -237,4 +265,32 @@ test('the conveying build keeps its elements and converts all of them on every r
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
   const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.match(site, /tar -x -C styles\/data\/conveying --exclude=elements\.json\.gz/, 'the stored elements are not deployed');
+});
+
+test('the conveying build makes at most three requests, its change requests included', async t => {
+  const {spawnSync} = await import('node:child_process');
+  const {mkdtemp, writeFile, rm, readFile: read} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {gzipSync} = await import('node:zlib');
+  const {fileURLToPath} = await import('node:url');
+  for (const [name, answer, expected] of [
+    ['refused', `return new Response('busy', {status: 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query: the change request, the ids and the new elements use all three.
+    ['query changed, elements unusable', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]}) : JSON.stringify({elements: [{type: 'way', id: 2, tags: {highway: 'elevator'}}]}));`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+  ]) {
+    const dir = await mkdtemp(join(tmpdir(), 'conveying-requests-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {conveying: 'forward'}, [[0, 0], [0, 1]])])));
+    const previousQuery = name === 'refused' ? CONVEYING_QUERY : CONVEYING_QUERY.replace('way[highway=elevator];', '');
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
+    await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
+      globalThis.setTimeout = f => { f(); return 0; };
+      globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
+    const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-conveying.mjs', import.meta.url))],
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+    assert.notEqual(result.status, 0, name);
+    assert.deepEqual((await read(join(dir, 'requests'), 'utf8')).trim().split('\n'), expected, name);
+    if (name !== 'refused') assert.match(result.stderr, /no request left of the three/, name);
+  }
 });
