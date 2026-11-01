@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {startRegions, regionKey, updateRegionChanges, refreshRegions} from '../scripts/crossing-data.mjs';
+import {startRegions, regionKey, updateRegionChanges} from '../scripts/crossing-data.mjs';
 
 const regions = startRegions(), keys = regions.map(r => regionKey(r.box));
 const down = box => new Error(`Overpass stayed unavailable for region ${box}`);
@@ -63,23 +63,82 @@ test('the workflow publishes the other regions\' changes and then ends red for t
   assert.match(workflow.slice(retry), /if: steps\.update\.outputs\.deferred != '' && steps\.update\.outputs\.deferred != '0'[\s\S]*exit 1/);
   const builder = await readFile(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   assert.match(builder, /`deferred=\$\{deferred\.length\}\\n`/);
-  assert.match(builder, /deferred = \[\.\.\.deferred, \.\.\.refresh\.deferred\]/, 'a deferred refresh counts too');
 });
 
-test('a refresh Overpass stayed unavailable for is reported and stays first in the queue', async () => {
-  const queue = [{box: [0, 0, 45, 45], fetched: '2026-10-10T00:00:00Z'}, {box: [0, 45, 45, 90], fetched: '2026-10-01T00:00:00Z'},
-    {box: [45, 0, 90, 45], fetched: '2026-10-20T00:00:00Z'}];
-  const asked = [];
-  const result = await refreshRegions({regions: queue, more: () => true, warn: () => {},
-    fetch: async region => { asked.push(regionKey(region.box)); if (asked.length === 2) throw down(region.box); return [{box: region.box, fetched: NOW}]; }});
-  assert.deepEqual(asked, ['0,45,45,90', '0,0,45,45'], 'oldest first; stops at the unavailable one');
-  assert.deepEqual(result.deferred, ['refresh 0,0,45,45']);
-  assert.deepEqual(result.regions.map(r => [regionKey(r.box), r.fetched]),
-    [['0,0,45,45', '2026-10-10T00:00:00Z'], ['45,0,90,45', '2026-10-20T00:00:00Z'], ['0,45,45,90', NOW]]);
-  // Within its allowance and without failures, nothing is deferred.
-  let n = 0;
-  const done = await refreshRegions({regions: queue, more: () => n < 2, fetch: async region => { n++; return [{box: region.box, fetched: NOW}]; }});
-  assert.deepEqual(done.deferred, []);
-  assert.equal(done.regions.length, 3);
-  await assert.rejects(refreshRegions({regions: queue, more: () => true, fetch: async () => { throw new Error('Download budget exceeded'); }}), /budget/);
+
+// Augmented diffs over crossings and the railway ways through them; synthetic.
+import * as crossingData from '../scripts/crossing-data.mjs';
+import {readFileSync} from 'node:fs';
+const osmXml = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="2026-11-01T05:00:00Z"/>\n${actions}\n</osm>\n`;
+const xmlNode = (id, tags = {railway: 'level_crossing'}) => `<node id="${id}" lat="1" lon="1" version="2">${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</node>`;
+const xmlWay = (id, nodes) => `<way id="${id}" version="2">${nodes.map(n => `<nd ref="${n}"/>`).join('')}<tag k="railway" v="rail"/></way>`;
+
+test('a crossing\'s changes, and those of the railway ways through it, deletions included, mark what to read again', () => {
+  const {timestamp, deleted, affected} = crossingData.crossingChanges(osmXml([
+    '<action type="delete"><old>' + xmlNode(1) + '</old><new><node id="1" visible="false"/></new></action>',
+    '<action type="delete"><old>' + xmlNode(2) + '</old><new><node id="2" visible="true"/></new></action>',
+    `<action type="modify"><old>${xmlNode(3)}</old><new>${xmlNode(3, {railway: 'crossing'})}</new></action>`,
+    `<action type="create">${xmlNode(4)}</action>`,
+    // A way deleted through crossings 5 and 1: its old nodes; a way rerouted from 6 to 7.
+    `<action type="delete"><old>${xmlWay(50, [5, 1])}</old><new><way id="50" visible="false"/></new></action>`,
+    `<action type="modify"><old>${xmlWay(51, [6])}</old><new>${xmlWay(51, [7])}</new></action>`,
+  ].join('\n')));
+  assert.equal(timestamp, '2026-11-01T05:00:00Z');
+  assert.deepEqual(deleted.sort(), [1, 2], 'deleted, or no longer tagged as a crossing');
+  assert.deepEqual(affected, [3, 4, 5, 6, 7], 'a deleted node is not read again');
+  const query = crossingData.crossingChangesQuery([0, 0, 45, 45], '2026-10-01T00:00:00Z');
+  assert.equal(query, '[out:xml][timeout:180][maxsize:268435456][adiff:"2026-10-01T00:00:00Z"];(node[railway=level_crossing](0,0,45,45);node[railway=crossing](0,0,45,45);)->.c;(.c;way(bn.c)[railway];);out meta;');
+  // The rows of given ids: the same minor logic and markers as a region query.
+  const rows = crossingData.crossingRowsQuery([3, 4]), region = crossingData.regionQuery([0, 0, 45, 45]);
+  assert.ok(rows.includes('node(id:3,4)[railway~"^(level_crossing|crossing)$"]->.c;'));
+  assert.equal(rows.slice(rows.indexOf('->.c;')), region.slice(region.indexOf('->.c;')));
+  assert.throws(() => crossingData.crossingRowsQuery([]), /Invalid/);
+  assert.throws(() => crossingData.crossingChangesQuery([0, 0, 1, 1], 'yesterday'), /Invalid/);
+});
+
+test('the builder applies a region\'s changes and reads the affected crossings again, with no scheduled full download', async t => {
+  const {mkdtemp, writeFile, rm} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const zlib = await import('node:zlib');
+  const vm = (await import('node:vm')).default;
+  const checkpoints = await import('../scripts/crossing-checkpoint.mjs');
+  const previous = await mkdtemp(join(tmpdir(), 'crossing-changes-'));
+  t.after(() => rm(previous, {recursive: true, force: true}));
+  const since = '2026-10-01T00:00:00Z', roots = crossingData.startRegions();
+  await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since}))}));
+  await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
+  const SEP = crossingData.SEP, calls = [];
+  const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
+  const source = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
+  const fs = await import('node:fs/promises');
+  const context = vm.createContext({
+    process: {env: {OVERPASS_URL: 'https://overpass.fixture.invalid/api/interpreter', PREVIOUS_DATA: previous}},
+    URL, URLSearchParams, Buffer, AbortSignal: {timeout: () => undefined},
+    console: {log() {}, warn() {}}, setTimeout: callback => callback(),
+    fetch: async (url, request) => {
+      const query = request.body.get('data'); calls.push(query);
+      assert.ok(calls.length <= 40);
+      // The first region: crossing 1 deleted, a way through crossing 2 changed.
+      if (query === crossingData.crossingChangesQuery(roots[0].box, since)) return new Response(osmXml([
+        '<action type="delete"><old/><new><node id="1" visible="false"/></new></action>',
+        `<action type="modify"><old>${xmlWay(60, [2])}</old><new>${xmlWay(60, [2, 3])}</new></action>`].join('\n')));
+      if (query.startsWith('[out:csv')) return new Response(csv([[2, -80, -169, 'level_crossing']]));
+      return new Response(osmXml(''));
+    },
+  });
+  const dependencies = {'node:fs/promises': {...fs, rm: async () => { throw new Error('no output expected'); }}, 'node:zlib': zlib,
+    './crossing-data.mjs': crossingData, './crossing-checkpoint.mjs': checkpoints};
+  const module = new vm.SourceTextModule(source, {context, initializeImportMeta: meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; }});
+  await module.link(specifier => {
+    const values = dependencies[specifier]; assert.ok(values, specifier);
+    return new vm.SyntheticModule(Object.keys(values), function () { for (const [k, v] of Object.entries(values)) this.setExport(k, v); }, {context});
+  });
+  let error;
+  try { await module.evaluate(); } catch (caught) { error = caught; }
+  // The tiny fixture stops at the worldwide size guard, before any output.
+  assert.match(error?.message || '', /Suspiciously few crossings worldwide: 1/, 'crossing 1 removed, crossing 2 kept');
+  assert.equal(calls[0], crossingData.crossingChangesQuery(roots[0].box, since));
+  assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3]), 'the crossings on the changed way, read again');
+  assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since)), 'every other region\'s changes; nothing downloaded in full');
 });

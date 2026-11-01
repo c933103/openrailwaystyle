@@ -273,7 +273,7 @@ test('incremental acquisition never reads or writes rebuild staging', async t =>
   await fs.writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t0\t0\troad\t\n'));
   const result = await run(dir, () => new Response('at capacity', {status: 502}), {PREVIOUS_DATA: previous});
   assert.match(result.error.message, /stayed unavailable/);
-  assert.equal(result.calls[0], crossings.regionQuery(roots[0].box, since));
+  assert.equal(result.calls[0], crossings.crossingChangesQuery(roots[0].box, since), 'the change request of the first region');
   assert.deepEqual(await fs.readdir(dir), ['user-notes.txt']);
 });
 
