@@ -10,6 +10,8 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import * as heritage from '../scripts/heritage-data.mjs';
 import * as bundles from '../styles/tile-bundles.mjs';
+import * as adiff from '../scripts/overpass-adiff.mjs';
+import * as zlib from 'node:zlib';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
 const parent = [0, 0, 45, 45];
@@ -42,7 +44,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     if (String(box) === String(parent)) continue;
     await fs.writeFile(join(root, `.snapshot-cache/heritage-v2-${box.join('_')}.json`), JSON.stringify({query:heritage.heritageQuery(box), response:empty}));
   }
-  for (const [path, data] of Object.entries(files)) await fs.writeFile(join(root, path), data);
+  for (const [path, data] of Object.entries(files)) { await fs.mkdir(join(root, path, '..'), {recursive:true}); await fs.writeFile(join(root, path), data); }
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
@@ -80,6 +82,8 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
       return decision;
     }},
     '../styles/tile-bundles.mjs':bundles,
+    './overpass-adiff.mjs':adiff,
+    'node:zlib':zlib,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
@@ -264,4 +268,58 @@ test('builder asks for a region split last month in its parts, never the whole r
   await checkPublished(missing);
   assert.equal(missing.calls[0], parentQuery);
   assert.ok(missing.warnings.some(line => /unreadable/.test(line)));
+});
+
+// Synthetic augmented diffs in the documented form; no captured provider data.
+const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-08T00:00:00Z';
+const ring = [[12, 12], [12.002, 12], [12.002, 12.002], [12, 12.002], [12, 12]];
+const wayXml = (id, tags, points) => `<way id="${id}" version="2">${points.map(([lon, lat], i) => `<nd ref="${i % 4 + 1}" lat="${lat}" lon="${lon}"/>`).join('')}${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</way>`;
+const adiffXml = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6"><meta osm_base="${BASE}"/>${actions}</osm>\n`;
+const moved = adiffXml(`<action type="modify"><old>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, complete.elements[0].geometry.map(p => [p.lon, p.lat]))}</old><new>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, ring)}</new></action>`);
+const storedParent = (query = parentQuery) => ({[`previous/elements/${parent.join('_')}.json.gz`]: zlib.gzipSync(JSON.stringify({query, osmBase:SINCE, elements:complete.elements}))});
+const previousEnv = {HERITAGE_PREVIOUS_ELEMENTS:'previous'};
+const publishedParent = async root => JSON.parse(gunzipSync(await fs.readFile(join(root, `heritage-data/elements/${parent.join('_')}.json.gz`))));
+
+test('a region with published elements takes only its changes, and the next run starts from their time', async t => {
+  const result = await run(t, query => { assert.ok(query.includes('[adiff:'), 'no full download'); return response(200, moved); }, {env:previousEnv, files:storedParent()});
+  assert.ifError(result.error);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(parentQuery, SINCE)]);
+  const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+  assert.equal(manifest.coverage.find(row => String(row.bbox) === String(parent)).timestamp, BASE);
+  assert.equal(manifest.areas, 1);
+  const stored = await publishedParent(result.root);
+  assert.deepEqual([stored.query, stored.osmBase], [parentQuery, BASE]);
+  assert.deepEqual(stored.elements, [{type:'way', id:42, tags:{historic:'district', name:'Synthetic historic district'}, geometry:ring.map(([lon, lat]) => ({lat, lon}))}], 'the moved way, without meta');
+  const files = await fs.readdir(join(result.root, 'heritage-data/elements'));
+  assert.equal(files.length, 32, 'every region keeps its elements, cached or downloaded');
+});
+
+test('a region whose query changed takes only the difference, not a full download', async t => {
+  const older = parentQuery.replace(`way[heritage=1](${parent.join(',')});rel[heritage=1][type~"^(multipolygon|boundary)$"](${parent.join(',')});`, '');
+  assert.notEqual(older, parentQuery);
+  const added = {type:'way', id:43, tags:{heritage:'1'}, geometry:ring.map(([lon, lat]) => ({lat:lat + 1, lon}))};
+  const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''))
+    : query.endsWith('out ids;') ? response(200, {elements:[]}) : response(200, {elements:[added]}), {env:previousEnv, files:storedParent(older)});
+  assert.ifError(result.error);
+  const {added:addQuery, dropped} = adiff.selectionChangeQueries(older, parentQuery, BASE);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(older, SINCE), dropped, addQuery]);
+  assert.deepEqual((await publishedParent(result.root)).elements.map(e => e.id), [42, 43]);
+  assert.equal((await publishedParent(result.root)).query, parentQuery, 'the next run compares with the new query');
+});
+
+test('a failed change request falls back to the full download of that region; HERITAGE_REFRESH skips the changes', async t => {
+  const failed = await run(t, query => query.includes('[adiff:') ? response(504, 'Gateway timeout') : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.ifError(failed.error);
+  assert.deepEqual(failed.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+  assert.ok(failed.warnings.some(w => /downloading in full/.test(w)));
+  const refresh = await run(t, () => response(200, complete), {env:{...previousEnv, HERITAGE_REFRESH:'1'}, files:storedParent()});
+  assert.ok(refresh.calls.includes(parentQuery) && !refresh.calls.some(query => query.includes('[adiff:')), 'a forced refresh downloads in full');
+  // A changed way without geometry is never dropped silently from the map.
+  const bare = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(`<action type="create"><way id="44" version="1"><tag k="heritage" v="1"/></way></action>`)) : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.deepEqual(bare.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+});
+
+test('the download budget also counts change requests and stops the run', async t => {
+  const result = await run(t, () => response(200, moved), {env:previousEnv, files:storedParent(), byteLength:() => 1_500_000_001});
+  await checkUnpublished(result, /download budget exceeded/, 1);
 });
