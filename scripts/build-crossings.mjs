@@ -17,7 +17,8 @@ const out = new URL('../crossing-data/', import.meta.url);
 let downloaded = 0, requests = 0;
 let checkpoint = null, lastObservation;
 
-const overpass = box => request(regionQuery(box), parseCsv, rows => `Region ${box.join(',')} ${rows.length} crossings`, box);
+// Pinned to the run's database time (startedAt), as every request of the run.
+const overpass = box => request(regionQuery(box, startedAt), parseCsv, rows => `Region ${box.join(',')} ${rows.length} crossings`, box);
 // One query, with retries; null when the query ran out of time or memory.
 async function request(query, parse, describe, box) {
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -58,14 +59,20 @@ async function request(query, parse, describe, box) {
 // tagged go, and every crossing that may have changed (its own change, or a
 // change to a railway way through it, deletion included) is read again by
 // id. A region too big for one change request is replaced by its quarters.
+// Changes end at the run's database time (startedAt), the time saved as the
+// region's watermark, and the rows read again are of that time too: a
+// crossing created after it and deleted before the next run is never stored.
 async function fetchChanges(table, region, since, depth = 0) {
-  const changes = await request(crossingChangesQuery(region.box, since), crossingChanges,
+  if (since >= startedAt) return;
+  const changes = await request(crossingChangesQuery(region.box, since, startedAt), crossingChanges,
     c => `Changes ${region.box.join(',')} ${c.deleted.length} removed, ${c.affected.length} to read again`, region.box);
   if (!changes) {
     if (depth >= 5) throw new Error(`Could not fetch region ${region.box}`);
     for (const box of quarters(region.box)) await fetchChanges(table, {box}, since, depth + 1);
     return;
   }
+  // A server whose data does not reach that time yet cannot give it.
+  if (changes.timestamp < startedAt) throw new Error(`Overpass stayed unavailable for region ${region.box}: its data ends at ${changes.timestamp}`);
   for (const id of changes.deleted) table.delete(id);
   await readCrossings(table, changes.affected, region.box, new Set(changes.recheck));
 }
@@ -77,7 +84,7 @@ async function readCrossings(table, ids, box, recheck = new Set()) {
   for (let i = 0; i < ids.length; i += 2000) await readGroup(table, ids.slice(i, i + 2000), box, recheck);
 }
 async function readGroup(table, ids, box, recheck) {
-  const rows = await request(crossingRowsQuery(ids), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
+  const rows = await request(crossingRowsQuery(ids, startedAt), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
   if (rows) {
     applyChanges(table, rows);
     const found = new Set(rows.map(row => row.id));

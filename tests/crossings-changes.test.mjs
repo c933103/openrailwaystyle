@@ -69,6 +69,10 @@ test('the workflow publishes the other regions\' changes and then ends red for t
 // Augmented diffs over crossings and the railway ways through them; synthetic.
 import * as crossingData from '../scripts/crossing-data.mjs';
 import {readFileSync} from 'node:fs';
+// The builder's clock, fixed: its run time (startedAt, an hour earlier) pins
+// every request, so the expected queries carry that time.
+const CLOCK = Date.parse('2026-11-01T06:00:00Z'), AT = '2026-11-01T05:00:00Z';
+class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [CLOCK])); } static now() { return CLOCK; } }
 const osmXml = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="2026-11-01T05:00:00Z"/>\n${actions}\n</osm>\n`;
 const xmlNode = (id, tags = {railway: 'level_crossing'}) => `<node id="${id}" lat="1" lon="1" version="2">${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</node>`;
 const xmlWay = (id, nodes) => `<way id="${id}" version="2">${nodes.map(n => `<nd ref="${n}"/>`).join('')}<tag k="railway" v="rail"/></way>`;
@@ -90,10 +94,10 @@ test('a crossing\'s changes, and those of the railway ways through it, deletions
   const query = crossingData.crossingChangesQuery([0, 0, 45, 45], '2026-10-01T00:00:00Z');
   assert.equal(query, '[out:xml][timeout:180][maxsize:268435456][adiff:"2026-10-01T00:00:00Z"];(node[railway=level_crossing](0,0,45,45);node[railway=crossing](0,0,45,45);)->.c;(.c;way(bn.c)[railway];);out meta;');
   // The rows of given ids: the same minor logic and markers as a region query.
-  const rows = crossingData.crossingRowsQuery([3, 4]), region = crossingData.regionQuery([0, 0, 45, 45]);
+  const rows = crossingData.crossingRowsQuery([3, 4], AT), region = crossingData.regionQuery([0, 0, 45, 45]);
   assert.ok(rows.includes('node(id:3,4)[railway~"^(level_crossing|crossing)$"]->.c;'));
   assert.equal(rows.slice(rows.indexOf('->.c;')), region.slice(region.indexOf('->.c;')));
-  assert.throws(() => crossingData.crossingRowsQuery([]), /Invalid/);
+  assert.throws(() => crossingData.crossingRowsQuery([], AT), /Invalid/);
   assert.throws(() => crossingData.crossingChangesQuery([0, 0, 1, 1], 'yesterday'), /Invalid/);
 });
 
@@ -115,14 +119,14 @@ async function changeRun(t, extra = {}) {
   const fs = await import('node:fs/promises');
   const context = vm.createContext({
     process: {env: {OVERPASS_URL: 'https://overpass.fixture.invalid/api/interpreter', PREVIOUS_DATA: previous}},
-    URL, URLSearchParams, Buffer, AbortSignal: {timeout: () => undefined},
+    URL, URLSearchParams, Buffer, Date: FixedDate, AbortSignal: {timeout: () => undefined},
     console: {log() {}, warn() {}}, setTimeout: callback => callback(),
     fetch: async (url, request) => {
       const query = request.body.get('data'); calls.push(query);
       assert.ok(calls.length <= 40);
       // The first region: crossing 1 deleted, a way through crossing 2 changed.
       if (extra.reply) { const answer = extra.reply(query, roots, since); if (answer) return answer; }
-      if (query === crossingData.crossingChangesQuery(roots[0].box, since)) return new Response(osmXml([
+      if (query === crossingData.crossingChangesQuery(roots[0].box, since, AT)) return new Response(osmXml([
         '<action type="delete"><old/><new><node id="1" visible="false"/></new></action>',
         `<action type="modify"><old>${xmlWay(60, [2])}</old><new>${xmlWay(60, [2, 3])}</new></action>`].join('\n')));
       if (query.startsWith('[out:csv')) return new Response(csv([[2, -80, -169, 'level_crossing']]));
@@ -145,16 +149,16 @@ test('the builder applies a region\'s changes and reads the affected crossings a
   const {error, calls, roots, since} = await changeRun(t, {extraction: crossingData.crossingExtraction()});
   // The tiny fixture stops at the worldwide size guard, before any output.
   assert.match(error?.message || '', /Suspiciously few crossings worldwide: 1/, 'crossing 1 removed, crossing 2 kept');
-  assert.equal(calls[0], crossingData.crossingChangesQuery(roots[0].box, since));
-  assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3]), 'the crossings on the changed way, read again');
-  assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since)), 'every other region\'s changes; nothing downloaded in full');
+  assert.equal(calls[0], crossingData.crossingChangesQuery(roots[0].box, since, AT));
+  assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3], AT), 'the crossings on the changed way, read again');
+  assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since, AT)), 'every other region\'s changes; nothing downloaded in full');
 });
 
 test('a table made by another query or row code, or kept by the earlier change query, is rebuilt in full once', async t => {
   const other = await changeRun(t, {extraction: 'another'});
-  assert.equal(other.calls[0], crossingData.regionQuery(other.roots[0].box), 'a full download, no change request');
+  assert.equal(other.calls[0], crossingData.regionQuery(other.roots[0].box, AT), 'a full download, no change request');
   const legacy = await changeRun(t);
-  assert.equal(legacy.calls[0], crossingData.regionQuery(legacy.roots[0].box), 'no recorded extraction: rebuilt, since the earlier changes missed deletions');
+  assert.equal(legacy.calls[0], crossingData.regionQuery(legacy.roots[0].box, AT), 'no recorded extraction: rebuilt, since the earlier changes missed deletions');
   assert.equal(crossingData.crossingExtraction(), crossingData.crossingExtraction());
   const workflow = readFileSync(new URL('../.github/workflows/crossings.yml', import.meta.url), 'utf8');
   assert.match(workflow, /saved\.version === 3 && saved\.extraction === crossingExtraction\(\)/, 'the workflow decides as the builder');
@@ -166,14 +170,36 @@ test('a crossing that left a region is read again: kept if it is still a crossin
   const extraction = crossingData.crossingExtraction();
   for (const [stillCrossing, expected] of [[true, /worldwide: 2/], [false, /worldwide: 1/]]) {
     const {error, calls, roots, since} = await changeRun(t, {extraction, reply: (query, roots, since) => {
-      if (query === crossingData.crossingChangesQuery(roots[0].box, since))
+      if (query === crossingData.crossingChangesQuery(roots[0].box, since, AT))
         return new Response(osmXml('<action type="delete"><old/><new><node id="2" visible="true"/></new></action>'));
-      if (query === crossingData.crossingRowsQuery([2]))
+      if (query === crossingData.crossingRowsQuery([2], AT))
         return new Response(stillCrossing ? `2${crossingData.SEP}10${crossingData.SEP}10${crossingData.SEP}level_crossing\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`
           : `${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`);
       return null;
     }});
-    assert.equal(calls[1], crossingData.crossingRowsQuery([2]), 'read again by id');
+    assert.equal(calls[1], crossingData.crossingRowsQuery([2], AT), 'read again by id');
     assert.match(error?.message || '', expected, stillCrossing ? 'moved into another region: kept' : 'no crossing any more: removed');
   }
+});
+
+test('every request of a run describes one database time, the watermark it saves', async t => {
+  // The queries: changes up to that time, rows and full regions at it.
+  assert.equal(crossingData.crossingChangesQuery([0, 0, 45, 45], '2026-10-01T00:00:00Z', AT),
+    `[out:xml][timeout:180][maxsize:268435456][adiff:"2026-10-01T00:00:00Z","${AT}"];(node[railway=level_crossing](0,0,45,45);node[railway=crossing](0,0,45,45);)->.c;(.c;way(bn.c)[railway];);out meta;`);
+  assert.match(crossingData.crossingRowsQuery([3], AT), new RegExp(`^\\[out:csv\\([^)]*\\)\\]\\[timeout:180\\]\\[date:"${AT}"\\];node\\(id:3\\)`));
+  assert.match(crossingData.regionQuery([0, 0, 45, 45], AT), new RegExp(`\\[timeout:180\\]\\[date:"${AT}"\\];\\(node\\[railway=level_crossing\\]`));
+  assert.equal(crossingData.regionQuery([0, 0, 45, 45]), crossingData.regionQuery([0, 0, 45, 45], undefined), 'the extraction version reads the undated form');
+  assert.throws(() => crossingData.regionQuery([0, 0, 1, 1], 'now'), /Invalid/);
+  assert.throws(() => crossingData.crossingChangesQuery([0, 0, 1, 1], '2026-10-01T00:00:00Z', 'now'), /Invalid/);
+  // A server whose data ends before that time cannot give the region's state
+  // at it: the region keeps its watermark and waits for the next run.
+  const extraction = crossingData.crossingExtraction(), behind = osmXml('<action type="delete"><old/><new><node id="1" visible="false"/></new></action>').replace('2026-11-01T05:00:00Z', '2026-11-01T04:59:59Z');
+  const {error, calls, roots} = await changeRun(t, {extraction, reply: (query, roots, since) =>
+    query === crossingData.crossingChangesQuery(roots[0].box, since, AT) ? new Response(behind) : null});
+  assert.match(error?.message || '', /Suspiciously few crossings worldwide: 2/, 'nothing applied from the lagging answer');
+  assert.ok(!calls.some(q => q.startsWith('[out:csv')), 'no rows read for it');
+  assert.equal(calls.length, roots.length, 'the other regions still took their changes');
+  // A region whose watermark is already the run's time has nothing to ask.
+  const {calls: none} = await changeRun(t, {extraction, changes: Object.fromEntries(crossingData.startRegions().map(r => [r.box.join(','), AT]))});
+  assert.deepEqual(none, []);
 });

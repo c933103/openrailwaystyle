@@ -79,7 +79,7 @@ test('ordinary failure saves parsed and empty leaves; resume fetches only unreso
   assert.deepEqual(before.nodes.map(n => n.rows), [1, 0, 1]);
   const resumed = await run(dir, () => new Response(empty));
   assert.match(resumed.error.message, /Suspiciously few crossings worldwide: 2/);
-  assert.deepEqual(resumed.calls, roots.slice(3).map(({box}) => crossings.regionQuery(box)));
+  assert.deepEqual(resumed.calls, roots.slice(3).map(({box}) => crossings.regionQuery(box, before.watermark)), 'pinned to the epoch\'s watermark');
   const after = await state(dir);
   assert.equal(after.epoch, before.epoch);
   assert.equal(after.acquisitionStartedAt, before.acquisitionStartedAt);
@@ -96,8 +96,8 @@ test('split decisions and empty children survive failure without re-requesting t
   const first = await run(dir, (_query, n) => n === 1 ? new Response('Query timed out', {status: 504}) : n <= 3 ? new Response(empty) : new Response('at capacity', {status: 502}));
   assert.match(first.error.message, /stayed unavailable/);
   assert.deepEqual((await state(dir)).nodes.map(n => n.kind), ['split', 'leaf', 'leaf']);
-  const second = await run(dir, () => new Response(empty));
-  assert.deepEqual(second.calls, [...children.slice(2), ...roots.slice(1).map(r => r.box)].map(box => crossings.regionQuery(box)));
+  const second = await run(dir, () => new Response(empty)), {watermark} = await state(dir);
+  assert.deepEqual(second.calls, [...children.slice(2), ...roots.slice(1).map(r => r.box)].map(box => crossings.regionQuery(box, watermark)));
   assert.match(second.error.message, /Suspiciously few crossings worldwide: 0/);
 });
 
@@ -122,9 +122,9 @@ test('a moved-ID hole discards the older generation before fresh observations ca
   await changeState(dir, async s => {
     const [removed] = s.nodes.splice(0, 1); await fs.rm(join(dir, removed.payload));
   });
-  const result = await run(dir, (_query, n) => new Response(n === 1 ? csv(roots[0].box, 7) : empty));
+  const result = await run(dir, (_query, n) => new Response(n === 1 ? csv(roots[0].box, 7) : empty)), {watermark} = await state(dir);
   assert.match(result.error.message, /Suspiciously few crossings worldwide: 1/);
-  assert.deepEqual(result.calls, roots.map(({box}) => crossings.regionQuery(box)), 'no old leaf from the holey generation is replayed');
+  assert.deepEqual(result.calls, roots.map(({box}) => crossings.regionQuery(box, watermark)), 'no old leaf from the holey generation is replayed');
   assert.notEqual((await state(dir)).epoch, checkpoint.epoch);
 });
 
@@ -271,9 +271,13 @@ test('incremental acquisition never reads or writes rebuild staging', async t =>
   const since = '2026-10-01T00:00:00Z';
   await fs.writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, extraction: crossings.crossingExtraction(), since, regions: roots.map(r => ({...r, fetched: since}))}));
   await fs.writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t0\t0\troad\t\n'));
+  const began = Date.now();
   const result = await run(dir, () => new Response('at capacity', {status: 502}), {PREVIOUS_DATA: previous});
   assert.match(result.error.message, /stayed unavailable/);
-  assert.equal(result.calls[0], crossings.crossingChangesQuery(roots[0].box, since), 'the change request of the first region');
+  // Up to the run's database time, an hour before it began (the builder's clock is real here).
+  const until = /\[adiff:"[^"]+","([^"]+)"\]/.exec(result.calls[0])?.[1];
+  assert.ok(Math.abs(Date.parse(until) - (began - 3600_000)) < 60_000, until);
+  assert.equal(result.calls[0], crossings.crossingChangesQuery(roots[0].box, since, until), 'the change request of the first region');
   assert.deepEqual(await fs.readdir(dir), ['user-notes.txt']);
 });
 

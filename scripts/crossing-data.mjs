@@ -45,13 +45,18 @@ export const MINOR_TRACKS = `(way.w[railway~${MINOR_KINDS}];way.w[railway!~${ACT
 // minor crossings (only on minor tracks), then the end marker row.
 const CROSSING_ROWS = `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;`
   + '.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;';
+const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+// The data of one database time (`at`, optional): every request of a run is
+// pinned to the time saved as the regions' watermark, so the stored table
+// is exactly the state at that time and the next run's changes start there.
+const dated = at => { if (at === undefined) return ''; if (!TIME.test(at)) throw new Error('Invalid crossing data time'); return `[date:"${at}"]`; };
 // A region in full, as CSV. Its changes come from crossingChangesQuery.
-export function regionQuery(box) {
+export function regionQuery(box, at) {
   // CSV output carries no error remarks: a final marker row, written only
   // when the query ran to the end, shows the response is complete. A marker
   // row (railway "minor") separates the major crossings from the minor ones.
   const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
-  return `[out:csv(${columns};false;"${SEP}")][timeout:180];(node[railway=level_crossing](${box.join(',')});node[railway=crossing](${box.join(',')});)` +
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};(node[railway=level_crossing](${box.join(',')});node[railway=crossing](${box.join(',')});)` +
     CROSSING_ROWS;
 }
 
@@ -62,10 +67,11 @@ export function regionQuery(box) {
 // deleted (before and after), may have a new row or minor flag and is read
 // again with crossingRowsQuery. A way deleted through a crossing is seen
 // this way too, so no periodic full download is needed to correct it.
-export function crossingChangesQuery(box, since) {
-  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since || '')) throw new Error('Invalid crossing change start');
+export function crossingChangesQuery(box, since, until) {
+  if (!TIME.test(since || '')) throw new Error('Invalid crossing change start');
+  if (until !== undefined && !TIME.test(until)) throw new Error('Invalid crossing change end');
   const bbox = `(${box.join(',')})`;
-  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"];(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.c;(.c;way(bn.c)[railway];);out meta;`;
+  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"${until ? `,"${until}"` : ''}];(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.c;(.c;way(bn.c)[railway];);out meta;`;
 }
 // What makes a crossing row of OSM data: the region query (selection, columns
 // and minor logic) and this module's parsing, with its imports. A table made
@@ -92,10 +98,10 @@ export function crossingChanges(xml) {
 }
 // The rows of the given nodes that are crossings, as regionQuery gives them:
 // the same columns, minor flag and markers.
-export function crossingRowsQuery(ids) {
+export function crossingRowsQuery(ids, at) {
   if (!ids.length || !ids.every(id => Number.isSafeInteger(id) && id > 0)) throw new Error('Invalid crossing node ids');
   const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
-  return `[out:csv(${columns};false;"${SEP}")][timeout:180];node(id:${ids.join(',')})[railway~"^(level_crossing|crossing)$"]` + CROSSING_ROWS;
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};node(id:${ids.join(',')})[railway~"^(level_crossing|crossing)$"]` + CROSSING_ROWS;
 }
 // Overpass CSV rows: id, lat, lon, railway, then TAG_KEYS, no header: the
 // major crossings, the "minor" marker row, the minor crossings, then the end

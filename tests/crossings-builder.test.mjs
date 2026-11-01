@@ -6,10 +6,14 @@ import * as crossings from '../scripts/crossing-data.mjs';
 import * as checkpoint from '../scripts/crossing-checkpoint.mjs';
 
 const source = await readFile(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
+// The builder's clock, fixed: its run time (startedAt, an hour earlier) pins
+// every request, so the expected queries carry that time.
+const NOW = Date.parse('2026-11-01T06:00:00Z'), AT = '2026-11-01T05:00:00Z';
+class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [NOW])); } static now() { return NOW; } }
 const regions = crossings.startRegions();
 const parent = regions[0].box;
-const parentQuery = crossings.regionQuery(parent);
-const otherQueries = regions.slice(1).map(({box}) => crossings.regionQuery(box));
+const parentQuery = crossings.regionQuery(parent, AT);
+const otherQueries = regions.slice(1).map(({box}) => crossings.regionQuery(box, AT));
 const empty = `1${crossings.SEP}${crossings.SEP}${crossings.SEP}minor\n2${crossings.SEP}${crossings.SEP}${crossings.SEP}end\n`;
 const response = (status, body) => new Response(body, {status});
 // The capacity wording is the diagnostic in job 116771211885, run 38837959156.
@@ -29,7 +33,7 @@ async function run(reply, {byteLength} = {}) {
   };
   const context = vm.createContext({
     process:{env:{OVERPASS_URL:'https://overpass.fixture.invalid/api/interpreter'}},
-    URL, URLSearchParams,
+    URL, URLSearchParams, Date:FixedDate,
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 240000); return undefined; }},
     setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
@@ -130,7 +134,7 @@ for (const [name, status, body] of [
 ]) {
   test(`${name} retains bounded spatial subdivision`, async () => {
     const result = await run((_query, count) => response(count === 1 ? status : 200, count === 1 ? body : empty));
-    const childQueries = crossings.quarters(parent).map(box => crossings.regionQuery(box));
+    const childQueries = crossings.quarters(parent).map(box => crossings.regionQuery(box, AT));
     checkAcquired(result, [parentQuery, ...childQueries], [0, 10000, 10000, 10000, 10000]);
   });
 }
@@ -140,7 +144,7 @@ test('repeated genuine query timeout still stops at the existing depth-five limi
   const expected = [];
   let box = parent;
   for (let depth = 0; depth <= 5; depth++) {
-    expected.push(crossings.regionQuery(box));
+    expected.push(crossings.regionQuery(box, AT));
     box = crossings.quarters(box)[0];
   }
   assert.match(result.error?.message || '', /^Could not fetch region /);
@@ -160,7 +164,7 @@ test('client timeout retains spatial subdivision', async () => {
     if (count === 1) throw new Error('The operation was aborted due to timeout');
     return response(200, empty);
   });
-  checkAcquired(result, [parentQuery, ...crossings.quarters(parent).map(box => crossings.regionQuery(box))], [0, 10000, 10000, 10000, 10000]);
+  checkAcquired(result, [parentQuery, ...crossings.quarters(parent).map(box => crossings.regionQuery(box, AT))], [0, 10000, 10000, 10000, 10000]);
 });
 
 test('download budget is checked before overload retry and accumulates failed responses', async () => {
