@@ -287,10 +287,11 @@ test('a cached region of another query takes only the difference, not a new down
   await run((n,init)=>{
     const body=init.body.get('data');
     if(body.includes('[adiff:'))return response(changeXml.replace(/<action[\s\S]*<\/action>\n/,''));
-    return response(body.endsWith('out ids;')?{elements:[]}:{elements:[added]});
+    return response(body.endsWith('out ids;')?{elements:[{type:'way',id:12},{type:'way',id:14}]}:{elements:[added]});
   });
   const asked=calls.slice(first).map(c=>c.query);
-  assert.equal(asked.length,3,'the changes of the old query, then the dropped ids and the added elements');
+  assert.equal(asked.length,3,'the changes of the old query, then the new query\'s ids and only the new element');
+  assert.match(asked[2],/\(way\(id:14\);\);out body geom qt;$/);
   assert.match(asked[0],/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);
   assert.ok(asked.slice(1).every(q=>q.includes('[date:"2026-10-20T00:00:00Z"]')),'both at the database time of those changes');
   const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
