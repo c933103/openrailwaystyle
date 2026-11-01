@@ -66,9 +66,11 @@ jobs:
             assert.ok(index.zoom===3&&index.bundles.length>0,'Complete data must include non-empty z3–7 tiles');
             assert.ok(manifest.tiles>0&&manifest.bundles>0);
           }
-          // A complete generation is published when it was completed by this
-          // run's region, or when this run's changes altered its stations.
-          const publish=complete&&(manifest.regionUpdated===true||manifest.changedRecords>0);
+          // The builder decides publication: a complete generation completed
+          // by this run's region, altered by its changes, or with tiles that
+          // differ from the last published ones.
+          const publish=manifest.publish===true;
+          assert.ok(!publish||complete,'only a complete generation is published');
           await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\npublish=${publish}\n`);
           JS
       # Production readers must use ONLY station-points-data; it is never

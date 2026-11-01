@@ -115,9 +115,52 @@ test('the builder updates a complete generation with one change request, and kee
   assert.match(failed.manifest.status, /changes deferred/);
 });
 
-test('the workflow publishes a complete generation only when it was completed or changed', () => {
+test('the workflow publishes what the builder decided, and only a complete generation', () => {
   const workflow = readFileSync(new URL('../.github/workflows/station-points.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /const publish=complete&&\(manifest\.regionUpdated===true\|\|manifest\.changedRecords>0\);/);
+  assert.match(workflow, /const publish=manifest\.publish===true;\n\s+assert\.ok\(!publish\|\|complete/);
   assert.equal(workflow.match(/if: steps\.verify\.outputs\.publish == 'true'/g).length, 2, 'publication and redeploy');
   assert.doesNotMatch(workflow, /if: steps\.verify\.outputs\.complete == 'true'/);
+});
+
+test('a generation made by another record conversion or query starts a cycle; one predating versions counts as current', () => {
+  const {state} = complete(base);
+  const current = acquisition.stationExtraction();
+  assert.equal(acquisition.stationChangesSince({...state, extraction: current}, current), '2026-10-20T00:00:00Z');
+  assert.equal(acquisition.stationChangesSince({...state, extraction: 'another'}, current), null);
+  assert.equal(acquisition.stationChangesSince(state, current), '2026-10-20T00:00:00Z', 'no version: made by this conversion');
+  });
+
+test('the first changes after a cycle drop stations created and gone again while its regions were read', () => {
+  const ghost = node(500, -169, -80.2, 1);
+  ghost.timestamp = '2026-10-22T00:00:00Z';
+  const kept = node(501, -169, -80.3, 3); kept.timestamp = '2026-10-23T00:00:00Z';
+  const {state, records} = complete([...base, ghost, kept]);
+  // The changes since the cycle start mention 501 (changed again), not 500.
+  const changes = {timestamp: '2026-11-01T05:00:00Z', deletes: [], upserts: [{...node(501, -169, -80.3, 4), timestamp: '2026-10-30T00:00:00Z'}]};
+  const first = acquisition.applyStationChanges(state, records, changes);
+  const ids = first.records.map(r => r.id);
+  assert.ok(!ids.includes('node-500'), 'matched the query at neither end: gone');
+  assert.ok(ids.includes('node-501'));
+  assert.ok(ids.includes('node-100'), 'edited before the cycle start: kept');
+  assert.equal(first.changed, 2);
+  // Later changes start from a database time: nothing is dropped that way.
+  const later = acquisition.applyStationChanges(first.state, first.records, {timestamp: '2026-11-02T00:00:00Z', upserts: [], deletes: []});
+  assert.equal(later.records.length, first.records.length);
+  assert.equal(later.changed, 0);
+});
+
+test('a complete generation is published when its tiles differ from the last published ones', async t => {
+  const recent = new Date(Date.now() - 86400000).toISOString();
+  const {state, records} = complete(base, recent);
+  const none = () => new Response(osm(''), {status: 200});
+  const first = await run(t, none, {state, records});
+  assert.equal(first.manifest.changedRecords, 0);
+  assert.equal(first.manifest.publish, true, 'never published from this state: published');
+  assert.equal(first.state.publishedTiles, first.manifest.tilesDigest);
+  const again = await run(t, none, {state: first.state, records: first.records});
+  assert.equal(again.manifest.publish, false, 'nothing changed: not published again');
+  const changed = await run(t, none, {state: {...first.state, publishedTiles: 'tiles of other code'}, records: first.records});
+  assert.equal(changed.manifest.publish, true, 'new tile code: published');
+  assert.equal(acquisition.stationTilesDigest(new Map([['b', Buffer.from('2')], ['a', Buffer.from('1')]])),
+    acquisition.stationTilesDigest(new Map([['a', Buffer.from('1')], ['b', Buffer.from('2')]])), 'order does not matter');
 });

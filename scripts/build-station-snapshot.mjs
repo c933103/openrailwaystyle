@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {newStationAcquisition,checkStationAcquisition,stationRegionQuery,
  applyStationRegion,postponeStationRegion,stationWorldCoverage,nextStationAcquisitionCycle,
- stationQueryExceededLimits,stationChangesSince,stationChangesQuery,parseStationChanges,applyStationChanges} from './station-acquisition.mjs';
+ stationQueryExceededLimits,stationChangesSince,stationChangesQuery,parseStationChanges,applyStationChanges,stationExtraction,stationTilesDigest} from './station-acquisition.mjs';
 import {stationOverviewData} from './station-overview.mjs';
 
 const endpoint=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter';
@@ -30,12 +30,20 @@ if(input){
 // A complete generation takes the changes since its database time instead
 // of a new cycle. Otherwise generations are built in the work branch, never
 // over the already-complete public station-points-data branch.
-const changesSince=stationChangesSince(state);
+// A checkpoint saved before extraction versions were recorded was made by
+// this same record conversion (it only moved to station-point.mjs), so it
+// counts as the current version and records it once it takes changes; a
+// cycle started from now on records its own.
+const extraction=stationExtraction();
+if(!existing)state.extraction=extraction;
+const changesSince=stationChangesSince(state,extraction);
+if(changesSince)state.extraction??=extraction;
 let refreshStarted=false,changedRecords=0;
 if(!changesSince){
   const rotated=nextStationAcquisitionCycle(state,records);
   ({state,records}=rotated);
   refreshStarted=rotated.refreshed;
+  if(refreshStarted)state.extraction=extraction;
 }
 const pending=state.pending[0];
 const url=new URL(endpoint),query=pending&&stationRegionQuery(pending.box);
@@ -115,18 +123,27 @@ if(changesSince){
   }finally{clearTimeout(timer)}
 }
 checkStationAcquisition(state,records);
+const complete=!state.pending.length&&stationWorldCoverage(state.completed);
+// The complete generation's tiles, and whether they are published: when this
+// run's region completed the cycle, its changes altered stations, or the
+// tiles differ from the last published ones (a change to the tile code).
+const tiles=complete?stationOverviewData(records):null;
+let tilesDigest=null,publication=false;
+if(tiles){
+  tilesDigest=stationTilesDigest(tiles.archives);
+  publication=accepted||changedRecords>0||tilesDigest!==state.publishedTiles;
+  if(publication)state.publishedTiles=tilesDigest;
+}
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 const publish=(path,data)=>writeFile(join(output,path),data);
 await publish('state.json',JSON.stringify(state)+'\n');
 await publish('stations.json.gz',gzipSync(JSON.stringify(records),{level:6}));
-const complete=!state.pending.length&&stationWorldCoverage(state.completed);
 const manifest={schema:1,complete,source:'OpenStreetMap via Overpass',license:'ODbL-1.0',
   stations:records.length,pendingRegions:state.pending.length,completedRegions:state.completed.length,
   started:state.started,updated:state.lastUpdate,status,requestBytes:received,regionUpdated:accepted,
-  changesSince:state.changesSince||null,changedRecords};
+  changesSince:state.changesSince||null,changedRecords,tilesDigest,publish:publication};
 if(complete){
-  const tiles=stationOverviewData(records);
   for(const [path,bytes] of tiles.archives){
     const target=join(output,path);
     await mkdir(join(target,'..'),{recursive:true});
