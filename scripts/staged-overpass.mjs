@@ -91,6 +91,10 @@ export function createStagedSnapshot(config) {
     const started=now(),features=new Map(),coverage=[];let downloaded=0,requests=0;
     const remaining=()=>policy.elapsedMs-(now()-started);
     const checkTime=()=>{if(remaining()<=0)throw fatal(`${Noun} elapsed-time budget exceeded`,'budget');};
+    // A wait the server asked for (Retry-After) on a change request that
+    // failed, kept for the next request of the run, whichever it is.
+    let serverWait=0;
+    const pause=async()=>{const ms=Math.max(policy.pauseMs,serverWait);serverWait=0;await delay(ms);};
     async function delay(ms) {
       checkTime();
       if(ms>=remaining())throw fatal(`${Noun} elapsed-time budget exceeded before retry`,'budget');
@@ -174,8 +178,12 @@ export function createStagedSnapshot(config) {
           log(`Collecting ${config.label} changes`,box.join(','),'since',since);
           const update=await updateElements({elements:base.elements,since,previousQuery:json?query:stale.query,query,maxDrop:1,
             pick:element=>requireGeometry([element])[0],warn:(...args)=>log(box.join(','),...args),
-            fetchText:async body=>{if(requests)await delay(policy.pauseMs);return request(body,{text:true});},
-            failed:error=>{if(error.category==='budget')throw error;}});
+            fetchText:async body=>{if(requests)await pause();return request(body,{text:true});},
+            failed:error=>{
+              if(error.category==='budget')throw error;
+              if(error.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
+              serverWait=Math.max(serverWait,error.retryAfterMs||0);
+            }});
           if(update) {
             const next={...base,osm3s:{...base.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
             completedResponse(next);
@@ -193,7 +201,7 @@ export function createStagedSnapshot(config) {
           if(attempt) {
             if(failure.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
             await delay(Math.max(policy.retryMs,failure.retryAfterMs));
-          }else if(requests)await delay(policy.pauseMs);
+          }else if(requests)await pause();
           log(`Collecting ${config.label}`,box.join(','),'attempt',attempt+1);
           try {return {json:await request(body)};}catch(error) {
             failure=error;log(box.join(','),error.category,error.message);

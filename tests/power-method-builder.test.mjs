@@ -318,3 +318,16 @@ test('a change without geometry keeps the cached region; the request budget stil
   await assert.rejects(run(()=>response(changeXml),{limits:{requests:2}}),/request budget/);
   assert.equal(calls.length-before,2);
 }));
+test('a wait the server asked for on a change request comes before the next request; one beyond the wait budget stops the run',()=>fixture(async({run,calls,sleeps,advance})=>{
+  await run();
+  advance(8*86400000);
+  const first=calls.length,before=sleeps.length;
+  await run(n=>n===first+1?response('busy',{status:429,headers:{'Retry-After':'120'}}):response(changeXml));
+  assert.equal(calls.length-first,8,'one change request per region');
+  assert.equal(sleeps.slice(before)[0],120000,'the next request waits as asked');
+  assert.ok(sleeps.slice(before+1).every(ms=>ms===10000),'then the usual pause');
+  advance(8*86400000);
+  const again=calls.length;
+  await assert.rejects(run(n=>n===again+1?response('busy',{status:429,headers:{'Retry-After':'600'}}):response(changeXml)),/Retry-After exceeds wait budget/);
+  assert.equal(calls.length-again,1);
+}));
