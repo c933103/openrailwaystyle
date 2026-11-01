@@ -113,9 +113,9 @@ test('the datasets\' own queries are unchanged, so their cached responses stay v
 test('the change requests split the query into its two outputs, nothing else', async () => {
   const {railwayWaysQueries} = await import('../scripts/railway-ways.mjs');
   for (const stage of STAGES) for (const p of stage.parts) {
-    const whole = railwayWaysQuery(p, p.box), {relations, ways} = railwayWaysQueries(p, p.box);
+    const whole = railwayWaysQuery(p, p.box), {relations, ways} = railwayWaysQueries(railwayWaysQuery(p, p.box));
     const prefix = whole.slice(0, whole.lastIndexOf('.r out meta;'));
-    assert.equal(relations, `${prefix}.r out meta;`, stage.name);
+    assert.equal(relations, `${prefix}(.r;);out meta;`, stage.name);
     assert.equal(`${prefix}.r out meta;${ways.slice(prefix.length)}`, whole, stage.name);
     assert.equal(ways.match(/out meta/g).length, 1, `${stage.name}: one output each`);
     assert.equal(relations.match(/out meta/g).length, 1, `${stage.name}: one output each`);

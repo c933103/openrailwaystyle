@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import {STAGES} from '../scripts/download-stages.mjs';
 import {quarters} from '../scripts/branch-lines.mjs';
 import {railwayWaysQuery, railwayWaysQueries} from '../scripts/railway-ways.mjs';
-import {adiffQuery} from '../scripts/overpass-adiff.mjs';
+import {adiffQuery, selectionChangeQueries} from '../scripts/overpass-adiff.mjs';
 import {buildRailwayWays, storedRegions, regionKey} from '../scripts/build-railway-ways.mjs';
 
 // Synthetic responses only: no provider data.
@@ -33,8 +33,8 @@ function overpass(answer) {
 }
 const quiet = {log: () => {}, warn: () => {}, sleep: async () => {}};
 const run = (root, fetcher, extra = {}) => buildRailwayWays({output: join(root, 'out'), fetcher, ...quiet, ...extra});
-// Stored regions whose query has since changed (as after a change to the
-// selection): only a full pass can bring them up to date.
+// Stored regions whose query cannot be compared with the current one (not
+// a railway-ways query at all): only a full pass can bring them up to date.
 async function staleQueries(store, stage = 'japan') {
   const dir = join(store, 'regions', stage);
   for (const name of await readdir(dir)) {
@@ -173,8 +173,8 @@ test('a due stage takes the changes since each region\'s time, two requests per 
   await run(root, overpass(() => ok([way(1, {railway: 'subway'}), way(2, {railway: 'rail', usage: 'branch'})])).fetcher);
   const previous = await publish(root);
   await currentExceptJapan(previous);
-  const queries = railwayWaysQueries(part, part.box);
-  const changes = overpass(query => query.includes('.r out meta;')
+  const queries = railwayWaysQueries(railwayWaysQuery(part, part.box));
+  const changes = overpass(query => query.includes('(.r;);out meta;')
     ? adiff('2026-11-01T05:00:00Z')
     : adiff('2026-11-01T05:00:00Z', [`<action type="modify"><old/><new>${wayXml(1, {railway: 'subway', name: 'Line 1'})}</new></action>`,
       '<action type="delete"><old/><new><way id="2" visible="true"/></new></action>'].join('')));
@@ -216,4 +216,32 @@ test('a stopped change pass keeps every region as it was and resumes with the re
   assert.equal(rest.queries.length, 6, 'only the three regions left, two requests each');
   state = JSON.parse(await readFile(join(root, 'out', 'state.json'), 'utf8'));
   assert.notEqual(state.stages.japan.completed, '2000-01-01T00:00:00Z');
+});
+
+test('a stored region of another, comparable query takes only the difference, not a full pass', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([way(1, {railway: 'subway'})])).fetcher);
+  const previous = await publish(root);
+  await currentExceptJapan(previous);
+  // The stored region was made by a query whose way selection was narrower.
+  const current = railwayWaysQuery(part, part.box), older = current.replace('|funicular)$"];.b;.p;);out meta geom qt;', ')$"];.b;.p;);out meta geom qt;');
+  assert.notEqual(older, current);
+  const dir = join(previous, 'regions', 'japan');
+  for (const name of await readdir(dir)) {
+    const region = JSON.parse(gunzipSync(await readFile(join(dir, name))));
+    await writeFile(join(dir, name), gzipSync(JSON.stringify({...region, query: older})));
+  }
+  const funicular = way(3, {railway: 'funicular'});
+  const changes = overpass(query => query.includes('[adiff:') ? adiff('2026-11-01T05:00:00Z')
+    : query.endsWith('out ids;') ? ok([{type: 'way', id: 1}, {type: 'way', id: 3}]) : ok([funicular]));
+  const manifest = await run(root, changes.fetcher, {previous});
+  const before = railwayWaysQueries(older), after = railwayWaysQueries(current);
+  const {ids, elements} = selectionChangeQueries(before.ways, after.ways, '2026-11-01T05:00:00Z');
+  assert.deepEqual(changes.queries, [adiffQuery(before.relations, '2026-10-31T00:00:00Z'),
+    adiffQuery(before.ways, '2026-10-31T00:00:00Z', '2026-11-01T05:00:00Z'), ids, elements(['way/3'])],
+    'the changes of both parts, then the new way selection\'s ids and only the new way; no full download');
+  assert.equal(manifest.run.status, 'acquired');
+  const [region] = await japanRegions(root);
+  assert.deepEqual(region.response.elements.map(e => e.id).sort(), [1, 3]);
+  assert.equal(region.query, current, 'stored under the current query');
 });

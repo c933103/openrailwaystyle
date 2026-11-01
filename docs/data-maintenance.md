@@ -167,10 +167,13 @@ A complete stage due for its refresh is not downloaded again: each stored
 region takes the changes since its database time, two Overpass augmented
 diffs (`railwayWaysQueries`: the route relations, then the ways up to the
 same time, since Overpass documents augmented diffs for one output), applied
-to its stored elements (`scripts/overpass-adiff.mjs`). A stopped pass keeps
-every region as it was and resumes with the rest; when every region is done
-the stage's `completed` time advances, so the datasets built from the store
-take it again. Only a region whose query changed needs a full pass.
+to its stored elements (`updateElements` in `scripts/overpass-adiff.mjs`).
+When the query changed, each part also takes only the difference: the new
+query's ids at that time, with the newly selected elements downloaded by id.
+A stopped pass keeps every region as it was and resumes with the rest; when
+every region is done the stage's `completed` time advances, so the datasets
+built from the store take it again. Only a stored region whose query cannot
+be compared with the current one needs a full pass.
 
 - Only the server's own report that a query ran out of time or memory splits a
   region. Gateway errors, a busy server and stalled or cut-off transfers retry

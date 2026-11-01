@@ -32,11 +32,15 @@ export function railwayWaysQuery(part, box) {
 // The same selection as two queries with one output each, the route
 // relations and the ways, for change requests (augmented diffs): Overpass
 // documents those for a single output, not for several.
-export function railwayWaysQueries(part, box) {
-  const query = railwayWaysQuery(part, box), split = query.lastIndexOf('.r out meta;');
-  const prefix = query.slice(0, split), outputs = query.slice(split);
-  const ways = outputs.slice('.r out meta;'.length);
-  return {relations: `${prefix}.r out meta;`, ways: `${prefix}${ways}`};
+// A stored query (any version of railwayWaysQuery) splits the same way;
+// null when it has no relation output to split at.
+export function railwayWaysQueries(query) {
+  const split = query.lastIndexOf('.r out meta;');
+  if (split < 0) return null;
+  const prefix = query.slice(0, split), ways = query.slice(split + '.r out meta;'.length);
+  // The relations as the default set's output, `(.r;);out meta;` (the same
+  // elements as `.r out meta;`), so each part is a selection with one output.
+  return {relations: `${prefix}(.r;);out meta;`, ways: `${prefix}${ways}`};
 }
 
 const tagsOf = element => element.tags || {};

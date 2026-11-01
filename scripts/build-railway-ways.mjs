@@ -19,7 +19,7 @@ import {quarters, toFeatures} from './branch-lines.mjs';
 import {toTable} from './service-routes.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {railwayWaysQuery, railwayWaysQueries, branchView, serviceView, powerView} from './railway-ways.mjs';
-import {adiffQuery, parseAdiff, applyElementChanges} from './overpass-adiff.mjs';
+import {updateElements, selectionChangeQueries, requireGeometry} from './overpass-adiff.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
 
 export const RAILWAY_WAYS_VERSION = 1;
@@ -78,43 +78,55 @@ export async function buildRailwayWays({
   const current = state.stages[stage.name] ||= {completed: null, pending: null, seen: []};
   const nextDir = join(output, 'next', stage.name), regionsDir = join(output, 'regions', stage.name);
   const BUDGET = Symbol('budget');
-  // A complete stage whose stored regions still match the current queries is
-  // brought up to date with the changes since each region's database time,
-  // not downloaded again: two change requests per region (the route
-  // relations, then the ways, ending at the same time), applied to its
-  // stored elements. A region whose query changed needs a full pass.
+  // A complete stage is brought up to date region by region from its stored
+  // elements, not downloaded again: the route relations, then the ways, each
+  // by updateElements (the changes of the query that selected them since the
+  // region's database time and, when the query changed, only the
+  // difference), both ending at the same moment. Only stored regions whose
+  // queries cannot be compared need a full pass.
   if (current.completed && !current.pending?.length) {
     const names = (await readdir(regionsDir).catch(() => [])).filter(name => name.endsWith('.json.gz')).sort();
     const regions = [];
     for (const name of names) regions.push({name, region: JSON.parse(gunzipSync(await readFile(join(regionsDir, name))))});
-    const current_ = regions.length && regions.every(({region}) => stage.parts[region.part]
-      && region.query === railwayWaysQuery(stage.parts[region.part], region.box)
-      && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(region.response?.osm3s?.timestamp_osm_base || ''));
-    if (current_) {
+    const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+    const comparable = ({region}) => {
+      if (!stage.parts[region.part] || typeof region.query !== 'string' || !TIME.test(region.response?.osm3s?.timestamp_osm_base || '')) return false;
+      if (region.query === railwayWaysQuery(stage.parts[region.part], region.box)) return true;
+      const before = railwayWaysQueries(region.query), after = railwayWaysQueries(railwayWaysQuery(stage.parts[region.part], region.box));
+      return !!(before && after && selectionChangeQueries(before.relations, after.relations, region.response.osm3s.timestamp_osm_base)
+        && selectionChangeQueries(before.ways, after.ways, region.response.osm3s.timestamp_osm_base));
+    };
+    if (regions.length && regions.every(comparable)) {
       current.changePass ||= {started: iso(now), done: []};
       log(`Stage ${stage.name} (${stage.label}): changes for ${regions.length - current.changePass.done.length} region(s)`);
       for (const {name, region} of regions) {
         if (current.changePass.done.includes(name)) continue;
         if (downloaded >= budget) { stopped = `download budget reached (${downloaded} bytes)`; break; }
         if (now() - started > timeBudgetMs) { stopped = 'time budget reached'; break; }
-        const since = region.response.osm3s.timestamp_osm_base, queries = railwayWaysQueries(stage.parts[region.part], region.box);
+        const since = region.response.osm3s.timestamp_osm_base, query = railwayWaysQuery(stage.parts[region.part], region.box);
+        const before = railwayWaysQueries(region.query), after = railwayWaysQueries(query);
+        let failure = null;
+        const fetchText = async body => {
+          const text = await overpass(body, {text: true});
+          if (text === BUDGET) throw Object.assign(new Error(`download budget reached (${downloaded} bytes)`), {budget: true});
+          if (text === null) throw new Error('the request ran out of time or memory');
+          return text;
+        };
+        const common = {since, fetchText, maxDrop: 1, warn: (...args) => log(region.box.join(','), ...args), failed: error => { failure = error; }};
+        const relationElements = region.response.elements.filter(e => e.type === 'relation'), wayElements = region.response.elements.filter(e => e.type !== 'relation');
+        const relations = await updateElements({...common, elements: relationElements, previousQuery: before.relations, query: after.relations});
+        const ways = relations && await updateElements({...common, elements: wayElements, previousQuery: before.ways, query: after.ways,
+          until: relations.osmBase, pick: element => requireGeometry([element])[0]});
+        if (!ways) { stopped = failure?.budget ? failure.message : `changes for region ${region.box.join(',')} deferred: ${failure?.message || 'not comparable'}`; break; }
+        let response;
         try {
-          const relationsText = await overpass(adiffQuery(queries.relations, since), {text: true});
-          if (relationsText === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-          if (relationsText === null) throw new Error('the change request ran out of time or memory');
-          const relations = parseAdiff(relationsText);
-          const waysText = await overpass(adiffQuery(queries.ways, since, relations.timestamp), {text: true});
-          if (waysText === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-          if (waysText === null) throw new Error('the change request ran out of time or memory');
-          const ways = parseAdiff(waysText);
-          for (const element of ways.upserts) if (element.type === 'way' && !(element.geometry?.length >= 2)) throw new Error(`Change way ${element.id} without geometry`);
-          const response = validRailwayWays({...region.response, osm3s: {...region.response.osm3s, timestamp_osm_base: relations.timestamp},
-            elements: applyElementChanges(region.response.elements, {upserts: [...relations.upserts, ...ways.upserts], deletes: [...relations.deletes, ...ways.deletes]})});
-          await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, generated: iso(now), response}), {level: 9}));
-          current.changePass.done.push(name);
-          fetched++;
-          log(`Region ${region.box.join(',')}: changes since ${since}, ${relations.upserts.length + ways.upserts.length} added or changed, ${relations.deletes.length + ways.deletes.length} removed`);
+          response = validRailwayWays({...region.response, osm3s: {...region.response.osm3s, timestamp_osm_base: relations.osmBase},
+            elements: [...relations.elements, ...ways.elements]});
         } catch (error) { stopped = `changes for region ${region.box.join(',')} deferred: ${error.message}`; break; }
+        await writeFile(join(regionsDir, name), gzipSync(JSON.stringify({...region, query, generated: iso(now), response}), {level: 9}));
+        current.changePass.done.push(name);
+        fetched++;
+        log(`Region ${region.box.join(',')}: changes since ${since}, ${relations.upserts + ways.upserts} added or changed, ${relations.deletes + ways.deletes} removed; query change: ${relations.added + ways.added} added, ${relations.dropped + ways.dropped} dropped`);
       }
       if (current.changePass.done.length === regions.length) {
         // The stage is current as of this pass: the datasets built from the
