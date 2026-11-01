@@ -1,5 +1,5 @@
 // Maintenance build only. Visitors never query Overpass.
-import {readFile, writeFile, mkdir, unlink} from 'node:fs/promises';
+import {readFile, writeFile, mkdir, unlink, rename} from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
 import {once} from 'node:events';
 import {gzipSync} from 'node:zlib';
@@ -31,6 +31,23 @@ const regionFile=box=>`.snapshot-cache/${box[0]===-90 && box[2]===0 && box[3]-bo
 function regionQuery(box) {
   const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
   return `[out:json][timeout:90][maxsize:134217728];(${selectors.join('')});out tags geom qt;`;
+}
+// A region downloaded again in full keeps its earlier data (`.previous`)
+// until the differences are in the change log, as a region update logs
+// them, so a stale neighbouring region cannot bring back what the download
+// removed or changed. Removed only after the log is saved: a run stopped in
+// between logs them again next time.
+async function reconcile(box, elements, time, log) {
+  const previous=regionFile(box)+'.previous';
+  let before;
+  try {before=JSON.parse(await readFile(previous,'utf8')).elements;} catch {return log;}
+  if(Array.isArray(before) && Array.isArray(elements) && time) {
+    if(log===undefined) try {log=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
+    log=recordChanges(log,time,before,elements,box);
+    await writeFile(DELTA_FILE,JSON.stringify(log));
+  }
+  await unlink(previous);
+  return log;
 }
 async function collect(box, depth=0) {
   const file = regionFile(box);
@@ -68,14 +85,23 @@ async function collect(box, depth=0) {
       if(depth>=5) throw new Error(`Could not complete region ${box}`);
       await writeFile(file+'.split','Oversized region; use complete child regions.');
       const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await collect(child,depth+1);
-      return;
+      const elements=[], times=[];
+      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) {
+        const part=await collect(child,depth+1);
+        elements.push(...part.elements); times.push(part.time);
+      }
+      // The oldest part's time: no part's data is older than what is logged.
+      const time=times.includes(undefined) ? undefined : times.sort()[0];
+      await reconcile(box,elements,time);
+      return {elements,time};
     }
   }
+  await reconcile(box,json.elements,json.osm3s?.timestamp_osm_base);
   const data=toGeoJSON(json);
   for(const f of data.features) { features.set(f.id,f); base.set(f.id,json.osm3s?.timestamp_osm_base); }
   const part={bbox:box,timestamp:json.osm3s?.timestamp_osm_base,features:data.features.length};
   parts.push(part);console.log(JSON.stringify(part));
+  return {elements:json.elements,time:part.timestamp};
 }
 // Split the already-observed eastern-US bottleneck before querying it again.
 await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
@@ -102,6 +128,8 @@ async function updateRegion(box) {
     for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await updateRegion(child);
     return;
   }
+  // Earlier data left by a full download stopped before it was logged.
+  changeLog=await reconcile(box,json.elements,json.osm3s?.timestamp_osm_base,changeLog);
   const query=regionQuery(box);
   let failure;
   const update=await updateElements({elements:json.elements,since:json.osm3s?.timestamp_osm_base,
@@ -139,9 +167,10 @@ async function updateRegion(box) {
   // A server that did not answer is asked again next run. Changes that
   // cannot be used (too large for the time limit, unreadable, removing over
   // 5% of the ways, or no database time) mean the region is downloaded in
-  // full by the region step of this run.
+  // full by the region step of this run; its data is kept to log the
+  // differences (reconcile).
   if(failure?.unanswered) { updates.unanswered++; console.warn(String(box),'kept as cached; asked again next run'); return; }
-  await unlink(file); updates.redownload++;
+  await rename(file,file+'.previous'); updates.redownload++;
 }
 const updates={updated:0,changed:0,unanswered:0,redownload:0};
 let changeLog;

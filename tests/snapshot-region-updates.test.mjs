@@ -15,7 +15,7 @@ const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-01T00:00:00Z';
 const way = (id, tags) => ({type:'way', id, tags, geometry:[{lat:10, lon:100}, {lat:10.1, lon:100.1}]});
 const region = elements => JSON.stringify({osm3s:{timestamp_osm_base:SINCE}, elements});
 
-async function run(t, files, replies) {
+async function run(t, files, replies, mode = 'delta') {
   const root = await mkdtemp(join(tmpdir(), 'lifecycle-updates-'));
   t.after(() => rm(root, {recursive:true, force:true}));
   await mkdir(join(root, '.snapshot-cache'));
@@ -30,7 +30,7 @@ async function run(t, files, replies) {
       if (reply.cut) return {ok:true, status:200, text:async () => { throw new TypeError('terminated'); }};
       return new Response(reply.text, {status:reply.status || 200});
     };`);
-  const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:'delta', GITHUB_RUN_ID:'1'}, encoding:'utf8'});
+  const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8'});
   let requests = [];
   try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
   const read = async name => { try { return JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8')); } catch { return null; } };
@@ -77,6 +77,7 @@ test('a region Overpass does not answer is kept; one whose changes cannot be use
   assert.equal((await read('-90_-180.json')).osm3s.timestamp_osm_base, SINCE, 'unchanged, asked again next run');
   assert.equal((await read('0_-135_45_-90.json')).osm3s.timestamp_osm_base, SINCE, 'an answer cut off midway: kept too');
   assert.equal(await read('0_-180_45_-135.json'), null, 'removed, so the region step downloads it in full');
+  assert.equal((await read('0_-180_45_-135.json.previous')).elements[0].id, 5, 'its data kept to log the differences');
   assert.match(result.stdout, /"unanswered":2,"redownload":1/);
 });
 
@@ -148,4 +149,54 @@ test('the change log is saved before each region advances', () => {
   const source = readFileSync(builder, 'utf8');
   const log = source.indexOf('await writeFile(DELTA_FILE,JSON.stringify(changeLog));'), region = source.indexOf("await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase}");
   assert.ok(log > 0 && region > log);
+});
+
+// The region step (SNAPSHOT_REGION=0 is 0,90,45,135) after a full download.
+const full = (elements, time = BASE) => ({text:JSON.stringify({osm3s:{timestamp_osm_base:time}, elements})});
+const logged = log => Object.fromEntries(Object.entries(log.changes).map(([id, c]) => [id, [c.time, c.feature && c.feature.properties.name]]));
+
+test('a region downloaded again in full logs its differences, so a stale neighbour cannot undo them', async t => {
+  const {result, requests, read, names} = await run(t, {
+    '0_90_45_135.json.previous': region([way(1, {railway:'proposed', name:'Old'}), way(2, {railway:'abandoned', name:'Gone'}), way(3, {railway:'proposed', name:'Same'})]),
+  }, {'0,90,45,135': full([way(1, {railway:'proposed', name:'New'}), way(3, {railway:'proposed', name:'Same'})])}, '0');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(logged(await read('delta.json')), {1: [BASE, 'New'], 2: [BASE, null]}, 'renamed and removed; the unchanged way not logged');
+  assert.ok(!names.includes('0_90_45_135.json.previous'), 'removed once logged');
+  assert.equal((await read('0_90_45_135.json')).osm3s.timestamp_osm_base, BASE);
+});
+
+test('a region split during its full download logs the differences of all its parts', async t => {
+  const T1 = '2026-11-01T05:00:00Z', T2 = '2026-11-01T06:30:00Z';
+  const at = (id, lat, lon, name) => ({type:'way', id, tags:{railway:'proposed', name}, geometry:[{lat, lon}, {lat, lon: lon + 0.1}]});
+  const {result, read, names} = await run(t, {
+    '0_90_45_135.json.previous': region([at(1, 10, 100, 'Old'), at(2, 30, 120, 'Gone')]),
+  }, {
+    '0,90,45,135': {text:JSON.stringify({osm3s:{timestamp_osm_base:BASE}, remark:'runtime error: Query timed out', elements:[]})},
+    '0,90,22.5,112.5': full([at(1, 10, 100, 'New')], T2),
+    '0,112.5,22.5,135': full([], T1),
+    '22.5,90,45,112.5': full([], T2),
+    '22.5,112.5,45,135': full([], T2),
+  }, '0');
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(names.includes('0_90_45_135.json.split'));
+  assert.deepEqual(logged(await read('delta.json')), {1: [T1, 'New'], 2: [T1, null]}, 'at the oldest part\'s time');
+  assert.ok(!names.includes('0_90_45_135.json.previous'));
+});
+
+test('earlier data left by a stopped run is logged before the region is used or updated', async t => {
+  const previous = region([way(4, {railway:'proposed', name:'Old'})]);
+  const done = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(4, {railway:'proposed', name:'New'})]});
+  for (const mode of ['0', 'delta']) {
+    const {result, read, names} = await run(t, {'0_90_45_135.json.previous': previous, '0_90_45_135.json': done}, {}, mode);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(logged(await read('delta.json')), {4: [BASE, 'New']}, mode);
+    assert.ok(!names.includes('0_90_45_135.json.previous'), mode);
+  }
+});
+
+test('a requested refresh keeps the region\'s data to log the differences', () => {
+  const source = readFileSync(fileURLToPath(new URL('../scripts/refresh-snapshot-cache.mjs', import.meta.url)), 'utf8');
+  assert.match(source, /rename\(`\$\{dir\}\/\$\{file\.name\}`, `\$\{dir\}\/\$\{file\.name\}\.previous`\)/);
+  assert.doesNotMatch(source, /unlink/);
 });
