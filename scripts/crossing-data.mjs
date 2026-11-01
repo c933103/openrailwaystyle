@@ -72,15 +72,23 @@ export function crossingChangesQuery(box, since) {
 // by another one is downloaded in full: changes alone would leave unchanged
 // crossings with the old rows.
 export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180, 90, 180]), new URL(import.meta.url));
+// A node deleted from OSM (visible="false") is deleted. One that only left
+// the region's selection (visible="true") may have moved into another region
+// or stopped being a crossing: it is read again (`recheck`), and removed only
+// if it is no crossing anywhere.
 export function crossingChanges(xml) {
-  const {timestamp, actions} = parseAdiff(xml), deleted = new Set(), affected = new Set();
+  const {timestamp, actions} = parseAdiff(xml), deleted = new Set(), affected = new Set(), recheck = new Set();
   for (const action of actions) {
     const element = action.new;
-    if (element.type === 'node') (action.type === 'delete' ? deleted : affected).add(element.id);
+    if (element.type === 'node') {
+      if (action.type !== 'delete') affected.add(element.id);
+      else if (element.visible === false) deleted.add(element.id);
+      else { affected.add(element.id); recheck.add(element.id); }
+    }
     if (element.type === 'way') for (const state of [action.old, action.new]) for (const id of state?.nodes || []) affected.add(id);
   }
-  for (const id of deleted) affected.delete(id);
-  return {timestamp, deleted: [...deleted], affected: [...affected].sort((a, b) => a - b)};
+  for (const id of deleted) { affected.delete(id); recheck.delete(id); }
+  return {timestamp, deleted: [...deleted], affected: [...affected].sort((a, b) => a - b), recheck: [...recheck].sort((a, b) => a - b)};
 }
 // The rows of the given nodes that are crossings, as regionQuery gives them:
 // the same columns, minor flag and markers.

@@ -55,7 +55,7 @@ jobs:
           try {
             const saved = JSON.parse(await readFile('/tmp/previous-crossings/regions.json', 'utf8'));
             // As the builder decides: another table format or extraction is a full rebuild.
-            if (saved.version === 3 && (saved.extraction ?? crossingExtraction()) === crossingExtraction()) {
+            if (saved.version === 3 && saved.extraction === crossingExtraction()) {
               readTable(gunzipSync(await readFile('/tmp/previous-crossings/crossings.tsv.gz')).toString());
               full = !saved.since;
             }

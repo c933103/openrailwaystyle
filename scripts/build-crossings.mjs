@@ -67,21 +67,27 @@ async function fetchChanges(table, region, since, depth = 0) {
     return;
   }
   for (const id of changes.deleted) table.delete(id);
-  await readCrossings(table, changes.affected, region.box);
+  await readCrossings(table, changes.affected, region.box, new Set(changes.recheck));
 }
 // Rows for the given crossing ids, in groups; a group too big for one request
 // is halved. A node no longer a crossing returns no row (and was reported
 // deleted).
-async function readCrossings(table, ids, box) {
-  for (let i = 0; i < ids.length; i += 2000) await readGroup(table, ids.slice(i, i + 2000), box);
+// A rechecked node that returns no row is no crossing anywhere and goes.
+async function readCrossings(table, ids, box, recheck = new Set()) {
+  for (let i = 0; i < ids.length; i += 2000) await readGroup(table, ids.slice(i, i + 2000), box, recheck);
 }
-async function readGroup(table, ids, box) {
+async function readGroup(table, ids, box, recheck) {
   const rows = await request(crossingRowsQuery(ids), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
-  if (rows) return applyChanges(table, rows);
+  if (rows) {
+    applyChanges(table, rows);
+    const found = new Set(rows.map(row => row.id));
+    for (const id of ids) if (recheck.has(id) && !found.has(id)) table.delete(id);
+    return;
+  }
   if (ids.length === 1) throw new Error(`Could not read crossing ${ids[0]}`);
   const half = Math.ceil(ids.length / 2);
-  await readGroup(table, ids.slice(0, half), box);
-  await readGroup(table, ids.slice(half), box);
+  await readGroup(table, ids.slice(0, half), box, recheck);
+  await readGroup(table, ids.slice(half), box, recheck);
 }
 // Fetches a region in full; a region too big for one request is replaced by
 // its quarters. Returns the leaf regions fetched.
@@ -111,9 +117,11 @@ let table = new Map(), regions = startRegions(), since, changes, changesFrom, de
 if (previous) {
   try {
     const saved = JSON.parse(await readFile(new URL('regions.json', previous), 'utf8'));
-    // A table without a recorded extraction predates it and was made by this
-    // same code (only its change requests changed since).
-    if (saved.version === VERSION && (saved.extraction ?? extraction) === extraction) {
+    // A table without a recorded extraction was kept by the earlier change
+    // query, which missed deletions that only a rolling full refresh then
+    // repaired: it is rebuilt once, so the exact changes start from an exact
+    // table.
+    if (saved.version === VERSION && saved.extraction === extraction) {
       table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
       ({regions, since, changes} = saved);
     } else console.log('Previous table has an older format or was made by other code: fetching everything');

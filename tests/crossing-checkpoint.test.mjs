@@ -269,7 +269,7 @@ test('incremental acquisition never reads or writes rebuild staging', async t =>
   const dir = await temporary(t), previous = await temporary(t);
   await fs.writeFile(join(dir, 'user-notes.txt'), 'unrelated');
   const since = '2026-10-01T00:00:00Z';
-  await fs.writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since}))}));
+  await fs.writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, extraction: crossings.crossingExtraction(), since, regions: roots.map(r => ({...r, fetched: since}))}));
   await fs.writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t0\t0\troad\t\n'));
   const result = await run(dir, () => new Response('at capacity', {status: 502}), {PREVIOUS_DATA: previous});
   assert.match(result.error.message, /stayed unavailable/);
@@ -317,6 +317,8 @@ test('actual previous-table preflight isolates incremental runs from malformed s
   await fs.mkdir(previous);
   await fs.writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since: '2026-10-01T00:00:00Z'}));
   await fs.writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t0\t0\troad\t\n'));
+  assert.equal(await preflight(), 'full_rebuild=true\n', 'a table kept by the earlier change query is rebuilt once, as by the builder');
+  await fs.writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, extraction: crossings.crossingExtraction(), since: '2026-10-01T00:00:00Z'}));
   assert.equal(await preflight(), 'full_rebuild=false\n', 'valid incremental data must skip checkpoint restore');
   assert.equal(await fs.readFile(join(staging, 'state.json'), 'utf8'), 'malformed unrelated checkpoint');
   await fs.writeFile(join(previous, 'crossings.tsv.gz'), 'invalid gzip');

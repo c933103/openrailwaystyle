@@ -74,7 +74,7 @@ const xmlNode = (id, tags = {railway: 'level_crossing'}) => `<node id="${id}" la
 const xmlWay = (id, nodes) => `<way id="${id}" version="2">${nodes.map(n => `<nd ref="${n}"/>`).join('')}<tag k="railway" v="rail"/></way>`;
 
 test('a crossing\'s changes, and those of the railway ways through it, deletions included, mark what to read again', () => {
-  const {timestamp, deleted, affected} = crossingData.crossingChanges(osmXml([
+  const {timestamp, deleted, affected, recheck} = crossingData.crossingChanges(osmXml([
     '<action type="delete"><old>' + xmlNode(1) + '</old><new><node id="1" visible="false"/></new></action>',
     '<action type="delete"><old>' + xmlNode(2) + '</old><new><node id="2" visible="true"/></new></action>',
     `<action type="modify"><old>${xmlNode(3)}</old><new>${xmlNode(3, {railway: 'crossing'})}</new></action>`,
@@ -84,8 +84,9 @@ test('a crossing\'s changes, and those of the railway ways through it, deletions
     `<action type="modify"><old>${xmlWay(51, [6])}</old><new>${xmlWay(51, [7])}</new></action>`,
   ].join('\n')));
   assert.equal(timestamp, '2026-11-01T05:00:00Z');
-  assert.deepEqual(deleted.sort(), [1, 2], 'deleted, or no longer tagged as a crossing');
-  assert.deepEqual(affected, [3, 4, 5, 6, 7], 'a deleted node is not read again');
+  assert.deepEqual(deleted, [1], 'deleted from OSM');
+  assert.deepEqual(affected, [2, 3, 4, 5, 6, 7], 'a deleted node is not read again');
+  assert.deepEqual(recheck, [2], 'left the selection: moved away or retagged, read again before removing');
   const query = crossingData.crossingChangesQuery([0, 0, 45, 45], '2026-10-01T00:00:00Z');
   assert.equal(query, '[out:xml][timeout:180][maxsize:268435456][adiff:"2026-10-01T00:00:00Z"];(node[railway=level_crossing](0,0,45,45);node[railway=crossing](0,0,45,45);)->.c;(.c;way(bn.c)[railway];);out meta;');
   // The rows of given ids: the same minor logic and markers as a region query.
@@ -106,7 +107,7 @@ async function changeRun(t, extra = {}) {
   const previous = await mkdtemp(join(tmpdir(), 'crossing-changes-'));
   t.after(() => rm(previous, {recursive: true, force: true}));
   const since = '2026-10-01T00:00:00Z', roots = crossingData.startRegions();
-  await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra}));
+  await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra, reply: undefined}));
   await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
   const SEP = crossingData.SEP, calls = [];
   const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
@@ -120,6 +121,7 @@ async function changeRun(t, extra = {}) {
       const query = request.body.get('data'); calls.push(query);
       assert.ok(calls.length <= 40);
       // The first region: crossing 1 deleted, a way through crossing 2 changed.
+      if (extra.reply) { const answer = extra.reply(query, roots, since); if (answer) return answer; }
       if (query === crossingData.crossingChangesQuery(roots[0].box, since)) return new Response(osmXml([
         '<action type="delete"><old/><new><node id="1" visible="false"/></new></action>',
         `<action type="modify"><old>${xmlWay(60, [2])}</old><new>${xmlWay(60, [2, 3])}</new></action>`].join('\n')));
@@ -148,14 +150,30 @@ test('the builder applies a region\'s changes and reads the affected crossings a
   assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since)), 'every other region\'s changes; nothing downloaded in full');
 });
 
-test('a table made by another query or row code is rebuilt in full, never patched; one predating versions counts as current', async t => {
+test('a table made by another query or row code, or kept by the earlier change query, is rebuilt in full once', async t => {
   const other = await changeRun(t, {extraction: 'another'});
   assert.equal(other.calls[0], crossingData.regionQuery(other.roots[0].box), 'a full download, no change request');
   const legacy = await changeRun(t);
-  assert.equal(legacy.calls[0], crossingData.crossingChangesQuery(legacy.roots[0].box, legacy.since));
+  assert.equal(legacy.calls[0], crossingData.regionQuery(legacy.roots[0].box), 'no recorded extraction: rebuilt, since the earlier changes missed deletions');
   assert.equal(crossingData.crossingExtraction(), crossingData.crossingExtraction());
   const workflow = readFileSync(new URL('../.github/workflows/crossings.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /saved\.version === 3 && \(saved\.extraction \?\? crossingExtraction\(\)\) === crossingExtraction\(\)/, 'the workflow decides as the builder');
+  assert.match(workflow, /saved\.version === 3 && saved\.extraction === crossingExtraction\(\)/, 'the workflow decides as the builder');
   const builder = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   assert.match(builder, /JSON\.stringify\(\{version: VERSION, extraction, since:/);
+});
+
+test('a crossing that left a region is read again: kept if it is still a crossing elsewhere, removed if not', async t => {
+  const extraction = crossingData.crossingExtraction();
+  for (const [stillCrossing, expected] of [[true, /worldwide: 2/], [false, /worldwide: 1/]]) {
+    const {error, calls, roots, since} = await changeRun(t, {extraction, reply: (query, roots, since) => {
+      if (query === crossingData.crossingChangesQuery(roots[0].box, since))
+        return new Response(osmXml('<action type="delete"><old/><new><node id="2" visible="true"/></new></action>'));
+      if (query === crossingData.crossingRowsQuery([2]))
+        return new Response(stillCrossing ? `2${crossingData.SEP}10${crossingData.SEP}10${crossingData.SEP}level_crossing\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`
+          : `${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`);
+      return null;
+    }});
+    assert.equal(calls[1], crossingData.crossingRowsQuery([2]), 'read again by id');
+    assert.match(error?.message || '', expected, stillCrossing ? 'moved into another region: kept' : 'no crossing any more: removed');
+  }
 });
