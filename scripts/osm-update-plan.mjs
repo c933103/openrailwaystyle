@@ -57,9 +57,8 @@ export const OSM_UPDATES = Object.freeze([
       '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs',
       'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', ...RAILWAY_WAYS]},
   // Energy supplies, means of power delivery and signals. Its builders keep
-  // completed region responses for 28 days, so a run within that time only
-  // resumes an unfinished first download; the workflow republishes only when
-  // the data changed.
+  // completed region responses and bring each up to date with its changes
+  // once a week; the workflow republishes only when the data changed.
   {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
     paths:['scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
       'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
