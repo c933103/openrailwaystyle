@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       refresh:
-        description: Re-download the oldest part of the world from Overpass
+        description: Re-download from Overpass the part of the world downloaded in full longest ago
         type: boolean
         default: false
   # Started on Monday and Friday from 03:23 UTC (night across Europe) by

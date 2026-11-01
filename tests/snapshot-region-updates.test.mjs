@@ -44,7 +44,7 @@ const reopened = `<osm><meta osm_base="${BASE}"/>`
 
 test('each cached region takes only its changes, deleted and retagged ways included, and records its query', async t => {
   const {result, requests, read} = await run(t, {
-    '0_90_45_135.json': region([way(1, {railway:'construction', construction:'rail'}), ...Array.from({length:40}, (_, i) => way(100 + i, {railway:'abandoned'}))]),
+    '0_90_45_135.json': JSON.stringify({fetched:'2026-09-22T00:00:00Z', ...JSON.parse(region([way(1, {railway:'construction', construction:'rail'}), ...Array.from({length:40}, (_, i) => way(100 + i, {railway:'abandoned'}))]))}),
   }, {'0,90,45,135': {text:reopened}});
   assert.equal(result.status, 0, result.stderr);
   const asked = requests.filter(q => q.includes('(0,90,45,135)'));
@@ -52,6 +52,7 @@ test('each cached region takes only its changes, deleted and retagged ways inclu
   assert.match(asked[0], /^\[out:xml\]\[timeout:300\]\[maxsize:134217728\]\[adiff:"2026-10-01T00:00:00Z"\];\(way\[railway~/);
   const updated = await read('0_90_45_135.json');
   assert.equal(updated.osm3s.timestamp_osm_base, BASE, 'the next run starts from the new database time');
+  assert.equal(updated.fetched, '2026-09-22T00:00:00Z', 'when it was last downloaded in full, kept for the refresh step');
   assert.match(updated.query, /^\[out:json\]\[timeout:90\]\[maxsize:134217728\];\(way\[railway~"\^\(proposed\|construction/);
   assert.deepEqual(updated.elements.find(e => e.id === 1).tags, {railway:'rail', 'disused:railway':'rail'}, 'reopened: the assembly no longer draws it');
   assert.ok(!updated.elements.some(e => e.id === 100 || e.id === 101), 'deleted, and no longer tagged as former');
@@ -147,7 +148,7 @@ test('a way deleted from OSM is logged as removed even where a moved copy was lo
 
 test('the change log is saved before each region advances', () => {
   const source = readFileSync(builder, 'utf8');
-  const log = source.indexOf('await writeFile(DELTA_FILE,JSON.stringify(changeLog));'), region = source.indexOf("await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase}");
+  const log = source.indexOf('await writeFile(DELTA_FILE,JSON.stringify(changeLog));'), region = source.indexOf("await writeFile(file,JSON.stringify({...(json.fetched ? {fetched:json.fetched} : {}),osm3s:{timestamp_osm_base:update.osmBase}");
   assert.ok(log > 0 && region > log);
 });
 
@@ -164,6 +165,7 @@ test('a region downloaded again in full logs its differences, so a stale neighbo
   assert.deepEqual(logged(await read('delta.json')), {1: [BASE, 'New'], 2: [BASE, null]}, 'renamed and removed; the unchanged way not logged');
   assert.ok(!names.includes('0_90_45_135.json.previous'), 'removed once logged');
   assert.equal((await read('0_90_45_135.json')).osm3s.timestamp_osm_base, BASE);
+  assert.ok(Date.now() - Date.parse((await read('0_90_45_135.json')).fetched) < 600_000, 'the download time recorded');
 });
 
 test('a region split during its full download logs each part at its own time', async t => {
@@ -197,10 +199,20 @@ test('earlier data left by a stopped run is logged before the region is used or 
   }
 });
 
-test('a requested refresh keeps the region\'s data to log the differences', () => {
-  const source = readFileSync(fileURLToPath(new URL('../scripts/refresh-snapshot-cache.mjs', import.meta.url)), 'utf8');
-  assert.match(source, /rename\(`\$\{dir\}\/\$\{file\.name\}`, `\$\{dir\}\/\$\{file\.name\}\.previous`\)/);
-  assert.doesNotMatch(source, /unlink/);
+test('a requested refresh takes the regions downloaded in full longest ago, however recently updated, and keeps their data', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'lifecycle-refresh-'));
+  t.after(() => rm(root, {recursive:true, force:true}));
+  await mkdir(join(root, '.snapshot-cache'));
+  const day = 86_400_000, iso = ms => new Date(Date.now() - ms).toISOString();
+  // All three were just rewritten by change updates.
+  const files = {'old.json': JSON.stringify({fetched:iso(10 * day), osm3s:{}, elements:[]}), 'recent.json': JSON.stringify({fetched:iso(2 * day), osm3s:{}, elements:[]}),
+    'unrecorded.json': region([]), 'delta.json': '{}', 'budget-1.json': '{}', 'x.json.split': 'split'};
+  for (const [name, data] of Object.entries(files)) await writeFile(join(root, '.snapshot-cache', name), data);
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/refresh-snapshot-cache.mjs', import.meta.url))], {cwd:root, env:{...process.env, REFRESH_BYTES:'1000000'}, encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual((await readdir(join(root, '.snapshot-cache'))).sort(),
+    ['budget-1.json', 'delta.json', 'old.json.previous', 'recent.json', 'unrecorded.json.previous', 'x.json.split'], 'kept as .previous to log the differences');
+  assert.ok(result.stdout.indexOf('unrecorded.json') < result.stdout.indexOf('old.json'), 'a response without a download time first');
 });
 
 test('a change logged late never replaces a newer entry', async () => {

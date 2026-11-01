@@ -84,8 +84,10 @@ async function collect(box, depth=0) {
           if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
           json=JSON.parse(text);
           if(json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
-          // With its query, which the next change update compares with.
-          await writeFile(file,JSON.stringify({...json,query}));break;
+          // With its query, which the next change update compares with, and
+          // when it was downloaded in full (first, so the refresh step reads
+          // it without parsing the file; refresh-snapshot-cache.mjs).
+          await writeFile(file,JSON.stringify({fetched:new Date().toISOString(),...json,query}));break;
         } catch(error) {
           console.warn(error.message);json=undefined;
           if(downloaded>500_000_000) throw error;
@@ -169,7 +171,7 @@ async function updateRegion(box) {
     changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements,box,
       update.deleted.filter(key=>key.startsWith('way/')).map(key=>key.slice(4)));
     await writeFile(DELTA_FILE,JSON.stringify(changeLog));
-    await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
+    await writeFile(file,JSON.stringify({...(json.fetched ? {fetched:json.fetched} : {}),osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
     updates.updated++; updates.changed+=update.upserts+update.deletes+update.added+update.dropped;
     return;
   }
