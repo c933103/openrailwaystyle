@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STAGES, partSelection, remainderSelection} from '../scripts/download-stages.mjs';
+import {STAGES, partSelection, remainderSelection, startStagePass, finishStagePass, dropStalePass} from '../scripts/download-stages.mjs';
 import {railwayWaysQuery} from '../scripts/railway-ways.mjs';
 
 // Which parts select a place, worked out from each part's selection plan as
@@ -122,5 +122,37 @@ test('a part with exclusions of its own is subtracted as a named difference, nev
       else if (text.startsWith(' - (', i)) { assert.equal(depth, 1, text.slice(Math.max(0, i - 80), i + 20)); differences++; }
     }
     assert.ok(differences > 1);
+  }
+});
+
+test('a pass begun under an earlier layout is dropped; one of the current layout is kept', () => {
+  const world = STAGES.find(stage => stage.name === 'world');
+  // Begun before passes recorded their layout: judged by its queue.
+  const old = {pending: [{part: 1, box: [-50, 110, -11, 180]}], fetched: [{part: 0, box: [-35, -20, 37.5, 52]}]};
+  assert.equal(dropStalePass(old, world), true);
+  assert.deepEqual([old.pending, old.fetched], [null, null]);
+  const quarter = {pending: [{part: 2, box: [-90, 0, -45, 45], depth: 1}]};
+  assert.equal(dropStalePass(quarter, world), false, 'a quarter of a current tile');
+  assert.equal(dropStalePass({pending: [{part: 9, box: [0, 0, 1, 1]}]}, world), true, 'a part the stage no longer has');
+  // Begun with a recorded layout: kept only while it is the stage's.
+  const current = {};
+  startStagePass(current, world);
+  assert.equal(dropStalePass(current, world), false);
+  assert.equal(dropStalePass(current, {...world, parts: world.parts.slice(1)}), true);
+  // Its regions are recorded under the layout it began with.
+  const pass = {};
+  startStagePass(pass, world);
+  pass.fetched = [{part: 0, box: world.parts[0].box}];
+  finishStagePass(pass, {...world, parts: []});
+  assert.equal(pass.leaves.key, JSON.stringify(world.parts));
+  assert.equal(dropStalePass({pending: []}, world), false);
+});
+
+test('the branch-line and service-route builders drop a stale pass before resuming one', async () => {
+  const {readFileSync} = await import('node:fs');
+  for (const file of ['build-branch-lines.mjs', 'build-service-routes.mjs']) {
+    const source = readFileSync(new URL(`../scripts/${file}`, import.meta.url), 'utf8');
+    const drop = source.indexOf('if (dropStalePass(current, stage))'), start = source.indexOf('if (!current.pending?.length) { startStagePass(current, stage);');
+    assert.ok(drop > 0 && start > drop, file);
   }
 });

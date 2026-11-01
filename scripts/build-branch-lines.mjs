@@ -12,7 +12,7 @@ import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
-import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
+import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
 import {resolve} from 'node:path';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
@@ -112,6 +112,7 @@ if (!stage) {
   process.exit(0);
 }
 const current = info(stage.name);
+if (dropStalePass(current, stage)) console.log(`Stage ${stage.name}: its layout changed; starting a new pass`);
 if (!current.pending?.length) { startStagePass(current, stage); current.seen = []; current.started = now; }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 

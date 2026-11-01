@@ -17,7 +17,7 @@ import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addRes
 import {createHash} from 'node:crypto';
 import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
 
-import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass} from './download-stages.mjs';
+import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -168,6 +168,7 @@ if (!stage) {
 }
 const current = info(stage.name);
 // A new pass starts from nothing of its own in progress.
+if (dropStalePass(current, stage)) console.log(`Stage ${stage.name}: its layout changed; starting a new pass`);
 if (!current.pending?.length) { startStagePass(current, stage); current.seen = []; current.started = now; discardStage(table, stage.name); }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 

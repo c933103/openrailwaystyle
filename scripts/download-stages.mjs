@@ -81,13 +81,29 @@ export function startStagePass(current, stage) {
   current.pending = recorded ? recorded.map(region => ({...region, box: [...region.box]}))
     : stage.parts.map((part, index) => ({part: index, box: part.box}));
   current.fetched = [];
+  // The layout this pass fetches, which its regions are recorded under.
+  current.passKey = partsKey(stage);
 }
 export function recordStageRegion(current, item) {
   current.fetched?.push({part: item.part, box: item.box, ...(item.depth ? {depth: item.depth} : {})});
 }
 export function finishStagePass(current, stage) {
-  if (Array.isArray(current.fetched)) current.leaves = {key: partsKey(stage), regions: current.fetched};
+  if (Array.isArray(current.fetched)) current.leaves = {key: current.passKey || partsKey(stage), regions: current.fetched};
   current.fetched = null;
+}
+// A pass begun under an earlier layout of its stage is dropped, so the
+// builder starts one of the current parts instead of finishing the old
+// boxes under the new layout's name. Passes begun before the layout was
+// recorded are judged by their queue: each region must lie in the box of the
+// part it names. Returns whether it dropped one.
+const inside = ([s, w, n, e], [ps, pw, pn, pe]) => s >= ps && w >= pw && n <= pn && e <= pe;
+export function dropStalePass(current, stage) {
+  if (!current?.pending?.length) return false;
+  const stale = current.passKey ? current.passKey !== partsKey(stage)
+    : current.pending.some(item => !stage.parts[item.part] || !Array.isArray(item.box) || !inside(item.box, stage.parts[item.part].box));
+  if (!stale) return false;
+  Object.assign(current, {pending: null, fetched: null, passKey: null});
+  return true;
 }
 
 // Country filters must survive automatic subdivision. Use the
