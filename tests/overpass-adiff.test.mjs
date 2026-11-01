@@ -108,11 +108,11 @@ test('the snapshot is updated from its database time, and any doubt falls back t
 
 test('the conveying build updates from changes and keeps the full download as its fallback', () => {
   const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
+  assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
   assert.match(source, /if \(!conveyingRequestFits\(deadline, 0\)\) throw new Error\('No request fits/);
   // A refused change request's wait (Retry-After) comes before the full download, within the budget.
   const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
-  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'));
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'));
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
@@ -265,4 +265,32 @@ test('the conveying build keeps its elements and converts all of them on every r
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
   const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.match(site, /tar -x -C styles\/data\/conveying --exclude=elements\.json\.gz/, 'the stored elements are not deployed');
+});
+
+test('the conveying build makes at most three requests, its change requests included', async t => {
+  const {spawnSync} = await import('node:child_process');
+  const {mkdtemp, writeFile, rm, readFile: read} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {gzipSync} = await import('node:zlib');
+  const {fileURLToPath} = await import('node:url');
+  for (const [name, answer, expected] of [
+    ['refused', `return new Response('busy', {status: 503});`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+    // A changed query: the change request, the ids and the new elements use all three.
+    ['query changed, elements unusable', `return new Response(q.startsWith('[out:xml]') ? '<osm><meta osm_base="2026-11-01T00:00:00Z"/></osm>' : q.endsWith('out ids;') ? JSON.stringify({elements: [{type: 'way', id: 1}, {type: 'way', id: 2}]}) : JSON.stringify({elements: [{type: 'way', id: 2, tags: {highway: 'elevator'}}]}));`, ['[out:xml][ti', '[out:json][t', '[out:json][t']],
+  ]) {
+    const dir = await mkdtemp(join(tmpdir(), 'conveying-requests-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {conveying: 'forward'}, [[0, 0], [0, 1]])])));
+    const previousQuery = name === 'refused' ? CONVEYING_QUERY : CONVEYING_QUERY.replace('way[highway=elevator];', '');
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
+    await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
+      globalThis.setTimeout = f => { f(); return 0; };
+      globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
+    const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-conveying.mjs', import.meta.url))],
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+    assert.notEqual(result.status, 0, name);
+    assert.deepEqual((await read(join(dir, 'requests'), 'utf8')).trim().split('\n'), expected, name);
+    if (name !== 'refused') assert.match(result.stderr, /no request left of the three/, name);
+  }
 });
