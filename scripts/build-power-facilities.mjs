@@ -2,7 +2,8 @@
 // snapshot. Visitors fetch the published GeoJSON rather than querying Overpass.
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
+import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse,powerFacilityChangesSince} from './power-facility-data.mjs';
+import {adiffQuery,parseAdiff,applyElementChanges,requireGeometry} from './overpass-adiff.mjs';
 import {overpassRetryDelayMs,overpassBusy,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -23,12 +24,36 @@ async function collect(box,depth=0) {
   const query=powerFacilityQuery(box);
   const file=`${cache}/power-facilities-v${VERSION}-${box.join('_')}.json`;
   const splitFile=`${file}.split`;
-  let json;
+  let json,since=null;
   try {
     const info=await stat(file);
     const saved=JSON.parse(await readFile(file,'utf8'));
     json=powerFacilityCachedResponse(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
+    if(json)since=powerFacilityChangesSince(box,query,saved,{mtimeMs:info.mtimeMs});
   } catch {json=undefined;}
+  // A cached region a week old takes the changes since its database time.
+  // One request; a failure keeps the cached response, still valid, and the
+  // region is downloaded again only once that is 28 days old.
+  if(json&&since) {
+    try {
+      await sleep(requests?10000:0);
+      requests++;
+      const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:adiffQuery(query,since)}),
+        headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
+      const text=await response.text();downloaded+=Buffer.byteLength(text);
+      if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const changes=parseAdiff(text);
+      const next={...json,osm3s:{...json.osm3s,timestamp_osm_base:changes.timestamp},elements:applyElementChanges(json.elements,{...changes,upserts:requireGeometry(changes.upserts)})};
+      powerFacilitiesGeoJSON(next);
+      await writeFile(file,JSON.stringify({query,response:next}));
+      console.log('Energy supply region',box.join(','),'changes since',since+':',changes.upserts.length,'added or changed,',changes.deletes.length,'removed');
+      json=next;
+    } catch(error) {
+      if(/budget exceeded/.test(error.message))throw error;
+      console.warn('Energy supply changes',box.join(','),'deferred:',error.message);
+    }
+  }
   let split=false,cachedSplit=false;
   if (!json) {
     try {

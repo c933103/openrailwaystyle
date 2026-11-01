@@ -51,6 +51,15 @@ export function powerFacilityQuery(box) {
 }
 
 const MAX_CACHE_AGE=28*86400_000;
+// A cached region is brought up to date with its changes once a week, so it
+// never reaches MAX_CACHE_AGE and is downloaded again only when its change
+// requests keep failing.
+export const POWER_FACILITY_UPDATE_EVERY=7*86400_000;
+export function powerFacilityChangesSince(box,query,saved,{mtimeMs,now=Date.now()}={}) {
+  if(!powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,now}) || now-mtimeMs<POWER_FACILITY_UPDATE_EVERY)return null;
+  const since=saved.response?.osm3s?.timestamp_osm_base;
+  return /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since||'')?since:null;
+}
 
 // A cached response is reused only for the exact current query. Earlier
 // centre-point responses (out center) cannot supply mapped shapes.
