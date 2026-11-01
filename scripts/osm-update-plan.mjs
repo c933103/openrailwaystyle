@@ -62,7 +62,7 @@ export const OSM_UPDATES = Object.freeze([
   // the data changed.
   {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
     paths:['scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
-      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/osm-geometry.mjs',
+      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
       'scripts/build-signals.mjs', 'scripts/signals-data.mjs', 'scripts/crossing-data.mjs', 'scripts/electricity-signal-data.mjs',
       'scripts/build-electricity-signals.mjs', 'styles/power-facilities.mjs', 'styles/han-region.mjs', 'styles/pbf-utf8.mjs']},
 ].map(entry => Object.freeze({...entry, paths:Object.freeze(entry.paths)})));
