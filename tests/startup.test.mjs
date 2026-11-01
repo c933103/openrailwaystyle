@@ -218,8 +218,24 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
+  // A valid non-ocean MVT is necessary to exercise the new signed surface
+  // sampler. An empty basemap body means *unknown*, not dry land, and must
+  // not trigger an unmocked DEM request or fake an endpoint elevation.
+  const nonOceanMVT=elevationOptions ? Uint8Array.from(encodeTile.fromGeojsonVt({water:{features:[{
+    type:3,tags:{class:'lake'},geometry:[[[0,0],[4096,0],[4096,4096],[0,4096],[0,0]]],
+  }]}})) : null;
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
-    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,key === 'createElevation' && elevationOptions ? url => value(url,elevationOptions) : value);
+    for (const [key,value] of Object.entries(elevationModule)) {
+      if (key==='createElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,elevationOptions));
+      else if (key==='createSurfaceElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,{
+          ...elevationOptions,
+          waterTile:async()=>({data:nonOceanMVT.buffer}),
+          readTile:labelModule.readTile,
+        }));
+      else this.setExport(key,value);
+    }
   }, {context});
   // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
