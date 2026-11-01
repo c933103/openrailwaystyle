@@ -7,7 +7,7 @@
 // regions up to REFRESH_BYTES, which removes deleted and retagged crossings.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, startRegions, writeTable} from './crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, applyChanges, buildTiles, parseCsv, quarters, readTable, refreshRegions, regionQuery, replaceRegion, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -77,15 +77,15 @@ let startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/,
 // which a change query cannot fill in for unchanged crossings, so an older
 // table is fetched anew.
 const VERSION = 3;
-let table = new Map(), regions = startRegions(), since;
+let table = new Map(), regions = startRegions(), since, changes, changesFrom, deferred = [];
 if (previous) {
   try {
     const saved = JSON.parse(await readFile(new URL('regions.json', previous), 'utf8'));
     if (saved.version === VERSION) {
       table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
-      ({regions, since} = saved);
+      ({regions, since, changes} = saved);
     } else console.log('Previous table has an older format: fetching everything');
-  } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); regions = startRegions(); since = undefined; }
+  } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); regions = startRegions(); since = undefined; changes = undefined; }
 }
 const before = table.size;
 if (!since) {
@@ -104,14 +104,17 @@ if (!since) {
   regions = leaves;
 } else {
   // Changes, by top-level 45° region (a worldwide change query can exceed
-  // the server's time limit).
-  for (const region of startRegions()) await fetchRegion(table, region, since);
-  // Then refresh the regions checked longest ago.
+  // the server's time limit), each from its own time: a region the server
+  // stayed unavailable for waits for the next run without losing the others.
+  const update = await updateRegionChanges({regions: startRegions(), changes, since, startedAt,
+    fetch: (region, from) => fetchRegion(table, region, from)});
+  ({changes, deferred, since, from: changesFrom} = update);
+  // Then refresh the regions checked longest ago, unless the server is down.
   const start = downloaded;
-  regions.sort((a, b) => a.fetched.localeCompare(b.fetched));
-  const refreshed = [];
-  while (regions.length && downloaded - start < refreshBytes) refreshed.push(...await fetchRegion(table, regions.shift()));
-  regions.push(...refreshed);
+  const refresh = await refreshRegions({regions, fetch: region => fetchRegion(table, region),
+    more: () => !update.stopped && downloaded - start < refreshBytes});
+  regions = refresh.regions;
+  deferred = [...deferred, ...refresh.deferred];
 }
 // Guards against publishing a partial table.
 if (table.size < 900_000) throw new Error(`Suspiciously few crossings worldwide: ${table.size}`);
@@ -120,7 +123,7 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: startedAt, regions,
+await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: changes ? since : startedAt, ...(changes ? {changes} : {}), regions,
   ...(checkpoint ? {acquisition: checkpoint.summary()} : {})}));
 const index = [];
 let bytes = 0;
@@ -138,10 +141,13 @@ await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}
 const counts = {road: 0, foot: 0, minor: 0};
 for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
 // tags: the detail tiles carry the crossing tags (tables from version 3).
-const manifest = {generated: new Date().toISOString(), changesSince: since || null, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
+const manifest = {generated: new Date().toISOString(), changesSince: changesFrom || null, deferredRegions: deferred, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   ...(checkpoint ? {tableVersion: VERSION, acquisition: checkpoint.summary()} : {}),
   tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: downloaded, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
 console.log(JSON.stringify(manifest));
+// Published with every other region's changes; the run still ends red so the
+// scheduler asks again for the deferred regions.
+if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `deferred=${deferred.length}\n`, {flag: 'a'});
