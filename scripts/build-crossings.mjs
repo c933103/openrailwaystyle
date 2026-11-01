@@ -62,39 +62,47 @@ async function request(query, parse, describe, box) {
 // Changes end at the run's database time (startedAt), the time saved as the
 // region's watermark, and the rows read again are of that time too: a
 // crossing created after it and deleted before the next run is never stored.
-async function fetchChanges(table, region, since, depth = 0) {
+// The changes of a top-level region are staged (`stage`) and applied to the
+// table only when every request for it succeeded: a region deferred midway
+// keeps its old watermark, so none of its changes may be published yet.
+function staging() {
+  const ops = [];
+  return {set: rows => ops.push(['set', rows]), delete: id => ops.push(['delete', id]),
+    applyTo: table => { for (const [op, value] of ops) op === 'set' ? applyChanges(table, value) : table.delete(value); }};
+}
+async function fetchChanges(stage, region, since, depth = 0) {
   if (since >= startedAt) return;
   const changes = await request(crossingChangesQuery(region.box, since, startedAt), crossingChanges,
     c => `Changes ${region.box.join(',')} ${c.deleted.length} removed, ${c.affected.length} to read again`, region.box);
   if (!changes) {
     if (depth >= 5) throw new Error(`Could not fetch region ${region.box}`);
-    for (const box of quarters(region.box)) await fetchChanges(table, {box}, since, depth + 1);
+    for (const box of quarters(region.box)) await fetchChanges(stage, {box}, since, depth + 1);
     return;
   }
   // A server whose data does not reach that time yet cannot give it.
   if (changes.timestamp < startedAt) throw new Error(`Overpass stayed unavailable for region ${region.box}: its data ends at ${changes.timestamp}`);
-  for (const id of changes.deleted) table.delete(id);
-  await readCrossings(table, changes.affected, region.box, new Set(changes.recheck));
+  for (const id of changes.deleted) stage.delete(id);
+  await readCrossings(stage, changes.affected, region.box, new Set(changes.recheck));
 }
 // Rows for the given crossing ids, in groups; a group too big for one request
 // is halved. A node no longer a crossing returns no row (and was reported
 // deleted).
 // A rechecked node that returns no row is no crossing anywhere and goes.
-async function readCrossings(table, ids, box, recheck = new Set()) {
-  for (let i = 0; i < ids.length; i += 2000) await readGroup(table, ids.slice(i, i + 2000), box, recheck);
+async function readCrossings(stage, ids, box, recheck = new Set()) {
+  for (let i = 0; i < ids.length; i += 2000) await readGroup(stage, ids.slice(i, i + 2000), box, recheck);
 }
-async function readGroup(table, ids, box, recheck) {
+async function readGroup(stage, ids, box, recheck) {
   const rows = await request(crossingRowsQuery(ids, startedAt), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
   if (rows) {
-    applyChanges(table, rows);
+    stage.set(rows);
     const found = new Set(rows.map(row => row.id));
-    for (const id of ids) if (recheck.has(id) && !found.has(id)) table.delete(id);
+    for (const id of ids) if (recheck.has(id) && !found.has(id)) stage.delete(id);
     return;
   }
   if (ids.length === 1) throw new Error(`Could not read crossing ${ids[0]}`);
   const half = Math.ceil(ids.length / 2);
-  await readGroup(table, ids.slice(0, half), box, recheck);
-  await readGroup(table, ids.slice(half), box, recheck);
+  await readGroup(stage, ids.slice(0, half), box, recheck);
+  await readGroup(stage, ids.slice(half), box, recheck);
 }
 // Fetches a region in full; a region too big for one request is replaced by
 // its quarters. Returns the leaf regions fetched.
@@ -156,7 +164,7 @@ if (!since) {
   // The changes are exact, deletions included, so no region is downloaded
   // again on a schedule.
   const update = await updateRegionChanges({regions: startRegions(), changes, since, startedAt,
-    fetch: (region, from) => fetchChanges(table, region, from)});
+    fetch: async (region, from) => { const stage = staging(); await fetchChanges(stage, region, from); stage.applyTo(table); }});
   ({changes, deferred, since, from: changesFrom} = update);
 }
 // Guards against publishing a partial table.

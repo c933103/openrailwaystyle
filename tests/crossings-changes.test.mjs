@@ -203,3 +203,18 @@ test('every request of a run describes one database time, the watermark it saves
   const {calls: none} = await changeRun(t, {extraction, changes: Object.fromEntries(crossingData.startRegions().map(r => [r.box.join(','), AT]))});
   assert.deepEqual(none, []);
 });
+
+test('a region deferred midway changes nothing: its changes apply only when all its requests succeed', async t => {
+  const extraction = crossingData.crossingExtraction();
+  // Crossing 1 deleted, crossing 2 to read again; the server never answers the read.
+  const {error, calls, roots} = await changeRun(t, {extraction, reply: (query, roots, since) => {
+    if (query === crossingData.crossingChangesQuery(roots[0].box, since, AT)) return new Response(osmXml([
+      '<action type="delete"><old/><new><node id="1" visible="false"/></new></action>',
+      `<action type="modify"><old/><new>${xmlNode(2)}</new></action>`].join('\n')));
+    if (query === crossingData.crossingRowsQuery([2], AT)) return new Response('busy', {status: 503});
+    return null;
+  }});
+  assert.equal(calls.filter(q => q === crossingData.crossingRowsQuery([2], AT)).length, 5, 'the read was retried, then the region deferred');
+  assert.equal(calls.length, 1 + 5 + roots.length - 1, 'the other regions still took their changes');
+  assert.match(error?.message || '', /Suspiciously few crossings worldwide: 2/, 'crossing 1 kept until the region succeeds');
+});
