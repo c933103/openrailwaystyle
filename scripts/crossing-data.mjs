@@ -104,6 +104,36 @@ export function replaceRegion(table, box, rows) {
   for (const [id, [lat, lon]] of table) if (inBox(box, lat, lon)) table.delete(id);
   for (const row of rows) if (inBox(box, row.lat, row.lon)) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);
 }
+// The changes of each top-level region, from that region's own time
+// (`changes`, keyed by its box; `since` for one not yet recorded), oldest
+// first. A region the server stayed unavailable for keeps its time and is
+// asked again next run; every other region's changes still count. After two
+// such regions in a row the server is taken to be down and the rest wait too.
+export const UNAVAILABLE = /^Overpass stayed unavailable for region /;
+export const regionKey = box => box.join(',');
+export async function updateRegionChanges({regions, changes = {}, since, startedAt, fetch, warn = console.warn}) {
+  const order = regions.map(region => ({region, since: changes[regionKey(region.box)] || since}))
+    .sort((a, b) => a.since.localeCompare(b.since));
+  const next = {}, deferred = [];
+  let unavailable = 0;
+  for (const {region, since: from} of order) {
+    const key = regionKey(region.box);
+    next[key] = from;
+    if (unavailable >= 2) { deferred.push(key); continue; }
+    try {
+      await fetch(region, from);
+      next[key] = startedAt;
+      unavailable = 0;
+    } catch (error) {
+      if (!UNAVAILABLE.test(error.message)) throw error;
+      warn(`Changes for ${key} deferred to the next run:`, error.message);
+      deferred.push(key);
+      unavailable++;
+    }
+  }
+  if (deferred.length === order.length) throw new Error('Overpass stayed unavailable for every region; nothing to publish');
+  return {changes: next, deferred, stopped: unavailable >= 2, from: order[0]?.since, since: Object.values(next).sort()[0]};
+}
 export function applyChanges(table, rows) {
   for (const row of rows) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);
 }
