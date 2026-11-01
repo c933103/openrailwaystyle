@@ -18,13 +18,17 @@ import {powerMethodSelection} from './power-method-data.mjs';
 // later change (augmented diff) request needs for every element.
 export function railwayWaysQuery(part, box) {
   const branch = partSelection(part, box, branchSelect), service = partSelection(part, box, serviceSelect);
-  // The power selection is several statements, not one union, so a part's
-  // excluded areas are subtracted from it as named sets.
-  const [main, ...excluded] = branch.filters;
-  const power = excluded.length
-    ? `${powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'pm'})}${excluded.map((filter, i) =>
-      powerMethodSelection(filter, {charging: `pc${i}`, potential: `pp${i}`, result: `px${i}`})).join('')}(.pm; - (${excluded.map((_, i) => `.px${i};`).join('')});)->.p;`
-    : powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'p'});
+  // The power selection is several statements, not one union, so what a
+  // part subtracts is subtracted from it as named sets.
+  const {main, minus} = branch.plan;
+  const named = (filter, result) => powerMethodSelection(filter, {charging: `c${result}`, potential: `q${result}`, result});
+  let power;
+  if (!minus.length) power = powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'p'});
+  else if (minus.every(entry => typeof entry === 'string')) power = `${powerMethodSelection(main, {charging: 'pc', potential: 'pp', result: 'pm'})}${minus.map((filter, i) =>
+      powerMethodSelection(filter, {charging: `pc${i}`, potential: `pp${i}`, result: `px${i}`})).join('')}(.pm; - (${minus.map((_, i) => `.px${i};`).join('')});)->.p;`;
+  else power = `${named(main, 'pm')}${minus.map((entry, i) => typeof entry === 'string' ? named(entry, `px${i}`)
+      : `${named(entry.filter, `py${i}`)}${entry.minus.map((filter, j) => named(filter, `pz${i}_${j}`)).join('')}(.py${i}; - (${entry.minus.map((_, j) => `.pz${i}_${j};`).join('')});)->.px${i};`).join('')}`
+    + `(.pm; - (${minus.map((_, i) => `.px${i};`).join('')});)->.p;`;
   return `[out:json][timeout:180][maxsize:536870912];${branch.areas}${branch.set}->.b;${service.set}->.r;${power}`
     + `.r out meta;(way(r.r)[railway~"${SERVICE_TRACKS}"];.b;.p;);out meta geom qt;`;
 }
