@@ -83,21 +83,25 @@ test('the snapshot is updated from its database time, and any doubt falls back t
   assert.equal(result.osmBase, BASE, 'the next update starts from the new database time');
   assert.equal(result.features.length, previous.length + 1);
   assert.deepEqual([result.upserts, result.deletes], [1, 0]);
-  // Older than 28 days, no time, a failed request, an unreadable response, or
-  // a large drop: null, so the caller downloads in full.
-  assert.equal(await updateFromChanges({...base, since: '2026-09-01T00:00:00Z', fetchText}), null);
+  // However old the snapshot, its changes make it exact: no age limit.
+  const old = await updateFromChanges({...base, since: '2025-06-01T00:00:00Z', fetchText: async query => { asked.push(query); return osm(BASE, ''); }});
+  assert.equal(old.osmBase, BASE);
+  assert.equal(asked.at(-1), adiffQuery(CONVEYING_QUERY, '2025-06-01T00:00:00Z'));
+  // No time, a failed request, an unreadable response, or a large drop:
+  // null, so the caller downloads in full.
   assert.equal(await updateFromChanges({...base, since: undefined, fetchText}), null);
   assert.equal(await updateFromChanges({...base, fetchText: async () => { throw new Error('Overpass HTTP 502'); }}), null);
   assert.equal(await updateFromChanges({...base, fetchText: async () => osm(BASE, '').replace('</osm>\n', '')}), null);
   assert.equal(await updateFromChanges({...base, fetchText: async () => osm(BASE, previous.slice(0, 10).map(f =>
     `<action type="delete"><old/><new><way id="${f.id}" visible="false"/></new></action>`).join(''))}), null, 'losing over 5% is not trusted');
   assert.equal(await updateFromChanges({...base, features: [], fetchText}), null);
-  assert.ok(warnings.some(w => /502/.test(w)) && warnings.some(w => /28 days/.test(w)) && warnings.some(w => /drop/.test(w)));
+  assert.ok(warnings.some(w => /502/.test(w)) && warnings.some(w => /drop/.test(w)));
+  assert.ok(!warnings.some(w => /days/.test(w)));
   // The failure of a request that was made is passed on, for its Retry-After.
   const refused = Object.assign(new Error('Overpass HTTP 429'), {status: 429, retryAfter: '300'}), seen = [];
   assert.equal(await updateFromChanges({...base, fetchText: async () => { throw refused; }, failed: e => seen.push(e)}), null);
   assert.deepEqual(seen, [refused]);
-  await updateFromChanges({...base, since: '2026-09-01T00:00:00Z', fetchText, failed: e => seen.push(e)});
+  await updateFromChanges({...base, since: undefined, fetchText, failed: e => seen.push(e)});
   assert.equal(seen.length, 1, 'no request, nothing to wait for');
 });
 
