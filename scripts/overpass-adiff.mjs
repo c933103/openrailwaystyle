@@ -274,8 +274,10 @@ const elementsOf = text => {
 // `validate` checks the result (the caller's conversion, for instance), so
 // elements it cannot use mean a full download rather than a failed run.
 // `until` ends the changes at that database time instead of now, so the
-// parts of one store can be brought to the same moment.
-export async function updateElements({elements, since, until, previousQuery, query, fetchText, pick = element => element, validate = () => {}, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
+// parts of one store can be brought to the same moment. `maxRequests` bounds
+// the requests: when the new elements of a changed query would need more,
+// none of them is asked and the caller downloads in full instead.
+export async function updateElements({elements, since, until, previousQuery, query, fetchText, pick = element => element, validate = () => {}, maxDrop = 0.05, maxRequests = Infinity, warn = console.warn, failed = () => {}}) {
   // A region with no elements is a valid state: its changes may add some.
   if (!Array.isArray(elements)) return null;
   if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
@@ -296,6 +298,7 @@ export async function updateElements({elements, since, until, previousQuery, que
       const current = new Set(elementsOf(await fetchText(selection.ids)).map(e => `${e.type}/${e.id}`));
       const stored = new Set(next.map(e => `${e.type}/${e.id}`)), missing = [...current].filter(key => !stored.has(key));
       dropped = [...stored].filter(key => !current.has(key));
+      if (2 + Math.ceil(missing.length / 2000) > maxRequests) throw new Error(`The ${missing.length} newly selected elements need more requests than the ${maxRequests} allowed`);
       for (let i = 0; i < missing.length; i += 2000) added.push(...elementsOf(await fetchText(selection.elements(missing.slice(i, i + 2000)))).map(pick));
       const got = new Set(added.map(e => `${e.type}/${e.id}`));
       if (got.size !== missing.length || missing.some(key => !got.has(key))) throw new Error('The newly selected elements did not all come back');
