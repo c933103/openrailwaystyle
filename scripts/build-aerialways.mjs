@@ -12,7 +12,8 @@ const extraction=extractionVersion(query,new URL('./conveying-data.mjs',import.m
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
 // Since the published snapshot (PREVIOUS_DATA: its aerialways.geojson.gz and
 // manifest.json), only what changed; the full download below is the fallback.
-let data, update=null, changeError=null;
+// Requests made, the change request included: at most three in all.
+let data, update=null, changeError=null, requests=0;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
@@ -24,6 +25,7 @@ if(process.env.PREVIOUS_DATA) {
     fetchText:async changeQuery=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
+      requests++;
       const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
       return response.text();
@@ -38,7 +40,7 @@ if(!update && changeError?.status) {
   await new Promise(r=>setTimeout(r,wait));
 }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed`);
-else for(let attempt=0;attempt<3;attempt++) {
+else for(let attempt=0,attempts=3-requests;attempt<attempts;attempt++) {
   if (!conveyingRequestFits(deadline, 0)) throw new Error('Aerialway acquisition deferred: no full request fits the 52-minute budget');
   try {
     const startedAt = Date.now();
@@ -49,7 +51,7 @@ else for(let attempt=0;attempt<3;attempt++) {
     if(!Array.isArray(data.elements)) throw new Error('Incomplete response');
     break;
   } catch(error) {
-    if(attempt===2) throw error;
+    if(attempt===attempts-1) throw error;
     const wait = conveyingRetryDelay(error, attempt);
     if (!conveyingRequestFits(deadline, wait)) throw new Error('Aerialway acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:error});
     console.log(error.message, `— retrying after ${wait / 60000} minutes`);
