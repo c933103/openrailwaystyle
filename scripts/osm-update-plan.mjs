@@ -34,7 +34,7 @@ export const OSM_UPDATES = Object.freeze([
   {id:'crossings', workflow:'crossings.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs']},
   {id:'street-running', workflow:'street-running.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-street-running.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
+    paths:['scripts/build-street-running.mjs', 'scripts/overpass-adiff.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
@@ -62,7 +62,7 @@ export const OSM_UPDATES = Object.freeze([
   // the data changed.
   {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
     paths:['scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
-      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/osm-geometry.mjs',
+      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
       'scripts/build-signals.mjs', 'scripts/signals-data.mjs', 'scripts/crossing-data.mjs', 'scripts/electricity-signal-data.mjs',
       'scripts/build-electricity-signals.mjs', 'styles/power-facilities.mjs', 'styles/han-region.mjs', 'styles/pbf-utf8.mjs']},
 ].map(entry => Object.freeze({...entry, paths:Object.freeze(entry.paths)})));
