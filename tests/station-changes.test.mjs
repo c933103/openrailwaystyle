@@ -164,3 +164,22 @@ test('a complete generation is published when its tiles differ from the last pub
   assert.equal(acquisition.stationTilesDigest(new Map([['b', Buffer.from('2')], ['a', Buffer.from('1')]])),
     acquisition.stationTilesDigest(new Map([['a', Buffer.from('1')], ['b', Buffer.from('2')]])), 'order does not matter');
 });
+
+test('an incomplete cycle of another record conversion or query restarts, keeping its regions', async t => {
+  const first = acquisition.newStationAcquisition();
+  const partial = acquisition.applyStationRegion(first, [], first.pending[0].box, {elements: base});
+  const busy = () => new Response('busy', {status: 503});
+  const regions = s => [...s.pending, ...s.completed].map(r => r.box.join(',')).sort();
+  // Another version: no record of it is kept, and the cycle starts again over the same regions.
+  const other = await run(t, busy, {state: {...partial.state, extraction: 'another'}, records: partial.records});
+  assert.equal(other.records.length, 0, 'never mixed with records of the current conversion');
+  assert.equal(other.state.completed.length, 0);
+  assert.deepEqual(regions(other.state), regions(partial.state));
+  assert.equal(other.state.extraction, acquisition.stationExtraction());
+  // The current version, or none recorded (made by this conversion): the cycle goes on.
+  for (const extraction of [acquisition.stationExtraction(), undefined]) {
+    const going = await run(t, busy, {state: {...partial.state, extraction}, records: partial.records});
+    assert.equal(going.records.length, partial.records.length);
+    assert.equal(going.state.completed.length, partial.state.completed.length);
+  }
+});

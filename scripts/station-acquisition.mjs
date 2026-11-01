@@ -76,8 +76,14 @@ export function newStationAcquisition(regions){
 // One entire verified source generation is immutable to map readers.
 // The next collection starts with an empty table; its progress stays in
 // station-points-work until a *separate* complete-generation publication.
-export function nextStationAcquisitionCycle(state,records){
+// An incomplete cycle made by another region query or record conversion
+// (`extraction`, see stationExtraction) restarts, keeping its regions, so a
+// generation never mixes records of two conversions. One without a recorded
+// version predates them and counts as current.
+export function nextStationAcquisitionCycle(state,records,extraction){
  checkStationAcquisition(state,records);
+ if(state.pending.length&&extraction!==undefined&&state.extraction!==undefined&&state.extraction!==extraction)
+   return {state:newStationAcquisition([...state.completed,...state.pending]),records:[],refreshed:true};
  if(state.pending.length)return {state,records,refreshed:false};
  if(!stationWorldCoverage(state.completed))throw new Error('Cannot refresh incomplete station inventory');
  return {state:newStationAcquisition(state.completed),records:[],refreshed:true};

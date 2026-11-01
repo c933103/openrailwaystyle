@@ -40,7 +40,7 @@ const changesSince=stationChangesSince(state,extraction);
 if(changesSince)state.extraction??=extraction;
 let refreshStarted=false,changedRecords=0;
 if(!changesSince){
-  const rotated=nextStationAcquisitionCycle(state,records);
+  const rotated=nextStationAcquisitionCycle(state,records,extraction);
   ({state,records}=rotated);
   refreshStarted=rotated.refreshed;
   if(refreshStarted)state.extraction=extraction;
