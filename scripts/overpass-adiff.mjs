@@ -13,7 +13,31 @@
 // Anything this parser cannot read in full throws, so a caller falls back to
 // its full download rather than publishing a guess.
 
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+
 const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+
+// What an extraction makes of OSM data: its query and the source of the
+// modules that convert the response (`entries`, with every local module
+// they import). A snapshot is brought up to date by changes only while this
+// stays the same: changes are converted by the current code, so a snapshot
+// made by other code or another query would mix two interpretations.
+export function extractionVersion(query, ...entries) {
+  const files = new Map();
+  const visit = url => {
+    if (files.has(url.href)) return;
+    const text = readFileSync(url, 'utf8');
+    files.set(url.href, text);
+    for (const [, spec] of text.matchAll(/(?:from|import)\s+'(\.{1,2}\/[^']+\.mjs)'/g)) visit(new URL(spec, url));
+  };
+  entries.forEach(visit);
+  const hash = createHash('sha256').update(query);
+  // Paths from the repository's scripts/ or styles/ folder, so the version
+  // does not depend on where the checkout is.
+  for (const href of [...files.keys()].sort()) hash.update(`\n${href.replace(/^.*?\/(scripts|styles)\//, '$1/')}\n`).update(files.get(href));
+  return hash.digest('hex');
+}
 
 // The augmented diff of a JSON selection query ([out:json]...;...;out ...;),
 // from `since` to now: the same selection, in XML. Every output asks for
@@ -123,14 +147,17 @@ export function applyFeatureChanges(features, {upserts, deletes}, toFeatures, {k
 
 // A published snapshot (`features`, as of the database time `since`) brought
 // up to date with one change request, or null when it cannot be: no
-// snapshot or database time, a failed or unreadable request, or a result
+// snapshot, one made by another extraction (`previousVersion` is not
+// `version`, see extractionVersion), no database time, a failed or unreadable request, or a result
 // that would lose more than `maxDrop` of the features. The caller then
 // downloads in full. The snapshot's age is no reason: the changes since its
 // time make it exact however old it is.
 // `failed` receives the error of a change request that was made and failed,
 // so the caller can honour a delay the server asked for before its fallback.
-export async function updateFromChanges({features, since, query, toFeatures, fetchText, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
+export async function updateFromChanges({features, since, query, toFeatures, fetchText, version, previousVersion, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
   if (!Array.isArray(features) || !features.length) return null;
+  // Made by another query or other conversion code: download in full.
+  if (version !== previousVersion) { warn('The published snapshot was made by another extraction: downloading in full'); return null; }
   if (!TIME.test(since || '')) { warn('No database time for the published snapshot: downloading in full'); return null; }
   try {
     const changes = parseAdiff(await fetchText(adiffQuery(query, since)));
