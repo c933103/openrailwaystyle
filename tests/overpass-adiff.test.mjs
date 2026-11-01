@@ -12,7 +12,9 @@ const BASE = '2026-11-01T06:00:00Z';
 
 test('a JSON selection query becomes its augmented diff, in XML, from a database time', () => {
   assert.equal(adiffQuery(CONVEYING_QUERY, '2026-10-30T12:22:36Z'),
-    '[out:xml][timeout:900][maxsize:1073741824][adiff:"2026-10-30T12:22:36Z"];(way[conveying][conveying!=no];way[highway=elevator];);out tags geom qt;');
+    '[out:xml][timeout:900][maxsize:1073741824][adiff:"2026-10-30T12:22:36Z"];(way[conveying][conveying!=no];way[highway=elevator];);out body geom qt;',
+    'XML prints way nodes only with members: out tags becomes out body');
+  assert.equal(adiffQuery('[out:json];way[a];out tags geom;node[b];out tags;', '2026-10-30T12:22:36Z'), '[out:xml][adiff:"2026-10-30T12:22:36Z"];way[a];out body geom;node[b];out body;');
   assert.throws(() => adiffQuery(CONVEYING_QUERY, '2026-10-30'), /Invalid change start/);
   assert.throws(() => adiffQuery('[out:xml];way;out;', '2026-10-30T12:22:36Z'), /\[out:json\]/);
   assert.throws(() => adiffQuery('[out:json][date:"2026-01-01T00:00:00Z"];way;out;', '2026-10-30T12:22:36Z'), /already sets a date/);
@@ -90,12 +92,22 @@ test('the snapshot is updated from its database time, and any doubt falls back t
     `<action type="delete"><old/><new><way id="${f.id}" visible="false"/></new></action>`).join(''))}), null, 'losing over 5% is not trusted');
   assert.equal(await updateFromChanges({...base, features: [], fetchText}), null);
   assert.ok(warnings.some(w => /502/.test(w)) && warnings.some(w => /28 days/.test(w)) && warnings.some(w => /drop/.test(w)));
+  // The failure of a request that was made is passed on, for its Retry-After.
+  const refused = Object.assign(new Error('Overpass HTTP 429'), {status: 429, retryAfter: '300'}), seen = [];
+  assert.equal(await updateFromChanges({...base, fetchText: async () => { throw refused; }, failed: e => seen.push(e)}), null);
+  assert.deepEqual(seen, [refused]);
+  await updateFromChanges({...base, since: '2026-09-01T00:00:00Z', fetchText, failed: e => seen.push(e)});
+  assert.equal(seen.length, 1, 'no request, nothing to wait for');
 });
 
 test('the conveying build updates from changes and keeps the full download as its fallback', () => {
   const source = readFileSync(new URL('../scripts/build-conveying.mjs', import.meta.url), 'utf8');
   assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0;attempt<3;attempt\+\+\)/);
   assert.match(source, /if \(!conveyingRequestFits\(deadline, 0\)\) throw new Error\('No request fits/);
+  // A refused change request's wait (Retry-After) comes before the full download, within the budget.
+  const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
+  assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'));
+  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
 });
