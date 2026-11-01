@@ -3,6 +3,7 @@
 // naming and published file names; the acquisition, retry, budget, checkpoint
 // and publication rules are common and tested through every caller.
 import {STAGES} from './download-stages.mjs';
+import {updateElements,requireGeometry} from './overpass-adiff.mjs';
 import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
@@ -10,7 +11,11 @@ import {createHash} from 'node:crypto';
 
 export const STAGED_LIMITS=Object.freeze({requests:96,bytes:100_000_000,elapsedMs:3600_000,depth:6,attempts:3,timeoutMs:300_000,pauseMs:10_000,retryMs:40_000,maxRetryAfterMs:300_000});
 export const STAGED_REGIONS=Object.freeze(Array.from({length:8},(_,i)=>Object.freeze([i<4?-90:0,-180+(i%4)*90,i<4?0:90,-90+(i%4)*90])));
-const CACHE_AGE=28*86400_000;
+// A cached response a week old is brought up to date with the changes since
+// its database time. It has no age limit: the changes make it exact however
+// old it is, so it is downloaded again only when its query changes or on a
+// refresh.
+export const STAGED_UPDATE_EVERY=7*86400_000;
 const children=([s,w,n,e])=>{const lat=(s+n)/2,lon=(w+e)/2;return [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]];};
 const digest=body=>createHash('sha256').update(body).digest('hex');
 export class AcquisitionError extends Error {
@@ -86,13 +91,17 @@ export function createStagedSnapshot(config) {
     const started=now(),features=new Map(),coverage=[];let downloaded=0,requests=0;
     const remaining=()=>policy.elapsedMs-(now()-started);
     const checkTime=()=>{if(remaining()<=0)throw fatal(`${Noun} elapsed-time budget exceeded`,'budget');};
+    // A wait the server asked for (Retry-After) on a change request that
+    // failed, kept for the next request of the run, whichever it is.
+    let serverWait=0;
+    const pause=async()=>{const ms=Math.max(policy.pauseMs,serverWait);serverWait=0;await delay(ms);};
     async function delay(ms) {
       checkTime();
       if(ms>=remaining())throw fatal(`${Noun} elapsed-time budget exceeded before retry`,'budget');
       if(ms)await sleep(ms);
       checkTime();
     }
-    async function request(query) {
+    async function request(query,{text=false}={}) {
       checkTime();
       if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
       const signal=AbortSignal.timeout(Math.max(1,Math.min(policy.timeoutMs,remaining())));
@@ -119,22 +128,32 @@ export function createStagedSnapshot(config) {
             checkTime();chunks.push(chunk);
           }
         }catch(error){throw transportError(error,signal);}
+        if(text){checkTime();return Buffer.concat(chunks).toString('utf8');}
         let json;
         try {json=JSON.parse(Buffer.concat(chunks));}catch(error){throw fatal(`Malformed ${noun} JSON`,'parsing',error);}
         checkTime();completedResponse(json);return json;
       }catch(error){throw transportError(error,signal);}
     }
-    // A response is reused for CACHE_AGE and never on a refresh. A split
-    // decision stays for as long as the query is unchanged: the region is
-    // known to exceed the server's limits, so a refresh or an expired cache
-    // asks for its parts, never the whole region again.
+    // A response is reused while its query is unchanged, never on a
+    // refresh. A split decision stays for as long as the query is unchanged:
+    // the region is known to exceed the server's limits, so a refresh asks
+    // for its parts, never the whole region again.
     async function checkpoint(file,query,split=false) {
       if(refresh&&!split)return undefined;
       try {
         const info=await stat(file),saved=JSON.parse(await readFile(file,'utf8'));
-        if(saved.query!==query||!split&&now()-info.mtimeMs>=CACHE_AGE)return undefined;
+        if(saved.query!==query)return undefined;
         if(split)return saved.kind==='spatial-split'&&saved.version===1?true:undefined;
         completedResponse(saved.response);return saved.response;
+      }catch{return undefined;}
+    }
+    // A cached response of another query: brought to the current query by
+    // only the difference, rather than downloaded again.
+    async function earlier(file) {
+      if(refresh)return undefined;
+      try {
+        const saved=JSON.parse(await readFile(file,'utf8'));
+        return typeof saved.query==='string'&&Array.isArray(saved.response?.elements)?saved:undefined;
       }catch{return undefined;}
     }
     async function save(file,value) {
@@ -145,6 +164,34 @@ export function createStagedSnapshot(config) {
       checkTime();
       const query=snapshotQuery(box),file=join(cache,`${config.cachePrefix}-v${config.cacheVersion}-${box.join('_')}.json`),splitFile=`${file}.split`;
       let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
+      // A cached response a week old takes its changes since its database
+      // time, and one made by another query also the difference between the
+      // two selections (updateElements), never on a refresh, which downloads
+      // again. A failure keeps a current response for next time; one of
+      // another query is then downloaded in full. Only a run budget stops the build.
+      const stale=!json&&!split?await earlier(file):undefined;
+      if((json||stale)&&!refresh) {
+        const base=json||stale.response,since=base.osm3s?.timestamp_osm_base;
+        let due=!!stale;
+        if(json)try {due=now()-(await stat(file)).mtimeMs>=STAGED_UPDATE_EVERY;}catch{}
+        if(due&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since||'')) {
+          log(`Collecting ${config.label} changes`,box.join(','),'since',since);
+          const update=await updateElements({elements:base.elements,since,previousQuery:json?query:stale.query,query,maxDrop:1,
+            pick:element=>requireGeometry([element])[0],warn:(...args)=>log(box.join(','),...args),
+            fetchText:async body=>{if(requests)await pause();return request(body,{text:true});},
+            failed:error=>{
+              if(error.category==='budget')throw error;
+              if(error.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
+              serverWait=Math.max(serverWait,error.retryAfterMs||0);
+            }});
+          if(update) {
+            const next={...base,osm3s:{...base.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
+            completedResponse(next);
+            await save(file,{query,response:next});
+            json=next;
+          }
+        }
+      }
       // One request with retries. Returns the response, or the execution-limit
       // failure that proves this box needs less work.
       const attempt=async body=>{
@@ -154,7 +201,7 @@ export function createStagedSnapshot(config) {
           if(attempt) {
             if(failure.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
             await delay(Math.max(policy.retryMs,failure.retryAfterMs));
-          }else if(requests)await delay(policy.pauseMs);
+          }else if(requests)await pause();
           log(`Collecting ${config.label}`,box.join(','),'attempt',attempt+1);
           try {return {json:await request(body)};}catch(error) {
             failure=error;log(box.join(','),error.category,error.message);

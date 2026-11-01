@@ -236,7 +236,7 @@ planned/former conductor rails and chargers follow the existing inactive setting
 
 The maintenance-only `build-power-methods.mjs` writes
 `power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
-It covers every world quadrant and caches exact completed queries for 28 days.
+It covers every world quadrant and keeps exact completed responses. A response a week old takes the changes since its database time, and a failed change request keeps it for the next run. A response made by another query takes those changes and only the difference between the two selections (`updateElements` in `scripts/overpass-adiff.mjs`); if that fails it is downloaded in full. There is no age limit, since the changes keep a response exact.
 A spatial split decision stays for as long as its query is unchanged, so a
 region known to exceed the server's limits is asked for in its parts, never
 whole again. Each run has hard limits of 96 requests, 100 MB of
