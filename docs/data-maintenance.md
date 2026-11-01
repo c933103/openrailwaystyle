@@ -53,7 +53,7 @@ The lifecycle workflow prepares these assets with `scripts/build-polar.mjs`, bot
 
 ## Street-running snapshot
 
-The workflow [street-running.yml](../.github/workflows/street-running.yml) runs weekly on Sunday, started by the scheduler above, and can be run manually. It builds a validated worldwide Overpass extract of explicitly mapped shared roadway, then publishes the complete tiles atomically to `street-data`. A run with a published snapshot no older than 28 days asks only for the changes since its `osmBase` (`scripts/overpass-adiff.mjs`) and falls back to the full download. Failed refreshes retain the last published snapshot.
+The workflow [street-running.yml](../.github/workflows/street-running.yml) runs weekly on Sunday, started by the scheduler above, and can be run manually. It builds a validated worldwide Overpass extract of explicitly mapped shared roadway, then publishes the complete tiles atomically to `street-data`. A run with a published snapshot asks only for the changes since its `osmBase`, however old (`scripts/overpass-adiff.mjs`) and falls back to the full download. Failed refreshes retain the last published snapshot.
 
 Each website build copies `12/`, `index.json`, `manifest.json` and `street-running.geojson.gz` into `styles/data/street-running/`. The manifest and ODbL GeoJSON download are linked under About. Visitors do not make Overpass requests. See [rail-road rendering](rendering.md#rail-road-interfaces) for qualifying tags and display zooms.
 
