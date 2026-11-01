@@ -40,10 +40,13 @@ test('the original 52-minute acquisition ceiling includes every wait and full ti
   assert.equal(conveyingRequestFits(deadline,0,36*minute+1),false,'overslept timer must defer');
 });
 
-test('builder keeps three attempts and checks deadline before sleep and before requests', () => {
+test('builder keeps three requests in all and checks deadline before sleep and before requests', () => {
   const source=readFileSync(new URL('../scripts/build-conveying.mjs',import.meta.url),'utf8');
-  assert.match(source,/attempt<3/);
-  assert.match(source,/if\(attempt===2\) throw error/);
+  // Three requests in all, the change requests included (a run test in
+  // overpass-adiff.test.mjs counts them).
+  assert.match(source,/for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
+  assert.match(source,/if \(attempt >= attempts\) throw/);
+  assert.match(source,/if\(attempt===attempts-1\) throw error/);
   assert.ok(source.indexOf('conveyingRequestFits(deadline, 0)')<source.indexOf('await fetch('));
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)')<source.indexOf('setTimeout(r,wait)'));
   assert.match(source,/AbortSignal\.timeout\(CONVEYING_REQUEST_MS\)/);
