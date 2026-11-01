@@ -211,7 +211,7 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(seen.length, 1, 'a refused request is passed on, for its Retry-After');
   assert.equal(await updateElements({...base, previousQuery: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
   assert.equal(await updateElements({...base, since: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
-  assert.equal(await updateElements({...base, query: CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), fetchText: async () => diff}), null);
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), fetchText: async () => assert.fail('no request for a query that cannot be compared')}), null);
   assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : JSON.stringify({remark: 'runtime error: Query timed out'})}), null);
   assert.equal(await updateElements({...base, query: CONVEYING_QUERY, fetchText: async () => osm(BASE, stored.slice(0, 10).map(e =>
     `<action type="delete"><old/><new><way id="${e.id}" visible="false"/></new></action>`).join(''))}), null, 'changes losing over 5% are not trusted');
