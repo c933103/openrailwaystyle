@@ -44,7 +44,7 @@ test('created, modified and deleted elements, with way geometry and escaped text
 
 test('a response that did not finish, was cut short, or cannot be read in full throws', () => {
   const ok = osm(BASE, '');
-  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: []});
+  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: [], deleted: []});
   assert.throws(() => parseAdiff(ok.replace('</osm>\n', '')), /Incomplete/);
   assert.throws(() => parseAdiff(osm(BASE, '<remark> runtime error: Query timed out in "query" at line 1 after 901 seconds. </remark>')), /timed out/);
   assert.throws(() => parseAdiff(ok.replace(/<meta[^>]*\/>/, '')), /database timestamp/);

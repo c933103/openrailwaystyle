@@ -116,16 +116,18 @@ export function parseAdiff(xml) {
   if (remark) throw new Error(unescape(remark[1].trim()));
   const timestamp = /<meta\s[^>]*osm_base="([^"]+)"/.exec(xml)?.[1];
   if (!TIME.test(timestamp || '')) throw new Error('Change response without a database timestamp');
-  const upserts = [], deletes = [];
+  // `deleted`: those of `deletes` deleted from OSM (visible="false"), not
+  // only no longer selected.
+  const upserts = [], deletes = [], deleted = [];
   for (const [, type, body] of xml.matchAll(/<action type="([^"]*)">([\s\S]*?)<\/action>/g)) {
     if (type === 'create') { const created = element(body); if (!created) throw new Error('Empty create action'); upserts.push(created); continue; }
     if (type !== 'modify' && type !== 'delete') throw new Error(`Unknown change action ${type}`);
     const next = element(/<new>([\s\S]*?)<\/new>/.exec(body)?.[1]);
     if (!next) throw new Error(`A ${type} action without its new state`);
-    if (type === 'delete') deletes.push(`${next.type}/${next.id}`);
+    if (type === 'delete') { deletes.push(`${next.type}/${next.id}`); if (next.visible === false) deleted.push(`${next.type}/${next.id}`); }
     else upserts.push(next);
   }
-  return {timestamp, upserts, deletes};
+  return {timestamp, upserts, deletes, deleted};
 }
 
 // A feature collection with features keyed by OSM element (`keyOf`, by
@@ -306,8 +308,7 @@ export async function updateElements({elements, since, until, previousQuery, que
     }
     validate(next);
     // Deleted from OSM (visible="false"), as opposed to only no longer selected.
-    const deleted = changes.actions.filter(action => action.type === 'delete' && action.new.visible === false).map(action => `${action.new.type}/${action.new.id}`);
-    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, deleted, added: added.length, dropped: dropped.length};
+    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, deleted: changes.deleted, added: added.length, dropped: dropped.length};
   } catch (error) {
     warn('Changes unavailable, downloading in full:', error.message);
     failed(error);
