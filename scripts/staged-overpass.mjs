@@ -3,7 +3,7 @@
 // naming and published file names; the acquisition, retry, budget, checkpoint
 // and publication rules are common and tested through every caller.
 import {STAGES} from './download-stages.mjs';
-import {adiffQuery,parseAdiff,applyElementChanges,requireGeometry} from './overpass-adiff.mjs';
+import {updateElements,requireGeometry} from './overpass-adiff.mjs';
 import {mkdir,readFile,writeFile,stat,mkdtemp,rename,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync} from 'node:zlib';
@@ -143,6 +143,15 @@ export function createStagedSnapshot(config) {
         completedResponse(saved.response);return saved.response;
       }catch{return undefined;}
     }
+    // A cached response of another query: brought to the current query by
+    // only the difference, rather than downloaded again.
+    async function earlier(file) {
+      if(refresh)return undefined;
+      try {
+        const saved=JSON.parse(await readFile(file,'utf8'));
+        return typeof saved.query==='string'&&Array.isArray(saved.response?.elements)?saved:undefined;
+      }catch{return undefined;}
+    }
     async function save(file,value) {
       const temporary=`${file}.tmp`;
       await writeFile(temporary,JSON.stringify(value));await rename(temporary,file);
@@ -151,27 +160,28 @@ export function createStagedSnapshot(config) {
       checkTime();
       const query=snapshotQuery(box),file=join(cache,`${config.cachePrefix}-v${config.cacheVersion}-${box.join('_')}.json`),splitFile=`${file}.split`;
       let json=await checkpoint(file,query),split=!json&&await checkpoint(splitFile,query,true);
-      // One change request for a cached response a week old (never on a
-      // refresh, which downloads again). A failure keeps the cached response;
-      // only a run budget stops the build.
-      if(json&&!refresh) {
-        let since=null;
-        try {
-          const info=await stat(file);
-          if(now()-info.mtimeMs>=STAGED_UPDATE_EVERY&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(json.osm3s?.timestamp_osm_base||''))since=json.osm3s.timestamp_osm_base;
-        }catch{}
-        if(since)try {
-          if(requests)await delay(policy.pauseMs);
+      // A cached response a week old takes its changes since its database
+      // time, and one made by another query also the difference between the
+      // two selections (updateElements), never on a refresh, which downloads
+      // again. A failure keeps a current response for next time; one of
+      // another query is then downloaded in full. Only a run budget stops the build.
+      const stale=!json&&!split?await earlier(file):undefined;
+      if((json||stale)&&!refresh) {
+        const base=json||stale.response,since=base.osm3s?.timestamp_osm_base;
+        let due=!!stale;
+        if(json)try {due=now()-(await stat(file)).mtimeMs>=STAGED_UPDATE_EVERY;}catch{}
+        if(due&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(since||'')) {
           log(`Collecting ${config.label} changes`,box.join(','),'since',since);
-          const changes=parseAdiff(await request(adiffQuery(query,since),{text:true}));
-          const next={...json,osm3s:{...json.osm3s,timestamp_osm_base:changes.timestamp},
-            elements:applyElementChanges(json.elements,{...changes,upserts:requireGeometry(changes.upserts)})};
-          completedResponse(next);
-          await save(file,{query,response:next});
-          json=next;
-        }catch(error) {
-          if(error.category==='budget')throw error;
-          log(box.join(','),'changes deferred:',error.message);
+          const update=await updateElements({elements:base.elements,since,previousQuery:json?query:stale.query,query,maxDrop:1,
+            pick:element=>requireGeometry([element])[0],warn:(...args)=>log(box.join(','),...args),
+            fetchText:async body=>{if(requests)await delay(policy.pauseMs);return request(body,{text:true});},
+            failed:error=>{if(error.category==='budget')throw error;}});
+          if(update) {
+            const next={...base,osm3s:{...base.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
+            completedResponse(next);
+            await save(file,{query,response:next});
+            json=next;
+          }
         }
       }
       // One request with retries. Returns the response, or the execution-limit
