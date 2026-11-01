@@ -2,7 +2,7 @@
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
-import {updateFromChanges} from './overpass-adiff.mjs';
+import {updateFromChanges,extractionVersion} from './overpass-adiff.mjs';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
@@ -16,16 +16,20 @@ const toFeatures=elements=>elements.flatMap(e=>{
   if(!e.geometry.every(p=>Number.isFinite(p.lon)&&Number.isFinite(p.lat))) throw new Error(`Incomplete geometry for ${e.id}`);
   return [{type:'Feature',id:e.id,properties:{...e.tags,osm_id:e.id,evidence:description},geometry:{type:'LineString',coordinates:e.geometry.map(p=>[p.lon,p.lat])}}];
 });
+// The query and conversion code (this build and what it imports) the
+// snapshot is made with (manifest.extraction).
+const extraction=extractionVersion(query,new URL(import.meta.url));
 // Since the published snapshot (PREVIOUS_DATA: its street-running.geojson.gz
 // and manifest.json), only what changed; the full download is the fallback.
 let data, update=null, changeError=null;
 if(process.env.PREVIOUS_DATA) {
   let previous=null;
   try {
+    const manifest=JSON.parse(await readFile(join(process.env.PREVIOUS_DATA,'manifest.json'),'utf8'));
     previous={features:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'street-running.geojson.gz')))).features,
-      since:JSON.parse(await readFile(join(process.env.PREVIOUS_DATA,'manifest.json'),'utf8')).osmBase};
+      since:manifest.osmBase,previousVersion:manifest.extraction};
   } catch(error) { console.log('No usable published snapshot:', error.message); }
-  if(previous) update=await updateFromChanges({...previous,query,toFeatures,fetchText:async changeQuery=>{
+  if(previous) update=await updateFromChanges({...previous,query,version:extraction,toFeatures,fetchText:async changeQuery=>{
     const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:changeQuery}),signal:AbortSignal.timeout(660000),headers});
     if(!response.ok) throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});
     return response.text();
@@ -64,7 +68,7 @@ for(const key of keys) {
  await mkdir(new URL(`${z}/${x}/`,root),{recursive:true});
  await writeFile(new URL(key+'.pbf.gz',root),gzipSync(vtpbf.fromGeojsonVt({street_running:tile},{extent}),{level:9}));tiles.push(key);
 }
-const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes}:'full',features:features.length,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Explicit OSM embedded / embedded_rails tags. Not inferred from tram type or proximity. Missing tags imply unknown coverage.'};
+const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,extraction,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes}:'full',features:features.length,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Explicit OSM embedded / embedded_rails tags. Not inferred from tram type or proximity. Missing tags imply unknown coverage.'};
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));
