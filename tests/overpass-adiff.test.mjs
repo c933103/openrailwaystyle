@@ -155,16 +155,19 @@ test('a selection query in a comparable form: statements, then one output of the
     assert.equal(selectionParts(q), null, q);
 });
 
-test('a changed selection is fetched as its difference at one database time', () => {
+test('a changed selection is asked as its ids, and the new elements by id, at one database time', () => {
   const at = '2026-11-01T06:00:00Z', wider = CONVEYING_QUERY.replace('way[highway=elevator];', 'way[highway=elevator];way[railway=funicular];');
-  const {added, dropped} = selectionChangeQueries(CONVEYING_QUERY, wider, at);
-  const sets = '[out:json][timeout:900][maxsize:1073741824][date:"2026-11-01T06:00:00Z"];(way[conveying][conveying!=no];way[highway=elevator];);(._;)->.selection_previous;(way[conveying][conveying!=no];way[highway=elevator];way[railway=funicular];);(._;)->.selection_current;';
-  assert.equal(added, `${sets}(.selection_current; - .selection_previous;);out tags geom qt;`);
-  assert.equal(dropped, `${sets}(.selection_previous; - .selection_current;);out ids;`);
-  // A sequence keeps its own selection, whatever sets it builds on the way.
-  assert.equal(selectionChangeQueries('[out:json];way[a]->.x;(.x;way[b];);out;', '[out:json];way[a]->.x;(.x;way[c];);out;', at).added,
-    `[out:json][date:"${at}"];way[a]->.x;(.x;way[b];);(._;)->.selection_previous;way[a]->.x;(.x;way[c];);(._;)->.selection_current;(.selection_current; - .selection_previous;);out;`);
-  assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'settings alone select nothing new');
+  const {ids, elements} = selectionChangeQueries(CONVEYING_QUERY, wider, at);
+  const head = '[out:json][timeout:900][maxsize:1073741824][date:"2026-11-01T06:00:00Z"];';
+  assert.equal(ids, `${head}(way[conveying][conveying!=no];way[highway=elevator];way[railway=funicular];);out ids;`, 'the new query alone');
+  assert.equal(elements(['way/7', 'node/3', 'way/9', 'relation/5']), `${head}(node(id:3);way(id:7,9);relation(id:5););out tags geom qt;`);
+  assert.throws(() => elements(['area/1']), /Invalid element/);
+  // A query's own sets and default set never meet another query's: each runs alone.
+  assert.equal(selectionChangeQueries('[out:json];way[highway=elevator];out;', '[out:json];(._;way[conveying];);out;', at).ids,
+    `[out:json][date:"${at}"];(._;way[conveying];);out ids;`);
+  assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'time and memory limits select nothing new');
+  assert.equal(selectionChangeQueries('[out:json][bbox:0,0,1,1];way[a];out;', '[out:json][bbox:0,0,2,2];way[a];out;', at).ids,
+    `[out:json][bbox:0,0,2,2][date:"${at}"];way[a];out ids;`, 'a bounding box is part of the selection');
   assert.equal(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), at), null, 'another output form: in full');
   assert.equal(selectionChangeQueries('[out:json];way[a];out;node[b];out;', CONVEYING_QUERY, at), null);
 });
@@ -187,16 +190,17 @@ test('stored elements follow changes and a changed query without a full download
   const narrower = CONVEYING_QUERY.replace('way[highway=elevator];', ''), wider = CONVEYING_QUERY.replace('way[highway=elevator];', 'way[highway=elevator];way[railway=funicular];');
   asked.length = 0;
   const funicular = {...sample(7, {railway: 'funicular', conveying: 'yes'}, [[4, 4], [4, 5]]), bounds: {}};
+  const idsOf = elements => json(elements.map(({type, id}) => ({type, id})));
   const grown = await updateElements({...base, query: wider, pick, fetchText: async q => {
     asked.push(q);
-    return q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? json([]) : json([funicular]);
+    return q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? idsOf([...stored, funicular]) : json([funicular]);
   }});
-  const {added, dropped} = selectionChangeQueries(CONVEYING_QUERY, wider, BASE);
-  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since), dropped, added]);
+  const {ids, elements} = selectionChangeQueries(CONVEYING_QUERY, wider, BASE);
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since), ids, elements(['way/7'])], 'only the new element is downloaded');
   assert.deepEqual(grown.elements.find(e => e.id === 7), pick(funicular), 'kept as the conversion reads it');
   assert.deepEqual([grown.added, grown.dropped, grown.elements.length], [1, 0, stored.length + 1]);
   const shrunk = await updateElements({...base, query: narrower, pick, fetchText: async q =>
-    q.includes('[adiff:') ? osm(BASE, '') : q.endsWith('out ids;') ? json([{type: 'way', id: 2}]) : json([])});
+    q.includes('[adiff:') ? osm(BASE, '') : q.endsWith('out ids;') ? idsOf(stored.filter(e => e.id !== 2)) : assert.fail('nothing new to download')});
   assert.ok(!shrunk.elements.some(e => e.id === 2), 'an element the query no longer selects goes, however many');
   assert.equal(shrunk.dropped, 1);
   // The conversion is applied to every stored element on each run, so it never needs a download.
@@ -215,7 +219,11 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : JSON.stringify({remark: 'runtime error: Query timed out'})}), null);
   assert.equal(await updateElements({...base, query: CONVEYING_QUERY, fetchText: async () => osm(BASE, stored.slice(0, 10).map(e =>
     `<action type="delete"><old/><new><way id="${e.id}" visible="false"/></new></action>`).join(''))}), null, 'changes losing over 5% are not trusted');
-  assert.ok(warnings.some(w => /output or form/.test(w)) && warnings.some(w => /timed out/.test(w)));
+  assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : q.endsWith('out ids;') ? idsOf([...stored, funicular]) : json([])}), null, 'a new element that does not come back');
+  assert.equal(await updateElements({...base, query: wider, fetchText: async q => q.includes('[adiff:') ? diff : json([{type: 'count', id: 0}])}), null, 'not an OSM element');
+  // A result the caller cannot use is a full download, not a failed run.
+  assert.equal(await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async () => diff, validate: () => { throw new Error('Incomplete geometry'); }}), null);
+  assert.ok(warnings.some(w => /output or form/.test(w)) && warnings.some(w => /timed out/.test(w)) && warnings.some(w => /Incomplete geometry/.test(w)));
 });
 
 test('the conveying build keeps its elements and converts all of them on every run', () => {
