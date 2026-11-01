@@ -15,7 +15,9 @@ export const DELTA_FILE = '.snapshot-cache/delta.json';
 // when another region already logged it lying outside this box, that copy
 // stands and no removal is logged. (When that region updates later, its
 // newer entry replaces the removal.) A way deleted from OSM (`deleted`, its
-// way IDs) is removed in any case.
+// way IDs) is removed in any case. An entry is never replaced by an older
+// one, as when a region's earlier data is logged late (build-snapshot.mjs,
+// reconcile).
 const touches = (feature, [s, w, n, e]) => {
   const lines = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
   return lines.some(line => line.some(([lon, lat]) => lat >= s && lat <= n && lon >= w && lon <= e));
@@ -24,15 +26,15 @@ export function recordChanges(delta, time, before, after, box, deleted = []) {
   const gone = new Set(deleted.map(Number));
   const changes = {...(delta?.changes || {})};
   const old = new Map(before.filter(e => e.type === 'way').map(e => [e.id, JSON.stringify(e)]));
-  const now = new Set();
+  const now = new Set(), newer = id => changes[id] && changes[id].time > time;
   for (const element of after) {
     if (element.type !== 'way') continue;
     now.add(element.id);
-    if (old.get(element.id) === JSON.stringify(element)) continue;
+    if (old.get(element.id) === JSON.stringify(element) || newer(element.id)) continue;
     changes[element.id] = {time, feature: toGeoJSON({elements: [element]}).features[0] || null};
   }
   for (const id of old.keys()) {
-    if (now.has(id)) continue;
+    if (now.has(id) || newer(id)) continue;
     const logged = changes[id]?.feature;
     if (!gone.has(id) && box && logged && !touches(logged, box)) continue;
     changes[id] = {time, feature: null};

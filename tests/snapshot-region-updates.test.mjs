@@ -200,3 +200,17 @@ test('a requested refresh keeps the region\'s data to log the differences', () =
   assert.match(source, /rename\(`\$\{dir\}\/\$\{file\.name\}`, `\$\{dir\}\/\$\{file\.name\}\.previous`\)/);
   assert.doesNotMatch(source, /unlink/);
 });
+
+test('a change logged late never replaces a newer entry', async () => {
+  const {recordChanges} = await import('../scripts/snapshot-delta.mjs');
+  const at = (id, name) => ({type:'way', id, tags:{railway:'proposed', name}, geometry:[{lat:10, lon:100}, {lat:10, lon:100.1}]});
+  const box = [0, 90, 45, 135];
+  // Region B logged way 5 renamed and way 6 deleted at 06:00; region A's earlier data, from 05:00, is logged afterwards.
+  let log = recordChanges(undefined, '2026-11-01T06:00:00Z', [at(5, 'Old'), at(6, 'Gone')], [at(5, 'New')], box, ['6']);
+  log = recordChanges(log, '2026-11-01T05:00:00Z', [at(5, 'Older'), at(7, 'X')], [at(5, 'Old'), at(6, 'Gone')], box);
+  assert.equal(log.changes[5].feature.properties.name, 'New');
+  assert.deepEqual([log.changes[6].time, log.changes[6].feature], ['2026-11-01T06:00:00Z', null], 'the deletion stands');
+  assert.equal(log.changes[7].feature, null, 'what is not logged newer still is');
+  // An equal or later time still replaces.
+  assert.equal(recordChanges(log, '2026-11-01T06:00:00Z', [at(5, 'New')], [at(5, 'Newest')], box).changes[5].feature.properties.name, 'Newest');
+});
