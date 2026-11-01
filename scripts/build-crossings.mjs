@@ -67,8 +67,14 @@ async function request(query, parse, describe, box) {
 // keeps its old watermark, so none of its changes may be published yet.
 function staging() {
   const ops = [];
-  return {set: rows => ops.push(['set', rows]), delete: id => ops.push(['delete', id]),
-    applyTo: table => { for (const [op, value] of ops) op === 'set' ? applyChanges(table, value) : table.delete(value); }};
+  return {set: rows => ops.push(['set', rows]), delete: id => ops.push(['delete', id]), leave: (id, box) => ops.push(['leave', [id, box]]),
+    applyTo: table => { for (const [op, value] of ops) {
+      if (op === 'set') applyChanges(table, value);
+      else if (op === 'delete') table.delete(value);
+      // A crossing that moved out of this region: its row here goes, unless
+      // the region it moved to has already stored its current row.
+      else { const [id, box] = value, row = table.get(id); if (row && inBox(box, row[0], row[1])) table.delete(id); }
+    } }};
 }
 async function fetchChanges(stage, region, since, depth = 0) {
   if (since >= startedAt) return;
@@ -98,8 +104,12 @@ async function readGroup(stage, ids, box, recheck) {
     // that also runs here, belongs to its own region's changes and watermark
     // (that region's diff reports the same way through it).
     stage.set(rows.filter(row => inBox(box, row.lat, row.lon)));
-    const found = new Set(rows.map(row => row.id));
-    for (const id of ids) if (recheck.has(id) && !found.has(id)) stage.delete(id);
+    const found = new Map(rows.map(row => [row.id, row]));
+    for (const id of ids) if (recheck.has(id)) {
+      const row = found.get(id);
+      if (!row) stage.delete(id);
+      else if (!inBox(box, row.lat, row.lon)) stage.leave(id, box);
+    }
     return;
   }
   if (ids.length === 1) throw new Error(`Could not read crossing ${ids[0]}`);

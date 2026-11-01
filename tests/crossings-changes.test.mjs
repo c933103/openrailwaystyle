@@ -166,19 +166,25 @@ test('a table made by another query or row code, or kept by the earlier change q
   assert.match(builder, /JSON\.stringify\(\{version: VERSION, extraction, since:/);
 });
 
-test('a crossing that left a region is read again: kept if it is still a crossing elsewhere, removed if not', async t => {
-  const extraction = crossingData.crossingExtraction();
-  for (const [stillCrossing, expected] of [[true, /worldwide: 2/], [false, /worldwide: 1/]]) {
-    const {error, calls, roots, since} = await changeRun(t, {extraction, reply: (query, roots, since) => {
+test('a crossing that left a region is read again: its row there goes, and the region it moved to adds it', async t => {
+  const extraction = crossingData.crossingExtraction(), SEP = crossingData.SEP, end = `${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
+  const moved = `2${SEP}10${SEP}10${SEP}level_crossing\n` + end;
+  for (const [name, still, destination, expected] of [
+    ['moved, the destination takes its changes', true, 'ok', /worldwide: 2/],
+    // The destination deferred: no row is kept here for it; its own changes add it later.
+    ['moved, the destination deferred', true, 'busy', /worldwide: 1/],
+    ['no crossing any more', false, 'ok', /worldwide: 1/]]) {
+    const {error, calls} = await changeRun(t, {extraction, reply: (query, roots, since) => {
+      const to = roots.find(r => crossingData.inBox(r.box, 10, 10));
       if (query === crossingData.crossingChangesQuery(roots[0].box, since, AT))
         return new Response(osmXml('<action type="delete"><old/><new><node id="2" visible="true"/></new></action>'));
-      if (query === crossingData.crossingRowsQuery([2], AT))
-        return new Response(stillCrossing ? `2${crossingData.SEP}10${crossingData.SEP}10${crossingData.SEP}level_crossing\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`
-          : `${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}minor\n${crossingData.SEP}${crossingData.SEP}${crossingData.SEP}end\n`);
+      if (query === crossingData.crossingChangesQuery(to.box, since, AT))
+        return destination === 'ok' ? new Response(osmXml(`<action type="create">${xmlNode(2)}</action>`)) : new Response('busy', {status: 503});
+      if (query === crossingData.crossingRowsQuery([2], AT)) return new Response(still ? moved : end);
       return null;
     }});
-    assert.equal(calls[1], crossingData.crossingRowsQuery([2], AT), 'read again by id');
-    assert.match(error?.message || '', expected, stillCrossing ? 'moved into another region: kept' : 'no crossing any more: removed');
+    assert.equal(calls[1], crossingData.crossingRowsQuery([2], AT), `${name}: read again by id`);
+    assert.match(error?.message || '', expected, name);
   }
 });
 
