@@ -225,6 +225,14 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(shrunk.dropped, 1);
   // The conversion is applied to every stored element on each run, so it never needs a download.
   assert.deepEqual(conveyingGeoJSON({elements: grown.elements}).features.map(f => f.id), [1, 2, 7, ...stored.slice(2).map(e => e.id)]);
+  // Up to a given time: the changes end there, and so does the result.
+  asked.length = 0;
+  const until = '2026-11-01T05:00:00Z', ended = await updateElements({...base, until, query: CONVEYING_QUERY, pick, fetchText: async q => { asked.push(q); return diff; }});
+  assert.deepEqual(asked, [adiffQuery(CONVEYING_QUERY, since, until)]);
+  assert.match(asked[0], /\[adiff:"2026-10-30T12:22:36Z","2026-11-01T05:00:00Z"\]/);
+  assert.equal(ended.osmBase, until);
+  assert.equal(await updateElements({...base, until: '2026-11-01T07:00:00Z', query: CONVEYING_QUERY, fetchText: async () => diff}), null, 'a server whose data ends earlier');
+  assert.throws(() => adiffQuery(CONVEYING_QUERY, since, '2026-10-01T00:00:00Z'), /Invalid change end/);
   // A region with no elements yet takes its changes too.
   const empty = await updateElements({...base, elements: [], query: CONVEYING_QUERY, pick, fetchText: async () => diff});
   assert.deepEqual(empty.elements.map(e => e.id), [1]);
