@@ -195,45 +195,43 @@ export function requireGeometry(upserts) {
 }
 
 // A selection query in a form whose selection can be compared with
-// another's: settings, then one statement or one top-level union of
-// statements, then one output: [out:json][...];( ... );out ...; or
-// [out:json][...];way[...];out ...; `union` is the selection as a union.
-// Anything else (several statements in sequence, several outputs) is null:
-// a sequence's result is not the union of its statements.
+// another's: settings, then statements, then one output of the default set:
+// [out:json][...];<statements>;out ...; Its selection is what that output
+// prints: the default set after the statements, whatever named sets they
+// build on the way. Anything else (another format, a date, an output before
+// the last) is null.
 export function selectionParts(query) {
   const head = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || ''), tail = /;(out(?: [a-z]+)*);$/.exec(query || '');
   if (!head || !tail || /\[(?:adiff|diff|date):/.test(head[1])) return null;
   const body = query.slice(head[0].length, tail.index);
-  // Top-level statement ends (`;` outside brackets and quotes) and whether the
-  // body is one bracketed union.
-  let depth = 0, quote = null, ends = 0, closedAt = -1;
+  // Brackets and quotes balance, and no output statement precedes the last.
+  let depth = 0, quote = null, bare = '';
   for (let i = 0; i < body.length; i++) {
     const c = body[i];
     if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
     if (c === '"' || c === "'") quote = c;
     else if (c === '(' || c === '[') depth++;
-    else if (c === ')' || c === ']') { if (--depth < 0) return null; if (!depth && c === ')' && closedAt < 0 && body[0] === '(') closedAt = i; }
-    else if (c === ';' && !depth) ends++;
+    else if ((c === ')' || c === ']') && --depth < 0) return null;
+    if (!depth) bare += c;
   }
-  if (depth || quote || !body) return null;
-  if (body[0] === '(' && closedAt === body.length - 1) return {settings: head[1], union: body, out: tail[1]};
-  if (ends === 0 && body[0] !== '(') return {settings: head[1], union: `(${body};)`, out: tail[1]};
-  return null;
+  if (depth || quote || !body || /(?:^|[;)])\s*(?:\.\w+\s+)?out\b/.test(bare)) return null;
+  return {settings: head[1], body, out: tail[1]};
 }
 
 // The two requests that bring elements selected by `previous` to what
 // `query` selects, both at the database time `at`: the elements only `query`
 // selects (`added`, in its own output form) and the ids of those only
-// `previous` selected (`dropped`). Null when the queries cannot be compared
-// or give their elements in different forms: the caller then downloads in
-// full. An empty object when the selections are the same.
+// `previous` selected (`dropped`). Each query's statements run in turn and
+// its selection is kept in a set of its own. Null when the queries cannot be
+// compared or give their elements in different forms: the caller then
+// downloads in full. An empty object when the selections are the same.
 export function selectionChangeQueries(previous, query, at) {
   if (!TIME.test(at || '')) throw new Error('Invalid selection time');
   const old = selectionParts(previous), next = selectionParts(query);
   if (!old || !next || old.out !== next.out) return null;
-  if (old.union === next.union) return {};
-  const sets = `[out:json]${next.settings}[date:"${at}"];${old.union}->.previous;${next.union}->.current;`;
-  return {added: `${sets}(.current; - .previous;);${next.out};`, dropped: `${sets}(.previous; - .current;);out ids;`};
+  if (old.body === next.body) return {};
+  const sets = `[out:json]${next.settings}[date:"${at}"];${old.body};(._;)->.selection_previous;${next.body};(._;)->.selection_current;`;
+  return {added: `${sets}(.selection_current; - .selection_previous;);${next.out};`, dropped: `${sets}(.selection_previous; - .selection_current;);out ids;`};
 }
 
 const elementsOf = text => {

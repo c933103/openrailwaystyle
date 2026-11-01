@@ -142,14 +142,15 @@ test('a snapshot made by another query or conversion code is downloaded in full,
   } finally { await rm(root, {recursive: true, force: true}); }
 });
 
-test('a selection query in a comparable form: one statement or one union, then one output', () => {
+test('a selection query in a comparable form: statements, then one output of the default set', () => {
   assert.deepEqual(selectionParts(CONVEYING_QUERY), {settings: '[timeout:900][maxsize:1073741824]',
-    union: '(way[conveying][conveying!=no];way[highway=elevator];)', out: 'out tags geom qt'});
-  assert.equal(selectionParts(AERIALWAY_QUERY).union, `(${AERIALWAY_QUERY.slice(AERIALWAY_QUERY.indexOf(';') + 1, AERIALWAY_QUERY.indexOf(';out'))};)`);
-  assert.equal(selectionParts('[out:json];(way[a](1,2,3,4););out geom;').union, '(way[a](1,2,3,4);)');
-  // A sequence's result is not the union of its statements; several outputs
-  // or unions, another format or a date cannot be compared.
-  for (const q of ['[out:json];rel[x];way(r);out;', '[out:json];(way[a];);(way[b];);out;', '[out:json];way[a];out;node[b];out;',
+    body: '(way[conveying][conveying!=no];way[highway=elevator];)', out: 'out tags geom qt'});
+  assert.equal(selectionParts(AERIALWAY_QUERY).body, AERIALWAY_QUERY.slice(AERIALWAY_QUERY.indexOf(';') + 1, AERIALWAY_QUERY.indexOf(';out')));
+  // Statements in sequence, named sets included: the selection is the default set at the output.
+  assert.equal(selectionParts('[out:json];way[a]->.x;rel[x];way(r);out geom;').body, 'way[a]->.x;rel[x];way(r)');
+  assert.equal(selectionParts('[out:json];way["name"="out"];out;').body, 'way["name"="out"]', 'a quoted word is no output');
+  // An output before the last, another format or a date cannot be compared.
+  for (const q of ['[out:json];way[a];out;node[b];out;', '[out:json];way[a];.x out;way[b];out;',
     '[out:xml];way[a];out;', '[out:json][date:"2026-01-01T00:00:00Z"];way[a];out;', '[out:json];(way[a];out;'])
     assert.equal(selectionParts(q), null, q);
 });
@@ -157,12 +158,15 @@ test('a selection query in a comparable form: one statement or one union, then o
 test('a changed selection is fetched as its difference at one database time', () => {
   const at = '2026-11-01T06:00:00Z', wider = CONVEYING_QUERY.replace('way[highway=elevator];', 'way[highway=elevator];way[railway=funicular];');
   const {added, dropped} = selectionChangeQueries(CONVEYING_QUERY, wider, at);
-  const sets = '[out:json][timeout:900][maxsize:1073741824][date:"2026-11-01T06:00:00Z"];(way[conveying][conveying!=no];way[highway=elevator];)->.previous;(way[conveying][conveying!=no];way[highway=elevator];way[railway=funicular];)->.current;';
-  assert.equal(added, `${sets}(.current; - .previous;);out tags geom qt;`);
-  assert.equal(dropped, `${sets}(.previous; - .current;);out ids;`);
+  const sets = '[out:json][timeout:900][maxsize:1073741824][date:"2026-11-01T06:00:00Z"];(way[conveying][conveying!=no];way[highway=elevator];);(._;)->.selection_previous;(way[conveying][conveying!=no];way[highway=elevator];way[railway=funicular];);(._;)->.selection_current;';
+  assert.equal(added, `${sets}(.selection_current; - .selection_previous;);out tags geom qt;`);
+  assert.equal(dropped, `${sets}(.selection_previous; - .selection_current;);out ids;`);
+  // A sequence keeps its own selection, whatever sets it builds on the way.
+  assert.equal(selectionChangeQueries('[out:json];way[a]->.x;(.x;way[b];);out;', '[out:json];way[a]->.x;(.x;way[c];);out;', at).added,
+    `[out:json][date:"${at}"];way[a]->.x;(.x;way[b];);(._;)->.selection_previous;way[a]->.x;(.x;way[c];);(._;)->.selection_current;(.selection_current; - .selection_previous;);out;`);
   assert.deepEqual(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('[timeout:900]', '[timeout:600]'), at), {}, 'settings alone select nothing new');
   assert.equal(selectionChangeQueries(CONVEYING_QUERY, CONVEYING_QUERY.replace('out tags geom qt', 'out body geom qt'), at), null, 'another output form: in full');
-  assert.equal(selectionChangeQueries('[out:json];rel[x];way(r);out;', CONVEYING_QUERY, at), null);
+  assert.equal(selectionChangeQueries('[out:json];way[a];out;node[b];out;', CONVEYING_QUERY, at), null);
 });
 
 test('stored elements follow changes and a changed query without a full download', async () => {
