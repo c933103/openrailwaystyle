@@ -1,6 +1,8 @@
 {
-  "generated": "2026-11-01T10:57:52.860Z",
-  "osmBase": "2026-11-01T10:55:02Z",
+  "generated": "2026-11-01T21:00:09.166Z",
+  "osmBase": "2026-11-01T20:57:19Z",
+  "extraction": "55d90546f6ee1968f4a94030c43a3369bf8eb1c3525fe26c2a119d43514807f4",
+  "update": "full",
   "features": 24164,
   "kinds": {
     "cableway": 3306,
