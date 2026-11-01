@@ -46,12 +46,15 @@ export function extractionVersion(query, ...entries) {
 // meaningful only with `out meta` (or `out geom meta`): without the meta data
 // they are no better than a plain diff
 // (dev.overpass-api.de/overpass-doc/en/analysis/museum.html).
-export function adiffQuery(query, since) {
+// With `until`, the changes up to that time ([adiff:"since","until"]), so
+// several requests can describe one moment.
+export function adiffQuery(query, since, until) {
   if (!TIME.test(since || '')) throw new Error('Invalid change start');
+  if (until !== undefined && !(TIME.test(until) && until >= since)) throw new Error('Invalid change end');
   const settings = /^\[out:json\]((?:\[[^\]]+\])*);/.exec(query || '');
   if (!settings) throw new Error('A change query needs an [out:json] selection query');
   if (/\[(?:adiff|diff|date):/.test(settings[1])) throw new Error('The selection query already sets a date');
-  return `[out:xml]${settings[1]}[adiff:"${since}"];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
+  return `[out:xml]${settings[1]}[adiff:"${since}"${until ? `,"${until}"` : ''}];${query.slice(settings[0].length).replace(/\bout( (?:ids|skel|tags|body|meta))?\b/g, 'out meta')}`;
 }
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
@@ -270,7 +273,9 @@ const elementsOf = text => {
 // share the changes in step 1 may remove (a selection change may remove any);
 // `validate` checks the result (the caller's conversion, for instance), so
 // elements it cannot use mean a full download rather than a failed run.
-export async function updateElements({elements, since, previousQuery, query, fetchText, pick = element => element, validate = () => {}, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
+// `until` ends the changes at that database time instead of now, so the
+// parts of one store can be brought to the same moment.
+export async function updateElements({elements, since, until, previousQuery, query, fetchText, pick = element => element, validate = () => {}, maxDrop = 0.05, warn = console.warn, failed = () => {}}) {
   // A region with no elements is a valid state: its changes may add some.
   if (!Array.isArray(elements)) return null;
   if (!TIME.test(since || '')) { warn('No database time for the stored elements: downloading in full'); return null; }
@@ -278,8 +283,10 @@ export async function updateElements({elements, since, previousQuery, query, fet
   // Known before any request: a query that cannot be compared is downloaded in full.
   if (previousQuery !== query && !selectionChangeQueries(previousQuery, query, since)) { warn('The query changed its output or form: downloading in full'); return null; }
   try {
-    const changes = parseAdiff(await fetchText(adiffQuery(previousQuery, since)));
-    const at = changes.timestamp;
+    const changes = parseAdiff(await fetchText(adiffQuery(previousQuery, since, until)));
+    // The server's data must reach `until`; the changes then end there.
+    if (until && changes.timestamp < until) throw new Error(`The server's data ends at ${changes.timestamp}, before ${until}`);
+    const at = until || changes.timestamp;
     let next = applyElementChanges(elements, {upserts: changes.upserts.map(pick), deletes: changes.deletes});
     if (next.length < elements.length * (1 - maxDrop)) throw new Error(`The changes would drop the elements from ${elements.length} to ${next.length}`);
     const selection = previousQuery === query ? {} : selectionChangeQueries(previousQuery, query, at);
