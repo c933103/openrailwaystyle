@@ -5,6 +5,7 @@
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
+import {parseAdiff, extractionVersion} from './overpass-adiff.mjs';
 
 export const TAG_KEYS = CROSSING_TAGS.map(([key]) => key);
 
@@ -40,24 +41,68 @@ const MINOR_KINDS = '"^(tram|light_rail|funicular|miniature)$"';
 const LIFECYCLE_KEYS = '"^(proposed|construction|disused|abandoned|razed|demolished|removed)(:railway)?$"';
 const ACTIVE = '"^(rail|narrow_gauge|light_rail|subway|tram|monorail|funicular|miniature)$"';
 export const MINOR_TRACKS = `(way.w[railway~${MINOR_KINDS}];way.w[railway!~${ACTIVE}][~${LIFECYCLE_KEYS}~${MINOR_KINDS}];way.w[service];way.w[embedded=yes];)`;
-export function regionQuery(box, since) {
-  const newer = since ? `(newer:"${since}")` : '';
-  // Changes also cover crossings on any way through a crossing edited since
-  // (a retagged track, or one no longer tagged railway, can change a
-  // crossing's minor flag without touching the node). Deleted ways are left
-  // to the rolling full refresh.
-  const bbox = `(${box.join(',')})`;
-  const changedWays = since ? `(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.all;way(bn.all)${newer}->.cw;` : '';
-  const onChangedWays = since ? 'node.all(w.cw);' : '';
+// From the crossing set .c: the major crossings, the "minor" marker row, the
+// minor crossings (only on minor tracks), then the end marker row.
+const CROSSING_ROWS = `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;`
+  + '.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;';
+const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+// The data of one database time (`at`, optional): every request of a run is
+// pinned to the time saved as the regions' watermark, so the stored table
+// is exactly the state at that time and the next run's changes start there.
+const dated = at => { if (at === undefined) return ''; if (!TIME.test(at)) throw new Error('Invalid crossing data time'); return `[date:"${at}"]`; };
+// A region in full, as CSV. Its changes come from crossingChangesQuery.
+export function regionQuery(box, at) {
   // CSV output carries no error remarks: a final marker row, written only
   // when the query ran to the end, shows the response is complete. A marker
   // row (railway "minor") separates the major crossings from the minor ones.
   const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
-  return `[out:csv(${columns};false;"${SEP}")][timeout:180];${changedWays}(node[railway=level_crossing]${newer}(${box.join(',')});node[railway=crossing]${newer}(${box.join(',')});${onChangedWays})` +
-    `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;` +
-    `.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;`;
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};(node[railway=level_crossing](${box.join(',')});node[railway=crossing](${box.join(',')});)` +
+    CROSSING_ROWS;
 }
 
+// Changes by augmented diff (scripts/overpass-adiff.mjs): the crossings of a
+// region and the railway ways through them, as they changed since `since`.
+// A crossing deleted or no longer tagged as one is reported deleted; every
+// crossing created or changed, and every node of a way that changed or was
+// deleted (before and after), may have a new row or minor flag and is read
+// again with crossingRowsQuery. A way deleted through a crossing is seen
+// this way too, so no periodic full download is needed to correct it.
+export function crossingChangesQuery(box, since, until) {
+  if (!TIME.test(since || '')) throw new Error('Invalid crossing change start');
+  if (until !== undefined && !TIME.test(until)) throw new Error('Invalid crossing change end');
+  const bbox = `(${box.join(',')})`;
+  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"${until ? `,"${until}"` : ''}];(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.c;(.c;way(bn.c)[railway];);out meta;`;
+}
+// What makes a crossing row of OSM data: the region query (selection, columns
+// and minor logic) and this module's parsing, with its imports. A table made
+// by another one is downloaded in full: changes alone would leave unchanged
+// crossings with the old rows.
+export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180, 90, 180]), new URL(import.meta.url));
+// A node deleted from OSM (visible="false") is deleted. One that only left
+// the region's selection (visible="true") may have moved into another region
+// or stopped being a crossing: it is read again (`recheck`), and removed only
+// if it is no crossing anywhere.
+export function crossingChanges(xml) {
+  const {timestamp, actions} = parseAdiff(xml), deleted = new Set(), affected = new Set(), recheck = new Set();
+  for (const action of actions) {
+    const element = action.new;
+    if (element.type === 'node') {
+      if (action.type !== 'delete') affected.add(element.id);
+      else if (element.visible === false) deleted.add(element.id);
+      else { affected.add(element.id); recheck.add(element.id); }
+    }
+    if (element.type === 'way') for (const state of [action.old, action.new]) for (const id of state?.nodes || []) affected.add(id);
+  }
+  for (const id of deleted) { affected.delete(id); recheck.delete(id); }
+  return {timestamp, deleted: [...deleted], affected: [...affected].sort((a, b) => a - b), recheck: [...recheck].sort((a, b) => a - b)};
+}
+// The rows of the given nodes that are crossings, as regionQuery gives them:
+// the same columns, minor flag and markers.
+export function crossingRowsQuery(ids, at) {
+  if (!ids.length || !ids.every(id => Number.isSafeInteger(id) && id > 0)) throw new Error('Invalid crossing node ids');
+  const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};node(id:${ids.join(',')})[railway~"^(level_crossing|crossing)$"]` + CROSSING_ROWS;
+}
 // Overpass CSV rows: id, lat, lon, railway, then TAG_KEYS, no header: the
 // major crossings, the "minor" marker row, the minor crossings, then the end
 // marker row. Overpass does not escape values, and OSM tag values may hold
@@ -133,25 +178,6 @@ export async function updateRegionChanges({regions, changes = {}, since, started
   }
   if (deferred.length === order.length) throw new Error('Overpass stayed unavailable for every region; nothing to publish');
   return {changes: next, deferred, stopped: unavailable >= 2, from: order[0]?.since, since: Object.values(next).sort()[0]};
-}
-// The full refresh of the regions checked longest ago, while `more()` allows.
-// A region the server stayed unavailable for goes back to the front of the
-// queue and is reported (as `refresh <box>`), so the run still ends red and
-// is retried; the refresh stops there.
-export async function refreshRegions({regions, fetch, more, warn = console.warn}) {
-  const queue = [...regions].sort((a, b) => a.fetched.localeCompare(b.fetched)), refreshed = [], deferred = [];
-  while (queue.length && more()) {
-    const region = queue.shift();
-    try { refreshed.push(...await fetch(region)); }
-    catch (error) {
-      if (!UNAVAILABLE.test(error.message)) throw error;
-      warn('Refresh deferred to the next run:', error.message);
-      queue.unshift(region);
-      deferred.push(`refresh ${regionKey(region.box)}`);
-      break;
-    }
-  }
-  return {regions: [...queue, ...refreshed], deferred};
 }
 export function applyChanges(table, rows) {
   for (const row of rows) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);

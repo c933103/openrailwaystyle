@@ -6,45 +6,15 @@ import vtpbf from 'vt-pbf';
 import {gzipSync} from 'node:zlib';
 import {bundleKey,encodeBundle} from '../styles/tile-bundles.mjs';
 import '../styles/pbf-utf8.mjs';
+import {stationPoint} from './station-point.mjs';
+export {stationPoint};
 
 export const STATION_ZOOM_MIN=3, STATION_ZOOM_MAX=7, STATION_BUNDLE_ZOOM=3;
 export const STATION_TILE_LAYER='atlas_station_points';
 export const MERCATOR_LIMIT=85.0511287798066;
-const STATION_KINDS=new Set(['station','halt','tram_stop']);
-const MODES=new Set(['subway','light_rail','monorail','tram','funicular','miniature','train']);
-const RETIRED=new Set(['yes','true','1']);
-const INVALID_LIFECYCLE=['disused','abandoned','demolished','razed','removed','construction','proposed'];
 const MAX_RECORDS=750_000,MAX_TILE_BYTES=8*1024*1024;
 const ZOOM_LEVELS=Array.from({length:STATION_ZOOM_MAX-STATION_ZOOM_MIN+1},(_,i)=>STATION_ZOOM_MIN+i);
 
-export function stationPoint(element){
- if(!element||!['node','way','relation'].includes(element.type)||!Number.isSafeInteger(element.id)||element.id<1)return null;
- const tags=element.tags;
- if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
- const rail=tags.railway;
- const isRail=STATION_KINDS.has(rail);
- const hasRailMode=['train','subway','light_rail','tram','monorail','funicular'].some(k=>tags[k]==='yes');
- if(!isRail && !(tags.public_transport==='station'&&hasRailMode))return null;
- // A historical or future mapped station is not an operating-station dot.
- // An active railway=station may carry a proposed:railway or
- // abandoned:railway tag describing *other* infrastructure. Such lifecycle
- // tags must not override the active station's directly mapped railway tag.
- if(INVALID_LIFECYCLE.some(k=>RETIRED.has(tags[k])||tags.railway===k))return null;
- const point=element.type==='node'?element:element.center;
- const lat=point?.lat,lon=point?.lon;
- if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat < -90||lat>90||lon < -180||lon>180)
-   throw new Error(`Station has no valid coordinate: ${element.type}/${element.id}`);
- const kind=isRail?rail:'station';
- const mode=['subway','light_rail','monorail','tram','funicular','miniature','train']
-   .find(k=>tags.station===k||tags[k]==='yes')|| (kind==='tram_stop'?'tram':'train');
- const text=v=>typeof v==='string'?Array.from(v).slice(0,256).join(''):'';
- const version=Number.isSafeInteger(element.version)&&element.version>=1?element.version:null;
- const updated=typeof element.timestamp==='string'&&Number.isFinite(Date.parse(element.timestamp))
-   ?element.timestamp:null;
- return {id:`${element.type}-${element.id}`,osm_type:element.type,osm_id:element.id,
-   lon,lat,feature:kind,station:MODES.has(mode)?mode:'train',name:text(tags.name||tags['name:en']),
-   state:'present',osm_version:version,osm_timestamp:updated};
-}
 
 export function parseStationRegion(json,{maxElements=250_000,requireVersion=false}={}){
  if(!json||typeof json!=='object'||json.remark||!Array.isArray(json.elements)||
