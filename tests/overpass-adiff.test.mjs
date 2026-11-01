@@ -122,7 +122,7 @@ test('aerialways are updated the same way, with names and kinds as a full downlo
   const result = await updateFromChanges({features: before, since: '2026-10-30T12:00:00Z', query: AERIALWAY_QUERY, toFeatures: toAerial,
     now: Date.parse('2026-11-01T07:00:00Z'), warn: () => {},
     fetchText: async query => {
-      assert.match(query, /^\[out:xml\]\[timeout:900\]\[maxsize:1073741824\]\[adiff:"2026-10-30T12:00:00Z"\];way\[aerialway~[^;]+;out body geom;$/);
+      assert.match(query, /^\[out:xml\]\[timeout:900\]\[maxsize:1073741824\]\[adiff:"2026-10-30T12:00:00Z"\];way\[aerialway~[^;]+;out meta geom;$/);
       return osm(BASE, [`<action type="modify"><old/><new>${way(1, {aerialway: 'gondola', name: 'New'}, [[1, 46, 7.01], [2, 46.01, 7.01]])}</new></action>`,
         '<action type="delete"><old/><new><way id="2" visible="true"/></new></action>'].join(''));
     }});
