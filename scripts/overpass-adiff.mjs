@@ -305,7 +305,9 @@ export async function updateElements({elements, since, until, previousQuery, que
       next = applyElementChanges(next, {upserts: added, deletes: dropped});
     }
     validate(next);
-    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, added: added.length, dropped: dropped.length};
+    // Deleted from OSM (visible="false"), as opposed to only no longer selected.
+    const deleted = changes.actions.filter(action => action.type === 'delete' && action.new.visible === false).map(action => `${action.new.type}/${action.new.id}`);
+    return {elements: next, osmBase: at, since, upserts: changes.upserts.length, deletes: changes.deletes.length, deleted, added: added.length, dropped: dropped.length};
   } catch (error) {
     warn('Changes unavailable, downloading in full:', error.message);
     failed(error);
