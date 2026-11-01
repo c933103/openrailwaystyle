@@ -17,7 +17,7 @@ export const DELTA_FILE = '.snapshot-cache/delta.json';
 // newer entry replaces the removal.) A way deleted from OSM (`deleted`, its
 // way IDs) is removed in any case. An entry is never replaced by an older
 // one, as when a region's earlier data is logged late (build-snapshot.mjs,
-// reconcile).
+// reconcile); a way this region has unchanged replaces an older entry.
 const touches = (feature, [s, w, n, e]) => {
   const lines = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
   return lines.some(line => line.some(([lon, lat]) => lat >= s && lat <= n && lon >= w && lon <= e));
@@ -30,7 +30,10 @@ export function recordChanges(delta, time, before, after, box, deleted = []) {
   for (const element of after) {
     if (element.type !== 'way') continue;
     now.add(element.id);
-    if (old.get(element.id) === JSON.stringify(element) || newer(element.id)) continue;
+    if (newer(element.id)) continue;
+    // Unchanged here, but logged differently earlier (another region saw it
+    // removed or changed, say): this later observation is the state now.
+    if (old.get(element.id) === JSON.stringify(element) && !changes[element.id]) continue;
     changes[element.id] = {time, feature: toGeoJSON({elements: [element]}).features[0] || null};
   }
   for (const id of old.keys()) {

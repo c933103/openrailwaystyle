@@ -231,3 +231,20 @@ test('a change logged late never replaces a newer entry', async () => {
   // An equal or later time still replaces.
   assert.equal(recordChanges(log, '2026-11-01T06:00:00Z', [at(5, 'New')], [at(5, 'Newest')], box).changes[5].feature.properties.name, 'Newest');
 });
+
+test('a way seen unchanged later replaces an older logged removal, so a stale region cannot remove it', async () => {
+  const {recordChanges, applyDelta} = await import('../scripts/snapshot-delta.mjs');
+  const {toGeoJSON} = await import('../scripts/lifecycle.mjs');
+  const box = [0, 90, 45, 135], kept = way(7, {railway:'proposed', name:'Kept'});
+  // Region A saw way 7 lose its lifecycle tag at 05:00; region B, whose data is from before that, sees it as it was at 06:00.
+  let log = recordChanges(undefined, '2026-11-01T05:00:00Z', [kept], [], box);
+  assert.equal(log.changes[7].feature, null);
+  log = recordChanges(log, '2026-11-01T06:00:00Z', [kept], [kept], box);
+  assert.deepEqual([log.changes[7].time, log.changes[7].feature?.properties.name], ['2026-11-01T06:00:00Z', 'Kept']);
+  // A third region, stale at 04:00, assembled last: the way stays.
+  const features = new Map([[7, toGeoJSON({elements:[kept]}).features[0]]]), base = new Map([[7, '2026-11-01T04:00:00Z']]);
+  applyDelta(features, base, log);
+  assert.ok(features.has(7));
+  // Unchanged and never logged: still nothing logged.
+  assert.deepEqual(recordChanges(undefined, '2026-11-01T06:00:00Z', [kept], [kept], box).changes, {});
+});
