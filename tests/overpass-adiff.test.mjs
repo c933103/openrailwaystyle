@@ -201,6 +201,10 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(shrunk.dropped, 1);
   // The conversion is applied to every stored element on each run, so it never needs a download.
   assert.deepEqual(conveyingGeoJSON({elements: grown.elements}).features.map(f => f.id), [1, 2, 7, ...stored.slice(2).map(e => e.id)]);
+  // A region with no elements yet takes its changes too.
+  const empty = await updateElements({...base, elements: [], query: CONVEYING_QUERY, pick, fetchText: async () => diff});
+  assert.deepEqual(empty.elements.map(e => e.id), [1]);
+  assert.equal(await updateElements({...base, elements: undefined, query: CONVEYING_QUERY, fetchText: async () => diff}), null);
   // Anything doubtful: null, and the caller downloads in full.
   const fail = async () => { throw Object.assign(new Error('Overpass HTTP 429'), {status: 429}); }, seen = [];
   assert.equal(await updateElements({...base, query: CONVEYING_QUERY, fetchText: fail, failed: e => seen.push(e)}), null);
