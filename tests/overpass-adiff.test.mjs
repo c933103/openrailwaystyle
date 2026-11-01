@@ -12,9 +12,10 @@ const BASE = '2026-11-01T06:00:00Z';
 
 test('a JSON selection query becomes its augmented diff, in XML, from a database time', () => {
   assert.equal(adiffQuery(CONVEYING_QUERY, '2026-10-30T12:22:36Z'),
-    '[out:xml][timeout:900][maxsize:1073741824][adiff:"2026-10-30T12:22:36Z"];(way[conveying][conveying!=no];way[highway=elevator];);out body geom qt;',
-    'XML prints way nodes only with members: out tags becomes out body');
-  assert.equal(adiffQuery('[out:json];way[a];out tags geom;node[b];out tags;', '2026-10-30T12:22:36Z'), '[out:xml][adiff:"2026-10-30T12:22:36Z"];way[a];out body geom;node[b];out body;');
+    '[out:xml][timeout:900][maxsize:1073741824][adiff:"2026-10-30T12:22:36Z"];(way[conveying][conveying!=no];way[highway=elevator];);out meta geom qt;',
+    'way nodes need members, and an augmented diff needs meta: every output asks for out meta');
+  assert.equal(adiffQuery('[out:json];way[a];out tags geom;node[b];out;rel[c];out body;way[d];out ids;', '2026-10-30T12:22:36Z'),
+    '[out:xml][adiff:"2026-10-30T12:22:36Z"];way[a];out meta geom;node[b];out meta;rel[c];out meta;way[d];out meta;');
   assert.throws(() => adiffQuery(CONVEYING_QUERY, '2026-10-30'), /Invalid change start/);
   assert.throws(() => adiffQuery('[out:xml];way;out;', '2026-10-30T12:22:36Z'), /\[out:json\]/);
   assert.throws(() => adiffQuery('[out:json][date:"2026-01-01T00:00:00Z"];way;out;', '2026-10-30T12:22:36Z'), /already sets a date/);
