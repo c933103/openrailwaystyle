@@ -44,7 +44,7 @@ test('created, modified and deleted elements, with way geometry and escaped text
 
 test('a response that did not finish, was cut short, or cannot be read in full throws', () => {
   const ok = osm(BASE, '');
-  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: []});
+  assert.deepEqual(parseAdiff(ok), {timestamp: BASE, upserts: [], deletes: [], deleted: []});
   assert.throws(() => parseAdiff(ok.replace('</osm>\n', '')), /Incomplete/);
   assert.throws(() => parseAdiff(osm(BASE, '<remark> runtime error: Query timed out in "query" at line 1 after 901 seconds. </remark>')), /timed out/);
   assert.throws(() => parseAdiff(ok.replace(/<meta[^>]*\/>/, '')), /database timestamp/);
@@ -233,6 +233,10 @@ test('stored elements follow changes and a changed query without a full download
   assert.equal(ended.osmBase, until);
   assert.equal(await updateElements({...base, until: '2026-11-01T07:00:00Z', query: CONVEYING_QUERY, fetchText: async () => diff}), null, 'a server whose data ends earlier');
   assert.throws(() => adiffQuery(CONVEYING_QUERY, since, '2026-10-01T00:00:00Z'), /Invalid change end/);
+  // Deleted from OSM, as opposed to no longer selected, is reported.
+  const both = await updateElements({...base, query: CONVEYING_QUERY, pick, fetchText: async () => osm(BASE,
+    '<action type="delete"><old/><new><way id="100" visible="false"/></new></action><action type="delete"><old/><new><way id="101" visible="true"/></new></action>')});
+  assert.deepEqual(both.deleted, ['way/100']);
   // A region with no elements yet takes its changes too.
   const empty = await updateElements({...base, elements: [], query: CONVEYING_QUERY, pick, fetchText: async () => diff});
   assert.deepEqual(empty.elements.map(e => e.id), [1]);
