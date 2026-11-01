@@ -64,6 +64,7 @@ on:
       - scripts/staged-overpass.mjs
       - scripts/station-acquisition.mjs
       - scripts/station-overview.mjs
+      - scripts/station-point.mjs
       - scripts/timetable-frequency-version.mjs
       - scripts/timetable-frequency.mjs
       - scripts/timetable-operator-bindings.json
