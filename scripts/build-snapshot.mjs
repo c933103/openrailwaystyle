@@ -7,7 +7,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES, toGeoJSON} from './lifecycle.mjs';
-import {DELTA_FILE, applyDelta} from './snapshot-delta.mjs';
+import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
 import {updateElements} from './overpass-adiff.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
 const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
@@ -127,6 +127,8 @@ async function updateRegion(box) {
   if(failure?.budget) throw failure;
   if(update) {
     await writeFile(file,JSON.stringify({osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
+    // For ways this region shares with one whose update failed (see snapshot-delta.mjs).
+    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements);
     updates.updated++; updates.changed+=update.upserts+update.deletes+update.added+update.dropped;
     return;
   }
@@ -138,8 +140,11 @@ async function updateRegion(box) {
   await unlink(file); updates.redownload++;
 }
 const updates={updated:0,changed:0,unanswered:0,redownload:0};
+let changeLog;
 if(region==='delta') {
-  for(const box of boxes) await updateRegion(box);
+  try {changeLog=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
+  try {for(const box of boxes) await updateRegion(box);}
+  finally {if(changeLog) await writeFile(DELTA_FILE,JSON.stringify(changeLog));}
   console.log('REGIONS UPDATED',JSON.stringify({...updates,downloaded}));
   process.exit(0);
 }

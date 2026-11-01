@@ -56,6 +56,10 @@ test('each cached region takes only its changes, deleted and retagged ways inclu
   assert.ok(!updated.elements.some(e => e.id === 100 || e.id === 101), 'deleted, and no longer tagged as former');
   assert.equal(updated.elements.length, 39);
   assert.match(result.stdout, /REGIONS UPDATED \{"updated":1,"changed":3,"unanswered":0,"redownload":0/);
+  // The changes are logged with their time, for ways other regions share.
+  const log = await read('delta.json');
+  assert.deepEqual(Object.fromEntries(Object.entries(log.changes).map(([id, c]) => [id, [c.time, c.feature && c.feature.properties.state]])),
+    {1: [BASE, null], 100: [BASE, null], 101: [BASE, null]}, 'reopened, deleted and retagged: none drawn');
 });
 
 test('a region Overpass does not answer is kept; one whose changes cannot be used is downloaded in full', async t => {
@@ -94,4 +98,21 @@ test('the download budget stops the update', async t => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Download budget exceeded/);
   assert.equal((await read('0_90_45_135.json')).osm3s.timestamp_osm_base, SINCE);
+});
+
+test('a way shared with a region whose update failed takes the newer state, deletions included', async () => {
+  const {recordChanges, applyDelta} = await import('../scripts/snapshot-delta.mjs');
+  const {toGeoJSON} = await import('../scripts/lifecycle.mjs');
+  const shared = way(5, {railway:'proposed', name:'Old'}), renamed = way(5, {railway:'proposed', name:'New'}), other = way(6, {railway:'abandoned'});
+  // Region A updated at BASE: way 5 renamed, way 6 deleted. Region B failed and keeps both as of SINCE.
+  const log = recordChanges(undefined, BASE, [shared, other], [renamed]);
+  const features = new Map(), base = new Map();
+  for (const [elements, time] of [[[renamed], BASE], [[shared, other], SINCE]]) // B is assembled last
+    for (const f of toGeoJSON({elements}).features) { features.set(f.id, f); base.set(f.id, time); }
+  applyDelta(features, base, log);
+  assert.equal(features.get(5).properties.name, 'New', 'the stale copy does not win');
+  assert.ok(!features.has(6), 'nor does a deleted way come back');
+  // Once every region is newer than the change, it is pruned.
+  const later = applyDelta(new Map(), new Map([[7, '2026-12-01T00:00:00Z']]), log);
+  assert.deepEqual(later.delta.changes, {});
 });
