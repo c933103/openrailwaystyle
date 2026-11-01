@@ -39,12 +39,13 @@ function regionQuery(box) {
 // between logs them again next time.
 // `parts`: what the download gave, each with its box and database time (one
 // part, or the parts of a region that split). Each part is compared with the
-// earlier elements that reach into it and logged at its own time, oldest
-// first, so a newer part's observation is never dated earlier.
+// earlier elements it would have selected (a node in its box) or still has,
+// and logged at its own time, oldest first, so a newer part's observation is
+// never dated earlier. An element with no node in a part is not that part's
+// to remove: its bounding rectangle may cover a part it never entered.
 const reaches=(element,[s,w,n,e])=>{
   if(!Array.isArray(element.geometry) || !element.geometry.length) return true;
-  const lats=element.geometry.map(p=>p.lat), lons=element.geometry.map(p=>p.lon);
-  return Math.max(...lats)>=s && Math.min(...lats)<=n && Math.max(...lons)>=w && Math.min(...lons)<=e;
+  return element.geometry.some(p=>p && p.lat>=s && p.lat<=n && p.lon>=w && p.lon<=e);
 };
 async function reconcile(box, parts, log) {
   const previous=regionFile(box)+'.previous';

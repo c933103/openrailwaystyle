@@ -171,20 +171,23 @@ test('a region downloaded again in full logs its differences, so a stale neighbo
 test('a region split during its full download logs each part at its own time', async t => {
   const T1 = '2026-11-01T05:00:00Z', T2 = '2026-11-01T06:30:00Z', T3 = '2026-11-01T07:00:00Z';
   const at = (id, lat, lon, name) => ({type:'way', id, tags:{railway:'proposed', name}, geometry:[{lat, lon}, {lat, lon: lon + 0.1}]});
+  // Unchanged, with nodes in the south-west and north-east parts only.
+  const diagonal = {type:'way', id:4, tags:{railway:'proposed', name:'Diagonal'}, geometry:[{lat:10, lon:100}, {lat:30, lon:120}]};
   const {result, read, names} = await run(t, {
-    '0_90_45_135.json.previous': region([at(1, 10, 100, 'Old'), at(2, 30, 120, 'Gone'), at(3, 10, 101, 'Here')]),
+    '0_90_45_135.json.previous': region([at(1, 10, 100, 'Old'), at(2, 30, 120, 'Gone'), at(3, 10, 101, 'Here'), diagonal]),
   }, {
     '0,90,45,135': {text:JSON.stringify({osm3s:{timestamp_osm_base:BASE}, remark:'runtime error: Query timed out', elements:[]})},
-    '0,90,22.5,112.5': full([at(1, 10, 100, 'New')], T2),
+    '0,90,22.5,112.5': full([at(1, 10, 100, 'New'), diagonal], T2),
     // Way 3 moved into this part, whose data is older.
     '0,112.5,22.5,135': full([at(3, 10, 120, 'Moved')], T1),
+    // Its bounding rectangle covers this part, with no node in it.
     '22.5,90,45,112.5': full([], T2),
-    '22.5,112.5,45,135': full([], T3),
+    '22.5,112.5,45,135': full([diagonal], T3),
   }, '0');
   assert.equal(result.status, 0, result.stderr);
   assert.ok(names.includes('0_90_45_135.json.split'));
   assert.deepEqual(logged(await read('delta.json')), {1: [T2, 'New'], 2: [T3, null], 3: [T1, 'Moved']},
-    'the deletion at the time of the part that saw it; the moved way not removed by the part it left');
+    'the deletion at the time of the part that saw it; the moved way not removed by the part it left; the unchanged diagonal way not logged');
   assert.ok(!names.includes('0_90_45_135.json.previous'));
 });
 
