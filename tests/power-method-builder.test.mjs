@@ -148,15 +148,17 @@ test('incomplete runs reuse completed leaves and split checkpoints without re-qu
   const body=await readFile(join(options.output,'power-methods.geojson'));
   assert.deepEqual(gunzipSync(await readFile(join(options.output,'power-methods.geojson.gz'))),body);
 }));
-test('changed, expired, partial and refresh-requested checkpoints cannot suppress requests',()=>fixture(async({run,options})=>{
+test('changed, partial and refresh-requested checkpoints cannot suppress requests; an old one takes its changes',()=>fixture(async({run,options,calls})=>{
   await run();
   const file=join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`);
   const saved=await readFile(file,'utf8');
   for(const record of [{query:'changed',response:complete},{query:powerMethodQuery(POWER_METHOD_REGIONS[0]),response:{remark:'Query timed out',elements:[]}}]) {
     await writeFile(file,JSON.stringify(record));assert.equal((await run()).manifest.requests,1);
   }
-  await writeFile(file,saved);const old=new Date(options.now()-29*86400_000);await utimes(file,old,old);
+  // An old checkpoint is no reason to download again: one change request.
+  await writeFile(file,saved);const old=new Date(options.now()-400*86400_000);await utimes(file,old,old);
   assert.equal((await run()).manifest.requests,1);
+  assert.match(calls.at(-1).query,/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);
   assert.equal((await run(undefined,{refresh:true})).manifest.requests,8);
 }));
 test('a wrong-query split decision is ignored; an old one, or one on a refresh, still splits',()=>fixture(async({run,options,calls})=>{
@@ -245,4 +247,87 @@ test('optimized query leaves v1 responses and expensive-query split evidence unt
   const result=await run();assert.equal(result.manifest.requests,8);assert.equal(result.manifest.coverage.length,8);
   assert.equal(await readFile(stem,'utf8'),legacy);assert.equal(await readFile(stem+'.split','utf8'),split);
   assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
+}));
+
+// Synthetic augmented diff: the cached way moved, a new one added.
+const changeXml=`<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="Overpass API">\n<meta osm_base="2026-10-20T00:00:00Z"/>\n`
+  +'<action type="modify"><old/><new><way id="12" version="2"><nd ref="1" lat="34" lon="135"/><nd ref="2" lat="34.002" lon="135.002"/><tag k="railway" v="subway"/><tag k="electrified" v="rail"/></way></new></action>\n'
+  +'<action type="create"><way id="13" version="1"><nd ref="3" lat="35" lon="136"/><nd ref="4" lat="35.001" lon="136.001"/><tag k="railway" v="tram"/><tag k="electrified" v="rail"/></way></action>\n</osm>\n';
+test('a week-old cached region takes one change request instead of a new download',()=>fixture(async({run,calls,options,advance})=>{
+  await run();
+  const first=calls.length;
+  advance(8*86400000);
+  await run((n,init)=>{assert.match(init.body.get('data'),/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);return response(changeXml);});
+  const changeCalls=calls.slice(first);
+  assert.equal(changeCalls.length,first,'one change request per cached region');
+  assert.ok(changeCalls.every(c=>/\[adiff:/.test(c.query)&&/out meta geom qt;$/.test(c.query)),'no region downloaded again');
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id).sort(),['way-12','way-13']);
+  assert.deepEqual(data.features.find(f=>f.id==='way-12').geometry.coordinates.at(-1),[135.002,34.002],'the moved way');
+  const cached=JSON.parse(await readFile(join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`),'utf8'));
+  assert.equal(cached.response.osm3s.timestamp_osm_base,'2026-10-20T00:00:00Z','the next update starts from the new database time');
+}));
+test('a refused change request keeps the cached region and still publishes it',()=>fixture(async({run,calls,options,advance})=>{
+  await run();
+  const first=calls.length;
+  advance(8*86400000);
+  await run(()=>response('busy',{status:503}));
+  assert.equal(calls.length-first,first,'one change attempt per region, no retries, no new download');
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id),['way-12']);
+}));
+test('a cached region of another query takes only the difference, not a new download',()=>fixture(async({run,calls,options})=>{
+  await run();
+  const box=POWER_METHOD_REGIONS[0],file=join(options.cache,`power-methods-v2-${box.join('_')}.json`),query=powerMethodQuery(box);
+  // The same query with a narrower usage filter: the current one selects more.
+  const older=query.replace('(railway|traction)','(railway)');
+  assert.notEqual(older,query);
+  await writeFile(file,JSON.stringify({query:older,response:complete}));
+  const first=calls.length,added={type:'way',id:14,tags:{railway:'rail',electrified:'rail'},geometry:[{lon:136,lat:35},{lon:136.001,lat:35.001}]};
+  await run((n,init)=>{
+    const body=init.body.get('data');
+    if(body.includes('[adiff:'))return response(changeXml.replace(/<action[\s\S]*<\/action>\n/,''));
+    return response(body.endsWith('out ids;')?{elements:[{type:'way',id:12},{type:'way',id:14}]}:{elements:[added]});
+  });
+  const asked=calls.slice(first).map(c=>c.query);
+  assert.equal(asked.length,3,'the changes of the old query, then the new query\'s ids and only the new element');
+  assert.match(asked[2],/\(way\(id:14\);\);out body geom qt;$/);
+  assert.match(asked[0],/^\[out:xml\].*\[adiff:"2026-10-13T00:00:00Z"\];/);
+  assert.ok(asked.slice(1).every(q=>q.includes('[date:"2026-10-20T00:00:00Z"]')),'both at the database time of those changes');
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id).sort(),['way-12','way-14']);
+  const cached=JSON.parse(await readFile(file,'utf8'));
+  assert.equal(cached.query,query,'kept under the current query');
+  assert.equal(cached.response.osm3s.timestamp_osm_base,'2026-10-20T00:00:00Z');
+  // If the difference fails, the region is downloaded in full, never kept under the old query.
+  await writeFile(file,JSON.stringify({query:older,response:complete}));
+  const before=calls.length;
+  await run((n,init)=>init.body.get('data').includes('[adiff:')?response('busy',{status:503}):response());
+  assert.deepEqual(calls.slice(before).map(c=>c.query),[calls.slice(before)[0].query,query]);
+}));
+test('a change without geometry keeps the cached region; the request budget still stops the run',()=>fixture(async({run,calls,options,advance})=>{
+  await run();
+  advance(8*86400000);
+  const bare=changeXml.replace(/<nd ref="3" lat="35" lon="136"\/><nd ref="4" lat="35.001" lon="136.001"\/>/,'');
+  await run(()=>response(bare));
+  const data=JSON.parse(await readFile(join(options.output,'power-methods.geojson'),'utf8'));
+  assert.deepEqual(data.features.map(f=>f.id),['way-12'],'never drawn without its line; the region keeps its data');
+  const cached=JSON.parse(await readFile(join(options.cache,`power-methods-v2-${POWER_METHOD_REGIONS[0].join('_')}.json`),'utf8'));
+  assert.equal(cached.response.osm3s.timestamp_osm_base,'2026-10-13T00:00:00Z','asked again next time');
+  const before=calls.length;
+  await assert.rejects(run(()=>response(changeXml),{limits:{requests:2}}),/request budget/);
+  assert.equal(calls.length-before,2);
+}));
+test('a wait the server asked for on a change request comes before the next request; one beyond the wait budget stops the run',()=>fixture(async({run,calls,sleeps,advance})=>{
+  await run();
+  advance(8*86400000);
+  const first=calls.length,before=sleeps.length;
+  await run(n=>n===first+1?response('busy',{status:429,headers:{'Retry-After':'120'}}):response(changeXml));
+  assert.equal(calls.length-first,8,'one change request per region');
+  assert.equal(sleeps.slice(before)[0],120000,'the next request waits as asked');
+  assert.ok(sleeps.slice(before+1).every(ms=>ms===10000),'then the usual pause');
+  advance(8*86400000);
+  const again=calls.length;
+  await assert.rejects(run(n=>n===again+1?response('busy',{status:429,headers:{'Retry-After':'600'}}):response(changeXml)),/Retry-After exceeds wait budget/);
+  assert.equal(calls.length-again,1);
 }));
