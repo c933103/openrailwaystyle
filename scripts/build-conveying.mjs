@@ -21,7 +21,8 @@ if(process.env.PREVIOUS_DATA) {
     previous={elements:JSON.parse(gunzipSync(await readFile(join(process.env.PREVIOUS_DATA,'elements.json.gz')))),
       since:manifest.osmBase,previousQuery:manifest.query};
   } catch(error) { console.log('No usable published elements:', error.message); }
-  if(previous) update=await updateElements({...previous,query,pick,
+  // Elements the conversion cannot use mean the full download, not a failed run.
+  if(previous) update=await updateElements({...previous,query,pick,validate:elements=>conveyingGeoJSON({elements}),
     fetchText:async request=>{
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
