@@ -43,6 +43,7 @@ on:
       - scripts/lifecycle.mjs
       - scripts/maintain-data-workflows.mjs
       - scripts/osm-geometry.mjs
+      - scripts/overpass-adiff.mjs
       - scripts/overpass-errors.mjs
       - scripts/pack-snapshot.py
       - scripts/polar-contours.mjs
