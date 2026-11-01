@@ -180,9 +180,15 @@ region's raw response: `regions/<stage>/` holds the last complete pass,
   leaves the previous generation in use; older generations are deleted after
   the new state is up, keeping the previous one.
 
-It is started by hand for now; the three datasets still
-download their own data until they are built from this store, and only then
-does the scheduler start it in their place.
+The scheduler above starts it every six hours, before branch lines and service
+routes. Their workflows load the newest usable generation
+(`railway-ways-release.mjs load <directory> RAILWAY_WAYS_STORE`) and are built
+from it with no Overpass request; when it cannot be loaded (no release yet, or
+GitHub unreachable), the run warns and downloads as before. Power methods keep
+their own world-quadrant download until the stages cover the whole world
+(`STAGES_COVER_WORLD` in `scripts/download-stages.mjs`); places outside every
+country stage, such as Mauritius, Réunion and the open sea, are not yet in any
+stage.
 
 Branch lines can already be built from the store: with `RAILWAY_WAYS_STORE`
 set to a copy of `railway-ways-data`, `scripts/build-branch-lines.mjs` makes no

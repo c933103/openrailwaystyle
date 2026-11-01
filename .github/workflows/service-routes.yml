@@ -73,6 +73,17 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
+      - name: Load the stored railway-ways regions
+        if: steps.acquire.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Service routes are built from the shared store (railway-ways.yml,
+        # scripts/railway-ways-release.mjs) when it loads, with no Overpass
+        # request; when it cannot be loaded, this run downloads them itself.
+        run: |
+          if ! node scripts/railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE; then
+            echo "::warning::The railway-ways store could not be loaded; downloading from Overpass instead"
+          fi
       - name: Fetch the next region from OpenStreetMap
         if: steps.acquire.outputs.enabled == 'true'
         id: build

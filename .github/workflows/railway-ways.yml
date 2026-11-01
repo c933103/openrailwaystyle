@@ -1,8 +1,9 @@
 name: Download railway ways (branch lines, service routes, power methods)
 on:
-  # Manual only for now: branch lines, service routes and power methods still
-  # download their own data. Once they are built from this store, the
-  # scheduler (osm-updates.yml) starts it instead of their own downloads.
+  # Every six hours, started by osm-updates.yml (one Overpass dataset at a
+  # time) before branch lines and service routes, which are built from this
+  # store; power methods follow once the stages cover the whole world
+  # (STAGES_COVER_WORLD in scripts/download-stages.mjs).
   workflow_dispatch:
 permissions:
   contents: write
