@@ -31,7 +31,10 @@ jobs:
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin station-points-work
             mkdir -p /tmp/station-previous
-            git archive FETCH_HEAD -- state.json stations.json.gz | tar -x -C /tmp/station-previous
+            # A cycle keeping elements also has elements.json.gz.
+            files='state.json stations.json.gz'
+            if git cat-file -e FETCH_HEAD:elements.json.gz 2>/dev/null; then files="$files elements.json.gz"; fi
+            git archive FETCH_HEAD -- $files | tar -x -C /tmp/station-previous
           elif [ "$status" != 2 ]; then
             echo "Cannot safely check checkpoint branch (status $status)"
             exit "$status"
@@ -52,11 +55,17 @@ jobs:
           import assert from 'node:assert/strict';
           import {readFile,appendFile} from 'node:fs/promises';
           import {gunzipSync} from 'node:zlib';
-          import {checkStationAcquisition,stationWorldCoverage} from './scripts/station-acquisition.mjs';
+          import {checkStationAcquisition,stationWorldCoverage,stationRecords} from './scripts/station-acquisition.mjs';
           const state=JSON.parse(await readFile('station-snapshot/state.json','utf8'));
           const rows=JSON.parse(gunzipSync(await readFile('station-snapshot/stations.json.gz')));
           const manifest=JSON.parse(await readFile('station-snapshot/manifest.json','utf8'));
           assert.equal(checkStationAcquisition(state,rows),true);
+          // The records of a generation keeping elements are those elements'.
+          if(state.elements){
+            const elements=JSON.parse(gunzipSync(await readFile('station-snapshot/elements.json.gz')));
+            assert.deepEqual(rows,stationRecords(elements));
+            assert.equal(manifest.elements,elements.length);
+          }
           const complete=state.pending.length===0&&stationWorldCoverage(state.completed);
           assert.equal(manifest.complete,complete);
           assert.equal(manifest.stations,rows.length);
@@ -89,6 +98,8 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout --orphan station-points-data
           cp -r "$GITHUB_WORKSPACE/station-snapshot/." .
+          # The elements stay on station-points-work only.
+          rm -f elements.json.gz
           git add .
           git commit -q -m "Complete worldwide station points $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if ! git push --force origin HEAD:station-points-data; then
@@ -108,6 +119,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/station-snapshot/state.json" .
           cp "$GITHUB_WORKSPACE/station-snapshot/stations.json.gz" .
           cp "$GITHUB_WORKSPACE/station-snapshot/manifest.json" .
+          if [ -f "$GITHUB_WORKSPACE/station-snapshot/elements.json.gz" ]; then cp "$GITHUB_WORKSPACE/station-snapshot/elements.json.gz" .; fi
           git add .
           git commit -q -m "Station-point acquisition progress $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if ! git push --force origin HEAD:station-points-work; then

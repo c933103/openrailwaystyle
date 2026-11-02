@@ -266,7 +266,7 @@ jobs:
           git ls-remote --exit-code --heads origin station-points-data >/dev/null || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin station-points-data
-            git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz
+            git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz --exclude=elements.json.gz
             node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile,stat} from 'node:fs/promises';

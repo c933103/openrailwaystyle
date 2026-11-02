@@ -417,9 +417,26 @@ refused. The regions of a cycle are read over days, so the first changes
 after a cycle, which start from its start, also drop any record edited after
 it that they do not mention: that element matched the query at neither end,
 so it was created and went again while the regions were read. A generation
-made by another region query or record conversion (`stationExtraction`: the
-query and `scripts/station-point.mjs` with its imports) starts a new cycle
-instead. The generation is published, and the site redeployed, only when a
+A cycle keeps every element its query selects (`elements.json.gz` on
+`station-points-work`, not published or deployed: type, id, version,
+timestamp, tags and a node's position or a way's or relation's centre),
+including ones the conversion makes no station of, and records `elements`,
+`query` and its version in its state. The records are converted from those
+elements on every run, so changed conversion code
+(`scripts/station-point.mjs`) needs no download: the generation is
+re-converted and published. Changes are applied to the elements. When the
+query changes, a complete generation takes the changes of its own query,
+then only the difference at their database time: the new query's ids
+worldwide, and the newly selected elements by id (`stationSelectionQueries`,
+`applyStationSelection`); a run failing after the changes keeps them. Only
+when the difference needs over eight requests in all, or the queries cannot
+be compared, does a new cycle start; an incomplete cycle of another query
+also restarts. A cycle started before elements were kept has records only:
+it is updated as before, and one made by another region query or record
+conversion (`stationExtraction`: the query and `scripts/station-point.mjs`
+with its imports) starts a new cycle, which keeps elements. GitHub refuses
+files over 100 MB, so a run whose elements compress to over 90 MiB fails
+rather than saving them. The generation is published, and the site redeployed, only when a
 cycle completed, the changes altered its stations, or its tiles differ from
 the last published ones (`publishedTiles` in the state, a digest of the tile
 archives), as after a change to the tile code. A failed change request
