@@ -81,6 +81,63 @@ test('odbl-tables.yml follows every workflow that publishes a table and uploads 
     const title = readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8').match(/^name: (.+)$/m)[1];
     assert.ok(workflow.includes(`      - ${title}\n`), title);
   }
-  assert.ok(workflow.indexOf('gh release upload odbl-tables "/tmp/odbl/$file" --clobber') < workflow.indexOf('gh release upload odbl-tables /tmp/odbl/odbl-tables.json --clobber'));
+  // Tables, then the manifest, each through replace().
+  assert.ok(workflow.indexOf('    replace "$file"') < workflow.indexOf('replace odbl-tables.json'));
+  // A replacement is uploaded under a temporary name before the old asset
+  // is deleted, and never with --clobber, which deletes first.
+  const body = workflow.slice(workflow.indexOf('replace() {'), workflow.indexOf('while read -r file'));
+  assert.ok(body.indexOf('gh release upload odbl-tables "/tmp/odbl-new/$1.new"') < body.indexOf('releases/assets/$old"'));
+  assert.ok(body.indexOf('releases/assets/$old"') < body.indexOf('-f name="$1"'));
+  assert.doesNotMatch(workflow, /--clobber/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+});
+
+// The workflow's own replace() shell code, run against a fake `gh` that
+// keeps release assets as files: a failed upload must leave the old asset.
+import {execFileSync} from 'node:child_process';
+import {mkdirSync, writeFileSync, readdirSync, chmodSync} from 'node:fs';
+function releaseFixture(t) {
+  const root = join(tmpdir(), `odbl-gh-${process.pid}-${Math.random().toString(36).slice(2)}`);
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const assets = join(root, 'assets'), bin = join(root, 'bin');
+  mkdirSync(assets, {recursive: true}); mkdirSync(bin); mkdirSync(join(root, 'tmp/odbl'), {recursive: true});
+  // assets/<id> holds "<name>\n<content>".
+  writeFileSync(join(bin, 'gh'), `#!/usr/bin/env bash
+set -eu
+A=${assets}
+if [ "$1" = api ] && [ "$2" = "-X" ]; then
+  id=\${4##*/}
+  if [ "$3" = DELETE ]; then rm "$A/$id"; exit 0; fi
+  name=\${6#name=}; content=$(tail -n +2 "$A/$id"); printf '%s\\n%s' "$name" "$content" > "$A/$id"; exit 0
+fi
+if [ "$1" = api ]; then
+  want=$(printf '%s' "$4" | sed -E 's/.*name == "([^"]+)".*/\\1/')
+  for f in "$A"/*; do [ -e "$f" ] || continue; [ "$(head -n 1 "$f")" = "$want" ] && basename "$f"; done; exit 0
+fi
+if [ "$1" = release ] && [ "$2" = upload ]; then
+  [ -z "\${FAIL_UPLOAD:-}" ] || exit 1
+  id=$(( $(ls "$A" | wc -l) + 100 + RANDOM )); printf '%s\\n%s' "$(basename "$4")" "$(cat "$4")" > "$A/$id"; exit 0
+fi
+exit 2
+`);
+  chmodSync(join(bin, 'gh'), 0o755);
+  const workflow = readFileSync(new URL('../.github/workflows/odbl-tables.yml', import.meta.url), 'utf8');
+  const functions = workflow.slice(workflow.indexOf('asset_id() {'), workflow.indexOf('while read -r file')).replace(/^ {10}/gm, '').replaceAll('/tmp/', `${root}/tmp/`);
+  const state = () => Object.fromEntries(readdirSync(assets).map(id => readFileSync(join(assets, id), 'utf8').split('\n')));
+  const run = (file, content, env = {}) => {
+    writeFileSync(join(root, 'tmp/odbl', file), content);
+    try { execFileSync('bash', ['-eu', '-c', `${functions}\nreplace ${file}`], {env: {...process.env, ...env, PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'o/r'}, stdio: 'pipe'}); return true; }
+    catch { return false; }
+  };
+  return {run, state};
+}
+
+test('replacing a release asset: success swaps it in, a failed upload keeps the old one', t => {
+  const {run, state} = releaseFixture(t);
+  assert.equal(run('crossings.tsv.gz', 'v1'), true);
+  assert.deepEqual(state(), {'crossings.tsv.gz': 'v1'});
+  assert.equal(run('crossings.tsv.gz', 'v2', {FAIL_UPLOAD: '1'}), false);
+  assert.deepEqual(state(), {'crossings.tsv.gz': 'v1'}, 'the old asset is still there');
+  assert.equal(run('crossings.tsv.gz', 'v3'), true);
+  assert.deepEqual(state(), {'crossings.tsv.gz': 'v3'});
 });

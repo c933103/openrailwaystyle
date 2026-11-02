@@ -1,9 +1,11 @@
 # The ODbL download tables, served from the release `odbl-tables` rather than
 # the website (scripts/odbl-tables.mjs, #330 A3). Runs after each workflow
 # that publishes a table, on changes to itself, weekly as a safety net and by
-# hand. Each table is uploaded only when its sha256 changed; the manifest
-# odbl-tables.json is uploaded last, so it never lists a table the release
-# does not have. A failed run leaves the previous assets in place.
+# hand. Each table is uploaded only when its sha256 changed, under a
+# temporary name, and replaces the old asset only after the upload
+# succeeded; the manifest odbl-tables.json is replaced last, so it never
+# lists a table the release does not have. A failed run leaves the previous
+# assets in place.
 name: Publish ODbL download tables
 on:
   workflow_dispatch:
@@ -51,11 +53,27 @@ jobs:
           gh release download odbl-tables --pattern odbl-tables.json --dir /tmp/previous || true
           node scripts/odbl-tables.mjs stage /tmp/odbl /tmp/previous/odbl-tables.json > /tmp/upload.txt
           echo "Changed: $(tr '\n' ' ' < /tmp/upload.txt)"
+          # Replace an asset without a moment where a failed upload leaves
+          # it missing: the new file is uploaded as <name>.new first, and
+          # only once that succeeded is the old asset deleted and the new
+          # one renamed. If the rename fails, the next run uploads again,
+          # because the manifest (uploaded last) still has the old sha256.
+          asset_id() { gh api "repos/$GITHUB_REPOSITORY/releases/tags/odbl-tables" --jq ".assets[] | select(.name == \"$1\") | .id"; }
+          replace() {
+            mkdir -p /tmp/odbl-new
+            cp "/tmp/odbl/$1" "/tmp/odbl-new/$1.new"
+            stale=$(asset_id "$1.new"); if [ -n "$stale" ]; then gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$stale"; fi
+            gh release upload odbl-tables "/tmp/odbl-new/$1.new"
+            new=$(asset_id "$1.new"); old=$(asset_id "$1")
+            test -n "$new"
+            if [ -n "$old" ]; then gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$old"; fi
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$new" -f name="$1" > /dev/null
+          }
           while read -r file; do
             [ -n "$file" ] || continue
-            gh release upload odbl-tables "/tmp/odbl/$file" --clobber
+            replace "$file"
           done < /tmp/upload.txt
-          gh release upload odbl-tables /tmp/odbl/odbl-tables.json --clobber
+          replace odbl-tables.json
           {
             echo '| Table | Bytes | sha256 | Source |'
             echo '| --- | ---: | --- | --- |'
