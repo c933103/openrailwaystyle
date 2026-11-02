@@ -28,6 +28,7 @@ async function run(t, files, replies, mode = 'delta') {
       (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
       const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
       if (reply.cut) return {ok:true, status:200, text:async () => { throw new TypeError('terminated'); }};
+      if (reply.fail) throw new TypeError('fetch failed');
       return new Response(reply.text, {status:reply.status || 200});
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8'});
@@ -247,4 +248,27 @@ test('a way seen unchanged later replaces an older logged removal, so a stale re
   assert.ok(features.has(7));
   // Unchanged and never logged: still nothing logged.
   assert.deepEqual(recordChanges(undefined, '2026-11-01T06:00:00Z', [kept], [kept], box).changes, {});
+});
+
+// A busy or unreachable server says nothing about a region's size: it is
+// asked again next run, whole, and no split is recorded. Only an executed
+// query limit, in a remark or an HTTP 5xx body, splits it.
+test('an outage or a refusal leaves the region whole; only a query limit splits it', async t => {
+  for (const [name, reply] of [['network failure', {fail:true}], ['rate limit', {status:429, text:'Too Many Requests'}],
+    ['busy gateway', {status:504, text:'Gateway Timeout. All query workers are busy and the request queue is full.'}]]) {
+    const {result, requests, names} = await run(t, {}, {'0,90,45,135': reply}, '0');
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, /Overpass stayed unavailable for region 0,90,45,135/, name);
+    assert.equal(requests.filter(q => q.includes('(0,90,45,135)')).length, 3, `${name}: three attempts, then the next run`);
+    assert.ok(!names.includes('0_90_45_135.json.split'), `${name}: no split recorded`);
+    assert.equal(requests.length, 3, `${name}: no part asked`);
+  }
+  const limit = '<p><strong>Error</strong>: runtime error: Query timed out in "query" at line 1 after 90 seconds.</p>';
+  const {result, names, requests} = await run(t, {}, {
+    '0,90,45,135': {status:504, text:limit},
+    '0,90,22.5,112.5': full([]), '0,112.5,22.5,135': full([]), '22.5,90,45,112.5': full([]), '22.5,112.5,45,135': full([]),
+  }, '0');
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(names.includes('0_90_45_135.json.split'), 'an executed-query limit in an HTTP 504 body splits');
+  assert.equal(requests.filter(q => q.includes('(0,90,45,135)')).length, 1, 'split at once, not asked again');
 });
