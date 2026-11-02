@@ -152,6 +152,17 @@ export function powerFacilityEnergyRows(properties = {}) {
   ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 
+// The snapshots are published gzip-compressed only (*.geojson.gz). GitHub
+// Pages serves them as gzip bytes, while a server that decodes them over HTTP
+// hands over plain JSON: both are read.
+export async function readGzipJson(response) {
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const text = bytes[0] === 0x1f && bytes[1] === 0x8b
+    ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+    : new TextDecoder().decode(bytes);
+  return JSON.parse(text);
+}
+
 // The dataset is downloaded only once the Power view needs it. Visitors read
 // the prepared snapshot; there are no live Overpass requests in the browser.
 // glyphs(data) may delay showing localized names, for fonts they need.
@@ -183,7 +194,7 @@ export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher 
     pending = (async()=>{
       const response = await fetcher(url,{cache:'no-cache',signal:AbortSignal.timeout(20000)});
       if (!response.ok) throw new Error(`Railway energy supplies returned ${response.status}`);
-      const data = await response.json();
+      const data = await readGzipJson(response);
       if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) throw new Error('Invalid railway energy supply snapshot');
       raw = data;
       await show();

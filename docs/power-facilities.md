@@ -102,6 +102,16 @@ with `power/power-facilities.geojson` and its coverage manifest. The application
 loads this file on demand in the Power view and reuses it after language or
 view changes. Visitors never query Overpass.
 
+`traction-data` holds each power snapshot twice: as plain GeoJSON and as a gzip copy
+(`.geojson.gz`). The site deploys only the gzip copies of the energy supplies,
+conductor rails and chargers, and electrification signals. The application
+decompresses them in the browser (`readGzipJson` in `styles/power-facilities.mjs`).
+It also reads plain JSON when a server has already decoded the response.
+`site.yml` validates the gzip copies against their manifests, then removes
+the uncompressed files from the site, which saves about 100 MB of the
+GitHub Pages limit. The plain files stay on `traction-data` for the workflows
+that read them.
+
 Primary references:
 
 - [OSM railway supply tagging](https://wiki.openstreetmap.org/wiki/OpenRailwayMap/Tagging)

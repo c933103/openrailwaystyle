@@ -146,9 +146,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
   await page.route('**/data/**',async route=>{
     const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
-    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson')){await route.fulfill({json:methods});return;}
-    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
-    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/electricity-signals.geojson')){signalRequests++;await route.fulfill({json:electricitySignals});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson.gz')){await route.fulfill({body:gzipSync(JSON.stringify(methods)),contentType:'application/gzip'});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson.gz')){supplyRequests++;await route.fulfill({body:gzipSync(JSON.stringify(supplies)),contentType:'application/gzip'});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/electricity-signals.geojson.gz')){signalRequests++;await route.fulfill({body:gzipSync(JSON.stringify(electricitySignals)),contentType:'application/gzip'});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
     const [,folder,file]=match,snapshot=snapshotIndexes[folder];
