@@ -10,6 +10,7 @@ import {STATES, toGeoJSON} from './lifecycle.mjs';
 import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
 import {updateElements} from './overpass-adiff.mjs';
 import {quarters, worldRegions} from './world-regions.mjs';
+import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
 const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 await mkdir('.snapshot-cache', {recursive:true});
@@ -77,13 +78,21 @@ async function collect(box, depth=0) {
         console.log('Fetching world region', box, 'attempt',attempt+1);
         try {
           const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(130000)});
-          if(!response.ok) throw new Error(`HTTP ${response.status}`);
+          // Only an executed-query limit, in a JSON remark or an HTTP 5xx
+          // body, means the region is too large and splits it; a busy or
+          // unreachable server (a network error, 429, 503, a gateway error)
+          // says nothing about its size.
+          if(!response.ok) {
+            const detail=(await response.text().catch(()=>'')).slice(0,65536);
+            throw Object.assign(new Error(`HTTP ${response.status}`),{oversized:queryExceededLimits(response.status,detail)});
+          }
           const text=await response.text();downloaded+=Buffer.byteLength(text);
           await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
           console.log('Downloaded bytes this run',downloaded);
           if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
           json=JSON.parse(text);
-          if(json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
+          if(json.remark || !Array.isArray(json.elements))
+            throw Object.assign(new Error(json.remark || 'Incomplete response'),{oversized:typeof json.remark==='string'&&queryExceededLimits(200,json.remark)});
           // With its query, which the next change update compares with, and
           // when it was downloaded in full (first, so the refresh step reads
           // it without parsing the file; refresh-snapshot-cache.mjs).
@@ -91,8 +100,11 @@ async function collect(box, depth=0) {
         } catch(error) {
           console.warn(error.message);json=undefined;
           if(downloaded>500_000_000) throw error;
-          // A timeout in extraction/output calls for a smaller area immediately.
-          if(/timed out|memory|timeout/i.test(error.message) || attempt===2) {split=true;break;}
+          // A query limit calls for a smaller area immediately. Anything else
+          // keeps the region whole: it is asked again next run, and no split
+          // is recorded, so an outage never leaves the world in more pieces.
+          if(error.oversized) {split=true;break;}
+          if(attempt===2) throw new Error(`Overpass stayed unavailable for region ${box}: ${error.message}`);
         }
       }
     }
