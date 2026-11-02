@@ -62,13 +62,15 @@ function ringArea(ring) {
 export const areaKm2 = multi => multi.reduce((total, [outer, ...holes]) =>
   total + ringArea(outer) - holes.reduce((h, ring) => h + ringArea(ring), 0), 0);
 
-export function extent(multi) {
+// Exact bounds, for choosing cells; extent() rounds them for the report.
+function bounds(multi) {
   let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
   for (const polygon of multi) for (const [x, y] of polygon[0]) {
     w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y);
   }
-  return [w, s, e, n].map(v => Math.round(v * 1000) / 1000);
+  return [w, s, e, n];
 }
+export const extent = multi => bounds(multi).map(v => Math.round(v * 1000) / 1000);
 
 // The whole measurement on parsed inputs, so tests use fixtures.
 export function measureGaps(index, landFeatures = []) {
@@ -91,7 +93,8 @@ export function measureGaps(index, landFeatures = []) {
     if (!cells.has(key)) {
       const square = [[[cx, cy], [cx + 10, cy], [cx + 10, cy + 10], [cx, cy + 10], [cx, cy]]];
       const inside = polygonClipping.intersection(covered, square);
-      cells.set(key, {square, inside, full: Math.abs(areaKm2(inside) - areaKm2([square])) < 1e-6 * areaKm2([square])});
+      // Full only if nothing of the cell is left uncovered, however small.
+      cells.set(key, {square, inside, full: polygonClipping.difference(square, inside).length === 0});
     }
     return cells.get(key);
   };
@@ -99,7 +102,7 @@ export function measureGaps(index, landFeatures = []) {
   for (const feature of landFeatures) {
     if (!feature?.geometry) continue;
     for (const polygon of asMulti(feature.geometry)) {
-      const [w, s, e, n] = extent([polygon]);
+      const [w, s, e, n] = bounds([polygon]);
       for (let cx = Math.floor(w / 10) * 10; cx < e; cx += 10) for (let cy = Math.floor(s / 10) * 10; cy < n; cy += 10) {
         const {square, inside, full} = cell(cx, cy);
         if (full) continue;

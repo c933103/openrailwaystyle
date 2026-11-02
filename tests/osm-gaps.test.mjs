@@ -84,3 +84,19 @@ test('osm-gaps.yml is manual, read-only and publishes only its own measurement',
   assert.doesNotMatch(workflow, /contents: write|git push|gh release/);
   assert.match(workflow, /node --import \.\/scripts\/overpass-meter\.mjs scripts\/measure-osm-gaps\.mjs osm-gaps/);
 });
+
+test('a gap too small to matter by area still counts, and a sliver island across a cell edge is kept', () => {
+  // asia covers the cell 0–10° E, 10–20° N except a 0.005° square hole;
+  // a 0.0008° island straddles the 10° E cell edge inside the band gap.
+  const index = fixtureIndex();
+  const asia = index.features.find(f => f.properties.id === 'asia');
+  asia.geometry = {type: 'Polygon', coordinates: [asia.geometry.coordinates[0], [[5, 15], [5, 15.005], [5.005, 15.005], [5.005, 15], [5, 15]]]};
+  const {land: pieces} = measureGaps(index, [
+    {type: 'Feature', geometry: box(5.001, 15.001, 5.004, 15.004)},
+    {type: 'Feature', geometry: box(9.9996, 2, 10.0004, 2.001)},
+  ]);
+  const extents = pieces.map(p => p.extent);
+  assert.ok(extents.some(([w, s]) => w === 5.001 && s === 15.001), 'land in a tiny hole is found');
+  assert.ok(extents.some(([w, , e]) => w === 10 && e === 10), 'the sliver island is found');
+  assert.equal(extents.length, 2);
+});
