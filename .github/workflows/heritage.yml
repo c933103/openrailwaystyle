@@ -39,7 +39,7 @@ jobs:
             echo "HERITAGE_PREVIOUS_ELEMENTS=$RUNNER_TEMP/heritage-previous" >> "$GITHUB_ENV"
           fi
       - name: Build historic areas from OpenStreetMap
-        run: node scripts/build-heritage.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-heritage.mjs
       - name: Publish complete data snapshot
         run: |
           mkdir /tmp/heritage-publish

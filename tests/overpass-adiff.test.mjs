@@ -116,7 +116,7 @@ test('the conveying build updates from changes and keeps the full download as it
   assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'));
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
-  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node scripts/build-conveying.mjs'));
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-conveying.mjs'));
 });
 
 test('aerialways are updated the same way, with names and kinds as a full download gives them', async () => {
@@ -149,7 +149,7 @@ test('the aerialway build keeps its elements and converts all of them on every r
   assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
   const workflow = readFileSync(new URL('../.github/workflows/aerialways.yml', import.meta.url), 'utf8');
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
-  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node scripts/build-aerialways.mjs'));
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-aerialways.mjs'));
   const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.match(site, /tar -x -C styles\/data\/aerialways --exclude=elements\.json\.gz/, 'the stored elements are not deployed');
 });
@@ -165,7 +165,7 @@ test('street running keeps its elements, updates from changes and the query diff
   assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
   const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
-  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node scripts/build-street-running.mjs'));
+  assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-street') < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-street-running.mjs'));
   const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.match(site, /cp -r street-snapshot\/12 street-snapshot\/index\.json street-snapshot\/manifest\.json street-snapshot\/street-running\.geojson\.gz styles/, 'the stored elements are not deployed');
   // The worst case (the change requests' shared time used, a pause, three

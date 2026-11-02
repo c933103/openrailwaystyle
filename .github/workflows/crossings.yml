@@ -85,7 +85,7 @@ jobs:
         id: update
         run: |
           if [ -f /tmp/previous-crossings/crossings.tsv.gz ]; then export PREVIOUS_DATA=/tmp/previous-crossings; fi
-          node scripts/build-crossings.mjs
+          node --import ./scripts/overpass-meter.mjs scripts/build-crossings.mjs
       # Ordinary failures preserve completed leaves; cancellation/runner loss
       # is not guaranteed to reach this step. Never publish staging as live data.
       - name: Preserve validated full-rebuild progress

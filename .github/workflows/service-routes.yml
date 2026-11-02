@@ -89,7 +89,7 @@ jobs:
         id: build
         run: |
           if [ -f /tmp/previous-service/state.json ]; then export PREVIOUS_DATA=/tmp/previous-service; fi
-          node scripts/build-service-routes.mjs
+          node --import ./scripts/overpass-meter.mjs scripts/build-service-routes.mjs
       - name: Publish the table and tiles
         if: steps.build.outputs.publish == 'true'
         run: |

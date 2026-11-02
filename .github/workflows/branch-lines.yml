@@ -58,7 +58,7 @@ jobs:
         id: build
         run: |
           if [ -f /tmp/previous-branch/state.json ]; then export PREVIOUS_DATA=/tmp/previous-branch; fi
-          node scripts/build-branch-lines.mjs
+          node --import ./scripts/overpass-meter.mjs scripts/build-branch-lines.mjs
       - name: Publish the table and tiles
         if: steps.build.outputs.publish == 'true'
         run: |

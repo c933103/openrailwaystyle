@@ -117,7 +117,7 @@ test('the aerialway snapshot has its own bounded workflow; the site requires it,
   assert.match(site,/node scripts\/validate-aerialway-snapshot\.mjs styles\/data\/aerialways/);
   assert.doesNotMatch(site,/echo .* > styles\/data\/aerialways\/index\.json/);
   const workflow=readFileSync(new URL('../.github/workflows/aerialways.yml',import.meta.url),'utf8');
-  assert.match(workflow,/run: node scripts\/build-aerialways\.mjs/);
+  assert.match(workflow,/run: node --import \.\/scripts\/overpass-meter\.mjs scripts\/build-aerialways\.mjs/);
   assert.match(workflow,/Publish complete data snapshot\n\s+# Only main publishes the shared snapshot\.\n\s+if: github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow,/git push origin HEAD:aerialway-data/);
   const build=readFileSync(new URL('../scripts/build-aerialways.mjs',import.meta.url),'utf8');

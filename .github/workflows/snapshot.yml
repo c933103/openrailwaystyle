@@ -71,12 +71,12 @@ jobs:
         continue-on-error: true
         env:
           SNAPSHOT_REGION: delta
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       # Loading gauge by way ID, for the zoom 0–6 overview. If Overpass is
       # busy the previous list is published again.
       - name: Fetch loading gauge list
         continue-on-error: true
-        run: node scripts/build-loading-gauge-list.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-loading-gauge-list.mjs
       # The two caps beyond 85.05° that Web Mercator tiles miss: contours and
       # relief from ETOPO 2022 (fetched once, then cached) and OpenStreetMap
       # base features and Carto detail (four longitude sectors per cap,
@@ -97,91 +97,91 @@ jobs:
           fi
       - name: Prepare the polar caps
         continue-on-error: true
-        run: node scripts/build-polar.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-polar.mjs
       - name: Collect world region 1 of 20
         env:
           SNAPSHOT_REGION: '0'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 2 of 20
         env:
           SNAPSHOT_REGION: '1'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 3 of 20
         env:
           SNAPSHOT_REGION: '2'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 4 of 20
         env:
           SNAPSHOT_REGION: '3'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 5 of 20
         env:
           SNAPSHOT_REGION: '4'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 6 of 20
         env:
           SNAPSHOT_REGION: '5'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 7 of 20
         env:
           SNAPSHOT_REGION: '6'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 8 of 20
         env:
           SNAPSHOT_REGION: '7'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 9 of 20
         env:
           SNAPSHOT_REGION: '8'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 10 of 20
         env:
           SNAPSHOT_REGION: '9'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 11 of 20
         env:
           SNAPSHOT_REGION: '10'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 12 of 20
         env:
           SNAPSHOT_REGION: '11'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 13 of 20
         env:
           SNAPSHOT_REGION: '12'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 14 of 20
         env:
           SNAPSHOT_REGION: '13'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 15 of 20
         env:
           SNAPSHOT_REGION: '14'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 16 of 20
         env:
           SNAPSHOT_REGION: '15'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 17 of 20
         env:
           SNAPSHOT_REGION: '16'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 18 of 20
         env:
           SNAPSHOT_REGION: '17'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 19 of 20
         env:
           SNAPSHOT_REGION: '18'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 20 of 20
         env:
           SNAPSHOT_REGION: '19'
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Assemble complete worldwide archive
         env:
           SNAPSHOT_REGION: assemble
-        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+        run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - uses: actions/cache/save@v4
         if: always()
         with:

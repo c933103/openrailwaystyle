@@ -44,9 +44,9 @@ jobs:
           PREVIOUS_DATA: /tmp/station-previous
         run: |
           if [ -f /tmp/station-previous/state.json ]; then
-            node scripts/build-station-snapshot.mjs
+            node --import ./scripts/overpass-meter.mjs scripts/build-station-snapshot.mjs
           else
-            env -u PREVIOUS_DATA node scripts/build-station-snapshot.mjs
+            env -u PREVIOUS_DATA node --import ./scripts/overpass-meter.mjs scripts/build-station-snapshot.mjs
           fi
       - name: Verify region topology, records and publication boundary
         id: verify

@@ -36,7 +36,7 @@ jobs:
             fi
           fi
       - name: Extract every mapped aerial cableway and lift way
-        run: node scripts/build-aerialways.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-aerialways.mjs
       - name: Publish complete data snapshot
         # Only main publishes the shared snapshot.
         if: github.ref == 'refs/heads/main'
