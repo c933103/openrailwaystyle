@@ -29,7 +29,10 @@ test('parseCsv reads the query columns with crossing-rows.mjs', () => {
 test('a table and a rebuild checkpoint of the code before the move stay current', async t => {
   const {currentCrossingExtraction, EARLIER_CROSSING_EXTRACTIONS} = await import('../scripts/crossing-data.mjs');
   assert.equal(currentCrossingExtraction(crossingExtraction()), true);
-  assert.equal(currentCrossingExtraction(EARLIER_CROSSING_EXTRACTIONS[0]), true);
+  const [earlier] = Object.keys(EARLIER_CROSSING_EXTRACTIONS);
+  assert.equal(EARLIER_CROSSING_EXTRACTIONS[earlier], crossingExtraction(), 'bound to this very code');
+  assert.equal(currentCrossingExtraction(earlier), true);
+  assert.equal(currentCrossingExtraction('toString'), false);
   assert.equal(currentCrossingExtraction('a'.repeat(64)), false);
   assert.equal(currentCrossingExtraction(undefined), false);
   const {mkdtemp, readFile, writeFile, rm} = await import('node:fs/promises');
@@ -58,6 +61,9 @@ test('a table and a rebuild checkpoint of the code before the move stay current'
   const again = await checkpoints.openCrossingCheckpoint({...options, warn: message => assert.fail(message)});
   assert.deepEqual(await again.get(second), {kind: 'leaf', rows: []});
   assert.deepEqual(await again.get(box), {kind: 'leaf', rows: []});
+  // The earlier fingerprint counts only while the parser is the same code.
+  const identity = await checkpoints.crossingCheckpointIdentity(options.source, options.parentSnapshot, 3);
+  await assert.rejects(checkpoints.loadCrossingCheckpoint(dir, {...identity, parser: 'c'.repeat(64)}), /Incompatible checkpoint/);
   // Any other parser fingerprint is still another parser.
   await restamp('b'.repeat(64));
   const warnings = [];

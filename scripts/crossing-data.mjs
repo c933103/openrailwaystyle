@@ -79,9 +79,15 @@ export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180
 // The version the same query and row code had before the row code moved to
 // crossing-rows.mjs (main at cec0af882, when the version still hashed this
 // whole module): a table made by it is the table this code makes, so it
-// takes changes instead of a full download.
-export const EARLIER_CROSSING_EXTRACTIONS = Object.freeze(['6cb18833855b303bf43efc4f203cfc7ce89b1ee5ab0847aa5bd3114c800aee91']);
-export const currentCrossingExtraction = version => version === crossingExtraction() || EARLIER_CROSSING_EXTRACTIONS.includes(version);
+// takes changes instead of a full download. Each earlier version maps to
+// the version of the same code after the move, and counts only while the
+// code still has that version: any later query or row change is a change.
+export const EARLIER_CROSSING_EXTRACTIONS = Object.freeze({
+  '6cb18833855b303bf43efc4f203cfc7ce89b1ee5ab0847aa5bd3114c800aee91': '442b70bbc2b7701392ff04aeedbbf34fd448aa0970e82804966eea114531d13a'});
+export const currentCrossingExtraction = version => {
+  const current = crossingExtraction();
+  return version === current || (Object.hasOwn(EARLIER_CROSSING_EXTRACTIONS, version || '') && EARLIER_CROSSING_EXTRACTIONS[version] === current);
+};
 // Overpass rows of the regionQuery columns (crossing-rows.mjs).
 export const parseCsv = text => parseRows(text, TAG_KEYS);
 // A node deleted from OSM (visible="false") is deleted. One that only left

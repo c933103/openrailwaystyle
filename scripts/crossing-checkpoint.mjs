@@ -86,10 +86,13 @@ function validateRows(rows, box) {
 
 // The parser fingerprint of the same row code before it moved to
 // crossing-rows.mjs (main at cec0af882, which hashed crossing-data.mjs and
-// crossing-tags.mjs): rows staged by it are the rows this code stages.
-const EARLIER_PARSERS = ['701ba0e031de9088a5987caa3da824b9ce0d2a1c2c4bbd6e99f92ed93d4982d7'];
+// crossing-tags.mjs): rows staged by it are the rows this code stages. It
+// maps to the fingerprint of the same code after the move, and counts only
+// while the parser still has that fingerprint.
+const EARLIER_PARSERS = {'701ba0e031de9088a5987caa3da824b9ce0d2a1c2c4bbd6e99f92ed93d4982d7': 'b2a48cec31ddc54471ff2e72185a395ecc36667256c01deecde5634fb44dc5e0'};
 const sameIdentity = (saved, identity) => equal(saved, identity) ||
-  (EARLIER_PARSERS.includes(saved?.parser) && equal({...saved, parser: identity.parser}, identity));
+  (Object.hasOwn(EARLIER_PARSERS, saved?.parser || '') && EARLIER_PARSERS[saved.parser] === identity.parser &&
+    equal({...saved, parser: identity.parser}, identity));
 function validateState(state, identity, now) {
   assert.ok(sameIdentity(state.identity, identity), 'Incompatible checkpoint query/source/parser/schema/previous snapshot');
   assert.match(state.epoch || '', /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/, 'Invalid acquisition epoch');
