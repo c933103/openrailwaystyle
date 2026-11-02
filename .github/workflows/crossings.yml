@@ -50,12 +50,12 @@ jobs:
           node --input-type=module <<'JS'
           import {readFile, appendFile} from 'node:fs/promises';
           import {gunzipSync} from 'node:zlib';
-          import {readTable, crossingExtraction} from './scripts/crossing-data.mjs';
+          import {readTable, currentCrossingExtraction} from './scripts/crossing-data.mjs';
           let full = true;
           try {
             const saved = JSON.parse(await readFile('/tmp/previous-crossings/regions.json', 'utf8'));
             // As the builder decides: another table format or extraction is a full rebuild.
-            if (saved.version === 3 && saved.extraction === crossingExtraction()) {
+            if (saved.version === 3 && currentCrossingExtraction(saved.extraction)) {
               readTable(gunzipSync(await readFile('/tmp/previous-crossings/crossings.tsv.gz')).toString());
               full = !saved.since;
             }

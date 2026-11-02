@@ -161,7 +161,7 @@ test('a table made by another query or row code, or kept by the earlier change q
   assert.equal(legacy.calls[0], crossingData.regionQuery(legacy.roots[0].box, AT), 'no recorded extraction: rebuilt, since the earlier changes missed deletions');
   assert.equal(crossingData.crossingExtraction(), crossingData.crossingExtraction());
   const workflow = readFileSync(new URL('../.github/workflows/crossings.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /saved\.version === 3 && saved\.extraction === crossingExtraction\(\)/, 'the workflow decides as the builder');
+  assert.match(workflow, /saved\.version === 3 && currentCrossingExtraction\(saved\.extraction\)/, 'the workflow decides as the builder');
   const builder = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   assert.match(builder, /JSON\.stringify\(\{version: VERSION, extraction, since:/);
 });
