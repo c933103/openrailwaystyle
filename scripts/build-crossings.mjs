@@ -8,7 +8,7 @@
 // are read again by id.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -149,7 +149,7 @@ if (previous) {
     // query, which missed deletions that only a rolling full refresh then
     // repaired: it is rebuilt once, so the exact changes start from an exact
     // table.
-    if (saved.version === VERSION && saved.extraction === extraction) {
+    if (saved.version === VERSION && currentCrossingExtraction(saved.extraction)) {
       table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
       ({regions, since, changes} = saved);
     } else console.log('Previous table has an older format or was made by other code: fetching everything');

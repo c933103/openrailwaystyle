@@ -7,6 +7,7 @@ import {pathToFileURL} from 'node:url';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {TAG_KEYS, quarters, regionQuery, startRegions} from './crossing-data.mjs';
 
+
 export const CHECKPOINT_LIMITS = Object.freeze({
   stateBytes: 4 * 1024 ** 2, leafBytes: 16 * 1024 ** 2,
   compressedBytes: 128 * 1024 ** 2, expandedLeafBytes: 128 * 1024 ** 2,
@@ -25,11 +26,10 @@ export const crossingWatermark = now => new Date(now - 3600_000).toISOString().r
 
 export async function crossingCheckpointIdentity(source, parentSnapshot, tableVersion) {
   assert.match(parentSnapshot || '', /^(none|[a-f0-9]{40})$/, 'Checkpoint needs the verified previous snapshot commit or none');
-  // Hash actual parser/query/tag sources, not a manually maintained parser label.
-  const parser = sha256(JSON.stringify((await Promise.all([
-    readFile(new URL('./crossing-data.mjs', import.meta.url)),
-    readFile(new URL('../styles/crossing-tags.mjs', import.meta.url)),
-  ])).map(sha256)));
+  // Hash the actual row parser source, not a manually maintained parser label.
+  // The query, with its tag columns, is part of the identity on its own; the
+  // tile code and tag labels are not, so changing them keeps staged rows.
+  const parser = sha256(JSON.stringify([sha256(await readFile(new URL('./crossing-rows.mjs', import.meta.url)))]));
   return {schema: SCHEMA, tableVersion, source, parentSnapshot, parser,
     query: sha256(JSON.stringify(startRegions().map(({box}) => regionQuery(box)))), maxDepth: MAX_DEPTH};
 }
@@ -84,8 +84,14 @@ function validateRows(rows, box) {
   }
 }
 
+// The parser fingerprint of the same row code before it moved to
+// crossing-rows.mjs (main at cec0af882, which hashed crossing-data.mjs and
+// crossing-tags.mjs): rows staged by it are the rows this code stages.
+const EARLIER_PARSERS = ['701ba0e031de9088a5987caa3da824b9ce0d2a1c2c4bbd6e99f92ed93d4982d7'];
+const sameIdentity = (saved, identity) => equal(saved, identity) ||
+  (EARLIER_PARSERS.includes(saved?.parser) && equal({...saved, parser: identity.parser}, identity));
 function validateState(state, identity, now) {
-  assert.ok(equal(state.identity, identity), 'Incompatible checkpoint query/source/parser/schema/previous snapshot');
+  assert.ok(sameIdentity(state.identity, identity), 'Incompatible checkpoint query/source/parser/schema/previous snapshot');
   assert.match(state.epoch || '', /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/, 'Invalid acquisition epoch');
   assert.ok(iso(state.acquisitionStartedAt) && iso(state.updatedAt), 'Invalid checkpoint timestamps');
   const began = Date.parse(state.acquisitionStartedAt), updated = Date.parse(state.updatedAt);
@@ -215,7 +221,9 @@ export async function openCrossingCheckpoint({directory, source, parentSnapshot,
     async leaf(box, rows, {requestStartedAt, observedAt}) {
       validateRows(rows, box);
       const query = sha256(regionQuery(box));
-      const expanded = Buffer.from(JSON.stringify({epoch: state.epoch, identity: sha256(JSON.stringify(identity)), box, query, requestStartedAt, observedAt, rows}));
+      // The identity the epoch was saved with (an earlier parser fingerprint of
+      // the same rows included), as readLeaf checks it.
+      const expanded = Buffer.from(JSON.stringify({epoch: state.epoch, identity: sha256(JSON.stringify(state.identity)), box, query, requestStartedAt, observedAt, rows}));
       assert.ok(expanded.length <= CHECKPOINT_LIMITS.expandedLeafBytes, 'Oversized expanded leaf');
       const bytes = gzipSync(expanded, {level: 9}), payloadHash = sha256(bytes);
       await save({box, kind: 'leaf', query, requestStartedAt, observedAt, rows: rows.length,

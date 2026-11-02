@@ -76,6 +76,12 @@ export function crossingChangesQuery(box, since, until) {
 // the regions are not part of it: the tiles are built from the stored table
 // on every run.
 export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180, 90, 180]), new URL('./crossing-rows.mjs', import.meta.url));
+// The version the same query and row code had before the row code moved to
+// crossing-rows.mjs (main at cec0af882, when the version still hashed this
+// whole module): a table made by it is the table this code makes, so it
+// takes changes instead of a full download.
+export const EARLIER_CROSSING_EXTRACTIONS = Object.freeze(['6cb18833855b303bf43efc4f203cfc7ce89b1ee5ab0847aa5bd3114c800aee91']);
+export const currentCrossingExtraction = version => version === crossingExtraction() || EARLIER_CROSSING_EXTRACTIONS.includes(version);
 // Overpass rows of the regionQuery columns (crossing-rows.mjs).
 export const parseCsv = text => parseRows(text, TAG_KEYS);
 // A node deleted from OSM (visible="false") is deleted. One that only left
