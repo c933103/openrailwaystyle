@@ -190,7 +190,8 @@ jobs:
           pip install pmtiles==3.8.1
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
-          cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+          # The ODbL lifecycle table is offered from the odbl-tables release
+          # (odbl-tables.yml), not deployed with the site.
       - name: Load and verify the complete independently acquired railway reference
         if: needs.reference.outputs.sha != ''
         env:
@@ -403,6 +404,11 @@ jobs:
           # Only OSM-bound section aggregates are applied. Intermediate feed
           # archives and standalone timetable tiles are not website assets.
           rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
+      # The ODbL download tables (about 110 MB) are offered from the
+      # odbl-tables release (odbl-tables.yml), not deployed with the site.
+      # The service-frequency step above still reads service-routes.ndjson.gz.
+      - name: Keep the ODbL download tables out of the site
+        run: rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz styles/data/service-routes/service-routes.ndjson.gz
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction

@@ -1,0 +1,63 @@
+# The ODbL download tables, served from the release `odbl-tables` rather than
+# the website (scripts/odbl-tables.mjs, #330 A3). Runs after each workflow
+# that publishes a table, on changes to itself, weekly as a safety net and by
+# hand. Each table is uploaded only when its sha256 changed; the manifest
+# odbl-tables.json is uploaded last, so it never lists a table the release
+# does not have. A failed run leaves the previous assets in place.
+name: Publish ODbL download tables
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/odbl-tables.yml', 'scripts/odbl-tables.mjs']
+  workflow_run:
+    workflows:
+      - Build worldwide railway lifecycle snapshot
+      - Refresh worldwide level crossings
+      - Build operating branch lines
+      - Build urban rail services
+    types: [completed]
+  schedule:
+    - cron: '41 5 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: odbl-tables
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - name: Create the release if it does not exist
+        run: |
+          gh release view odbl-tables >/dev/null 2>&1 || gh release create odbl-tables --target "$GITHUB_SHA" --latest=false \
+            --title 'OpenStreetMap download tables (ODbL)' \
+            --notes 'Railway Atlas download tables: railway lifecycle, level crossings, branch lines and urban rail services. © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0). odbl-tables.json lists each file with its size, sha256 and the data-branch commit it was copied from. Replaced when the data changes.'
+      - name: Copy the changed tables from their data branches
+        run: |
+          set -eu
+          mkdir -p /tmp/previous
+          gh release download odbl-tables --pattern odbl-tables.json --dir /tmp/previous || true
+          node scripts/odbl-tables.mjs stage /tmp/odbl /tmp/previous/odbl-tables.json > /tmp/upload.txt
+          echo "Changed: $(tr '\n' ' ' < /tmp/upload.txt)"
+          while read -r file; do
+            [ -n "$file" ] || continue
+            gh release upload odbl-tables "/tmp/odbl/$file" --clobber
+          done < /tmp/upload.txt
+          gh release upload odbl-tables /tmp/odbl/odbl-tables.json --clobber
+          {
+            echo '| Table | Bytes | sha256 | Source |'
+            echo '| --- | ---: | --- | --- |'
+            node -e 'const m=require("/tmp/odbl/odbl-tables.json");for(const t of m.tables)console.log(`| ${t.file} | ${t.bytes} | \`${t.sha256.slice(0,16)}…\` | ${t.branch}@${t.commit.slice(0,7)} |`)'
+          } >> "$GITHUB_STEP_SUMMARY"

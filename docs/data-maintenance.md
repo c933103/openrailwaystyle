@@ -134,7 +134,7 @@ The count guards and success-only atomic `crossing-data` branch publication stay
 in place. Merging changes to these scripts or their workflow into `main` triggers
 the existing real acquisition workflow; an eventual merge is not offline-only.
 
-Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
+Each website build copies the tiles (`5/` overview, `9/` detail), `index.json` and `manifest.json` into `styles/data/level-crossings/`; the ODbL table `crossings.tsv.gz` is offered from the `odbl-tables` release (below). Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
 
 ## Historic-area snapshot
 
@@ -265,7 +265,7 @@ committed. The world stage adopts the African data before the old parent is
 retired; retirement also applies the 20% deletion guard.
 The revised grouping restarts only A, B, E, F, G, Asia and world, whose request definitions changed. Their committed and partial data stays in fallback entries separated by original stage, so Kazakhstan can move from A to the later Asia stage and small countries can move from G to their neighbouring group. The 20% deletion guard applies to each original stage separately, with service routes and ways checked independently. Retirement also waits for a fresh Asia pass, confirming Kazakhstan coverage. Unchanged stages, geometry and the rolling daily download budget are preserved; obsolete part indices cannot resume after the definitions change.
 
-Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
+Each website build copies the tiles, `index.json` and `manifest.json` (stages, counts, last run) into `styles/data/branch-lines/`; the ODbL table `branch-lines.ndjson.gz` is offered from the `odbl-tables` release (below).
 
 ## Urban rail services
 
@@ -293,7 +293,7 @@ Storage was measured against [published service-data commit `ba3ffbb`](https://g
   response bytes in the same budgets; genuine query time/memory limits and
   incomplete JSON still use bounded spatial subdivision.
 
-Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL table `service-routes.ndjson.gz` into `styles/data/service-routes/`; until the first run publishes, the Service view shows the tracks only.
+Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/service-routes/` (the ODbL table `service-routes.ndjson.gz` is read for the service frequencies, then left out of the site and offered from the `odbl-tables` release, below); until the first run publishes, the Service view shows the tracks only.
 
 ### Source-aware relation membership
 
@@ -387,6 +387,22 @@ filters them through the accepted relation frontier.
 The original Paris/Normandy all-width acceptance remains open under #107,
 general classification/identity under #109, and user-visible regional gaps
 under #112. No merge, deployment or fresh worldwide extraction is implied.
+
+## ODbL download tables
+
+The four large ODbL tables are not deployed with the website, because GitHub Pages publishes at most 1 GB and the tables are about 193 MB of it:
+- `lifecycle.geojson.gz` (from `rail-data`, joined from its parts);
+- `crossings.tsv.gz` (`crossing-data`);
+- `branch-lines.ndjson.gz` (`branch-data`);
+- `service-routes.ndjson.gz` (`service-data`).
+
+**Publish ODbL download tables** (`odbl-tables.yml`, `scripts/odbl-tables.mjs`) copies each table from its data branch into the release [`odbl-tables`](https://github.com/c933103/openrailwaystyle/releases/tag/odbl-tables).
+- **When it runs:** after each workflow that publishes a table succeeds, on changes to itself, weekly and by hand.
+- **Checks:** a table that is not valid gzip stops the run.
+- **Uploads:** only tables whose sha256 changed are uploaded, then `odbl-tables.json` (size, sha256, source branch and commit for each table). The manifest is uploaded last, so it never lists a table the release lacks.
+- **Missing branch:** a data branch that does not exist yet keeps the release's existing entry.
+
+The data branches keep their copies, because other workflows read them. The site's help links point to the release.
 
 ## Published data and caches
 
