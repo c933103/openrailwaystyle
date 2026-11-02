@@ -1,0 +1,33 @@
+# Where the Geofabrik continent extracts leave the world uncovered (#330, B0).
+# A read-only measurement, run by hand: it reads Geofabrik's region index and
+# Natural Earth land, and keeps its report only as this run's artifact and
+# step summary. Nothing is pushed or published.
+name: Measure Geofabrik coverage gaps
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: osm-gaps
+  cancel-in-progress: false
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Measure the gaps between the continent polygons
+        run: |
+          node --import ./scripts/overpass-meter.mjs scripts/measure-osm-gaps.mjs osm-gaps
+          cat osm-gaps/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osm-gaps
+          path: osm-gaps
