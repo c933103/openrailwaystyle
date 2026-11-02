@@ -260,6 +260,13 @@ style before publishing `styles/`. In a new fork:
 4. Run **Validate and deploy world railway map** if the initial push occurred
    before Pages was enabled.
 
+Before saving the site, `scripts/check-site-size.mjs` measures `styles/` and
+writes its size, with a row per `data/<dataset>` directory, to the step
+summary. GitHub Pages publishes at most 1 GB, so the check warns above 750 MiB
+and fails above 900 MiB, leaving room for what the deploy job adds. A failure
+means a dataset must move out of the site (for example to a release asset)
+or shrink; the levels are not raised.
+
 Deployment runs from `main` after validation, not from pull requests. URLs are
 relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
