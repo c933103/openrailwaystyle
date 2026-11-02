@@ -20,15 +20,17 @@ const resourceErrors=[
 
 // Execute the actual entrypoint with real query, checkpoint and tile modules.
 // Only fetch, the filesystem root and wall-clock timers are controlled.
-async function run(t,reply,{state,records}={}){
+async function run(t,reply,{state,records,elements}={}){
  const root=await fs.mkdtemp(join(tmpdir(),'station-builder-'));
  t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const first=acquisition.newStationAcquisition();
- const seed=acquisition.applyStationRegion(first,[],first.pending[0].box,{elements:[node(1,-170,-80)]});
- state??=seed.state;records??=seed.records;
+ const seed=acquisition.applyStationRegion(first,[],first.pending[0].box,{elements:[node(1,-170,-80)]},[]);
+ if(!state){state=seed.state;records=seed.records;elements=seed.elements;}
+ elements??=[];
  await fs.mkdir(join(root,'previous'));
  await fs.writeFile(join(root,'previous/state.json'),JSON.stringify(state));
  await fs.writeFile(join(root,'previous/stations.json.gz'),zlib.gzipSync(JSON.stringify(records)));
+ if(state.elements)await fs.writeFile(join(root,'previous/elements.json.gz'),zlib.gzipSync(JSON.stringify(elements)));
  const calls=[],warnings=[],timers=new Set();
  const io=Object.fromEntries(['mkdir','readFile','writeFile','rm'].map(name=>[name,(path,...args)=>fs[name](join(root,path),...args)]));
  const context=vm.createContext({
@@ -57,8 +59,9 @@ async function run(t,reply,{state,records}={}){
  await module.evaluate();
  assert.equal(timers.size,0,'request deadline is cleared after every outcome');
  const read=async path=>JSON.parse(await fs.readFile(join(root,'station-snapshot',path),'utf8'));
- return {root,calls,warnings,initial:state,original:records,state:await read('state.json'),
-  records:JSON.parse(zlib.gunzipSync(await fs.readFile(join(root,'station-snapshot/stations.json.gz')))),
+ const saved=await read('state.json'),gz=async path=>JSON.parse(zlib.gunzipSync(await fs.readFile(join(root,'station-snapshot',path))));
+ return {root,calls,warnings,initial:state,original:records,originalElements:elements,state:saved,
+  records:await gz('stations.json.gz'),elements:saved.elements?await gz('elements.json.gz'):undefined,
   manifest:await read('manifest.json'),index:await read('index.json')};
 }
 
@@ -67,6 +70,7 @@ function checkSplit(result,status){
  assert.deepEqual(result.state,acquisition.postponeStationRegion(result.initial,result.initial.pending[0].box));
  assert.deepEqual(result.records,result.original);
  assert.equal(acquisition.checkStationAcquisition(result.state,result.records),true);
+ assert.deepEqual(result.elements,result.originalElements);
  assert.equal(result.manifest.complete,false);assert.equal(result.manifest.regionUpdated,false);
  assert.equal(result.manifest.status,status);
  assert.deepEqual(result.index,{tiles:[]},'a split cannot publish incomplete station tiles');
@@ -75,6 +79,7 @@ function checkDeferred(result){
  assert.equal(result.calls.length,1);
  assert.deepEqual(result.state,result.initial);
  assert.deepEqual(result.records,result.original);
+ assert.deepEqual(result.elements,result.originalElements);
  assert.equal(result.manifest.complete,false);assert.equal(result.manifest.regionUpdated,false);
  assert.equal(result.manifest.status,'retry next maintenance run');
  assert.deepEqual(result.index,{tiles:[]});
