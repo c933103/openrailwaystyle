@@ -38,7 +38,7 @@ jobs:
             fi
           fi
       - name: Extract explicitly mapped shared roadway
-        run: node scripts/build-street-running.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-street-running.mjs
       - name: Publish complete data snapshot
         run: |
           mkdir /tmp/street-publish

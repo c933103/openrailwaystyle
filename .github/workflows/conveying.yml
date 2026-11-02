@@ -36,7 +36,7 @@ jobs:
             fi
           fi
       - name: Extract every mapped escalator, moving walkway and elevator way
-        run: node scripts/build-conveying.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-conveying.mjs
       - name: Publish complete data snapshot
         # Only main publishes the shared snapshot.
         if: github.ref == 'refs/heads/main'

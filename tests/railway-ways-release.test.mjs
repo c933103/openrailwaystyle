@@ -101,7 +101,7 @@ test('branch lines and service routes load the store, and download themselves wh
   for (const name of ['branch-lines.yml', 'service-routes.yml']) {
     const workflow = await readFile(new URL(`../.github/workflows/${name}`, import.meta.url), 'utf8');
     const load = workflow.indexOf('railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE');
-    assert.ok(load > 0 && load < workflow.indexOf('node scripts/build-'), `${name}: the store is loaded before the build`);
+    assert.ok(load > 0 && load < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-'), `${name}: the store is loaded before the build`);
     assert.match(workflow, /if ! node scripts\/railway-ways-release\.mjs load [^\n]+; then\n\s+echo "::warning::/, `${name}: a failed load warns and falls back`);
   }
   // A failed load names no store (the variable is written last).
