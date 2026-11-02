@@ -1,3 +1,4 @@
+import {withinDeadline,closeBrowser,armWatchdog} from './mainline-browser-deadlines.mjs';
 import {mainlineOutageVisible} from './mainline-outage-check.mjs';
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -8,6 +9,10 @@ import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixtu
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 import {MAINLINE_CONTROLS,MAINLINE_REGIONS,sha256} from './mainline-coverage.mjs';
 import {mainlineRegion,mainlineTiles} from './mainline-overview.mjs';
+let checkpoint={phase:'preparation'};
+const stopWatchdog=armWatchdog(()=>checkpoint);
+const evaluate=(page,fn,arg)=>withinDeadline(()=>page.evaluate(fn,arg),`browser evaluation ${JSON.stringify(checkpoint)}`);
+const screenshot=(page,options)=>withinDeadline(()=>page.screenshot({...options,timeout:5000}),'failure/snapshot capture',5000);
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
@@ -50,8 +55,9 @@ await mkdir('browser-review',{recursive:true});
 for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  {name:'android',engine:'chromium',width:360,height:450},
  {name:'safari',engine:'webkit',width:390,height:450}]){
+ checkpoint={phase:'profile setup',profile:profile.name};
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
- let closing=false;
+ let closing=false,primaryError;
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
  if(profile.engine==='webkit'){
   await page.addInitScript(()=>{
@@ -60,7 +66,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   });
   await page.context().route(`blob:${new URL(base).origin}/**`,async route=>{
    try{
-    const body=await page.evaluate(async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
+    const body=await evaluate(page,async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
     assert.notEqual(body,null,'Only actual recorded renderer Blob workers can be replayed');
     return await route.fulfill({body,contentType:'text/javascript'});
    }catch(error){if(closing&&/closed/i.test(error.message))return route.abort().catch(()=>{});throw error}
@@ -77,7 +83,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.goto(new URL('mainline-test.html',base).href);
   await page.setContent(`<html><body style="margin:0"><div id="test-map" style="width:${profile.width}px;height:${profile.height}px"></div></body></html>`);
   await page.addScriptTag({url:library});
-  await page.evaluate(async({layers,base,module})=>{
+  await evaluate(page,async({layers,base,module})=>{
    const {createReferenceReader}=await import(module),reader=createReferenceReader({root:new URL('data/mainline-reference/',base)});
    window.referenceReader=reader;window.referenceLayers=layers;
    maplibregl.addProtocol('mainlinetiles',async(p,c)=>({data:await reader.tile(p.url.slice('mainlinetiles://'.length),c.signal)}));
@@ -91,8 +97,9 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   },{layers,base,module:readerModule});
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
+   checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
-   await page.evaluate(({center,zoom,projection,expected})=>{
+   await evaluate(page,({center,zoom,projection,expected})=>{
     testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
     // Globe queryRenderedFeatures uses a planar approximation in this pinned
     // renderer. Isolate exact expected chains, then check their painted pixels.
@@ -102,15 +109,18 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
     expected,{timeout:30000})}
    catch(error){
-    const diagnostic=await page.evaluate(()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
+    let diagnostic;
+    try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
      sourceLoaded:testMap.isSourceLoaded('railReference'),errorCount:sourceErrors.length,errors:sourceErrors.filter(e=>e.source!=='missingLive').slice(-10),
-     rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))}));
+     rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))})), 'source failure diagnostics',5000)}
+    catch(diagnosticError){diagnostic={unavailable:diagnosticError.message}}
     const failure={profile:profile.name,projection,name:c.name,zoom,expected,diagnostic};
     console.error('MAINLINE_RENDER_FAILURE',JSON.stringify(failure));
     await writeFile('browser-review/mainline-failure.json',JSON.stringify(failure,null,2)+'\n');
-    await page.screenshot({path:'browser-review/mainline-failure.png'});throw error;
+    await screenshot(page,{path:'browser-review/mainline-failure.png'}).catch(captureError=>console.error('MAINLINE_CAPTURE_FAILURE',captureError.message));throw error;
    }
-   const result=await page.evaluate(async expected=>{
+   checkpoint={...checkpoint,phase:'render and pixel evidence'};
+   const result=await evaluate(page,async expected=>{
     await new Promise(resolve=>{testMap.once('render',resolve);testMap.triggerRepaint()});
     const found=testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]});
     const canvas=testMap.getCanvas(),gl=canvas.getContext('webgl2');gl.finish();
@@ -132,21 +142,24 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    assert.ok(Math.abs(result.zoom-zoom)<.001,`${profile.name} ${projection}: verify the actual camera zoom, not a clamped request`);
    samples.push({profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
   }
-  assert.ok(await page.evaluate(()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
-  profiles.push({...profile,...await page.evaluate(()=>referenceReader.statistics())});
-  await page.screenshot({path:`browser-review/mainline-${profile.name}.png`});
+  assert.ok(await evaluate(page,()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
+  profiles.push({...profile,...await evaluate(page,()=>referenceReader.statistics())});
+  await screenshot(page,{path:`browser-review/mainline-${profile.name}.png`});
  }catch(error){
+  primaryError=error;
   console.error('MAINLINE_PROFILE_FAILURE',profile.name,error.stack||error.message);
-  await page.screenshot({path:'browser-review/mainline-profile-failure.png'}).catch(()=>{});
-  await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
+  await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({...checkpoint,profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
+  await screenshot(page,{path:'browser-review/mainline-profile-failure.png'}).catch(captureError=>console.error('MAINLINE_CAPTURE_FAILURE',captureError.message));
   throw error;
- }finally{closing=true;await page.evaluate(()=>testMap?.remove()).catch(()=>{});await browser.close()}
+ }finally{closing=true;await closeBrowser(page.context(),browser,{primaryError})}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
 // missing protocol registration or a runtime visibility override that the
 // isolated renderer test cannot detect. External providers stay fixtures.
 {
+ let primaryError;
+ checkpoint={phase:'actual Atlas setup'};
  const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1000,height:700}});
  await installEmptyMapProviders(context,base,{firstParty:'network'});
  const page=await context.newPage(),c=controls.find(c=>c.name==='Japan–Tokyo');
@@ -158,17 +171,18 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
  try{
   await page.goto(base+'?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#6/35.68/139.75');
   await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
-  await page.evaluate(async()=>{window.atlasMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+  await evaluate(page,async()=>{window.atlasMap=(await import(document.querySelector('script[type="module"]').src)).map;});
   for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service'])for(const zoom of [6,7]){
+   checkpoint={phase:'actual Atlas mode',mode,zoom};
    await page.locator(`[data-mode="${mode}"]`).click();
-   await page.evaluate(({center,zoom})=>{atlasMap.setProjection({type:'mercator'});atlasMap.jumpTo({center,zoom});},{center:c.center,zoom});
+   await evaluate(page,({center,zoom})=>{atlasMap.setProjection({type:'mercator'});atlasMap.jumpTo({center,zoom});},{center:c.center,zoom});
    // The Infrastructure view draws the reference in its own mapped-tag
    // colours; every other view draws the neutral strokes. Never both.
    const prefix=mode==='infrastructure'?'infrastructure-reference-':'rail-reference-';
    const shown=[`${prefix}main`,`${prefix}unknown`],hidden=[prefix==='rail-reference-'?'infrastructure-reference-main':'rail-reference-main'];
    await page.waitForFunction(({ids,shown})=>atlasMap.queryRenderedFeatures({layers:shown})
     .some(f=>ids.includes(f.properties.id)),{ids:c.chainIdsByZoom[6],shown},{timeout:30000});
-   const sample=await page.evaluate(({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
+   const sample=await evaluate(page,({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
     ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
      .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
     // queryRenderedFeatures ignores visibility, and layers that differ only in
@@ -178,12 +192,19 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
    appSamples.push({mode,zoom,...sample});
   }
   await page.waitForFunction(mainlineOutageVisible,null,{timeout:30000});
-  await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
- }finally{await page.evaluate(()=>window.atlasMap?.remove()).catch(()=>{});await browser.close()}
+  await screenshot(page,{path:'browser-review/mainline-actual-atlas-outage.png'});
+ }catch(error){
+  primaryError=error;
+  console.error('MAINLINE_ATLAS_FAILURE',JSON.stringify(checkpoint),error.stack||error.message);
+  await writeFile('browser-review/mainline-atlas-failure.json',JSON.stringify({...checkpoint,message:error.message,stack:error.stack},null,2)+'\n');
+  await screenshot(page,{path:'browser-review/mainline-atlas-failure.png'}).catch(captureError=>console.error('MAINLINE_CAPTURE_FAILURE',captureError.message));
+  throw error;
+ }finally{await closeBrowser(context,browser,{primaryError})}
 }
 const report={scope:published?'Actual OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',assetBase:base,
  generation:manifest.generation,samples,appSamples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),
  requestBytes:profiles.reduce((n,p)=>n+p.assetBytes,0),
  timing:{medianMs:latencies[Math.floor(latencies.length*.5)],p95Ms:latencies[Math.floor(latencies.length*.95)]},providerRequests:0};
 await writeFile('browser-review/mainline-reference.json',JSON.stringify(report,null,2)+'\n');
+stopWatchdog();
 console.log('PASS: independent reference with unavailable thematic provider',JSON.stringify({samples:samples.length,timing:report.timing,generation:manifest.generation}));
