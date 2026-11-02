@@ -171,7 +171,7 @@ test('power facility names wait for their glyphs, and a newer language wins', as
   const shown = [], waits = [];let language = 'local';
   const map = {getSource: () => ({setData: data => shown.push(data.features[0].properties.atlas_name)})};
   const refresh = createPowerFacilityLoader(map, {url: 'https://atlas.example/power.geojson', language: () => language,
-    fetcher: async () => ({ok: true, json: async () => ({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: '\u{2A700}'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})}),
+    fetcher: async () => new Response(JSON.stringify({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: '\u{2A700}'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})),
     localize: (data, lang) => ({...data, features: data.features.map(f => ({...f, properties: {...f.properties, atlas_name: `${f.properties.name} ${lang}`}}))}),
     glyphs: () => new Promise(resolve => waits.push(resolve))});
   const first = refresh();
@@ -191,7 +191,7 @@ test('power facility names whose source vanished while their glyphs loaded are s
   const source={setData:data=>shown.push(data.features.length)};
   const map = {getSource: () => present ? source : undefined};
   const refresh = createPowerFacilityLoader(map, {url: 'https://atlas.example/power.geojson', language: () => 'zh',
-    fetcher: async () => ({ok: true, json: async () => ({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: 'x'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})}),
+    fetcher: async () => new Response(JSON.stringify({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: 'x'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})),
     glyphs: () => waits.length ? Promise.resolve() : new Promise(resolve => waits.push(resolve))});
   const first = refresh();
   for (let i = 0; i < 20 && !waits.length; i++) await new Promise(resolve => setTimeout(resolve, 0));
