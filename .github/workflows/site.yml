@@ -627,6 +627,7 @@ jobs:
       - name: Install Safari engine for deployed reference verification
         run: npx playwright install --with-deps webkit
       - name: Verify deployed independent OSM geometry with live overview unavailable
+        timeout-minutes: 35
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node scripts/check-mainline-reference-browser.mjs --published
