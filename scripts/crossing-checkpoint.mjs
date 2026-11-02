@@ -11,7 +11,7 @@ import {TAG_KEYS, quarters, regionQuery, startRegions} from './crossing-data.mjs
 export const CHECKPOINT_LIMITS = Object.freeze({
   stateBytes: 4 * 1024 ** 2, leafBytes: 16 * 1024 ** 2,
   compressedBytes: 128 * 1024 ** 2, expandedLeafBytes: 128 * 1024 ** 2,
-  expandedBytes: 512 * 1024 ** 2, nodes: 4096, maxAgeMs: 14 * 86400_000,
+  expandedBytes: 512 * 1024 ** 2, nodes: 4096,
 });
 const SCHEMA = 1, MAX_DEPTH = 5;
 const PURPOSE = 'atlas-crossing-full-rebuild-checkpoint';
@@ -98,7 +98,9 @@ function validateState(state, identity, now) {
   assert.match(state.epoch || '', /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/, 'Invalid acquisition epoch');
   assert.ok(iso(state.acquisitionStartedAt) && iso(state.updatedAt), 'Invalid checkpoint timestamps');
   const began = Date.parse(state.acquisitionStartedAt), updated = Date.parse(state.updatedAt);
-  assert.ok(began <= updated && updated <= now && now - began <= CHECKPOINT_LIMITS.maxAgeMs, 'Stale/future checkpoint epoch');
+  // No age limit: a rebuild interrupted by a long outage resumes, and the
+  // next update still starts from this epoch's watermark (docs/data-maintenance.md).
+  assert.ok(began <= updated && updated <= now, 'Future checkpoint epoch');
   assert.equal(state.watermark, crossingWatermark(began), 'Wrong acquisition watermark');
   assert.ok(Array.isArray(state.nodes) && state.nodes.length <= CHECKPOINT_LIMITS.nodes, 'Oversized checkpoint topology');
   const nodes = new Map();

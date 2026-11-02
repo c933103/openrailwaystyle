@@ -104,9 +104,16 @@ unrecognized ownership, malformed state files and unexpected paths fail closed
 without replacing their content. Branch writes use the exact restored commit as
 a force-with-lease and reconcile uncertain pushes against the exact new commit.
 
-An epoch expires 14 days after its original start, covering the next weekly
-Sunday run with a week's margin. A resumed build may therefore contain a
-multi-day observation window; it is not a simultaneous worldwide observation.
+An epoch has no age limit (until 2026-11 it expired after 14 days). A rebuild
+interrupted by a long Overpass outage resumes from its staged leaves, rather
+than discarding them and starting the worldwide crawl again (#330: data is
+never discarded for its age). This is safe because the next incremental update
+starts from the epoch's original watermark, so every change made during the
+acquisition window is applied. An epoch is still discarded when its identity
+(query, source, parser, schema or previous snapshot) changes, or when its
+timestamps lie in the future. A resumed build may therefore contain an
+observation window of days, or of months after a long outage; it is not a
+simultaneous worldwide observation.
 The original one-hour-overlap `since` watermark remains unchanged, and
 `acquisition.startedAt`, `observationStartedAt` and `observationCompletedAt` record
 the acquisition window. `manifest.generated` records the current build time;

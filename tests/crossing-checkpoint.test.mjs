@@ -221,9 +221,12 @@ test('total compressed/decoded bytes and state-file limits are checked before pa
   await assert.rejects(checkpoints.loadCrossingCheckpoint(dir, identity), /Oversized or non-file/);
 });
 
-test('stale data and already-published epochs cannot become a fresh acquisition', async t => {
+test('an old epoch still resumes, a future one does not, and an already-published epoch cannot become a fresh acquisition', async t => {
   const dir = await temporary(t); const old = await leafFixture(dir), before = await state(dir);
-  await assert.rejects(checkpoints.loadCrossingCheckpoint(dir, identity, Date.parse(before.acquisitionStartedAt) + checkpoints.CHECKPOINT_LIMITS.maxAgeMs + 1), /Stale/);
+  // Two years later (an outage that long) the epoch and its leaves are kept.
+  const later = Date.parse(before.acquisitionStartedAt) + 730 * 86400_000;
+  assert.equal((await checkpoints.loadCrossingCheckpoint(dir, identity, later)).epoch, old.epoch);
+  await assert.rejects(checkpoints.loadCrossingCheckpoint(dir, identity, Date.parse(before.acquisitionStartedAt) - 1), /Future checkpoint epoch/);
   const warnings = [];
   const next = await checkpoints.openCrossingCheckpoint({...options(dir), parentSnapshot: 'b'.repeat(40), warn: m => warnings.push(m)});
   assert.notEqual(next.epoch, old.epoch);
