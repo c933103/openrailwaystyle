@@ -41,6 +41,14 @@ The planned extract pipeline (#330) reads Geofabrik region extracts instead of a
   - A continent missing from the index fails the run rather than appearing as a gap.
 - **Output.** The report goes to the step summary and the `osm-gaps` artifact. Nothing is pushed or published. Its download is logged per host by the same meter as the data builds.
 
+The same workflow also plans which Geofabrik files the extract pipeline would download (`scripts/plan-osm-regions.mjs`, step B1 of #330):
+- **Size rule.** A region is kept whole when its PBF is at most 8 GiB, so one GitHub runner (14 GB of disk) can download and filter it. A larger region is replaced by its children, found with one HEAD request per region, one at a time.
+- **Aggregates.** A child that is at least 90% covered by its smaller siblings is a Geofabrik aggregate of them, and is not used.
+- **Oversized regions.** A region over the limit with no usable children is kept and marked `oversized`. It is never dropped.
+- **Split gaps.** Each split reports the area of its parent that its children leave uncovered.
+- **Remainder.** Everything the planned regions do not cover is the remainder. It is later covered from Overpass (B0b).
+- **Output.** `plan.json` and `plan.md` go to the `osm-gaps` artifact and the step summary. Nothing is downloaded beyond the index and the HEAD requests.
+
 ## Railway lifecycle snapshot
 
 The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선.
