@@ -5,6 +5,12 @@ exports and local Osmium filtering. Its acquisition policy, bounds,
 attribution, failure states and exact-source acceptance are documented in
 [mainline-reference.md](mainline-reference.md). It never fetches ORM tiles.
 
+The coverage-gap measurement (`osm-gaps.yml`, manual, #330) reads two inputs:
+- Geofabrik's region index, `https://download.geofabrik.de/index-v1.json`, one request;
+- Natural Earth 1:10m land and minor islands from `raw.githubusercontent.com/nvkelso/natural-earth-vector`, the source `build-han-region.mjs` already uses.
+
+Both requests identify the project in their User-Agent. They are logged per host by `scripts/overpass-meter.mjs`.
+
 The OpenRailwayMap policy audit below is dated 2026-10-07. Runtime inventory
 and CI boundaries were reconciled on 2026-10-19 against
 [`dbdab03b024c92dd7bd3c2328d562e50e1a7653b`](https://github.com/c933103/openrailwaystyle/tree/dbdab03b024c92dd7bd3c2328d562e50e1a7653b).

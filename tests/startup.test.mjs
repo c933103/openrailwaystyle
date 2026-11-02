@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
+import {gzipSync} from 'node:zlib';
 import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
@@ -188,7 +189,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
       }
     };
   } else if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = fetcher || (async input => ({ok:true,json:async()=>String(input).includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)}));
+  window.fetch = fetcher || (async input => String(input).includes('/data/traction/power/')?new Response(JSON.stringify({type:'FeatureCollection',features:[]})):({ok:true,json:async()=>structuredClone(style)}));
   // Native imported factories must receive this window's mock explicitly;
   // their default parameters otherwise resolve Node's global fetch.
   const fixtureOptions=options=>({...options,fetcher:options?.fetcher??window.fetch});
@@ -563,7 +564,7 @@ test('startup native-realm loaders use each window fixture without external fetc
   for(let index=0;index<2;index++){
    const state=await start({search:'?mode=electrification',fetcher:async (input,options)=>{
     const url=String(input);requests[index].push({url,options});
-    return {ok:true,json:async()=>url.includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)};
+    return url.includes('/data/traction/power/')?new Response(gzipSync(JSON.stringify({type:'FeatureCollection',features:[]}))):{ok:true,json:async()=>structuredClone(style)};
    }});
    states.push(state);state.maps[0].handlers['style.load']();
    for(let tick=0;tick<3;tick++)await new Promise(resolve=>setTimeout(resolve,0));
@@ -571,9 +572,9 @@ test('startup native-realm loaders use each window fixture without external fetc
    assert.deepEqual(state.maps[0].sourceData.electricMethods.features,[]);
   }
   for(const calls of requests){
-   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson'));
+   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson.gz'));
    assert.equal(methods.length,1,'each native-realm loader uses its own window mock');
-   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson');
+   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson.gz');
    assert.equal(methods[0].options.cache,'no-cache');
    assert.equal(methods[0].options.body,undefined);
    assert.equal(methods[0].options.headers,undefined);
@@ -829,7 +830,7 @@ test('unavailable Chinese font preserves a working map and system fallback',asyn
 });
 
 test('clicked station, service, entrance, power and context details share the selected regional font',async()=>{
- const fetcher=async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)});
+ const fetcher=async url=>String(url).includes('/data/traction/power/')?new Response(JSON.stringify({type:'FeatureCollection',features:[]})):({ok:true,json:async()=>structuredClone(style)});
  const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES,'Yu Gothic':ALL_PROBES,'Malgun Gothic':ALL_PROBES},fetcher});
  try{
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
@@ -1987,9 +1988,10 @@ test('concurrent train-control systems use compact names with complete hover and
 test('railway energy supplies download once at facility zoom and relocalize existing data on language changes',async()=>{
   const requests=[],collection={type:'FeatureCollection',features:[{type:'Feature',id:'node-91',properties:{power_kind:'fuel',name:'Local railway depot','name:en':'Railway fuel depot','name:ja':'鉄道給油所'},geometry:{type:'Point',coordinates:[0,0]}}]};
   const {dom,window,maps,errors}=await start({fetcher:async url=>{
-    const power=String(url).includes('/data/traction/power/power-facilities.geojson');
+    const power=String(url).includes('/data/traction/power/power-facilities.geojson.gz');
     if(power)requests.push(String(url));
-    return {ok:true,json:async()=>structuredClone(power?collection:style)};
+    if(String(url).includes('/data/traction/power/'))return new Response(gzipSync(JSON.stringify(power?collection:{type:'FeatureCollection',features:[]})));
+    return {ok:true,json:async()=>structuredClone(style)};
   }});
   try {
     const map=maps[0];map.zoom=9;map.handlers['style.load']();
@@ -2000,7 +2002,8 @@ test('railway energy supplies download once at facility zoom and relocalize exis
     map.zoom=12;map.handlers.moveend();
     assert.equal(requests.length,0,'satellite without rail overlays does not request supplies');
     window.document.querySelector('[data-background="carto"]').click();
-    await new Promise(resolve=>setTimeout(resolve,0));
+    // Decompressing the gzip snapshot takes a few event-loop turns.
+    for(let turn=0;turn<50&&!map.sourceData.electricFacilities?.features?.length;turn++)await new Promise(resolve=>setTimeout(resolve,0));
     assert.equal(requests.length,1);
     const original=collection.features[0],loaded=map.sourceData.electricFacilities.features[0];
     assert.equal(loaded.id,original.id);assert.equal(loaded.type,original.type);assert.deepEqual(loaded.geometry,original.geometry);

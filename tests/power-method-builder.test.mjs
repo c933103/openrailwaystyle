@@ -209,11 +209,11 @@ test('actual publisher and site workflow gates reject incomplete files and prese
   await writeFile(join(dir,'power-data/power-facilities.geojson'),JSON.stringify({type:'FeatureCollection',features:[{}]}));
   await writeFile(join(dir,'signal-data/manifest.json'),JSON.stringify({complete:true}));
   await writeFile(join(dir,'signal-data/index.json'),JSON.stringify({tiles:['fixture']}));
-  for(const file of ['power-methods.geojson','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
+  for(const file of ['power-methods.geojson','power-methods.geojson.gz','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
   // The publisher also requires the complete electrification-signal snapshot.
   const signal={type:'node',id:51,lon:9,lat:50,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el6'}};
   await buildElectricitySignals({...options,output:join(dir,'signals-out'),fetcher:async()=>response({osm3s:{},elements:[signal]})});
-  for(const file of ['electricity-signals.geojson','electricity-signals-manifest.json'])await copyFile(join(dir,'signals-out',file),join(dir,'power-data',file));
+  for(const file of ['electricity-signals.geojson','electricity-signals.geojson.gz','electricity-signals-manifest.json'])await copyFile(join(dir,'signals-out',file),join(dir,'power-data',file));
   const script=async(file,step)=>{
     const workflow=await readFile(new URL(`../.github/workflows/${file}`,import.meta.url),'utf8');
     const body=workflow.slice(workflow.indexOf(`- name: ${step}`)).match(/node --input-type=module <<'JS'\n([\s\S]*?)\n {10}JS/);
@@ -228,13 +228,19 @@ test('actual publisher and site workflow gates reject incomplete files and prese
     assert.notEqual(gate(publisher).status,0);
   }
   await writeFile(join(dir,'power-data/methods-manifest.json'),JSON.stringify(manifest));
-  await rm(join(dir,'power-data/power-methods.geojson'));assert.notEqual(gate(publisher).status,0);
+  await rm(join(dir,'power-data/power-methods.geojson'));await rm(join(dir,'power-data/power-methods.geojson.gz'));assert.notEqual(gate(publisher).status,0);
   const root=join(dir,'styles/data/traction');await mkdir(root,{recursive:true});
   await symlink(join(dir,'power-data'),join(root,'power'));await symlink(join(dir,'signal-data'),join(root,'signals'));
   assert.notEqual(gate(site).status,0,'one supplement file cannot pass assembly');
   await rm(join(dir,'power-data/methods-manifest.json'));assert.equal(gate(site).status,0,'legacy snapshot remains available');
-  for(const file of ['power-methods.geojson','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
+  for(const file of ['power-methods.geojson','power-methods.geojson.gz','methods-manifest.json'])await copyFile(join(options.output,file),join(dir,'power-data',file));
   assert.equal(gate(site).status,0);
+  // The site validates the gzip copy it deploys, not the plain file.
+  await rm(join(dir,'power-data/power-methods.geojson'));assert.equal(gate(site).status,0,'the site needs only the gzip copy');
+  const {gzipSync}=await import('node:zlib');
+  await writeFile(join(dir,'power-data/power-methods.geojson.gz'),gzipSync(JSON.stringify({type:'FeatureCollection',features:[]})));
+  assert.notEqual(gate(site).status,0,'a gzip copy that differs from its manifest fails');
+  await copyFile(join(options.output,'power-methods.geojson.gz'),join(dir,'power-data/power-methods.geojson.gz'));
   await writeFile(join(dir,'power-data/methods-manifest.json'),JSON.stringify({...manifest,sha256:'bad'}));assert.notEqual(gate(site).status,0);
 }));
 
