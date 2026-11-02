@@ -541,7 +541,8 @@ test('measurement toolbar retries heights with existing point handles without lo
     map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
     await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
     map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
-    map.rendered = [{layer: {id: 'measure-point-targets'}, properties: {index: 0}}];
+    map.rendered = [{layer: {id: 'measure-point-targets'},
+      ...map.sourceData['atlas-measure'].features.find(feature => feature.properties.index === 0)}];
     map.handlers.click({point: {x: 0, y: 0}, lngLat: {lng: 0, lat: 0}});
     assert.equal(doc.getElementById('measure-delete').hidden, false, 'rendered endpoint remains selectable');
     const geometry = map.sourceData['atlas-measure'].features.map(feature => feature.geometry);

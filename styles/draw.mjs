@@ -215,22 +215,23 @@ export const withPoints = (feature, points) => withNodes(feature, points);
 // not also act.
 export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
   paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
-function dragPoints(map, layer, {enabled, move, done}) {
+function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
   let drag = null, quietUntil = 0;
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
-    if (!feature) return;
+    if (!feature || !valid(feature.properties)) return;
     e.preventDefault(); // no map panning for this gesture
     drag = {properties: feature.properties, from: e.point, moved: false, slop: touch ? 10 : 4};
   };
   const moving = e => {
     if (!drag) return;
+    if (!valid(drag.properties)) { drag = null; return; }
     if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < drag.slop) return;
     drag.moved = true;
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { if (drag?.moved) { quietUntil = Date.now() + 700; done(); } drag = null; };
+  const end = () => { if (drag?.moved && valid(drag.properties)) { quietUntil = Date.now() + 700; done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
@@ -583,14 +584,21 @@ export class Measure {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, geometryChanged = () => {}, heights = null} = {}) {
     Object.assign(this, {map, units, status, changed, geometryChanged, heights});
     this.climb = null; this.spot = null;
+    this.handleGeneration = 0;
     this.mode = null; this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.lastAdd = 0;
     this.dragging = dragPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
+      valid: properties => this.currentHandle(properties),
       move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.geometryChanged(); this.refresh(); this.changed(); } },
       done: () => {},
     });
   }
   get active() { return this.mode !== null; }
+  // GeoJSON updates reach rendered hit targets asynchronously. An index from
+  // the previous measurement must not select (or drag) a new point at that index.
+  currentHandle({index, generation} = {}) {
+    return generation === this.handleGeneration && Number.isInteger(index) && index >= 0 && index < this.points.length;
+  }
   // Use the actual measured polyline or the fitted, visible curve arc.
   // A radius is not a straight chord through the three control points.
   profileCoordinates() {
@@ -621,7 +629,7 @@ export class Measure {
   collection() {
     const units = this.units(), live = this.cursor && !this.ended && this.mode === 'distance' ? [...this.points, this.cursor] : this.points;
     const feature = (geometry, properties = {}) => ({type:'Feature', properties, geometry});
-    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, selected: this.selected === index}));
+    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, generation:this.handleGeneration, selected: this.selected === index}));
     if (this.mode === 'distance') {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
       const climbed = this.ended && this.climbFor() && this.climb?.key === this.climbFor() ? this.climb.value : null;
@@ -699,6 +707,7 @@ export class Measure {
     if (!['distance', 'radius', 'elevation'].includes(mode)) throw new RangeError('Invalid measurement mode');
     this.spot?.controller?.abort(); this.spot = null;
     this.mode = this.mode === mode ? null : mode;
+    this.handleGeneration++;
     this.points = []; this.cursor = null; this.ended = false; this.selected = null;
     this.geometryChanged();
     if (this.mode === 'distance') this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
@@ -709,6 +718,7 @@ export class Measure {
   deleteSelected() {
     if (this.selected === null || !this.points[this.selected]) return;
     this.points.splice(this.selected, 1); this.selected = null;
+    this.handleGeneration++;
     if (this.points.length < 2) this.ended = false;
     this.geometryChanged(); this.refresh(); this.changed();
   }
@@ -739,14 +749,14 @@ export class Measure {
     }
     // A click on a point selects it; the click after a selection clears it.
     const handle = point && this.map.getLayer?.('measure-point-targets') && this.map.queryRenderedFeatures(point, {layers:['measure-point-targets']})[0];
-    if (handle) {
+    if (handle && this.currentHandle(handle.properties)) {
       const {index} = handle.properties;
       if (index === this.points.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
       this.select(index); return;
     }
     if (this.selected !== null) { this.select(null); return; }
     // After a finished distance, the next click starts a new one.
-    if (this.ended) { this.points = []; this.ended = false; }
+    if (this.ended) { this.points = []; this.ended = false; this.handleGeneration++; }
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     const last = this.points.at(-1);
     if (!last || last[0] !== p[0] || last[1] !== p[1]) { this.points.push(p); this.lastAdd = Date.now(); }
@@ -756,11 +766,12 @@ export class Measure {
   end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.geometryChanged(); this.refresh(); this.changed(); } }
   undo() {
     if (this.mode === 'elevation') { this.spot?.controller?.abort(); this.spot = null; }
-    else { this.ended = false; this.selected = null; this.points.pop(); }
+    else { this.ended = false; this.selected = null; this.points.pop(); this.handleGeneration++; }
     this.geometryChanged(); this.refresh(); this.changed();
   }
   clear() {
     this.spot?.controller?.abort(); this.spot = null;
+    this.handleGeneration++;
     this.points = []; this.cursor = null; this.ended = false; this.selected = null;
     this.geometryChanged(); this.refresh(); this.changed();
   }

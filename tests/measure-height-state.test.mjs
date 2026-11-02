@@ -123,7 +123,7 @@ test('explicit height retry keeps rendered endpoint selection and the finished g
   h.finish(); await flush(); pending[0]([null, null]); await flush();
   const map = h.measure.map;
   map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
-  map.queryRenderedFeatures = () => [{properties: {index: 0}}];
+  map.queryRenderedFeatures = () => [h.measure.collection().features.find(f => f.properties.index === 0)];
   h.measure.click({lng: 0, lat: 0}, {x: 0, y: 0});
   assert.equal(h.measure.selected, 0, 'clicking an existing endpoint still selects it for editing');
   assert.equal(h.measure.ended, true); assert.equal(h.measure.canRetryHeights, true);
