@@ -29,6 +29,18 @@ A due time that passes without a successful run (a late, skipped or failed run) 
 
 Every worldwide Overpass dataset is fetched by the same region tree (`scripts/world-regions.mjs`): the eight 90-degree quadrants of the world, each split into quarters (south-west, south-east, north-west, north-east) as far as a dataset needs. A dataset only chooses how coarse to start in each quadrant (`worldRegions(size)`, the size the same everywhere or chosen per quadrant): power methods, electricity signals and energy supplies start with whole quadrants; level crossings, signals, historic areas and station points with 45-degree quarters; the lifecycle snapshot with whole quadrants in the south and quarters in the north. A region the server cannot answer is split into its quarters, and each dataset remembers its splits, so a small dataset makes few requests and a dense one as many as it needs. The coverage checks (`tilesWorld`, `regionDepth`) are shared too. Railway ways, branch lines and service routes use country stages instead (below), whose rest-of-the-world remainder is again eight quadrants of this tree.
 
+## Geofabrik coverage gaps
+
+The planned extract pipeline (#330) reads Geofabrik region extracts instead of asking Overpass for whole-world crawls. The eight Geofabrik continents do not add up to the whole world. **Measure Geofabrik coverage gaps** (`osm-gaps.yml`, run by hand) measures where they leave it uncovered, before any dataset relies on them.
+
+- **Inputs.** It reads Geofabrik's region index (`index-v1.json`, with each region's boundary polygon) and Natural Earth 1:10m land and minor islands.
+- **Method** (`scripts/measure-osm-gaps.mjs`).
+  - The gap is the world minus the union of the continent polygons. A polygon drawn past ±180° is folded back into the world.
+  - It reports the gap polygons and the land inside them, with area and extent.
+  - It also reports the overlaps between continents, which the extract assembly must deduplicate.
+  - A continent missing from the index fails the run rather than appearing as a gap.
+- **Output.** The report goes to the step summary and the `osm-gaps` artifact. Nothing is pushed or published. Its download is logged per host by the same meter as the data builds.
+
 ## Railway lifecycle snapshot
 
 The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선.
