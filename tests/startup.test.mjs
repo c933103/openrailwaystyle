@@ -218,8 +218,24 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
+  // A valid non-ocean MVT is necessary to exercise the new signed surface
+  // sampler. An empty basemap body means *unknown*, not dry land, and must
+  // not trigger an unmocked DEM request or fake an endpoint elevation.
+  const nonOceanMVT=elevationOptions ? Uint8Array.from(encodeTile.fromGeojsonVt({water:{features:[{
+    type:3,tags:{class:'lake'},geometry:[[[0,0],[4096,0],[4096,4096],[0,4096],[0,0]]],
+  }]}})) : null;
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
-    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,key === 'createElevation' && elevationOptions ? url => value(url,elevationOptions) : value);
+    for (const [key,value] of Object.entries(elevationModule)) {
+      if (key==='createElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,elevationOptions));
+      else if (key==='createSurfaceElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,{
+          ...elevationOptions,
+          waterTile:async()=>({data:nonOceanMVT.buffer}),
+          readTile:labelModule.readTile,
+        }));
+      else this.setExport(key,value);
+    }
   }, {context});
   // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
@@ -485,12 +501,12 @@ test('measurement toolbar settles unavailable endpoint heights and recovers on a
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
     assert.equal(doc.getElementById('measure-toolbar').hidden, false);
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const finish = () => {
       for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
       map.handlers.dblclick({preventDefault() {}});
     };
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     const status = () => doc.getElementById('measure-status').textContent;
     finish(); assert.match(status(), /Finding heights/); await settle();
     assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
@@ -514,18 +530,19 @@ test('measurement toolbar retries heights with existing point handles without lo
     const map = maps[0], doc = window.document;
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const retry = doc.getElementById('measure-retry');
     assert.ok(retry, 'the toolbar exposes an explicit endpoint-height retry');
     assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
     assert.equal(retry.hidden, true);
     const status = () => doc.getElementById('measure-status').textContent;
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
     map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
     await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
     map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
-    map.rendered = [{layer: {id: 'measure-point-targets'}, properties: {index: 0}}];
+    map.rendered = [{layer: {id: 'measure-point-targets'},
+      ...map.sourceData['atlas-measure'].features.find(feature => feature.properties.index === 0)}];
     map.handlers.click({point: {x: 0, y: 0}, lngLat: {lng: 0, lat: 0}});
     assert.equal(doc.getElementById('measure-delete').hidden, false, 'rendered endpoint remains selectable');
     const geometry = map.sourceData['atlas-measure'].features.map(feature => feature.geometry);

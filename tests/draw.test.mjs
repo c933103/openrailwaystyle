@@ -282,7 +282,8 @@ test('measured points are selected, then moved or deleted', async () => {
   const m = new Measure(editingMap(sources, handlers, () => picked)); m.install(); m.setMode('distance');
   for (const lng of [0, 1, 2]) m.click({lng, lat: 0}, {x: lng, y: 0});
   m.lastAdd = 0; // not part of a double-click
-  picked = {index: 1}; m.click({lng: 1, lat: 0}, {x: 1, y: 0}); picked = null;
+  picked = sources['atlas-measure'].data.features.find(f => f.properties.index === 1).properties;
+  m.click({lng: 1, lat: 0}, {x: 1, y: 0}); picked = null;
   assert.equal(m.selected, 1);
   m.deleteSelected();
   assert.deepEqual(m.points, [[0,0],[2,0]]);

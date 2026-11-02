@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261031-electricity-signals-3';
+import {clock, trainSchedule} from './departures.mjs?v=20261102-measure-handles-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
