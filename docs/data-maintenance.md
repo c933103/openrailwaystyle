@@ -305,7 +305,7 @@ Storage was measured against [published service-data commit `ba3ffbb`](https://g
   response bytes in the same budgets; genuine query time/memory limits and
   incomplete JSON still use bounded spatial subdivision.
 
-Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/service-routes/` (the ODbL table `service-routes.ndjson.gz` is read for the service frequencies, then left out of the site and offered from the `odbl-tables` release, below); until the first run publishes, the Service view shows the tracks only.
+Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/service-routes/` (the ODbL table `service-routes.ndjson.gz` stays in the reviewed site, because the service frequencies and their browser checks are built from it, and is removed by the deploy job before publication; it is offered from the `odbl-tables` release, below); until the first run publishes, the Service view shows the tracks only.
 
 ### Source-aware relation membership
 

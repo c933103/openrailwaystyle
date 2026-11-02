@@ -404,11 +404,12 @@ jobs:
           # Only OSM-bound section aggregates are applied. Intermediate feed
           # archives and standalone timetable tiles are not website assets.
           rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
-      # The ODbL download tables (about 110 MB) are offered from the
-      # odbl-tables release (odbl-tables.yml), not deployed with the site.
-      # The service-frequency step above still reads service-routes.ndjson.gz.
+      # The ODbL download tables are offered from the odbl-tables release
+      # (odbl-tables.yml), not deployed with the site. The service-route
+      # table stays in the reviewed site until the deploy job, because the
+      # frequency browser checks rebuild the service tiles from it.
       - name: Keep the ODbL download tables out of the site
-        run: rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz styles/data/service-routes/service-routes.ndjson.gz
+        run: rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction
@@ -601,6 +602,9 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
+      # Offered from the odbl-tables release instead (see the validate job).
+      - name: Keep the service-route ODbL table out of the published site
+        run: rm -f styles/data/service-routes/service-routes.ndjson.gz
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

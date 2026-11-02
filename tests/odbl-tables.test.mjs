@@ -70,9 +70,15 @@ test('the site links the tables in the release and does not deploy them', () => 
   for (const {file} of TABLES) assert.ok(![...html.matchAll(/href="(data\/[^"]*)"/g)].some(m => m[1].endsWith(file)), file);
   const site = readFileSync(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.doesNotMatch(site, /> styles\/data\/lifecycle\.geojson\.gz/);
-  const removal = site.indexOf('rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz styles/data/service-routes/service-routes.ndjson.gz');
-  assert.ok(removal > site.indexOf('node scripts/rebuild-service-frequency.mjs'), 'removed after the service-frequency step reads the table');
-  assert.ok(removal < site.indexOf('node scripts/check-site-size.mjs styles'), 'removed before the size check and upload');
+  const removal = site.indexOf('rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz\n');
+  assert.ok(removal > 0 && removal < site.indexOf('node scripts/check-site-size.mjs styles'), 'removed before the size check and upload');
+  // The service-route table stays in the reviewed site (the frequency
+  // browser checks rebuild service tiles from it) and is removed only in
+  // the deploy job, before the Pages upload.
+  const deploy = site.indexOf('\n  deploy:');
+  const serviceRemoval = site.indexOf('rm -f styles/data/service-routes/service-routes.ndjson.gz');
+  assert.ok(serviceRemoval > deploy && serviceRemoval < site.indexOf('actions/upload-pages-artifact', deploy));
+  assert.ok(!site.slice(site.indexOf('Keep the ODbL download tables out of the site'), deploy).includes('rm -f styles/data/service-routes/service-routes.ndjson.gz'), 'not removed before the browser checks');
 });
 
 test('odbl-tables.yml follows every workflow that publishes a table and uploads the manifest last', () => {
