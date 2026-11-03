@@ -42,12 +42,18 @@ The planned extract pipeline (#330) reads Geofabrik region extracts instead of a
 - **Output.** The report goes to the step summary and the `osm-gaps` artifact. Nothing is pushed or published. Its download is logged per host by the same meter as the data builds.
 
 The same workflow also plans which Geofabrik files the extract pipeline would download (`scripts/plan-osm-regions.mjs`, step B1 of #330):
-- **Size rule.** A region is kept whole when its PBF is at most 8 GiB, so one GitHub runner (14 GB of disk) can download and filter it. A larger region is replaced by its children. Sizes come from HEAD requests, one region at a time, for the **dated** files (`<region>-YYMMDD.osm.pbf`), as `mainline-reference.yml` uses. The date is the workflow's `source_date` input, or two days ago (UTC). Geofabrik keeps daily dated files for about a week. A `-latest` URL is not used: Geofabrik redirects it, the largest files to outside mirrors. Only HTTPS on `download.geofabrik.de` is asked, and any redirect stops the plan.
-- **Aggregates.** A child that is at least 90% covered by its smaller siblings is a Geofabrik aggregate of them, and is not used.
-- **Oversized regions.** A region over the limit with no usable children is kept and marked `oversized`. It is never dropped.
-- **Split gaps.** Each split reports the area of its parent that its children leave uncovered.
-- **Remainder.** Everything the planned regions do not cover is the remainder. It is later covered from Overpass (B0b).
-- **Output.** `plan.json` and `plan.md` go to the `osm-gaps` artifact and the step summary. Nothing is downloaded beyond the index and the HEAD requests.
+- **Size rule.** A region is kept whole when its PBF is at most 8 GiB, so one GitHub runner (14 GB of disk) can download and filter it. A larger region is replaced by its usable children. Sizes come from HEAD requests, one region at a time, for the **dated** files (`<region>-YYMMDD.osm.pbf`), as `mainline-reference.yml` uses. The date is the workflow's `source_date` input, or two days ago (UTC). Geofabrik keeps daily dated files for about a week. A `-latest` URL is not used: Geofabrik redirects it, the largest files to outside mirrors. Only HTTPS on `download.geofabrik.de` is asked, and any redirect stops the plan.
+- **Coverage on land.** Coverage is counted in land cells: Natural Earth 1:10m land and minor islands on a 0.1° grid (`scripts/land-raster.mjs`). Geofabrik's polygons carry sea buffers of different widths, so their areas do not show what land they cover. The land is read from the same public-domain files as the gap measurement: 2 requests to GitHub.
+- **Aggregates.** Geofabrik lists groups such as `us`, `us-west` or `alps` beside the countries or states they combine. Siblings are taken from the most land down. One whose land lies at least 90% inside the siblings still kept is not used; once dropped, it no longer counts as cover. Of two identical regions, exactly one is kept.
+- **Gap filling.** A split can lose land that Geofabrik lists elsewhere: `russia` is under neither `asia` nor `europe`. Uncovered land is filled greedily from any other region in the index, the one adding the most uncovered land first, and descended like the continents when over the limit. A region whose own land is already at least 90% covered, or that adds fewer than 100 land cells, is not used.
+- **Oversized regions.** A region over the limit with no usable children is kept and marked `oversized`. It is never dropped, and the plan is invalid.
+- **Split gaps.** Each split reports the area, and the land, of its parent that its children leave uncovered.
+- **Remainder.** Everything the planned regions do not cover is the remainder. It is later covered from Overpass (B0b). Its land is reported per 10° tile. More than 50,000 km² of remainder land makes the plan invalid: Overpass carries small islands, not countries.
+- **Overlaps.** Planned regions sharing more than 1% of their land with another are listed. That is a warning, because the extract assembly deduplicates them.
+- **Output.**
+  - `plan.json` and `plan.md` go to the `osm-gaps` artifact and the step summary. Each region records its land km² and whether it came from the descent or a gap fill.
+  - An invalid plan is still written, with `valid: false` and its problems, and the job fails. Nothing may take a plan whose `valid` is not `true`.
+  - Nothing is downloaded beyond the index, the land files and the HEAD requests.
 
 ## Railway lifecycle snapshot
 

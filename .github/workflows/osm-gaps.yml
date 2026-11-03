@@ -37,10 +37,14 @@ jobs:
       - name: Plan the extract regions
         env:
           SOURCE_DATE: ${{ inputs.source_date }}
+        # An unusable plan is still reported, then fails the job.
         run: |
-          node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs osm-gaps "$SOURCE_DATE"
-          cat osm-gaps/plan.md >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs osm-gaps "$SOURCE_DATE" || status=$?
+          cat osm-gaps/plan.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          exit "$status"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: osm-gaps
           path: osm-gaps
