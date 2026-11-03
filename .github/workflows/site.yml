@@ -584,9 +584,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts/odbl-tables.mjs
-          sparse-checkout-cone-mode: false
+      # Keep this shared worktree full: the second checkout below must retain
+      # package.json and package-lock.json for the post-deployment checks.
       - uses: actions/setup-node@v4
         with:
           node-version: '26'
