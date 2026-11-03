@@ -45,7 +45,6 @@ python3 -m venv "$snapshot_dir/venv"
 "$snapshot_dir/venv/bin/pip" install pmtiles==3.8.1
 "$snapshot_dir/venv/bin/python" scripts/unpack-snapshot.py "$snapshot_dir/lifecycle.pmtiles"
 node scripts/build-overview-tiles.mjs
-cat "$snapshot_dir"/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
 
 if [ -f "$snapshot_dir/rail-data/loading-gauge.json" ]; then
   cp "$snapshot_dir/rail-data/loading-gauge.json" styles/data/

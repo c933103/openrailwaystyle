@@ -161,7 +161,7 @@ The count guards and success-only atomic `crossing-data` branch publication stay
 in place. Merging changes to these scripts or their workflow into `main` triggers
 the existing real acquisition workflow; an eventual merge is not offline-only.
 
-Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
+Each website build copies the tiles (`5/` overview, `9/` detail), `index.json` and `manifest.json` into `styles/data/level-crossings/`; the ODbL table `crossings.tsv.gz` is offered from the `odbl-tables` release (below). Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
 
 ## Historic-area snapshot
 
@@ -292,7 +292,7 @@ committed. The world stage adopts the African data before the old parent is
 retired; retirement also applies the 20% deletion guard.
 The revised grouping restarts only A, B, E, F, G, Asia and world, whose request definitions changed. Their committed and partial data stays in fallback entries separated by original stage, so Kazakhstan can move from A to the later Asia stage and small countries can move from G to their neighbouring group. The 20% deletion guard applies to each original stage separately, with service routes and ways checked independently. Retirement also waits for a fresh Asia pass, confirming Kazakhstan coverage. Unchanged stages, geometry and the rolling daily download budget are preserved; obsolete part indices cannot resume after the definitions change.
 
-Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
+Each website build copies the tiles, `index.json` and `manifest.json` (stages, counts, last run) into `styles/data/branch-lines/`; the ODbL table `branch-lines.ndjson.gz` is offered from the `odbl-tables` release (below).
 
 ## Urban rail services
 
@@ -320,7 +320,7 @@ Storage was measured against [published service-data commit `ba3ffbb`](https://g
   response bytes in the same budgets; genuine query time/memory limits and
   incomplete JSON still use bounded spatial subdivision.
 
-Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL table `service-routes.ndjson.gz` into `styles/data/service-routes/`; until the first run publishes, the Service view shows the tracks only.
+Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/service-routes/` (the ODbL table `service-routes.ndjson.gz` stays in the reviewed site, because the service frequencies and their browser checks are built from it, and is removed by the deploy job before publication; it is offered from the `odbl-tables` release, below); until the first run publishes, the Service view shows the tracks only.
 
 ### Source-aware relation membership
 
@@ -414,6 +414,32 @@ filters them through the accepted relation frontier.
 The original Paris/Normandy all-width acceptance remains open under #107,
 general classification/identity under #109, and user-visible regional gaps
 under #112. No merge, deployment or fresh worldwide extraction is implied.
+
+## ODbL download tables
+
+The four large ODbL tables are not deployed with the website, because GitHub Pages publishes at most 1 GB and the tables are about 193 MB of it:
+- `lifecycle.geojson.gz` (from `rail-data`, joined from its parts);
+- `crossings.tsv.gz` (`crossing-data`);
+- `branch-lines.ndjson.gz` (`branch-data`);
+- `service-routes.ndjson.gz` (`service-data`).
+
+**Publish ODbL download tables** (`odbl-tables.yml`, `scripts/odbl-tables.mjs`) copies only these existing public data-branch tables into the release [`odbl-tables`](https://github.com/c933103/openrailwaystyle/releases/tag/odbl-tables). It runs after each producing workflow succeeds, on changes to itself, weekly and by hand. It does not acquire data from providers or change their schedules.
+
+### Publication and cutover contract
+
+1. Validate gzip and record the byte count, SHA-256, data branch and exact source commit. Every asset is named `SHA256-filename`; an uploaded asset is never renamed, overwritten or deleted by this workflow.
+2. Reuse matching uploaded assets. Upload changed tables first and require GitHub's `state: uploaded`, `size` and `digest: sha256:…` metadata to match the locally staged bytes. Missing or mismatched metadata fails closed. See the [release-asset API contract](https://docs.github.com/en/rest/releases/assets#get-a-release-asset).
+3. Commit a complete generation by uploading its `SHA256-odbl-tables.json` manifest **last**. The newest uploaded manifest by asset ID is the generation pointer. All four table entries, their source/asset bindings and the manifest's own hash are required. Paginate the asset list; never assume the first page contains the current generation. A corrupt newest committed manifest is an error, not permission to silently fall back.
+4. The existing `odbl-tables` workflow concurrency group serializes publishers. The publisher also checks for a competing committed manifest before and after its commit. Do not run independent manual publishers outside this group; the GitHub upload API does not provide a multi-asset transaction or compare-and-swap across these checks.
+5. The Pages deploy job independently reads the complete generation and pins Help's downloads and manifest link to its immutable URLs in the deploying repository. Only then does it remove the service-route table and upload Pages. The service table still stays in the reviewed artifact for the existing frequency/browser checks. Release metadata and the small manifest are verified; this is not a second download of the large tables.
+
+**First cutover:** before the first complete generation exists, the deploy gate fails and the previously deployed site remains live, with its existing local downloads. After the initial publisher succeeds, rerun **Validate and deploy world railway map** if its gate ran first. Do not bypass this gate or manually remove the old published downloads. Pull-request checks are fixture-only for this gate and do not create a release.
+
+**Failures and recovery:** a failed table or manifest upload leaves earlier uploaded assets and their URLs intact. A manifest upload left in `starter` state is not committed. A retry may remove only a zero-byte `starter` at the exact expected hash-name, then upload it again; it cannot delete an uploaded version. If an upload response is lost, read and verify its metadata before deciding whether it failed. A missing data branch retains its last verified entry; an initial missing branch prevents a complete generation. Other git/API failures stop the run. If a newest uploaded manifest or table is corrupt, investigate that generation before rerunning; do not treat it as absent or weaken the checks.
+
+**Retention and costs:** previous uploaded versions remain available so older deployed/cached HTML does not acquire broken links. Identical table hashes are reused, and a run with no changed table hashes adds no manifest. Each changed table adds its compressed bytes, plus a small manifest for the new generation. This increases release storage/asset count over time; no automatic cleanup is introduced. Any retention change needs a separate reviewed migration that preserves consumers. Each metadata listing costs one release request plus one request per 100 assets. Deployment downloads only the current manifest (at most 64 KiB), not approximately 193 MB of tables; publication reads the same existing data branches and uploads only missing hash-named bytes.
+
+The data branches keep their copies, because other workflows read them. The original ODbL attribution and licence remain in the Help panel, manifest and release notes.
 
 ## Published data and caches
 
