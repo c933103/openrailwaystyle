@@ -42,7 +42,7 @@ The planned extract pipeline (#330) reads Geofabrik region extracts instead of a
 - **Output.** The report goes to the step summary and the `osm-gaps` artifact. Nothing is pushed or published. Its download is logged per host by the same meter as the data builds.
 
 The same workflow also plans which Geofabrik files the extract pipeline would download (`scripts/plan-osm-regions.mjs`, step B1 of #330):
-- **Size rule.** A region is kept whole when its PBF is at most 8 GiB, so one GitHub runner (14 GB of disk) can download and filter it. A larger region is replaced by its children, found with one HEAD request per region, one at a time.
+- **Size rule.** A region is kept whole when its PBF is at most 8 GiB, so one GitHub runner (14 GB of disk) can download and filter it. A larger region is replaced by its children. Sizes come from HEAD requests, one region at a time: Geofabrik redirects a `-latest` file to its dated file, and that redirect is followed only to HTTPS on `download.geofabrik.de`, at most three times.
 - **Aggregates.** A child that is at least 90% covered by its smaller siblings is a Geofabrik aggregate of them, and is not used.
 - **Oversized regions.** A region over the limit with no usable children is kept and marked `oversized`. It is never dropped.
 - **Split gaps.** Each split reports the area of its parent that its children leave uncovered.
