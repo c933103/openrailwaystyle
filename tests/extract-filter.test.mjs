@@ -4,7 +4,7 @@ import {readFileSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {EXTRACT_FILTERS, REFINEMENTS, HERITAGE_HISTORIC, expressionsFile, expressionKeys, keyMatches, selectedKey} from '../scripts/extract-filter.mjs';
+import {EXTRACT_FILTERS, REFINEMENTS, HERITAGE_HISTORIC, expressionsFile, expressionKeys, keyMatches, selectedKey, selectsTag} from '../scripts/extract-filter.mjs';
 import {CONVEYING_QUERY, AERIALWAY_QUERY} from '../scripts/conveying-data.mjs';
 import {BRANCH_SELECTS} from '../scripts/branch-lines.mjs';
 import {SERVICE_SELECTS} from '../scripts/service-routes.mjs';
@@ -74,6 +74,24 @@ test('the inline queries of the snapshot, street-running and loading-gauge build
   assert.match(source('build-loading-gauge-list.mjs'), /way\[railway~"\^\([a-z_|]+\)\$"\]\[loading_gauge\]/);
 });
 
+// The power queries match railway hints as whole semicolon-separated tokens
+// without case (scripts/power-facility-data.mjs, power-method-data.mjs).
+const token = words => new RegExp(`(^|;)\\s*(${words})\\s*(;|$)`, 'i');
+test('case-insensitive railway hints are selected in lower, capitalised and upper case', () => {
+  for (const [key, words, values] of [
+    ['usage', 'railway|traction', ['railway', 'Railway', 'RAILWAY', 'traction', 'Traction', 'TRACTION', 'distribution; Railway', 'Traction;industrial', ' railway ']],
+    ['landuse', 'railway', ['railway', 'Railway', 'RAILWAY', 'Railway;industrial', 'industrial; railway']],
+  ]) {
+    for (const value of values) {
+      assert.ok(token(words).test(value), `${key}=${value} is a hint to the Overpass query`);
+      assert.ok(selectsTag(key, value), `${key}=${value} is selected`);
+    }
+  }
+  for (const [key, value] of [['usage', 'transmission'], ['usage', 'distribution'], ['landuse', 'residential'], ['landuse', 'industrial']]) {
+    assert.equal(selectsTag(key, value), false, `${key}=${value}: whole power grids and land use stay out`);
+  }
+});
+
 test('heritage values follow the heritage query', () => {
   assert.match(heritageQuery(box), new RegExp(`historic~"\\^\\(${HERITAGE_HISTORIC.join('\\|')}\\)\\$"`));
 });
@@ -109,6 +127,8 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
       node(3, tag('disused:railway', 'station')), node(4, tag('public_transport', 'station'), tag('train', 'yes')),
       node(5, tag('power', 'substation'), tag('substation', 'traction')), node(6, tag('power', 'substation'), tag('usage', 'Distribution;traction')),
       node(7, tag('power', 'transformer'), tag('frequency', '16.7')), node(8, tag('amenity', 'charging_station'), tag('tram', 'yes')),
+      node(11, tag('power', 'plant'), tag('usage', 'Railway')), node(12, tag('power', 'substation'), tag('usage', 'TRACTION')),
+      node(13, tag('man_made', 'water_tower'), tag('landuse', 'Railway;industrial')),
     ];
     const ways = [
       way(100, [20, 21], tag('railway', 'rail'), tag('usage', 'branch')), way(101, [22, 23], tag('embedded_rails', 'tram')),
@@ -116,7 +136,7 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
       way(105, [30, 31, 32, 30], tag('historic', 'battlefield')), way(106, [33, 34], tag('abandoned:electrified', 'rail')),
       way(107, [35, 36], tag('railway', 'tram'), tag('propulsion', 'linear_motor')),
     ];
-    const dropped = [node(9, tag('power', 'tower')), node(10, tag('name', 'x')), way(200, [40, 41], tag('highway', 'primary')),
+    const dropped = [node(9, tag('power', 'tower')), node(10, tag('name', 'x')), node(14, tag('landuse', 'residential')), way(200, [40, 41], tag('highway', 'primary')),
       way(201, [42, 43], tag('power', 'line'), tag('usage', 'transmission')), way(202, [44, 45, 46, 44], tag('historic', 'memorial'))];
     const plainNodes = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46].map(id => node(id));
     const relations = '<relation id="300" version="1"><member type="way" ref="100" role=""/>' + tag('type', 'route') + tag('route', 'subway') + '</relation>'
@@ -126,9 +146,9 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
     const run = spawnSync('osmium', ['tags-filter', join(dir, 'in.osm'), '-e', join(dir, 'filter.txt'), '-f', 'opl', '-o', '-'], {encoding: 'utf8'});
     assert.equal(run.status, 0, run.stderr);
     const ids = new Set(run.stdout.trim().split('\n').map(line => line.split(' ')[0]));
-    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'r300']) assert.ok(ids.has(id), `${id} kept`);
+    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n11', 'n12', 'n13', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'r300']) assert.ok(ids.has(id), `${id} kept`);
     for (const id of ['n20', 'n21', 'n30', 'n35']) assert.ok(ids.has(id), `${id}: nodes of a selected way are kept`);
-    for (const id of ['n9', 'n10', 'w200', 'w201', 'w202', 'r301', 'n40', 'n42']) assert.ok(!ids.has(id), `${id} left out`);
+    for (const id of ['n9', 'n10', 'n14', 'w200', 'w201', 'w202', 'r301', 'n40', 'n42']) assert.ok(!ids.has(id), `${id} left out`);
   } finally {
     rmSync(dir, {recursive: true, force: true});
   }

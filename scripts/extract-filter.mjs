@@ -10,7 +10,12 @@
 // a key or value is a wildcard, so `*traction*` finds a token in a
 // semicolon list; a comma list cannot carry wildcards, so each such value is
 // its own expression. Where the Overpass query matches a value without case
-// (`,i`), the filter takes the whole key instead.
+// (`,i`), the filter takes the whole key, or, where the whole key would bring
+// most of the map (`usage` is on every power line, `landuse` on most
+// polygons), the word without its first letter in lower and in upper case
+// (CASE_FORMS): `*ailway*` and `*AILWAY*` find railway, Railway and RAILWAY
+// anywhere in a value. A value mixing case inside the word (rAilway) is the
+// one form left out.
 //
 // Without -R osmium also writes the objects the matches refer to: way nodes
 // and relation members (and their nodes), so a filtered file has complete
@@ -23,6 +28,13 @@ import {STATES} from './lifecycle.mjs';
 
 const PREFIXES = STATES.map(state => `${state}:`);
 export const HERITAGE_HISTORIC = ['archaeological_site', 'battlefield', 'district'];
+
+// One word of a case-insensitive Overpass value test, as osmium expressions:
+// the word without its first letter, lower and upper case, anywhere.
+function CASE_FORMS(key, word, use) {
+  const rest = word.slice(1);
+  return [rest, rest.toUpperCase()].map(form => [`nwr/${key}=*${form}*`, use]);
+}
 
 // [expression, datasets that need it]
 export const EXTRACT_FILTERS = Object.freeze([
@@ -46,9 +58,9 @@ export const EXTRACT_FILTERS = Object.freeze([
   // Power facilities: a power or man_made object counts only with a railway
   // hint; the hints themselves are selected.
   ['nwr/substation,transformer', 'power facilities (traction hints)'],
-  ['nwr/usage=*railway*', 'power facilities, chargers'],
-  ['nwr/usage=*traction*', 'power facilities, chargers'],
-  ['nwr/landuse=railway', 'power facilities, chargers'],
+  ...CASE_FORMS('usage', 'railway', 'power facilities, chargers'),
+  ...CASE_FORMS('usage', 'traction', 'power facilities, chargers'),
+  ...CASE_FORMS('landuse', 'railway', 'power facilities, chargers'),
   ['nwr/frequency=*16.6*', 'power facilities'],
   ['nwr/frequency=*16.7*', 'power facilities'],
   // Power methods: conductor rails, propulsion and traction, on ways of any
@@ -96,3 +108,18 @@ export function keyMatches(pattern, key) {
   return key === pattern;
 }
 export const selectedKey = key => EXTRACT_FILTERS.some(({expression}) => expressionKeys(expression).some(pattern => keyMatches(pattern, key)));
+
+// Whether the filter selects an object with this one tag, by osmium's
+// value matching: exact values, a comma list of exact values, or one value
+// with a `*` at either end.
+export function valueMatches(pattern, value) {
+  if (pattern.length > 1 && pattern.startsWith('*') && pattern.endsWith('*')) return value.includes(pattern.slice(1, -1));
+  if (pattern.startsWith('*')) return value.endsWith(pattern.slice(1));
+  if (pattern.endsWith('*')) return value.startsWith(pattern.slice(0, -1));
+  return pattern.split(',').includes(value);
+}
+export const selectsTag = (key, value) => EXTRACT_FILTERS.some(({expression}) => {
+  const body = expression.replace(/^[nwr]+\//, ''), at = body.indexOf('=');
+  const keys = (at < 0 ? body : body.slice(0, at)).split(',');
+  return keys.some(pattern => keyMatches(pattern, key)) && (at < 0 || valueMatches(body.slice(at + 1), value));
+});
