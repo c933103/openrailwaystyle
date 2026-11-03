@@ -6,6 +6,10 @@
 name: Measure Geofabrik coverage gaps
 on:
   workflow_dispatch:
+    inputs:
+      source_date:
+        description: 'Dated Geofabrik files to plan from (YYYY-MM-DD); blank uses two days ago'
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -29,10 +33,12 @@ jobs:
           node --import ./scripts/overpass-meter.mjs scripts/measure-osm-gaps.mjs osm-gaps
           cat osm-gaps/report.md >> "$GITHUB_STEP_SUMMARY"
       # Which Geofabrik files the extract pipeline would download (B1): one
-      # HEAD request per region the plan looks at, one at a time.
+      # HEAD request per dated region file the plan looks at, one at a time.
       - name: Plan the extract regions
+        env:
+          SOURCE_DATE: ${{ inputs.source_date }}
         run: |
-          node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs osm-gaps
+          node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs osm-gaps "$SOURCE_DATE"
           cat osm-gaps/plan.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
