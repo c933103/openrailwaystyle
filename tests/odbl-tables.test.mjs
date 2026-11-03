@@ -279,6 +279,12 @@ test('workflow gate precedes removal and Pages upload without weakening existing
   const removal = site.indexOf('rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz\n');
   assert.ok(removal > 0 && removal < site.indexOf('node scripts/check-site-size.mjs styles'));
   const deploy = site.slice(site.indexOf('\n  deploy:'));
+  // Both checkouts share a worktree. A non-cone sparse first checkout can
+  // survive checkout@v4's later sparse reset and hide the npm manifests.
+  const checkouts = [...deploy.matchAll(/      - uses: actions\/checkout@v4\n([\s\S]*?)(?=      - |$)/g)];
+  assert.equal(checkouts.length, 2);
+  for (const [, inputs] of checkouts) assert.doesNotMatch(inputs, /sparse-checkout/);
+  assert.ok(deploy.lastIndexOf('actions/checkout@v4') < deploy.indexOf('npm ci --ignore-scripts --no-audit --no-fund'));
   const gate = deploy.indexOf('node scripts/odbl-tables.mjs pin styles/index.html');
   assert.ok(deploy.indexOf('actions/checkout@v4') < gate);
   assert.ok(deploy.indexOf('Verify Node 26 security baseline') < gate);
