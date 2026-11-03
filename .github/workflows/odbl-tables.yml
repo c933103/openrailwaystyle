@@ -1,0 +1,52 @@
+# Copies existing public ODbL tables only. Immutable hash-named assets keep
+# prior deployments usable; a complete manifest uploaded last commits a new
+# generation. Never replace/rename an uploaded asset. See data-maintenance.md.
+name: Publish ODbL download tables
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/odbl-tables.yml', 'scripts/odbl-tables.mjs']
+  workflow_run:
+    workflows:
+      - Build worldwide railway lifecycle snapshot
+      - Refresh worldwide level crossings
+      - Build operating branch lines
+      - Build urban rail services
+    types: [completed]
+  schedule:
+    - cron: '41 5 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: odbl-tables
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - name: Create the release if it does not exist
+        run: |
+          gh release view odbl-tables >/dev/null 2>&1 || gh release create odbl-tables --target "$GITHUB_SHA" --latest=false \
+            --title 'OpenStreetMap download tables (ODbL)' \
+            --notes 'Railway Atlas download tables: railway lifecycle, level crossings, branch lines and urban rail services. © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0). The newest uploaded HASH-odbl-tables.json manifest lists the current four hash-named tables with their size, sha256 and source data-branch commit. Older generations remain available for deployed links.'
+      - name: Publish and verify a complete immutable generation
+        run: |
+          set -eu
+          node scripts/odbl-tables.mjs publish "$RUNNER_TEMP/odbl"
+          {
+            echo '| Table | Bytes | sha256 | Source |'
+            echo '| --- | ---: | --- | --- |'
+            node -e 'const m=require(process.env.RUNNER_TEMP+"/odbl/odbl-tables.json");for(const t of m.tables)console.log(`| ${t.file} | ${t.bytes} | \`${t.sha256.slice(0,16)}…\` | ${t.branch}@${t.commit.slice(0,7)} |`)'
+          } >> "$GITHUB_STEP_SUMMARY"
