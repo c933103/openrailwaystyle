@@ -80,3 +80,35 @@ test('two siblings with the same polygon are both kept rather than both dropped'
   const regions = indexRegions({features: [region('p', box(0, 0, 20, 10)), region('same-1', box(0, 0, 10, 10), 'p'), region('same-2', box(0, 0, 10, 10), 'p')]});
   assert.deepEqual(usableChildren(regions, 'p').map(r => r.id), ['same-1', 'same-2']);
 });
+
+import {headSize} from '../scripts/plan-osm-regions.mjs';
+// A fake server: a map of URL to [status, headers].
+const fakeFetch = (routes, asked = []) => async (url, init) => {
+  asked.push([url, init.method, init.redirect]);
+  const [status, headers] = routes[url] ?? [404, {}];
+  return new Response(null, {status, headers});
+};
+
+test('a HEAD redirect on the same HTTPS host is followed to the dated file', async () => {
+  const asked = [];
+  const bytes = await headSize('https://download.geofabrik.de/europe/a-latest.osm.pbf', {fetcher: fakeFetch({
+    'https://download.geofabrik.de/europe/a-latest.osm.pbf': [302, {location: '/europe/a-261101.osm.pbf'}],
+    'https://download.geofabrik.de/europe/a-261101.osm.pbf': [200, {'content-length': '12345'}],
+  }, asked)});
+  assert.equal(bytes, 12345);
+  assert.deepEqual(asked.map(a => a[0]), ['https://download.geofabrik.de/europe/a-latest.osm.pbf', 'https://download.geofabrik.de/europe/a-261101.osm.pbf']);
+  assert.ok(asked.every(([, method, redirect]) => method === 'HEAD' && redirect === 'manual'));
+});
+
+test('a redirect to another host or to plain HTTP, a loop, or a missing size stops the plan', async () => {
+  const start = 'https://download.geofabrik.de/x-latest.osm.pbf';
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({[start]: [302, {location: 'https://mirror.example/x.osm.pbf'}]})}), /Refusing https:\/\/mirror\.example/);
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({[start]: [301, {location: 'http://download.geofabrik.de/x.osm.pbf'}]})}), /Refusing http:/);
+  const loop = [];
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({[start]: [302, {location: start}]}, loop)}), /more than 3 redirects/);
+  assert.equal(loop.length, 4, 'the first request and three redirects, then stop');
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({[start]: [302, {}]})}), /without a location/);
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({[start]: [200, {}]})}), /no Content-Length/);
+  await assert.rejects(headSize(start, {fetcher: fakeFetch({})}), /HTTP 404/);
+  await assert.rejects(headSize('https://evil.example/x.osm.pbf', {fetcher: fakeFetch({})}), /Refusing/);
+});

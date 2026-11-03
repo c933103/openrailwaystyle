@@ -105,6 +105,31 @@ export function planReport(plan, sources = {}) {
 }
 
 const USER_AGENT = 'RailwayAtlas-coverage/1 (+https://github.com/c933103/openrailwaystyle/issues/330)';
+export const SIZE_HOST = 'download.geofabrik.de';
+
+// The size of a Geofabrik file from a HEAD request. Geofabrik answers a
+// `-latest` URL with a redirect to the dated file; a redirect is followed
+// only to HTTPS on the same host, at most three times. Anything else (another
+// host, plain HTTP, a loop, no Content-Length) stops the plan.
+export async function headSize(url, {fetcher = fetch, userAgent = USER_AGENT, maxRedirects = 3} = {}) {
+  let current = new URL(url);
+  for (let hop = 0; ; hop++) {
+    if (current.protocol !== 'https:' || current.host !== SIZE_HOST) throw new Error(`Refusing ${current.href}: only https://${SIZE_HOST}/ is asked`);
+    const response = await fetcher(current.href, {method: 'HEAD', headers: {'User-Agent': userAgent}, redirect: 'manual'});
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (!location) throw new Error(`${current.href}: HTTP ${response.status} without a location`);
+      if (hop >= maxRedirects) throw new Error(`${url}: more than ${maxRedirects} redirects`);
+      current = new URL(location, current);
+      continue;
+    }
+    if (!response.ok) throw new Error(`${current.href}: HTTP ${response.status}`);
+    const bytes = Number(response.headers.get('content-length'));
+    if (!Number.isSafeInteger(bytes) || bytes <= 0) throw new Error(`${current.href}: no Content-Length`);
+    return bytes;
+  }
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const out = process.argv[2];
   if (!out) throw new Error('Usage: plan-osm-regions.mjs <output directory>');
@@ -114,10 +139,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const index = await response.json();
   // One HEAD request per region the plan looks at, one at a time.
   const sizeOf = async region => {
-    const head = await fetch(region.pbf, {method: 'HEAD', headers: {'User-Agent': USER_AGENT}, redirect: 'error'});
-    if (!head.ok) throw new Error(`${region.pbf}: HTTP ${head.status}`);
+    const bytes = await headSize(region.pbf);
     await new Promise(resolve => setTimeout(resolve, 200));
-    return Number(head.headers.get('content-length'));
+    return bytes;
   };
   const plan = await planRegions(index, sizeOf);
   await mkdir(out, {recursive: true});
