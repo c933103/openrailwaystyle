@@ -2,20 +2,18 @@
 // Geofabrik region (#330, B2): the union of what every dataset's Overpass
 // query selects, so one filtered file per region serves every builder.
 // It may select more than the queries do (the builders still apply their
-// own tests); it must never select less. tests/extract-filter.test.mjs
+// own tests). The Unicode limitation below remains unresolved.
+// tests/extract-filter.test.mjs
 // checks that every key the Overpass queries test is selected here or is
 // listed in REFINEMENTS.
 //
 // osmium matches values exactly and case-sensitively. A `*` at either end of
-// a key or value is a wildcard, so `*traction*` finds a token in a
-// semicolon list; a comma list cannot carry wildcards, so each such value is
-// its own expression. Where the Overpass query matches a value without case
-// (`,i`), the filter takes the whole key, or, where the whole key would bring
-// most of the map (`usage` is on every power line, `landuse` on most
-// polygons), the word without its first letter in lower and in upper case
-// (CASE_FORMS): `*ailway*` and `*AILWAY*` find railway, Railway and RAILWAY
-// anywhere in a value. A value mixing case inside the word (rAilway) is the
-// one form left out.
+// a key or value is a wildcard. For the case-insensitive railway and traction
+// hints, every ASCII casing of a three-letter substring is selected anywhere in
+// the value. This covers all ASCII case combinations of each whole hint without
+// selecting all usage or landuse values. It can also select unrelated values
+// containing the substring. Non-ASCII equivalences accepted by Overpass are
+// not proven covered; do not treat this as full Unicode case-folding parity.
 //
 // Without -R osmium also writes the objects the matches refer to: way nodes
 // and relation members (and their nodes), so a filtered file has complete
@@ -29,11 +27,13 @@ import {STATES} from './lifecycle.mjs';
 const PREFIXES = STATES.map(state => `${state}:`);
 export const HERITAGE_HISTORIC = ['archaeological_site', 'battlefield', 'district'];
 
-// One word of a case-insensitive Overpass value test, as osmium expressions:
-// the word without its first letter, lower and upper case, anywhere.
-function CASE_FORMS(key, word, use) {
-  const rest = word.slice(1);
-  return [rest, rest.toUpperCase()].map(form => [`nwr/${key}=*${form}*`, use]);
+// All ASCII case combinations of a substring known to occur in the hint.
+// osmium wildcards apply at the ends, not within a value. Short fragments keep
+// the number of expressions bounded; the extract can therefore overselect.
+function CASE_FORMS(key, fragment, use) {
+  const forms = [...fragment].reduce((prefixes, char) =>
+    prefixes.flatMap(prefix => [prefix + char, prefix + char.toUpperCase()]), ['']);
+  return forms.map(form => [`nwr/${key}=*${form}*`, use]);
 }
 
 // [expression, datasets that need it]
@@ -58,9 +58,9 @@ export const EXTRACT_FILTERS = Object.freeze([
   // Power facilities: a power or man_made object counts only with a railway
   // hint; the hints themselves are selected.
   ['nwr/substation,transformer', 'power facilities (traction hints)'],
-  ...CASE_FORMS('usage', 'railway', 'power facilities, chargers'),
-  ...CASE_FORMS('usage', 'traction', 'power facilities, chargers'),
-  ...CASE_FORMS('landuse', 'railway', 'power facilities, chargers'),
+  ...CASE_FORMS('usage', 'lwa', 'power facilities, chargers'),
+  ...CASE_FORMS('usage', 'act', 'power facilities, chargers'),
+  ...CASE_FORMS('landuse', 'lwa', 'power facilities, chargers'),
   ['nwr/frequency=*16.6*', 'power facilities'],
   ['nwr/frequency=*16.7*', 'power facilities'],
   // Power methods: conductor rails, propulsion and traction, on ways of any

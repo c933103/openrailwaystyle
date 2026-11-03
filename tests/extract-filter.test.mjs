@@ -77,19 +77,27 @@ test('the inline queries of the snapshot, street-running and loading-gauge build
 // The power queries match railway hints as whole semicolon-separated tokens
 // without case (scripts/power-facility-data.mjs, power-method-data.mjs).
 const token = words => new RegExp(`(^|;)\\s*(${words})\\s*(;|$)`, 'i');
-test('case-insensitive railway hints are selected in lower, capitalised and upper case', () => {
-  for (const [key, words, values] of [
-    ['usage', 'railway|traction', ['railway', 'Railway', 'RAILWAY', 'traction', 'Traction', 'TRACTION', 'distribution; Railway', 'Traction;industrial', ' railway ']],
-    ['landuse', 'railway', ['railway', 'Railway', 'RAILWAY', 'Railway;industrial', 'industrial; railway']],
-  ]) {
-    for (const value of values) {
-      assert.ok(token(words).test(value), `${key}=${value} is a hint to the Overpass query`);
-      assert.ok(selectsTag(key, value), `${key}=${value} is selected`);
+// Exhaust every independent ASCII capitalization, including a token embedded
+// in semicolon-separated values. This checks the query's case-insensitive
+// contract separately from the filter's own wildcard-matching implementation.
+const asciiCases = word => [...word].reduce((prefixes, char) =>
+  prefixes.flatMap(prefix => [prefix + char, prefix + char.toUpperCase()]), ['']);
+test('all ASCII case combinations of railway hints are selected', () => {
+  for (const [key, word] of [['usage', 'railway'], ['usage', 'traction'], ['landuse', 'railway']]) {
+    const forms = asciiCases(word);
+    assert.equal(forms.length, 2 ** word.length);
+    for (const form of forms) {
+      for (const value of [form, `distribution; ${form} ;industrial`]) {
+        assert.ok(token(word).test(value), `${key}=${value} is a hint to the Overpass query`);
+        assert.ok(selectsTag(key, value), `${key}=${value} is selected`);
+      }
     }
   }
   for (const [key, value] of [['usage', 'transmission'], ['usage', 'distribution'], ['landuse', 'residential'], ['landuse', 'industrial']]) {
-    assert.equal(selectsTag(key, value), false, `${key}=${value}: whole power grids and land use stay out`);
+    assert.equal(selectsTag(key, value), false, `${key}=${value}: these unrelated values stay out`);
   }
+  // Short substrings deliberately select some unrelated values too.
+  assert.equal(selectsTag('usage', 'manufacturing'), true);
 });
 
 test('heritage values follow the heritage query', () => {
@@ -129,7 +137,15 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
       node(7, tag('power', 'transformer'), tag('frequency', '16.7')), node(8, tag('amenity', 'charging_station'), tag('tram', 'yes')),
       node(11, tag('power', 'plant'), tag('usage', 'Railway')), node(12, tag('power', 'substation'), tag('usage', 'TRACTION')),
       node(13, tag('man_made', 'water_tower'), tag('landuse', 'Railway;industrial')),
+      node(15, tag('power', 'plant'), tag('usage', 'rAiLwAy')), node(16, tag('power', 'plant'), tag('usage', 'tRaCtIoN')),
+      node(17, tag('landuse', 'rAiLwAy;industrial')),
     ];
+    // Exercise every ASCII hint casing against real osmium, not only the
+    // JavaScript matcher above. These fixtures have no other selecting tag.
+    const variants = [['usage', 'railway'], ['usage', 'traction'], ['landuse', 'railway']]
+      .flatMap(([key, word]) => asciiCases(word).map(form => [key, `other; ${form} ;industrial`]));
+    const variantIds = variants.map((_, index) => 500 + index);
+    kept.push(...variants.map(([key, value], index) => node(variantIds[index], tag(key, value))));
     const ways = [
       way(100, [20, 21], tag('railway', 'rail'), tag('usage', 'branch')), way(101, [22, 23], tag('embedded_rails', 'tram')),
       way(102, [24, 25], tag('conveying', 'yes')), way(103, [26, 27], tag('highway', 'elevator')), way(104, [28, 29], tag('aerialway', 'gondola')),
@@ -146,7 +162,8 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
     const run = spawnSync('osmium', ['tags-filter', join(dir, 'in.osm'), '-e', join(dir, 'filter.txt'), '-f', 'opl', '-o', '-'], {encoding: 'utf8'});
     assert.equal(run.status, 0, run.stderr);
     const ids = new Set(run.stdout.trim().split('\n').map(line => line.split(' ')[0]));
-    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n11', 'n12', 'n13', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'r300']) assert.ok(ids.has(id), `${id} kept`);
+    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n11', 'n12', 'n13', 'n15', 'n16', 'n17', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'r300']) assert.ok(ids.has(id), `${id} kept`);
+    for (const id of variantIds) assert.ok(ids.has(`n${id}`), `n${id}: ASCII hint selected by osmium`);
     for (const id of ['n20', 'n21', 'n30', 'n35']) assert.ok(ids.has(id), `${id}: nodes of a selected way are kept`);
     for (const id of ['n9', 'n10', 'n14', 'w200', 'w201', 'w202', 'r301', 'n40', 'n42']) assert.ok(!ids.has(id), `${id} left out`);
   } finally {
