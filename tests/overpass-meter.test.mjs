@@ -94,3 +94,94 @@ test('an error body the builder rejects unread counts by its declared length; on
   assert.equal(usage.bytes, 20000, 'two unread 10,000-byte error bodies');
   assert.deepEqual([usage.unread, usage.unmeasured], [3, 1], 'the chunked body has no declared length: a lower bound');
 });
+
+// A host that accepts connections and drops them, so fetch rejects with
+// "fetch failed" as when Overpass is unreachable; /answer is answered 503.
+async function dropping(t) {
+  let received = 0;
+  const server = createServer((request, response) => {
+    received++;
+    if (request.url.startsWith('/answer')) { response.statusCode = 503; response.end('busy'); } else request.socket.destroy();
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  return {base: `http://127.0.0.1:${server.address().port}`, received: () => received};
+}
+const ASK = base => `
+  const outcomes = [], pause = ms => new Promise(r => setTimeout(r, ms));
+  const ask = async path => {
+    try { const r = await fetch('${base}' + path); await r.text(); outcomes.push(r.status); }
+    catch (error) { outcomes.push(error.name + (error.cause?.message?.startsWith('not sent') ? ' skipped' : ' failed') + ': ' + error.message); }
+  };`;
+const outcomesOf = result => JSON.parse(String(result.stdout).split('\n').find(l => l.startsWith('OUTCOMES ')).slice(9));
+const FAILED = 'TypeError failed: fetch failed', SKIPPED = 'TypeError skipped: fetch failed';
+
+test('after three unanswered requests in a row a host is not asked again during the cooldown', async t => {
+  const down = await dropping(t), other = await serve(t);
+  const {usage, result} = await run(t, `${ASK(down.base)}
+    for (let i = 0; i < 6; i++) await ask('/q');
+    const ok = await fetch('${other}/'); await ok.text();
+    console.log('OUTCOMES ' + JSON.stringify(outcomes));
+  `);
+  assert.equal(result.code ?? 0, 0, String(result.stderr));
+  // A skipped request fails exactly as a dead connection does, so every
+  // builder keeps its data and asks again, as it does in an outage.
+  assert.deepEqual(outcomesOf(result), [FAILED, FAILED, FAILED, SKIPPED, SKIPPED, SKIPPED]);
+  assert.equal(down.received(), 3, 'only three requests reached the host');
+  assert.deepEqual(usage.hosts[new URL(down.base).host], {bytes: 0, requests: 3, skipped: 3});
+  assert.equal(usage.skipped, 3);
+  assert.deepEqual(usage.hosts[new URL(other).host], {bytes: 15, requests: 1}, 'another host is not affected');
+});
+
+test('after the cooldown one request goes through; a failure pauses again, an answer (even 503) ends the pause', async t => {
+  const down = await dropping(t);
+  const {usage, result} = await run(t, `${ASK(down.base)}
+    for (let i = 0; i < 4; i++) await ask('/q');   // 3 failed, then skipped
+    await pause(400); await ask('/q');             // probe fails: a new pause
+    await ask('/answer');                          // skipped
+    await pause(400); await ask('/answer');        // probe answered 503: the pause ends
+    await ask('/q'); await ask('/q');              // asked again: 2 failures
+    await ask('/answer');                          // answered: count back to 0
+    for (let i = 0; i < 4; i++) await ask('/q');   // 3 failed, then skipped
+    console.log('OUTCOMES ' + JSON.stringify(outcomes));
+  `, {OVERPASS_COOLDOWN_MS: '300'});
+  assert.equal(result.code ?? 0, 0, String(result.stderr));
+  assert.deepEqual(outcomesOf(result), [FAILED, FAILED, FAILED, SKIPPED, FAILED, SKIPPED, 503, FAILED, FAILED, 503, FAILED, FAILED, FAILED, SKIPPED]);
+  assert.equal(down.received(), 11);
+  assert.equal(usage.hosts[new URL(down.base).host].skipped, 3);
+});
+
+test('a request the builder aborts itself does not count as the host failing', async t => {
+  const down = await dropping(t), slow = createServer(() => {});
+  await new Promise(resolve => slow.listen(0, '127.0.0.1', resolve));
+  t.after(() => slow.close());
+  const slowBase = `http://127.0.0.1:${slow.address().port}`;
+  const {result} = await run(t, `${ASK(slowBase)}
+    for (let i = 0; i < 4; i++) {
+      const controller = new AbortController(); setTimeout(() => controller.abort(), 50);
+      try { await fetch('${slowBase}/', {signal: controller.signal}); outcomes.push('answered'); } catch (error) { outcomes.push(error.name); }
+    }
+    for (let i = 0; i < 2; i++) { try { await fetch('${slowBase}/', {signal: AbortSignal.timeout(50)}); } catch (error) { outcomes.push(error.name); } }
+    console.log('OUTCOMES ' + JSON.stringify(outcomes));
+  `);
+  assert.equal(result.code ?? 0, 0, String(result.stderr));
+  assert.deepEqual(outcomesOf(result), ['AbortError', 'AbortError', 'AbortError', 'AbortError', 'TimeoutError', 'TimeoutError'],
+    'own aborts never pause the host; timeouts count but two are under the limit');
+  void down;
+});
+
+test('every builder still decides to split only on a request that was sent', async () => {
+  const {COOLDOWN_MS} = await import('../scripts/overpass-meter.mjs');
+  const {HERITAGE_RETRY_DELAYS, heritageFailure} = await import('../scripts/heritage-data.mjs');
+  const {OVERPASS_RETRY_MINUTES} = await import('../scripts/overpass-errors.mjs');
+  // Heritage splits a region after its last retry fails; that retry comes
+  // HERITAGE_RETRY_DELAYS.at(-1) after the previous request, past the pause.
+  assert.ok(HERITAGE_RETRY_DELAYS.at(-1) >= COOLDOWN_MS);
+  assert.ok(OVERPASS_RETRY_MINUTES[0] * 60_000 >= COOLDOWN_MS);
+  // A skipped request reads as a network failure, never as a size limit.
+  assert.equal(heritageFailure(new Error('Network: fetch failed'), 0, 0), 'retry');
+  for (const source of ['build-crossings.mjs', 'build-power-facilities.mjs', 'build-signals.mjs'].map(f => readFileSync(new URL(`../scripts/${f}`, import.meta.url), 'utf8'))) {
+    for (const [, pattern, flags] of source.matchAll(/\/((?:[^/\n\\]|\\.)*(?:timed\? \?out|timeout)(?:[^/\n\\]|\\.)*)\/([gimsuy]*)/g))
+      assert.ok(!new RegExp(pattern, flags).test('fetch failed'), pattern);
+  }
+});
