@@ -3045,8 +3045,8 @@
   "inputSha256": "734f18fb784a07ff72c970efc73f0eb6b93274bc2347abe8f81480c54a528291",
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/87e1693d26bcf4231da89209/renderer-acceptance-bdf10e60bf166e7075386ad89e1d0d1a8960b94da78c765571cd934bdc0ee5f0.json",
-    "sha256": "bdf10e60bf166e7075386ad89e1d0d1a8960b94da78c765571cd934bdc0ee5f0",
+    "path": "generations/87e1693d26bcf4231da89209/renderer-acceptance-f69402fa0a67e24d86c8566abd3ebe4229c954588c89a4034237543a9889b240.json",
+    "sha256": "f69402fa0a67e24d86c8566abd3ebe4229c954588c89a4034237543a9889b240",
     "inputSha256": "734f18fb784a07ff72c970efc73f0eb6b93274bc2347abe8f81480c54a528291",
     "samples": 840,
     "appSamples": 18,
