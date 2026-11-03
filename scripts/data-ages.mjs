@@ -4,12 +4,13 @@
 //   node scripts/data-ages.mjs styles
 // It reads each dataset's manifest and writes styles/data/data-ages.json:
 //   {schema, generated, staleAfterDays, datasets: [{id, label, date, field, stale}]}
-// The date is the OpenStreetMap database time when the manifest records one
-// (osmBase), otherwise the time the snapshot was built: the data is at least
-// that old. A missing manifest is listed with date null, never guessed.
+// The date is the oldest the manifest vouches for: the OpenStreetMap database
+// time (osmBase), the oldest source file (oldestSource), or the start of a
+// download cycle that fetches regions over weeks (started); otherwise the
+// time the snapshot was last updated or built. The data is at least that old. A missing manifest is listed with date null, never guessed.
 // Old data is never refused here: `stale` only marks a dataset older than
 // STALE_AFTER_DAYS so the page can say so.
-import {readFile, writeFile} from 'node:fs/promises';
+import {readFile, writeFile, appendFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
@@ -26,9 +27,10 @@ export const DATASETS = [
   {id: 'power', label: 'Railway energy supplies', manifest: 'data/traction/power/manifest.json'},
   {id: 'signals', label: 'Railway signals', manifest: 'data/traction/signals/manifest.json'},
   {id: 'station-points', label: 'Station points', manifest: 'data/station-points/manifest.json'},
+  {id: 'mainline-reference', label: 'Railway reference lines', manifest: 'data/mainline-reference/manifest.json'},
 ];
-// Most specific first: the OSM database time, then build times.
-const FIELDS = ['osmBase', 'updated', 'generated', 'built'];
+// Most specific first: the OSM data times, then build times.
+const FIELDS = ['osmBase', 'oldestSource', 'started', 'updated', 'generated', 'built'];
 
 export function datasetDate(manifest) {
   for (const field of FIELDS) {
@@ -54,5 +56,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const root = process.argv[2] || 'styles';
   const ages = await dataAges(root);
   await writeFile(join(root, 'data/data-ages.json'), `${JSON.stringify(ages, null, 1)}\n`);
-  for (const d of ages.datasets) console.log(`${d.id}: ${d.date ?? 'no manifest'}${d.field ? ` (${d.field})` : ''}${d.stale ? ' STALE' : ''}`);
+  const lines = ['| Dataset | Date | Field | Older than ' + STALE_AFTER_DAYS + ' days |', '| --- | --- | --- | --- |',
+    ...ages.datasets.map(d => `| ${d.label} | ${d.date ?? 'no date'} | ${d.field ?? '—'} | ${d.stale ? 'yes' : 'no'} |`)];
+  console.log(lines.join('\n'));
+  if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `## Data dates\n\n${lines.join('\n')}\n`);
+  // Old data is a warning, never a failed build.
+  for (const d of ages.datasets.filter(d => d.stale)) console.log(`::warning::${d.label} data is from ${d.date}, more than ${STALE_AFTER_DAYS} days old`);
 }

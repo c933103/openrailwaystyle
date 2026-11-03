@@ -194,3 +194,8 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 .point-swatch{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:25px;height:16px;gap:4px}.point-swatch.paired{width:36px}.point-swatch svg{display:block;flex-shrink:0;width:16px;height:16px}
 
 .dot-swatch { width: 8px; height: 8px; flex-shrink: 0; margin: 0 7px; border-radius: 50%; background: var(--swatch); border: 1.5px solid var(--swatch-stroke); box-sizing: content-box; }
+
+/* Help: data dates */
+.data-ages { border-collapse: collapse; margin: 0.25em 0 0.75em; }
+.data-ages th, .data-ages td { text-align: left; padding: 0.15em 0.75em 0.15em 0; vertical-align: top; }
+.data-ages-notice, .data-age-stale { color: #8a4b00; }

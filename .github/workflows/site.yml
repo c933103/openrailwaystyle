@@ -467,6 +467,10 @@ jobs:
           KEY: ${{ steps.key.outputs.key }}
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/ci-plan.mjs reuse
+      # Each dataset's date for the Help panel; old data is a warning, never
+      # a failure (#330, B7).
+      - name: Record the data dates
+        run: node scripts/data-ages.mjs styles
       # GitHub Pages publishes at most 1 GB: fail before that, with a
       # breakdown by dataset in the step summary.
       - name: Check the site size

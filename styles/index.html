@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261102-power-gzip-1" rel="stylesheet">
+  <link href="app.css?v=20261103-data-dates-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -161,7 +161,7 @@
     </section>
   </dialog>
   <dialog id="about" aria-labelledby="about-title"><button class="close" id="about-close" aria-label="Close help">×</button><h2 id="about-title">Help, licences and terms of use</h2>
-    <nav class="help-contents" aria-label="Contents"><a href="#help-start">Getting started</a> · <a href="#help-install">Install app</a> · <a href="#help-reading">Reading the map</a> · <a href="#help-names">Names and terrain</a> · <a href="#help-sources">Sources</a> · <a href="#help-licences">Licences</a> · <a href="#help-terms">Terms of use</a></nav>
+    <nav class="help-contents" aria-label="Contents"><a href="#help-start">Getting started</a> · <a href="#help-install">Install app</a> · <a href="#help-reading">Reading the map</a> · <a href="#help-names">Names and terrain</a> · <a href="#help-sources">Sources</a> · <a href="#help-data-dates">Data dates</a> · <a href="#help-licences">Licences</a> · <a href="#help-terms">Terms of use</a></nav>
     <h3 id="help-start" tabindex="-1">Getting started</h3>
     <p>If a search source is unavailable or returns invalid results, any usable results remain visible with an incomplete-search notice. Invalid rows are omitted; missing coordinates never become a result at zero latitude or longitude. No matches from the available sources does not rule out matches in the unavailable source. Even a completed search is limited to the providers' coverage and stations already drawn on the map.</p>
     <p>Search for a station, railway facility or place with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge, loading gauge, axle load or owner, or show the urban rail services (metro, light rail, tram and commuter rail lines) along the tracks they run on; Map, Satellite, Hybrid and Carto choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
@@ -188,6 +188,10 @@
     <p>Project origins: Railway Atlas began as a fork of <a href="https://github.com/OpenRail-Playground/openrailwaystyle">Open Railway Styles</a>, the Hack4Rail 2025 project. Atlas's current application and worldwide data pipeline are developed in this repository.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Map initialization can request TileJSON metadata from Re:Earth Papers (<code>papers.reearth.land</code>); at zooms 4–6, loading or panning automatically requests its tiles for the viewed area. These direct browser requests expose the requested tile coordinates, your IP address and ordinary browser request headers to that host. Search terms are sent to OpenRailwayMap and to OpenStreetMap's Nominatim geocoder only when submitted. Opening a station sends its position to Transitous for its departures; expanding a train requests its trip ID for the full schedule. Opening a level crossing asks the OpenStreetMap API for its tags. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
     <p>Other transport and major destinations use the existing OpenMapTiles basemap: airports, bus/coach and ferry terminals, cable car stations, hospitals, campuses, shopping centres, government/community facilities and visitor attractions. Shaded industrial, commercial and other facility grounds show potential trip destinations, not passenger volumes. Station panels list nearby transport within 500 m straight-line distance; this does not confirm a walkable interchange.</p>
+    <h3 id="help-data-dates" tabindex="-1">Data dates</h3>
+    <p>When a source is unavailable, the map keeps its last checked data rather than showing none. The dates below say how old each dataset is. A date is the oldest the dataset vouches for: the OpenStreetMap data time where recorded, otherwise when it was built.</p>
+    <p id="data-ages-notice" class="data-ages-notice" role="status" hidden></p>
+    <table id="data-ages" class="data-ages"><thead><tr><th scope="col">Dataset</th><th scope="col">Data from</th></tr></thead><tbody><tr><td colspan="2">Loading…</td></tr></tbody></table>
     <h3 id="help-licences" tabindex="-1">Licences</h3>
     <ul class="help-list">
       <li>Website source code: <a href="https://github.com/c933103/openrailwaystyle/blob/main/LICENSE">Apache License 2.0</a>.</li>
@@ -234,6 +238,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261102-power-gzip-1"></script>
+  <script type="module" src="app.mjs?v=20261103-data-dates-1"></script>
 </body>
 </html>
