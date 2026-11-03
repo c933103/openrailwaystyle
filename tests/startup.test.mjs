@@ -569,7 +569,10 @@ test('startup native-realm loaders use each window fixture without external fetc
     return url.includes('/data/traction/power/')?new Response(gzipSync(JSON.stringify({type:'FeatureCollection',features:[]}))):{ok:true,json:async()=>structuredClone(style)};
    }});
    states.push(state);state.maps[0].handlers['style.load']();
-   for(let tick=0;tick<3;tick++)await new Promise(resolve=>setTimeout(resolve,0));
+   // The power-method file is gunzipped by DecompressionStream, whose work
+   // runs on a background thread: wait for it (at most 2 s) instead of a
+   // fixed number of timer ticks, which a busy CI runner can outrun.
+   for(let wait=0;wait<200 && !state.maps[0].sourceData?.electricMethods;wait++)await new Promise(resolve=>setTimeout(resolve,10));
    assert.ok(state.maps[0].sourceData?.electricMethods,'the fixture must actually reach the native loader');
    assert.deepEqual(state.maps[0].sourceData.electricMethods.features,[]);
   }
