@@ -24,6 +24,7 @@ import * as terrain3dModule from '../styles/terrain-3d.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as serviceStatusModule from '../styles/service-status.mjs';
+import * as dataAgesModule from '../styles/data-ages.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
@@ -264,6 +265,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   }, {context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
+  const dataAges = new vm.SyntheticModule(Object.keys(dataAgesModule),function(){for(const [key,value] of Object.entries(dataAgesModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
     for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,key==='createPowerFacilityLoader'?(map,options)=>value(map,fixtureOptions(options)):value);
   },{context});
@@ -286,7 +288,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('data-ages.mjs') ? dataAges : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
