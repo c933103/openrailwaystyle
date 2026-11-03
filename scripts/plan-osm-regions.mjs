@@ -60,7 +60,8 @@ export function usableChildren(regions, parentId) {
 }
 
 // sizeOf(region) resolves to the PBF size in bytes.
-export async function planRegions(index, sizeOf, {maxBytes = MAX_REGION_BYTES} = {}) {
+// urlOf(region) is the file the plan records (default: the index's URL).
+export async function planRegions(index, sizeOf, {maxBytes = MAX_REGION_BYTES, urlOf = region => region.pbf} = {}) {
   const regions = indexRegions(index);
   for (const id of CONTINENTS) if (!regions.has(id)) throw new Error(`Geofabrik index has no region ${id}`);
   const chosen = new Map(), splits = [];
@@ -80,7 +81,7 @@ export async function planRegions(index, sizeOf, {maxBytes = MAX_REGION_BYTES} =
   const remainder = polygonClipping.difference(WORLD, covered);
   return {
     maxBytes, splits,
-    regions: planned.map(({region, bytes, oversized, depth}) => ({id: region.id, parent: region.parent, url: region.pbf, bytes, oversized, depth})),
+    regions: planned.map(({region, bytes, oversized, depth}) => ({id: region.id, parent: region.parent, url: urlOf(region), bytes, oversized, depth})),
     remainder: remainder.map(polygon => ({polygon, areaKm2: areaKm2([polygon]), extent: extent([polygon])})).sort((a, b) => b.areaKm2 - a.areaKm2),
     coveredKm2: areaKm2(covered), worldKm2: areaKm2([WORLD]),
   };
@@ -107,46 +108,60 @@ export function planReport(plan, sources = {}) {
 const USER_AGENT = 'RailwayAtlas-coverage/1 (+https://github.com/c933103/openrailwaystyle/issues/330)';
 export const SIZE_HOST = 'download.geofabrik.de';
 
-// The size of a Geofabrik file from a HEAD request. Geofabrik answers a
-// `-latest` URL with a redirect to the dated file; a redirect is followed
-// only to HTTPS on the same host, at most three times. Anything else (another
-// host, plain HTTP, a loop, no Content-Length) stops the plan.
-export async function headSize(url, {fetcher = fetch, userAgent = USER_AGENT, maxRedirects = 3} = {}) {
-  let current = new URL(url);
-  for (let hop = 0; ; hop++) {
-    if (current.protocol !== 'https:' || current.host !== SIZE_HOST) throw new Error(`Refusing ${current.href}: only https://${SIZE_HOST}/ is asked`);
-    const response = await fetcher(current.href, {method: 'HEAD', headers: {'User-Agent': userAgent}, redirect: 'manual'});
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
-      if (!location) throw new Error(`${current.href}: HTTP ${response.status} without a location`);
-      if (hop >= maxRedirects) throw new Error(`${url}: more than ${maxRedirects} redirects`);
-      current = new URL(location, current);
-      continue;
-    }
-    if (!response.ok) throw new Error(`${current.href}: HTTP ${response.status}`);
-    const bytes = Number(response.headers.get('content-length'));
-    if (!Number.isSafeInteger(bytes) || bytes <= 0) throw new Error(`${current.href}: no Content-Length`);
-    return bytes;
+// The plan asks for dated files, as `mainline-reference.yml` does: Geofabrik
+// serves `<region>-YYMMDD.osm.pbf` directly, while a `-latest` URL redirects,
+// for the largest files to outside mirrors. Geofabrik keeps the daily dated
+// files for about a week, so the default date is two days ago (UTC), the
+// mainline default.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export function defaultSourceDate(now = new Date()) {
+  return new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
+}
+export function datedUrl(latestUrl, date, {now = new Date()} = {}) {
+  if (!ISO_DATE.test(date) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) throw new Error(`Invalid source date ${date}`);
+  if (date > now.toISOString().slice(0, 10)) throw new Error(`Future source date ${date}`);
+  const url = new URL(latestUrl);
+  if (url.protocol !== 'https:' || url.host !== SIZE_HOST || !url.pathname.endsWith('-latest.osm.pbf')) throw new Error(`Not a Geofabrik -latest PBF: ${latestUrl}`);
+  url.pathname = url.pathname.replace(/-latest\.osm\.pbf$/, `-${date.slice(2, 4)}${date.slice(5, 7)}${date.slice(8, 10)}.osm.pbf`);
+  return url.href;
+}
+
+// The size of a dated Geofabrik file from one HEAD request. Only HTTPS on
+// download.geofabrik.de is asked, and any redirect, a non-OK status or a
+// missing Content-Length stops the plan.
+export async function headSize(url, {fetcher = fetch, userAgent = USER_AGENT} = {}) {
+  const target = new URL(url);
+  if (target.protocol !== 'https:' || target.host !== SIZE_HOST) throw new Error(`Refusing ${target.href}: only https://${SIZE_HOST}/ is asked`);
+  const response = await fetcher(target.href, {method: 'HEAD', headers: {'User-Agent': userAgent}, redirect: 'manual'});
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(`${target.href}: unexpected redirect (HTTP ${response.status}) to ${response.headers.get('location') ?? 'no location'}; only the dated file on ${SIZE_HOST} is asked`);
   }
+  if (!response.ok) throw new Error(`${target.href}: HTTP ${response.status}`);
+  const bytes = Number(response.headers.get('content-length'));
+  if (!Number.isSafeInteger(bytes) || bytes <= 0) throw new Error(`${target.href}: no Content-Length`);
+  return bytes;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const out = process.argv[2];
-  if (!out) throw new Error('Usage: plan-osm-regions.mjs <output directory>');
+  if (!out) throw new Error('Usage: plan-osm-regions.mjs <output directory> [YYYY-MM-DD]');
+  const date = process.argv[3] || defaultSourceDate();
+  const urlOf = region => datedUrl(region.pbf, date);
+  datedUrl(`https://${SIZE_HOST}/check-latest.osm.pbf`, date); // a bad date stops before any request
   const INDEX = 'https://download.geofabrik.de/index-v1.json';
   const response = await fetch(INDEX, {headers: {'User-Agent': USER_AGENT}, redirect: 'error'});
   if (!response.ok) throw new Error(`${INDEX}: HTTP ${response.status}`);
   const index = await response.json();
   // One HEAD request per region the plan looks at, one at a time.
   const sizeOf = async region => {
-    const bytes = await headSize(region.pbf);
+    const bytes = await headSize(urlOf(region));
     await new Promise(resolve => setTimeout(resolve, 200));
     return bytes;
   };
-  const plan = await planRegions(index, sizeOf);
+  const plan = {sourceDate: date, ...await planRegions(index, sizeOf, {urlOf})};
   await mkdir(out, {recursive: true});
   await writeFile(join(out, 'plan.json'), `${JSON.stringify(plan)}\n`);
-  const report = planReport(plan, {Measured: new Date().toISOString(), 'Region index': INDEX});
+  const report = planReport(plan, {Measured: new Date().toISOString(), 'Region index': INDEX, 'Source date': `${date} (dated Geofabrik files)`});
   await writeFile(join(out, 'plan.md'), report);
   process.stdout.write(report);
 }
