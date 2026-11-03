@@ -59,6 +59,16 @@ The same workflow also plans which Geofabrik files the extract pipeline would do
   - An invalid plan is still written, with `valid: false` and its problems, and the job fails. Nothing may take a plan whose `valid` is not `true`.
   - Nothing is downloaded beyond the index, the land files and the HEAD requests.
 
+**Measure Geofabrik region extracts** (`osm-extract.yml`, run by hand, step B2 of #330) is the first form of the extract pipeline. It only measures: nothing is pushed, published or kept beyond the run's artifacts.
+- **Plan.** It makes the region plan as above. `scripts/extract-run.mjs matrix` refuses a plan whose `valid` is not `true`, a region over the limit, more than 256 regions (one matrix), or more than 100 GiB in all, before any download.
+- **One job per region**, largest first, at most 2 at a time (`scripts/acquire-region-extract.mjs`):
+  - **Requests.** Three to `download.geofabrik.de`, over HTTPS and never redirected: HEAD, the `.md5` sidecar, the file. They are logged per host by the meter.
+  - **Checks before keeping the download.** The HEAD size must be the planned size and fit the disk with 4 GiB to spare. The download is stopped past that size or after 90 minutes, and kept only when its MD5 matches the sidecar. The file's `osmosis_replication_timestamp` must fall on the planned day or one day either side.
+  - **Filter.** One `osmium tags-filter` with the union of every dataset's selection (`scripts/extract-filter.mjs`), then `osmium check-refs`. The raw download is deleted as soon as it is filtered, or when any step fails.
+  - **Record.** `extract.json` holds the sizes, SHA-256 of both files, the object counts, the timestamps, and the download and filter times. Only the record is uploaded; the filtered file is deleted at the end of the job.
+- **Filter selection.** The filter may select more than the Overpass queries do, never less. `tests/extract-filter.test.mjs` reads every key the current queries test and fails when one is neither selected nor listed as a refinement. A refinement is a key that only narrows objects already selected, such as `usage` on railway ways. osmium matches values with case; where a query ignores case, the filter takes the whole key, or for `usage` and `landuse` (whose whole keys would bring every power line and most polygons) the hint word in lower, capitalised and upper case anywhere in the value. A word in mixed case inside (`rAilway`) is the one form left out. The polar basemap stays on Overpass: its roads, buildings and water would bring most of each region's data.
+- **Report.** The last job lists every region measured and every region not measured, with totals, in the step summary and the `extract-report` artifact.
+
 ## Railway lifecycle snapshot
 
 The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선.
