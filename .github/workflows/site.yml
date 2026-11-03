@@ -579,6 +579,16 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/odbl-tables.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - uses: actions/download-artifact@v4
         with:
           name: railway-world-site
@@ -602,7 +612,15 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
-      # Offered from the odbl-tables release instead (see the validate job).
+      # Fail closed before removing/uploading anything: the previous deployed
+      # site remains live until all four immutable release tables are verified.
+      # On the first merge the publisher may still be running; after it succeeds,
+      # rerun this site workflow if this gate found no complete generation yet.
+      - name: Require complete ODbL release and pin immutable download links
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/odbl-tables.mjs pin styles/index.html "$RUNNER_TEMP/odbl-pin"
+      # Offered from the verified release generation instead.
       - name: Keep the service-route ODbL table out of the published site
         run: rm -f styles/data/service-routes/service-routes.ndjson.gz
       - uses: actions/configure-pages@v5
@@ -612,12 +630,6 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '26'
-          check-latest: true
-      - name: Verify Node 26 security baseline
-        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}

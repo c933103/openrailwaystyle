@@ -1,11 +1,6 @@
-# The ODbL download tables, served from the release `odbl-tables` rather than
-# the website (scripts/odbl-tables.mjs, #330 A3). Runs after each workflow
-# that publishes a table, on changes to itself, weekly as a safety net and by
-# hand. Each table is uploaded only when its sha256 changed, under a
-# temporary name, and replaces the old asset only after the upload
-# succeeded; the manifest odbl-tables.json is replaced last, so it never
-# lists a table the release does not have. A failed run leaves the previous
-# assets in place.
+# Copies existing public ODbL tables only. Immutable hash-named assets keep
+# prior deployments usable; a complete manifest uploaded last commits a new
+# generation. Never replace/rename an uploaded asset. See data-maintenance.md.
 name: Publish ODbL download tables
 on:
   workflow_dispatch:
@@ -45,37 +40,13 @@ jobs:
         run: |
           gh release view odbl-tables >/dev/null 2>&1 || gh release create odbl-tables --target "$GITHUB_SHA" --latest=false \
             --title 'OpenStreetMap download tables (ODbL)' \
-            --notes 'Railway Atlas download tables: railway lifecycle, level crossings, branch lines and urban rail services. © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0). odbl-tables.json lists each file with its size, sha256 and the data-branch commit it was copied from. Replaced when the data changes.'
-      - name: Copy the changed tables from their data branches
+            --notes 'Railway Atlas download tables: railway lifecycle, level crossings, branch lines and urban rail services. © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0). The newest uploaded HASH-odbl-tables.json manifest lists the current four hash-named tables with their size, sha256 and source data-branch commit. Older generations remain available for deployed links.'
+      - name: Publish and verify a complete immutable generation
         run: |
           set -eu
-          mkdir -p /tmp/previous
-          gh release download odbl-tables --pattern odbl-tables.json --dir /tmp/previous || true
-          node scripts/odbl-tables.mjs stage /tmp/odbl /tmp/previous/odbl-tables.json > /tmp/upload.txt
-          echo "Changed: $(tr '\n' ' ' < /tmp/upload.txt)"
-          # Replace an asset without a moment where a failed upload leaves
-          # it missing: the new file is uploaded as <name>.new first, and
-          # only once that succeeded is the old asset deleted and the new
-          # one renamed. If the rename fails, the next run uploads again,
-          # because the manifest (uploaded last) still has the old sha256.
-          asset_id() { gh api "repos/$GITHUB_REPOSITORY/releases/tags/odbl-tables" --jq ".assets[] | select(.name == \"$1\") | .id"; }
-          replace() {
-            mkdir -p /tmp/odbl-new
-            cp "/tmp/odbl/$1" "/tmp/odbl-new/$1.new"
-            stale=$(asset_id "$1.new"); if [ -n "$stale" ]; then gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$stale"; fi
-            gh release upload odbl-tables "/tmp/odbl-new/$1.new"
-            new=$(asset_id "$1.new"); old=$(asset_id "$1")
-            test -n "$new"
-            if [ -n "$old" ]; then gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$old"; fi
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$new" -f name="$1" > /dev/null
-          }
-          while read -r file; do
-            [ -n "$file" ] || continue
-            replace "$file"
-          done < /tmp/upload.txt
-          replace odbl-tables.json
+          node scripts/odbl-tables.mjs publish "$RUNNER_TEMP/odbl"
           {
             echo '| Table | Bytes | sha256 | Source |'
             echo '| --- | ---: | --- | --- |'
-            node -e 'const m=require("/tmp/odbl/odbl-tables.json");for(const t of m.tables)console.log(`| ${t.file} | ${t.bytes} | \`${t.sha256.slice(0,16)}…\` | ${t.branch}@${t.commit.slice(0,7)} |`)'
+            node -e 'const m=require(process.env.RUNNER_TEMP+"/odbl/odbl-tables.json");for(const t of m.tables)console.log(`| ${t.file} | ${t.bytes} | \`${t.sha256.slice(0,16)}…\` | ${t.branch}@${t.commit.slice(0,7)} |`)'
           } >> "$GITHUB_STEP_SUMMARY"
