@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {mkdtemp, readFile, readdir, rm, writeFile, mkdir} from 'node:fs/promises';
+import {mkdtemp, readFile, readdir, rm, writeFile, mkdir, cp, utimes} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -15,10 +15,10 @@ const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-01T00:00:00Z';
 const way = (id, tags) => ({type:'way', id, tags, geometry:[{lat:10, lon:100}, {lat:10.1, lon:100.1}]});
 const region = elements => JSON.stringify({osm3s:{timestamp_osm_base:SINCE}, elements});
 
-async function run(t, files, replies, mode = 'delta') {
-  const root = await mkdtemp(join(tmpdir(), 'lifecycle-updates-'));
-  t.after(() => rm(root, {recursive:true, force:true}));
-  await mkdir(join(root, '.snapshot-cache'));
+async function run(t, files, replies, mode = 'delta', previousRoot) {
+  const root = previousRoot || await mkdtemp(join(tmpdir(), 'lifecycle-updates-'));
+  if (!previousRoot) t.after(() => rm(root, {recursive:true, force:true}));
+  await mkdir(join(root, '.snapshot-cache'), {recursive:true});
   for (const [name, data] of Object.entries(files)) await writeFile(join(root, '.snapshot-cache', name), data);
   await writeFile(join(root, 'fake.mjs'), `
     const replies = ${JSON.stringify(replies)}, log = [];
@@ -27,15 +27,27 @@ async function run(t, files, replies, mode = 'delta') {
       const query = body.get('data'); log.push(query);
       (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
       const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
-      if (reply.cut) return {ok:true, status:200, text:async () => { throw new TypeError('terminated'); }};
-      if (reply.fail) throw new TypeError('fetch failed');
+      if (reply.fail || reply.cut) {
+        const cause = Object.assign(new Error(reply.secret || 'synthetic connection failure'), {name:reply.causeName || 'Error', code:reply.code});
+        if (reply.cycle) cause.cause = cause;
+        if (reply.getters) {
+          let names = 0, codes = 0;
+          Object.defineProperties(cause, {
+            name:{get:() => names++ ? 'credential=do-not-log' : 'Error'},
+            code:{get:() => codes++ ? 'TOKEN_DO_NOT_LOG' : 'ECONNRESET'},
+          });
+        }
+        const error = new TypeError(reply.message || 'fetch failed', {cause});
+        if (reply.cut) return {ok:true, status:200, text:async () => { throw error; }};
+        throw error;
+      }
       return new Response(reply.text, {status:reply.status || 200});
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8'});
   let requests = [];
   try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
   const read = async name => { try { return JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8')); } catch { return null; } };
-  return {result, requests, read, names:await readdir(join(root, '.snapshot-cache'))};
+  return {root, result, requests, read, names:await readdir(join(root, '.snapshot-cache'))};
 }
 
 const reopened = `<osm><meta osm_base="${BASE}"/>`
@@ -157,6 +169,120 @@ test('the change log is saved before each region advances', () => {
 const full = (elements, time = BASE) => ({text:JSON.stringify({osm3s:{timestamp_osm_base:time}, elements})});
 const logged = log => Object.fromEntries(Object.entries(log.changes).map(([id, c]) => [id, [c.time, c.feature && c.feature.properties.name]]));
 
+// Restore a saved Actions cache and perform the workflow's exact local-only
+// release merge. These are tiny synthetic files, never an upstream download.
+async function restore(t, root, release = {}) {
+  const next = await mkdtemp(join(tmpdir(), 'lifecycle-restored-'));
+  t.after(() => rm(next, {recursive:true, force:true}));
+  await cp(join(root, '.snapshot-cache'), join(next, '.snapshot-cache'), {recursive:true, preserveTimestamps:true});
+  const releaseRoot = join(next, 'release-cache');
+  await mkdir(releaseRoot);
+  for (const [name, data] of Object.entries(release)) {
+    const file = join(releaseRoot, name);
+    await writeFile(file, data);
+    await utimes(file, new Date('2000-01-01'), new Date('2000-01-01'));
+  }
+  const merged = spawnSync('cp', ['-a', '-u', releaseRoot + '/.', join(next, '.snapshot-cache') + '/'], {encoding:'utf8'});
+  assert.equal(merged.status, 0, merged.stderr);
+  return next;
+}
+
+test('incremental memory limit then full-fetch outage preserves the previous region through cache restoration', async t => {
+  const key = '0_-135_45_-90.json', box = '0,-135,45,-90';
+  const at = (id, name) => ({...way(id, {railway:'proposed', name}), geometry:[{lat:10, lon:-110}, {lat:10.1, lon:-110.1}]});
+  const original = region([at(1, 'Old'), at(2, 'Removed')]);
+  const limit = `<osm><meta osm_base="${BASE}"/><remark>runtime error: Query ran out of memory in "query" at line 1. It would need at least 130 MB of RAM to continue.</remark></osm>`;
+  const first = await run(t, {[key]:original}, {[box]:{text:limit}});
+  assert.equal(first.result.status, 0, first.result.stderr);
+  assert.match(first.result.stdout, /"redownload":1/);
+  assert.equal(await first.read(key), null);
+  assert.equal(await readFile(join(first.root, '.snapshot-cache', key + '.previous'), 'utf8'), original);
+
+  const failed = await run(t, {}, {[box]:{fail:true, code:'ECONNRESET'}}, '6', first.root);
+  assert.notEqual(failed.result.status, 0);
+  assert.equal(failed.requests.length, 3, 'exactly the existing bounded retries');
+  assert.ok(failed.requests.every(q => q.includes('(' + box + ')')));
+  assert.ok(!failed.names.includes(key + '.split'), 'outage does not split the region');
+  assert.equal(await readFile(join(failed.root, '.snapshot-cache', key + '.previous'), 'utf8'), original);
+  assert.equal(await failed.read(key), null, 'a failed replacement is not a complete cache entry');
+  assert.doesNotMatch(failed.result.stdout, /REGION COMPLETE/);
+  assert.deepEqual(await readdir(join(failed.root, 'snapshot')), [], 'no publishable output from the failed region');
+
+  const next = await restore(t, failed.root);
+  assert.equal(await readFile(join(next, '.snapshot-cache', key + '.previous'), 'utf8'), original);
+  const recovered = await run(t, {}, {[box]:full([at(1, 'New')])}, '6', next);
+  assert.equal(recovered.result.status, 0, recovered.result.stderr);
+  assert.equal(recovered.requests.length, 1);
+  assert.deepEqual(logged(await recovered.read('delta.json')), {1:[BASE, 'New'], 2:[BASE, null]});
+  assert.ok(!recovered.names.includes(key + '.previous'), 'retired only after the replacement differences are logged');
+  assert.equal((await recovered.read(key)).osm3s.timestamp_osm_base, BASE);
+});
+
+test('an older release cache must not erase a newer previous region after a failed replacement', async t => {
+  const key = '0_-135_45_-90.json', box = '0,-135,45,-90';
+  const previous = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed', name:'Newer'})]});
+  const saved = await run(t, {[key + '.previous']:previous}, {[box]:{fail:true}}, '6');
+  assert.notEqual(saved.result.status, 0);
+  const next = await restore(t, saved.root, {[key]:region([way(1, {railway:'proposed', name:'Older'})])});
+  const checked = await run(t, {}, {[box]:{fail:true}}, 'delta', next);
+  assert.equal(checked.result.status, 0, checked.result.stderr);
+  assert.equal(await readFile(join(next, '.snapshot-cache', key + '.previous'), 'utf8'), previous,
+    'a stale release entry cannot replace the retained newer source');
+  const retried = await run(t, {}, {[box]:{fail:true}}, '6', next);
+  assert.notEqual(retried.result.status, 0, 'missing current replacement still fails closed');
+  assert.doesNotMatch(retried.result.stdout, /REGION COMPLETE/);
+  assert.equal(await readFile(join(next, '.snapshot-cache', key + '.previous'), 'utf8'), previous);
+  const later = '2026-11-02T06:00:00Z';
+  const recovered = await run(t, {}, {[box]:full([way(1, {railway:'proposed', name:'Recovered'})], later)}, '6', next);
+  assert.equal(recovered.result.status, 0, recovered.result.stderr);
+  assert.deepEqual(logged(await recovered.read('delta.json')), {1:[later, 'Recovered']});
+  assert.ok(!recovered.names.includes(key + '.previous'));
+});
+
+test('an older or undated full response cannot replace retained newer data', async t => {
+  const key = '0_90_45_135.json', box = '0,90,45,135';
+  const previous = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed', name:'Newer'})]});
+  for (const time of [SINCE, 'invalid', null, '2026-11-01T08:00:00+02:00', '2026-11-31T06:00:00Z']) {
+    const {result, read, requests, root} = await run(t, {[key + '.previous']:previous}, {[box]:full([way(1, {railway:'proposed', name:'Rejected'})], time)}, '0');
+    assert.notEqual(result.status, 0);
+    assert.equal(requests.length, 3);
+    assert.match(result.stderr, /Region replacement is older than preserved data or has no valid database time/);
+    assert.equal(await read(key), null);
+    assert.equal(await readFile(join(root, '.snapshot-cache', key + '.previous'), 'utf8'), previous);
+    assert.doesNotMatch(result.stdout, /REGION COMPLETE/);
+  }
+});
+
+test('network diagnostics retain bounded classifications and elapsed time without arbitrary error data', async t => {
+  for (const mode of ['delta', '0']) {
+    const key = '0_90_45_135.json', box = '0,90,45,135';
+    const files = mode === 'delta' ? {[key]:region([way(1, {railway:'proposed'})])} : {};
+    for (const [reply, expected] of [
+      [{fail:true, code:'ECONNRESET', message:'credential=do-not-log', secret:'credential=do-not-log'}, [{name:'TypeError'}, {name:'Error', code:'ECONNRESET'}]],
+      [{fail:true, causeName:'credential=do-not-log', code:'TOKEN_DO_NOT_LOG', secret:'https://user:secret@example.invalid/?token=hidden'}, [{name:'TypeError'}, {name:'UnknownError'}]],
+      [{fail:true, code:'UND_ERR_CONNECT_TIMEOUT', cycle:true}, [{name:'TypeError'}, {name:'Error', code:'UND_ERR_CONNECT_TIMEOUT'}, {name:'Error', code:'UND_ERR_CONNECT_TIMEOUT'}]],
+      [{cut:true, code:'UND_ERR_SOCKET', message:'credential=do-not-log', secret:'credential=do-not-log'}, [{name:'TypeError'}, {name:'Error', code:'UND_ERR_SOCKET'}]],
+      [{fail:true, getters:true}, [{name:'TypeError'}, {name:'Error', code:'ECONNRESET'}]],
+    ]) {
+      const {result, requests, read} = await run(t, files, {[box]:reply}, mode);
+      assert.equal(result.status === 0, mode === 'delta');
+      const entries = result.stderr.split('\n').filter(line => line.startsWith('OVERPASS_FETCH_FAILURE '))
+        .map(line => JSON.parse(line.slice('OVERPASS_FETCH_FAILURE '.length)));
+      assert.equal(entries.length, mode === 'delta' ? 1 : 3);
+      assert.equal(requests.length, entries.length);
+      for (const entry of entries) {
+        assert.deepEqual(Object.keys(entry), ['phase', 'stage', 'elapsedMs', 'causes']);
+        assert.equal(entry.phase, mode === 'delta' ? 'changes' : 'full');
+        assert.equal(entry.stage, reply.cut ? 'body' : 'fetch');
+        assert.ok(Number.isSafeInteger(entry.elapsedMs) && entry.elapsedMs >= 0);
+        assert.deepEqual(entry.causes, expected);
+      }
+      assert.doesNotMatch(result.stdout + result.stderr, /do-not-log|TOKEN_DO_NOT_LOG|user:secret|token=hidden/);
+      if (mode === 'delta') assert.equal((await read(key)).osm3s.timestamp_osm_base, SINCE);
+    }
+  }
+});
+
 test('a region downloaded again in full logs its differences, so a stale neighbour cannot undo them', async t => {
   const {result, requests, read, names} = await run(t, {
     '0_90_45_135.json.previous': region([way(1, {railway:'proposed', name:'Old'}), way(2, {railway:'abandoned', name:'Gone'}), way(3, {railway:'proposed', name:'Same'})]),
@@ -271,4 +397,82 @@ test('an outage or a refusal leaves the region whole; only a query limit splits 
   assert.equal(result.status, 0, result.stderr);
   assert.ok(names.includes('0_90_45_135.json.split'), 'an executed-query limit in an HTTP 504 body splits');
   assert.equal(requests.filter(q => q.includes('(0,90,45,135)')).length, 1, 'split at once, not asked again');
+});
+
+test('split replacements obey retained parent times after restoration, for cached and downloaded leaves', async t => {
+  const key = '0_90_45_135.json', previous = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed', name:'Newer'})]});
+  const boxes = ['0,90,22.5,112.5', '0,112.5,22.5,135', '22.5,90,45,112.5', '22.5,112.5,45,135'];
+  const files = {[key + '.previous']:previous, [key]:region([]), [key + '.split']:'split',
+    ...Object.fromEntries(boxes.map(box => [box.replaceAll(',', '_') + '.json', region([])]))};
+  const checked = await run(t, files, {}, 'delta');
+  assert.equal(checked.result.status, 0, checked.result.stderr);
+  assert.equal(checked.requests.length, 0, 'stale descendants cannot advance through the delta path');
+  for (const reply of [{fail:true}, full([], SINCE)]) {
+    const failed = await run(t, {}, Object.fromEntries(boxes.map(box => [box, reply])), '0', checked.root);
+    assert.notEqual(failed.result.status, 0);
+    assert.equal(failed.requests.length, 3, 'only the first stale child is retried');
+    assert.equal(await readFile(join(failed.root, '.snapshot-cache', key + '.previous'), 'utf8'), previous);
+    assert.equal(await failed.read('delta.json'), null, 'no parent deletions logged from stale leaves');
+    assert.doesNotMatch(failed.result.stdout, /REGION COMPLETE/);
+  }
+  const recovered = await run(t, {}, Object.fromEntries(boxes.map((box, i) => [box, full(i === 0 ? [way(1, {railway:'proposed', name:'Recovered'})] : [])])), '0', checked.root);
+  assert.equal(recovered.result.status, 0, recovered.result.stderr);
+  assert.equal(recovered.requests.length, 4);
+  assert.ok(!recovered.names.includes(key + '.previous'));
+  assert.deepEqual(logged(await recovered.read('delta.json')), {1:[BASE, 'Recovered']});
+});
+
+test('nested split replacements obey the newest retained ancestor or same-region baseline', async t => {
+  const parent = '0_90_45_135.json', child = '0_90_22.5_112.5.json';
+  const later = '2026-11-02T06:00:00Z';
+  const parentData = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed'})]});
+  const childData = JSON.stringify({osm3s:{timestamp_osm_base:later}, elements:[way(1, {railway:'proposed'})]});
+  const box = '0,90,11.25,101.25', grandchild = box.replaceAll(',', '_') + '.json';
+  const failed = await run(t, {[parent + '.previous']:parentData, [parent + '.split']:'split',
+    [child + '.previous']:childData, [child + '.split']:'split', [grandchild]:full([], BASE).text}, {[box]:full([], BASE)}, '0');
+  assert.notEqual(failed.result.status, 0);
+  assert.equal(failed.requests.length, 3);
+  for (const [key, expected] of [[parent, parentData], [child, childData]])
+    assert.equal(await readFile(join(failed.root, '.snapshot-cache', key + '.previous'), 'utf8'), expected);
+  assert.equal(await failed.read('delta.json'), null);
+  assert.doesNotMatch(failed.result.stdout, /REGION COMPLETE/);
+});
+
+test('a requested refresh never overwrites an already-pending previous region', async t => {
+  const key = '0_90_45_135.json', previous = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed', name:'Newer'})]});
+  const stale = region([]);
+  const setup = await run(t, {[key + '.previous']:previous, [key]:stale}, {}, 'delta');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/refresh-snapshot-cache.mjs', import.meta.url))],
+    {cwd:setup.root, env:{...process.env, REFRESH_BYTES:'1000000'}, encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await readFile(join(setup.root, '.snapshot-cache', key + '.previous'), 'utf8'), previous);
+  assert.equal(await readFile(join(setup.root, '.snapshot-cache', key), 'utf8'), stale);
+});
+
+test('malformed replacements cannot retire retained source data before conversion succeeds', async t => {
+  const key = '0_90_45_135.json', previous = region([way(1, {railway:'proposed'})]);
+  for (const extra of [{}, {elements:[null]}, {elements:[{...way(1, {railway:'proposed'}), geometry:{invalid:true}}]}, {elements:[], remark:'incomplete'}]) {
+    const candidate = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, ...extra});
+    const failed = await run(t, {[key + '.previous']:previous, [key]:candidate}, {'0,90,45,135':{fail:true}}, '0');
+    assert.notEqual(failed.result.status, 0);
+    assert.equal(await readFile(join(failed.root, '.snapshot-cache', key + '.previous'), 'utf8'), previous);
+    assert.equal(await failed.read('delta.json'), null);
+    assert.doesNotMatch(failed.result.stdout, /REGION COMPLETE/);
+  }
+});
+
+test('a delta response cannot move a valid region backward or use noncanonical database times', async t => {
+  const key = '0_90_45_135.json', original = JSON.stringify({osm3s:{timestamp_osm_base:BASE}, elements:[way(1, {railway:'proposed'})]});
+  for (const time of [SINCE, '2026-11-01T08:00:00+02:00']) {
+    const checked = await run(t, {[key]:original}, {'0,90,45,135':{text:`<osm><meta osm_base="${time}"/></osm>`}});
+    if (time === SINCE) {
+      assert.notEqual(checked.result.status, 0);
+      assert.equal(await readFile(join(checked.root, '.snapshot-cache', key), 'utf8'), original);
+    } else {
+      assert.equal(checked.result.status, 0, checked.result.stderr);
+      assert.equal(await checked.read(key), null, 'the existing XML parser rejects the noncanonical time and schedules a full replacement');
+      assert.equal(await readFile(join(checked.root, '.snapshot-cache', key + '.previous'), 'utf8'), original);
+    }
+    assert.equal(await checked.read('delta.json'), null);
+  }
 });

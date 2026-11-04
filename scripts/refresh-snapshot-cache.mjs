@@ -24,6 +24,11 @@ for (const name of await readdir(dir).catch(() => [])) {
   // Region responses only: keep split decisions, download budgets and the
   // weekly change log.
   if (!name.endsWith('.json') || name.startsWith('budget-') || name === 'delta.json') continue;
+  // A failed replacement may have restored an older release-cache file at
+  // this name. Keep the pending source intact until the builder reconciles
+  // a complete replacement; never rename over an existing .previous.
+  try { await stat(`${dir}/${name}.previous`); continue; }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
   const info = await stat(`${dir}/${name}`);
   files.push({name, size: info.size, fetched: await fetched(`${dir}/${name}`)});
 }
