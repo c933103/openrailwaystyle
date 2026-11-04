@@ -12,6 +12,38 @@ import {updateElements} from './overpass-adiff.mjs';
 import {quarters, worldRegions} from './world-regions.mjs';
 import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
+// Do not log messages, stacks, URLs, headers or arbitrary error properties.
+// Node's fetch hides the useful transport code in its cause; retain only
+// bounded, known classifications and the measured time of the failed fetch.
+const errorNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError', 'TimeoutError', 'AggregateError']);
+const errorCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID',
+  'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'ERR_SSL_WRONG_VERSION_NUMBER']);
+async function fetchOverpass(query, timeout, phase) {
+  const started = performance.now();
+  let stage = 'fetch';
+  try {
+    const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
+      headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(timeout)});
+    stage = 'body';
+    const text = phase === 'full' || response.ok ? await response.text() : '';
+    return {response, text};
+  } catch (error) {
+    const causes = [];
+    try {
+      for (let current = error; current && causes.length < 3; current = current.cause) {
+        const name = current.name, code = current.code;
+        const item = {name:errorNames.has(name) ? name : 'UnknownError'};
+        if (errorCodes.has(code)) item.code = code;
+        causes.push(item);
+      }
+    } catch { /* A diagnostic getter must not expose arbitrary error data. */ }
+    console.warn('OVERPASS_FETCH_FAILURE', JSON.stringify({phase, stage, elapsedMs:Math.max(0, Math.round(performance.now() - started)), causes}));
+    // Existing callers print their error messages. Do not pass transport
+    // messages or a raw cause through to those logs or the final stack.
+    throw new Error('Overpass transport request failed');
+  }
+}
 const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 await mkdir('.snapshot-cache', {recursive:true});
 await mkdir('snapshot', {recursive:true});
@@ -27,6 +59,35 @@ const boxes = worldRegions(([south]) => south < 0 ? 90 : 45);
 // diagnosed early. Cached completed quadrants are reused without re-querying.
 boxes.sort((a,b)=>(b[0]===0 && b[1]===90 ? 1:0)-(a[0]===0 && a[1]===90 ? 1:0));
 const regionFile=box=>`.snapshot-cache/${box[0]===-90 && box[2]===0 && box[3]-box[1]===90 ? `${box[0]}_${box[1]}` : box.join('_')}.json`;
+// A failed full replacement leaves .previous in the Actions cache. The
+// release-cache merge can restore an older file at the now-missing ordinary
+// name. It is not the replacement and must not retire the newer .previous.
+function databaseTime(json) {
+  const value = json?.osm3s?.timestamp_osm_base, time = Date.parse(value);
+  // The change log compares these strings. Accept the provider's canonical
+  // UTC form only, so offsets or invalid dates cannot reorder observations.
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)
+      || !Number.isFinite(time) || new Date(time).toISOString() !== value.replace('Z', '.000Z'))
+    throw new Error('Region replacement is older than preserved data or has no valid database time');
+  return time;
+}
+async function preservedTime(file, minimum = -Infinity) {
+  let previous;
+  try { previous = JSON.parse(await readFile(file + '.previous', 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return minimum; throw error; }
+  toGeoJSON(previous);
+  return Math.max(minimum, databaseTime(previous));
+}
+function requireNotOlder(json, minimum) {
+  if (databaseTime(json) < minimum)
+    throw new Error('Region replacement is older than preserved data or has no valid database time');
+  toGeoJSON(json); // Validate conversion before writing or retiring any source.
+}
+async function readRegion(file, minimum) {
+  const json = JSON.parse(await readFile(file, 'utf8'));
+  requireNotOlder(json, minimum);
+  return json;
+}
 // The planned, construction and former ways of one region.
 function regionQuery(box) {
   const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
@@ -49,9 +110,15 @@ const reaches=(element,[s,w,n,e])=>{
 };
 async function reconcile(box, parts, log) {
   const previous=regionFile(box)+'.previous';
-  let before;
-  try {before=JSON.parse(await readFile(previous,'utf8')).elements;} catch {return log;}
-  const usable=Array.isArray(before) ? parts.filter(part=>Array.isArray(part.elements) && part.time).sort((a,b)=>a.time<b.time ? -1 : a.time>b.time ? 1 : 0) : [];
+  let saved;
+  try {saved=JSON.parse(await readFile(previous,'utf8'));}
+  catch(error) {if(error.code==='ENOENT') return log; throw error;}
+  const minimum=databaseTime(saved), before=saved.elements;
+  toGeoJSON(saved);
+  if(!parts.length) throw new Error('Region replacement has no complete parts');
+  // Validate every leaf before recording any changes or retiring the parent.
+  for(const part of parts) requireNotOlder({osm3s:{timestamp_osm_base:part.time},elements:part.elements},minimum);
+  const usable=[...parts].sort((a,b)=>a.time<b.time ? -1 : a.time>b.time ? 1 : 0);
   if(usable.length) {
     if(log===undefined) try {log=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
     for(const part of usable) {
@@ -63,10 +130,11 @@ async function reconcile(box, parts, log) {
   await unlink(previous);
   return log;
 }
-async function collect(box, depth=0) {
+async function collect(box, depth=0, minimum=-Infinity) {
   const file = regionFile(box);
+  minimum = await preservedTime(file, minimum);
   let json;
-  try {json = JSON.parse(await readFile(file,'utf8'));}
+  try {json = await readRegion(file, minimum);}
   catch {
     // Respect a saved split decision on later restarts.
     let split=false;
@@ -77,16 +145,16 @@ async function collect(box, depth=0) {
         await new Promise(r=>setTimeout(r,attempt ? 60000 : 15000));
         console.log('Fetching world region', box, 'attempt',attempt+1);
         try {
-          const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(130000)});
+          const {response,text}=await fetchOverpass(query,130000,'full');
           // Only an executed-query limit, in a JSON remark or an HTTP 5xx
           // body, means the region is too large and splits it; a busy or
           // unreachable server (a network error, 429, 503, a gateway error)
           // says nothing about its size.
           if(!response.ok) {
-            const detail=(await response.text().catch(()=>'')).slice(0,65536);
+            const detail=text.slice(0,65536);
             throw Object.assign(new Error(`HTTP ${response.status}`),{oversized:queryExceededLimits(response.status,detail)});
           }
-          const text=await response.text();downloaded+=Buffer.byteLength(text);
+          downloaded+=Buffer.byteLength(text);
           await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
           console.log('Downloaded bytes this run',downloaded);
           if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
@@ -96,6 +164,7 @@ async function collect(box, depth=0) {
           // With its query, which the next change update compares with, and
           // when it was downloaded in full (first, so the refresh step reads
           // it without parsing the file; refresh-snapshot-cache.mjs).
+          requireNotOlder(json,minimum);
           await writeFile(file,JSON.stringify({fetched:new Date().toISOString(),...json,query}));break;
         } catch(error) {
           console.warn(error.message);json=undefined;
@@ -112,7 +181,7 @@ async function collect(box, depth=0) {
       if(depth>=5) throw new Error(`Could not complete region ${box}`);
       await writeFile(file+'.split','Oversized region; use complete child regions.');
       const leaves=[];
-      for(const child of quarters(box)) leaves.push(...await collect(child,depth+1));
+      for(const child of quarters(box)) leaves.push(...await collect(child,depth+1,minimum));
       await reconcile(box,leaves);
       return leaves;
     }
@@ -138,15 +207,16 @@ const region=process.env.SNAPSHOT_REGION;
 const pick=({type,id,tags,geometry})=>({type,id,tags,geometry});
 // The changes of a dense region over weeks take longer than its full query.
 const CHANGE_TIMEOUT='[timeout:300]';
-async function updateRegion(box) {
+async function updateRegion(box, minimum=-Infinity) {
   const file=regionFile(box);
+  minimum=await preservedTime(file,minimum);
   let json;
-  try {json=JSON.parse(await readFile(file,'utf8'));}
+  try {json=await readRegion(file,minimum);}
   catch {
     // Not cached: a split region is updated in its parts; otherwise the
     // region step downloads it in full.
     try {await readFile(file+'.split');} catch {return;}
-    for(const child of quarters(box)) await updateRegion(child);
+    for(const child of quarters(box)) await updateRegion(child,minimum);
     return;
   }
   // Earlier data left by a full download stopped before it was logged.
@@ -164,8 +234,7 @@ async function updateRegion(box) {
       // region: it keeps its data and is asked again next run.
       let response, text;
       try {
-        response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request.replace('[timeout:90]',CHANGE_TIMEOUT)}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(330000)});
-        if(response.ok) text=await response.text();
+        ({response,text}=await fetchOverpass(request.replace('[timeout:90]',CHANGE_TIMEOUT),330000,'changes'));
       } catch(error) {throw Object.assign(new Error(`Network: ${error.message}`),{unanswered:true});}
       if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{unanswered:true});
       downloaded+=Buffer.byteLength(text);
@@ -175,6 +244,7 @@ async function updateRegion(box) {
     },failed:error=>{failure=error;}});
   if(failure?.budget) throw failure;
   if(update) {
+    requireNotOlder({osm3s:{timestamp_osm_base:update.osmBase},elements:update.elements},Math.max(minimum,databaseTime(json)));
     // For ways this region shares with one whose update failed (see
     // snapshot-delta.mjs). Saved before the region advances, so a run stopped
     // in between never leaves a region past changes the log lacks.
