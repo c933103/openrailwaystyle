@@ -147,12 +147,15 @@ for (const [name, body] of [
   ['server busy', html('runtime error: open64: 0 Success /osm3s_osm_base Dispatcher_Client::request_read_and_idx::timeout. The server is probably too busy to handle your request.')],
   ['Gateway timeout', 'Gateway timeout'],
 ]) {
-  test(`builder retains all backoffs before splitting ${name}`, async t => {
+  // A busy server says nothing about the region's size (#331's rule): after
+  // all its backoffs the run fails, keeps the previous snapshot and asks no
+  // smaller region.
+  test(`builder retains all backoffs, then fails without splitting, on ${name}`, async t => {
     const result = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? body : complete));
-    await checkPublished(result);
-    assert.equal(result.calls.filter(query => query === parentQuery).length, 4);
-    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000, 10000, 10000, 10000, 10000]);
-    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'split']);
+    await checkUnpublished(result, /^HTTP 504:/, 4);
+    assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
   });
 }
 
@@ -162,6 +165,16 @@ async function checkUnpublished(result, pattern, count) {
   assert.equal(await fs.readFile(join(result.root, 'heritage-data/sentinel'), 'utf8'), 'previous snapshot');
   assert.ok(!result.writes.some(path => path.startsWith('heritage-data/')));
 }
+
+// 2026-11-03: overpass-api.de gave no answer at all for hours; the builder
+// split each failing region and retried its quarters. An outage now costs one
+// region's retries, then the run stops.
+test('an outage (no answer to any request) sends one region its retries, splits nothing and publishes nothing', async t => {
+  const result = await run(t, () => { throw new TypeError('fetch failed'); });
+  await checkUnpublished(result, /^Network: fetch failed/, 4);
+  assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+  assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
+});
 
 for (const status of [429, 400]) {
   test(`builder preserves HTTP ${status} even when the body mentions executed-query OOM`, async t => {
