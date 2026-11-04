@@ -174,9 +174,11 @@ test('every builder still decides to split only on a request that was sent', asy
   const {COOLDOWN_MS} = await import('../scripts/overpass-meter.mjs');
   const {HERITAGE_RETRY_DELAYS, heritageFailure} = await import('../scripts/heritage-data.mjs');
   const {OVERPASS_RETRY_MINUTES} = await import('../scripts/overpass-errors.mjs');
-  // Heritage splits a region after its last retry fails; that retry comes
-  // HERITAGE_RETRY_DELAYS.at(-1) after the previous request, past the pause.
+  // Heritage splits only on a query too large; its last retry still comes
+  // HERITAGE_RETRY_DELAYS.at(-1) after the previous request, past the pause,
+  // so that last attempt is a request actually sent.
   assert.ok(HERITAGE_RETRY_DELAYS.at(-1) >= COOLDOWN_MS);
+  assert.equal(heritageFailure(new Error('Network: fetch failed'), HERITAGE_RETRY_DELAYS.length, 0), 'fail', 'never a split');
   assert.ok(OVERPASS_RETRY_MINUTES[0] * 60_000 >= COOLDOWN_MS);
   // A skipped request reads as a network failure, never as a size limit.
   assert.equal(heritageFailure(new Error('Network: fetch failed'), 0, 0), 'retry');

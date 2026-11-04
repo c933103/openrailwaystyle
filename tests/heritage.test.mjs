@@ -115,15 +115,20 @@ test('tiles are published in zoom-8 bundles that hold every tile unchanged', () 
   for (const [key, data] of tiles) assert.ok(unpacked.get(key).equals(Buffer.from(data)), key);
 });
 
-test('a failing Overpass server is retried, then given smaller regions, rather than failing the run', () => {
-  // The message of run 37254966281, where one region failed three times.
+test('a failing Overpass server is retried, then the run fails; only a query too large is split', () => {
+  // The message of run 37254966281, where one region failed three times. A
+  // busy or unreachable server says nothing about a region's size, so its
+  // region is not split (#331's rule): after the retries the run fails and
+  // the previous snapshot stays.
   const busy = 'HTTP 504: OSM3S Response The data included in this document is from www.openstreetmap.org. Error : runtime error: open64: 0 Succes';
   for (let attempt = 0; attempt < HERITAGE_RETRY_DELAYS.length; attempt++) assert.equal(heritageFailure(busy, attempt, 0), 'retry');
-  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 0), 'split');
-  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 6), 'fail', 'not split without end');
+  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 0), 'fail');
+  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 6), 'fail');
   assert.equal(heritageFailure('HTTP 429: Too Many Requests', 0, 0), 'retry');
   assert.equal(heritageFailure('HTTP 429: Too Many Requests', HERITAGE_RETRY_DELAYS.length, 0), 'fail', 'a lasting rate limit is not split into more requests');
-  assert.equal(heritageFailure('Network: fetch failed', HERITAGE_RETRY_DELAYS.length, 2), 'split', 'no response at all');
+  for (let attempt = 0; attempt < HERITAGE_RETRY_DELAYS.length; attempt++) assert.equal(heritageFailure('Network: fetch failed', attempt, 2), 'retry');
+  assert.equal(heritageFailure('Network: fetch failed', HERITAGE_RETRY_DELAYS.length, 2), 'fail', 'no response at all is an outage, not a size');
+  assert.equal(heritageFailure('Invalid response: Unexpected end of JSON input', HERITAGE_RETRY_DELAYS.length, 0), 'fail', 'nor is a cut-off body');
   assert.equal(heritageFailure('Invalid response: Unexpected end of JSON input', 0, 0), 'retry', 'a cut-off body');
   assert.equal(heritageFailure('Incomplete heritage response: runtime error: Query timed out in "query" at line 1 after 301 seconds.', 0, 0), 'split');
   assert.equal(heritageFailure('Network: The operation was aborted due to timeout', 0, 0), 'split', 'a query running past the client timeout');
