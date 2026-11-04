@@ -249,6 +249,12 @@ be compared with the current one needs a full pass.
   newest state whose archives are all present, so a run that stopped half way
   leaves the previous generation in use; older generations are deleted after
   the new state is up, keeping the previous one.
+- GitHub has answered 404 for this release while it existed (run 41644692570),
+  which gh reports as "release not found", the same words as a release never
+  made. Such an answer is asked again after 15 s, twice. Before a missing
+  release is taken for the first run, the release list must not name it; a
+  listed release that cannot be read stops the run, because an empty store
+  would start every stage again from Overpass.
 
 The scheduler above starts it every six hours, before branch lines and service
 routes. Their workflows load the newest usable generation

@@ -40,20 +40,43 @@ export function obsoleteAssets(names, keep, readState) {
 }
 
 const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+// GitHub has answered 404 for this release while it existed (run
+// 41644692570, 2026-11-03: "release not found" 8 s after the release was
+// read). gh reports that as "release not found", the same words as a
+// release that was never made. A request answered so is asked again after
+// RETRY_MS, up to RETRIES times.
+const NOT_FOUND = /release not found/i;
+const setting = (name, fallback) => { const n = Number(process.env[name] ?? fallback); return Number.isSafeInteger(n) && n >= 0 ? n : fallback; };
+const RETRIES = setting('RAILWAY_WAYS_RELEASE_RETRIES', 2), RETRY_MS = setting('RAILWAY_WAYS_RELEASE_RETRY_MS', 15_000);
+const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function ghRetrying(...args) {
+  for (let attempt = 0; ; attempt++) {
+    try { return gh(...args); }
+    catch (error) {
+      if (!NOT_FOUND.test(String(error.stderr)) || attempt >= RETRIES) throw error;
+      console.warn(`gh ${args.slice(0, 2).join(' ')}: release not found; asking again in ${RETRY_MS / 1000} s`);
+      pause(RETRY_MS);
+    }
+  }
+}
 function assets() {
-  try { return JSON.parse(gh('release', 'view', RELEASE, '--json', 'assets')).assets.map(asset => asset.name); }
+  try { return JSON.parse(ghRetrying('release', 'view', RELEASE, '--json', 'assets')).assets.map(asset => asset.name); }
   catch (error) {
-    // No release yet is the first run; anything else stops, so an unreachable
-    // store is never taken for an empty one.
-    if (/release not found/i.test(String(error.stderr))) return null;
-    throw error;
+    // No release yet is the first run, but only when the release list agrees:
+    // taking a store that exists for an empty one would start every stage
+    // again from Overpass. Anything else stops, so an unreachable store is
+    // never taken for an empty one either.
+    if (!NOT_FOUND.test(String(error.stderr))) throw error;
+    const tags = JSON.parse(gh('release', 'list', '--limit', '1000', '--json', 'tagName')).map(release => release.tagName);
+    if (tags.includes(RELEASE)) throw new Error(`${RELEASE} is listed but cannot be read; not starting from an empty store`);
+    return null;
   }
 }
 function downloader(directory) {
   const cache = new Map();
   return name => {
     if (!cache.has(name)) {
-      gh('release', 'download', RELEASE, '--pattern', name, '--dir', directory, '--clobber');
+      ghRetrying('release', 'download', RELEASE, '--pattern', name, '--dir', directory, '--clobber');
       cache.set(name, JSON.parse(readFileSync(join(directory, name), 'utf8')));
     }
     return cache.get(name);
@@ -73,7 +96,7 @@ export function load(directory, variable = 'PREVIOUS_DATA') {
   }
   mkdirSync(directory, {recursive: true});
   for (const archive of Object.values(found.state.archives || {})) {
-    gh('release', 'download', RELEASE, '--pattern', archive, '--dir', work, '--clobber');
+    ghRetrying('release', 'download', RELEASE, '--pattern', archive, '--dir', work, '--clobber');
     execFileSync('tar', ['--zstd', '-xf', join(work, archive), '-C', directory]);
   }
   writeFileSync(join(directory, 'state.json'), JSON.stringify(found.state));

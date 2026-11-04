@@ -32,13 +32,19 @@ async function release(t) {
   await mkdir(join(root, 'bin')); await mkdir(join(root, 'assets'));
   await writeFile(join(root, 'bin', 'gh'), `#!/bin/bash
 A="${join(root, 'assets')}"
+# VIEW_404=n / DOWNLOAD_404=n: answer "release not found" n times although
+# the release exists (downloads of names matching DOWNLOAD_404_MATCH only);
+# LISTED=1: the release list names it even when unread.
+flaky() { local f="$A/.$1"; local n=$(cat "$f" 2>/dev/null || echo 0); [ "$n" -lt "$2" ] && { echo $((n+1)) > "$f"; echo "release not found" >&2; exit 1; }; }
 case "$1 $2" in
+  "release list") if [ -f "$A/.created" ] || [ "$LISTED" = 1 ]; then echo '[{"tagName":"railway-ways-store"}]'; else echo '[]'; fi;;
   "release view") [ "$VIEW" = broken ] && { echo "HTTP 502: bad gateway" >&2; exit 1; }
+    flaky view "\${VIEW_404:-0}"
     [ -f "$A/.created" ] || { echo "release not found" >&2; exit 1; }
     printf '{"assets":['; first=1; for f in "$A"/*; do [ -e "$f" ] || continue; [ $first = 1 ] || printf ','; first=0; printf '{"name":"%s"}' "$(basename "$f")"; done; printf ']}';;
   "release create") touch "$A/.created";;
   "release upload") case "$(basename "$4")" in $FAIL_UPLOAD) echo "upload failed" >&2; exit 1;; esac; cp "$4" "$A/";;
-  "release download") cp "$A/$5" "$7/";;
+  "release download") case "$5" in \${DOWNLOAD_404_MATCH:-*}) flaky download "\${DOWNLOAD_404:-0}";; esac; cp "$A/$5" "$7/";;
   "release delete-asset") rm "$A/$4";;
   *) echo "unexpected gh $*" >&2; exit 2;;
 esac
@@ -47,7 +53,7 @@ esac
   await writeFile(join(root, 'bin', 'zstd'), '#!/bin/bash\nexec gzip "$@"\n');
   await chmod(join(root, 'bin', 'gh'), 0o755); await chmod(join(root, 'bin', 'zstd'), 0o755);
   const cli = (args, env = {}) => spawnSync(process.execPath, [resolve('scripts/railway-ways-release.mjs'), ...args],
-    {encoding: 'utf8', env: {...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, ...env}});
+    {encoding: 'utf8', env: {...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, RAILWAY_WAYS_RELEASE_RETRY_MS: '0', ...env}});
   const store = async (dir, stage, id, archives = {}) => {
     await mkdir(join(root, dir, 'regions', stage), {recursive: true});
     await writeFile(join(root, dir, 'regions', stage, `${id}.json.gz`), String(id));
@@ -108,4 +114,40 @@ test('branch lines and service routes load the store, and download themselves wh
   const source = await readFile(new URL('../scripts/railway-ways-release.mjs', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('export function load'), source.indexOf('export function publish'));
   assert.ok(body.indexOf('GITHUB_ENV') > body.lastIndexOf("execFileSync('tar'"));
+});
+
+// Run 41644692570: GitHub answered 404 for the release while it existed.
+test('a passing 404 for an existing release is asked again, and never taken for the first run', async t => {
+  const {root, cli, store} = await release(t);
+  assert.equal(cli(['publish', await store('a', 'japan', 1)], {GENERATION: '20261031T060000Z-1'}).status, 0);
+  const reset = () => Promise.all(['.view', '.download'].map(name => rm(join(root, 'assets', name), {force: true})));
+  // Two passing 404s on the lookup, then two on a download: loaded.
+  let out = cli(['load', join(root, 'loaded')], {VIEW_404: '2'});
+  assert.equal(out.status, 0, out.stderr); assert.match(out.stdout, /Loaded state-20261031T060000Z-1\.json/);
+  assert.match(out.stderr, /release not found; asking again/);
+  await reset(); await rm(join(root, 'loaded'), {recursive: true});
+  out = cli(['load', join(root, 'loaded')], {DOWNLOAD_404: '2'});
+  assert.equal(out.status, 0, out.stderr); assert.match(out.stdout, /Loaded/);
+  // As in the run: the 404 came on a stage archive, after the state was read.
+  await reset(); await rm(join(root, 'loaded'), {recursive: true});
+  out = cli(['load', join(root, 'loaded')], {DOWNLOAD_404: '2', DOWNLOAD_404_MATCH: 'stage-*'});
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(await readFile(join(root, 'loaded', 'regions', 'japan', '1.json.gz'), 'utf8'), '1');
+  // A 404 that lasts, for a release the list still names: the run stops,
+  // and says nothing of a first run.
+  await reset();
+  out = cli(['load', join(root, 'loaded')], {VIEW_404: '9'});
+  assert.notEqual(out.status, 0);
+  assert.doesNotMatch(out.stdout, /first run/);
+  assert.match(out.stderr, /is listed but cannot be read/);
+  await reset();
+  assert.notEqual(cli(['load', join(root, 'loaded')], {DOWNLOAD_404: '9'}).status, 0, 'a download that keeps failing stops the run');
+});
+
+test('the first run is only a release that is not listed', async t => {
+  const {root, cli} = await release(t);
+  assert.match(cli(['load', join(root, 'loaded')]).stdout, /first run/);
+  const out = cli(['load', join(root, 'loaded')], {LISTED: '1'});
+  assert.notEqual(out.status, 0, 'listed but not found is not a first run');
+  assert.doesNotMatch(out.stdout, /first run/);
 });
