@@ -627,12 +627,17 @@ jobs:
       - name: Keep the service-route ODbL table out of the published site
         run: rm -f styles/data/service-routes/service-routes.ndjson.gz
       - uses: actions/configure-pages@v5
+      # Deploy-only reruns retain earlier artifacts. Give each attempt its own
+      # package so Pages selects it unambiguously without deleting evidence.
       - uses: actions/upload-pages-artifact@v3
         with:
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: styles
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
