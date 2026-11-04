@@ -71,7 +71,7 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
 
   const source = join(out, 'source.osm.pbf'), partial = `${source}.part`;
   const md5 = createHash('md5'), sha256 = createHash('sha256');
-  let received = 0;
+  let received = 0, file;
   try {
     const body = answered(await request(fetcher, region.url, {signal: AbortSignal.timeout(downloadMs)}), region.url);
     if (Number(body.headers.get('content-length')) !== size) throw new Error(`${region.id}: size changed between HEAD and download`);
@@ -84,11 +84,14 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
         md5.update(chunk); sha256.update(chunk);
         yield chunk;
       }
-    }, createWriteStream(partial));
+    }, file = createWriteStream(partial));
     if (received !== size) throw new Error(`${region.id}: received ${received} of ${size} bytes`);
     if (md5.digest('hex') !== expected) throw new Error(`${region.id}: MD5 does not match the sidecar`);
     await rename(partial, source);
   } finally {
+    // An aborted pipeline can return before the file stream has finished
+    // opening and closing; removing the file first would let it reappear.
+    if (file && !file.closed) await new Promise(resolve => file.once('close', resolve));
     await rm(partial, {force: true});
   }
   const downloadSeconds = (now() - started) / 1000;
