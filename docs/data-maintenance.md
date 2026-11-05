@@ -255,7 +255,10 @@ be compared with the current one needs a full pass.
   (`state-<generation>.json`, naming every stage's archive). Loading takes the
   newest state whose archives are all present, so a run that stopped half way
   leaves the previous generation in use; older generations are deleted after
-  the new state is up, keeping the previous one.
+  the new state is up, keeping the previous one. A deletion GitHub refuses
+  (HTTP 502 in run 41808912606) is asked again once, then left with a warning
+  for the next publication: it never fails the run, which would leave the
+  dataset due and start another Overpass download.
 - GitHub has answered 404 for this release while it existed (run 41644692570),
   which gh reports as "release not found", the same words as a release never
   made. Such an answer is asked again after 15 s, twice. Before a missing
