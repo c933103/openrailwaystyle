@@ -25,11 +25,16 @@ jobs:
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Read the regions and elements of the published snapshot
+        id: snapshot
         run: |
           # A region split for size last time is asked for in its parts.
           # Without a readable snapshot the builder uses the 45-degree grid.
           if git fetch --depth=1 origin heritage-data && git show FETCH_HEAD:manifest.json > "$RUNNER_TEMP/heritage-previous.json"; then
             echo "HERITAGE_PREVIOUS_MANIFEST=$RUNNER_TEMP/heritage-previous.json" >> "$GITHUB_ENV"
+            echo "id=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            # No snapshot read: only this run's own attempts share a cache.
+            echo "id=none-$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
           fi
           # Each region's elements, with their query and database time: the
           # region takes only its changes since then. Without them (the first
@@ -38,8 +43,28 @@ jobs:
           if git --work-tree="$RUNNER_TEMP/heritage-previous" checkout FETCH_HEAD -- elements 2>/dev/null; then
             echo "HERITAGE_PREVIOUS_ELEMENTS=$RUNNER_TEMP/heritage-previous" >> "$GITHUB_ENV"
           fi
+      # The regions a failed run completed (the builder's .snapshot-cache
+      # responses, used only for the same query), keyed to the published
+      # snapshot that run started from: a retry from the same snapshot asks
+      # Overpass only for what is missing. Once a newer snapshot is
+      # published the key changes, so older responses are never used over
+      # newer published data. No age limit.
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache
+          key: heritage-regions-v2-${{ steps.snapshot.outputs.id }}
+          restore-keys: heritage-regions-v2-${{ steps.snapshot.outputs.id }}-
       - name: Build historic areas from OpenStreetMap
         run: node --import ./scripts/overpass-meter.mjs scripts/build-heritage.mjs
+      # Kept only when the build failed: a successful run published the
+      # regions, and the next run starts from the published elements. Each
+      # attempt saves under its own key, since a saved cache cannot be
+      # changed and a re-run keeps its run id.
+      - uses: actions/cache/save@v4
+        if: failure()
+        with:
+          path: .snapshot-cache
+          key: heritage-regions-v2-${{ steps.snapshot.outputs.id }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Publish complete data snapshot
         run: |
           mkdir /tmp/heritage-publish
