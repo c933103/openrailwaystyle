@@ -59,7 +59,7 @@ test('a region over the limit without children is kept and marked, never dropped
   const {index, sizes, land} = fixture();
   const plan = await planRegions(index, sizeOf(sizes), {land});
   const asia = plan.regions.find(r => r.id === 'asia');
-  assert.deepEqual({...asia, landKm2: undefined}, {id: 'asia', parent: null, url: 'https://example.test/asia.osm.pbf', bytes: 16 * GiB, oversized: true, depth: 0, via: 'descent', landKm2: undefined});
+  assert.deepEqual({...asia, landKm2: undefined, polygon: undefined}, {id: 'asia', parent: null, url: 'https://example.test/asia.osm.pbf', bytes: 16 * GiB, oversized: true, depth: 0, via: 'descent', landKm2: undefined, polygon: undefined});
   assert.ok(asia.landKm2 > 0);
   assert.ok(plan.problems.includes('asia is over the limit and cannot be split'));
   assert.match(planReport(plan), /over the limit: asia/);
@@ -71,6 +71,9 @@ test('every region in the plan fits the limit unless marked, and the plan is det
   assert.deepEqual(first, second);
   for (const r of first.regions) assert.ok(r.oversized || r.bytes <= MAX_REGION_BYTES, r.id);
   assert.deepEqual(first.regions.map(r => r.id), [...first.regions.map(r => r.id)].sort());
+  // Each region carries its polygon to the working copies' index, for the assembly.
+  const regions = indexRegions(index);
+  for (const r of first.regions) assert.deepEqual(r.polygon, regions.get(r.id).polygon, r.id);
 });
 
 test('a missing continent, a missing size or a missing land raster stops the plan', async () => {
