@@ -108,11 +108,15 @@ export function nextIndex(plan, previous, outputs, generation, {hashFile = sha25
     if (covered) { delete regions[id]; outcomes.set(id, {outcome: 'dropped', reason: 'no longer planned'}); }
     else outcomes.set(id, {outcome: 'kept', reason: 'no longer planned; kept until every planned region has a file'});
   }
-  // Each region's polygon, for the assembly: from the plan, or kept from the
-  // previous index for a region the plan no longer holds.
+  // The polygon of each region's file, for the assembly. A file taken in
+  // this run, or found unchanged (the same Geofabrik file, so the same
+  // boundary), has the plan's polygon. A file kept from before keeps the
+  // polygon it had, or none: a newer plan's polygon may cover more than that
+  // file does, and the assembly would take objects missing there for deleted.
   const planPolygons = new Map(plan.regions.map(region => [region.id, region.polygon]));
+  const current = id => ['updated', 'unchanged'].includes(outcomes.get(id)?.outcome);
   const polygons = Object.fromEntries(Object.keys(regions).sort()
-    .map(id => [id, planPolygons.get(id) ?? previous?.polygons?.[id] ?? null]).filter(([, polygon]) => polygon));
+    .map(id => [id, current(id) ? planPolygons.get(id) ?? null : previous?.polygons?.[id] ?? null]).filter(([, polygon]) => polygon));
   const stamps = Object.values(regions).map(entry => entry.sourceTimestamp).sort();
   const index = {schema: 1, generation, planSourceDate: plan.sourceDate, filter: FILTER_HASH,
     oldestTimestamp: stamps[0] || null, newestTimestamp: stamps.at(-1) || null,

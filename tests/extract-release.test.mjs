@@ -82,13 +82,18 @@ test('unchanged regions keep their file; a first run fills only what was measure
   assert.throws(() => nextIndex(plan(['a']), null, [], 'now'), /Invalid generation/);
 });
 
-test('the index carries the polygon of each region from the plan, or from the previous index for a region no longer planned', async t => {
+test('the polygon of a region goes with its file: the plan for a file taken or unchanged now, else the one it had', async t => {
   const root = await mkdtemp(join(tmpdir(), 'extract-release-')); t.after(() => rm(root, {recursive: true, force: true}));
   const polygonOf = n => [[[[n, 0], [n + 1, 0], [n + 1, 1], [n, 0]]]];
-  const withPolygons = {...plan(['a', 'b']), regions: [{id: 'a', bytes: 1, polygon: polygonOf(1)}, {id: 'b', bytes: 1, polygon: polygonOf(2)}]};
-  const previous = {regions: {a: entry('a'), old: entry('old')}, polygons: {a: polygonOf(9), old: polygonOf(3)}};
-  const {index} = nextIndex(withPolygons, previous, [await output(root, 'a')], '20261105T030000Z-1');
-  assert.deepEqual(index.polygons, {a: polygonOf(1), old: polygonOf(3)}, 'b has no file yet; old is kept with its polygon');
+  const ids = ['a', 'b', 'c', 'd', 'e'];
+  const withPolygons = {...plan(ids), regions: ids.map((id, i) => ({id, bytes: 1, polygon: polygonOf(i + 1)}))};
+  const previous = {regions: {a: entry('a'), b: entry('b'), c: entry('c'), d: entry('d'), old: entry('old')},
+    polygons: {a: polygonOf(9), b: polygonOf(9), c: polygonOf(9), old: polygonOf(3)}};
+  const unchanged = {dir: join(root, 'b'), manifest: {region: 'b', unchanged: true, sourceMd5: 'md5-b', pbfBytes: 1000, filter: FILTER_HASH}, failed: null};
+  const failed = {dir: join(root, 'c'), manifest: null, failed: {region: 'c', error: 'HTTP 503'}};
+  const {index} = nextIndex(withPolygons, previous, [await output(root, 'a'), unchanged, failed], '20261105T030000Z-1');
+  assert.deepEqual(index.polygons, {a: polygonOf(1), b: polygonOf(2), c: polygonOf(9), old: polygonOf(3)},
+    'a taken and b unchanged: the plan; c failed and old unplanned: what they had; d (kept) had none and gets none; e has no file');
 });
 
 test('a region the plan no longer holds stays until every planned region has a file', async t => {
