@@ -34,8 +34,9 @@ async function release(t) {
 A="${join(root, 'assets')}"
 # VIEW_404=n / DOWNLOAD_404=n: answer "release not found" n times although
 # the release exists (downloads of names matching DOWNLOAD_404_MATCH only);
-# LISTED=1: the release list names it even when unread.
-flaky() { local f="$A/.$1"; local n=$(cat "$f" 2>/dev/null || echo 0); [ "$n" -lt "$2" ] && { echo $((n+1)) > "$f"; echo "release not found" >&2; exit 1; }; }
+# LISTED=1: the release list names it even when unread; DELETE_FAIL=n: the
+# first n asset deletions answer HTTP 502.
+flaky() { local f="$A/.$1"; local n=$(cat "$f" 2>/dev/null || echo 0); [ "$n" -lt "$2" ] && { echo $((n+1)) > "$f"; echo "\${3:-release not found}" >&2; exit 1; }; }
 case "$1 $2" in
   "release list") if [ -f "$A/.created" ] || [ "$LISTED" = 1 ]; then echo '[{"tagName":"railway-ways-store"}]'; else echo '[]'; fi;;
   "release view") [ "$VIEW" = broken ] && { echo "HTTP 502: bad gateway" >&2; exit 1; }
@@ -45,7 +46,7 @@ case "$1 $2" in
   "release create") touch "$A/.created";;
   "release upload") case "$(basename "$4")" in $FAIL_UPLOAD) echo "upload failed" >&2; exit 1;; esac; cp "$4" "$A/";;
   "release download") case "$5" in \${DOWNLOAD_404_MATCH:-*}) flaky download "\${DOWNLOAD_404:-0}";; esac; cp "$A/$5" "$7/";;
-  "release delete-asset") rm "$A/$4";;
+  "release delete-asset") flaky delete "\${DELETE_FAIL:-0}" "HTTP 502: Server Error"; rm "$A/$4";;
   *) echo "unexpected gh $*" >&2; exit 2;;
 esac
 `);
@@ -150,4 +151,26 @@ test('the first run is only a release that is not listed', async t => {
   const out = cli(['load', join(root, 'loaded')], {LISTED: '1'});
   assert.notEqual(out.status, 0, 'listed but not found is not a first run');
   assert.doesNotMatch(out.stdout, /first run/);
+});
+
+// Run 41808912606: GitHub answered HTTP 502 while an old generation was
+// deleted, after the new state was up, and the run failed.
+test('an old asset GitHub will not delete is left for the next publication, never failing the run', async t => {
+  const {root, cli, store, assets} = await release(t);
+  assert.equal(cli(['publish', await store('a', 'japan', 1)], {GENERATION: '20261031T060000Z-1'}).status, 0);
+  assert.equal(cli(['publish', await store('b', 'japan', 2)], {GENERATION: '20261031T120000Z-2'}).status, 0);
+  // Generation 1 is now obsolete; one refused deletion is asked again.
+  let out = cli(['publish', await store('c', 'japan', 3)], {GENERATION: '20261031T180000Z-3', DELETE_FAIL: '1'});
+  assert.equal(out.status, 0, out.stderr);
+  assert.deepEqual((await assets()).filter(name => name.includes('20261031T060000Z-1')), [], 'every generation-1 asset deleted, the refused one on its second try');
+  // Deletions that keep failing: published, warned, left.
+  await rm(join(root, 'assets', '.delete'), {force: true});
+  out = cli(['publish', await store('d', 'japan', 4)], {GENERATION: '20261031T200000Z-4', DELETE_FAIL: '9'});
+  assert.equal(out.status, 0, out.stderr);
+  assert.match(out.stdout, /::warning::Could not delete old asset state-20261031T120000Z-2\.json \(HTTP 502: Server Error\)/);
+  assert.ok((await assets()).includes('state-20261031T200000Z-4.json'), 'the new generation is up');
+  // The next publication removes what was left.
+  await rm(join(root, 'assets', '.delete'), {force: true});
+  assert.equal(cli(['publish', await store('e', 'japan', 5)], {GENERATION: '20261031T220000Z-5'}).status, 0);
+  assert.deepEqual((await assets()).filter(name => name.startsWith('state-')), ['state-20261031T200000Z-4.json', 'state-20261031T220000Z-5.json']);
 });
