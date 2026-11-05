@@ -38,8 +38,27 @@ jobs:
           if git --work-tree="$RUNNER_TEMP/heritage-previous" checkout FETCH_HEAD -- elements 2>/dev/null; then
             echo "HERITAGE_PREVIOUS_ELEMENTS=$RUNNER_TEMP/heritage-previous" >> "$GITHUB_ENV"
           fi
+      # The regions a failed run of this month completed (the builder's
+      # .snapshot-cache responses, used only for the same query): a retry
+      # asks Overpass only for what is missing. Scoped to the month, so a
+      # new monthly refresh never reuses an older month's responses.
+      - name: Name this month's region cache
+        id: month
+        run: echo "key=heritage-regions-v2-$(date -u +%Y%m)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache
+          key: ${{ steps.month.outputs.key }}
+          restore-keys: ${{ steps.month.outputs.key }}-
       - name: Build historic areas from OpenStreetMap
         run: node --import ./scripts/overpass-meter.mjs scripts/build-heritage.mjs
+      # Kept only when the build failed: a successful run published the
+      # regions, and the next month starts from the published elements.
+      - uses: actions/cache/save@v4
+        if: failure()
+        with:
+          path: .snapshot-cache
+          key: ${{ steps.month.outputs.key }}-${{ github.run_id }}
       - name: Publish complete data snapshot
         run: |
           mkdir /tmp/heritage-publish
