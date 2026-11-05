@@ -3,8 +3,11 @@
 // per job:
 //   node --import ./scripts/overpass-meter.mjs scripts/acquire-region-extract.mjs <region.json> <output directory>
 // where region.json is one entry of the region plan ({id, url, bytes}) plus
-// the plan's sourceDate. It writes <output>/filtered.osm.pbf and
-// <output>/extract.json, and deletes the raw download.
+// the plan's sourceDate, and `previous`, the region's working copy, when it
+// has one. It writes <output>/filtered.osm.pbf and <output>/extract.json, and
+// deletes the raw download; or only extract.json with `unchanged: true` when
+// the source file is the one the working copy was made from; or
+// <output>/failed.json with the reason.
 //
 // Requests, all to download.geofabrik.de over HTTPS, never redirected: one
 // HEAD, the .md5 sidecar, the file. The download is refused unless its size
@@ -26,6 +29,13 @@ export const USER_AGENT = 'RailwayAtlas-extract/1 (+https://github.com/c933103/o
 export const DISK_MARGIN = 4 * 1024 ** 3;
 export const DOWNLOAD_MS = 90 * 60_000;
 export const MAX_SIDECAR = 4096;
+// The filter a working copy was made with; a copy made with another filter
+// is never taken as current.
+export const FILTER_HASH = createHash('sha256').update(expressionsFile()).digest('hex');
+// A refreshed region with more than this share fewer objects than its
+// working copy is rejected; that region keeps its working copy.
+export const MAX_DROP = 0.05;
+const total = counts => counts.nodes + counts.ways + counts.relations;
 const DATED = /^https:\/\/download\.geofabrik\.de\/(?:[a-z0-9-]+\/)*[a-z0-9-]+-(\d{2})(\d{2})(\d{2})\.osm\.pbf$/;
 
 // A planned region: an id, a dated Geofabrik URL whose date is the plan's,
@@ -55,7 +65,7 @@ function answered(response, url) {
 
 export async function acquireRegion(input, out, {fetcher = fetch, run = promisify(execFile), freeBytes = async dir => { const s = await statfs(dir); return s.bavail * s.bsize; },
   now = () => performance.now(), downloadMs = DOWNLOAD_MS} = {}) {
-  const region = checkRegion(input);
+  const region = checkRegion(input), previous = input.previous || null;
   await mkdir(out, {recursive: true});
   const started = now();
   const head = answered(await request(fetcher, region.url, {method: 'HEAD'}), region.url);
@@ -68,6 +78,15 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
   const md5Match = text.length <= MAX_SIDECAR && /^([0-9a-fA-F]{32})\s/.exec(text);
   if (!md5Match) throw new Error(`${region.id}: invalid .md5 sidecar`);
   const expected = md5Match[1].toLowerCase();
+  // The same file filtered the same way as the working copy: nothing to
+  // download (the size and MD5 check of validate_checkpoint in
+  // scripts/plan-mainline-acquisition.py).
+  if (previous && previous.sourceMd5 === expected && previous.pbfBytes === size && previous.filter === FILTER_HASH) {
+    const manifest = {schema: 1, region: region.id, unchanged: true, sourceDate: region.sourceDate, url: region.url,
+      pbfBytes: size, sourceMd5: expected, filter: FILTER_HASH};
+    await writeFile(join(out, 'extract.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    return manifest;
+  }
 
   const source = join(out, 'source.osm.pbf'), partial = `${source}.part`;
   const md5 = createHash('md5'), sha256 = createHash('sha256');
@@ -114,11 +133,23 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
     await run('osmium', ['check-refs', filtered], {maxBuffer: 16 * 1024 ** 2});
     const {stdout: info} = await run('osmium', ['fileinfo', '-e', '-j', filtered], {maxBuffer: 16 * 1024 ** 2});
     const {nodes, ways, relations} = JSON.parse(info).data.count;
+    // Checks against the working copy before this region may replace it.
+    if (previous) {
+      if (previous.sourceTimestamp && Date.parse(sourceTimestamp) < Date.parse(previous.sourceTimestamp)) {
+        await rm(filtered, {force: true});
+        throw new Error(`${region.id}: data from ${sourceTimestamp} is older than the working copy's ${previous.sourceTimestamp}`);
+      }
+      const before = previous.counts ? total(previous.counts) : 0, after = nodes + ways + relations;
+      if (previous.filter === FILTER_HASH && before && after < before * (1 - MAX_DROP)) {
+        await rm(filtered, {force: true});
+        throw new Error(`${region.id}: ${after} objects, ${((1 - after / before) * 100).toFixed(1)}% fewer than the working copy's ${before}`);
+      }
+    }
     const filteredBytes = (await stat(filtered)).size;
     const filteredSha256 = await fileSha256(filtered);
     const manifest = {schema: 1, region: region.id, sourceDate: region.sourceDate, url: region.url, sourceTimestamp,
       pbfBytes: size, sourceMd5: expected, pbfSha256: sha256.digest('hex'), filteredBytes, filteredSha256,
-      counts: {nodes, ways, relations}, filter: createHash('sha256').update(expressionsFile()).digest('hex'),
+      counts: {nodes, ways, relations}, filter: FILTER_HASH,
       downloadSeconds, filterSeconds, freeBytesBefore: free, source: 'OpenStreetMap via Geofabrik', license: 'ODbL-1.0'};
     await writeFile(join(out, 'extract.json'), `${JSON.stringify(manifest, null, 2)}\n`);
     return manifest;
@@ -131,6 +162,14 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const [regionFile, out] = process.argv.slice(2);
   if (!regionFile || !out) throw new Error('Usage: acquire-region-extract.mjs <region.json> <output directory>');
-  const manifest = await acquireRegion(JSON.parse(await readFile(regionFile, 'utf8')), out);
-  console.log(JSON.stringify(manifest));
+  const input = JSON.parse(await readFile(regionFile, 'utf8'));
+  try {
+    console.log(JSON.stringify(await acquireRegion(input, out)));
+  } catch (error) {
+    // The reason goes to the publish job's report; this region keeps its
+    // working copy (scripts/extract-release.mjs).
+    await mkdir(out, {recursive: true});
+    await writeFile(join(out, 'failed.json'), `${JSON.stringify({region: input?.id, error: String(error.message || error)})}\n`);
+    throw error;
+  }
 }
