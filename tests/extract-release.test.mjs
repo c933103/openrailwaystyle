@@ -82,6 +82,15 @@ test('unchanged regions keep their file; a first run fills only what was measure
   assert.throws(() => nextIndex(plan(['a']), null, [], 'now'), /Invalid generation/);
 });
 
+test('the index carries the polygon of each region from the plan, or from the previous index for a region no longer planned', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'extract-release-')); t.after(() => rm(root, {recursive: true, force: true}));
+  const polygonOf = n => [[[[n, 0], [n + 1, 0], [n + 1, 1], [n, 0]]]];
+  const withPolygons = {...plan(['a', 'b']), regions: [{id: 'a', bytes: 1, polygon: polygonOf(1)}, {id: 'b', bytes: 1, polygon: polygonOf(2)}]};
+  const previous = {regions: {a: entry('a'), old: entry('old')}, polygons: {a: polygonOf(9), old: polygonOf(3)}};
+  const {index} = nextIndex(withPolygons, previous, [await output(root, 'a')], '20261105T030000Z-1');
+  assert.deepEqual(index.polygons, {a: polygonOf(1), old: polygonOf(3)}, 'b has no file yet; old is kept with its polygon');
+});
+
 test('a region the plan no longer holds stays until every planned region has a file', async t => {
   const root = await mkdtemp(join(tmpdir(), 'extract-release-')); t.after(() => rm(root, {recursive: true, force: true}));
   const previous = {regions: {us: entry('us'), 'us/a': entry('us/a')}};

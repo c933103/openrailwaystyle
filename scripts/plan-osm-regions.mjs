@@ -160,8 +160,11 @@ export async function planRegions(index, sizeOf, {land, maxBytes = MAX_REGION_BY
   return {
     valid: problems.length === 0, problems, maxBytes, splits, fills, overlaps,
     continentsBytes: CONTINENTS.reduce((sum, id) => sum + (sizes.get(id) ?? 0), 0),
+    // The polygon goes with each region to the working copies' index: the
+    // assembly decides with it whether a newer region would hold an object
+    // (scripts/assemble-extracts.mjs).
     regions: planned.map(({region, bytes, oversized, depth, via}) => ({id: region.id, parent: region.parent, url: urlOf(region), bytes, oversized, depth, via,
-      landKm2: cellsKm2(cellsOf(region, land))})),
+      landKm2: cellsKm2(cellsOf(region, land)), polygon: region.polygon})),
     remainder: remainder.map(polygon => ({polygon, areaKm2: areaKm2([polygon]), extent: extent([polygon])})).sort((a, b) => b.areaKm2 - a.areaKm2),
     remainderLand: {km2: remainderLandKm2, tiles: landTiles(remainderCells).slice(0, 40)},
     coveredKm2: areaKm2(covered), worldKm2: areaKm2([WORLD]),
