@@ -1,15 +1,19 @@
 # One download per planned Geofabrik region, filtered once for every dataset
-# (#330, B2). This first form only measures: each job downloads its region,
-# checks it, filters it (scripts/extract-filter.mjs), records the sizes and
-# times, and deletes everything but the record. Nothing is pushed, published
-# or kept beyond this run's artifacts. Run by hand only.
+# (#330, B2/B3). Each job downloads its region, checks it, filters it
+# (scripts/extract-filter.mjs) and hands the filtered file over as an
+# artifact (7 days). The publish job, on main only, is the one writer of the
+# working copies: release osm-extract, one filtered file per region and an
+# index naming them (scripts/extract-release.mjs). Regions refresh
+# independently: one checked in this run takes its new file, every other
+# region keeps its working copy. Run by hand only.
 #
 # Requests: the region plan as osm-gaps.yml makes it (the Geofabrik index,
-# Natural Earth land from GitHub, one HEAD per region looked at), then three
-# per region to download.geofabrik.de (HEAD, .md5, the file), two regions at a
-# time. A plan that is not valid, or over 100 GiB, stops the run before any
+# Natural Earth land from GitHub, one HEAD per region looked at), then per
+# region to download.geofabrik.de: HEAD and .md5, and the file only when its
+# size or MD5 differs from the working copy's source; two regions at a time.
+# A plan that is not valid, or over 100 GiB, stops the run before any
 # download.
-name: Measure Geofabrik region extracts
+name: Geofabrik region extracts
 on:
   workflow_dispatch:
     inputs:
@@ -45,9 +49,15 @@ jobs:
           node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs plan "$SOURCE_DATE" || status=$?
           cat plan/plan.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
           exit "$status"
+      - name: Load the working copies' index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The newest index whose region files are all present; none on the
+        # first run. An unreachable or inconsistent store stops the run.
+        run: node scripts/extract-release.mjs load plan/index.json
       - name: Take only a valid plan
         id: matrix
-        run: node scripts/extract-run.mjs matrix plan/plan.json
+        run: node scripts/extract-run.mjs matrix plan/plan.json plan/index.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -89,17 +99,29 @@ jobs:
           df -h . | tail -1
           node --import ./scripts/overpass-meter.mjs scripts/acquire-region-extract.mjs region.json extract
           df -h . | tail -1
-          rm -f extract/filtered.osm.pbf
+      # A hand-over to the publish job, never the working copy. On failure
+      # only failed.json, the reason, goes.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: extract-${{ matrix.region.key }}
-          path: extract/extract.json
-          retention-days: 30
-  report:
+          path: |
+            extract/extract.json
+            extract/filtered.osm.pbf
+            extract/failed.json
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 7
+  publish:
     needs: [plan, extract]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    concurrency:
+      group: osm-extract-publish
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -120,7 +142,20 @@ jobs:
         run: |
           node scripts/extract-run.mjs report plan/plan.json measured | tee report.md
           cat report.md >> "$GITHUB_STEP_SUMMARY"
+      # Only main keeps the working copies. Region files first, the index
+      # after them, older assets deleted last; a region that failed or was
+      # not measured keeps its working copy.
+      - name: Publish the working copies
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GENERATION: ${{ github.run_id }}
+        run: |
+          GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/extract-release.mjs publish plan/plan.json measured | tee published.md
+          cat published.md >> "$GITHUB_STEP_SUMMARY"
+          cat published.md >> report.md
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: extract-report
           path: report.md

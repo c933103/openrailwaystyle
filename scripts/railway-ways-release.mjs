@@ -39,7 +39,7 @@ export function obsoleteAssets(names, keep, readState) {
   return names.filter(name => !kept.has(name) && (STATE.test(name) || /^stage-.+\.tar\.zst$/.test(name)));
 }
 
-const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+export const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
 // GitHub has answered 404 for this release while it existed (run
 // 41644692570, 2026-11-03: "release not found" 8 s after the release was
 // read). gh reports that as "release not found", the same words as a
@@ -47,9 +47,9 @@ const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', stdio: ['ign
 // RETRY_MS, up to RETRIES times.
 const NOT_FOUND = /release not found/i;
 const setting = (name, fallback) => { const n = Number(process.env[name] ?? fallback); return Number.isSafeInteger(n) && n >= 0 ? n : fallback; };
-const RETRIES = setting('RAILWAY_WAYS_RELEASE_RETRIES', 2), RETRY_MS = setting('RAILWAY_WAYS_RELEASE_RETRY_MS', 15_000);
-const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-function ghRetrying(...args) {
+export const RETRIES = setting('RAILWAY_WAYS_RELEASE_RETRIES', 2), RETRY_MS = setting('RAILWAY_WAYS_RELEASE_RETRY_MS', 15_000);
+export const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+export function ghRetrying(...args) {
   for (let attempt = 0; ; attempt++) {
     try { return gh(...args); }
     catch (error) {
@@ -59,8 +59,10 @@ function ghRetrying(...args) {
     }
   }
 }
-function assets() {
-  try { return JSON.parse(ghRetrying('release', 'view', RELEASE, '--json', 'assets')).assets.map(asset => asset.name); }
+// The asset names of a release (scripts/extract-release.mjs keeps its store
+// the same way), or null when there is no release yet.
+export function releaseAssets(release) {
+  try { return JSON.parse(ghRetrying('release', 'view', release, '--json', 'assets')).assets.map(asset => asset.name); }
   catch (error) {
     // No release yet is the first run, but only when the release list agrees:
     // taking a store that exists for an empty one would start every stage
@@ -68,10 +70,11 @@ function assets() {
     // never taken for an empty one either.
     if (!NOT_FOUND.test(String(error.stderr))) throw error;
     const tags = JSON.parse(gh('release', 'list', '--limit', '1000', '--json', 'tagName')).map(release => release.tagName);
-    if (tags.includes(RELEASE)) throw new Error(`${RELEASE} is listed but cannot be read; not starting from an empty store`);
+    if (tags.includes(release)) throw new Error(`${release} is listed but cannot be read; not starting from an empty store`);
     return null;
   }
 }
+const assets = () => releaseAssets(RELEASE);
 function downloader(directory) {
   const cache = new Map();
   return name => {
