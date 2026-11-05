@@ -137,7 +137,24 @@ export function publish(store, generation) {
   const read = downloader(work);
   const previous = usableState(names, read);
   const keep = [stateName, ...(previous ? [previous.name] : [])];
-  for (const name of obsoleteAssets(all, keep, read)) gh('release', 'delete-asset', RELEASE, name, '--yes');
+  // Removing old generations is clean-up: the new state is already up and
+  // names everything it needs. A deletion GitHub refuses (HTTP 502 in run
+  // 41808912606) is asked again once, then left for the next publication,
+  // which finds the asset obsolete again; it never fails the run, since a
+  // failed run leaves the dataset due and starts another Overpass download.
+  const left = [];
+  for (const name of obsoleteAssets(all, keep, read)) {
+    for (let attempt = 0; ; attempt++) {
+      try { gh('release', 'delete-asset', RELEASE, name, '--yes'); break; }
+      catch (error) {
+        if (attempt < 1) { pause(RETRY_MS); continue; }
+        left.push(name);
+        console.log(`::warning::Could not delete old asset ${name} (${String(error.stderr || error.message).trim()}); the next publication removes it`);
+        break;
+      }
+    }
+  }
+  if (left.length) console.log(`Left ${left.length} old assets for the next publication`);
   return {stateName, state};
 }
 
