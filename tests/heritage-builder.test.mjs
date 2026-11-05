@@ -307,6 +307,10 @@ test('a region with published elements takes only its changes, and the next run 
   assert.deepEqual(stored.elements, [{type:'way', id:42, tags:{historic:'district', name:'Synthetic historic district'}, geometry:ring.map(([lon, lat]) => ({lat, lon}))}], 'the moved way, without meta');
   const files = await fs.readdir(join(result.root, 'heritage-data/elements'));
   assert.equal(files.length, 32, 'every region keeps its elements, cached or downloaded');
+  // The updated region is cached like a full response: a retry after a later
+  // failure in the same month asks nothing for it.
+  const cached = JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`), 'utf8'));
+  assert.deepEqual([cached.query, cached.response.osm3s.timestamp_osm_base, cached.response.elements], [parentQuery, BASE, stored.elements]);
 });
 
 test('a region whose query changed takes only the difference, not a full download', async t => {

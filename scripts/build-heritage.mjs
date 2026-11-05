@@ -64,7 +64,12 @@ async function collect(box, depth = 0) {
           return text;
         },
         failed:error => { if (error.budget) throw error; }});
-      if (update) json = {osm3s:{timestamp_osm_base:update.osmBase}, elements:update.elements};
+      if (update) {
+        json = {osm3s:{timestamp_osm_base:update.osmBase}, elements:update.elements};
+        // Kept like a full response, so a run that fails later in the world
+        // does not ask for this region's changes again (heritage.yml).
+        await writeFile(file, JSON.stringify({query, response:json}));
+      }
     }
   }
   let split = false;
