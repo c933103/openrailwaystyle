@@ -12,7 +12,10 @@
 # region to download.geofabrik.de: HEAD and .md5, and the file only when its
 # size or MD5 differs from the working copy's source; two regions at a time.
 # A plan that is not valid, or over 100 GiB, stops the run before any
-# download.
+# download. The parts no planned region covers (the plan's remainder, almost
+# all sea) come from overpass-api.de as gap tiles (scripts/gap-tiles.mjs,
+# scripts/acquire-gap-tiles.mjs): one request per tile, 10 s apart, never in
+# parallel, at most 400 requests and 1 GB a run.
 name: Geofabrik region extracts
 on:
   workflow_dispatch:
@@ -58,6 +61,10 @@ jobs:
       - name: Take only a valid plan
         id: matrix
         run: node scripts/extract-run.mjs matrix plan/plan.json plan/index.json
+      # The parts no planned region covers, cut into tiles for Overpass
+      # (scripts/gap-tiles.mjs).
+      - name: Cut the remainder into gap tiles
+        run: node scripts/gap-tiles.mjs plan/plan.json plan/gaps.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -112,8 +119,43 @@ jobs:
           if-no-files-found: ignore
           compression-level: 0
           retention-days: 7
+  # The gap tiles from Overpass, one request each, never in parallel
+  # (scripts/acquire-gap-tiles.mjs). A tile that fails keeps its copy.
+  gaps:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install osmium
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+      - uses: actions/download-artifact@v4
+        with:
+          name: extract-plan
+          path: plan
+      - name: Fetch the gap tiles from Overpass
+        run: node --import ./scripts/overpass-meter.mjs scripts/acquire-gap-tiles.mjs plan/gaps.json gaps plan/index.json
+      # Not named extract-*: the publish job downloads it into the same
+      # directory as the regions.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gap-tiles
+          path: gaps
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 7
   publish:
-    needs: [plan, extract]
+    needs: [plan, extract, gaps]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -138,6 +180,11 @@ jobs:
         with:
           pattern: extract-*
           path: measured
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: gap-tiles
+          path: measured
       - name: Report
         run: |
           node scripts/extract-run.mjs report plan/plan.json measured | tee report.md
@@ -151,7 +198,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GENERATION: ${{ github.run_id }}
         run: |
-          GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/extract-release.mjs publish plan/plan.json measured | tee published.md
+          GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/extract-release.mjs publish plan/plan.json measured plan/gaps.json | tee published.md
           cat published.md >> "$GITHUB_STEP_SUMMARY"
           cat published.md >> report.md
       - uses: actions/upload-artifact@v4
