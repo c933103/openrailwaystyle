@@ -75,13 +75,13 @@ async function collect(box,depth=0) {
         if(!response.ok)throw new Error(`HTTP ${response.status}`);
         return text;
       }});
-    if(providerWaitExceeded)throw providerPauseError();
     if(failure&&/budget exceeded/.test(failure.message))throw failure;
     if(update) {
       json={...stored.response,osm3s:{...stored.response.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
       await writeFile(file,JSON.stringify({query,response:json}));
       console.log('Energy supply region',box.join(','),'changes since',since+':',update.upserts,'added or changed,',update.deletes,'removed; query change:',update.added,'added,',update.dropped,'dropped');
     } else if(stored.query!==query) json=undefined;
+    if(providerWaitExceeded)throw providerPauseError();
   }
   let split=false,cachedSplit=false;
   if (!json) {
@@ -109,6 +109,7 @@ async function collect(box,depth=0) {
         json=JSON.parse(text);
         powerFacilitiesGeoJSON(json);
         await writeFile(file,JSON.stringify({query,response:json}));
+        if(providerWaitExceeded)throw providerPauseError();
         break;
       } catch(error) {
         json=undefined;

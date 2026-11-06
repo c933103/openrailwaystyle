@@ -23,10 +23,12 @@ const osm = (actions = '') => `<?xml version="1.0" encoding="UTF-8"?>\n<osm vers
 
 // Replies: the first rule whose substrings all appear in the request; else a
 // refused full download.
-async function run(t, files, rules, {old = true} = {}) {
+async function run(t, files, rules, {old = true, existingOutput = {}} = {}) {
   const root = await mkdtemp(join(tmpdir(), 'energy-supplies-'));
   t.after(() => rm(root, {recursive: true, force: true}));
   await mkdir(join(root, '.snapshot-cache'));
+  await mkdir(join(root, 'out'));
+  for (const [name, content] of Object.entries(existingOutput)) await writeFile(join(root, 'out', name), content);
   for (const [name, data] of Object.entries(files)) {
     await writeFile(join(root, '.snapshot-cache', name), JSON.stringify(data));
     // Last written over a week ago, so its changes are due.
@@ -54,7 +56,7 @@ async function run(t, files, rules, {old = true} = {}) {
   try { times = JSON.parse(await readFile(join(root, 'times.json'), 'utf8')); } catch {}
   const read = async name => JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8'));
   const published = async () => JSON.parse(await readFile(join(root, 'out', 'power-facilities.geojson'), 'utf8'));
-  return {result, requests, times, read, published, names: () => readdir(join(root, '.snapshot-cache'))};
+  return {result, requests, times, read, published, outputBytes: name => readFile(join(root, 'out', name)), names: () => readdir(join(root, '.snapshot-cache'))};
 }
 const stored = (query, elements, time = SINCE) => ({query, response: {osm3s: {timestamp_osm_base: time}, elements}});
 const current = Object.fromEntries(boxes.map((box, i) => [file(box), stored(powerFacilityQuery(box), [at(box, 100 + i)])]));
@@ -194,4 +196,17 @@ test('energy long HTTP-date and overflowing numeric pauses stop even when the bo
     assert.match(result.stderr, /Retry-After.*budget exceeded/);
     assert.deepEqual(await read(file(boxes[0])), current[file(boxes[0])]);
   }
+});
+
+
+for (const path of ['full', 'change']) test(`a valid energy ${path} response with a long pause retains its completed cache but never replaces the publication`, async t => {
+  const files = {...current}; if (path === 'full') delete files[file(boxes[0])];
+  const existingOutput = {'power-facilities.geojson': '{"type":"FeatureCollection","features":[]}', 'power-facilities.geojson.gz': 'existing compressed bytes', 'manifest.json': '{"previous":true}'};
+  const {result, requests, read, outputBytes} = await run(t, files, [
+    {has: [], status: 200, text: path === 'full' ? ids([at(boxes[0], 100)]) : osm(), headers: {'Retry-After': '3600'}}], {old: path === 'change', existingOutput});
+  assert.notEqual(result.status, 0, 'a completed response still must stop the run for an over-cap provider pause');
+  assert.equal(requests.length, 1);
+  assert.match(result.stderr, /Retry-After.*budget exceeded/);
+  assert.equal((await read(file(boxes[0]))).response.osm3s.timestamp_osm_base, BASE, 'valid completed work remains reusable');
+  for (const [name, bytes] of Object.entries(existingOutput)) assert.equal((await outputBytes(name)).toString(), bytes, name);
 });
