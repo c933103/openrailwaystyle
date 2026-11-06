@@ -58,6 +58,15 @@ transport errors, including timeout or memory wording, retry the same full query
 with the existing four-attempt backoff; they never create a spatial split
 checkpoint. Previously recorded splits are not reclassified without evidence.
 
+The loading-gauge maintenance list keeps its existing three-attempt ceiling,
+initial five-second pause and one-minute retry baseline. It also honors a
+longer `Retry-After` captured at response headers, even if reading the body
+then fails. A requested pause over 15 minutes stops further attempts and
+uses the previous cached list, rather than shortening that pause. Permanent
+4xx responses are not retried (406, 408 and 429 remain transient). A complete
+successful response needs no further request and may still replace the cache.
+These bounds do not change the query, source, schedule or shared daily budget.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
