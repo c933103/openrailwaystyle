@@ -27,7 +27,7 @@ export function serviceCoverageMessages({state='unknown',manifest}={}) {
     !/^[a-f0-9]{64}$/.test(manifest.osmSnapshotSha256||'')||data.snapshotSha256!==manifest.osmSnapshotSha256)
     return ['Service acquisition status is unknown for this snapshot.',scope];
   const lines=[scope];
-  if(date(data.generated))lines.push('OSM acquisition snapshot: '+data.generated);
+  if(date(data.generated))lines.push('Service snapshot built: '+data.generated+'. This is not the source acquisition date.');
   for(const stage of data.stages.slice(0,64)){
     const acquisition={partial:'Acquisition partial',deferred:'Latest acquisition deferred',failed:'Latest acquisition failed',
       acquired:'Acquisition completed',unknown:'Acquisition status unknown'}[stage?.acquisition]||'Acquisition status unknown';
@@ -36,6 +36,7 @@ export function serviceCoverageMessages({state='unknown',manifest}={}) {
     if(stage?.acquisition==='acquired'&&stage?.eligibility==='complete'&&stage.routes===0&&stage.retainedRelations===0)
       text+=' The acquired stage snapshot contains no route records; this does not establish that there are no trains.';
     if(stage?.completed&&['partial','deferred','failed'].includes(stage.acquisition))text+=' An earlier completed snapshot is retained.';
+    if(date(stage?.completed))text+=' Last completed stage: '+stage.completed+'.';
     lines.push(text);
   }
   if(data.truncated||data.stages.length>64)lines.push('Additional stage details are omitted from this summary.');
