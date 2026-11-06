@@ -7,6 +7,7 @@ import geojsonvt from 'geojson-vt';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
 import {stationScFontReady} from './platform-font-ready.mjs';
+import {waitForMapReady} from './browser-map-ready.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
 // the provider's real tile contract (typed identity/name, no ref or length).
@@ -53,7 +54,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // Nothing per platform may go to OSM; lengths come from the provider's tiles.
  await page.route(/api\.openstreetmap\.org|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});
  await page.goto(base+'?mode=infrastructure&language=zh-Hant&background=plain&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.1167/129.0440',{waitUntil:'domcontentloaded'});
- await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:60000});
+ await waitForMapReady(page, errors);
  await page.evaluate(async platforms=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;window.platformGeometries=Object.fromEntries(platforms.map(f=>[f.properties.id,f]));window.platformScreenAnchor=(await import('./platform-length.mjs')).platformScreenAnchor;},platforms);
  const drawHan=async()=>{await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.getStyle()?.layers,undefined,{timeout:30000});await page.evaluate(async()=>{const map=window.reviewMap,stack=map.getStyle().layers.find(l=>l.id.startsWith('station-')&&l.type==='symbol').layout['text-font'].join(',');await map.style.glyphManager.getGlyphs({[stack]:[...'頓顿'].map(c=>c.codePointAt(0))});});};
  // The packaged font is fetched once Han glyphs are drawn with a partial font.

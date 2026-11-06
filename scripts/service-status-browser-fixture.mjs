@@ -41,6 +41,11 @@ export async function checkServiceStatusBrowser(browser,root) {
   const status=page.locator('#service-data-status');
   await page.waitForFunction(()=>document.querySelector('#service-data-status').textContent.includes('Partial fixture: Acquisition partial'));
   const text=await status.textContent();
+  assert.ok(text.includes('Service snapshot built: '+acquisition.generated), 'build date is labeled separately');
+  assert.ok(text.includes('This is not the source acquisition date.'), 'republication cannot imply fresh source data');
+  assert.doesNotMatch(text,/OSM acquisition snapshot:/);
+  for(const stage of acquisition.stages)if(stage.completed)
+   assert.ok(text.includes('Last completed stage: '+stage.completed), 'recorded stage date remains visible');
   for(const expected of ['Latest acquisition deferred','Acquisition completed; source eligibility/geometry unresolved','contains no route records','Legacy fixture: Acquisition completed; source eligibility/geometry unknown','Latest acquisition failed','visible area or a particular route'])assert.ok(text.includes(expected),expected);
   await page.selectOption('#frequency-period','offpeak');
   assert.equal(await status.evaluate(element=>element.open),true,'status stays open after period changes');

@@ -113,6 +113,12 @@ served by [Transitous](https://transitous.org/api/).
 
 ## Displayed acquisition and availability status
 
+The build timestamp is labeled **Service snapshot built**, not an OSM acquisition
+date: rebuilding or republishing unchanged tiles does not refresh their sources.
+Each recorded stage completion date is shown separately as **Last completed
+stage**. Missing or malformed dates are not inferred from the build time. These
+dates belong to the assembled snapshot, not a live provider-status check.
+
 The Service legend's **Service data status** expands the recorded acquisition
 stages from the same OSM snapshot assembled into the site's service tiles.
 The frequency rebuild copies only compact stage facts and binds them to the

@@ -10,6 +10,32 @@ import {frequencyAvailability,frequencyBundle,FREQUENCY_PROFILES} from '../style
 const fixture=JSON.parse(await readFile(new URL('fixtures/service-status.json',import.meta.url)));
 const sha='a'.repeat(64),now=Date.parse('2026-10-15T12:00:00Z');
 
+test('rebuilding unchanged service data changes only the build date, never the recorded acquisition dates',()=>{
+ const source={generated:'2026-11-06T03:28:46.209Z',stages:[
+  {name:'older',label:'Older source',completed:'2026-10-18T18:03:37Z',inProgress:false},
+  {name:'retained',label:'Retained source',completed:'2026-11-02T04:40:52Z',inProgress:true,lastAttempt:{status:'deferred'}},
+  {name:'unknown',label:'Unknown source'}]};
+ const messages=manifest=>serviceCoverageMessages({state:'loaded',manifest:{schema:3,osmSnapshotSha256:sha,
+  acquisition:summarizeServiceAcquisition(manifest,sha)}});
+ const before=messages(source),after=messages({...source,generated:'2026-11-06T11:20:24.483Z'});
+ assert.equal(after[1],'Service snapshot built: 2026-11-06T11:20:24.483Z. This is not the source acquisition date.');
+ assert.notEqual(before[1],after[1]);
+ assert.deepEqual(before.filter((_,i)=>i!==1),after.filter((_,i)=>i!==1));
+ assert.match(after[2],/Last completed stage: 2026-10-18T18:03:37Z/);
+ assert.match(after[3],/Latest acquisition deferred.*earlier completed snapshot is retained.*Last completed stage: 2026-11-02T04:40:52Z/);
+ assert.doesNotMatch(after[4],/Last completed stage/);
+ assert.doesNotMatch(after.join('\n'),/OSM acquisition snapshot:/);
+});
+
+test('missing and malformed build or completion dates are never promoted to freshness evidence',()=>{
+ for(const invalid of [null,undefined,'invalid']){
+  const acquisition=summarizeServiceAcquisition({generated:invalid,stages:[{name:'unknown',completed:invalid}]},sha);
+  const lines=serviceCoverageMessages({state:'loaded',manifest:{schema:3,osmSnapshotSha256:sha,acquisition}});
+  assert.doesNotMatch(lines.join('\n'),/snapshot built:|Last completed stage:/);
+  assert.match(lines.join('\n'),/Acquisition status unknown/);
+ }
+});
+
 test('stage acquisition and source eligibility remain independent, including accepted-empty and legacy evidence',()=>{
  const acquisition=summarizeServiceAcquisition(fixture,sha);
  assert.deepEqual(acquisition.stages.map(s=>[s.acquisition,s.eligibility]),[
