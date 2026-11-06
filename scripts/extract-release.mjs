@@ -26,7 +26,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {FILTER_HASH} from './acquire-region-extract.mjs';
-import {GAP_FILTER_HASH} from './acquire-gap-tiles.mjs';
+import {GAP_FILTER_HASH} from './extract-filter.mjs';
 import {RETRY_MS, gh, ghRetrying, pause, releaseAssets} from './railway-ways-release.mjs';
 import {regionKey} from './extract-run.mjs';
 

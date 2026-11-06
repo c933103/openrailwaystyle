@@ -22,6 +22,7 @@
 // The polar basemap (scripts/build-polar.mjs, polar-features.mjs) is not
 // here: it reads roads, buildings, water and places in the two polar caps
 // only, which would bring most of every region's data. It stays on Overpass.
+import {createHash} from 'node:crypto';
 import {STATES} from './lifecycle.mjs';
 
 const PREFIXES = STATES.map(state => `${state}:`);
@@ -156,3 +157,7 @@ export function overpassFilters() {
   }
   return filters;
 }
+
+// Dependency-free identity shared by gap acquisition and publication. Keep the
+// publication runner independent of polygon-clipping and acquisition modules.
+export const GAP_FILTER_HASH = `overpass:${createHash('sha256').update(JSON.stringify(overpassFilters())).digest('hex')}`;

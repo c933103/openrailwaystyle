@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, readFile, readdir, rm, writeFile, mkdir} from 'node:fs/promises';
+import {mkdtemp, readFile, readdir, rm, writeFile, mkdir, cp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -74,7 +74,7 @@ test('a poly filter is lat lon, without the closing point', () => {
   assert.equal(polyFilter(square(1, 2, 3, 4)[0]), 'poly:"2 1 2 3 4 3 4 1"');
   const query = gapQuery([square(1, 2, 3, 4)]);
   assert.match(query, /^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];\(/);
-  assert.match(query, /\);\(\._;>;\);out meta;$/);
+  assert.match(query, /\);\(\._;>>;\);out meta;$/);
   assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 23);
 });
 
@@ -171,4 +171,64 @@ test('publish takes gap tiles as regions of their own, and keeps stored ones whe
   const previous = {regions: {a: {region: 'a'}, 'gap/k1': {region: 'gap/k1'}}};
   assert.deepEqual(planWithGaps(plan, null, previous).regions.map(r => r.id), ['a', 'gap/k1']);
   assert.deepEqual(planWithGaps(plan, gaps, previous).regions.map(r => r.id), ['a', 'gap/k1', 'gap/k2']);
+});
+
+test('publication imports on a fresh runner without npm dependencies', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-publish-import-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  await cp(new URL('../scripts/', import.meta.url), join(root, 'scripts'), {recursive: true});
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', "await import('./scripts/extract-release.mjs')"], {cwd: root, encoding: 'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('gap query completely resolves a selected parent with an unselected child relation', async () => {
+  const nested = '<relation id="20"><member type="relation" ref="21"/><tag k="route" v="train"/></relation>';
+  const descendants = '<relation id="21"><member type="way" ref="22"/></relation><way id="22"><nd ref="23"/></way><node id="23" lat="0" lon="0"/>';
+  const parts = await fetchTile(tile, {budget: budget(), wait: async () => {}, fetcher: async (_url, init) => {
+    const query = init.body.get('data');
+    // This fixture models > versus >>: only complete recursion returns
+    // the child relation and its descendants, which do not match the tags.
+    return new Response(answer(undefined, nested + (query.includes('(._;>>;);') ? descendants : '')));
+  }});
+  for (const id of [20, 21, 22, 23]) assert.match(parts[0].text, new RegExp(`id="${id}"`));
+});
+
+test('byte cap cancels a streamed response immediately and does not retry', async () => {
+  let reads = 0, cancelled = false, calls = 0;
+  const b = budget({maxBytes: 7});
+  const fetcher = async () => {
+    calls++;
+    return new Response(new ReadableStream({
+      pull(controller) { reads++; controller.enqueue(new Uint8Array(4)); },
+      cancel() { cancelled = true; },
+    }, {highWaterMark: 0}));
+  };
+  await assert.rejects(fetchTile(tile, {fetcher, wait: async () => {}, budget: b}), /byte budget/);
+  assert.equal(reads, 2);
+  assert.equal(b.bytes, 8, 'count the entire chunk that crossed the boundary');
+  assert.equal(cancelled, true);
+  assert.equal(calls, 1);
+  await assert.rejects(fetchTile(tile, {fetcher, wait: async () => {}, budget: b}), /budget/);
+  assert.equal(calls, 1, 'no subsequent tile can request more');
+});
+
+test('bytes from failed body reads count against retries; UTF-8 is decoded across chunks', async () => {
+  let calls = 0;
+  const b = budget();
+  const text = answer(undefined, '<note>日本</note>');
+  const bytes = Buffer.from(text);
+  const parts = await fetchTile(tile, {budget: b, wait: async () => {}, fetcher: async () => {
+    calls++;
+    let offset = 0;
+    return new Response(new ReadableStream({pull(controller) {
+      if (calls === 1) {
+        if (offset++ === 0) controller.enqueue(new Uint8Array(5));
+        else controller.error(new Error('connection reset'));
+      } else if (offset < bytes.length) controller.enqueue(bytes.subarray(offset, ++offset));
+      else controller.close();
+    }}, {highWaterMark: 0}));
+  }});
+  assert.equal(calls, 2);
+  assert.equal(b.bytes, 5 + bytes.length);
+  assert.equal(parts[0].text, text);
 });

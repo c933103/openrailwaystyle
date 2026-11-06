@@ -18,7 +18,8 @@ import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {promisify} from 'node:util';
 import {pathToFileURL} from 'node:url';
-import {overpassFilters} from './extract-filter.mjs';
+import {GAP_FILTER_HASH, overpassFilters} from './extract-filter.mjs';
+export {GAP_FILTER_HASH} from './extract-filter.mjs';
 import {polyFilter} from './gap-tiles.mjs';
 import {quarters} from './world-regions.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
@@ -31,19 +32,40 @@ export const MAX_REQUESTS = 400;
 export const MAX_BYTES = 1024 ** 3;
 export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
-// The filter a gap tile's file was made with: the Overpass form of the
-// extract filter. It differs from a Geofabrik region's, so the assembly
-// never compares a gap tile with a region.
-export const GAP_FILTER_HASH = `overpass:${createHash('sha256').update(JSON.stringify(overpassFilters())).digest('hex')}`;
 
 export function gapQuery(polygon) {
   const statements = [];
   for (const [ring] of polygon) for (const {type, tag} of overpassFilters()) statements.push(`${type}${tag}(${polyFilter(ring)});`);
-  return `[out:xml][timeout:180][maxsize:536870912];(${statements.join('')});(._;>;);out meta;`;
+  return `[out:xml][timeout:180][maxsize:536870912];(${statements.join('')});(._;>>;);out meta;`;
 }
 
 const boxPolygon = ([s, w, n, e]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Keep bytes already consumed even if reading fails. Stop the current body
+// at the cap rather than buffering an unbounded final response. A transport
+// chunk can cross the boundary; count all of it and cancel immediately.
+async function readBudgetedBody(response, budget) {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const chunks = [];
+  try {
+    while (true) {
+      const {value, done} = await reader.read();
+      if (done) return Buffer.concat(chunks).toString('utf8');
+      budget.bytes += value.byteLength;
+      if (budget.bytes >= budget.maxBytes) {
+        throw Object.assign(new Error('byte budget reached while reading response'), {budget: true});
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } catch (error) {
+    try { await reader.cancel(error); } catch {}
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 // One tile, split on an executed-query limit. Returns the OSM XML parts
 // with their database times, or throws (the tile keeps its copy).
@@ -56,13 +78,13 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, budget, de
     let response, text;
     try {
       response = await fetcher(API, {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(360_000)});
-      text = await response.text();
+      text = await readBudgetedBody(response, budget);
     } catch (error) {
+      if (error.budget) throw error;
       const failure = new Error(`fetch failed: ${error.message}`);
       if (retry < 3) { await wait(overpassRetryDelayMs(retry)); continue; }
       throw failure;
     }
-    budget.bytes += Buffer.byteLength(text);
     const remark = /<remark>([\s\S]*?)<\/remark>/.exec(text)?.[1] ?? '';
     if (stationQueryExceededLimits(response.status, response.ok ? remark : text)) {
       if (depth >= MAX_SPLIT_DEPTH) throw new Error(`${tile.key}: too large for one query at depth ${depth}`);
