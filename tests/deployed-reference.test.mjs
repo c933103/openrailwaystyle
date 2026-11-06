@@ -97,3 +97,17 @@ test('transport failure retries only the same first-party manifest and stops at 
  await assert.rejects(verify(options({maxAttempts:2,fetcher:async url=>{urls.push(String(url));throw new TypeError('fetch failed');}})),/after 2 attempts.*fetch failed/);
  assert.deepEqual(urls,[baseUrl+'data/mainline-reference/manifest.json',baseUrl+'data/mainline-reference/manifest.json']);
 });
+
+test('HTTP-error and oversized bodies do not wait for an unresponsive cancellation promise',async()=>{
+ for(const kind of ['http','oversize']){
+  let cancelled=false,timer;
+  const body=new ReadableStream({pull(c){if(kind==='oversize')c.enqueue(new Uint8Array(manifest().length+1));},cancel(){cancelled=true;return new Promise(()=>{});}},{highWaterMark:0});
+  try{
+   await assert.rejects(Promise.race([
+    verify(options({maxAttempts:1,requestTimeoutMs:10,fetcher:async()=>new Response(body,{status:kind==='http'?503:200})})),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('cancellation exceeded request bound')),1000);})
+   ]),kind==='http'?/HTTP 503/:/exceeds expected/);
+   assert.equal(cancelled,true);
+  }finally{clearTimeout(timer);}
+ }
+});

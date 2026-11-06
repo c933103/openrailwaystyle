@@ -27,7 +27,8 @@ async function boundedBody(response,limit,signal){
    chunks.push(Buffer.from(value));
   }
  }catch(error){
-  try{await reader.cancel(error);}catch{}
+  // Cancellation is best effort: a stalled cancellation must not stall failure.
+  try{reader.cancel(error).catch(()=>{});}catch{}
   throw error;
  }finally{
   signal.removeEventListener('abort',abort);reader.releaseLock();
@@ -51,7 +52,7 @@ export async function verifyDeployedReference({baseUrl,expectedBytes,fetcher=fet
   try{
    const response=await fetcher(url,{redirect:'error',headers:{'Cache-Control':'no-cache'},signal});
    signal.throwIfAborted();
-   if(!response.ok){try{await response.body?.cancel();}catch{}throw Error(`Deployed manifest HTTP ${response.status}`);}
+   if(!response.ok){try{response.body?.cancel().catch(()=>{});}catch{}throw Error(`Deployed manifest HTTP ${response.status}`);}
    const actual=await boundedBody(response,expected.length,signal);
    if(!actual.equals(expected))throw Error(`Deployed manifest mismatch: expected SHA256 ${expectedSha256}; received ${sha256(actual)} (${actual.length} bytes)`);
    return {attempts:attempt,sha256:expectedSha256,bytes:expected.length,generation:manifest.generation,inputSha256:manifest.inputSha256};
