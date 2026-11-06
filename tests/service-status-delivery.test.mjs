@@ -129,3 +129,17 @@ test('independent observer has no acquisition command or altered producer trigge
  assert.match(workflow,/node scripts\/service-status-delivery\.mjs/);
  assert.doesNotMatch(workflow,/schedule:|workflow_dispatch:|build-service-routes\.mjs|service-acquisition-trigger\.mjs|npm ci|curl |git (?:fetch|clone)/);
 });
+
+for(const declared of [true,false])for(const mode of ['pending','rejects','throws'])test(`status size failure survives ${mode} cancellation, declared=${declared}`,async()=>{
+ let release,timer,cancelled=0,reads=0;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const body=new ReadableStream({
+  pull(controller){reads++;controller.enqueue(new Uint8Array(9));},
+  cancel(){cancelled++;if(mode==='throws')throw Error('cleanup throw');if(mode==='rejects')return Promise.reject(Error('cleanup rejection'));return cancellation;},
+ },{highWaterMark:0});
+ const result=readStatusJson(SOURCE_URL,{maxBytes:8,fetchImpl:async()=>new Response(body,{headers:declared?{'content-length':'9'}:{}})});
+ try{
+  await assert.rejects(Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('status waited for cleanup')),1000);})]),/Status metadata exceeds size limit/);
+  assert.equal(body.locked,false);assert.equal(cancelled,1);assert.equal(reads,declared?0:1);
+ }finally{clearTimeout(timer);release();await result.catch(()=>{});}
+});

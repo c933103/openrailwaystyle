@@ -104,6 +104,16 @@ remains counted, no remainder is read, and no new request or retry is introduced
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
 
+## Bounded maintenance diagnostics
+
+Conveying/aerialway HTTP diagnostics stop at their existing 64 KiB bound and
+retain the incomplete-diagnostic classification and `Retry-After` even if
+cancellation hangs or fails. Service-status metadata checks likewise report
+their original size/body error without waiting for cleanup; no failed read can
+produce a rebuild decision. Both readers release their locks after early exit.
+These cleanup bounds add no request, retry, dispatch or provider access and do
+not change existing byte limits or acquisition deadlines.
+
 ## Primary policy and verified requirements
 
 Source: [OpenRailwayMap-vector USAGE.md](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/USAGE.md)

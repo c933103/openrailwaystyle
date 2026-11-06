@@ -52,13 +52,14 @@ export async function conveyingHttpError(response, startedAt) {
       if (keep) { chunks.push(Buffer.from(value.subarray(0, keep))); bytes += keep; }
       if (value.byteLength > keep || bytes === CONVEYING_ERROR_BYTES) {
         truncated = true;
-        await reader.cancel();
+        // Cleanup must not delay the bounded diagnostic and retry decision.
+        try { reader.cancel().catch(() => {}); } catch {}
         break;
       }
     }
   } catch {
     truncated = true;
-    await reader?.cancel().catch(() => {});
+    try { reader?.cancel().catch(() => {}); } catch {}
   } finally { reader?.releaseLock(); }
   const detail = Buffer.concat(chunks).toString('utf8')
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')

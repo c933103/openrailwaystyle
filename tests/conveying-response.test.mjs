@@ -61,3 +61,19 @@ test('qt changes only output ordering and preserves normalized complete ways', (
   assert.throws(()=>conveyingGeoJSON({remark:'runtime error: Query timed out',elements}),/timed out/);
   assert.throws(()=>conveyingGeoJSON({elements:[{...elements[0],geometry:[{lon:0,lat:0}]}]}),/Incomplete geometry/);
 });
+
+for(const mode of ['pending','rejects','throws'])test(`conveying diagnostic stays bounded when cancellation ${mode}`,async()=>{
+ let release,timer,cancelled=0,reads=0;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const body=new ReadableStream({
+  pull(controller){reads++;controller.enqueue(new Uint8Array(CONVEYING_ERROR_BYTES+1).fill(65));},
+  cancel(){cancelled++;if(mode==='throws')throw Error('cleanup throw');if(mode==='rejects')return Promise.reject(Error('cleanup rejection'));return cancellation;},
+ },{highWaterMark:0});
+ const result=conveyingHttpError(new Response(body,{status:503,headers:{'retry-after':'120'}}),Date.now());
+ try{
+  const error=await Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('diagnostic waited for cleanup')),1000);})]);
+  assert.equal(error.status,503);assert.equal(error.kind,'incomplete-diagnostic');assert.equal(error.truncated,true);
+  assert.equal(error.diagnosticBytes,CONVEYING_ERROR_BYTES);assert.equal(error.retryAfter,'120');
+  assert.equal(body.locked,false);assert.equal(cancelled,1);assert.equal(reads,1);
+ }finally{clearTimeout(timer);release();await result;}
+});

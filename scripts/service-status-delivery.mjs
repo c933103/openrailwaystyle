@@ -72,14 +72,15 @@ export async function readStatusJson(url,{fetchImpl=fetch,maxBytes=MAX_BYTES,tim
  if(url!==SOURCE_URL&&url!==PUBLISHED_URL)throw new Error('Unapproved status metadata URL');
  const response=await fetchImpl(url,{redirect:'error',signal:AbortSignal.timeout(timeoutMs),headers:{accept:'application/json','cache-control':'no-cache'}});
  if(!response.ok||!response.body)throw new Error('Status metadata request failed');
+ // Cancellation is best effort; it must not delay or replace a size failure.
  const declared=Number(response.headers.get('content-length'));
- if(Number.isFinite(declared)&&declared>maxBytes){await response.body.cancel();throw new Error('Status metadata exceeds size limit');}
+ if(Number.isFinite(declared)&&declared>maxBytes){try{response.body.cancel().catch(()=>{});}catch{}throw new Error('Status metadata exceeds size limit');}
  const reader=response.body.getReader(),chunks=[];let size=0;
  try{
   for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;
    if(size>maxBytes)throw new Error('Status metadata exceeds size limit');chunks.push(value);
   }
- }catch(error){await reader.cancel().catch(()=>{});throw error;}
+ }catch(error){try{reader.cancel().catch(()=>{});}catch{}throw error;}
  finally{reader.releaseLock();}
  try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks)));}
  catch{throw new Error('Invalid JSON status metadata');}
