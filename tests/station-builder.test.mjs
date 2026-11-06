@@ -1,3 +1,4 @@
+import * as responseReader from '../scripts/response-chunks.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
@@ -48,7 +49,7 @@ async function run(t,reply,{state,records,elements}={}){
   },
  });
  const dependencies={'node:fs/promises':io,'node:path':{join},'node:zlib':zlib,
-  './station-acquisition.mjs':acquisition,'./station-overview.mjs':overview};
+  './station-acquisition.mjs':acquisition,'./station-overview.mjs':overview,'./response-chunks.mjs':responseReader};
  const module=new vm.SourceTextModule(source,{context});
  await module.link(specifier=>{
   const values=dependencies[specifier];assert.ok(values,`unexpected import ${specifier}`);
@@ -170,4 +171,22 @@ test('a successful final region still builds the real complete tile generation',
  assert.equal(acquisition.stationWorldCoverage(result.state.completed),true);
  assert.equal(result.index.zoom,3);assert.ok(result.index.bundles.length>0);
  assert.ok(result.manifest.tiles>0&&result.manifest.bundles>0);
+});
+
+for (const status of [200, 502]) test(`station byte-limit checkpoint does not await stuck cancellation (HTTP ${status})`, async t => {
+ let cancelled=false,release,timer,body;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const result=run(t,()=>{
+  body=new ReadableStream({
+   pull(controller){controller.enqueue(new Uint8Array(status===200?1024*1024:16384).fill(65));},
+   cancel(){cancelled=true;return cancellation;},
+  });
+  return new Response(body,{status});
+ });
+ try {
+  const saved=await Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('checkpoint waited for cancellation')),1000);})]);
+  if(status===200)checkSplit(saved,'split oversized region');else checkDeferred(saved);
+  assert.equal(cancelled,true);assert.equal(body.locked,false);
+  assert.equal(saved.manifest.requestBytes,status===200?16*1024*1024:80*1024);
+ } finally {clearTimeout(timer);release();await result;}
 });

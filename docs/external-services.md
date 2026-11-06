@@ -104,6 +104,14 @@ cancellation without waiting for cleanup to settle. Even a hanging cancellation
 cannot postpone the budget error or retain its reader lock. The consumed chunk
 remains counted, no remainder is read, and no new request or retry is introduced.
 
+Station snapshot (region, change and selection), railway-way store, service-route
+and branch-line response readers likewise initiate cancellation and release the
+reader without waiting for cleanup when a consumer stops at its existing byte
+limit or throws. A hanging or rejected cancellation cannot prevent the existing
+split/defer decision from reaching its checkpoint. Each consumed chunk still
+counts in full, and existing limits, retries, queries and complete-only publication
+rules are unchanged. This does not add a request deadline or a shared daily cap.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.

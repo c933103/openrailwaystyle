@@ -1,3 +1,4 @@
+import * as responseReader from '../scripts/response-chunks.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
@@ -91,7 +92,7 @@ async function run(t, reply, {state, records, elements}) {
     console: {log() {}, warn() {}},
     fetch: async (url, options) => { calls.push(options.body.get('data')); assert.equal(options.redirect, 'error'); return reply(); },
   });
-  const dependencies = {'node:fs/promises': io, 'node:path': {join}, 'node:zlib': zlib, './station-acquisition.mjs': acquisition, './station-overview.mjs': overview};
+  const dependencies = {'node:fs/promises': io, 'node:path': {join}, 'node:zlib': zlib, './station-acquisition.mjs': acquisition, './station-overview.mjs': overview, './response-chunks.mjs': responseReader};
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
     const values = dependencies[specifier]; assert.ok(values, `unexpected import ${specifier}`);
@@ -271,4 +272,23 @@ test('a complete generation keeping elements takes a changed query as its differ
   assert.ok(restarted.state.pending.length > 0 && restarted.state.completed.length === 0);
   assert.equal(restarted.state.query, world);
   assert.match(restarted.manifest.status, /new cycle/);
+});
+
+for(const status of [200,503]) test(`station changes retain the complete generation without awaiting cancellation (HTTP ${status})`,async t=>{
+ const recent=new Date(Date.now()-86400000).toISOString();
+ const prior=complete(base,recent);
+ let cancelled=false,release,timer,body;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const result=run(t,()=>{
+  body=new ReadableStream({pull(controller){controller.enqueue(new Uint8Array(status===200?1024*1024:16384).fill(65));},cancel(){cancelled=true;return cancellation;}});
+  return new Response(body,{status});
+ },prior);
+ try {
+  const saved=await Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('change checkpoint waited for cancellation')),1000);})]);
+  assert.equal(cancelled,true);assert.equal(body.locked,false);assert.equal(saved.calls.length,1);
+  assert.deepEqual(saved.records,prior.records);assert.deepEqual(saved.elements,prior.elements);
+  assert.deepEqual(saved.state.pending,[]);assert.equal(saved.manifest.complete,true);
+  assert.equal(saved.manifest.changedRecords,0);assert.match(saved.manifest.status,/changes deferred/);
+  assert.equal(saved.manifest.requestBytes,status===200?16*1024*1024:80*1024);
+ } finally {clearTimeout(timer);release();await result;}
 });

@@ -10,6 +10,7 @@
 // next pass of the stage starts from the regions this one fetched. A stage's
 // stored regions are replaced only when its new pass is complete; until then
 // the previous pass's regions stay (`regions/` and `next/`).
+import {responseChunks} from './response-chunks.mjs';
 import {mkdir, readFile, readdir, rename, rm, writeFile, cp} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {join, resolve} from 'node:path';
@@ -172,13 +173,12 @@ export async function buildRailwayWays({
           headers: {'User-Agent': 'RailwayAtlas-railway-ways/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
         const chunks = [], fresh = fetched + split === 0;
         let received = 0, over = false;
-        for await (const chunk of response.body) {
+        for await (const chunk of responseChunks(response)) {
           received += chunk.length; downloaded += chunk.length;
           if (downloaded > budget) { over = true; break; }
           chunks.push(chunk);
         }
         if (over) {
-          await response.body.cancel?.().catch(() => {});
           // Only a successful response larger than a whole run's allowance
           // shows the region itself is too large.
           return response.ok && fresh && received > runBudget ? null : BUDGET;
