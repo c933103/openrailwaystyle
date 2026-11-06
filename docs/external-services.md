@@ -47,6 +47,14 @@ that run rather than shortening the pause; remaining tiles retain their working
 copies or stay explicitly missing. This does not add retries, change queries,
 expand budgets or establish a provider-wide daily budget.
 
+The energy-supply facility builder likewise keeps the provider pause across
+change requests, query-change fallback, interrupted bodies, full-download
+retries and subdivisions. It records the deadline before reading the body and
+stops the run if the pause exceeds its 15-minute wait limit, preserving the
+published snapshot and completed region caches. The existing retry count,
+query identity, weekly cache refresh and acquisition schedule are unchanged.
+This is not a shared daily-budget enforcement mechanism.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
