@@ -84,6 +84,91 @@ const tile = {key: '0_-45_45_0', box: [0, -45, 45, 0], polygon: [square(-40, 5, 
 const budget = (extra = {}) => ({requests: 0, bytes: 0, maxRequests: 400, maxBytes: 1024 ** 3, ...extra});
 const fake = replies => { const calls = []; return {calls, fetcher: async (url, init) => { calls.push(init.body.get('data')); const r = replies(calls.length); return r instanceof Error ? Promise.reject(r) : r; }}; };
 
+const fakeClock = () => {
+  let time = Date.parse('2026-11-06T19:00:00Z');
+  return {now: () => time, wait: async ms => { time += ms; }};
+};
+
+test('the last failed tile retains Retry-After for the next tile', async () => {
+  const clock = fakeClock(), b = budget(), sent = [];
+  const fetcher = async () => {
+    sent.push(clock.now());
+    return sent.length <= 4 ? new Response('busy', {status: 503, headers: {'retry-after': '600'}}) : new Response(answer());
+  };
+  await assert.rejects(fetchTile(tile, {...clock, fetcher, budget: b}), /HTTP 503/);
+  await fetchTile({...tile, key: 'next'}, {...clock, fetcher, budget: b});
+  assert.equal(sent.length, 5);
+  for (let i = 1; i < sent.length; i++) assert.ok(sent[i] - sent[i - 1] >= 600_000, `request ${i + 1} was early`);
+});
+
+test('query-limit subdivision carries the provider pause into its children', async () => {
+  const clock = fakeClock(), b = budget(), sent = [];
+  const fetcher = async () => {
+    sent.push(clock.now());
+    return sent.length === 1 ? new Response(timeoutRemark, {headers: {'retry-after': new Date(clock.now() + 180_000).toUTCString()}}) : new Response(answer());
+  };
+  const parts = await fetchTile(tile, {...clock, fetcher, budget: b});
+  assert.equal(parts.length, 4);
+  assert.ok(sent[1] - sent[0] >= 180_000);
+  assert.ok(sent.slice(2).every((t, i) => t - sent[i + 1] >= 10_000));
+});
+
+test('an interrupted response body does not lose the received Retry-After', async () => {
+  const clock = fakeClock(), b = budget(), sent = [];
+  const fetcher = async () => {
+    sent.push(clock.now());
+    if (sent.length > 1) return new Response(answer());
+    return new Response(new ReadableStream({start(controller) { controller.error(new Error('body reset')); }}), {status: 503, headers: {'retry-after': '600'}});
+  };
+  await fetchTile(tile, {...clock, fetcher, budget: b});
+  assert.equal(sent.length, 2);
+  assert.ok(sent[1] - sent[0] >= 600_000);
+});
+
+test('a provider pause beyond the local wait limit stops later requests instead of shortening it', async () => {
+  const clock = fakeClock(), b = budget();
+  let calls = 0;
+  const fetcher = async () => { calls++; return new Response('busy', {status: 429, headers: {'retry-after': '3600'}}); };
+  await assert.rejects(fetchTile(tile, {...clock, fetcher, budget: b}), /Retry-After/);
+  await assert.rejects(fetchTile({...tile, key: 'next'}, {...clock, fetcher, budget: b}), /Retry-After/);
+  assert.equal(calls, 1);
+  assert.equal(b.requests, 1);
+});
+
+test('Retry-After accepts the exact wait limit and ignores invalid or expired dates', async () => {
+  for (const header of ['900', 'invalid', 'Thu, 05 Nov 2026 19:00:00 GMT']) {
+    const clock = fakeClock(), sent = [];
+    const fetcher = async () => {
+      sent.push(clock.now());
+      return sent.length === 1 ? new Response('busy', {status: 503, headers: {'retry-after': header}}) : new Response(answer());
+    };
+    await fetchTile(tile, {...clock, fetcher, budget: budget()});
+    assert.equal(sent.length, 2);
+    assert.equal(sent[1] - sent[0], header === '900' ? 910_000 : 130_000, 'the existing retry and spacing schedule is preserved');
+  }
+});
+
+test('long date and overflowing delay values retain every remaining tile without another request', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-retry-after-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  for (const [i, header] of ['Fri, 06 Nov 2026 20:00:00 GMT', '9'.repeat(400)].entries()) {
+    const clock = fakeClock(), index = {regions: {[`gap/${tile.key}`]: {sourceTimestamp: '2026-11-05T06:00:00Z', asset: 'old.osm.pbf'}}};
+    const saved = JSON.stringify(index);
+    let calls = 0;
+    const out = join(root, String(i));
+    const result = await acquireGapTiles([tile, {...tile, key: 'next'}], out, {
+      ...clock, index, fetcher: async () => { calls++; return new Response('busy', {status: 429, headers: {'retry-after': header}}); },
+      run: async () => { throw new Error('osmium must not run without an answer'); },
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.requests, 1);
+    assert.equal(result.results.length, 2);
+    assert.ok(result.results.every(r => /Retry-After/.test(r.failed)));
+    for (const key of [tile.key, 'next']) assert.deepEqual(await readdir(join(out, `gap-${key}`)), ['failed.json']);
+    assert.equal(JSON.stringify(index), saved);
+  }
+});
+
 test('a tile splits only when the query itself is too large; an outage keeps its copy', async () => {
   const waits = [];
   const wait = async ms => { waits.push(ms); };
