@@ -58,7 +58,11 @@ its name also binds the current input fingerprint. A changed base can therefore
 wait for a new artifact even when the PR head is unchanged. Site assembly still
 independently revalidates the downloaded content and provenance, without
 elevated fork writes. Repository-owned
-preview branches are deleted when their PR closes. Site assembly
+preview branches are deleted when their PR closes. Cleanup reads the exact ref;
+an absent preview is a successful no-op, while API/permission failures remain
+failures. A deletion reporting that the ref disappeared is accepted only after
+a fresh exact lookup confirms it is absent. Error text is never treated as an
+existing branch. The same closed-PR and publication-concurrency guards apply. Site assembly
 requires and verifies the complete generation before deployment. A SHA-256
 fingerprint binds the published result to acquisition, compiler and renderer
 acceptance inputs, including authored browser bundle entries. Package sources
