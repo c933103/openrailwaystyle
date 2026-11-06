@@ -1,3 +1,4 @@
+import * as crossingRequest from '../scripts/crossing-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -25,7 +26,7 @@ const html = detail => `<html><head><title>OSM3S Response</title></head><body><p
 // Fetch has no network implementation; time is recorded rather than waited.
 // Small complete fixtures intentionally stop at the existing 900,000-row guard,
 // so these acquisition tests cannot replace or publish a snapshot.
-async function run(reply, {byteLength} = {}) {
+async function run(reply, {byteLimit} = {}) {
   const calls = [], sleeps = [], warnings = [], filesystem = [];
   const forbid = name => async (...args) => {
     filesystem.push({name, args});
@@ -34,7 +35,7 @@ async function run(reply, {byteLength} = {}) {
   const context = vm.createContext({
     process:{env:{OVERPASS_URL:'https://overpass.fixture.invalid/api/interpreter'}},
     URL, URLSearchParams, Date:FixedDate,
-    Buffer:byteLength ? {byteLength} : Buffer,
+    Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 240000); return undefined; }},
     setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
     console:{log:() => {}, warn:(...args) => warnings.push(args.join(' '))},
@@ -51,7 +52,7 @@ async function run(reply, {byteLength} = {}) {
   const dependencies = {
     'node:fs/promises':Object.fromEntries(['mkdir', 'readFile', 'writeFile', 'rm'].map(name => [name, forbid(name)])),
     'node:zlib':{gzipSync:() => assert.fail('unexpected compression'), gunzipSync:() => assert.fail('unexpected decompression')},
-    './crossing-data.mjs':crossings,
+    './crossing-request.mjs': {...crossingRequest, crossingResponseText: (response, usage) => crossingRequest.crossingResponseText(response, usage, byteLimit), crossingRetryDelay: (attempt, header) => crossingRequest.crossingRetryDelay(attempt, header, NOW)}, './crossing-data.mjs':crossings,
     './crossing-checkpoint.mjs':checkpoint,
   };
   const module = new vm.SourceTextModule(source, {
@@ -115,7 +116,8 @@ for (const [name, status, body] of [
   ['rate limit', 429, 'Gateway Timeout'],
   ['service unavailable', 503, 'Gateway Timeout'],
   ['generic gateway failure', 502, 'Bad Gateway'],
-  ['permanent invalid query', 400, 'parse error: invalid query'],
+  ['generic gateway timeout', 504, 'Gateway Timeout'],
+  ['not acceptable rate limit', 406, 'Rate limited'],
 ]) {
   test(`${name} is bounded at five attempts without subdivision or publication`, async () => {
     const result = await run(() => response(status, body));
@@ -159,17 +161,53 @@ test('transport failure retries are bounded without spatial subdivision', async 
   assert.deepEqual(result.sleeps, [0, 60000, 120000, 180000, 240000]);
 });
 
-test('client timeout retains spatial subdivision', async () => {
+test('client timeout retries the same query without spatial subdivision', async () => {
   const result = await run((_query, count) => {
     if (count === 1) throw new Error('The operation was aborted due to timeout');
     return response(200, empty);
   });
-  checkAcquired(result, [parentQuery, ...crossings.quarters(parent).map(box => crossings.regionQuery(box, AT))], [0, 10000, 10000, 10000, 10000]);
+  checkAcquired(result, [parentQuery, parentQuery], [0, 60000]);
 });
 
 test('download budget is checked before overload retry and accumulates failed responses', async () => {
-  const result = await run(() => response(502, capacity), {byteLength:() => 100_000_001});
+  const result = await run(() => response(502, capacity), {byteLimit: Buffer.byteLength(capacity) * 2 - 1});
   assert.match(result.error?.message || '', /^Download budget exceeded$/);
   assert.deepEqual(result.calls, [parentQuery, parentQuery]);
   assert.deepEqual(result.sleeps, [0, 60000]);
+});
+
+for (const status of [400, 401, 403, 404]) {
+  test(`HTTP ${status} stops after one request without subdivision`, async () => {
+    const result = await run(() => response(status, 'request refused'));
+    assert.match(result.error?.message || '', new RegExp(`^HTTP ${status}:`));
+    assert.deepEqual(result.calls, [parentQuery]);
+    assert.deepEqual(result.sleeps, [0]);
+  });
+}
+
+test('success cannot bypass the accumulated download budget', async () => {
+  const result = await run(() => response(200, empty), {byteLimit: Buffer.byteLength(empty) * 2 - 1});
+  assert.match(result.error?.message || '', /^Download budget exceeded$/);
+  assert.deepEqual(result.calls, [parentQuery, otherQueries[0]]);
+});
+
+for (const header of ['600', 'Sun, 01 Nov 2026 06:10:00 GMT']) {
+  test(`Retry-After ${header} is honoured before retrying`, async () => {
+    const result = await run((_query, count) => count === 1
+      ? new Response('busy', {status: 429, headers: {'Retry-After': header}}) : response(200, empty));
+    checkAcquired(result, [parentQuery, parentQuery], [0, 600000]);
+  });
+}
+
+test('long Retry-After stops this run rather than shortening the provider wait', async () => {
+  const result = await run(() => new Response('busy', {status: 503, headers: {'Retry-After': '1800'}}));
+  assert.match(result.error?.message || '', /Retry-After exceeds/);
+  assert.deepEqual(result.calls, [parentQuery]);
+});
+
+
+test('Retry-After also applies before an allowed query-size subdivision', async () => {
+  const result = await run((_query, count) => count === 1
+    ? new Response('runtime error: Query timed out', {status: 504, headers: {'Retry-After': '600'}}) : response(200, empty));
+  checkAcquired(result, [parentQuery, ...crossings.quarters(parent).map(box => crossings.regionQuery(box, AT))], [0, 600000, 10000, 10000, 10000]);
 });
