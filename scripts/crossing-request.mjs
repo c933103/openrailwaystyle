@@ -13,7 +13,9 @@ export async function crossingResponseText(response, usage, limit = CROSSING_DOW
       if (done) break;
       usage.bytes += value.byteLength;
       if (usage.bytes > limit) {
-        try { await reader.cancel(); } catch { /* The budget error remains primary. */ }
+        // Stop consumption immediately, but do not let an unresponsive
+        // cleanup promise hold the budget failure and reader lock forever.
+        try { reader.cancel().catch(() => {}); } catch { /* The budget error remains primary. */ }
         throw new Error('Download budget exceeded');
       }
       chunks.push(value);

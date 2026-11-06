@@ -58,3 +58,21 @@ test('invalid or elapsed Retry-After keeps local backoff; excessive wait is neve
   assert.equal(crossingRetryDelay(0, '901', 0), null);
   assert.equal(crossingRetryDelay(0, '9'.repeat(400), 0), null);
 });
+
+test('an unresponsive stream cancellation cannot postpone the download-budget error', async () => {
+  let cancellations = 0, pulls = 0;
+  const response = new Response(new ReadableStream({
+    pull(controller) { pulls++; controller.enqueue(Buffer.from('oversized')); },
+    cancel() { cancellations++; return new Promise(() => {}); },
+  }, {highWaterMark:0}));
+  const usage = {bytes:0};
+  let timer;
+  const deadline = new Promise(resolve => { timer = setTimeout(() => resolve('still waiting for cancellation'), 100); });
+  const outcome = await Promise.race([crossingResponseText(response, usage, 1).then(() => 'unexpected success', error => error.message), deadline]);
+  clearTimeout(timer);
+  assert.equal(outcome, 'Download budget exceeded');
+  assert.equal(cancellations, 1, 'cancellation is still initiated');
+  assert.equal(pulls, 1, 'no remainder is consumed');
+  assert.equal(usage.bytes, 9, 'the oversized chunk is still metered');
+  assert.equal(response.body.locked, false, 'the reader is released on failure');
+});
