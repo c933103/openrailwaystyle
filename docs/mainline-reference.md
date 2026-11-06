@@ -12,6 +12,17 @@ ends at z8 and does not replace close-zoom infrastructure or branch overlays.
 
 ## Source and publication boundary
 
+The PBF downloader retains the planned byte bound and 5,400-second elapsed-time
+bound. It checks both after every data chunk and at EOF, before checksum-complete
+data can be promoted. A delayed EOF therefore cannot accept an over-time download.
+An exceeded-bound error identifies byte, time, or both, with received and expected
+bytes and measured GET elapsed seconds. The elapsed period includes opening the
+GET response; the existing 90-second socket timeout still bounds blocking reads.
+This is not a resumable-download mechanism or a fix for slow provider throughput.
+Failures remove the partial file and cannot publish a source manifest. Offline
+regressions execute the actual acquisition function with a blocked socket boundary,
+including late EOF, exact bounds, checksum/truncation and transport-error controls.
+
 `mainline-reference.yml` acquires dated PBF exports from **all eight** Geofabrik
 continent roots: Africa, Antarctica, Asia, Australia/Oceania, Central America,
 Europe, North America and South America. These provider extracts include
