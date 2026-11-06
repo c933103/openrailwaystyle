@@ -344,3 +344,21 @@ test('a world pass begun with the earlier three boxes is started again with the 
   const after = JSON.parse(await readFile(join(root, 'out', 'state.json'), 'utf8')).stages.world;
   assert.deepEqual(after.leaves.regions.map(region => region.box), world.parts.map(part => part.box), 'recorded under the tiles it fetched');
 });
+
+for(const status of [200,503]) test(`railway-ways byte-limit checkpoint does not await stuck cancellation (HTTP ${status})`,async t=>{
+ const root=await fixture(t);let cancelled=false,release,timer,body,calls=0;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const result=run(root,async()=>{
+  calls++;body=new ReadableStream({start(controller){controller.enqueue(new Uint8Array(10_000_001));},cancel(){cancelled=true;return cancellation;}});
+  return new Response(body,{status});
+ },{runBudget:10_000_000});
+ try {
+  const saved=await Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('railway-ways checkpoint waited for cancellation')),1000);})]);
+  assert.equal(cancelled,true);assert.equal(body.locked,false);assert.equal(calls,1);
+  assert.equal(saved.run.downloadedBytes,10_000_001);assert.equal(saved.run.fetchedBoxes,0);
+  assert.equal(saved.run.splitBoxes,status===200?1:0);assert.equal(saved.run.status,'deferred');
+  const state=JSON.parse(await readFile(join(root,'out/state.json'),'utf8'));
+  assert.deepEqual(state.stages.japan.pending.map(item=>item.box),status===200?quarters(part.box):[part.box]);
+  for await(const region of storedRegions(join(root,'out')))assert.fail(`partial body stored for ${region.box}`);
+ } finally {clearTimeout(timer);release();await result;}
+});

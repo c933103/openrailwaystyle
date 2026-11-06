@@ -8,6 +8,7 @@
 // larger than one run's budget continues in the next run. Once every stage is
 // in, each run refreshes the stage checked longest ago if it is older than
 // REFRESH_DAYS, which also removes deleted and retagged lines.
+import {responseChunks} from './response-chunks.mjs';
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
@@ -136,13 +137,12 @@ async function overpass(query) {
       // After any fetched/split region, also defer until the next eligible run.
       const chunks = [], fresh = fetchedBoxes + splitBoxes === 0;
       let received = 0, over = false;
-      for await (const chunk of response.body) {
+      for await (const chunk of responseChunks(response)) {
         received += chunk.length; downloaded += chunk.length;
         if (downloaded > BUDGET_BYTES) { over = true; break; }
         chunks.push(chunk);
       }
       if (over) {
-        await response.body.cancel().catch(() => {});
         return response.ok && fresh && received > RUN_BUDGET ? null : BUDGET;
       }
       const text = Buffer.concat(chunks).toString();

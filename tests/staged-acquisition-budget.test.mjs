@@ -39,7 +39,9 @@ globalThis.fetch = async (url, options) => {
   appendFileSync(process.env.MOCK_LOG, JSON.stringify({url, query: options.body.get('data')}) + '\\n');
   const next = observations[count++]; if (!next) throw new Error('Unexpected fixture request');
   const text = next.text ?? JSON.stringify(next.body);
-  return new Response(text.padEnd(next.bytes ?? text.length, ' '), {status: next.status ?? 200});
+  const bytes=new TextEncoder().encode(text.padEnd(next.bytes ?? text.length, ' '));
+  const body=next.stuckCancel?new ReadableStream({start(controller){controller.enqueue(bytes);},cancel(){return new Promise(()=>{});}}):bytes;
+  return new Response(body, {status: next.status ?? 200});
 };`);
     const initial = pipeline.table();
     const run = async (responses, {runs = [], state, previous = initial} = {}) => {
@@ -203,4 +205,17 @@ for (const pipeline of pipelines) {
     assert.deepEqual(result.sleeps, [0, 60000, 15000]);
     assert.equal(result.saved.stages.japan.pending, null);
   }));
+}
+
+for(const pipeline of pipelines)for(const status of [200,503]){
+ test(`${pipeline.name} saves the byte-limit checkpoint even when cancellation never settles (HTTP ${status})`,async()=>fixture(pipeline,async(run,initial)=>{
+  const result=await run([{body,status,bytes:20_000_001,stuckCancel:true}]);
+  assert.equal(result.attempt.downloadedBytes,20_000_001);assert.equal(result.requests.length,1);
+  assert.equal(result.attempt.fetchedBoxes,0);assert.equal(result.table,initial);
+  if(status===503)deferred(result,initial,20_000_001,1);
+  else{
+   assert.equal(result.attempt.splitBoxes,1);assert.equal(result.attempt.status,'deferred');
+   assert.deepEqual(result.saved.stages.japan.pending,[...quarters(queue[0].box).map(box=>({part:0,box,depth:2})),queue[1]]);
+  }
+ }));
 }

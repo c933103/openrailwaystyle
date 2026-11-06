@@ -1,6 +1,7 @@
 // Scheduled maintenance-only station acquisition. Never called by map users.
 // A run processes at most one bounded Overpass region and checkpoints progress;
 // malformed or partial responses never make a completed region.
+import {responseChunks} from './response-chunks.mjs';
 import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
@@ -84,7 +85,7 @@ if(pending){
       body:new URLSearchParams({data:query})});
     let oversized=false,chunks=[];
     const limit=response.ok?MAX_RESPONSE_BYTES:MAX_ERROR_BYTES;
-    for await(const chunk of response.body){
+    for await(const chunk of responseChunks(response)){
       received+=chunk.byteLength;
       if(received>limit){oversized=true;break;}
       chunks.push(chunk);
@@ -100,7 +101,6 @@ if(pending){
         status='split provider-rejected oversized region';
       }else throw Error(`Unexpected OSM HTTP ${response.status}`);
     }else if(oversized){
-      await response.body?.cancel().catch(()=>{});
       state=postponeStationRegion(state,pending.box);
       status='split oversized region';
     }else{
@@ -135,7 +135,7 @@ if(changesSince){
       body:new URLSearchParams({data})});
     const chunks=[],limit=response.ok?max:MAX_ERROR_BYTES;
     let size=0;
-    for await(const chunk of response.body){
+    for await(const chunk of responseChunks(response)){
       received+=chunk.byteLength;size+=chunk.byteLength;
       if(size>limit)throw Error('Oversized station change response');
       chunks.push(chunk);
