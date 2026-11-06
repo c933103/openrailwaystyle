@@ -18,6 +18,24 @@ await mkdir(cache,{recursive:true});
 await mkdir(output,{recursive:true});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let requests=0,downloaded=0;
+// One provider clock for changes, full requests, retries and subdivisions.
+// Capture at headers: an interrupted body must not discard the server pause.
+const MAX_PROVIDER_WAIT_MS=15*60_000;
+let retryNotBefore=0,providerWaitExceeded=false;
+const providerPauseError=()=>new Error('Energy facility Retry-After wait budget exceeded; data retained');
+function rememberProviderPause(response) {
+  const value=String(response.headers.get('retry-after')??'').trim(),receivedAt=Date.now();
+  let delay=0;
+  if(/^\d+$/.test(value))delay=Number(value)*1000;
+  else if(value){const date=Date.parse(value);if(Number.isFinite(date))delay=Math.max(0,date-receivedAt);}
+  if(delay>MAX_PROVIDER_WAIT_MS)providerWaitExceeded=true;
+  if(delay>0)retryNotBefore=Math.max(retryNotBefore,receivedAt+delay);
+}
+async function waitForRequest(delay) {
+  if(providerWaitExceeded)throw providerPauseError();
+  await sleep(delay);
+  while(retryNotBefore>Date.now())await sleep(retryNotBefore-Date.now());
+}
 const features=new Map(),coverage=[];
 
 async function collect(box,depth=0) {
@@ -47,15 +65,17 @@ async function collect(box,depth=0) {
       pick:element=>requireGeometry([element])[0],validate:elements=>powerFacilitiesGeoJSON({...stored.response,elements}),
       warn:(...args)=>console.warn('Energy supply changes',box.join(','),...args),failed:error=>{failure=error;},
       fetchText:async body=>{
-        await sleep(requests?10000:0);
+        await waitForRequest(requests?10000:0);
         requests++;
         const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:body}),
           headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
+        rememberProviderPause(response);
         const text=await response.text();downloaded+=Buffer.byteLength(text);
         if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
         if(!response.ok)throw new Error(`HTTP ${response.status}`);
         return text;
       }});
+    if(providerWaitExceeded)throw providerPauseError();
     if(failure&&/budget exceeded/.test(failure.message))throw failure;
     if(update) {
       json={...stored.response,osm3s:{...stored.response.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
@@ -76,12 +96,13 @@ async function collect(box,depth=0) {
     // the short pause. Completed regions are cached, so a later run resumes.
     let wait=requests?10000:0;const attempts=OVERPASS_RETRY_MINUTES.length+1;
     if(!split)for(let attempt=0;attempt<attempts;attempt++) {
-      await sleep(wait);
+      await waitForRequest(wait);
       requests++;
       try {
         console.log('Fetching railway energy supplies',box.join(','),'attempt',attempt+1);
         const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),
           headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
+        rememberProviderPause(response);
         const text=await response.text();downloaded+=Buffer.byteLength(text);
         if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
         if(!response.ok)throw Object.assign(new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160)}`),{retryAfter:response.headers.get('retry-after')});
@@ -92,11 +113,12 @@ async function collect(box,depth=0) {
       } catch(error) {
         json=undefined;
         console.warn(box.join(','),describeOverpassError(error));
+        if(providerWaitExceeded)throw providerPauseError();
         if(/budget exceeded/.test(error.message))throw error;
         // Admission HTTP errors can say "timeout" without executing the query.
         if(!/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
         if(attempt===attempts-1)throw error;
-        wait=overpassBusy(error)?overpassRetryDelayMs(attempt,error.retryAfter):Math.min(60000,20000*(attempt+2));
+        wait=Math.max(overpassBusy(error)?overpassRetryDelayMs(attempt):Math.min(60000,20000*(attempt+2)),retryNotBefore-Date.now());
         if(overpassBusy(error))console.warn(`Overpass busy or unreachable; retrying in ${Math.round(wait/60000)} min`);
       }
     }

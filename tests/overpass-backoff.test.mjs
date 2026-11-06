@@ -24,7 +24,12 @@ test('only a busy or unreachable server counts as worth the long wait',()=>{
 
 test('the facility snapshot build uses the long busy-server wait',()=>{
   const facilities=readFileSync(new URL('../scripts/build-power-facilities.mjs',import.meta.url),'utf8');
-  assert.match(facilities,/overpassBusy\(error\)\?overpassRetryDelayMs\(attempt,error\.retryAfter\)/);
+  assert.match(facilities,/overpassBusy\(error\)\?overpassRetryDelayMs\(attempt\)/);
+  assert.match(facilities,/rememberProviderPause\(response\);\s*const text=await response\.text\(\)/);
+  assert.match(facilities,/if\(providerWaitExceeded\)throw providerPauseError\(\);/);
+  assert.match(facilities,/while\(retryNotBefore>Date\.now\(\)\)await sleep\(retryNotBefore-Date\.now\(\)\);/);
+  // Whole-builder behavior, including interrupted bodies and the long-pause
+  // stop, is exercised in power-facility-builder.test.mjs.
   assert.match(facilities,/retryAfter:response\.headers\.get\('retry-after'\)/);
   assert.match(facilities,/const attempts=OVERPASS_RETRY_MINUTES\.length\+1/);
 });

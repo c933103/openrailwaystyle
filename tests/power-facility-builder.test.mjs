@@ -34,18 +34,27 @@ async function run(t, files, rules, {old = true} = {}) {
   }
   await writeFile(join(root, 'fake.mjs'), `
     const fs = await import('node:fs'), rules = ${JSON.stringify(rules)}, log = [];
-    globalThis.setTimeout = f => { f(); return 0; };
+    let clock = Date.now(); Date.now = () => clock;
+    globalThis.setTimeout = (f, ms) => { clock += ms || 0; f(); return 0; };
+    const times = []; const used = new Map();
     globalThis.fetch = async (url, {body}) => {
       const query = body.get('data'); log.push(query); fs.writeFileSync('requests.json', JSON.stringify(log));
-      const rule = rules.find(r => r.has.every(part => query.includes(part)));
-      return new Response(rule ? rule.text : 'no full download', {status: rule ? rule.status : 500});
+      times.push(clock); fs.writeFileSync('times.json', JSON.stringify(times));
+      const rule = rules.find(r => r.has.every(part => query.includes(part)) && (used.get(r) || 0) < (r.times ?? Infinity));
+      if (rule) used.set(rule, (used.get(rule) || 0) + 1);
+      const headers = {...rule?.headers};
+      if (rule?.dateDelay) headers['Retry-After'] = new Date(clock + rule.dateDelay).toUTCString();
+      const response = new Response(rule ? rule.text : 'no full download', {status: rule ? rule.status : 500, headers});
+      if (rule?.bodyError) response.text = async () => { throw new TypeError('fetch failed: interrupted body'); };
+      return response;
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd: root, env: {...process.env, POWER_OUTPUT: 'out', POWER_REFRESH: ''}, encoding: 'utf8'});
-  let requests = [];
+  let requests = [], times = [];
   try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
+  try { times = JSON.parse(await readFile(join(root, 'times.json'), 'utf8')); } catch {}
   const read = async name => JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8'));
   const published = async () => JSON.parse(await readFile(join(root, 'out', 'power-facilities.geojson'), 'utf8'));
-  return {result, requests, read, published, names: () => readdir(join(root, '.snapshot-cache'))};
+  return {result, requests, times, read, published, names: () => readdir(join(root, '.snapshot-cache'))};
 }
 const stored = (query, elements, time = SINCE) => ({query, response: {osm3s: {timestamp_osm_base: time}, elements}});
 const current = Object.fromEntries(boxes.map((box, i) => [file(box), stored(powerFacilityQuery(box), [at(box, 100 + i)])]));
@@ -105,4 +114,84 @@ test('a region split under another query keeps its parts, which take the differe
   assert.equal(requests.length, 8, 'each part: its changes and the ids of what the current query selects');
   for (const [i, child] of children.entries()) assert.equal((await read(file(child))).query, powerFacilityQuery(child), `part ${i} under the current query`);
   assert.equal((await read(file(boxes[0]) + '.split')).query, powerFacilityQuery(boxes[0]), 'the split recorded for the current query');
+});
+
+
+test('energy changes honor the received provider pause before the next region', async t => {
+  const {result, requests, times, read} = await run(t, current, [
+    {has: ['[adiff:', '(-90,-180,0,-90)'], status: 503, text: 'busy', headers: {'Retry-After': '600'}},
+    {has: ['[adiff:'], status: 200, text: osm()}]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 8);
+  assert.ok(times[1] - times[0] >= 600000, 'next region must not ignore a failed change response header');
+  assert.equal((await read(file(boxes[0]))).response.osm3s.timestamp_osm_base, SINCE);
+});
+
+test('energy query-change fallback honors HTTP-date pause even when the response body breaks', async t => {
+  const files = {...current, [file(boxes[0])]: stored(older(boxes[0]), [at(boxes[0], 100)])};
+  const {result, requests, times} = await run(t, files, [
+    {has: ['[adiff:'], status: 503, text: '', dateDelay: 600000, bodyError: true},
+    {has: ['[out:json]'], status: 200, text: ids([at(boxes[0], 100)])}], {old: false});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 2);
+  assert.ok(times[1] - times[0] >= 599000, 'capture headers before reading the body; HTTP dates have second precision');
+});
+
+test('energy full-download retry honors a pause received before an interrupted body', async t => {
+  const files = {...current}; delete files[file(boxes[0])];
+  const {result, requests, times} = await run(t, files, [
+    {has: ['[out:json]'], times: 1, status: 503, text: '', headers: {'Retry-After': '600'}, bodyError: true},
+    {has: ['[out:json]'], status: 200, text: ids([at(boxes[0], 100)])}], {old: false});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 2);
+  assert.ok(times[1] - times[0] >= 600000);
+});
+
+for (const path of ['change', 'full']) test(`energy ${path} stops rather than shortening a provider pause above 15 minutes`, async t => {
+  const files = {...current}; if (path === 'full') delete files[file(boxes[0])];
+  const {result, requests, published, read} = await run(t, files, [
+    {has: [], status: 503, text: 'busy', headers: {'Retry-After': '3600'}}], {old: path === 'change'});
+  assert.notEqual(result.status, 0);
+  assert.equal(requests.length, 1, 'no retry, fallback, subdivision or later region may bypass the server minimum');
+  assert.match(result.stderr, /Retry-After.*budget exceeded/);
+  await assert.rejects(published(), {code: 'ENOENT'});
+  if (path === 'change') assert.deepEqual(await read(file(boxes[0])), current[file(boxes[0])]);
+});
+
+test('energy query-limit subdivisions respect the parent response pause without retrying the parent', async t => {
+  const files = {...current}; delete files[file(boxes[0])];
+  const {result, requests, times, names} = await run(t, files, [
+    {has: ['(-90,-180,0,-90)'], status: 200, text: JSON.stringify({remark: 'runtime error: Query timed out', elements: []}), headers: {'Retry-After': '180'}},
+    {has: ['[out:json]'], status: 200, text: ids([at(boxes[0], 100)])}], {old: false});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 5, 'one parent and its four children');
+  assert.ok(times[1] - times[0] >= 180000);
+  assert.ok((await names()).includes(file(boxes[0]) + '.split'));
+});
+
+test('energy retry boundaries preserve the normal schedule and accept a 15-minute pause', async t => {
+  for (const [header, minimum] of [['900', 900000], ['invalid', 120000], ['Thu, 01 Jan 1970 00:00:00 GMT', 120000]]) {
+    const files = {...current}; delete files[file(boxes[0])];
+    const {result, requests, times} = await run(t, files, [
+      {has: [], times: 1, status: 503, text: 'busy', headers: {'Retry-After': header}},
+      {has: [], status: 200, text: ids([at(boxes[0], 100)])}], {old: false});
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(requests.length, 2);
+    assert.equal(times[1] - times[0], minimum);
+  }
+  const files = {...current}; delete files[file(boxes[0])];
+  const {result, requests, times} = await run(t, files, [{has: [], status: 503, text: 'busy'}], {old: false});
+  assert.notEqual(result.status, 0);
+  assert.equal(requests.length, 4);
+  assert.deepEqual(times.slice(1).map((time, index) => time - times[index]), [120000, 300000, 600000]);
+});
+
+test('energy long HTTP-date and overflowing numeric pauses stop even when the body is interrupted', async t => {
+  for (const pause of [{dateDelay: 3600000}, {headers: {'Retry-After': '9'.repeat(400)}}]) {
+    const {result, requests, read} = await run(t, current, [{has: [], status: 503, text: '', bodyError: true, ...pause}]);
+    assert.notEqual(result.status, 0);
+    assert.equal(requests.length, 1);
+    assert.match(result.stderr, /Retry-After.*budget exceeded/);
+    assert.deepEqual(await read(file(boxes[0])), current[file(boxes[0])]);
+  }
 });
