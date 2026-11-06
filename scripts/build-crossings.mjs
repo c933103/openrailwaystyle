@@ -16,7 +16,7 @@ const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
 const out = new URL('../crossing-data/', import.meta.url);
 const usage = {bytes: 0};
-let requests = 0, retryNotBefore = 0;
+let requests = 0, retryNotBefore = 0, providerWaitExceeded = false;
 let checkpoint = null, lastObservation;
 
 // Pinned to the run's database time (startedAt), as every request of the run.
@@ -25,7 +25,10 @@ const overpass = box => request(regionQuery(box, startedAt), parseCsv, rows => `
 async function request(query, parse, describe, box) {
   let delay = requests ? 10000 : 0;
   for (let attempt = 0; attempt < 5; attempt++) {
+    if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
     await new Promise(r => setTimeout(r, Math.max(delay, retryNotBefore - Date.now())));
+    // The awaited pause is consumed; a new response may establish another.
+    retryNotBefore = 0;
     requests++;
     let detail = '', status, retryAfter;
     try {
@@ -34,12 +37,15 @@ async function request(query, parse, describe, box) {
         headers: {'User-Agent': 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
       status = response.status;
       retryAfter = response.headers.get('retry-after');
+      // A successful body does not cancel a provider's pause for later queries.
+      const providerWait = crossingRetryDelay(-1, retryAfter, Date.now());
+      if (providerWait === null) providerWaitExceeded = true;
+      else retryNotBefore = Date.now() + providerWait;
       const text = await crossingResponseText(response, usage);
       // Use the full diagnostic for classification, but never log it whole.
       detail = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       if (!response.ok) throw new Error(`HTTP ${status}: ${detail}`.slice(0, 210));
       const rows = parse(text);
-      retryNotBefore = 0;
       lastObservation = {requestStartedAt, observedAt: new Date().toISOString()};
       console.log(`${describe(rows)};`, usage.bytes, 'bytes this run');
       return rows;

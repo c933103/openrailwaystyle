@@ -257,3 +257,17 @@ test('an excessive Retry-After stops incremental acquisition without asking anot
   assert.match(error?.message || '', /Retry-After exceeds/);
   assert.equal(calls.length, 1);
 });
+
+test('successful crossing change response preserves provider pause before reading affected ids', async t => {
+  const {calls, sleeps, error} = await changeRun(t, {extraction: crossingData.crossingExtraction(), reply: (query, roots, since) =>
+    query === crossingData.crossingChangesQuery(roots[0].box, since, AT)
+      ? new Response(osmXml(`<action type="modify"><old/><new>${xmlNode(2)}</new></action>`), {headers: {'Retry-After': '600'}}) : null});
+  assert.equal(calls[1], crossingData.crossingRowsQuery([2], AT));
+  assert.equal(sleeps[1], 600000);
+  assert.match(error?.message || '', /Suspiciously few crossings/);
+});
+test('successful crossing change response with excessive pause does not read affected ids or another region', async t => {
+  const {calls, error} = await changeRun(t, {extraction: crossingData.crossingExtraction(), reply: () =>
+    new Response(osmXml(`<action type="modify"><old/><new>${xmlNode(2)}</new></action>`), {headers: {'Retry-After': '1800'}})});
+  assert.equal(calls.length, 1);assert.match(error?.message || '', /Retry-After exceeds/);
+});

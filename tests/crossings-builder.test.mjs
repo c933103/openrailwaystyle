@@ -211,3 +211,22 @@ test('Retry-After also applies before an allowed query-size subdivision', async 
     ? new Response('runtime error: Query timed out', {status: 504, headers: {'Retry-After': '600'}}) : response(200, empty));
   checkAcquired(result, [parentQuery, ...crossings.quarters(parent).map(box => crossings.regionQuery(box, AT))], [0, 600000, 10000, 10000, 10000]);
 });
+
+for (const header of ['600', 'Sun, 01 Nov 2026 06:10:00 GMT']) test(`successful crossing region preserves Retry-After ${header} for the next region`, async () => {
+  const result = await run((_query, count) => count === 1
+    ? new Response(empty, {headers: {'Retry-After': header}}) : response(200, empty));
+  assert.match(result.error?.message || '', /^Suspiciously few crossings worldwide: 0$/);
+  assert.deepEqual(result.calls, [parentQuery, ...otherQueries]);
+  assert.deepEqual(result.sleeps, [0, 600000, ...otherQueries.slice(1).map(() => 10000)]);
+});
+for (const header of ['901', '9999999999999999999999999999999999999999']) test(`successful crossing region with long pause ${header} cannot issue a later request`, async () => {
+  const result = await run(() => new Response(empty, {headers: {'Retry-After': header}}));
+  assert.match(result.error?.message || '', /Retry-After exceeds/);
+  assert.deepEqual(result.calls, [parentQuery]);
+});
+test('successful crossing body with exact 15-minute pause defers, rather than stops, the next region', async () => {
+  const result = await run((_query, count) => count === 1
+    ? new Response(empty, {headers: {'Retry-After': '900'}}) : response(200, empty));
+  assert.deepEqual(result.calls, [parentQuery, ...otherQueries]);
+  assert.equal(result.sleeps[1], 900000);
+});
