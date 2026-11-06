@@ -5,7 +5,7 @@ import {existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {acquireRegion, checkRegion, DISK_MARGIN, FILTER_HASH} from '../scripts/acquire-region-extract.mjs';
+import {acquireRegion, checkRegion, DISK_MARGIN, FILTER_HASH, MAX_SIDECAR} from '../scripts/acquire-region-extract.mjs';
 import {extractMatrix, extractReport, regionKey, MAX_RUN_BYTES} from '../scripts/extract-run.mjs';
 
 const URL_OF = (id, date = '261101') => `https://download.geofabrik.de/${id}-${date}.osm.pbf`;
@@ -94,6 +94,92 @@ test('a connection dropped during the download stops the region and leaves no pa
     await assert.rejects(acquireRegion(region('europe/germany', 9), dir, {...f, fetcher}), /terminated/);
     assert.deepEqual(readdirSync(dir), []);
     assert.deepEqual(f.commands, []);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('the checksum sidecar limit counts received bytes, including a multibyte filename', async () => {
+  const dir = temp(), digest = createHash('md5').update('pbf-bytes').digest('hex');
+  const sidecar = `${digest}  ${'é'.repeat(2032)}`;
+  assert.ok(sidecar.length < MAX_SIDECAR);
+  assert.ok(Buffer.byteLength(sidecar) > MAX_SIDECAR);
+  const f = fixture({sidecar});
+  try {
+    await assert.rejects(acquireRegion(region('europe/germany', 9), dir, f), /sidecar/);
+    assert.equal(f.calls.length, 2, 'no PBF request follows an oversized checksum response');
+    assert.deepEqual(f.commands, []);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('an oversized checksum stream is cancelled at the byte limit without consuming its tail', async () => {
+  const dir = temp(), f = fixture();
+  let pulls = 0, cancelled = false;
+  const body = new ReadableStream({
+    pull(controller) {
+      if (pulls === 20) return controller.close();
+      pulls++;
+      controller.enqueue(new Uint8Array(1024).fill(97));
+    },
+    cancel() { cancelled = true; },
+  }, {highWaterMark: 0});
+  const fetcher = async (url, init) => url.endsWith('.md5') ? new Response(body) : f.fetcher(url, init);
+  try {
+    await assert.rejects(acquireRegion(region('europe/germany', 9), dir, {...f, fetcher}), /sidecar/);
+    assert.equal(pulls, 5, 'stop on the first chunk that exceeds 4,096 bytes');
+    assert.equal(cancelled, true, 'release the unfinished response');
+    assert.deepEqual(f.calls.map(c => c.method), ['HEAD']);
+    assert.deepEqual(f.commands, []);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('a checksum sidecar exactly at the byte limit still permits the validated download', async () => {
+  const dir = temp(), digest = createHash('md5').update('pbf-bytes').digest('hex');
+  const sidecar = `${digest}  ${'é'.repeat((MAX_SIDECAR - 34) / 2)}`;
+  assert.equal(Buffer.byteLength(sidecar), MAX_SIDECAR);
+  const f = fixture({sidecar});
+  try {
+    const result = await acquireRegion(region('europe/germany', 9), dir, f);
+    assert.equal(result.sourceMd5, digest);
+    assert.equal(f.calls.length, 3);
+    assert.deepEqual(readdirSync(dir).sort(), ['extract.json', 'filtered.osm.pbf']);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('a dropped checksum stream retains the original error and cannot mark a working copy unchanged', async () => {
+  const dir = temp(), f = fixture(), failure = new TypeError('sidecar connection terminated');
+  const digest = createHash('md5').update('pbf-bytes').digest('hex');
+  let pulls = 0;
+  const body = new ReadableStream({pull(controller) {
+    if (pulls++) controller.error(failure);
+    else controller.enqueue(Buffer.from(`${digest}  file.osm.pbf\n`));
+  }}, {highWaterMark: 0});
+  const fetcher = async (url, init) => url.endsWith('.md5') ? new Response(body) : f.fetcher(url, init);
+  try {
+    await assert.rejects(acquireRegion(region('europe/germany', 9, {previous: previousOf()}), dir, {...f, fetcher}), error => error === failure);
+    assert.deepEqual(f.calls.map(c => c.method), ['HEAD']);
+    assert.deepEqual(f.commands, []);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('a bodyless checksum response fails without requesting the PBF', async () => {
+  const dir = temp(), f = fixture();
+  const fetcher = async (url, init) => url.endsWith('.md5') ? new Response(null, {status: 204}) : f.fetcher(url, init);
+  try {
+    await assert.rejects(acquireRegion(region('europe/germany', 9), dir, {...f, fetcher}), /invalid .md5 sidecar/);
+    assert.deepEqual(f.calls.map(c => c.method), ['HEAD']);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('bounded checksum decoding preserves Response.text UTF-8 BOM handling', async () => {
+  const dir = temp(), digest = createHash('md5').update('pbf-bytes').digest('hex');
+  const f = fixture({sidecar: `\ufeff${digest}  file.osm.pbf\n`});
+  try {
+    const result = await acquireRegion(region('europe/germany', 9), dir, f);
+    assert.equal(result.sourceMd5, digest);
+    assert.equal(f.calls.length, 3);
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
 

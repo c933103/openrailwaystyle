@@ -32,6 +32,13 @@ These are the services the data workflows download from, with their published te
 | [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) (where the site is published) | GitHub | "Published GitHub Pages sites may be no larger than 1 GB"; "soft bandwidth limit of 100 GB per month"; deployments time out after 10 minutes; not "a free web-hosting service to run your online business" | — | — | `check-site-size.mjs` fails above 900 MiB. Bandwidth is not measured: GitHub does not report Pages traffic in bytes |
 | [GitHub release assets](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) (where large data lives) | GitHub | "Up to 1000 release assets … Each file … must be under 2 GiB. There is no limit on the total size of a release, nor bandwidth usage" | — | — | One asset per working copy, for example the per-region extracts and `odbl-tables` |
 
+The manual region extractor bounds each MD5 sidecar to 4,096 received bytes,
+before decoding it. An oversized response is cancelled without consuming its
+remaining body; a missing, interrupted or invalid sidecar stops that region
+before any PBF download or unchanged-copy decision. Other regions and existing
+working copies retain the normal independent-publication rules. This adds no
+requests, retries, schedule changes or new upstreams.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
