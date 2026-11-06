@@ -63,6 +63,20 @@ function answered(response, url) {
   return response;
 }
 
+async function checksumText(response, id) {
+  const chunks = [];
+  let received = 0;
+  // Do not buffer an entire response before enforcing this small limit.
+  // Count bytes before decoding: a filename can contain multibyte UTF-8.
+  // Exiting the iterator early cancels the response and releases its reader.
+  for await (const chunk of response.body || []) {
+    received += chunk.byteLength;
+    if (received > MAX_SIDECAR) throw new Error(`${id}: .md5 sidecar exceeds ${MAX_SIDECAR} bytes`);
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 export async function acquireRegion(input, out, {fetcher = fetch, run = promisify(execFile), freeBytes = async dir => { const s = await statfs(dir); return s.bavail * s.bsize; },
   now = () => performance.now(), downloadMs = DOWNLOAD_MS} = {}) {
   const region = checkRegion(input), previous = input.previous || null;
@@ -74,8 +88,8 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
   const free = await freeBytes(out);
   if (free < size + DISK_MARGIN) throw new Error(`${region.id}: ${free} bytes free, need ${size + DISK_MARGIN}`);
   const sidecar = answered(await request(fetcher, `${region.url}.md5`), `${region.url}.md5`);
-  const text = await sidecar.text();
-  const md5Match = text.length <= MAX_SIDECAR && /^([0-9a-fA-F]{32})\s/.exec(text);
+  const text = await checksumText(sidecar, region.id);
+  const md5Match = /^([0-9a-fA-F]{32})\s/.exec(text);
   if (!md5Match) throw new Error(`${region.id}: invalid .md5 sidecar`);
   const expected = md5Match[1].toLowerCase();
   // The same file filtered the same way as the working copy: nothing to
