@@ -37,7 +37,9 @@ before decoding it. An oversized response is cancelled without consuming its
 remaining body; a missing, interrupted or invalid sidecar stops that region
 before any PBF download or unchanged-copy decision. Other regions and existing
 working copies retain the normal independent-publication rules. This adds no
-requests, retries, schedule changes or new upstreams.
+requests, retries, schedule changes or new upstreams. Cancellation is initiated
+without awaiting cleanup, so a stalled cancellation cannot prevent the sidecar
+limit from failing promptly. The reader is released and no PBF is requested.
 
 The manual gap-tile extractor preserves a received `Retry-After` across
 interrupted bodies, exhausted retries, later tiles and query-limit subdivisions.
@@ -45,7 +47,9 @@ It waits for the provider's minimum as well as its existing retry/spacing
 schedule. A requested pause longer than 15 minutes stops further requests in
 that run rather than shortening the pause; remaining tiles retain their working
 copies or stay explicitly missing. This does not add retries, change queries,
-expand budgets or establish a provider-wide daily budget.
+expand budgets or establish a provider-wide daily budget. Its byte-limit or
+body-read error likewise releases the reader without waiting for cancellation;
+the complete consumed chunk still counts, and no over-budget retry is started.
 
 The energy-supply facility builder likewise keeps the provider pause across
 change requests, query-change fallback, interrupted bodies, full-download
