@@ -187,7 +187,7 @@ source dates stay unchanged; publication metadata uses the current safe URL and
 lineage projection. These gates do not certify live geographic coverage.
 
 Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
-`tests/startup.test.mjs` execute the actual old/new worker sources with synthetic
+`tests/startup*.test.mjs` execute the actual old/new worker sources with synthetic
 fetch/cache implementations. The browser matrix has always blocked registered
 service workers; its Cache Storage/Web Crypto upgrade checks and PWA guidance
 checks retain that scope. Dedicated map workers run normally under the guarded
@@ -363,3 +363,19 @@ times that observed complete-coverage duration. These limits fail closed, do not
 retry or omit cases, and do not turn a
 canceled or skipped acceptance check into a pass. The historical six-hour stall's
 specific blocked statement and cancellation cause have not been established.
+
+
+### Startup fixture process bounds
+
+Run the complete startup suite with
+`node --experimental-vm-modules --test tests/startup*.test.mjs`.
+At the process-boundary refactor, the three files retained all 157 top-level
+registrations and 169 cases including subtests. The normal `npm test` glob runs
+every file. For a targeted name filter,
+apply it to the same `tests/startup*.test.mjs` glob, not only `startup.test.mjs`.
+
+Evaluated VM modules retain closed fixture contexts on the measured Node 24
+runtime. Keep startup cases in bounded sibling test files, with shared fixture
+support in `tests/startup-harness.mjs`, rather than merging them into one growing
+process. No normal test uses forced GC, a reduced heap, skipped cases or a
+name-based shard filter. See [the original case audit and memory evidence](investigations/startup-isolation-20261106/README.md).

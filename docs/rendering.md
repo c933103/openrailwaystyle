@@ -83,7 +83,7 @@ heights fail explicitly instead of becoming artificial sea-level flats.
 
 Source availability and render compatibility have separate checks:
 `tests/terrain-3d.test.mjs` verifies signed-height blending, mask boundaries,
-source selection and pitch/relief activation; `tests/startup.test.mjs` checks
+source selection and pitch/relief activation; `tests/startup*.test.mjs` checks
 lifecycle integration. Rendering beyond Web Mercator at the extreme poles
 remains the separate custom polar renderer, not this raster mesh.
 
