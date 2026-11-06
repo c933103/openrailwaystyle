@@ -74,7 +74,8 @@ async function checksumText(response, id) {
     if (received > MAX_SIDECAR) throw new Error(`${id}: .md5 sidecar exceeds ${MAX_SIDECAR} bytes`);
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks).toString('utf8');
+  // Match Response.text()'s UTF-8 decoding, including an optional BOM.
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 export async function acquireRegion(input, out, {fetcher = fetch, run = promisify(execFile), freeBytes = async dir => { const s = await statfs(dir); return s.bavail * s.bsize; },

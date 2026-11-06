@@ -173,6 +173,16 @@ test('a bodyless checksum response fails without requesting the PBF', async () =
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
 
+test('bounded checksum decoding preserves Response.text UTF-8 BOM handling', async () => {
+  const dir = temp(), digest = createHash('md5').update('pbf-bytes').digest('hex');
+  const f = fixture({sidecar: `\ufeff${digest}  file.osm.pbf\n`});
+  try {
+    const result = await acquireRegion(region('europe/germany', 9), dir, f);
+    assert.equal(result.sourceMd5, digest);
+    assert.equal(f.calls.length, 3);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
 test('too little disk stops the region before the download', async () => {
   const dir = temp(), f = fixture();
   try {
