@@ -12,7 +12,7 @@ test('startup timeout reports page errors and status but rethrows the original f
   const timeout = new Error('original readiness timeout'), errors = ['missing export'], messages = [];
   const page = {
     waitForSelector: async () => { throw timeout; },
-    locator: selector => { assert.equal(selector, '#status'); return {textContent: async options => { assert.deepEqual(options, {timeout: 1000}); return 'Map libraries could not load.'; }}; },
+    locator: selector => { assert.equal(selector, '#map-status'); return {textContent: async options => { assert.deepEqual(options, {timeout: 1000}); return 'Map libraries could not load.'; }}; },
   };
   await assert.rejects(waitForMapReady(page, errors, {log: (...args) => messages.push(args)}), error => error === timeout);
   assert.deepEqual(messages, [['MAP_STARTUP_DIAGNOSTIC', JSON.stringify({errors, status: 'Map libraries could not load.'})]]);

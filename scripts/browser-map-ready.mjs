@@ -5,7 +5,7 @@ export async function waitForMapReady(page, errors, {log = console.error} = {}) 
     await page.waitForSelector('body[data-map-ready="true"]', {state: 'attached', timeout: 60000});
   } catch (error) {
     let status = null;
-    try { status = await page.locator('#status').textContent({timeout: 1000}); } catch {}
+    try { status = await page.locator('#map-status').textContent({timeout: 1000}); } catch {}
     try { log('MAP_STARTUP_DIAGNOSTIC', JSON.stringify({errors: [...errors], status})); } catch {}
     throw error;
   }
