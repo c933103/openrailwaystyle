@@ -4,13 +4,18 @@
 
 ## Prerequisites
 
-Use Node.js 22.22.2 or newer in the 22.x line (the line used in CI), npm, Git,
-Python 3 and pip. Node.js 24.15.0 or newer in 24.x and Node.js 26 or newer are
-also supported by the pinned DOM test dependency. The package engine range and
-`.npmrc` reject unsupported runtimes during installation. Keep lifecycle scripts
-disabled with `npm ci --ignore-scripts`, as in CI. The commands
-below use a POSIX shell. Viewing the map requires an internet connection and a
-WebGL-capable browser; external tiles are not bundled for offline use.
+Use npm, Git, Python 3 and pip with a supported Node.js release. CI tracks the
+latest patched Node.js 26 release and rejects anything below 26.12.1. Use that
+line to reproduce CI. Local development also supports Node.js 22.23.4 or newer
+in 22.x, Node.js 24.22.1 or newer in 24.x, and Node.js 26.12.1 or newer, as
+specified by `package.json`. A newer major accepted by the package engine range
+is not a claim that CI has tested that major.
+
+The package engine range and `engine-strict=true` in `.npmrc` reject unsupported
+runtimes during installation. Keep lifecycle scripts disabled with
+`npm ci --ignore-scripts`, as in CI. The commands below use a POSIX shell.
+Viewing the map requires an internet connection and a WebGL-capable browser;
+external tiles are not bundled for offline use.
 
 ## Build the application
 

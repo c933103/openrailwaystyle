@@ -87,3 +87,18 @@ test('package engine floors match supported patched releases without lockfile dr
   assert.equal(pkg.engines.node,expected);
   assert.equal(lock.packages[''].engines.node,expected);
 });
+
+test('current setup instructions agree with the enforced package and CI runtimes',async()=>{
+  const pkg=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'));
+  const development=await readFile(new URL('../docs/development.md',import.meta.url),'utf8');
+  const prerequisites=development.split('## Prerequisites\n')[1].split('\n## ')[0].replace(/\s+/g,' ');
+  for(const version of pkg.engines.node.match(/\d+\.\d+\.\d+/g))
+    assert.ok(prerequisites.includes(version),`setup instructions must include supported floor ${version}`);
+  assert.match(prerequisites,/CI tracks the latest patched Node\.js 26 release/);
+  assert.ok(prerequisites.includes(minimum),'the documented CI floor matches its actual guard');
+  assert.doesNotMatch(prerequisites,/22\.22\.2|24\.15\.0|26 or newer|22\.x line \(the line used in CI\)/);
+  const paris=await readFile(new URL('../docs/service-paris-acceptance.md',import.meta.url),'utf8');
+  const current=paris.split('## Run and review\n')[1].split('```')[0];
+  assert.match(current,/development\.md#prerequisites/,'active acceptance commands use the same current prerequisites');
+  assert.doesNotMatch(current,/with Node 22\b/,'do not recommend an unspecified older release');
+});
