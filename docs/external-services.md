@@ -85,6 +85,16 @@ checkpoint work and the existing last-good publication are retained. Query,
 checkpoint identity, the five-attempt ceiling, byte budget, subdivision rules
 and incremental-region staging are unchanged.
 
+Historic-area acquisition shares a provider-pause deadline across change
+queries, the existing full-download fallback, later regions and query-limit
+subdivisions. It captures `Retry-After` before reading a body, so interrupted
+or successfully parsed responses cannot erase the pause. Requests wait for
+both the provider minimum and existing spacing/backoff. A pause over 15 minutes
+stops further requests for the run, retaining previous publication and completed
+region caches. A complete acquisition with no requests left may still publish.
+The four-attempt ceiling, change-first/fallback behavior, query/cache identity,
+schedule and 1.5 GB per-run budget are unchanged; this is not a shared daily cap.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
