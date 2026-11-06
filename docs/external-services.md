@@ -108,6 +108,15 @@ remains counted, no remainder is read, and no new request or retry is introduced
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
 
+Conveying and aerialway acquisitions retain a provider pause from every response,
+including HTTP 200, before reading its body. A later change/selection request or
+full retry waits for the remaining pause even if parsing, validation or body
+reading failed. A pause that cannot fit with the existing full request timeout
+inside the 52-minute run budget defers the run without a further request. The
+three-request ceiling, existing retry backoff, source/query, validation and
+publication rules are unchanged. A final successful response does not sleep
+when there is no further provider request.
+
 ## Bounded maintenance diagnostics
 
 Conveying/aerialway HTTP diagnostics stop at their existing 64 KiB bound and
