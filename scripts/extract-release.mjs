@@ -26,6 +26,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {FILTER_HASH} from './acquire-region-extract.mjs';
+import {GAP_FILTER_HASH} from './extract-filter.mjs';
 import {RETRY_MS, gh, ghRetrying, pause, releaseAssets} from './railway-ways-release.mjs';
 import {regionKey} from './extract-run.mjs';
 
@@ -60,6 +61,20 @@ const sha256File = path => createHash('sha256').update(readFileSync(path)).diges
 // The next index from the previous one and this run's outputs. `outputs` are
 // {dir, manifest, failed}; returns the index, the files to upload, and one
 // line per region for the report. Pure apart from reading the filtered files.
+// The filter a region's file must have been made with to be current: the
+// osmium filter for a Geofabrik region, its Overpass form for a gap tile.
+export const currentFilter = id => id.startsWith('gap/') ? GAP_FILTER_HASH : FILTER_HASH;
+
+// The plan with the gap tiles (scripts/gap-tiles.mjs) as regions of their
+// own, `gap/<tile key>`, each with its polygon.
+export const withGaps = (plan, gaps) => !gaps?.tiles?.length ? plan
+  : {...plan, regions: [...plan.regions, ...gaps.tiles.map(tile => ({id: `gap/${tile.key}`, kind: 'gap', polygon: tile.polygon}))]};
+
+// Without this run's gap tiles, the stored ones stay planned, so they are
+// kept, never dropped as no longer planned.
+export const planWithGaps = (plan, gaps, previous) => withGaps(plan, gaps
+  ?? {tiles: Object.keys(previous?.regions || {}).filter(id => id.startsWith('gap/')).map(id => ({key: id.slice(4), polygon: null}))});
+
 export function nextIndex(plan, previous, outputs, generation, {hashFile = sha256File} = {}) {
   if (!GENERATION.test(generation)) throw new Error(`Invalid generation ${generation}`);
   if (plan?.valid !== true) throw new Error('The region plan is not valid');
@@ -86,7 +101,7 @@ export function nextIndex(plan, previous, outputs, generation, {hashFile = sha25
     // made with the current filter, and not older than the working copy.
     const file = join(dir, 'filtered.osm.pbf');
     const problem = !existsSync(file) ? 'no filtered file'
-      : manifest.filter !== FILTER_HASH ? `filter ${manifest.filter} is not the current ${FILTER_HASH}`
+      : manifest.filter !== currentFilter(id) ? `filter ${manifest.filter} is not the current ${currentFilter(id)}`
       : statSync(file).size !== manifest.filteredBytes ? 'filtered size does not match its record'
       : hashFile(file) !== manifest.filteredSha256 ? 'filtered SHA-256 does not match its record'
       : before?.sourceTimestamp && Date.parse(manifest.sourceTimestamp) < Date.parse(before.sourceTimestamp) ? `data from ${manifest.sourceTimestamp} is older than the working copy's ${before.sourceTimestamp}`
@@ -96,7 +111,7 @@ export function nextIndex(plan, previous, outputs, generation, {hashFile = sha25
     uploads.push({file, asset});
     regions[id] = {asset, region: id, sha256: manifest.filteredSha256, bytes: manifest.filteredBytes, sourceDate: manifest.sourceDate,
       checkedDate: manifest.sourceDate, sourceTimestamp: manifest.sourceTimestamp, url: manifest.url, sourceMd5: manifest.sourceMd5,
-      pbfBytes: manifest.pbfBytes, counts: manifest.counts, filter: manifest.filter};
+      pbfBytes: manifest.pbfBytes, counts: manifest.counts, filter: manifest.filter, ...(id.startsWith('gap/') ? {kind: 'gap'} : {})};
     outcomes.set(id, {outcome: 'updated'});
   }
   for (const id of planned) if (!outcomes.has(id)) outcomes.set(id, {outcome: regions[id] ? 'kept' : 'missing', reason: 'not measured'});
@@ -120,7 +135,7 @@ export function nextIndex(plan, previous, outputs, generation, {hashFile = sha25
   const stamps = Object.values(regions).map(entry => entry.sourceTimestamp).sort();
   const index = {schema: 1, generation, planSourceDate: plan.sourceDate, filter: FILTER_HASH,
     oldestTimestamp: stamps[0] || null, newestTimestamp: stamps.at(-1) || null,
-    olderFilter: Object.values(regions).filter(entry => entry.filter !== FILTER_HASH).map(entry => entry.region).sort(),
+    olderFilter: Object.values(regions).filter(entry => entry.filter !== currentFilter(entry.region)).map(entry => entry.region).sort(),
     missing: [...planned].filter(id => !regions[id]).sort(),
     regions: Object.fromEntries(Object.entries(regions).sort(([a], [b]) => a.localeCompare(b))), polygons};
   return {index, uploads, outcomes: [...outcomes].map(([region, o]) => ({region, ...o})).sort((a, b) => a.region.localeCompare(b.region))};
@@ -176,7 +191,7 @@ const deleteAsset = name => {
   }
 };
 
-export function publish(plan, outputsDir, generation) {
+export function publish(plan, outputsDir, generation, gaps = null) {
   let names = releaseAssets(RELEASE);
   if (!names) {
     gh('release', 'create', RELEASE, '--prerelease', '--title', 'OSM extract working copies', '--notes',
@@ -187,7 +202,7 @@ export function publish(plan, outputsDir, generation) {
   const read = downloader(work);
   const previous = usableIndex(names, read);
   if (!previous && names.some(name => INDEX.test(name))) throw new Error('No stored index has all its region files; not starting from an empty store');
-  const {index, uploads, outcomes} = nextIndex(plan, previous?.index, readOutputs(outputsDir), generation);
+  const {index, uploads, outcomes} = nextIndex(planWithGaps(plan, gaps, previous?.index), previous?.index, readOutputs(outputsDir), generation);
   // The region files go up before the index that names them.
   const present = new Set(names);
   for (const {file, asset} of uploads) {
@@ -220,11 +235,13 @@ export function publishReport({indexName, index, outcomes}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [command, first, second] = process.argv.slice(2);
+  const [command, first, second, third] = process.argv.slice(2);
   if (command === 'load' && first) load(first);
   else if (command === 'publish' && first && second) {
+    // The gap tiles are optional: a run without them keeps the gap copies.
+    const gaps = third && existsSync(third) ? JSON.parse(readFileSync(third, 'utf8')) : null;
     const result = publish(JSON.parse(readFileSync(first, 'utf8')), second,
-      process.env.GENERATION || `${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}-${process.env.GITHUB_RUN_ID || 0}`);
+      process.env.GENERATION || `${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}-${process.env.GITHUB_RUN_ID || 0}`, gaps);
     process.stdout.write(publishReport(result));
-  } else throw new Error('Usage: extract-release.mjs load <index file> | publish <plan.json> <directory>');
+  } else throw new Error('Usage: extract-release.mjs load <index file> | publish <plan.json> <directory> [gaps.json]');
 }

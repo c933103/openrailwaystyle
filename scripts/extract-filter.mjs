@@ -22,6 +22,7 @@
 // The polar basemap (scripts/build-polar.mjs, polar-features.mjs) is not
 // here: it reads roads, buildings, water and places in the two polar caps
 // only, which would bring most of every region's data. It stays on Overpass.
+import {createHash} from 'node:crypto';
 import {STATES} from './lifecycle.mjs';
 
 const PREFIXES = STATES.map(state => `${state}:`);
@@ -123,3 +124,40 @@ export const selectsTag = (key, value) => EXTRACT_FILTERS.some(({expression}) =>
   const keys = (at < 0 ? body : body.slice(0, at)).split(',');
   return keys.some(pattern => keyMatches(pattern, key)) && (at < 0 || valueMatches(body.slice(at + 1), value));
 });
+
+// The same selection in Overpass QL, for the parts of the world no Geofabrik
+// region covers (scripts/acquire-gap-tile.mjs, #330 B0b): one filter per
+// object type, key pattern and expression, matching what osmium matches.
+// Regex metacharacters are put in brackets ([.]) so no backslash escaping is
+// needed; Overpass matches regexes case-sensitively, as osmium matches values.
+const literal = text => text.replace(/[.^$|()[\]{}+?\\*]/g, char => `[${char}]`).replace(/"/g, '\\"');
+const patternRegex = pattern => pattern.length > 1 && pattern.startsWith('*') && pattern.endsWith('*') ? literal(pattern.slice(1, -1))
+  : pattern.startsWith('*') ? `${literal(pattern.slice(1))}$` : pattern.endsWith('*') ? `^${literal(pattern.slice(0, -1))}` : `^${literal(pattern)}$`;
+const valueRegex = pattern => pattern.length > 1 && (pattern.startsWith('*') || pattern.endsWith('*')) ? patternRegex(pattern)
+  : `^(${pattern.split(',').map(literal).join('|')})$`;
+// Merged per object type, so a query repeats its `poly:` filter as few times
+// as possible: one key-only filter (every key pattern, as one regex), and
+// one filter per key that is tested by value (its values, as one regex).
+export function overpassFilters() {
+  const keyOnly = {node: [], way: [], relation: []}, byValue = {node: new Map(), way: new Map(), relation: new Map()};
+  for (const {expression} of EXTRACT_FILTERS) {
+    const [, types, body] = /^([nwr]+)\/(.*)$/.exec(expression);
+    const at = body.indexOf('='), keys = (at < 0 ? body : body.slice(0, at)).split(','), value = at < 0 ? null : body.slice(at + 1);
+    for (const type of [...types].map(t => ({n: 'node', w: 'way', r: 'relation'})[t])) for (const key of keys) {
+      if (value === null) { keyOnly[type].push(patternRegex(key)); continue; }
+      if (key.includes('*')) throw new Error(`${expression}: a value test on a key pattern has no Overpass form here`);
+      byValue[type].set(key, [...(byValue[type].get(key) || []), valueRegex(value)]);
+    }
+  }
+  const filters = [];
+  for (const type of ['node', 'way', 'relation']) {
+    // "^" matches any value, the empty one too, as osmium's key-only match does.
+    if (keyOnly[type].length) filters.push({type, tag: `[~"${[...new Set(keyOnly[type])].join('|')}"~"^"]`});
+    for (const [key, values] of byValue[type]) filters.push({type, tag: `["${key.replace(/"/g, '\\"')}"~"${[...new Set(values)].join('|')}"]`});
+  }
+  return filters;
+}
+
+// Dependency-free identity shared by gap acquisition and publication. Keep the
+// publication runner independent of polygon-clipping and acquisition modules.
+export const GAP_FILTER_HASH = `overpass:${createHash('sha256').update(JSON.stringify(overpassFilters())).digest('hex')}`;
