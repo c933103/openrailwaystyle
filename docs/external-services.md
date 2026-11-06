@@ -53,7 +53,10 @@ retries and subdivisions. It records the deadline before reading the body and
 stops the run if the pause exceeds its 15-minute wait limit, preserving the
 published snapshot and completed region caches. The existing retry count,
 query identity, weekly cache refresh and acquisition schedule are unchanged.
-This is not a shared daily-budget enforcement mechanism.
+This is not a shared daily-budget enforcement mechanism. Fetch and response-body
+transport errors, including timeout or memory wording, retry the same full query
+with the existing four-attempt backoff; they never create a spatial split
+checkpoint. Previously recorded splits are not reclassified without evidence.
 
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
