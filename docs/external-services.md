@@ -67,6 +67,16 @@ uses the previous cached list, rather than shortening that pause. Permanent
 successful response needs no further request and may still replace the cache.
 These bounds do not change the query, source, schedule or shared daily budget.
 
+Polar maintenance shares a provider-pause clock across its existing cap/sector
+queries, separately for the Overpass and elevation origins. It retains the
+four-attempt ceiling, 30/60/90-second retry waits and five-minute request timeout.
+A longer `Retry-After` applies from response headers through body failure and
+later calls. Pauses over 15 minutes stop that origin for the run; valid cached
+copies remain available through the existing fallback and atomic publication.
+Permanent 4xx responses are not retried (406, 408 and 429 remain transient).
+A successful body can still update its validated cache, but cannot permit an
+early later request. No query, cache lifetime, source, schedule or budget changes.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.

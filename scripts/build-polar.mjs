@@ -10,6 +10,7 @@
 // data is re-fetched when older than POLAR_OSM_MAX_AGE_DAYS (default 28).
 import {readFile, writeFile, mkdir, stat, rm, rename} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {createPolarTextFetcher} from './polar-fetch.mjs';
 import polygonClipping from 'polygon-clipping';
 import {CAP_RADIUS, POLAR_BANDS, FEET, toPolar, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {DETAIL_SIDE, detailQuery, detailTiles, parseOverpass} from './polar-features.mjs';
@@ -33,19 +34,7 @@ const output = 'snapshot/polar.tmp';
 await rm(output, {recursive: true, force: true});
 await mkdir(output, {recursive: true});
 
-async function fetchText(url, options = {}) {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      const response = await fetch(url, {...options, headers: {'User-Agent': USER_AGENT, ...options.headers}, signal: AbortSignal.timeout(300000)});
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.text();
-    } catch (error) {
-      if (attempt >= 3) throw error;
-      console.warn(url.slice(0, 80), error.message, '- retrying');
-      await new Promise(r => setTimeout(r, 30000 * (attempt + 1)));
-    }
-  }
-}
+const fetchText = createPolarTextFetcher({userAgent: USER_AGENT});
 async function cached(file, maxAgeDays, load, validate = () => {}) {
   try {
     const info = await stat(file);
