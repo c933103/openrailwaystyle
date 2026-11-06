@@ -12,6 +12,9 @@
 // unreachable server is asked again after 2, 5 and 10 minutes, then the run
 // moves on and that tile keeps its copy. The run stops asking past its
 // request or byte budget; the tiles not reached keep their copies.
+// Retry-After remains binding across retries, failed tiles and subdivisions.
+// A pause over 15 minutes stops further requests in this run instead of
+// shortening the provider's minimum; all unreached tiles keep their copies.
 import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
@@ -32,6 +35,7 @@ export const MAX_REQUESTS = 400;
 export const MAX_BYTES = 1024 ** 3;
 export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
+const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
 
 export function gapQuery(polygon) {
   const statements = [];
@@ -41,6 +45,20 @@ export function gapQuery(polygon) {
 
 const boxPolygon = ([s, w, n, e]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const providerPauseError = () => new Error('Overpass Retry-After exceeds this run’s wait limit; working copies retained');
+
+// Shared by every tile and subdivision in this run. Capture at headers so
+// an interrupted body or a final failed attempt cannot discard the pause.
+function rememberProviderPause(response, budget, now) {
+  const value = String(response.headers.get('retry-after') ?? '').trim();
+  const receivedAt = now();
+  let delay = 0;
+  if (/^\d+$/.test(value)) delay = Number(value) * 1000;
+  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) delay = Math.max(0, date - receivedAt); }
+  if (delay > MAX_PROVIDER_WAIT_MS) budget.providerWaitExceeded = true;
+  if (delay > 0) budget.retryNotBefore = Math.max(budget.retryNotBefore || 0, receivedAt + delay);
+}
 
 // Keep bytes already consumed even if reading fails. Stop the current body
 // at the cap rather than buffering an unbounded final response. A transport
@@ -69,18 +87,22 @@ async function readBudgetedBody(response, budget) {
 
 // One tile, split on an executed-query limit. Returns the OSM XML parts
 // with their database times, or throws (the tile keeps its copy).
-export async function fetchTile(tile, {fetcher = fetch, wait = sleep, budget, depth = 0} = {}) {
+export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date.now, budget, depth = 0} = {}) {
   const query = gapQuery(tile.polygon);
   for (let retry = 0; ; retry++) {
     if (budget.requests >= budget.maxRequests || budget.bytes >= budget.maxBytes) throw Object.assign(new Error('request or byte budget reached'), {budget: true});
+    if (budget.providerWaitExceeded) throw providerPauseError();
     if (budget.requests) await wait(PAUSE_MS);
+    while ((budget.retryNotBefore || 0) > now()) await wait(budget.retryNotBefore - now());
     budget.requests++;
     let response, text;
     try {
       response = await fetcher(API, {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(360_000)});
+      rememberProviderPause(response, budget, now);
       text = await readBudgetedBody(response, budget);
     } catch (error) {
       if (error.budget) throw error;
+      if (budget.providerWaitExceeded) throw providerPauseError();
       const failure = new Error(`fetch failed: ${error.message}`);
       if (retry < 3) { await wait(overpassRetryDelayMs(retry)); continue; }
       throw failure;
@@ -91,13 +113,14 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, budget, de
       const parts = [];
       for (const box of quarters(tile.box)) {
         const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box)).map(([outer]) => [outer]);
-        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, budget, depth: depth + 1}));
+        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, budget, depth: depth + 1}));
       }
       return parts;
     }
     if (!response.ok) {
       const error = new Error(`HTTP ${response.status}`);
-      if (overpassBusy(error) && retry < 3) { await wait(overpassRetryDelayMs(retry, response.headers.get('retry-after'))); continue; }
+      if (overpassBusy(error) && budget.providerWaitExceeded) throw providerPauseError();
+      if (overpassBusy(error) && retry < 3) { await wait(overpassRetryDelayMs(retry, response.headers.get('retry-after'), now())); continue; }
       throw error;
     }
     if (remark) throw new Error(`${tile.key}: Overpass remark: ${remark.trim().slice(0, 200)}`);
@@ -144,13 +167,13 @@ export async function writeTile(tile, parts, out, {run = promisify(execFile), pr
   return manifest;
 }
 
-export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch, wait = sleep, run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES} = {}) {
+export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch, wait = sleep, now = Date.now, run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES} = {}) {
   const budget = {requests: 0, bytes: 0, maxRequests, maxBytes};
   const results = [];
   for (const tile of tiles) {
     const dir = join(out, `gap-${tile.key}`);
     try {
-      const parts = await fetchTile(tile, {fetcher, wait, budget});
+      const parts = await fetchTile(tile, {fetcher, wait, now, budget});
       results.push(await writeTile(tile, parts, dir, {run, previous: index?.regions?.[`gap/${tile.key}`]}));
     } catch (error) {
       await mkdir(dir, {recursive: true});

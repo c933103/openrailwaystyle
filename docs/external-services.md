@@ -39,6 +39,14 @@ before any PBF download or unchanged-copy decision. Other regions and existing
 working copies retain the normal independent-publication rules. This adds no
 requests, retries, schedule changes or new upstreams.
 
+The manual gap-tile extractor preserves a received `Retry-After` across
+interrupted bodies, exhausted retries, later tiles and query-limit subdivisions.
+It waits for the provider's minimum as well as its existing retry/spacing
+schedule. A requested pause longer than 15 minutes stops further requests in
+that run rather than shortening the pause; remaining tiles retain their working
+copies or stay explicitly missing. This does not add retries, change queries,
+expand budgets or establish a provider-wide daily budget.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
