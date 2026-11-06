@@ -35,7 +35,21 @@ const slim = ({type, id, tags, geometry, members}) => type === 'way' ? {type, id
 const pick = element => slim(requireGeometry([element])[0]);
 await mkdir(cache, {recursive:true});
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-let requests = 0, downloaded = 0;
+let requests = 0, downloaded = 0, providerNotBefore = 0, providerStopped = false;
+const pauseError = () => Object.assign(new Error('Historic area provider Retry-After exceeds the 15-minute wait limit; previous publication retained'), {providerPause:true});
+async function waitForProvider(delay) {
+  if (providerStopped) throw pauseError();
+  await sleep(Math.max(delay, providerNotBefore - Date.now()));
+  providerNotBefore = 0;
+}
+function retainProviderPause(response) {
+  const received = Date.now(), value = String(response.headers.get('retry-after') ?? '').trim();
+  let pause = 0;
+  if (/^\d+$/.test(value)) pause = Number(value) * 1000;
+  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) pause = Math.max(0, date - received); }
+  if (pause > 15 * 60_000) providerStopped = true;
+  if (pause > 0) providerNotBefore = Math.max(providerNotBefore, received + pause);
+}
 const features = new Map(), coverage = [], regionElements = new Map();
 
 async function collect(box, depth = 0) {
@@ -52,18 +66,19 @@ async function collect(box, depth = 0) {
       const update = await updateElements({elements:stored.elements, since:stored.osmBase, previousQuery:stored.query, query, pick,
         warn:(...args) => console.warn(box.join(','), ...args),
         fetchText:async request => {
-          await sleep(requests ? 10000 : 0);
+          await waitForProvider(requests ? 10000 : 0);
           requests++;
           console.log('Fetching historic area changes', box.join(','));
           const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:request}),
             headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
+          retainProviderPause(response);
           const text = await response.text();
           downloaded += Buffer.byteLength(text);
           if (downloaded > 1_500_000_000) throw Object.assign(new Error('Historic area download budget exceeded'), {budget:true});
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return text;
         },
-        failed:error => { if (error.budget) throw error; }});
+        failed:error => { if (error.budget || error.providerPause) throw error; if (providerStopped) throw pauseError(); }});
       if (update) {
         json = {osm3s:{timestamp_osm_base:update.osmBase}, elements:update.elements};
         // Kept like a full response, so a run that fails later in the world
@@ -74,7 +89,7 @@ async function collect(box, depth = 0) {
   }
   let split = false;
   if (!json) for (let attempt = 0; ; attempt++) {
-    await sleep(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
+    await waitForProvider(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
     requests++;
     let failure;
     try {
@@ -83,6 +98,7 @@ async function collect(box, depth = 0) {
       try {
         response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
           headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
+        retainProviderPause(response);
         text = await response.text();
       } catch (error) { throw new Error(`Network: ${error.message}`); }
       downloaded += Buffer.byteLength(text);
@@ -104,6 +120,7 @@ async function collect(box, depth = 0) {
     }
     json = undefined;
     console.warn(box.join(','), failure.message);
+    if (providerStopped) throw pauseError();
     const next = heritageFailure(failure, attempt, depth);
     if (next === 'fail') throw failure;
     if (next === 'split') { split = true; break; }

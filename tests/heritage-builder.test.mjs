@@ -32,7 +32,7 @@ const html = detail => `<?xml version="1.0" encoding="UTF-8"?>
 <p><strong>Error</strong>: ${detail}</p></body></html>`;
 const oom = html('runtime error: Query run out of memory using about 2048 MB of RAM.');
 const timeout = html('runtime error: Query timed out in "query" at line 1 after 301 seconds.');
-const response = (status, body) => new Response(typeof body === 'string' ? body : JSON.stringify(body), {status});
+const response = (status, body, headers) => new Response(typeof body === 'string' ? body : JSON.stringify(body), {status, headers});
 
 // Evaluate the unchanged executable, linking its real classifier/geometry/tile
 // modules. Only external effects (fetch, time, filesystem root) are controlled.
@@ -49,7 +49,9 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
-  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [];
+  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [], times = [];
+  let now = Date.parse('2026-11-06T00:00:00Z');
+  class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const io = {
     mkdir:(path, options) => fs.mkdir(join(root, path), options),
     readFile:(path, options) => fs.readFile(join(root, path), options),
@@ -61,16 +63,16 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     },
   };
   const context = vm.createContext({
-    process:{env}, URLSearchParams,
+    process:{env}, URLSearchParams, Date:Clock,
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
-    setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
+    setTimeout:(callback, ms) => { sleeps.push(ms); now += ms; callback(); },
     console:{log:() => {}, warn:(...args) => warnings.push(args.join(' '))},
     fetch:async (url, options) => {
       assert.equal(url, 'https://overpass-api.de/api/interpreter');
       assert.equal(options.method, 'POST');
       const query = options.body.get('data');
-      calls.push(query);
+      calls.push(query); times.push(now);
       assert.ok(calls.length <= 40, 'unexpected request loop');
       return reply(query, calls.length);
     },
@@ -97,7 +99,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
-  return {root, calls, sleeps, warnings, writes, decisions, error};
+  return {root, calls, sleeps, warnings, writes, decisions, times, error};
 }
 
 async function checkPublished(result) {
@@ -342,3 +344,79 @@ test('the download budget also counts change requests and stops the run', async 
   const result = await run(t, () => response(200, moved), {env:previousEnv, files:storedParent(), byteLength:() => 1_500_000_001});
   await checkUnpublished(result, /download budget exceeded/, 1);
 });
+
+// Pause headers govern subsequent requests, including across update fallback
+// and actual query-size subdivision. All responses and clocks are synthetic.
+const pauseHeaders = value => ({'retry-after':value});
+for (const [name, value] of [['seconds', '600'], ['HTTP date', 'Fri, 06 Nov 2026 00:10:00 GMT'], ['boundary', '900']]) {
+  test(`heritage provider pause ${name} extends a full-query retry`, async t => {
+    const result = await run(t, (_, count) => count === 1 ? response(503, 'busy', pauseHeaders(value)) : response(200, complete));
+    assert.ifError(result.error);
+    assert.equal(result.calls.length, 2);
+    assert.equal(result.times[1] - result.times[0], name === 'boundary' ? 900000 : 600000);
+  });
+}
+test('heritage provider pause survives a failed response body', async t => {
+  const result = await run(t, (_, count) => count === 1 ? {headers:new Headers(pauseHeaders('600')), text:async () => {throw new Error('interrupted body');}}
+    : response(200, complete));
+  assert.ifError(result.error);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+test('heritage provider pause applies before query-limit subdivision', async t => {
+  const result = await run(t, query => query === parentQuery ? response(504, oom, pauseHeaders('600')) : response(200, complete));
+  await checkPublished(result);
+  assert.equal(result.times[1] - result.times[0], 600000);
+  assert.deepEqual(result.sleeps.slice(2), [10000, 10000, 10000]);
+});
+for (const [name, body] of [['failed changes', response(504, 'Gateway timeout', pauseHeaders('600'))],
+  ['invalid successful changes', response(200, 'not an adiff', pauseHeaders('600'))]]) {
+  test(`heritage provider pause survives ${name} and its existing full fallback`, async t => {
+    const result = await run(t, query => query.includes('[adiff:') ? body : response(200, complete), {env:previousEnv, files:storedParent()});
+    assert.ifError(result.error);
+    assert.deepEqual(result.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+    assert.equal(result.times[1] - result.times[0], 600000);
+  });
+}
+test('heritage successful full response retains its pause before the next region', async t => {
+  const next = [0,45,45,90], file = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+  const result = await run(t, (_, count) => response(200, complete, count === 1 ? pauseHeaders('600') : undefined), {files:{[file]:'{}'}});
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 2);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+test('heritage successful changes retain their pause before query-selection requests', async t => {
+  const older = parentQuery.replace(`way[heritage=1](${parent.join(',')});rel[heritage=1][type~"^(multipolygon|boundary)$"](${parent.join(',')});`, '');
+  const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''), pauseHeaders('600'))
+    : response(200, {elements:[{type:'way', id:42}]}), {env:previousEnv, files:storedParent(older)});
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 2);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+for (const value of ['901', '9'.repeat(400)]) {
+  test(`heritage excessive provider pause (${value.length} digits) stops before retry`, async t => {
+    const result = await run(t, () => response(503, 'busy', pauseHeaders(value)));
+    await checkUnpublished(result, /Retry-After exceeds/, 1);
+  });
+}
+test('heritage excessive pause blocks change fallback and retains previous publication', async t => {
+  const result = await run(t, query => query.includes('[adiff:') ? response(504, 'Gateway timeout', pauseHeaders('3600')) : response(200, complete), {env:previousEnv, files:storedParent()});
+  await checkUnpublished(result, /Retry-After exceeds/, 1);
+});
+test('heritage excessive success pause caches completed work but sends no later region', async t => {
+  const next = [0,45,45,90], file = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+  const result = await run(t, () => response(200, complete, pauseHeaders('3600')), {files:{[file]:'{}'}});
+  await checkUnpublished(result, /Retry-After exceeds/, 1);
+  assert.ok(result.writes.includes(`.snapshot-cache/heritage-v2-${parent.join('_')}.json`));
+});
+test('heritage success needs no extra request merely to finish a completed acquisition', async t => {
+  const result = await run(t, () => response(200, complete, pauseHeaders('3600')));
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 1);
+});
+for (const value of ['not a date', 'Thu, 05 Nov 2026 23:59:00 GMT']) {
+  test(`heritage invalid or elapsed pause keeps the existing retry baseline: ${value}`, async t => {
+    const result = await run(t, (_, count) => count === 1 ? response(503, 'busy', pauseHeaders(value)) : response(200, complete));
+    assert.ifError(result.error);
+    assert.deepEqual(result.sleeps, [0, 30000]);
+  });
+}
