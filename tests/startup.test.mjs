@@ -60,10 +60,11 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource, savedView } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
+  if (savedView) window.localStorage.setItem('atlas_view', JSON.stringify(savedView));
   const errors = [], maps = [];
   const fonts=[];
   if(fontFaces){
@@ -112,7 +113,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     getZoom() { return this.zoom; }
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
@@ -313,7 +314,7 @@ for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 
   } finally {maps[0]?.handlers.remove?.();dom.window.close();}
 });
 
-test('pitch activates 3D terrain, but overhead viewing or disabling relief avoids mesh requests', async () => {
+test('pitch activates 3D terrain and overhead preserves mode until explicitly disabled', async () => {
   const {dom,window,maps,errors}=await start();
   try {
     const map=maps[0];
@@ -349,10 +350,10 @@ test('pitch activates 3D terrain, but overhead viewing or disabling relief avoid
     relief.click();
     assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
     assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
-    assert.match(button.getAttribute('aria-label'),/Overhead map/);
+    assert.match(button.getAttribute('aria-label'),/Switch to 2D map/);
     map.setPitch(0);
-    assert.equal(map.getTerrain(),null,'returning overhead releases the mesh');
-    assert.equal(button.getAttribute('aria-pressed'),'false');
+    assert.equal(map.getTerrain()?.source,'terrain3d','overhead camera must not switch out of selected 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','3D icon stays selected at zero pitch');
     assert.deepEqual(errors,[]);
   }finally{dom.window.close();}
 });
@@ -382,6 +383,9 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
    assert.equal(map.getTerrain()?.source,'terrain3d');
    assert.equal(button.getAttribute('aria-pressed'),'true');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','manual overhead rotation keeps the 3D mesh');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
    // The loading policy responds to actual subsequent manual tilt, not to
    // the first 3D button press. Cross 65° explicitly before its assertions.
    map.setPitch(82);
@@ -389,12 +393,26 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
      'tilt beyond 65° enables coarser horizon tiles for all sources');
    assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
      '3D DEM uses a stronger distant-tile LOD budget');
+   // Mock the intermediate frames of MapLibre's 750 ms exit animation.
+   // They must not reselect 3D merely because their pitch remains nonzero.
+   const nativeEase=map.easeTo.bind(map);
+   map.easeTo=options=>{
+     if(options.pitch!==0)return nativeEase(options);
+     map.lastEase=options;
+     for(const pitch of [70,35,0]){
+       map.setPitch(pitch);
+       assert.equal(map.getTerrain(),null,`2D remains selected during exit at ${pitch}°`);
+       assert.equal(button.getAttribute('aria-pressed'),'false');
+     }
+   };
    button.click();
+   map.easeTo=nativeEase;
    assert.equal(map.lastEase.pitch,0);
    assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
    assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
      'overhead view restores MapLibre default LOD after a real high-pitch transition');
    assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(map.getTerrain(),null,'explicit 2D icon press releases terrain');
    map.zoom=15;
    button.click();
    assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
@@ -403,6 +421,93 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
    assert.equal(errors.length,1,'the synthetic tile error must also be logged');
    assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('an interrupted explicit switch to 2D does not lock out later intentional 3D tilt',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(80);
+   map.easeTo=options=>{
+     assert.equal(options.pitch,0);
+     map.setPitch(45);
+     assert.equal(map.getTerrain(),null,'interrupted exit remains 2D');
+     map.handlers.moveend();
+   };
+   button.click();
+   assert.equal(map.getTerrain(),null,'the explicit 2D transition remains selected');
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d',
+     'a later user tilt can select 3D after an interrupted exit');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','returning overhead retains new 3D mode');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('3D stays selected at 90-degree overhead through relief and scale changes',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(0);
+   assert.equal(map.getPitch(),0);
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   const relief=window.document.getElementById('relief');
+   relief.click();
+   assert.equal(map.getTerrain(),null);
+   relief.click();
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3},
+     're-enabling relief restores selected 3D while still overhead');
+   const scale=window.document.getElementById('terrain-exaggeration');
+   scale.value='5';scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5});
+   map.handlers.moveend();
+   const stored=JSON.parse(window.localStorage.getItem('atlas_view'));
+   assert.equal(stored.p,0);
+   assert.equal(stored.t,true,'3D state is persisted independently of pitch');
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{
+     writeText:async value=>{copied=value;}
+   }});
+   window.document.getElementById('share').click();
+   await new Promise(resolve=>setTimeout(resolve,0));
+   const shared=new URL(copied);
+   assert.equal(shared.searchParams.get('terrain3d'),'1',
+     'a zero-pitch shared link explicitly requests the 3D renderer');
+   assert.ok(shared.hash.startsWith('#'));
+   button.click();
+   assert.equal(map.getTerrain(),null,'2D requires a deliberate button press');
+   assert.equal(map.getPitch(),0);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(JSON.parse(window.localStorage.getItem('atlas_view')).t,false);
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d','a new deliberate tilt can enable 3D again');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','removing tilt does not undo 3D');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('shared top-down 3D initializes with the terrain mesh at zero pitch',async()=>{
+ const {dom,window,maps,errors}=await start({search:'?terrain3d=1#12.3/35/139'});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   assert.equal(map.getPitch(),0);
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(window.location.search,'','shared mode is consumed without dirty browser history');
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
 
@@ -442,6 +547,8 @@ test('terrain control preserves clean history while sharing the current polar 3D
      assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
      assert.equal(shared.searchParams.get('ref'),'terrain-history');
      assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
+     assert.equal(shared.searchParams.get('terrain3d'),pitch===60?'1':'0',
+       'share link preserves selected rendering mode separately from the camera');
      assert.equal(window.location.href,initialURL);
      assert.equal(window.history.length,initialLength);
      assert.deepEqual(window.history.state,state);
@@ -2746,4 +2853,62 @@ test('non-rail cached failures become visible again without a new error event',a
   active=[tile];f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),true,'cached failure remains known');
   tile.state='loaded';f.map.handlers.sourcedata({sourceId,tile,isSourceLoaded:true});assert.equal(f.status.classList.contains('error'),false);
  }finally{f.close();}
+});
+
+for (const styleLoaded of [false, true]) test(`explicit pitched 2D share survives ${styleLoaded ? 'warm' : 'cold'} camera restoration`, async () => {
+ const {dom,window,maps,errors}=await start({styleLoaded, search:'?terrain3d=0#12/35/139/0/45'});
+ try {
+   const map=maps[0];
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null,'initial jump preserves shared 2D mode');
+   // Exercise the registered once callback as well as the normal style handler.
+   for(const callback of map.onceHandlers?.['style.load']||[]) callback();
+   map.handlers['style.load']?.();
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null,'style-ready restoration stays in 2D');
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(window.location.search,'');
+   map.setPitch(50);
+   assert.equal(map.getTerrain()?.source,'terrain3d','a later user tilt can enable 3D');
+   assert.deepEqual(errors,[]);
+ } finally {dom.window.close();}
+});
+
+test('a remembered explicit 2D pitched globe view remains 2D', async () => {
+ const {dom,maps,errors}=await start({savedView:{c:[139,35],z:3,b:0,p:45,g:true,t:false}});
+ try {
+   const map=maps[0];
+   for(const callback of map.onceHandlers?.['style.load']||[]) callback();
+   map.handlers['style.load']?.();
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null);
+   map.setPitch(50);
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.deepEqual(errors,[]);
+ } finally {dom.window.close();}
+});
+
+test('switching to 2D stops an older ease before arming exit suppression',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();map.setPitch(75);
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   let easing=true;const frames=[];
+   // Pinned MapLibre easeTo begins with _stop(), whose previous ease emits
+   // moveend synchronously. That must not clear the new exit's suppression.
+   map.stop=()=>{if(easing){easing=false;map.handlers.moveend();}};
+   map.easeTo=options=>{
+     map.stop();
+     assert.equal(options.pitch,0);
+     for(const pitch of [60,35,0]) {
+       map.setPitch(pitch);
+       frames.push([pitch,map.getTerrain()]);
+     }
+   };
+   button.click();
+   assert.deepEqual(frames,[[60,null],[35,null],[0,null]]);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
 });

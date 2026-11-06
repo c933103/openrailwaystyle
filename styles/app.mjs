@@ -1,30 +1,30 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261103-data-dates-1';
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261103-data-dates-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261103-data-dates-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261103-data-dates-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261103-data-dates-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261103-data-dates-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261103-data-dates-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261103-data-dates-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261106-terrain-mode-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261106-terrain-mode-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261106-terrain-mode-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261106-terrain-mode-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261106-terrain-mode-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261106-terrain-mode-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261106-terrain-mode-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261106-terrain-mode-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261103-data-dates-1';
-import { createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261103-data-dates-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261103-data-dates-1';
-import {departureItem} from './departures-ui.mjs?v=20261103-data-dates-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261103-data-dates-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261103-data-dates-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261103-data-dates-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261103-data-dates-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261103-data-dates-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261103-data-dates-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261103-data-dates-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261103-data-dates-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261103-data-dates-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261103-data-dates-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261103-data-dates-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261103-data-dates-1';
-import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261103-data-dates-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261103-data-dates-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261106-terrain-mode-1';
+import { createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261106-terrain-mode-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261106-terrain-mode-1';
+import {departureItem} from './departures-ui.mjs?v=20261106-terrain-mode-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261106-terrain-mode-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261106-terrain-mode-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261106-terrain-mode-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261106-terrain-mode-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261106-terrain-mode-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261106-terrain-mode-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261106-terrain-mode-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261106-terrain-mode-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261106-terrain-mode-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261106-terrain-mode-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261106-terrain-mode-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261106-terrain-mode-1';
+import {installWorldStationLifecycle, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261106-terrain-mode-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261106-terrain-mode-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -44,6 +44,15 @@ const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
 // with page requests). A link with a position (#zoom/lat/lng) still wins.
 const VIEW_STORE = 'atlas_view';
 const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
+// Map rendering mode is independent of pitch. Accept an explicit mode from a
+// shared link; older locally saved views without a mode retain tilt-based 3D.
+const linkedTerrainMode = new URL(location.href).searchParams.get('terrain3d');
+let terrain3DSelected = linkedTerrainMode === '1' ? true : linkedTerrainMode === '0' ? false
+  : typeof rememberedView.t === 'boolean' ? rememberedView.t : terrain3DSelectedForPitch(rememberedView.p);
+// Ignore intermediate pitch frames while explicitly switching back to 2D.
+// A later manual tilt may enable 3D, but a top-down view never disables it.
+let terrain3DExitPending = false;
+let restoringTerrainView = false;
 // Capture the latest valid map link before URL normalization, including
 // explicit navigation while libraries or startup data are still loading.
 let linkedViewHash = parseViewHash(location.hash) ? location.hash : '';
@@ -55,7 +64,7 @@ addEventListener('hashchange', captureViewHash);
 function saveView() {
   if (!map) return;
   const c = map.getCenter();
-  try { localStorage.setItem(VIEW_STORE, JSON.stringify({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe()})); } catch {}
+  try { localStorage.setItem(VIEW_STORE, JSON.stringify({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe(), t: terrain3DSelected})); } catch {}
 }
 const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
@@ -71,7 +80,7 @@ let powerFacilities, powerMethods, electricitySignals;
 let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261103-data-dates-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261106-terrain-mode-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -588,13 +597,14 @@ function renderLegend() {
 function saveSettings() {
   writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
   const url = new URL(location.href);
-  const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key));
+  const hasSettings = SETTING_PARAMS.some(key => url.searchParams.has(key)) || url.searchParams.has('terrain3d');
   const hasView = Boolean(parseViewHash(url.hash));
   if (hasView) linkedViewHash = url.hash;
   // Normalize shared links once, not on every pan/zoom. Preserve unrelated
   // query parameters, non-map anchors and the current browser history state.
   if (hasSettings || hasView) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
+    url.searchParams.delete('terrain3d');
     if (hasView) url.hash = '';
     history.replaceState(history.state, '', url);
   }
@@ -603,6 +613,7 @@ function saveSettings() {
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
+  url.searchParams.set('terrain3d', terrain3DSelected ? '1' : '0');
   if (map) {
     const {lat, lng} = map.getCenter();
     url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
@@ -777,7 +788,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { syncTerrain3D(map, settings.relief, settings.terrainExaggeration);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.(); }
+  if (ready) { syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.(); }
   // The button must reflect the mesh AFTER its state is reconciled. When
   // relief is re-enabled while already tilted, no new pitch event occurs.
   updateTerrainButton();
@@ -1342,7 +1353,7 @@ const mapErrorMessage = () => {
     return 'OpenRailwayMap '+kind+' unavailable. '+(railFailed?'Retrying failed tiles. ':'')+
       'Independent map references remain where available; detail may be missing.';
   }
-  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, map?.getPitch())) {
+  if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, terrain3DSelected)) {
     return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
   }
   return 'Some map data could not load. Check your connection or reload to retry.';
@@ -1522,19 +1533,27 @@ const terrainScaleIndicator = Object.assign(document.createElement('span'),{
 terrainScaleIndicator.setAttribute('aria-hidden','true');
 terrainButton.append(terrainScaleIndicator);
 function updateTerrainButton() {
-  const enabled = terrain3DEnabled(settings.relief, map?.getPitch()) &&
+  const enabled = terrain3DEnabled(settings.relief, terrain3DSelected) &&
     map?.getTerrain?.()?.source === 'terrain3d';
   terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
   const scale = settings.terrainExaggeration;
   terrainScaleIndicator.textContent = `${scale}×`;
-  terrainButton.title = enabled ? `Overhead map (current 3D relief: ${scale}× vertical; keep current zoom)` :
+  terrainButton.title = enabled ? `Switch to 2D map (current 3D relief: ${scale}× vertical; keep current zoom)` :
     `Inspect 3D terrain and seabed (${scale}× vertical; change in Settings)`;
   terrainButton.setAttribute('aria-label',terrainButton.title);
 }
 terrainButton.addEventListener('click', () => {
   if (!map) return;
-  const was3D = terrain3DEnabled(settings.relief, map.getPitch());
+  const was3D = terrain3DEnabled(settings.relief, terrain3DSelected);
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  // easeTo stops any older camera animation and emits its moveend first.
+  // Finish that animation before arming suppression for the new 2D exit.
+  map.stop?.();
+  terrain3DSelected = !was3D;
+  terrain3DExitPending = was3D && terrain3DSelectedForPitch(map.getPitch());
+  syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);
+  updateTerrainButton();
+  saveView();
   const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
     globe:onGlobe(), latitude:map.getCenter().lat});
   map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
@@ -1835,15 +1854,17 @@ async function initialize() {
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
   const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  if (linked && linkedTerrainMode === null && terrain3DSelectedForPitch(linkedView.pitch))
+    terrain3DSelected = true;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
   // A centre beyond 85.05° exists only on the globe: open there, or the flat
   // map would pull it back to its edge.
   const startLat = linked ? linkedView.center[1] : Array.isArray(start.c) ? start.c[1] : 0;
   const startGlobe = Math.abs(startLat) > 85.051129 || (typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4);
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
-  // Restore an already-tilted map directly in 3D. Overhead views do not
-  // request additional terrain mesh tiles.
-  if (terrain3DEnabled(settings.relief, start.p)) style.terrain = {source:'terrain3d', exaggeration:terrainExaggeration(settings.terrainExaggeration)};
+  // Restore the selected rendering mode even for a directly overhead view.
+  // Fresh 2D visits still avoid terrain mesh requests.
+  if (terrain3DEnabled(settings.relief, terrain3DSelected)) style.terrain = {source:'terrain3d', exaggeration:terrainExaggeration(settings.terrainExaggeration)};
   const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
@@ -1861,9 +1882,18 @@ async function initialize() {
   map.on('style.load', () => syncHighPitchTileBudget(map));
   map.on('pitch', () => {
     syncHighPitchTileBudget(map);
-    syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+    const tilted = terrain3DSelectedForPitch(map.getPitch());
+    if (restoringTerrainView) {
+      // Applying a saved/shared camera must not override its explicit mode.
+    } else if (terrain3DExitPending) {
+      if (!tilted) terrain3DExitPending = false;
+    } else if (tilted) terrain3DSelected = true;
+    syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);
     updateTerrainButton();
   });
+  // Reset the temporary suppression even if the 2D transition is interrupted
+  // before reaching 0°; a later intentional tilt may enter 3D as normal.
+  map.on('moveend', () => { terrain3DExitPending = false; });
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson.gz',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
@@ -1887,7 +1917,11 @@ async function initialize() {
   const wanted = linked ? linkedView : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && (linked || startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
     // Again once the style has put the map on the globe.
-    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(parseViewHash(captureViewHash()) || wanted));
+    const restoreCamera = view => {
+      restoringTerrainView = true;
+      try { map.jumpTo(view); } finally { restoringTerrainView = false; }
+    };
+    restoreCamera(wanted); map.once('style.load', () => restoreCamera(parseViewHash(captureViewHash()) || wanted));
   }
   // Ordinary navigation updates the persisted local view through updatePolar.
   // Only explicitly navigating to a link fragment changes the browser URL.
@@ -2189,7 +2223,7 @@ $('terrain-exaggeration').addEventListener('change', () => {
   const next = Number($('terrain-exaggeration').value);
   try { settings.terrainExaggeration = terrainExaggeration(next); }
   catch { $('terrain-exaggeration').value = String(settings.terrainExaggeration); return; }
-  if (ready) syncTerrain3D(map, settings.relief, settings.terrainExaggeration);
+  if (ready) syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);
   updateTerrainButton();
   saveSettings();
 });
