@@ -3,8 +3,9 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
 import {updateElements} from './overpass-adiff.mjs';
-import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
+import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,createConveyingProviderPause,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
 const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
+const providerPause = createConveyingProviderPause(deadline);
 // What the conversion reads of an element; the stored elements keep only this.
 const pick=({type,id,tags,geometry})=>({type,id,tags,geometry});
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
@@ -25,11 +26,13 @@ if(process.env.PREVIOUS_DATA) {
   // Elements the conversion cannot use mean the full download, not a failed run.
   if(previous) update=await updateElements({...previous,query,pick,validate:elements=>conveyingGeoJSON({elements}),maxRequests:3,
     fetchText:async request=>{
+      await providerPause.wait();
       if (!conveyingRequestFits(deadline, 0)) throw new Error('No request fits the 52-minute budget');
       const startedAt=Date.now();
       if (requests >= 3) throw new Error('The three requests of this run are used');
       requests++;
       const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers});
+      providerPause.observe(response);
       if(!response.ok) throw await conveyingHttpError(response, startedAt);
       return response.text();
     },failed:error=>{changeError=error;}});
@@ -46,10 +49,12 @@ if(update) console.log(`Changes since ${update.since}: ${update.upserts} added o
 else for(let attempt=0,attempts=3-requests;;attempt++) {
   // Reached only when the change requests used all three requests.
   if (attempt >= attempts) throw new Error('Conveying acquisition deferred: no request left of the three for this run', {cause:changeError});
+  await providerPause.wait();
   if (!conveyingRequestFits(deadline, 0)) throw new Error('Conveying acquisition deferred: no full request fits the 52-minute budget');
   try {
     const startedAt = Date.now();
     const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(CONVEYING_REQUEST_MS),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
+    providerPause.observe(response);
     if(!response.ok) throw await conveyingHttpError(response, startedAt);
     data=await response.json();
     if(data.remark) throw new Error(`Overpass HTTP ${response.status} after ${Date.now()-startedAt}ms [${conveyingFailureKind(response.status,String(data.remark))}]: incomplete response`);
