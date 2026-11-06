@@ -39,12 +39,20 @@ A="${join(root, 'assets')}"
 flaky() { local f="$A/.$1"; local n=$(cat "$f" 2>/dev/null || echo 0); [ "$n" -lt "$2" ] && { echo $((n+1)) > "$f"; echo "\${3:-release not found}" >&2; exit 1; }; }
 case "$1 $2" in
   "release list") if [ -f "$A/.created" ] || [ "$LISTED" = 1 ]; then echo '[{"tagName":"railway-ways-store"}]'; else echo '[]'; fi;;
-  "release view") [ "$VIEW" = broken ] && { echo "HTTP 502: bad gateway" >&2; exit 1; }
+  "release view") [ "$VIEW" = after-upload ] && [ -f "$A/.upload" ] && { echo "HTTP 502: cannot reconcile" >&2; exit 1; }
+    [ "$VIEW" = broken ] && { echo "HTTP 502: bad gateway" >&2; exit 1; }
     flaky view "\${VIEW_404:-0}"
     [ -f "$A/.created" ] || { echo "release not found" >&2; exit 1; }
     printf '{"assets":['; first=1; for f in "$A"/*; do [ -e "$f" ] || continue; [ $first = 1 ] || printf ','; first=0; printf '{"name":"%s"}' "$(basename "$f")"; done; printf ']}';;
   "release create") touch "$A/.created";;
-  "release upload") case "$(basename "$4")" in $FAIL_UPLOAD) echo "upload failed" >&2; exit 1;; esac; cp "$4" "$A/";;
+  "release upload")
+    echo "$(basename "$4")" >> "$A/.uploads"
+    case "$(basename "$4")" in \${UPLOAD_FAIL_MATCH:-*})
+      [ "$UPLOAD_AFTER" = 1 ] && cp "$4" "$A/"
+      [ "$UPLOAD_AFTER" = corrupt ] && echo different > "$A/$(basename "$4")"
+      flaky upload "\${UPLOAD_FAIL:-0}" "\${UPLOAD_ERROR:-HTTP 500: Internal Server Error}";;
+    esac
+    case "$(basename "$4")" in $FAIL_UPLOAD) echo "upload failed" >&2; exit 1;; esac; cp "$4" "$A/";;
   "release download") case "$5" in \${DOWNLOAD_404_MATCH:-*}) flaky download "\${DOWNLOAD_404:-0}";; esac; cp "$A/$5" "$7/";;
   "release delete-asset") flaky delete "\${DELETE_FAIL:-0}" "HTTP 502: Server Error"; rm "$A/$4";;
   *) echo "unexpected gh $*" >&2; exit 2;;
@@ -173,4 +181,53 @@ test('an old asset GitHub will not delete is left for the next publication, neve
   await rm(join(root, 'assets', '.delete'), {force: true});
   assert.equal(cli(['publish', await store('e', 'japan', 5)], {GENERATION: '20261031T220000Z-5'}).status, 0);
   assert.deepEqual((await assets()).filter(name => name.startsWith('state-')), ['state-20261031T200000Z-4.json', 'state-20261031T220000Z-5.json']);
+});
+
+test('upload retries reconcile missing, committed, conflicting and uncertain outcomes', async t => {
+  const {root, cli, store, assets} = await release(t);
+  assert.equal(cli(['publish', await store('a', 'japan', 1)], {GENERATION:'20261031T060000Z-1'}).status, 0);
+  const reset = async () => {for(const name of ['.upload','.uploads']) await rm(join(root,'assets',name),{force:true});};
+  const uploads = async () => (await readFile(join(root,'assets','.uploads'),'utf8')).trim().split('\n');
+  await reset();
+  let out=cli(['publish',await store('b','japan',2)],{GENERATION:'20261106T060000Z-2',UPLOAD_FAIL:'1'});
+  assert.equal(out.status,0,out.stderr);
+  assert.match(out.stderr,/is absent after a transient error/);
+  assert.equal((await uploads()).filter(n=>n.startsWith('stage-')).length,2,'absent archive retried once');
+  for(const match of ['stage-*','state-*']) {
+    await reset();
+    const generation=match==='stage-*'?'20261106T070000Z-3':'20261106T080000Z-4';
+    out=cli(['publish',await store(generation,'japan',3)],{GENERATION:generation,UPLOAD_FAIL:'1',UPLOAD_AFTER:'1',UPLOAD_FAIL_MATCH:match});
+    assert.equal(out.status,0,out.stderr);
+    assert.match(out.stdout,/Confirmed uploaded asset/);
+    assert.equal((await uploads()).length,2,'a committed archive/state is not uploaded twice');
+  }
+  await reset();
+  out=cli(['publish',await store('conflict','japan',4)],{GENERATION:'20261106T090000Z-5',UPLOAD_FAIL:'1',UPLOAD_AFTER:'corrupt',UPLOAD_FAIL_MATCH:'stage-*'});
+  assert.notEqual(out.status,0);
+  assert.match(out.stderr,/different bytes; not replacing/);
+  assert.equal((await uploads()).length,1);
+  assert.ok(!(await assets()).includes('state-20261106T090000Z-5.json'));
+  for(const error of ['HTTP 403: Forbidden','HTTP 422: already exists']) {
+    await reset();
+    out=cli(['publish',await store(error.slice(5,8),'japan',5)],{GENERATION:'20261106T100000Z-6',UPLOAD_FAIL:'1',UPLOAD_ERROR:error});
+    assert.notEqual(out.status,0);
+    assert.equal((await uploads()).length,1,'permanent errors are not retried');
+  }
+  await reset();
+  out=cli(['publish',await store('uncertain','japan',6)],{GENERATION:'20261106T103000Z-8',UPLOAD_FAIL:'1',VIEW:'after-upload'});
+  assert.notEqual(out.status,0);
+  assert.equal((await uploads()).length,1,'unreadable reconciliation stops without retrying upload');
+  assert.ok(!(await assets()).includes('state-20261106T103000Z-8.json'));
+  await reset();
+  out=cli(['publish',await store('exhausted','japan',6)],{GENERATION:'20261106T110000Z-7',UPLOAD_FAIL:'9'});
+  assert.notEqual(out.status,0);
+  assert.equal((await uploads()).length,3,'bounded retry exhaustion');
+  assert.ok(!(await assets()).includes('state-20261106T110000Z-7.json'));
+});
+
+test('failed railway-ways runs retain unpublished bytes without calling a provider again',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/railway-ways.yml',import.meta.url),'utf8');
+ assert.match(workflow,/name: Preserve unpublished stage for recovery\n\s+if: failure\(\)\n\s+uses: actions\/upload-artifact@v4/);
+ assert.match(workflow,/path: railway-ways-data\//);
+ assert.match(workflow,/retention-days: 7/);
 });
