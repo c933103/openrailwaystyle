@@ -14,6 +14,7 @@
 // is the planned size and fits the disk; it is stopped past that size or
 // the time budget, and kept only when its MD5 matches. The file's own
 // replication timestamp must fall within a day of the planned date.
+import {responseChunks} from './response-chunks.mjs';
 import {createHash} from 'node:crypto';
 import {createReadStream, createWriteStream} from 'node:fs';
 import {mkdir, readFile, rename, rm, stat, statfs, writeFile} from 'node:fs/promises';
@@ -68,8 +69,9 @@ async function checksumText(response, id) {
   let received = 0;
   // Do not buffer an entire response before enforcing this small limit.
   // Count bytes before decoding: a filename can contain multibyte UTF-8.
-  // Exiting the iterator early cancels the response and releases its reader.
-  for await (const chunk of response.body || []) {
+  // Early exit initiates cancellation and releases the reader without waiting
+  // for cleanup; the byte-limit failure must remain bounded.
+  for await (const chunk of response.body ? responseChunks(response) : []) {
     received += chunk.byteLength;
     if (received > MAX_SIDECAR) throw new Error(`${id}: .md5 sidecar exceeds ${MAX_SIDECAR} bytes`);
     chunks.push(chunk);

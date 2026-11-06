@@ -317,3 +317,20 @@ test('bytes from failed body reads count against retries; UTF-8 is decoded acros
   assert.equal(b.bytes, 5 + bytes.length);
   assert.equal(parts[0].text, text);
 });
+
+for(const mode of ['pending','rejects','throws'])test(`gap byte-budget failure does not wait for cancellation that ${mode}`,async()=>{
+ let release,timer,cancelled=0,reads=0,calls=0;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const b=budget({maxBytes:7});
+ const body=new ReadableStream({
+  pull(controller){reads++;controller.enqueue(new Uint8Array(4));},
+  cancel(){cancelled++;if(mode==='throws')throw Error('cleanup throw');if(mode==='rejects')return Promise.reject(Error('cleanup rejection'));return cancellation;},
+ },{highWaterMark:0});
+ const fetcher=async()=>{calls++;return new Response(body);};
+ const result=fetchTile(tile,{fetcher,wait:async()=>{},budget:b});
+ try{
+  await assert.rejects(Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('gap checkpoint waited for cleanup')),1000);})]),error=>error.budget===true&&/byte budget/.test(error.message));
+  assert.equal(cancelled,1);assert.equal(body.locked,false);assert.equal(reads,2);assert.equal(b.bytes,8);assert.equal(calls,1);
+  await assert.rejects(fetchTile(tile,{fetcher,wait:async()=>{},budget:b}),/budget/);assert.equal(calls,1);
+ }finally{clearTimeout(timer);release();await result.catch(()=>{});}
+});

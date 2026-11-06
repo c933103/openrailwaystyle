@@ -78,7 +78,8 @@ async function readBudgetedBody(response, budget) {
       chunks.push(Buffer.from(value));
     }
   } catch (error) {
-    try { await reader.cancel(error); } catch {}
+    // Cleanup cannot hold the budget/transport error or reader lock open.
+    try { reader.cancel(error).catch(() => {}); } catch {}
     throw error;
   } finally {
     reader.releaseLock();

@@ -336,3 +336,19 @@ test('with osmium installed, the real steps keep railway data and drop the rest'
     assert.deepEqual(readdirSync(dir).sort(), ['extract.json', 'filtered.osm.pbf']);
   } finally { rmSync(dir, {recursive: true, force: true}); rmSync(src, {recursive: true, force: true}); }
 });
+
+for(const mode of ['pending','rejects','throws'])test(`oversized checksum fails promptly when stream cancellation ${mode}`,async()=>{
+ const dir=temp(),f=fixture();let release,timer,cancelled=0,pulls=0;
+ const cancellation=new Promise(resolve=>{release=resolve;});
+ const body=new ReadableStream({
+  pull(controller){pulls++;controller.enqueue(new Uint8Array(1024));},
+  cancel(){cancelled++;if(mode==='throws')throw Error('cleanup throw');if(mode==='rejects')return Promise.reject(Error('cleanup rejection'));return cancellation;},
+ },{highWaterMark:0});
+ const fetcher=async(url,init)=>url.endsWith('.md5')?new Response(body):f.fetcher(url,init);
+ const result=acquireRegion(region('europe/germany',9),dir,{...f,fetcher});
+ try{
+  await assert.rejects(Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sidecar waited for cleanup')),1000);})]),/\.md5 sidecar exceeds 4096 bytes/);
+  assert.equal(cancelled,1);assert.equal(pulls,5);assert.equal(body.locked,false);
+  assert.deepEqual(f.calls.map(c=>c.method),['HEAD']);assert.deepEqual(f.commands,[]);assert.deepEqual(readdirSync(dir),[]);
+ }finally{clearTimeout(timer);release();await result.catch(()=>{});rmSync(dir,{recursive:true,force:true});}
+});
