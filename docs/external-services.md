@@ -95,6 +95,11 @@ region caches. A complete acquisition with no requests left may still publish.
 The four-attempt ceiling, change-first/fallback behavior, query/cache identity,
 schedule and 1.5 GB per-run budget are unchanged; this is not a shared daily cap.
 
+A level-crossing body exceeding the existing byte limit initiates stream
+cancellation without waiting for cleanup to settle. Even a hanging cancellation
+cannot postpone the budget error or retain its reader lock. The consumed chunk
+remains counted, no remainder is read, and no new request or retry is introduced.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
