@@ -1546,6 +1546,9 @@ terrainButton.addEventListener('click', () => {
   if (!map) return;
   const was3D = terrain3DEnabled(settings.relief, terrain3DSelected);
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  // easeTo stops any older camera animation and emits its moveend first.
+  // Finish that animation before arming suppression for the new 2D exit.
+  map.stop?.();
   terrain3DSelected = !was3D;
   terrain3DExitPending = was3D && terrain3DSelectedForPitch(map.getPitch());
   syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);

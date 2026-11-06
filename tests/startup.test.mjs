@@ -2888,3 +2888,27 @@ test('a remembered explicit 2D pitched globe view remains 2D', async () => {
    assert.deepEqual(errors,[]);
  } finally {dom.window.close();}
 });
+
+test('switching to 2D stops an older ease before arming exit suppression',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();map.setPitch(75);
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   let easing=true;const frames=[];
+   // Pinned MapLibre easeTo begins with _stop(), whose previous ease emits
+   // moveend synchronously. That must not clear the new exit's suppression.
+   map.stop=()=>{if(easing){easing=false;map.handlers.moveend();}};
+   map.easeTo=options=>{
+     map.stop();
+     assert.equal(options.pitch,0);
+     for(const pitch of [60,35,0]) {
+       map.setPitch(pitch);
+       frames.push([pitch,map.getTerrain()]);
+     }
+   };
+   button.click();
+   assert.deepEqual(frames,[[60,null],[35,null],[0,null]]);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
