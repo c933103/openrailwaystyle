@@ -37,12 +37,19 @@ function distributionSanitizer(bytes) {
   return {sanitize,close:()=>dom.window.close()};
 }
 
-test('MapLibre backport is the pinned one-line upstream fix, with no stale source map',async()=>{
+test('MapLibre backport changes only the attribution loop and GeoJSON parse method, with no stale source map',async()=>{
   assert.equal(digest(original), MAPLIBRE_BACKPORT.upstreamSha256);
   assert.equal(digest(patched), MAPLIBRE_BACKPORT.sha256);
-  const expected=original.toString('utf8').replace(
+  let expected=original.toString('utf8').replace(
     'of e.attributes)d.isPossiblyDangerous', 'of Array.from(e.attributes))d.isPossiblyDangerous'
   ).replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
+  const workerMethod=text=>{
+    const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
+    assert.equal(matches.length,1);return matches[0][0];
+  };
+  const fixedMethod=workerMethod(Buffer.from(patched).toString('utf8'));
+  assert.notEqual(workerMethod(expected),fixedMethod);
+  expected=expected.replace(workerMethod(expected),fixedMethod);
   assert.equal(Buffer.from(patched).toString('utf8'),expected);
   assert.match(expected,/MapLibre/);
   assert.ok(!expected.includes('sourceMappingURL='));
@@ -54,6 +61,14 @@ test('MapLibre backport is the pinned one-line upstream fix, with no stale sourc
     dom.window.eval(compiled.outputFiles[0].text);
     for(const [input,expected] of fixtures)assert.equal(dom.window.sourceDOM.DOM.sanitize(input),expected);
   } finally {dom.window.close();}
+});
+
+test('the exact prior atlas.1 cache is upgraded to the same current distribution',async()=>{
+  const previous=Buffer.from(original.toString('utf8').replace('of e.attributes)d.isPossiblyDangerous',
+    'of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+  assert.equal(digest(previous),MAPLIBRE_BACKPORT.previousSha256);
+  assert.deepEqual(Buffer.from(await backportMapLibre524(previous,webcrypto.subtle)),Buffer.from(patched));
+  await assert.rejects(backportMapLibre524(Buffer.concat([previous,Buffer.from(' ')]),webcrypto.subtle),/Unexpected MapLibre input/);
 });
 
 test('the actual patched distribution removes every unsafe attribute and preserves credits',()=>{

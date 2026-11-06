@@ -10,7 +10,7 @@ import {rendererFixture} from './browser-renderer-fixture.mjs';
 
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 const base='http://127.0.0.1:4173/',assets=await rendererFixture(base);
-const library=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.1.js'));
+const library=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.2.js'));
 assert.ok(library);
 const points=prefix=>({type:'FeatureCollection',features:Array.from({length:8},(_,i)=>i).map(i=>({type:'Feature',id:i+1,
  properties:{id:`node-${prefix}${i}`,name:'Collision test station',atlas_name:'Collision test station',tier:3,rank:i,

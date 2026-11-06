@@ -6,6 +6,7 @@ import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
 import {observeRequiredBrowserLibraries} from './required-browser-libraries.mjs';
+import {MAPLIBRE_BACKPORT} from '../styles/map-controls.mjs';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 
 // Exercise the public attribution control with inert local markup. No event
@@ -71,7 +72,7 @@ try {
         archiveVersion:header.specVersion,archiveEntries:header.numTileEntries};
     });
     assert.deepEqual(actual,{version:'5.24.0',realMap:true,canvas:true,stylesheet:'absolute',archiveVersion:3,archiveEntries:1});
-    for(const name of ['maplibre-gl-5.24.0-atlas.1.js','maplibre-gl-5.24.0.css','pmtiles-4.2.1.js']){
+    for(const name of ['maplibre-gl-5.24.0-atlas.2.js','maplibre-gl-5.24.0.css','pmtiles-4.2.1.js']){
       assert.ok(codeRequests.some(url=>new URL(url).pathname===path+'vendor/'+name),name+' must load from the actual project path');
     }
     assert.deepEqual(blocked,[],'the app must make zero requests to code CDNs');
@@ -84,12 +85,18 @@ try {
   // Exercise native Web Crypto and actual cached upstream scripts. Seed only
   // the old Cache Storage keys, without warming HTTP/stylesheet caches for
   // the new first-party URLs. Cache keys must not become network requests.
-  for(const mode of ['exact-cache','first-party-cache','patched-cache','tampered-cache','crypto-unavailable']){
+  for(const mode of ['exact-cache','first-party-cache','patched-cache','previous-patched-cache','tampered-cache','crypto-unavailable']){
     const base=server.origin+'/atlas-project/',context=await browser.newContext({viewport:{width:1000,height:720}});
     const page=await context.newPage(),cdnRequests=[],blocked=[];
-    const assets=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
-      body:(await readFile(new URL(mode==='patched-cache'&&library.sourceSha256?`../styles/${library.target}`:`../node_modules/${library.package}/${library.source}`,import.meta.url))).toString('base64'),
-      legacy:mode==='patched-cache'?new URL(library.target,base).href:mode==='first-party-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0.js':library.target,base).href:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`})));
+    const assets=await Promise.all(BROWSER_LIBRARIES.map(async library=>{
+      let bytes=await readFile(new URL(mode==='patched-cache'&&library.sourceSha256?`../styles/${library.target}`:`../node_modules/${library.package}/${library.source}`,import.meta.url));
+      if(mode==='previous-patched-cache'&&library.sourceSha256)bytes=Buffer.from(bytes.toString('utf8')
+        .replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+      const legacy=mode==='previous-patched-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0-atlas.1.js':library.target,base).href
+        :mode==='patched-cache'?new URL(library.target,base).href:mode==='first-party-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0.js':library.target,base).href
+        :`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`;
+      return {...library,body:bytes.toString('base64'),legacy};
+    }));
     const targets=new Set(assets.map(library=>new URL(library.target,base).href));
     await installEmptyMapProviders(context,base,{firstParty:'network'});
     await page.addInitScript(mode=>{
@@ -112,7 +119,7 @@ try {
     await page.route('https://cdn.jsdelivr.net/**',route=>{cdnRequests.push(route.request().url());return route.abort('blockedbyclient');});
     await page.goto(base+'__legacy-cache-check');
     await page.evaluate(async({base,assets,mode})=>{
-      const cache=await caches.open(mode==='first-party-cache'?'atlas-shell-23':mode==='patched-cache'?'atlas-shell-24':'atlas-shell-22');
+      const cache=await caches.open(mode==='previous-patched-cache'?'atlas-shell-69':mode==='first-party-cache'?'atlas-shell-23':mode==='patched-cache'?'atlas-shell-24':'atlas-shell-22');
       await cache.put(base,new Response('previous installed app',{headers:{'content-type':'text/html'}}));
       for(const asset of assets){
         let body=Uint8Array.from(atob(asset.body),character=>character.charCodeAt(0));
@@ -125,7 +132,7 @@ try {
     },{base,assets,mode});
     await page.route(url=>targets.has(url.href),route=>{blocked.push(route.request().url());return route.abort('blockedbyclient');});
     await page.goto(base+'?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#5/30/114',{waitUntil:'domcontentloaded'});
-    if(['exact-cache','first-party-cache','patched-cache'].includes(mode))await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+    if(['exact-cache','first-party-cache','patched-cache','previous-patched-cache'].includes(mode))await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
     else await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('Map libraries could not load'),null,{timeout:10000});
     await page.waitForFunction(()=>window.__legacyPending===0);
     const actual=await page.evaluate(()=>{
@@ -138,10 +145,10 @@ try {
     });
     assert.equal(blocked.length,3,'all new library paths fail in this upgrade scenario');
     assert.deepEqual(cdnRequests,[],'legacy cache recovery must never download from the CDN');
-    if(['exact-cache','first-party-cache','patched-cache'].includes(mode)){
+    if(['exact-cache','first-party-cache','patched-cache','previous-patched-cache'].includes(mode)){
       assert.equal(actual.ready,true);assert.equal(actual.version,'5.24.0');assert.equal(actual.pmtiles,'function');
       assert.equal(actual.blobScripts,2);assert.equal(actual.recoveredCss,true,JSON.stringify(actual));assert.equal(actual.cssBeforeApp,true);
-      assert.deepEqual(actual.digests.map(row=>row.sha256).sort(),assets.flatMap(row=>row.sourceSha256&&mode!=='patched-cache'?[row.sourceSha256,row.sourceSha256,row.sha256]:[row.sha256]).sort());
+      assert.deepEqual(actual.digests.map(row=>row.sha256).sort(),assets.flatMap(row=>row.sourceSha256&&mode!=='patched-cache'?[mode==='previous-patched-cache'?MAPLIBRE_BACKPORT.previousSha256:row.sourceSha256,mode==='previous-patched-cache'?MAPLIBRE_BACKPORT.previousSha256:row.sourceSha256,row.sha256]:[row.sha256]).sort());
     }else{
       assert.equal(actual.ready,false);assert.equal(actual.blobScripts,0);assert.equal(actual.recoveredCss,false);
       assert.equal(actual.digests.length,mode==='tampered-cache'?3:0);

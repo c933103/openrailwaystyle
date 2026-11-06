@@ -50,3 +50,5 @@ for (const [source,target] of [['@mapbox/point-geometry/LICENSE','point-geometry
 // A reused development/deployment directory may contain the old generated
 // distribution. Only publish the fixed immutable asset after a successful build.
 await rm('styles/vendor/maplibre-gl-5.24.0.js', {force:true});
+
+await rm('styles/vendor/maplibre-gl-5.24.0-atlas.1.js', {force:true});

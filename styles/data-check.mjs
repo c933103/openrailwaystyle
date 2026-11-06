@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261106-service-source-dates-1';
+import {SEARCH_API} from './map-model.mjs?v=20261106-geojson-parse-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
