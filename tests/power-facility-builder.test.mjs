@@ -44,10 +44,11 @@ async function run(t, files, rules, {old = true, existingOutput = {}} = {}) {
       times.push(clock); fs.writeFileSync('times.json', JSON.stringify(times));
       const rule = rules.find(r => r.has.every(part => query.includes(part)) && (used.get(r) || 0) < (r.times ?? Infinity));
       if (rule) used.set(rule, (used.get(rule) || 0) + 1);
+      if (rule?.fetchError) throw new DOMException(rule.fetchError, 'TimeoutError');
       const headers = {...rule?.headers};
       if (rule?.dateDelay) headers['Retry-After'] = new Date(clock + rule.dateDelay).toUTCString();
       const response = new Response(rule ? rule.text : 'no full download', {status: rule ? rule.status : 500, headers});
-      if (rule?.bodyError) response.text = async () => { throw new TypeError('fetch failed: interrupted body'); };
+      if (rule?.bodyError) response.text = async () => { throw new TypeError(typeof rule.bodyError === 'string' ? rule.bodyError : 'fetch failed: interrupted body'); };
       return response;
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd: root, env: {...process.env, POWER_OUTPUT: 'out', POWER_REFRESH: ''}, encoding: 'utf8'});
@@ -209,4 +210,29 @@ for (const path of ['full', 'change']) test(`a valid energy ${path} response wit
   assert.match(result.stderr, /Retry-After.*budget exceeded/);
   assert.equal((await read(file(boxes[0]))).response.osm3s.timestamp_osm_base, BASE, 'valid completed work remains reusable');
   for (const [name, bytes] of Object.entries(existingOutput)) assert.equal((await outputBytes(name)).toString(), bytes, name);
+});
+
+
+for (const failure of [{fetchError: 'request timed out'}, {bodyError: 'body timed out'}]) test(`energy transport timeout ${Object.keys(failure)[0]} retries the same query without spatial fan-out`, async t => {
+  const files = {...current}; delete files[file(boxes[0])];
+  const {result, requests, times, names} = await run(t, files, [
+    {has: [], times: 1, status: 200, text: '', ...failure},
+    {has: [], status: 200, text: ids([at(boxes[0], 100)])}], {old: false});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1], requests[0], 'a transport timeout says nothing about the query area');
+  assert.equal(times[1] - times[0], 120000, 'retain the busy/transport backoff');
+  assert.ok(!(await names()).some(name => name.endsWith('.split')), 'no query-limit checkpoint for a transport failure');
+});
+
+
+for (const failure of [{fetchError: 'request timed out'}, {bodyError: 'body timed out'}, {bodyError: 'stream memory allocation failed'}]) test(`persistent energy transport failure ${JSON.stringify(failure)} keeps four attempts and no split checkpoint`, async t => {
+  const files = {...current}; delete files[file(boxes[0])];
+  const {result, requests, times, names, published} = await run(t, files, [{has: [], status: 200, text: '', ...failure}], {old: false});
+  assert.notEqual(result.status, 0);
+  assert.equal(requests.length, 4);
+  assert.ok(requests.every(query => query === requests[0]));
+  assert.deepEqual(times.slice(1).map((time, index) => time - times[index]), [120000, 300000, 600000]);
+  assert.ok(!(await names()).some(name => name.endsWith('.split')));
+  await assert.rejects(published(), {code: 'ENOENT'});
 });

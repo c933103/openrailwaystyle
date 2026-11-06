@@ -98,12 +98,14 @@ async function collect(box,depth=0) {
     if(!split)for(let attempt=0;attempt<attempts;attempt++) {
       await waitForRequest(wait);
       requests++;
+      let readingResponse=true;
       try {
         console.log('Fetching railway energy supplies',box.join(','),'attempt',attempt+1);
         const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),
           headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
         rememberProviderPause(response);
         const text=await response.text();downloaded+=Buffer.byteLength(text);
+        readingResponse=false;
         if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
         if(!response.ok)throw Object.assign(new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160)}`),{retryAfter:response.headers.get('retry-after')});
         json=JSON.parse(text);
@@ -112,12 +114,15 @@ async function collect(box,depth=0) {
         if(providerWaitExceeded)throw providerPauseError();
         break;
       } catch(error) {
+        // Fetch/header/body failures do not prove the query exceeded a limit,
+        // even when their message says timeout or memory. Preserve the cause.
+        if(readingResponse)error=Object.assign(new Error(`fetch failed: ${describeOverpassError(error)}`,{cause:error}),{transport:true});
         json=undefined;
         console.warn(box.join(','),describeOverpassError(error));
         if(providerWaitExceeded)throw providerPauseError();
         if(/budget exceeded/.test(error.message))throw error;
         // Admission HTTP errors can say "timeout" without executing the query.
-        if(!/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
+        if(!error.transport && !/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
         if(attempt===attempts-1)throw error;
         wait=Math.max(overpassBusy(error)?overpassRetryDelayMs(attempt):Math.min(60000,20000*(attempt+2)),retryNotBefore-Date.now());
         if(overpassBusy(error))console.warn(`Overpass busy or unreachable; retrying in ${Math.round(wait/60000)} min`);
