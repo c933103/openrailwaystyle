@@ -269,6 +269,13 @@ be compared with the current one needs a full pass.
   (HTTP 502 in run 41808912606) is asked again once, then left with a warning
   for the next publication: it never fails the run, which would leave the
   dataset due and start another Overpass download.
+  Upload errors from transient HTTP/network failures are reconciled before a
+  bounded retry: an already-present asset is downloaded and SHA-256 checked
+  against the local bytes, an absent asset is retried up to twice, and a
+  conflicting or unreadable result stops publication without replacement.
+  A failed railway-ways run retains its unpublished output as a seven-day
+  Actions artifact for recovery, rather than discarding the fetched stage.
+  That artifact is evidence, not an automatically accepted published generation.
 - GitHub has answered 404 for this release while it existed (run 41644692570),
   which gh reports as "release not found", the same words as a release never
   made. Such an answer is asked again after 15 s, twice. Before a missing

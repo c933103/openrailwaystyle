@@ -12,10 +12,11 @@
 //   node scripts/railway-ways-release.mjs load <directory> [VARIABLE]
 //     (VARIABLE, PREVIOUS_DATA by default, names the directory in GITHUB_ENV)
 //   node scripts/railway-ways-release.mjs publish <store directory>
+import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
+import {appendFileSync, closeSync, openSync, readSync, rmSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join, resolve} from 'node:path';
+import {basename, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const RELEASE = 'railway-ways-store';
@@ -74,6 +75,40 @@ export function releaseAssets(release) {
     return null;
   }
 }
+// An upload can be committed by GitHub before the client sees an error.
+// Reconcile the named asset before any retry, never use --clobber, and do
+// not advance the state pointer until the archive upload is confirmed.
+const TRANSIENT_UPLOAD = /(?:HTTP (?:429|5\d\d)\b|ECONNRESET|ETIMEDOUT|unexpected EOF|context deadline exceeded|TLS handshake timeout)/i;
+function fileDigest(file) {
+  const hash = createHash('sha256'), buffer = Buffer.alloc(1024 * 1024), fd = openSync(file, 'r');
+  try { let size; while ((size = readSync(fd, buffer, 0, buffer.length, null))) hash.update(buffer.subarray(0, size)); }
+  finally { closeSync(fd); }
+  return hash.digest('hex');
+}
+export function uploadReleaseAsset(release, file) {
+  const name = basename(file);
+  for (let attempt = 0; ; attempt++) {
+    try { gh('release', 'upload', release, file); return; }
+    catch (error) {
+      if (!TRANSIENT_UPLOAD.test(String(error.stderr || error.message))) throw error;
+      // Failure to read the release leaves the outcome uncertain: stop.
+      const names = releaseAssets(release);
+      if (!names) throw new Error(`${release}: upload outcome is uncertain because the release is unavailable`);
+      if (names.includes(name)) {
+        const work = mkdtempSync(join(tmpdir(), 'release-upload-check-'));
+        try {
+          ghRetrying('release', 'download', release, '--pattern', name, '--dir', work);
+          if (fileDigest(join(work, name)) !== fileDigest(file)) throw new Error(`${name}: remote upload has different bytes; not replacing it`);
+          console.log(`Confirmed uploaded asset ${name} after a transient error`);
+          return;
+        } finally { rmSync(work, {recursive: true, force: true}); }
+      }
+      if (attempt >= RETRIES) throw error;
+      console.warn(`Upload ${name} is absent after a transient error; retrying in ${RETRY_MS / 1000} s`);
+      pause(RETRY_MS);
+    }
+  }
+}
 const assets = () => releaseAssets(RELEASE);
 function downloader(directory) {
   const cache = new Map();
@@ -126,14 +161,14 @@ export function publish(store, generation) {
     if (paths.length) {
       const archive = `stage-${stage}-${generation}.tar.zst`;
       execFileSync('tar', ['--zstd', '-cf', join(work, archive), '-C', store, ...paths]);
-      gh('release', 'upload', RELEASE, join(work, archive));
+      uploadReleaseAsset(RELEASE, join(work, archive));
       state.archives[stage] = archive;
     } else delete state.archives[stage];
   }
   // The state goes up after the archive it names.
   const stateName = `state-${generation}.json`;
   writeFileSync(join(work, stateName), JSON.stringify(state));
-  gh('release', 'upload', RELEASE, join(work, stateName));
+  uploadReleaseAsset(RELEASE, join(work, stateName));
   console.log(`Published ${stateName}`);
   // Keep this generation and the previous usable one; delete the rest.
   const all = [...names, stateName];

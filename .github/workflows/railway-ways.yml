@@ -41,3 +41,14 @@ jobs:
         # New generation-named assets only, never replaced in place; older
         # generations are deleted after the new state is up.
         run: GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/railway-ways-release.mjs publish railway-ways-data
+      # A failed publication must not discard the already downloaded stage.
+      # This is recovery evidence, not an automatically accepted generation.
+      - name: Preserve unpublished stage for recovery
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-ways-unpublished-${{ github.run_id }}-${{ github.run_attempt }}
+          path: railway-ways-data/
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
