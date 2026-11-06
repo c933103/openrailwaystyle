@@ -1,3 +1,4 @@
+import * as crossingRequest from '../scripts/crossing-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -113,14 +114,14 @@ async function changeRun(t, extra = {}) {
   const since = '2026-10-01T00:00:00Z', roots = crossingData.startRegions();
   await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra, reply: undefined}));
   await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
-  const SEP = crossingData.SEP, calls = [];
+  const SEP = crossingData.SEP, calls = [], sleeps = [];
   const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
   const source = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   const fs = await import('node:fs/promises');
   const context = vm.createContext({
     process: {env: {OVERPASS_URL: 'https://overpass.fixture.invalid/api/interpreter', PREVIOUS_DATA: previous}},
     URL, URLSearchParams, Buffer, Date: FixedDate, AbortSignal: {timeout: () => undefined},
-    console: {log() {}, warn() {}}, setTimeout: callback => callback(),
+    console: {log() {}, warn() {}}, setTimeout: (callback, ms) => { sleeps.push(ms); callback(); },
     fetch: async (url, request) => {
       const query = request.body.get('data'); calls.push(query);
       assert.ok(calls.length <= 40);
@@ -134,7 +135,7 @@ async function changeRun(t, extra = {}) {
     },
   });
   const dependencies = {'node:fs/promises': {...fs, rm: async () => { throw new Error('no output expected'); }}, 'node:zlib': zlib,
-    './crossing-data.mjs': crossingData, './crossing-checkpoint.mjs': checkpoints};
+    './crossing-request.mjs': crossingRequest, './crossing-data.mjs': crossingData, './crossing-checkpoint.mjs': checkpoints};
   const module = new vm.SourceTextModule(source, {context, initializeImportMeta: meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; }});
   await module.link(specifier => {
     const values = dependencies[specifier]; assert.ok(values, specifier);
@@ -142,7 +143,7 @@ async function changeRun(t, extra = {}) {
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
-  return {error, calls, roots, since};
+  return {error, calls, roots, since, sleeps};
 }
 
 test('the builder applies a region\'s changes and reads the affected crossings again, with no scheduled full download', async t => {
@@ -238,4 +239,21 @@ test('a crossing elsewhere, reached through a way that also runs in this region,
   assert.ok(!crossingData.inBox(roots[0].box, 10, 10), 'node 3 lies outside the first region');
   assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3], AT));
   assert.match(error?.message || '', /Suspiciously few crossings worldwide: 2/, 'crossing 3 not added by this region');
+});
+
+
+test('Retry-After survives a deferred incremental region and applies to the next region', async t => {
+  const {calls, sleeps, roots, since} = await changeRun(t, {extraction: crossingData.crossingExtraction(), reply: (query, roots, since) =>
+    query === crossingData.crossingChangesQuery(roots[0].box, since, AT)
+      ? new Response('busy', {status: 429, headers: {'Retry-After': '600'}}) : null});
+  assert.deepEqual(calls.slice(0, 5), Array(5).fill(crossingData.crossingChangesQuery(roots[0].box, since, AT)));
+  assert.equal(calls[5], crossingData.crossingChangesQuery(roots[1].box, since, AT));
+  assert.deepEqual(sleeps.slice(0, 6), [0, 600000, 600000, 600000, 600000, 600000]);
+});
+
+test('an excessive Retry-After stops incremental acquisition without asking another region', async t => {
+  const {calls, error} = await changeRun(t, {extraction: crossingData.crossingExtraction(), reply: () =>
+    new Response('busy', {status: 429, headers: {'Retry-After': '1800'}})});
+  assert.match(error?.message || '', /Retry-After exceeds/);
+  assert.equal(calls.length, 1);
 });

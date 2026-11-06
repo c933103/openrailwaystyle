@@ -1,3 +1,4 @@
+import * as crossingRequest from '../scripts/crossing-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
@@ -57,7 +58,7 @@ async function run(directory, reply, extraEnv = {}) {
     'node:fs/promises': {...fs, ...Object.fromEntries(['rm', 'mkdir', 'writeFile'].map(name => [name, async (...args) => {
       writes.push({name, args}); throw new Error(`Unexpected published output ${name}`);
     }]))},
-    'node:zlib': zlib, './crossing-data.mjs': crossings, './crossing-checkpoint.mjs': checkpoints,
+    'node:zlib': zlib, './crossing-request.mjs': crossingRequest, './crossing-data.mjs': crossings, './crossing-checkpoint.mjs': checkpoints,
   };
   const module = new vm.SourceTextModule(source, {context, initializeImportMeta: meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; }});
   await module.link(specifier => {

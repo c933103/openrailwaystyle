@@ -10,47 +10,53 @@ import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
+import {crossingResponseText, crossingFailureAction, crossingRetryDelay} from './crossing-request.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
 const out = new URL('../crossing-data/', import.meta.url);
-let downloaded = 0, requests = 0;
+const usage = {bytes: 0};
+let requests = 0, retryNotBefore = 0;
 let checkpoint = null, lastObservation;
 
 // Pinned to the run's database time (startedAt), as every request of the run.
 const overpass = box => request(regionQuery(box, startedAt), parseCsv, rows => `Region ${box.join(',')} ${rows.length} crossings`, box);
 // One query, with retries; null when the query ran out of time or memory.
 async function request(query, parse, describe, box) {
+  let delay = requests ? 10000 : 0;
   for (let attempt = 0; attempt < 5; attempt++) {
-    // A quiet interval between requests, growing after each failure.
-    await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 10000 : 0));
+    await new Promise(r => setTimeout(r, Math.max(delay, retryNotBefore - Date.now())));
     requests++;
-    let failureText;
+    let detail = '', status, retryAfter;
     try {
       const requestStartedAt = new Date().toISOString();
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(240000),
         headers: {'User-Agent': 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-      const text = await response.text();
-      downloaded += Buffer.byteLength(text);
-      if (!response.ok) {
-        // Keep the whole diagnostic for classification, but keep logs compact.
-        failureText = `HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')}`;
-        throw new Error(failureText.slice(0, 210));
-      }
+      status = response.status;
+      retryAfter = response.headers.get('retry-after');
+      const text = await crossingResponseText(response, usage);
+      // Use the full diagnostic for classification, but never log it whole.
+      detail = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!response.ok) throw new Error(`HTTP ${status}: ${detail}`.slice(0, 210));
       const rows = parse(text);
+      retryNotBefore = 0;
       lastObservation = {requestStartedAt, observedAt: new Date().toISOString()};
-      console.log(`${describe(rows)};`, downloaded, 'bytes this run');
+      console.log(`${describe(rows)};`, usage.bytes, 'bytes this run');
       return rows;
     } catch (error) {
       console.warn(box.join(','), error.message);
-      if (downloaded > 200_000_000) throw new Error('Download budget exceeded');
-      // A busy server calls for waiting, never for more (smaller) requests;
-      // a query that ran out of time or memory calls for a smaller area.
-      // A capacity page can also say "Gateway Timeout". Check admission
-      // failures first, including wording after the shortened log excerpt.
-      const message = failureText || error.message;
-      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
-      if (/timed? ?out|timeout|memory|no end marker|HTTP 504/i.test(message)) return null;
+      if (error.message === 'Download budget exceeded') throw error;
+      const action = crossingFailureAction({status, detail, error});
+      if (action === 'stop') throw error;
+      if (action === 'split') {
+        const wait = crossingRetryDelay(-1, retryAfter);
+        if (wait === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
+        retryNotBefore = Math.max(retryNotBefore, Date.now() + wait);
+        return null;
+      }
+      delay = crossingRetryDelay(attempt, retryAfter);
+      if (delay === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
+      retryNotBefore = Date.now() + delay;
     }
   }
   throw new Error(`Overpass stayed unavailable for region ${box}`);
@@ -207,7 +213,7 @@ for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.m
 // tags: the detail tiles carry the crossing tags (tables from version 3).
 const manifest = {generated: new Date().toISOString(), changesSince: changesFrom || null, deferredRegions: deferred, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   ...(checkpoint ? {tableVersion: VERSION, acquisition: checkpoint.summary()} : {}),
-  tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: downloaded, source: api,
+  tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: usage.bytes, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
