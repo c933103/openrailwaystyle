@@ -17,6 +17,7 @@ REGIONS = ('africa', 'antarctica', 'asia', 'australia-oceania', 'central-america
            'europe', 'north-america', 'south-america')
 MAX_PBF_BYTES = 48 * 1024**3
 MAX_EXPORT_BYTES = 4 * 1024**3
+MAX_DOWNLOAD_SECONDS = 5400
 UA = 'RailwayAtlas-reference/1 (+https://github.com/c933103/openrailwaystyle/issues/181)'
 
 
@@ -32,6 +33,19 @@ def source_url(region, date):
     if day > dt.datetime.now(dt.timezone.utc).date():
         raise ValueError('Future source date')
     return f'https://download.geofabrik.de/{region}-{day:%y%m%d}.osm.pbf'
+
+
+def check_download_budget(received, expected, elapsed):
+    exceeded = []
+    if received > expected:
+        exceeded.append('byte')
+    if elapsed > MAX_DOWNLOAD_SECONDS:
+        exceeded.append('time')
+    if exceeded:
+        raise ValueError(
+            f"Download exceeded {' and '.join(exceeded)} budget: "
+            f'received={received} bytes, expected={expected} bytes, '
+            f'elapsed={elapsed:.3f}s, limit={MAX_DOWNLOAD_SECONDS}s')
 
 
 def acquire(region, date, output):
@@ -62,11 +76,13 @@ def acquire(region, date, output):
                 raise ValueError('Source size changed after planning')
             while chunk := response.read(1024 * 1024):
                 received += len(chunk)
-                if received > size or time.monotonic() - started > 5400:
-                    raise ValueError('Download exceeded byte or time budget')
+                check_download_budget(received, size, time.monotonic() - started)
                 stream.write(chunk)
                 sha.update(chunk)
                 md5.update(chunk)
+            # EOF can arrive after the last data chunk. It must not let a
+            # checksum-complete response escape the existing elapsed-time cap.
+            check_download_budget(received, size, time.monotonic() - started)
         if received != size or md5.hexdigest() != expected:
             raise ValueError('Truncated or changed continent PBF')
         partial.replace(pbf)
