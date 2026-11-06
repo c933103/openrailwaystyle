@@ -766,13 +766,14 @@ test('each view writes its values along the tracks from zoom 10', async () => {
   assert.equal(text('loading-labels', {loading_gauge:'W6A, W7, W8, W9, W10'}), 'W10');
   assert.equal(text('loading-labels', {loading_gauge:'TSI_GC'}), 'TSI_GC');
 });
-test('weekly changes add, update and remove snapshot ways, newest data winning', async () => {
-  const {mergeDelta, applyDelta, deltaQueries} = await import('../scripts/snapshot-delta.mjs');
+test('a kept change log adds, updates and removes snapshot ways, newest data winning', async () => {
+  const {applyDelta} = await import('../scripts/snapshot-delta.mjs');
   const way = (id, tags) => ({type:'way', id, tags, geometry:[{lon:0,lat:0},{lon:1,lat:1}]});
-  const lifecycle = {osm3s:{timestamp_osm_base:'2026-10-05T03:00:00Z'}, elements:[way(1, {railway:'construction', construction:'rail', name:'New line'}), way(3, {railway:'proposed', proposed:'rail'})]};
-  const opened = {osm3s:{timestamp_osm_base:'2026-10-05T03:01:00Z'}, elements:[{type:'way', id:2}, {type:'way', id:9}]};
-  const delta = mergeDelta(null, lifecycle, opened);
-  assert.equal(delta.since, '2026-10-05T03:00:00Z');
+  // A change log as the earlier weekly update recorded it.
+  const {toGeoJSON} = await import('../scripts/lifecycle.mjs');
+  const time = '2026-10-05T03:00:00Z', feature = (id, tags) => toGeoJSON({elements:[way(id, tags)]}).features[0];
+  const delta = {since:time, changes:{1:{time, feature:feature(1, {railway:'construction', construction:'rail', name:'New line'})},
+    3:{time, feature:feature(3, {railway:'proposed', proposed:'rail'})}, 2:{time, feature:null}, 9:{time, feature:null}}};
   const features = new Map([[1, {id:1, properties:{state:'proposed'}}], [2, {id:2, properties:{state:'construction'}}], [4, {id:4, properties:{state:'abandoned'}}]]);
   const base = new Map([[1, '2026-09-22T12:00:00Z'], [2, '2026-09-22T12:00:00Z'], [4, '2026-10-10T00:00:00Z']]);
   const result = applyDelta(features, base, delta);
@@ -786,9 +787,6 @@ test('weekly changes add, update and remove snapshot ways, newest data winning',
   const newer = new Map([[1, {id:1, properties:{state:'disused'}}]]);
   applyDelta(newer, new Map([[1, '2026-11-01T00:00:00Z']]), delta);
   assert.equal(newer.get(1).properties.state, 'disused');
-  const q = deltaQueries('2026-10-01T00:00:00Z', '50,0,51,1');
-  assert.match(q.lifecycle, /changed:"2026-10-01T00:00:00Z"/);
-  assert.match(q.opened, /out ids/);
 });
 
 test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag variants, imperial units', async () => {

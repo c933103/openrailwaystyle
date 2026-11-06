@@ -2,7 +2,9 @@
 // snapshot. Visitors fetch the published GeoJSON rather than querying Overpass.
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
+import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse,powerFacilityChangesSince} from './power-facility-data.mjs';
+import {updateElements,requireGeometry} from './overpass-adiff.mjs';
+import {quarters,worldRegions} from './world-regions.mjs';
 import {overpassRetryDelayMs,overpassBusy,describeOverpassError,OVERPASS_RETRY_MINUTES} from './overpass-errors.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -11,8 +13,7 @@ const cache='.snapshot-cache';
 // v6 caches remain valid for the reviewed equivalent key-presence prefilter.
 // Exact query/digest, original age and payload validation protect their reuse.
 const VERSION=6;
-const regions=[];
-for (let south=-90;south<90;south+=90) for(let west=-180;west<180;west+=90) regions.push([south,west,south+90,west+90]);
+const regions=worldRegions(90);
 await mkdir(cache,{recursive:true});
 await mkdir(output,{recursive:true});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -23,17 +24,53 @@ async function collect(box,depth=0) {
   const query=powerFacilityQuery(box);
   const file=`${cache}/power-facilities-v${VERSION}-${box.join('_')}.json`;
   const splitFile=`${file}.split`;
-  let json;
+  let json,since=null,stored=null;
   try {
     const info=await stat(file);
     const saved=JSON.parse(await readFile(file,'utf8'));
     json=powerFacilityCachedResponse(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
+    if(json){since=powerFacilityChangesSince(box,query,saved,{mtimeMs:info.mtimeMs});stored=saved;}
+    else if(process.env.POWER_REFRESH!=='1'&&typeof saved?.query==='string') {
+      // Made by another query: its own changes, then only what the current
+      // query selects differently (updateElements), not a new download.
+      powerFacilitiesGeoJSON(saved.response);
+      since=saved.response.osm3s?.timestamp_osm_base||null;stored=saved;
+    }
   } catch {json=undefined;}
+  // A cached region a week old, or made by another query, takes the changes
+  // since its database time. For the current query a failure keeps the
+  // cached response, and the next run asks again from the same time; for
+  // another query the region is downloaded in full.
+  if(stored&&since) {
+    let failure=null;
+    const update=await updateElements({elements:stored.response.elements,since,previousQuery:stored.query,query,
+      pick:element=>requireGeometry([element])[0],validate:elements=>powerFacilitiesGeoJSON({...stored.response,elements}),
+      warn:(...args)=>console.warn('Energy supply changes',box.join(','),...args),failed:error=>{failure=error;},
+      fetchText:async body=>{
+        await sleep(requests?10000:0);
+        requests++;
+        const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:body}),
+          headers:{'User-Agent':'RailwayAtlas-energy-supplies/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
+        const text=await response.text();downloaded+=Buffer.byteLength(text);
+        if(downloaded>100_000_000)throw new Error('Energy facility download budget exceeded');
+        if(!response.ok)throw new Error(`HTTP ${response.status}`);
+        return text;
+      }});
+    if(failure&&/budget exceeded/.test(failure.message))throw failure;
+    if(update) {
+      json={...stored.response,osm3s:{...stored.response.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
+      await writeFile(file,JSON.stringify({query,response:json}));
+      console.log('Energy supply region',box.join(','),'changes since',since+':',update.upserts,'added or changed,',update.deletes,'removed; query change:',update.added,'added,',update.dropped,'dropped');
+    } else if(stored.query!==query) json=undefined;
+  }
   let split=false,cachedSplit=false;
   if (!json) {
     try {
-      const info=await stat(splitFile),saved=JSON.parse(await readFile(splitFile,'utf8'));
-      split=cachedSplit=powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
+      // A region split under another query keeps its parts, which then take
+      // their own changes and the query difference; never a refresh.
+      const saved=JSON.parse(await readFile(splitFile,'utf8'));
+      split=powerFacilitySplitAccepted(query,saved)||(process.env.POWER_REFRESH!=='1'&&typeof saved?.query==='string');
+      cachedSplit=powerFacilitySplitAccepted(query,saved);
     } catch {}
     // A busy server waits minutes (overpassRetryDelayMs); other retries keep
     // the short pause. Completed regions are cached, so a later run resumes.
@@ -67,8 +104,7 @@ async function collect(box,depth=0) {
   if(split) {
     if(depth>=6)throw new Error(`Energy facility region could not complete: ${box}`);
     if(!cachedSplit)await writeFile(splitFile,JSON.stringify({query}));
-    const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-    for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]])await collect(child,depth+1);
+    for(const child of quarters(box))await collect(child,depth+1);
     return;
   }
   const data=powerFacilitiesGeoJSON(json);

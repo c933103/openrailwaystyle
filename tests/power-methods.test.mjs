@@ -67,7 +67,7 @@ test('track and electrification lifecycle both keep conductor rails behind the f
 test('facility data is restored into a replaced style source without another download',async()=>{
   let calls=0,source,language='en';const shown=[];
   const next=()=>source={setData:data=>shown.push(data)};next();
-  const refresh=createPowerFacilityLoader({getSource:()=>source},{url:'fixture',sourceId:'electricMethods',language:()=>language,fetcher:async()=>{calls++;return {ok:true,json:async()=>({type:'FeatureCollection',features:[]})};}});
+  const refresh=createPowerFacilityLoader({getSource:()=>source},{url:'fixture',sourceId:'electricMethods',language:()=>language,fetcher:async()=>{calls++;return new Response(JSON.stringify({type:'FeatureCollection',features:[]}));}});
   await refresh();await refresh();assert.equal(shown.length,1);next();await refresh();assert.equal(shown.length,2);assert.equal(calls,1);
   source=undefined;await refresh();next();await refresh();assert.equal(shown.length,3);language='ja';await refresh();assert.equal(shown.length,4);
 });

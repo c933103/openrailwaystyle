@@ -5,6 +5,10 @@
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
+import {parseAdiff, extractionVersion} from './overpass-adiff.mjs';
+import {quarters, worldRegions} from './world-regions.mjs';
+import {KINDS, inBox, SEP, parseRows, replaceRegion, applyChanges, writeTable, readTable} from './crossing-rows.mjs';
+export {KINDS, inBox, SEP, replaceRegion, applyChanges, writeTable, readTable};
 
 export const TAG_KEYS = CROSSING_TAGS.map(([key]) => key);
 
@@ -16,20 +20,13 @@ export const OVERVIEW_ZOOM = 5, DETAIL_ZOOM = 9, EXTENT = 8192;
 // Points this close to a tile edge are also written to the neighbour, so a
 // dot is not cut off at the edge (in tile units: about 8 pixels).
 const BUFFER = 128;
-export const KINDS = {level_crossing: 'road', crossing: 'foot'};
 
 // Start regions: 45° squares; a region that times out is split into quarters
 // and the split is remembered (regions.json).
 export function startRegions() {
-  const regions = [];
-  for (let s = -90; s < 90; s += 45) for (let w = -180; w < 180; w += 45) regions.push({box: [s, w, s + 45, w + 45]});
-  return regions;
+  return worldRegions(45).map(box => ({box}));
 }
-export const quarters = ([s, w, n, e]) => {
-  const lat = (s + n) / 2, lon = (w + e) / 2;
-  return [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]];
-};
-export const inBox = ([s, w, n, e], lat, lon) => lat >= s && lat < n && lon >= w && lon < e;
+export {quarters};
 
 // Tracks whose crossings wait for street zooms: trams, light rail,
 // funiculars, miniature railways, service tracks (sidings, yards, spurs) and
@@ -40,90 +37,114 @@ const MINOR_KINDS = '"^(tram|light_rail|funicular|miniature)$"';
 const LIFECYCLE_KEYS = '"^(proposed|construction|disused|abandoned|razed|demolished|removed)(:railway)?$"';
 const ACTIVE = '"^(rail|narrow_gauge|light_rail|subway|tram|monorail|funicular|miniature)$"';
 export const MINOR_TRACKS = `(way.w[railway~${MINOR_KINDS}];way.w[railway!~${ACTIVE}][~${LIFECYCLE_KEYS}~${MINOR_KINDS}];way.w[service];way.w[embedded=yes];)`;
-export function regionQuery(box, since) {
-  const newer = since ? `(newer:"${since}")` : '';
-  // Changes also cover crossings on any way through a crossing edited since
-  // (a retagged track, or one no longer tagged railway, can change a
-  // crossing's minor flag without touching the node). Deleted ways are left
-  // to the rolling full refresh.
-  const bbox = `(${box.join(',')})`;
-  const changedWays = since ? `(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.all;way(bn.all)${newer}->.cw;` : '';
-  const onChangedWays = since ? 'node.all(w.cw);' : '';
+// From the crossing set .c: the major crossings, the "minor" marker row, the
+// minor crossings (only on minor tracks), then the end marker row.
+const CROSSING_ROWS = `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;`
+  + '.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;';
+const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+// The data of one database time (`at`, optional): every request of a run is
+// pinned to the time saved as the regions' watermark, so the stored table
+// is exactly the state at that time and the next run's changes start there.
+const dated = at => { if (at === undefined) return ''; if (!TIME.test(at)) throw new Error('Invalid crossing data time'); return `[date:"${at}"]`; };
+// A region in full, as CSV. Its changes come from crossingChangesQuery.
+export function regionQuery(box, at) {
   // CSV output carries no error remarks: a final marker row, written only
   // when the query ran to the end, shows the response is complete. A marker
   // row (railway "minor") separates the major crossings from the minor ones.
   const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
-  return `[out:csv(${columns};false;"${SEP}")][timeout:180];${changedWays}(node[railway=level_crossing]${newer}(${box.join(',')});node[railway=crossing]${newer}(${box.join(',')});${onChangedWays})` +
-    `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;` +
-    `.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;`;
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};(node[railway=level_crossing](${box.join(',')});node[railway=crossing](${box.join(',')});)` +
+    CROSSING_ROWS;
 }
 
-// Overpass CSV rows: id, lat, lon, railway, then TAG_KEYS, no header: the
-// major crossings, the "minor" marker row, the minor crossings, then the end
-// marker row. Overpass does not escape values, and OSM tag values may hold
-// tabs and line breaks, so columns are separated by the unit separator
-// (U+001F), which editors treat as invalid in tags: a line that does not
-// start a row continues the previous value, line break included. A row with
-// extra columns (a separator inside a value) keeps its position and kind,
-// with its tags marked unreadable (null) rather than shifted.
-export const SEP = '\u001f';
-const ROW_START = new RegExp(`^\\d+${SEP}[-\\d.]+${SEP}[-\\d.]+${SEP}`), MARKER = new RegExp(`^\\d*${SEP}${SEP}${SEP}(minor|end)(${SEP}|$)`);
-export function parseCsv(text) {
-  if (/^\s*</.test(text)) throw new Error(`Overpass returned an error page: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
-  const lines = [];
-  for (const line of text.split('\n')) {
-    // Starting a row consumes its preceding record delimiter. Only continuation
-    // lines restore an LF, including trailing LFs in the final tag value.
-    if (ROW_START.test(line) || MARKER.test(line)) lines.push(line);
-    else if (lines.length && !MARKER.test(lines.at(-1))) lines[lines.length - 1] += `\n${line}`;
-    else if (line.trim()) throw new Error(`Unexpected Overpass row: ${line.slice(0, 120)}`);
-  }
-  if (lines.pop()?.split(SEP)[3]?.trim() !== 'end') throw new Error('Incomplete Overpass response (no end marker)');
-  const rows = [];
-  let minor = false;
-  for (const line of lines) {
-    const [id, lat, lon, railway, ...values] = line.split(SEP);
-    if (railway?.trim() === 'minor' && !minor) { minor = true; continue; }
-    const kind = KINDS[railway?.trim()], position = [Number(id), Number(lat), Number(lon)];
-    if (!kind || !position.every(Number.isFinite)) throw new Error(`Unexpected Overpass row: ${line.slice(0, 120)}`);
-    let tags = null;
-    if (values.length <= TAG_KEYS.length) {
-      tags = {};
-      TAG_KEYS.forEach((key, i) => { const value = values[i]; if (value) tags[key] = value; });
+// Changes by augmented diff (scripts/overpass-adiff.mjs): the crossings of a
+// region and the railway ways through them, as they changed since `since`.
+// A crossing deleted or no longer tagged as one is reported deleted; every
+// crossing created or changed, and every node of a way that changed or was
+// deleted (before and after), may have a new row or minor flag and is read
+// again with crossingRowsQuery. A way deleted through a crossing is seen
+// this way too, so no periodic full download is needed to correct it.
+export function crossingChangesQuery(box, since, until) {
+  if (!TIME.test(since || '')) throw new Error('Invalid crossing change start');
+  if (until !== undefined && !TIME.test(until)) throw new Error('Invalid crossing change end');
+  const bbox = `(${box.join(',')})`;
+  return `[out:xml][timeout:180][maxsize:268435456][adiff:"${since}"${until ? `,"${until}"` : ''}];(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.c;(.c;way(bn.c)[railway];);out meta;`;
+}
+// What makes a crossing row of OSM data: the region query (selection, columns
+// and minor logic) and the parsing into the table (crossing-rows.mjs). A
+// table made by another one is downloaded in full: changes alone would leave
+// unchanged crossings with the old rows. The tile code, the tag labels and
+// the regions are not part of it: the tiles are built from the stored table
+// on every run.
+export const crossingExtraction = () => extractionVersion(regionQuery([-90, -180, 90, 180]), new URL('./crossing-rows.mjs', import.meta.url));
+// The version the same query and row code had before the row code moved to
+// crossing-rows.mjs (main at cec0af882, when the version still hashed this
+// whole module): a table made by it is the table this code makes, so it
+// takes changes instead of a full download. Each earlier version maps to
+// the version of the same code after the move, and counts only while the
+// code still has that version: any later query or row change is a change.
+export const EARLIER_CROSSING_EXTRACTIONS = Object.freeze({
+  '6cb18833855b303bf43efc4f203cfc7ce89b1ee5ab0847aa5bd3114c800aee91': '442b70bbc2b7701392ff04aeedbbf34fd448aa0970e82804966eea114531d13a'});
+export const currentCrossingExtraction = version => {
+  const current = crossingExtraction();
+  return version === current || (Object.hasOwn(EARLIER_CROSSING_EXTRACTIONS, version || '') && EARLIER_CROSSING_EXTRACTIONS[version] === current);
+};
+// Overpass rows of the regionQuery columns (crossing-rows.mjs).
+export const parseCsv = text => parseRows(text, TAG_KEYS);
+// A node deleted from OSM (visible="false") is deleted. One that only left
+// the region's selection (visible="true") may have moved into another region
+// or stopped being a crossing: it is read again (`recheck`), and removed only
+// if it is no crossing anywhere.
+export function crossingChanges(xml) {
+  const {timestamp, actions} = parseAdiff(xml), deleted = new Set(), affected = new Set(), recheck = new Set();
+  for (const action of actions) {
+    const element = action.new;
+    if (element.type === 'node') {
+      if (action.type !== 'delete') affected.add(element.id);
+      else if (element.visible === false) deleted.add(element.id);
+      else { affected.add(element.id); recheck.add(element.id); }
     }
-    rows.push({id: position[0], lat: position[1], lon: position[2], kind, minor, tags});
+    if (element.type === 'way') for (const state of [action.old, action.new]) for (const id of state?.nodes || []) affected.add(id);
   }
-  if (!minor) throw new Error('Incomplete Overpass response (no minor marker)');
-  return rows;
+  for (const id of deleted) { affected.delete(id); recheck.delete(id); }
+  return {timestamp, deleted: [...deleted], affected: [...affected].sort((a, b) => a - b), recheck: [...recheck].sort((a, b) => a - b)};
 }
-
-// The table: id → [lat, lon, kind, minor, tags (null: unreadable)]. A full region response replaces every
-// crossing inside the region (so deleted and retagged nodes go); a change
-// response only adds or moves crossings.
-export function replaceRegion(table, box, rows) {
-  for (const [id, [lat, lon]] of table) if (inBox(box, lat, lon)) table.delete(id);
-  for (const row of rows) if (inBox(box, row.lat, row.lon)) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);
+// The rows of the given nodes that are crossings, as regionQuery gives them:
+// the same columns, minor flag and markers.
+export function crossingRowsQuery(ids, at) {
+  if (!ids.length || !ids.every(id => Number.isSafeInteger(id) && id > 0)) throw new Error('Invalid crossing node ids');
+  const columns = ['::id', '::lat', '::lon', 'railway', ...TAG_KEYS.map(key => `"${key}"`)].join(',');
+  return `[out:csv(${columns};false;"${SEP}")][timeout:180]${dated(at)};node(id:${ids.join(',')})[railway~"^(level_crossing|crossing)$"]` + CROSSING_ROWS;
 }
-export function applyChanges(table, rows) {
-  for (const row of rows) table.set(row.id, [row.lat, row.lon, row.kind, row.minor, row.tags === undefined ? {} : row.tags]);
-}
-export function writeTable(table) {
-  const lines = [];
-  // Tags as JSON, which escapes tabs and line breaks.
-  for (const [id, [lat, lon, kind, minor, tags = {}]] of [...table].sort((a, b) => a[0] - b[0]))
-    lines.push(`${id}\t${lat}\t${lon}\t${kind}\t${minor ? 'minor' : ''}${tags === null || Object.keys(tags).length ? `\t${JSON.stringify(tags)}` : ''}`);
-  return lines.join('\n') + '\n';
-}
-export function readTable(text) {
-  const table = new Map();
-  for (const line of text.split('\n')) {
-    if (!line) continue;
-    const [id, lat, lon, kind, minor, tags] = line.split('\t');
-    table.set(Number(id), [Number(lat), Number(lon), kind, minor === 'minor', tags ? JSON.parse(tags) : {}]);
+// The changes of each top-level region, from that region's own time
+// (`changes`, keyed by its box; `since` for one not yet recorded), oldest
+// first. A region the server stayed unavailable for keeps its time and is
+// asked again next run; every other region's changes still count. After two
+// such regions in a row the server is taken to be down and the rest wait too.
+export const UNAVAILABLE = /^Overpass stayed unavailable for region /;
+export const regionKey = box => box.join(',');
+export async function updateRegionChanges({regions, changes = {}, since, startedAt, fetch, warn = console.warn}) {
+  const order = regions.map(region => ({region, since: changes[regionKey(region.box)] || since}))
+    .sort((a, b) => a.since.localeCompare(b.since));
+  const next = {}, deferred = [];
+  let unavailable = 0;
+  for (const {region, since: from} of order) {
+    const key = regionKey(region.box);
+    next[key] = from;
+    if (unavailable >= 2) { deferred.push(key); continue; }
+    try {
+      await fetch(region, from);
+      next[key] = startedAt;
+      unavailable = 0;
+    } catch (error) {
+      if (!UNAVAILABLE.test(error.message)) throw error;
+      warn(`Changes for ${key} deferred to the next run:`, error.message);
+      deferred.push(key);
+      unavailable++;
+    }
   }
-  return table;
+  if (deferred.length === order.length) throw new Error('Overpass stayed unavailable for every region; nothing to publish');
+  return {changes: next, deferred, stopped: unavailable >= 2, from: order[0]?.since, since: Object.values(next).sort()[0]};
 }
-
 function tilePosition(lat, lon, z) {
   const n = 2 ** z, clamped = Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180;
   return [(lon + 180) / 360 * n, (1 - Math.asinh(Math.tan(clamped)) / Math.PI) / 2 * n];

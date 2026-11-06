@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 // Shared download order for branch lines and urban services. Each country is
 // its own request, and an oversized request can still be split into quarters.
 const country = code => `ISO3166-1=${code}`;
@@ -43,9 +44,19 @@ export const STAGES = [
     {box: [40.5, 45, 55, 60], exclude: [RU, KZ, ...caucasus]}]},
   {name: 'north-america', label: 'US and Canada', parts: [{area: US, box: [18, -180, 72, -66]}, {area: CA, box: [41, -141, 84, -52]}]},
   {name: 'americas', label: 'Rest of the Americas', parts: [{box: [-56, -120, 33, -30], exclude: [US]}]},
-  {name: 'world', label: 'Rest of the world', parts: [
-    {box: [-35, -20, 37.5, 52], exclude: caucasus}, {box: [-50, 110, -11, 180]}, {box: [-50, -180, 0, -150]}]},
+  // Everything no stage above selects, whatever and wherever it is: the
+  // globe in eight tiles, each taking all it finds minus what the other
+  // stages' parts select there (remainderSelection). So places outside every
+  // stage box (Mauritius, Réunion, Cape Verde, Greenland, Antarctica), places
+  // in no country or one no stage names, and the open sea are all covered.
+  {name: 'world', label: 'Rest of the world', parts: [-90, 0].flatMap(s => [-180, -90, 0, 90].map(w => ({remainder: true, box: [s, w, s + 90, w + 90]})))},
 ];
+
+// Whether the stages' parts cover the whole world. They do, through the
+// remainder parts above. A dataset that must be worldwide (power methods) is
+// built from the stored regions once each stage's were fetched with these
+// parts (stageLayoutKey).
+export const STAGES_COVER_WORLD = true;
 
 // Give each unfinished stage a turn. A permanently busy or oversized region
 // must not monopolize all runs while later continents remain unqueried.
@@ -59,9 +70,50 @@ export function selectDownloadStage(state, {now = Date.now(), refreshDays = 14} 
   return now - time(state.stages[oldest.name].completed) >= refreshDays * 86400_000 ? oldest : null;
 }
 
+// A region too large for one request is split into quarters. The regions a
+// complete pass fetched are recorded with the stage, and the next pass of
+// the same parts starts from them, so a refresh never repeats a request
+// already known to exceed the server's limits. A pass that began before
+// regions were recorded (no `fetched` list) records nothing.
+const partsKey = stage => JSON.stringify(stage.parts);
+// The layout a stage's regions were last fetched with (`leaves.key`).
+export const stageLayoutKey = partsKey;
+export function startStagePass(current, stage) {
+  const recorded = current.leaves?.key === partsKey(stage) && current.leaves.regions?.length ? current.leaves.regions : null;
+  current.pending = recorded ? recorded.map(region => ({...region, box: [...region.box]}))
+    : stage.parts.map((part, index) => ({part: index, box: part.box}));
+  current.fetched = [];
+  // The layout this pass fetches, which its regions are recorded under.
+  current.passKey = partsKey(stage);
+}
+export function recordStageRegion(current, item) {
+  current.fetched?.push({part: item.part, box: item.box, ...(item.depth ? {depth: item.depth} : {})});
+}
+export function finishStagePass(current, stage) {
+  if (Array.isArray(current.fetched)) current.leaves = {key: current.passKey || partsKey(stage), regions: current.fetched};
+  current.fetched = null;
+}
+// A pass begun under an earlier layout of its stage is dropped, so the
+// builder starts one of the current parts instead of finishing the old
+// boxes under the new layout's name. Passes begun before the layout was
+// recorded are judged by their queue: each region must lie in the box of the
+// part it names. Returns whether it dropped one.
+const inside = ([s, w, n, e], [ps, pw, pn, pe]) => s >= ps && w >= pw && n <= pn && e <= pe;
+export function dropStalePass(current, stage) {
+  if (!current?.pending?.length) return false;
+  const stale = current.passKey ? current.passKey !== partsKey(stage)
+    : current.pending.some(item => !stage.parts[item.part] || !Array.isArray(item.box) || !inside(item.box, stage.parts[item.part].box));
+  if (!stale) return false;
+  Object.assign(current, {pending: null, fetched: null, passKey: null});
+  return true;
+}
+
 // Country filters must survive automatic subdivision. Use the
 // same selection construction for railway ways and urban route relations.
+// `plan` is the selection as filters: `main`, minus each of `minus`, where an
+// entry may itself be a filter minus others ({filter, minus}).
 export function partSelection(part, box, select) {
+  if (part.remainder) return remainderSelection(box, select);
   const excluded = (part.exclude || []).map(area => ({area}));
   const specs = [part, ...excluded], areas = [];
   const filters = specs.map(spec => {
@@ -74,7 +126,52 @@ export function partSelection(part, box, select) {
     return `${filter}(${box.join(',')})`;
   });
   const main = select(filters[0]), exclusions = filters.slice(1).map(select).join('');
-  return {areas: areas.join(''), set: exclusions ? `((${main}); - (${exclusions});)` : `(${main})`};
+  return {areas: areas.join(''), filters, plan: {main: filters[0], minus: filters.slice(1)},
+    set: exclusions ? `((${main}); - (${exclusions});)` : `(${main})`};
+}
+
+// Where two boxes overlap, the overlap; otherwise null.
+const overlap = ([s1, w1, n1, e1], [s2, w2, n2, e2]) => {
+  const box = [Math.max(s1, s2), Math.max(w1, w2), Math.min(n1, n2), Math.min(e1, e2)];
+  return box[0] < box[2] && box[1] < box[3] ? box : null;
+};
+const areaStatement = area => { const [key, value] = area.split('='); return `area["${key}"="${value}"]`; };
+// A remainder box: all it holds, minus what every other part selects in its
+// overlap with that part's box. An element no other part selects is never
+// subtracted, so nothing falls between the stages; one another part selects
+// from beyond this box can be fetched twice, which merging tolerates.
+// Parts with one box and no exclusions of their own share one area set.
+export function remainderSelection(box, select) {
+  const areas = [], minus = [], groups = new Map();
+  const areaSet = list => { areas.push(`(${list.map(area => `${areaStatement(area)};`).join('')})->.a${areas.length};`); return `area.a${areas.length - 1}`; };
+  for (const stage of STAGES) for (const part of stage.parts) {
+    if (part.remainder) continue;
+    const within = overlap(part.box, box);
+    if (!within) continue;
+    if (part.area && !part.exclude?.length) {
+      const key = within.join(',');
+      if (!groups.has(key)) groups.set(key, []);
+      if (!groups.get(key).includes(part.area)) groups.get(key).push(part.area);
+      continue;
+    }
+    const filter = `${part.area ? `(${areaSet([part.area])})` : ''}(${within.join(',')})`;
+    minus.push(part.exclude?.length ? {filter, minus: [`(${areaSet(part.exclude)})(${within.join(',')})`]} : filter);
+  }
+  for (const [key, list] of groups) minus.push(`(${areaSet(list)})(${key})`);
+  const main = `(${box.join(',')})`;
+  // A part with exclusions of its own is its own difference, saved to a set
+  // named after its text, so that the selections of different datasets never
+  // share a name; the union then holds only plain statements and sets.
+  const differences = [], term = entry => {
+    if (typeof entry === 'string') return select(entry);
+    const text = `((${select(entry.filter)}); - (${entry.minus.map(select).join('')}););`;
+    const name = `d${createHash('sha256').update(text).digest('hex').slice(0, 12)}`;
+    differences.push(`${text.slice(0, -1)}->.${name};`);
+    return `.${name};`;
+  };
+  const terms = minus.map(term).join('');
+  return {areas: areas.join(''), plan: {main, minus},
+    set: minus.length ? `${differences.join('')}((${select(main)}); - (${terms});)` : `(${select(main)})`};
 }
 
 // Layout changes do not change the data schema. Changed queues restart while

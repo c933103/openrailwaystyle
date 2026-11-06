@@ -4,13 +4,21 @@ import {mkdir} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {depthFixturePng} from './bathymetry-browser-fixture.mjs';
+import vtpbf from 'vt-pbf';
 const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
 const browser = await launchBrowser({...(process.env.BROWSER_PATH ? {executablePath: process.env.BROWSER_PATH} : {})});
 const errors = [];
+// A genuine, non-empty MVT water layer recording an inland lake. No 'ocean'
+// polygon means each test point is known land, so the production elevation
+// sampler must consult the fine DEM. An EMPTY vector body would instead mean
+// unknown coverage and correctly suppress PNG sampling/retry altogether.
+const landTile = Uint8Array.from(vtpbf.fromGeojsonVt({water:{features:[{
+  type:3,tags:{class:'lake'},geometry:[[[256,256],[3840,256],[3840,3840],[256,3840],[256,256]]],
+}]}}));
 try {
   const context = await browser.newContext({viewport: {width: 1280, height: 800}}), page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
-  await installEmptyMapProviders(context, base);
+  await installEmptyMapProviders(context, base, {basemapTile:landTile});
   await context.route('https://s3.amazonaws.com/elevation-tiles-prod/terrarium/**', route => {
     const [,z,x] = /\/(\d+)\/(\d+)\/\d+\.png$/.exec(new URL(route.request().url()).pathname);
     return route.fulfill({contentType: 'image/png', body: depthFixturePng(Number(z), Number(x))});
@@ -76,7 +84,8 @@ try {
   await page.evaluate(() => {
     terrainFixture.mode = 'stall'; terrainFixture.calls = [];
     document.querySelector('button[title="Measure"]').click();
-    document.querySelector('[data-measure="distance"]').click();
+    if (document.querySelector('[data-measure="distance"]').getAttribute('aria-pressed') !== 'true')
+      throw new Error('Distance was not selected automatically');
     for (const lat of [1.1, 1.2]) testMap.fire('click', {lngLat: {lng: .1, lat}, point: testMap.project([.1, lat])});
     testMap.fire('dblclick', {preventDefault() {}});
   });

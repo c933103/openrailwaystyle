@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {gzipSync} from 'node:zlib';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {powerFacility,createPowerFacilityLoader,POWER_FACILITY_KINDS,POWER_FACILITY_LEGEND,POWER_FACILITY_SYMBOL} from '../styles/power-facilities.mjs';
-import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from '../scripts/power-facility-data.mjs';
+import {powerFacility,createPowerFacilityLoader,readGzipJson,POWER_FACILITY_KINDS,POWER_FACILITY_LEGEND,POWER_FACILITY_SYMBOL} from '../styles/power-facilities.mjs';
+import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse,powerFacilitySplitAccepted} from '../scripts/power-facility-data.mjs';
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
 import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
 
@@ -147,7 +148,8 @@ test('cached responses are reused only for the exact current query; centre-point
   assert.equal(powerFacilityCachedResponse(box,query,saved,options),response);
   assert.deepEqual(saved,copy,'acceptance does not migrate or rewrite saved records');
   assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,refresh:true}),undefined);
-  assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:now-28*86400_000}),undefined);
+  // No age limit: a region takes its changes weekly, which keep it exact.
+  assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:now-400*86400_000}),response);
   assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:NaN}),undefined);
   assert.throws(()=>powerFacilityCachedResponse(box,query,{query,response:{remark:'runtime error: timed out',elements:[]}},options),/timed out/);
   assert.throws(()=>powerFacilityCachedResponse(box,query,{query,response:{elements:[{type:'node',id:12,tags:{railway:'fuel'}}]}},options),/Incomplete coordinates/);
@@ -224,7 +226,7 @@ test('supply snapshot loading is lazy, shared and re-localized without downloadi
   const source={setData:data=>shown.push(data)};const map={getSource:()=>source};
   const data={type:'FeatureCollection',features:[]};
   const refresh=createPowerFacilityLoader(map,{url:'fixture.geojson',active:()=>enabled,language:()=>currentLanguage,
-    localize:(d,language)=>({...d,language}),fetcher:async()=>{calls++;return{ok:true,json:async()=>data};}});
+    localize:(d,language)=>({...d,language}),fetcher:async()=>{calls++;return new Response(gzipSync(JSON.stringify(data)));}});
   await refresh();assert.equal(calls,0);
   enabled=true;await Promise.all([refresh(),refresh()]);assert.equal(calls,1);assert.equal(shown.length,1);
   currentLanguage='ja';await refresh();assert.equal(calls,1);assert.equal(shown[1].language,'ja');
@@ -248,4 +250,38 @@ test('every facility kind shares one neutral drawing; the legend keys shapes, no
     const colours=JSON.stringify(layer.paint);
     assert.ok(!colours.includes('power_color')&&!colours.includes('power_kind'),`${layer.id} does not colour by kind or supply group`);
   }
+});
+
+test('an energy-supply split decision stays whatever its age, on a refresh while its query is unchanged, and under a changed query except on a refresh',()=>{
+  const query=powerFacilityQuery([-90,-180,0,-90]);
+  assert.equal(powerFacilitySplitAccepted(query,{query}),true);
+  assert.equal(powerFacilitySplitAccepted(query,{query:query+' '}),false);
+  assert.equal(powerFacilitySplitAccepted(query,{}),false);
+  assert.equal(powerFacilitySplitAccepted(query,null),false);
+  // No file age: a known oversized region is not asked again. Under another
+  // query its parts are kept (they take the query difference) and the split
+  // is recorded again for the current query; a refresh drops only those.
+  const source=readFileSync(new URL('../scripts/build-power-facilities.mjs',import.meta.url),'utf8');
+  assert.match(source,/split=powerFacilitySplitAccepted\(query,saved\)\|\|\(process\.env\.POWER_REFRESH!=='1'&&typeof saved\?\.query==='string'\);\n\s*cachedSplit=powerFacilitySplitAccepted\(query,saved\);/);
+  assert.match(source,/if\(!cachedSplit\)await writeFile\(splitFile,JSON\.stringify\(\{query\}\)\);/);
+});
+
+test('snapshots are read from gzip bytes, or from JSON a server already decoded, and nothing else',async()=>{
+  const data={type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Ünterwerk 変電所'},geometry:{type:'Point',coordinates:[1,2]}}]};
+  assert.deepEqual(await readGzipJson(new Response(gzipSync(JSON.stringify(data)))),data);
+  assert.deepEqual(await readGzipJson(new Response(JSON.stringify(data))),data);
+  await assert.rejects(readGzipJson(new Response(gzipSync('{"type":').subarray(0,12))));
+  await assert.rejects(readGzipJson(new Response('not json')),SyntaxError);
+});
+
+test('the site loads the gzip power snapshots and does not ship the uncompressed ones',()=>{
+  const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');
+  for(const name of ['power-facilities','power-methods','electricity-signals']){
+    assert.ok(app.includes(`'./data/traction/power/${name}.geojson.gz'`),name);
+    assert.ok(!app.includes(`'./data/traction/power/${name}.geojson'`),name);
+  }
+  const site=readFileSync(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
+  assert.match(site,/for name in power-facilities power-methods electricity-signals; do[\s\S]*?rm "styles\/data\/traction\/power\/\$name\.geojson"/);
+  assert.match(site,/readOptional\('styles\/data\/traction\/power\/power-methods\.geojson\.gz'\)/);
+  assert.match(site,/readOptional\('styles\/data\/traction\/power\/electricity-signals\.geojson\.gz'\)/);
 });

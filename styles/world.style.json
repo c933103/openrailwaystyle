@@ -5053,6 +5053,14 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "electricSignals": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      },
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "electricFacilities": {
       "type": "geojson",
       "data": {
@@ -63095,6 +63103,110 @@
         "text-color": "#8c5f00",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1
+      }
+    },
+    {
+      "source": "electricSignals",
+      "minzoom": 13,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "==",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-signal-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#e0a21a",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          2.5,
+          17,
+          4
+        ],
+        "circle-stroke-color": "#5c3d00",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricSignals",
+      "minzoom": 13,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-former-signal-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          2.5,
+          17,
+          4
+        ],
+        "circle-stroke-color": "#e0a21a",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {

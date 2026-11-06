@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
+import {gzipSync} from 'node:zlib';
 import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
@@ -23,6 +24,7 @@ import * as terrain3dModule from '../styles/terrain-3d.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as serviceStatusModule from '../styles/service-status.mjs';
+import * as dataAgesModule from '../styles/data-ages.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
@@ -58,10 +60,11 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
+async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource, savedView } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
+  if (savedView) window.localStorage.setItem('atlas_view', JSON.stringify(savedView));
   const errors = [], maps = [];
   const fonts=[];
   if(fontFaces){
@@ -110,7 +113,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
     getZoom() { return this.zoom; }
     setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
     setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    jumpTo(options) { this.lastJump=options;this.jumpCalls=(this.jumpCalls||0)+1;this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     easeTo(options) { this.lastEase=options; if (Number.isFinite(options.zoom)) this.zoom=options.zoom; if (Number.isFinite(options.pitch)) this.setPitch(options.pitch); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
@@ -188,7 +191,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
       }
     };
   } else if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = fetcher || (async input => ({ok:true,json:async()=>String(input).includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)}));
+  window.fetch = fetcher || (async input => String(input).includes('/data/traction/power/')?new Response(JSON.stringify({type:'FeatureCollection',features:[]})):({ok:true,json:async()=>structuredClone(style)}));
   // Native imported factories must receive this window's mock explicitly;
   // their default parameters otherwise resolve Node's global fetch.
   const fixtureOptions=options=>({...options,fetcher:options?.fetcher??window.fetch});
@@ -218,8 +221,24 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
+  // A valid non-ocean MVT is necessary to exercise the new signed surface
+  // sampler. An empty basemap body means *unknown*, not dry land, and must
+  // not trigger an unmocked DEM request or fake an endpoint elevation.
+  const nonOceanMVT=elevationOptions ? Uint8Array.from(encodeTile.fromGeojsonVt({water:{features:[{
+    type:3,tags:{class:'lake'},geometry:[[[0,0],[4096,0],[4096,4096],[0,4096],[0,0]]],
+  }]}})) : null;
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
-    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,key === 'createElevation' && elevationOptions ? url => value(url,elevationOptions) : value);
+    for (const [key,value] of Object.entries(elevationModule)) {
+      if (key==='createElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,elevationOptions));
+      else if (key==='createSurfaceElevation' && elevationOptions)
+        this.setExport(key,url=>value(url,{
+          ...elevationOptions,
+          waterTile:async()=>({data:nonOceanMVT.buffer}),
+          readTile:labelModule.readTile,
+        }));
+      else this.setExport(key,value);
+    }
   }, {context});
   // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
@@ -247,6 +266,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   }, {context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&['frequencyDetails','frequencyAvailability'].includes(key)?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const serviceStatus = new vm.SyntheticModule(Object.keys(serviceStatusModule),function(){for(const [key,value] of Object.entries(serviceStatusModule))this.setExport(key,value);},{context});
+  const dataAges = new vm.SyntheticModule(Object.keys(dataAgesModule),function(){for(const [key,value] of Object.entries(dataAgesModule))this.setExport(key,value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
     for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,key==='createPowerFacilityLoader'?(map,options)=>value(map,fixtureOptions(options)):value);
   },{context});
@@ -269,7 +289,7 @@ async function start({ styleLoaded = false, failWebGL = false, delayLibraries = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('imagery.mjs') ? imagery : specifier.includes('station-world.mjs') ? stationWorld : specifier.includes('station-fallback.mjs') ? stationFallback : specifier.includes('mainline-reference.mjs') ? reference : specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('terrain-3d.mjs') ? terrain3d : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('service-status.mjs') ? serviceStatus : specifier.includes('data-ages.mjs') ? dataAges : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -591,12 +611,12 @@ test('measurement toolbar settles unavailable endpoint heights and recovers on a
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
     assert.equal(doc.getElementById('measure-toolbar').hidden, false);
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const finish = () => {
       for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
       map.handlers.dblclick({preventDefault() {}});
     };
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     const status = () => doc.getElementById('measure-status').textContent;
     finish(); assert.match(status(), /Finding heights/); await settle();
     assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
@@ -620,18 +640,19 @@ test('measurement toolbar retries heights with existing point handles without lo
     const map = maps[0], doc = window.document;
     map.handlers['style.load']();
     map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
-    doc.querySelector('[data-measure="distance"]').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
     const retry = doc.getElementById('measure-retry');
     assert.ok(retry, 'the toolbar exposes an explicit endpoint-height retry');
     assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
     assert.equal(retry.hidden, true);
     const status = () => doc.getElementById('measure-status').textContent;
-    const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
     for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
     map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
     await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
     map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
-    map.rendered = [{layer: {id: 'measure-point-targets'}, properties: {index: 0}}];
+    map.rendered = [{layer: {id: 'measure-point-targets'},
+      ...map.sourceData['atlas-measure'].features.find(feature => feature.properties.index === 0)}];
     map.handlers.click({point: {x: 0, y: 0}, lngLat: {lng: 0, lat: 0}});
     assert.equal(doc.getElementById('measure-delete').hidden, false, 'rendered endpoint remains selectable');
     const geometry = map.sourceData['atlas-measure'].features.map(feature => feature.geometry);
@@ -652,17 +673,20 @@ test('startup native-realm loaders use each window fixture without external fetc
   for(let index=0;index<2;index++){
    const state=await start({search:'?mode=electrification',fetcher:async (input,options)=>{
     const url=String(input);requests[index].push({url,options});
-    return {ok:true,json:async()=>url.includes('/data/traction/power/')?{type:'FeatureCollection',features:[]}:structuredClone(style)};
+    return url.includes('/data/traction/power/')?new Response(gzipSync(JSON.stringify({type:'FeatureCollection',features:[]}))):{ok:true,json:async()=>structuredClone(style)};
    }});
    states.push(state);state.maps[0].handlers['style.load']();
-   for(let tick=0;tick<3;tick++)await new Promise(resolve=>setTimeout(resolve,0));
+   // The power-method file is gunzipped by DecompressionStream, whose work
+   // runs on a background thread: wait for it (at most 2 s) instead of a
+   // fixed number of timer ticks, which a busy CI runner can outrun.
+   for(let wait=0;wait<200 && !state.maps[0].sourceData?.electricMethods;wait++)await new Promise(resolve=>setTimeout(resolve,10));
    assert.ok(state.maps[0].sourceData?.electricMethods,'the fixture must actually reach the native loader');
    assert.deepEqual(state.maps[0].sourceData.electricMethods.features,[]);
   }
   for(const calls of requests){
-   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson'));
+   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson.gz'));
    assert.equal(methods.length,1,'each native-realm loader uses its own window mock');
-   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson');
+   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson.gz');
    assert.equal(methods[0].options.cache,'no-cache');
    assert.equal(methods[0].options.body,undefined);
    assert.equal(methods[0].options.headers,undefined);
@@ -918,7 +942,7 @@ test('unavailable Chinese font preserves a working map and system fallback',asyn
 });
 
 test('clicked station, service, entrance, power and context details share the selected regional font',async()=>{
- const fetcher=async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)});
+ const fetcher=async url=>String(url).includes('/data/traction/power/')?new Response(JSON.stringify({type:'FeatureCollection',features:[]})):({ok:true,json:async()=>structuredClone(style)});
  const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES,'Yu Gothic':ALL_PROBES,'Malgun Gothic':ALL_PROBES},fetcher});
  try{
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
@@ -2076,9 +2100,10 @@ test('concurrent train-control systems use compact names with complete hover and
 test('railway energy supplies download once at facility zoom and relocalize existing data on language changes',async()=>{
   const requests=[],collection={type:'FeatureCollection',features:[{type:'Feature',id:'node-91',properties:{power_kind:'fuel',name:'Local railway depot','name:en':'Railway fuel depot','name:ja':'鉄道給油所'},geometry:{type:'Point',coordinates:[0,0]}}]};
   const {dom,window,maps,errors}=await start({fetcher:async url=>{
-    const power=String(url).includes('/data/traction/power/power-facilities.geojson');
+    const power=String(url).includes('/data/traction/power/power-facilities.geojson.gz');
     if(power)requests.push(String(url));
-    return {ok:true,json:async()=>structuredClone(power?collection:style)};
+    if(String(url).includes('/data/traction/power/'))return new Response(gzipSync(JSON.stringify(power?collection:{type:'FeatureCollection',features:[]})));
+    return {ok:true,json:async()=>structuredClone(style)};
   }});
   try {
     const map=maps[0];map.zoom=9;map.handlers['style.load']();
@@ -2089,7 +2114,8 @@ test('railway energy supplies download once at facility zoom and relocalize exis
     map.zoom=12;map.handlers.moveend();
     assert.equal(requests.length,0,'satellite without rail overlays does not request supplies');
     window.document.querySelector('[data-background="carto"]').click();
-    await new Promise(resolve=>setTimeout(resolve,0));
+    // Decompressing the gzip snapshot takes a few event-loop turns.
+    for(let turn=0;turn<50&&!map.sourceData.electricFacilities?.features?.length;turn++)await new Promise(resolve=>setTimeout(resolve,0));
     assert.equal(requests.length,1);
     const original=collection.features[0],loaded=map.sourceData.electricFacilities.features[0];
     assert.equal(loaded.id,original.id);assert.equal(loaded.type,original.type);assert.deepEqual(loaded.geometry,original.geometry);
@@ -2647,8 +2673,11 @@ test('Power legend is a fixed key of the facility drawing and current systems, p
     const doc = window.document, legend = doc.getElementById('legend');
     const checkPoints = former => {
       assert.equal(legend.querySelector('h2').textContent,'Railway power','not an in-view list');
-      const gradients=[...legend.querySelectorAll('.legend-item')].filter(row=>row.firstElementChild.style.background.includes('linear-gradient'));
-      assert.equal(gradients.length,model.CURRENT_SYSTEMS.length,'every current system has its voltage shade key');
+      const items=[...legend.querySelectorAll('.legend-item')];
+      assert.equal(items.filter(row=>row.firstElementChild.style.background.includes('gradient')).length,0,'exact values, no gradient rows');
+      const key=items.map(row=>[row.firstElementChild.style.getPropertyValue('--swatch'),row.lastElementChild.textContent]).filter(([,label])=>/ (DC|AC [\d.]+ Hz)$/.test(label));
+      assert.deepEqual(key,model.currentKey(),'one fixed row per voltage and current, coloured like the track paint');
+      for (const label of ['1.5 kV DC','15 kV AC 16.7 Hz','25 kV AC 50 Hz','12.5 kV AC 60 Hz']) assert.ok(key.some(([,l])=>l===label),label);
       const samples = [...legend.querySelectorAll('.point-swatch')];
       assert.equal(samples.length,2,'one area and one point sample, not one per kind');
       for (const [index,shape] of ['rect','circle'].entries()) {
@@ -2824,4 +2853,38 @@ test('non-rail cached failures become visible again without a new error event',a
   active=[tile];f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),true,'cached failure remains known');
   tile.state='loaded';f.map.handlers.sourcedata({sourceId,tile,isSourceLoaded:true});assert.equal(f.status.classList.contains('error'),false);
  }finally{f.close();}
+});
+
+for (const styleLoaded of [false, true]) test(`explicit pitched 2D share survives ${styleLoaded ? 'warm' : 'cold'} camera restoration`, async () => {
+ const {dom,window,maps,errors}=await start({styleLoaded, search:'?terrain3d=0#12/35/139/0/45'});
+ try {
+   const map=maps[0];
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null,'initial jump preserves shared 2D mode');
+   // Exercise the registered once callback as well as the normal style handler.
+   for(const callback of map.onceHandlers?.['style.load']||[]) callback();
+   map.handlers['style.load']?.();
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null,'style-ready restoration stays in 2D');
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(window.location.search,'');
+   map.setPitch(50);
+   assert.equal(map.getTerrain()?.source,'terrain3d','a later user tilt can enable 3D');
+   assert.deepEqual(errors,[]);
+ } finally {dom.window.close();}
+});
+
+test('a remembered explicit 2D pitched globe view remains 2D', async () => {
+ const {dom,maps,errors}=await start({savedView:{c:[139,35],z:3,b:0,p:45,g:true,t:false}});
+ try {
+   const map=maps[0];
+   for(const callback of map.onceHandlers?.['style.load']||[]) callback();
+   map.handlers['style.load']?.();
+   assert.equal(map.getPitch(),45);
+   assert.equal(map.getTerrain(),null);
+   map.setPitch(50);
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.deepEqual(errors,[]);
+ } finally {dom.window.close();}
 });

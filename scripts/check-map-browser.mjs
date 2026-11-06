@@ -473,7 +473,8 @@ try{
   await page.locator('#draw-close').click();
   console.log('PASS: drawing tool draws a line and saves it as GeoJSON');
   await page.locator('button.atlas-ctrl[title="Measure"]').click();
-  await page.locator('[data-measure="distance"]').click();
+  assert.equal(await page.locator('[data-measure="distance"]').getAttribute('aria-pressed'),'true',
+    'Distance must be active immediately on opening the measurement tools');
   for (const [x,y] of [[700,500],[850,500],[850,600]]) await page.mouse.click(x,y);
   await page.mouse.dblclick(850,600);
   assert.match(await page.locator('#measure-status').textContent(),/Distance: .* over 2 segments/);

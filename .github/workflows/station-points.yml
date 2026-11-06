@@ -1,17 +1,8 @@
 name: Refresh worldwide station-point overview
 on:
   workflow_dispatch:
-  # Each run makes at most one bounded geographic data query.
-  schedule:
-    - cron: '43 2,8,14,20 * * *'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/station-overview.mjs'
-      - 'scripts/station-acquisition.mjs'
-      - 'scripts/build-station-snapshot.mjs'
-      - 'styles/tile-bundles.mjs'
-      - '.github/workflows/station-points.yml'
+  # Started every six hours by osm-updates.yml (one Overpass dataset at a
+  # time). Each run makes at most one bounded geographic data query.
 permissions:
   contents: write
   actions: write
@@ -40,7 +31,10 @@ jobs:
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin station-points-work
             mkdir -p /tmp/station-previous
-            git archive FETCH_HEAD -- state.json stations.json.gz | tar -x -C /tmp/station-previous
+            # A cycle keeping elements also has elements.json.gz.
+            files='state.json stations.json.gz'
+            if git cat-file -e FETCH_HEAD:elements.json.gz 2>/dev/null; then files="$files elements.json.gz"; fi
+            git archive FETCH_HEAD -- $files | tar -x -C /tmp/station-previous
           elif [ "$status" != 2 ]; then
             echo "Cannot safely check checkpoint branch (status $status)"
             exit "$status"
@@ -50,9 +44,9 @@ jobs:
           PREVIOUS_DATA: /tmp/station-previous
         run: |
           if [ -f /tmp/station-previous/state.json ]; then
-            node scripts/build-station-snapshot.mjs
+            node --import ./scripts/overpass-meter.mjs scripts/build-station-snapshot.mjs
           else
-            env -u PREVIOUS_DATA node scripts/build-station-snapshot.mjs
+            env -u PREVIOUS_DATA node --import ./scripts/overpass-meter.mjs scripts/build-station-snapshot.mjs
           fi
       - name: Verify region topology, records and publication boundary
         id: verify
@@ -61,11 +55,17 @@ jobs:
           import assert from 'node:assert/strict';
           import {readFile,appendFile} from 'node:fs/promises';
           import {gunzipSync} from 'node:zlib';
-          import {checkStationAcquisition,stationWorldCoverage} from './scripts/station-acquisition.mjs';
+          import {checkStationAcquisition,stationWorldCoverage,stationRecords} from './scripts/station-acquisition.mjs';
           const state=JSON.parse(await readFile('station-snapshot/state.json','utf8'));
           const rows=JSON.parse(gunzipSync(await readFile('station-snapshot/stations.json.gz')));
           const manifest=JSON.parse(await readFile('station-snapshot/manifest.json','utf8'));
           assert.equal(checkStationAcquisition(state,rows),true);
+          // The records of a generation keeping elements are those elements'.
+          if(state.elements){
+            const elements=JSON.parse(gunzipSync(await readFile('station-snapshot/elements.json.gz')));
+            assert.deepEqual(rows,stationRecords(elements));
+            assert.equal(manifest.elements,elements.length);
+          }
           const complete=state.pending.length===0&&stationWorldCoverage(state.completed);
           assert.equal(manifest.complete,complete);
           assert.equal(manifest.stations,rows.length);
@@ -75,13 +75,18 @@ jobs:
             assert.ok(index.zoom===3&&index.bundles.length>0,'Complete data must include non-empty z3–7 tiles');
             assert.ok(manifest.tiles>0&&manifest.bundles>0);
           }
-          await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\n`);
+          // The builder decides publication: a complete generation completed
+          // by this run's region, altered by its changes, or with tiles that
+          // differ from the last published ones.
+          const publish=manifest.publish===true;
+          assert.ok(!publish||complete,'only a complete generation is published');
+          await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\npublish=${publish}\n`);
           JS
       # Production readers must use ONLY station-points-data; it is never
       # touched by a partial refresh. The complete generation replaces it
       # atomically as one branch update.
       - name: Publish complete worldwide tile generation
-        if: steps.verify.outputs.complete == 'true'
+        if: steps.verify.outputs.publish == 'true'
         run: |
           set -eu
           mkdir /tmp/station-release
@@ -93,6 +98,8 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout --orphan station-points-data
           cp -r "$GITHUB_WORKSPACE/station-snapshot/." .
+          # The elements stay on station-points-work only.
+          rm -f elements.json.gz
           git add .
           git commit -q -m "Complete worldwide station points $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if ! git push --force origin HEAD:station-points-data; then
@@ -112,6 +119,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/station-snapshot/state.json" .
           cp "$GITHUB_WORKSPACE/station-snapshot/stations.json.gz" .
           cp "$GITHUB_WORKSPACE/station-snapshot/manifest.json" .
+          if [ -f "$GITHUB_WORKSPACE/station-snapshot/elements.json.gz" ]; then cp "$GITHUB_WORKSPACE/station-snapshot/elements.json.gz" .; fi
           git add .
           git commit -q -m "Station-point acquisition progress $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if ! git push --force origin HEAD:station-points-work; then
@@ -119,7 +127,7 @@ jobs:
           fi
       # Only a completed, atomically published generation can update the map.
       - name: Redeploy site after complete OSM station snapshot publication
-        if: steps.verify.outputs.complete == 'true'
+        if: steps.verify.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main

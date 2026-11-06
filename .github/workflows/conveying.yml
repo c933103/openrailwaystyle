@@ -1,11 +1,8 @@
 name: Refresh escalators, moving walkways and elevators
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '41 2 * * 0'
-  push:
-    branches: [main]
-    paths: ['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'styles/conveying.mjs', '.github/workflows/conveying.yml']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass
+  # dataset at a time).
 permissions:
   contents: write
   actions: write
@@ -25,8 +22,21 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the published snapshot
+        # The elements it was made from, with their database time and query:
+        # the change requests start there. Without them the build downloads
+        # everything.
+        run: |
+          if git fetch --depth=1 origin conveying-data; then
+            mkdir -p /tmp/previous-conveying
+            if git --work-tree=/tmp/previous-conveying checkout FETCH_HEAD -- elements.json.gz manifest.json; then
+              echo "PREVIOUS_DATA=/tmp/previous-conveying" >> "$GITHUB_ENV"
+            else
+              echo "::warning::The published snapshot could not be read; downloading in full"
+            fi
+          fi
       - name: Extract every mapped escalator, moving walkway and elevator way
-        run: node scripts/build-conveying.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-conveying.mjs
       - name: Publish complete data snapshot
         # Only main publishes the shared snapshot.
         if: github.ref == 'refs/heads/main'

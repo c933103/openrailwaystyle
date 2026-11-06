@@ -83,12 +83,34 @@ trains, nor satisfy the whole-grid requirement. The map shows mapped supplies,
 not a live power network, operating status feed or proof that a steam facility remains usable.
 
 `scripts/build-power-facilities.mjs` queries every world quadrant, preserving
-completed raw responses and splitting resource-limited regions. The snapshot
-publishes only after all regions complete. `traction-facilities.yml` is manual
-or code-change triggered and adds no schedule. It publishes `traction-data`
+completed raw responses and splitting resource-limited regions; a split decision
+stays whatever its age, on a refresh, and when the query changes (its parts are
+then updated as below), except on a refresh with a changed query. A cached region a week old takes the changes since its database time
+(an Overpass augmented diff of the same query, `scripts/overpass-adiff.mjs`),
+applied to its stored elements; a changed way or multipolygon without its
+geometry is refused. A failed change request keeps the cached response and the
+next run asks again from the same time; a cached region has no age limit,
+since its changes keep it exact. A region made by another query takes that
+query's changes, then only the difference between the two selections at that
+database time (`updateElements`): the ids the current query selects, with the
+newly selected elements fetched by id. Only if that fails, or on a refresh, is
+it downloaded again in full. The snapshot
+publishes only after all regions complete. `traction-facilities.yml` is started
+every six hours, and when its builder changes, by `osm-updates.yml` (one
+Overpass dataset at a time); it republishes only when the data changed. It publishes `traction-data`
 with `power/power-facilities.geojson` and its coverage manifest. The application
 loads this file on demand in the Power view and reuses it after language or
 view changes. Visitors never query Overpass.
+
+`traction-data` holds each power snapshot twice: as plain GeoJSON and as a gzip copy
+(`.geojson.gz`). The site deploys only the gzip copies of the energy supplies,
+conductor rails and chargers, and electrification signals. The application
+decompresses them in the browser (`readGzipJson` in `styles/power-facilities.mjs`).
+It also reads plain JSON when a server has already decoded the response.
+`site.yml` validates the gzip copies against their manifests, then removes
+the uncompressed files from the site, which saves about 100 MB of the
+GitHub Pages limit. The plain files stay on `traction-data` for the workflows
+that read them.
 
 Primary references:
 
@@ -98,6 +120,54 @@ Primary references:
 - [Power frequency tagging](https://wiki.openstreetmap.org/wiki/Key:frequency)
 - [Provider import](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/openrailwaymap.lua)
 - [Provider tile properties](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/import/sql/tile_views.sql)
+
+## Electrification signals
+
+Power shows electrification signals from zoom 13 as small amber dots with a
+dark outline, distinct from the neutral facility dots: signals such as
+announce or lower pantograph, main switch off and on, and end of catenary.
+Selection is by tag alone: every `railway=signal` node recording
+`railway:signal:electricity` (other than `no`), whatever its national value.
+The provider's signal tiles mark a signal as electricity only when its value,
+function and form match the provider's per-country catalogue. On 26 October
+2026 about 3% of mapped values were outside it, mostly French, Portuguese,
+Spanish and Austrian tram signals, which the provider shows as unknown
+signals. The Power view therefore uses its own tag-based snapshot, so every
+country's signals are treated alike. As with the other Power features, the map
+carries no text for them. Deactivated signals
+(`railway:signal:electricity:deactivated=yes`) are hollow and follow the
+planned/former setting. Selecting a dot shows the recorded signal value,
+function, form, applicability, turn direction, voltage, frequency and facing
+direction. A dot is a mapped location, not a live aspect.
+
+`scripts/build-signals.mjs` collects them worldwide in the same request per
+region as the signals without a direction (one download of `railway=signal`
+nodes for both: signals without a direction, plus electrification signals with
+one), and publishes them with the validation and digest-bearing manifest shared
+with the conductor-rail supplement (`scripts/staged-overpass.mjs`). Regions
+answered before the two downloads were combined are reused and only fetch the
+electrification signals that have a direction, as they were at the reused
+response's database time (`[date:"<time>"]`), so the stored region describes
+one moment.
+
+Each region's response is stored and kept: it is downloaded once, then brought
+up to date at most once a week (`SIGNAL_UPDATE_DAYS`, default 7) with only what
+changed since its OSM database time, an Overpass augmented diff
+(`[adiff:"<time>"]`, which the server answers in XML only). Created and changed
+signal nodes replace the stored ones by id; deleted nodes, and nodes that no
+longer match (for example a removed `railway:signal:electricity`), are dropped.
+A change request that times out is split into quarters. The first quarter to
+answer fixes the end time and the others ask up to that same time
+(`[adiff:"<start>","<end>"]`), so the region is stored as of one moment. The
+boxes that answered are recorded with the region (`changeParts`), and its next
+update asks them directly rather than timing out on the whole region again; a
+record that no longer partitions the region is ignored. A failed or incomplete
+change request leaves the stored region unchanged and publishes nothing.
+`scripts/build-electricity-signals.mjs` still builds the electrification
+snapshot on its own with a full download, as a manual fallback.
+`traction-facilities.yml` publishes `power/electricity-signals.geojson` with its
+digest-bearing manifest; site assembly accepts snapshots made before this file
+existed and validates it once present.
 
 ## Means of power delivery and traction, charging and catenary equipment
 
@@ -180,8 +250,10 @@ planned/former conductor rails and chargers follow the existing inactive setting
 
 The maintenance-only `build-power-methods.mjs` writes
 `power/power-methods.geojson` and `power/methods-manifest.json` on `traction-data`.
-It covers every world quadrant and caches exact completed queries and spatial
-split decisions for 28 days. Each run has hard limits of 96 requests, 100 MB of
+It covers every world quadrant and keeps exact completed responses. A response a week old takes the changes since its database time, and a failed change request keeps it for the next run. A response made by another query takes those changes and only the difference between the two selections (`updateElements` in `scripts/overpass-adiff.mjs`); if that fails it is downloaded in full. There is no age limit, since the changes keep a response exact.
+A spatial split decision stays for as long as its query is unchanged, so a
+region known to exceed the server's limits is asked for in its parts, never
+whole again. Each run has hard limits of 96 requests, 100 MB of
 downloaded response bodies and one hour, with at most three attempts per query and at
 most six subdivision levels. HTTP request/authentication failures, malformed
 JSON, unknown error remarks and incomplete geometry terminate immediately.
@@ -195,7 +267,21 @@ Transport and admission failures still retry the same box, without subdivision. 
 honoured up to five minutes; longer waits or an exhausted time budget stop the
 run for later resumption. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
-ignores both kinds of checkpoint.
+ignores completed responses but keeps split decisions.
+
+With `RAILWAY_WAYS_STORE` set to a copy of `railway-ways-data` in which every
+stage is complete, `build-power-methods.mjs` builds the same features from the
+stored merged responses (`scripts/railway-ways.mjs`) and makes no Overpass
+request. Its manifest then has `partition: "railway-ways-stages"` and one
+coverage leaf per stored region (`stage`, `part`, `bbox`); validation requires
+those leaves to tile every stage part's box exactly (quarters, at most six
+levels), in place of the world quadrants. The stages cover the whole world
+through the rest-of-the-world remainder (`STAGES_COVER_WORLD` in
+`scripts/download-stages.mjs`). The store is used only when every stage in it
+is complete with its current parts (its recorded `leaves.key`): a world stage
+last fetched with its earlier boxes could leave places out. Until then, and
+whenever the store cannot be loaded, the builder downloads as before.
+`traction-facilities.yml` loads the store before this step.
 
 The query first collects bounded amenity/charge-point candidates, then applies
 the 14 railway-use hints within that named set. This factors the original 240

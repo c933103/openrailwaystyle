@@ -10,6 +10,9 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import * as heritage from '../scripts/heritage-data.mjs';
 import * as bundles from '../styles/tile-bundles.mjs';
+import * as adiff from '../scripts/overpass-adiff.mjs';
+import * as worldRegions from '../scripts/world-regions.mjs';
+import * as zlib from 'node:zlib';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
 const parent = [0, 0, 45, 45];
@@ -33,7 +36,7 @@ const response = (status, body) => new Response(typeof body === 'string' ? body 
 
 // Evaluate the unchanged executable, linking its real classifier/geometry/tile
 // modules. Only external effects (fetch, time, filesystem root) are controlled.
-async function run(t, reply, {writeError, byteLength} = {}) {
+async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}) {
   const root = await fs.mkdtemp(join(tmpdir(), 'heritage-builder-'));
   t.after(() => fs.rm(root, {recursive:true, force:true}));
   await fs.mkdir(join(root, '.snapshot-cache'));
@@ -42,6 +45,7 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     if (String(box) === String(parent)) continue;
     await fs.writeFile(join(root, `.snapshot-cache/heritage-v2-${box.join('_')}.json`), JSON.stringify({query:heritage.heritageQuery(box), response:empty}));
   }
+  for (const [path, data] of Object.entries(files)) { await fs.mkdir(join(root, path, '..'), {recursive:true}); await fs.writeFile(join(root, path), data); }
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
@@ -57,7 +61,7 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     },
   };
   const context = vm.createContext({
-    process:{env:{}}, URLSearchParams,
+    process:{env}, URLSearchParams,
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
     setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
@@ -79,6 +83,9 @@ async function run(t, reply, {writeError, byteLength} = {}) {
       return decision;
     }},
     '../styles/tile-bundles.mjs':bundles,
+    './overpass-adiff.mjs':adiff,
+    './world-regions.mjs':worldRegions,
+    'node:zlib':zlib,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
@@ -140,12 +147,15 @@ for (const [name, body] of [
   ['server busy', html('runtime error: open64: 0 Success /osm3s_osm_base Dispatcher_Client::request_read_and_idx::timeout. The server is probably too busy to handle your request.')],
   ['Gateway timeout', 'Gateway timeout'],
 ]) {
-  test(`builder retains all backoffs before splitting ${name}`, async t => {
+  // A busy server says nothing about the region's size (#331's rule): after
+  // all its backoffs the run fails, keeps the previous snapshot and asks no
+  // smaller region.
+  test(`builder retains all backoffs, then fails without splitting, on ${name}`, async t => {
     const result = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? body : complete));
-    await checkPublished(result);
-    assert.equal(result.calls.filter(query => query === parentQuery).length, 4);
-    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000, 10000, 10000, 10000, 10000]);
-    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'split']);
+    await checkUnpublished(result, /^HTTP 504:/, 4);
+    assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
   });
 }
 
@@ -155,6 +165,16 @@ async function checkUnpublished(result, pattern, count) {
   assert.equal(await fs.readFile(join(result.root, 'heritage-data/sentinel'), 'utf8'), 'previous snapshot');
   assert.ok(!result.writes.some(path => path.startsWith('heritage-data/')));
 }
+
+// 2026-11-03: overpass-api.de gave no answer at all for hours; the builder
+// split each failing region and retried its quarters. An outage now costs one
+// region's retries, then the run stops.
+test('an outage (no answer to any request) sends one region its retries, splits nothing and publishes nothing', async t => {
+  const result = await run(t, () => { throw new TypeError('fetch failed'); });
+  await checkUnpublished(result, /^Network: fetch failed/, 4);
+  assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+  assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
+});
 
 for (const status of [429, 400]) {
   test(`builder preserves HTTP ${status} even when the body mentions executed-query OOM`, async t => {
@@ -233,4 +253,92 @@ test('builder accumulates download bytes across failed attempts', async t => {
   const result = await run(t, () => response(504, 'Gateway timeout'), {byteLength:() => 750_000_001});
   await checkUnpublished(result, /download budget exceeded/, 2);
   assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'fail']);
+});
+
+const quarters = ([s, w, n, e]) => { const a = (s + n) / 2, b = (w + e) / 2; return [[s, w, a, b], [s, b, a, e], [a, w, n, b], [a, b, n, e]]; };
+const grid = heritage.heritageRegions();
+const splitCoverage = grid.flatMap(box => String(box) === String(parent) ? quarters(box) : [box]).map(bbox => ({bbox, timestamp:null, features:0}));
+
+test('regions come from the previous snapshot coverage when it tiles the world, else the 45-degree grid', () => {
+  assert.equal(grid.length, 32);
+  assert.deepEqual(heritage.heritageRegions(splitCoverage), splitCoverage.map(row => row.bbox));
+  assert.deepEqual(heritage.heritageRegions(splitCoverage.slice(1)), grid, 'a gap');
+  assert.deepEqual(heritage.heritageRegions([...splitCoverage, {bbox:parent}]), grid, 'an overlap');
+  assert.deepEqual(heritage.heritageRegions([{bbox:[0, 0, 'x', 1]}]), grid);
+  assert.deepEqual(heritage.heritageRegions(undefined), grid);
+  assert.deepEqual([parent, quarters(parent)[0], quarters(quarters(parent)[0])[3]].map(heritage.heritageDepth), [0, 1, 2]);
+});
+
+test('builder asks for a region split last month in its parts, never the whole region again', async t => {
+  const previous = JSON.stringify({coverage:splitCoverage});
+  const result = await run(t, () => response(200, complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  await checkPublished(result);
+  assert.deepEqual(result.calls, quarters(parent).map(heritage.heritageQuery), 'only the four uncached parts are requested');
+  // The split depth carries over: one more split level is left before the limit of six.
+  const deep = await run(t, query => response(504, timeout), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  assert.ok(deep.error);
+  assert.ok(deep.decisions.every(item => item.depth >= 1), 'parts start at their own depth');
+  // An unreadable snapshot falls back to the grid with a warning.
+  const missing = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? timeout : complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'absent.json'}});
+  await checkPublished(missing);
+  assert.equal(missing.calls[0], parentQuery);
+  assert.ok(missing.warnings.some(line => /unreadable/.test(line)));
+});
+
+// Synthetic augmented diffs in the documented form; no captured provider data.
+const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-08T00:00:00Z';
+const ring = [[12, 12], [12.002, 12], [12.002, 12.002], [12, 12.002], [12, 12]];
+const wayXml = (id, tags, points) => `<way id="${id}" version="2">${points.map(([lon, lat], i) => `<nd ref="${i % 4 + 1}" lat="${lat}" lon="${lon}"/>`).join('')}${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</way>`;
+const adiffXml = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6"><meta osm_base="${BASE}"/>${actions}</osm>\n`;
+const moved = adiffXml(`<action type="modify"><old>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, complete.elements[0].geometry.map(p => [p.lon, p.lat]))}</old><new>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, ring)}</new></action>`);
+const storedParent = (query = parentQuery) => ({[`previous/elements/${parent.join('_')}.json.gz`]: zlib.gzipSync(JSON.stringify({query, osmBase:SINCE, elements:complete.elements}))});
+const previousEnv = {HERITAGE_PREVIOUS_ELEMENTS:'previous'};
+const publishedParent = async root => JSON.parse(gunzipSync(await fs.readFile(join(root, `heritage-data/elements/${parent.join('_')}.json.gz`))));
+
+test('a region with published elements takes only its changes, and the next run starts from their time', async t => {
+  const result = await run(t, query => { assert.ok(query.includes('[adiff:'), 'no full download'); return response(200, moved); }, {env:previousEnv, files:storedParent()});
+  assert.ifError(result.error);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(parentQuery, SINCE)]);
+  const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+  assert.equal(manifest.coverage.find(row => String(row.bbox) === String(parent)).timestamp, BASE);
+  assert.equal(manifest.areas, 1);
+  const stored = await publishedParent(result.root);
+  assert.deepEqual([stored.query, stored.osmBase], [parentQuery, BASE]);
+  assert.deepEqual(stored.elements, [{type:'way', id:42, tags:{historic:'district', name:'Synthetic historic district'}, geometry:ring.map(([lon, lat]) => ({lat, lon}))}], 'the moved way, without meta');
+  const files = await fs.readdir(join(result.root, 'heritage-data/elements'));
+  assert.equal(files.length, 32, 'every region keeps its elements, cached or downloaded');
+  // The updated region is cached like a full response: a retry after a later
+  // failure in the same month asks nothing for it.
+  const cached = JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`), 'utf8'));
+  assert.deepEqual([cached.query, cached.response.osm3s.timestamp_osm_base, cached.response.elements], [parentQuery, BASE, stored.elements]);
+});
+
+test('a region whose query changed takes only the difference, not a full download', async t => {
+  const older = parentQuery.replace(`way[heritage=1](${parent.join(',')});rel[heritage=1][type~"^(multipolygon|boundary)$"](${parent.join(',')});`, '');
+  assert.notEqual(older, parentQuery);
+  const added = {type:'way', id:43, tags:{heritage:'1'}, geometry:ring.map(([lon, lat]) => ({lat:lat + 1, lon}))};
+  const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''))
+    : query.endsWith('out ids;') ? response(200, {elements:[{type:'way', id:42}, {type:'way', id:43}]}) : response(200, {elements:[added]}), {env:previousEnv, files:storedParent(older)});
+  assert.ifError(result.error);
+  const {ids, elements} = adiff.selectionChangeQueries(older, parentQuery, BASE);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(older, SINCE), ids, elements(['way/43'])], 'the new ids, then only the new area');
+  assert.deepEqual((await publishedParent(result.root)).elements.map(e => e.id), [42, 43]);
+  assert.equal((await publishedParent(result.root)).query, parentQuery, 'the next run compares with the new query');
+});
+
+test('a failed change request falls back to the full download of that region; HERITAGE_REFRESH skips the changes', async t => {
+  const failed = await run(t, query => query.includes('[adiff:') ? response(504, 'Gateway timeout') : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.ifError(failed.error);
+  assert.deepEqual(failed.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+  assert.ok(failed.warnings.some(w => /downloading in full/.test(w)));
+  const refresh = await run(t, () => response(200, complete), {env:{...previousEnv, HERITAGE_REFRESH:'1'}, files:storedParent()});
+  assert.ok(refresh.calls.includes(parentQuery) && !refresh.calls.some(query => query.includes('[adiff:')), 'a forced refresh downloads in full');
+  // A changed way without geometry is never dropped silently from the map.
+  const bare = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(`<action type="create"><way id="44" version="1"><tag k="heritage" v="1"/></way></action>`)) : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.deepEqual(bare.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+});
+
+test('the download budget also counts change requests and stops the run', async t => {
+  const result = await run(t, () => response(200, moved), {env:previousEnv, files:storedParent(), byteLength:() => 1_500_000_001});
+  await checkUnpublished(result, /download budget exceeded/, 1);
 });

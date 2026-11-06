@@ -5,6 +5,12 @@ exports and local Osmium filtering. Its acquisition policy, bounds,
 attribution, failure states and exact-source acceptance are documented in
 [mainline-reference.md](mainline-reference.md). It never fetches ORM tiles.
 
+The coverage-gap measurement (`osm-gaps.yml`, manual, #330) reads two inputs:
+- Geofabrik's region index, `https://download.geofabrik.de/index-v1.json`, one request;
+- Natural Earth 1:10m land and minor islands from `raw.githubusercontent.com/nvkelso/natural-earth-vector`, the source `build-han-region.mjs` already uses.
+
+Both requests identify the project in their User-Agent. They are logged per host by `scripts/overpass-meter.mjs`.
+
 The OpenRailwayMap policy audit below is dated 2026-10-07. Runtime inventory
 and CI boundaries were reconciled on 2026-10-19 against
 [`dbdab03b024c92dd7bd3c2328d562e50e1a7653b`](https://github.com/c933103/openrailwaystyle/tree/dbdab03b024c92dd7bd3c2328d562e50e1a7653b).
@@ -12,6 +18,23 @@ That reconciliation inspected source only: no live provider calls or new
 runtime measurements, and no re-verification of published service terms.
 The ORM audit applies to the **public service at `openrailwaymap.app`**;
 it is not a legal interpretation of every data source used by Railway Atlas.
+
+## Upstream data register (#330, B6)
+
+These are the services the data workflows download from, with their published terms. Terms were read on 2026-11-02 and are quoted from the linked pages. Re-read them every 6 months and note the date on #330. **Our budget** says what the code enforces today, and what the planned extract pipeline must enforce before its first real run.
+
+| Upstream | Operator | Published terms and limits | Request identification | Licence | Our budget |
+| --- | --- | --- | --- | --- | --- |
+| [Geofabrik download server](https://download.geofabrik.de/technical.html) | Geofabrik GmbH, Karlsruhe | No download rate, quota or bulk limit stated; extracts are "available for free download". Diff files "are kept for 100 days and then deleted" | none stated | "Open Database License 1.0 … acknowledge OpenStreetMap as the data source" | **Today:** `mainline-reference.yml`, monthly: the eight continents (85.7 GB on 2026-10-23), checked by size and MD5. `osm-extract.yml`, by hand only: the planned regions (77.6 GiB on 2026-11-01), at most 100 GiB a run, 2 jobs in parallel, no redirects, checked by size, MD5 and replication timestamp; 3 requests per region, or 2 (HEAD, MD5) when the file is the one its working copy was made from, which is not downloaded again. **Planned:** one world download per refresh shared by all datasets; ask Geofabrik before going weekly |
+| [overpass-api.de](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) | FOSSGIS | Under 10,000 queries **and** 1 GB a day, processed in no more than 10 minutes in sum; "If you set something up that uses the Overpass API regularly, then divide those numbers by 100". "No parallel running of multiple scripts." On 429 or 406, "pause for 30 seconds". "Use extracts if you need a lot of data." The [manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) names "Stiching bounding boxes to scrape the full data of the complete world" as problematic | a `User-Agent` or `Referer` "that uniquely identify your app" (every builder sends one) | data ODbL (OpenStreetMap) | **Today:** one dataset at a time (`osm-updates.yml`); per-run and 24-hour caps in the builders (for example 900 MB a day for branch lines, 100 MB for service routes). These caps are set against the one-off figure of 1 GB a day, not the regular-use figure of 10 MB; the `OVERPASS_USAGE` meter in every builder's log. **Planned:** full downloads replaced by extracts; only change updates and gap tiles on Overpass, within the regular-use figures |
+| [OSMF planet and mirrors](https://wiki.openstreetmap.org/wiki/Planet.osm) | OpenStreetMap Foundation; mirrors listed on the wiki | No quota stated. "Use command-line tools to download"; check the size first; prefer HTTPS on mirrors; mirrors are "no longer necessary" to conserve OSM bandwidth | none stated | ODbL 1.0 (files after 12 September 2012) | **Not used today.** Documented secondary extract source only, drill-tested at small scale |
+| [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/), via `raw.githubusercontent.com/nvkelso/natural-earth-vector` | Natural Earth authors and contributors | No limit stated | none stated | "public domain" | `osm-gaps.yml`, manual: 2 files (11.5 MB) per run; `build-han-region.mjs` when its data is rebuilt |
+| [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) (where the site is published) | GitHub | "Published GitHub Pages sites may be no larger than 1 GB"; "soft bandwidth limit of 100 GB per month"; deployments time out after 10 minutes; not "a free web-hosting service to run your online business" | — | — | `check-site-size.mjs` fails above 900 MiB. Bandwidth is not measured: GitHub does not report Pages traffic in bytes |
+| [GitHub release assets](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) (where large data lives) | GitHub | "Up to 1000 release assets … Each file … must be under 2 GiB. There is no limit on the total size of a release, nor bandwidth usage" | — | — | One asset per working copy, for example the per-region extracts and `odbl-tables` |
+
+**Rules for adding an upstream:**
+- Add it to this table, with the operator verified, before any workflow uses it.
+- Instances run by operators in the PRC or Russia are not added.
 
 ## Primary policy and verified requirements
 

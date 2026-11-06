@@ -1,13 +1,9 @@
 name: Refresh worldwide level crossings
 on:
   workflow_dispatch:
-  # Sunday at 04:17 UTC: the crossings changed in the week, plus a full
-  # refresh of the longest-unchecked regions (about 5 MB).
-  schedule:
-    - cron: '17 4 * * 0'
-  push:
-    branches: [main]
-    paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs', '.github/workflows/crossings.yml']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass dataset
+  # at a time): the crossings changed in the week, plus a full refresh of the
+  # longest-unchecked regions (about 5 MB).
 permissions:
   contents: write
   actions: write
@@ -54,11 +50,12 @@ jobs:
           node --input-type=module <<'JS'
           import {readFile, appendFile} from 'node:fs/promises';
           import {gunzipSync} from 'node:zlib';
-          import {readTable} from './scripts/crossing-data.mjs';
+          import {readTable, currentCrossingExtraction} from './scripts/crossing-data.mjs';
           let full = true;
           try {
             const saved = JSON.parse(await readFile('/tmp/previous-crossings/regions.json', 'utf8'));
-            if (saved.version === 3) {
+            // As the builder decides: another table format or extraction is a full rebuild.
+            if (saved.version === 3 && currentCrossingExtraction(saved.extraction)) {
               readTable(gunzipSync(await readFile('/tmp/previous-crossings/crossings.tsv.gz')).toString());
               full = !saved.since;
             }
@@ -88,7 +85,7 @@ jobs:
         id: update
         run: |
           if [ -f /tmp/previous-crossings/crossings.tsv.gz ]; then export PREVIOUS_DATA=/tmp/previous-crossings; fi
-          node scripts/build-crossings.mjs
+          node --import ./scripts/overpass-meter.mjs scripts/build-crossings.mjs
       # Ordinary failures preserve completed leaves; cancellation/runner loss
       # is not guaranteed to reach this step. Never publish staging as live data.
       - name: Preserve validated full-rebuild progress
@@ -135,3 +132,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
+      # The published data has every other region's changes; ending red makes
+      # the scheduler ask again for the regions Overpass stayed unavailable for.
+      - name: Retry deferred regions in the next run
+        if: steps.update.outputs.deferred != '' && steps.update.outputs.deferred != '0'
+        env:
+          DEFERRED: ${{ steps.update.outputs.deferred }}
+        run: |
+          echo "::error::$DEFERRED region(s) deferred: Overpass stayed unavailable for them"
+          exit 1

@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
 import {EUROPE_STAGES, EUROPE_STAGE_NAMES, STAGES} from '../scripts/download-stages.mjs';
 import {BRANCH_DATA_VERSION, branchStageOwner, migrateBranchDownloads, retireBranchEurope, partQuery as branchQuery, quarters} from '../scripts/branch-lines.mjs';
 import {addResult, commitStage, migrateServiceDownloads, retireServiceEurope, partQuery as serviceQuery, routeView} from '../scripts/service-routes.mjs';
@@ -171,10 +170,12 @@ test('legacy retirement waits for a world pass started after migration and prese
 });
 
 test('both maintenance workflows trigger when the shared stage definitions change', async () => {
+  // Builder changes start these workflows through the one-at-a-time scheduler.
+  const {OSM_UPDATES} = await import('../scripts/osm-update-plan.mjs');
   for (const pipeline of ['branch-lines', 'service-routes']) {
-    const workflow = await readFile(new URL(`../.github/workflows/${pipeline}.yml`, import.meta.url), 'utf8');
-    assert.ok(workflow.includes("'scripts/download-stages.mjs'"));
-    assert.equal(workflow.includes('scripts/european-kazakhstan.mjs'), false);
+    const {paths} = OSM_UPDATES.find(entry => entry.id === pipeline);
+    assert.ok(paths.includes('scripts/download-stages.mjs'));
+    assert.equal(paths.includes('scripts/european-kazakhstan.mjs'), false);
   }
 });
 

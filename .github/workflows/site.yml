@@ -190,7 +190,8 @@ jobs:
           pip install pmtiles==3.8.1
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
-          cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+          # The ODbL lifecycle table is offered from the odbl-tables release
+          # (odbl-tables.yml), not deployed with the site.
       - name: Load and verify the complete independently acquired railway reference
         if: needs.reference.outputs.sha != ''
         env:
@@ -266,7 +267,7 @@ jobs:
           git ls-remote --exit-code --heads origin station-points-data >/dev/null || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin station-points-data
-            git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz
+            git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz --exclude=elements.json.gz
             node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile,stat} from 'node:fs/promises';
@@ -326,30 +327,22 @@ jobs:
           git ls-remote --exit-code --heads origin conveying-data || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin conveying-data
-            git archive FETCH_HEAD | tar -x -C styles/data/conveying
+            git archive FETCH_HEAD | tar -x -C styles/data/conveying --exclude=elements.json.gz
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/conveying/index.json
           else
             echo "Could not look up the conveying-data snapshot (git exit $status)"
             exit 1
           fi
-      # Aerial cableways and lifts (aerialways.yml). Until its first snapshot
-      # is published the site deploys without them.
+      # Aerialways have no alternate geometry source. Failure leaves the last
+      # successful deployment intact instead of silently removing every lift.
       - name: Load aerial cableways and lifts
         run: |
+          set -euo pipefail
           mkdir -p styles/data/aerialways
-          # Exit status 2: no snapshot yet. Any other failure stops the deploy.
-          status=0
-          git ls-remote --exit-code --heads origin aerialway-data || status=$?
-          if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin aerialway-data
-            git archive FETCH_HEAD | tar -x -C styles/data/aerialways
-          elif [ "$status" = 2 ]; then
-            echo '{"tiles":[]}' > styles/data/aerialways/index.json
-          else
-            echo "Could not look up the aerialway-data snapshot (git exit $status)"
-            exit 1
-          fi
+          git fetch --depth=1 origin refs/heads/aerialway-data
+          git archive FETCH_HEAD | tar -x -C styles/data/aerialways --exclude=elements.json.gz
+          node scripts/validate-aerialway-snapshot.mjs styles/data/aerialways
       # Historic areas (heritage.yml); without them the planning context
       # shows no historic areas.
       - name: Load historic areas
@@ -361,7 +354,7 @@ jobs:
           git ls-remote --exit-code --heads origin heritage-data || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin heritage-data
-            git archive FETCH_HEAD | tar -x -C styles/data/heritage
+            git archive FETCH_HEAD | tar -x -C styles/data/heritage --exclude=elements
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/heritage/index.json
           else
@@ -411,6 +404,12 @@ jobs:
           # Only OSM-bound section aggregates are applied. Intermediate feed
           # archives and standalone timetable tiles are not website assets.
           rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
+      # The ODbL download tables are offered from the odbl-tables release
+      # (odbl-tables.yml), not deployed with the site. The service-route
+      # table stays in the reviewed site until the deploy job, because the
+      # frequency browser checks rebuild the service tiles from it.
+      - name: Keep the ODbL download tables out of the site
+        run: rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction
@@ -419,21 +418,39 @@ jobs:
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile} from 'node:fs/promises';
+          import {gunzipSync} from 'node:zlib';
           for (const kind of ['power','signals']) {
             const manifest=JSON.parse(await readFile(`styles/data/traction/${kind}/manifest.json`));
             assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
           }
           // Legacy traction snapshots may lack both supplement files. Once
           // either is present, require the complete, digest-matched world.
-          const readOptional=async path=>{try{return await readFile(path,'utf8');}catch(error){if(error.code==='ENOENT')return null;throw error;}};
+          const readOptional=async path=>{try{const body=await readFile(path);return path.endsWith('.gz')?gunzipSync(body).toString('utf8'):body.toString('utf8');}catch(error){if(error.code==='ENOENT')return null;throw error;}};
           const methods=await readOptional('styles/data/traction/power/methods-manifest.json');
-          const methodData=await readOptional('styles/data/traction/power/power-methods.geojson');
+          const methodData=await readOptional('styles/data/traction/power/power-methods.geojson.gz');
           if(methods!==null || methodData!==null) {
             const {validatePowerMethodsSnapshot}=await import('./scripts/build-power-methods.mjs');
             assert.ok(methods!==null && methodData!==null,'Incomplete power-method files');
             validatePowerMethodsSnapshot(JSON.parse(methodData),JSON.parse(methods));
           }
+          // Electrification signals arrive with the first snapshot built after
+          // they were added; once either file exists, require both, complete.
+          const signals=await readOptional('styles/data/traction/power/electricity-signals-manifest.json');
+          const signalData=await readOptional('styles/data/traction/power/electricity-signals.geojson.gz');
+          if(signals!==null || signalData!==null) {
+            const {validateElectricitySignalsSnapshot}=await import('./scripts/build-electricity-signals.mjs');
+            assert.ok(signals!==null && signalData!==null,'Incomplete electricity-signal files');
+            validateElectricitySignalsSnapshot(JSON.parse(signalData),JSON.parse(signals));
+          }
           JS
+          # The site reads the gzip copies only (styles/power-facilities.mjs):
+          # the uncompressed GeoJSON (about 100 MB) stays on traction-data.
+          for name in power-facilities power-methods electricity-signals; do
+            if [ -f "styles/data/traction/power/$name.geojson" ]; then
+              test -f "styles/data/traction/power/$name.geojson.gz"
+              rm "styles/data/traction/power/$name.geojson"
+            fi
+          done
       # The code tree and a digest of the assembled data: a pull request
       # records it when its checks pass, and main skips the browser checks
       # only for the same key (snapshots move on their own).
@@ -450,6 +467,14 @@ jobs:
           KEY: ${{ steps.key.outputs.key }}
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/ci-plan.mjs reuse
+      # Each dataset's date for the Help panel; old data is a warning, never
+      # a failure (#330, B7).
+      - name: Record the data dates
+        run: node scripts/data-ages.mjs styles
+      # GitHub Pages publishes at most 1 GB: fail before that, with a
+      # breakdown by dataset in the step summary.
+      - name: Check the site size
+        run: node scripts/check-site-size.mjs styles
       # Already-compressed tiles: zipping them again only costs time.
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
@@ -558,6 +583,15 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      # Keep this shared worktree full: the second checkout below must retain
+      # package.json and package-lock.json for the post-deployment checks.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - uses: actions/download-artifact@v4
         with:
           name: railway-world-site
@@ -581,19 +615,29 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
+      # Fail closed before removing/uploading anything: the previous deployed
+      # site remains live until all four immutable release tables are verified.
+      # On the first merge the publisher may still be running; after it succeeds,
+      # rerun this site workflow if this gate found no complete generation yet.
+      - name: Require complete ODbL release and pin immutable download links
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/odbl-tables.mjs pin styles/index.html "$RUNNER_TEMP/odbl-pin"
+      # Offered from the verified release generation instead.
+      - name: Keep the service-route ODbL table out of the published site
+        run: rm -f styles/data/service-routes/service-routes.ndjson.gz
       - uses: actions/configure-pages@v5
+      # Deploy-only reruns retain earlier artifacts. Give each attempt its own
+      # package so Pages selects it unambiguously without deleting evidence.
       - uses: actions/upload-pages-artifact@v3
         with:
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: styles
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '26'
-          check-latest: true
-      - name: Verify Node 26 security baseline
-        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
@@ -626,6 +670,7 @@ jobs:
       - name: Install Safari engine for deployed reference verification
         run: npx playwright install --with-deps webkit
       - name: Verify deployed independent OSM geometry with live overview unavailable
+        timeout-minutes: 35
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node scripts/check-mainline-reference-browser.mjs --published

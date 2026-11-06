@@ -45,7 +45,6 @@ python3 -m venv "$snapshot_dir/venv"
 "$snapshot_dir/venv/bin/pip" install pmtiles==3.8.1
 "$snapshot_dir/venv/bin/python" scripts/unpack-snapshot.py "$snapshot_dir/lifecycle.pmtiles"
 node scripts/build-overview-tiles.mjs
-cat "$snapshot_dir"/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
 
 if [ -f "$snapshot_dir/rail-data/loading-gauge.json" ]; then
   cp "$snapshot_dir/rail-data/loading-gauge.json" styles/data/
@@ -260,6 +259,13 @@ style before publishing `styles/`. In a new fork:
 4. Run **Validate and deploy world railway map** if the initial push occurred
    before Pages was enabled.
 
+Before saving the site, `scripts/check-site-size.mjs` measures `styles/` and
+writes its size, with a row per `data/<dataset>` directory, to the step
+summary. GitHub Pages publishes at most 1 GB, so the check warns above 750 MiB
+and fails above 900 MiB, leaving room for what the deploy job adds. A failure
+means a dataset must move out of the site (for example to a release asset)
+or shrink; the levels are not raised.
+
 Deployment runs from `main` after validation, not from pull requests. URLs are
 relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
@@ -337,3 +343,23 @@ Expand the map's bottom-right information button to see the executing asset buil
 The version-5 runtime includes a reproducible upstream attribution fix. See the
 [backport provenance, hashes and offline recovery contract](maplibre-backport.md)
 before changing its dependency or browser asset pins.
+
+## Independent mainline browser-check deadlines
+
+The mainline geometry check retains every profile, projection, zoom, exact chain,
+painted-pixel, camera and live-outage assertion. Browser evaluations have a
+30-second **Node-side** deadline, including the render-event/pixel wait, so a
+stalled renderer cannot prevent its own timeout. Diagnostics and screenshots are
+bounded to five seconds; unavailable diagnostics are recorded, never accepted as
+rendering proof. Failure records include the current profile/view/phase.
+
+Cleanup closes the context (also for shared browsers) and then the browser without
+waiting for map JavaScript. Each close gets five seconds, and a stuck close exits
+nonzero after both have been attempted. A 30-minute whole-check watchdog covers
+setup and transport stalls; the published-geometry workflow step has a 35-minute
+backstop. For scale, the successful [deployed geometry check on November 1](https://github.com/c933103/openrailwaystyle/actions/runs/41361234299/job/125020458123)
+ran from 23:53:16 to 23:58:11 UTC (4m55s); the whole-check limit leaves over six
+times that observed complete-coverage duration. These limits fail closed, do not
+retry or omit cases, and do not turn a
+canceled or skipped acceptance check into a pass. The historical six-hour stall's
+specific blocked statement and cancellation cause have not been established.

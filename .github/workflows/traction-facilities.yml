@@ -1,17 +1,7 @@
 name: Build worldwide railway signals and energy supplies
 on:
-  push:
-    branches: [main, feature/signal-power-facilities]
-    paths:
-      - .github/workflows/traction-facilities.yml
-      - scripts/build-signals.mjs
-      - scripts/signals-data.mjs
-      - styles/pbf-utf8.mjs
-      - scripts/build-power-facilities.mjs
-      - scripts/power-facility-data.mjs
-      - scripts/power-method-data.mjs
-      - scripts/build-power-methods.mjs
-      - styles/power-facilities.mjs
+  # Started every six hours, and when its builder changes, by
+  # osm-updates.yml (one Overpass dataset at a time).
   workflow_dispatch:
 permissions:
   contents: write
@@ -21,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   snapshot:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/signal-power-facilities'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,11 +39,24 @@ jobs:
           fi
       # Allow reachable endpoints longer than Node's 250 ms per-address default.
       - name: Collect railway energy supplies worldwide
-        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-facilities.mjs
+        run: node --import ./scripts/overpass-meter.mjs --network-family-autoselection-attempt-timeout=2000 scripts/build-power-facilities.mjs
+      - name: Load the stored railway-ways regions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Conductor rails and charging are built from the shared store
+        # (railway-ways.yml, scripts/railway-ways-release.mjs) once every stage
+        # in it is complete with its current parts, with no Overpass request;
+        # otherwise, or when it cannot be loaded, they are downloaded.
+        run: |
+          if ! node scripts/railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE; then
+            echo "::warning::The railway-ways store could not be loaded; downloading from Overpass instead"
+          fi
       - name: Collect conductor rails and battery train charging worldwide
-        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-methods.mjs
-      - name: Collect signals missing provider direction data worldwide
-        run: node --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
+        run: node --import ./scripts/overpass-meter.mjs --network-family-autoselection-attempt-timeout=2000 scripts/build-power-methods.mjs
+      # One download per region for both signal snapshots: signals without a
+      # direction, and electrification signals for the Power view.
+      - name: Collect signals missing provider direction data, and electrification signals, worldwide
+        run: node --import ./scripts/overpass-meter.mjs --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
       - name: Preserve completed region responses
         if: always()
         uses: actions/cache/save@v4
@@ -81,6 +84,8 @@ jobs:
           const methods=JSON.parse(await readFile('power-data/methods-manifest.json'));
           const methodData=JSON.parse(await readFile('power-data/power-methods.geojson'));
           validatePowerMethodsSnapshot(methodData,methods);
+          const {validateElectricitySignalsSnapshot}=await import('./scripts/build-electricity-signals.mjs');
+          validateElectricitySignalsSnapshot(JSON.parse(await readFile('power-data/electricity-signals.geojson')),JSON.parse(await readFile('power-data/electricity-signals-manifest.json')));
           assert.equal(power.complete,true);
           assert.equal(features.features.length,power.features);
           assert.ok(power.coverage.length>=8 && power.features>0);
@@ -91,6 +96,7 @@ jobs:
           console.log('Validated worldwide facilities:',power.features,'energy supply facilities; signals',signal);
           JS
       - name: Publish validated static facility data
+        id: publish
         run: |
           mkdir -p /tmp/traction-publish
           cp -r power-data /tmp/traction-publish/power
@@ -102,10 +108,28 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add power signals
+          # Every six hours a run mostly reproduces the published data from
+          # its cached responses. Publish and redeploy only when something
+          # other than the manifests' build times changed.
+          status=0
+          git ls-remote --exit-code --heads origin traction-data > /dev/null || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin traction-data
+            mkdir -p /tmp/traction-previous
+            git archive FETCH_HEAD | tar -x -C /tmp/traction-previous
+            if diff -rq -x '*manifest.json' /tmp/traction-previous/power power && diff -rq -x '*manifest.json' /tmp/traction-previous/signals signals; then
+              echo "Published data unchanged; nothing to publish"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          elif [ "$status" != 2 ]; then
+            exit "$status"
+          fi
           git commit -m 'Publish complete worldwide railway energy supplies and supplementary signals'
           git push --force origin HEAD:refs/heads/traction-data
+          echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Redeploy the site with the new facilities
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.publish.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main

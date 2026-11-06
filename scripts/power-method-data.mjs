@@ -13,15 +13,18 @@ const methods=['rail','4th_rail','ground-level_power_supply','inductive'];
 // How the train is propelled or held, independent of how power reaches it.
 const PROPULSION=['linear_motor'],TRACTION=['rack','cable'];
 const METHOD_LABELS={rail:'Third rail','4th_rail':'Fourth rail','ground-level_power_supply':'Ground-level power supply',inductive:'Inductive power supply',linear_motor:'Linear motor',rack:'Rack railway',cable:'Cable traction'};
-export function powerMethodQuery(box) {
-  if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)||box[0]<-90||box[2]>90||box[1]<-180||box[3]>180||box[0]>=box[2]||box[1]>=box[3])throw new Error('Invalid power-method bbox');
-  const bbox=`(${box.join(',')})`,charging=[],selectors=[];
+// The statements selecting conductor rails, propulsion/traction means and
+// railway chargers matching `filter` (an Overpass filter such as a bbox,
+// optionally after an area), as the named set `names.result`. `names` keeps
+// the intermediate sets of two selections apart in one query.
+export function powerMethodSelection(filter,names={charging:'charging',potential:'potential'}) {
+  const charging=[],selectors=[];
   for(const prefix of prefixes) {
-    selectors.push(`way${match(prefix+'electrified',methods.join('|'))}${bbox};`,
-      `way${match(prefix+'propulsion',PROPULSION.join('|'))}${bbox};`,`way${match(prefix+'traction',TRACTION.join('|'))}${bbox};`,
-      `nwr${match(prefix+'railway','charging_station')}${bbox};`);
+    selectors.push(`way${match(prefix+'electrified',methods.join('|'))}${filter};`,
+      `way${match(prefix+'propulsion',PROPULSION.join('|'))}${filter};`,`way${match(prefix+'traction',TRACTION.join('|'))}${filter};`,
+      `nwr${match(prefix+'railway','charging_station')}${filter};`);
     for(const [key,value] of [['amenity','charging_station'],['man_made','charge_point']]) {
-      charging.push(`nwr${match(prefix+key,value)}${bbox};`);
+      charging.push(`nwr${match(prefix+key,value)}${filter};`);
     }
   }
   // All 16 primary charging selectors used the same 14 alternative hints.
@@ -29,11 +32,16 @@ export function powerMethodQuery(box) {
   // common railway/landuse values. Item_Constraint keeps these regex scans on
   // the candidate IDs instead of repeatedly searching global railway tags.
   const hints=['train','tram','light_rail','subway',...prefixes.map(p=>p+'railway'),'usage','landuse'];
-  const potential=`nwr.charging(if:${hints.map(k=>`is_tag(${JSON.stringify(k)})`).join('||')})->.potential;`;
-  for(const hint of ['train','tram','light_rail','subway'])selectors.push(`nwr.potential${match(hint,'yes|designated|only')};`);
-  for(const prefix of prefixes)selectors.push(`nwr.potential${match(prefix+'railway','yes|power_supply|'+tracks.join('|'))};`);
-  selectors.push(`nwr.potential${match('usage','railway|traction')};`,`nwr.potential${match('landuse','railway')};`);
-  return `[out:json][timeout:240][maxsize:134217728];(${charging.join('')})->.charging;${potential}(${selectors.join('')});out body geom qt;`;
+  const potential=`nwr.${names.charging}(if:${hints.map(k=>`is_tag(${JSON.stringify(k)})`).join('||')})->.${names.potential};`;
+  for(const hint of ['train','tram','light_rail','subway'])selectors.push(`nwr.${names.potential}${match(hint,'yes|designated|only')};`);
+  for(const prefix of prefixes)selectors.push(`nwr.${names.potential}${match(prefix+'railway','yes|power_supply|'+tracks.join('|'))};`);
+  selectors.push(`nwr.${names.potential}${match('usage','railway|traction')};`,`nwr.${names.potential}${match('landuse','railway')};`);
+  return `(${charging.join('')})->.${names.charging};${potential}(${selectors.join('')})${names.result?`->.${names.result}`:''};`;
+}
+export function powerMethodQuery(box) {
+  if(!Array.isArray(box)||box.length!==4||!box.every(Number.isFinite)||box[0]<-90||box[2]>90||box[1]<-180||box[3]>180||box[0]>=box[2]||box[1]>=box[3])throw new Error('Invalid power-method bbox');
+  // Unchanged text: cached responses are keyed by the exact query.
+  return `[out:json][timeout:240][maxsize:134217728];${powerMethodSelection(`(${box.join(',')})`)}out body geom qt;`;
 }
 export function powerMethodsGeoJSON(json) {
   if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'Incomplete power-method response');
