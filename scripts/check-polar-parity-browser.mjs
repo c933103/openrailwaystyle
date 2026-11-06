@@ -53,7 +53,7 @@ try {
     });
     const style={version:8,transition:{duration:0,delay:0},projection:{type:'globe'},sources:{fixture:{type:'geojson',data:{type:'FeatureCollection',features},tolerance:0,maxzoom:22}},layers};
     await page.route('**/polar-parity.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><body style="margin:0"><div id="map" style="width:100vw;height:100vh"></div>
-      <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script><script type="module">
+      <script src="vendor/maplibre-gl-5.24.0-atlas.2.js"></script><script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres} from './globe-drag.mjs';
       window.background='map';window.terrain=false;

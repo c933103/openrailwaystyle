@@ -390,25 +390,32 @@ export function installPwaInstall({window = globalThis.window, document = window
 
 // MapLibre attribution hardening stays in an existing, versioned app module:
 // an older worker already precaches it during an interrupted shell upgrade.
-// Reproduce upstream 1da69f3cd913a39fa948708e01478663bf48bc27 without changing
-// v5's renderer/worker/API. Only the exact published JavaScript is accepted.
+// Preserve upstream attribution fix 1da69f3cd913a39fa948708e01478663bf48bc27
+// and retain GeoJSON raw bytes across interrupted parses. Inputs and output
+// are pinned; the public v5 renderer API stays unchanged.
 export const MAPLIBRE_BACKPORT = Object.freeze({
   upstreamSha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
-  sha256: '46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223',
-  target: 'vendor/maplibre-gl-5.24.0-atlas.1.js',
+  previousSha256: '46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223',
+  sha256: '1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e',
+  target: 'vendor/maplibre-gl-5.24.0-atlas.2.js',
 });
 export async function backportMapLibre524(bytes, subtle) {
   if (!subtle) throw new Error('MapLibre backport requires integrity verification');
   const digest = async value => [...new Uint8Array(await subtle.digest('SHA-256', value))]
     .map(byte => byte.toString(16).padStart(2, '0')).join('');
-  if (await digest(bytes) !== MAPLIBRE_BACKPORT.upstreamSha256) throw new Error('Unexpected MapLibre input');
+  const inputHash = await digest(bytes);
+  if (![MAPLIBRE_BACKPORT.upstreamSha256, MAPLIBRE_BACKPORT.previousSha256].includes(inputHash)) throw new Error('Unexpected MapLibre input');
   const original = 'static removeAttributes(e){for(const{name:t,value:i}of e.attributes)d.isPossiblyDangerous(t,i)&&e.removeAttribute(t);}';
   const replacement = original.replace('of e.attributes', 'of Array.from(e.attributes)');
   const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
-  if (source.split(original).length !== 2) throw new Error('Unexpected MapLibre sanitizer');
-  // This one-line change invalidates the upstream source map's columns. Do not
+  const upstream = inputHash === MAPLIBRE_BACKPORT.upstreamSha256;
+  if (source.split(upstream ? original : replacement).length !== 2) throw new Error('Unexpected MapLibre sanitizer');
+  const workerOriginal = '_parseWorkerTile(t,i,s){return e._(this,void 0,void 0,(function*(){let r=yield t.parse(t.vectorTile,this.layerIndex,this.availableImages,this.actor,i.subdivisionGranularity);if(s){const{rawData:t}=s;r=e.e({rawTileData:t.slice(0),encoding:"mvt"},r);}return r}))}';
+  const workerFixed = '_parseWorkerTile(t,i,s){return e._(this,void 0,void 0,(function*(){this._atlasPendingRaw||(this._atlasPendingRaw=new WeakMap);s&&this._atlasPendingRaw.set(t,s);const n=this._atlasPendingRaw.get(t);let r=yield t.parse(t.vectorTile,this.layerIndex,this.availableImages,this.actor,i.subdivisionGranularity);if(n){const{rawData:i}=n;r=e.e({rawTileData:i.slice(0),encoding:"mvt"},r);this._atlasPendingRaw.delete(t);}return r}))}';
+  if (source.split(workerOriginal).length !== 2) throw new Error('Unexpected MapLibre GeoJSON worker');
+  // These bounded changes invalidate the upstream source map's columns. Do not
   // advertise that unchanged map for the locally modified distribution.
-  const patched = new TextEncoder().encode(source.replace(original, replacement)
+  const patched = new TextEncoder().encode(source.replace(upstream ? original : replacement, replacement).replace(workerOriginal, workerFixed)
     .replace('//# sourceMappingURL=maplibre-gl.js.map\n', ''));
   if (await digest(patched) !== MAPLIBRE_BACKPORT.sha256) throw new Error('Unexpected MapLibre output');
   return patched;

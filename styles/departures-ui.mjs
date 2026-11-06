@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261106-terrain-mode-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261106-geojson-parse-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

@@ -27,7 +27,7 @@ try {
     body:`<!doctype html><html><head><meta charset="utf-8"><style>
     html,body,#map{margin:0;width:100%;height:100%}
     </style></head><body><div id="map"></div>
-    <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
+    <script src="vendor/maplibre-gl-5.24.0-atlas.2.js"></script>
     <script type="module">
       import {installTerrain3D,syncTerrain3D,syncHighPitchTileBudget} from './terrain-3d.mjs';
       import {readTile} from './vendor/tile-labels.js';

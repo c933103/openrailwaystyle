@@ -33,7 +33,7 @@ try {
     });
     const sign=cap==='north'?1:-1, latitude=sign*88.5;
     await page.route('**/polar-depth-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><body style="margin:0"><div id="map" style="height:100vh;width:100vw"></div>
-      <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script><script type="module">
+      <script src="vendor/maplibre-gl-5.24.0-atlas.2.js"></script><script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres,zoomForLatitude} from './globe-drag.mjs';
       import {syncTerrain3D,syncHighPitchTileBudget} from './terrain-3d.mjs';

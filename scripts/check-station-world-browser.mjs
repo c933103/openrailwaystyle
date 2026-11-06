@@ -11,7 +11,7 @@ import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixtu
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
 
 const server=await serveAtlasAppFixture(),base=server.origin+'/',assets=await rendererFixture(base);
-const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.1.js'));
+const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.2.js'));
 assert.ok(renderer);
 const center=[15,15],points=Array.from({length:8},(_,i)=>({
  type:'Feature',id:i+1,properties:{id:`node-${i+1}`,osm_id:String(i+1),osm_type:'node',
