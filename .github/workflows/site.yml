@@ -638,6 +638,13 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      # Compare with the staged reviewed artifact before the later checkout.
+      # The geometry browser check alone also accepts an older valid generation.
+      - name: Verify deployed reference manifest matches the reviewed artifact
+        timeout-minutes: 6
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/verify-deployed-reference.mjs "$PAGE_URL" styles/data/mainline-reference/manifest.json
       - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}

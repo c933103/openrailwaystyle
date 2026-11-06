@@ -190,6 +190,24 @@ node scripts/check-mainline-reference-browser.mjs
 MAP_BASE_URL=https://10671435.xyz/ node scripts/check-mainline-reference-browser.mjs --published
 ```
 
+Before the published geometry checks, deployment compares the canonical public
+reference manifest byte-for-byte with the manifest in the reviewed site artifact.
+A valid older generation, or the same generation with older acceptance metadata,
+cannot certify adoption. The expected bytes are read while the downloaded site
+artifact is still staged, before the later source checkout. This check does not
+change the data generation or declare it newly acquired.
+
+The comparison makes at most 12 sequential first-party requests, with a
+20-second request/body deadline and five-second pauses between failures (under
+five minutes in total; the workflow step has a six-minute backstop). Redirects
+are rejected. The response is cancelled if its streamed body exceeds the expected
+manifest length. Failure reports expected/actual hashes rather than provider
+payloads, leaves the publication outcome explicitly unverified, and does not
+start another deployment or acquisition. Existing geometry/browser and tile-byte
+checks still run after exact adoption succeeds. Offline tests cover stale valid
+manifests, same-generation old acceptance, interrupted and oversized bodies,
+HTTP failures, deadline cancellation and the workflow's artifact boundary.
+
 The published check reads real first-party manifests, audits, renderer modules
 and tile bytes. It replaces only the live thematic overview with an explicit
 503 fixture; no public tile-server scraping is needed. Issue #181 remains open
