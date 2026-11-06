@@ -77,6 +77,14 @@ Permanent 4xx responses are not retried (406, 408 and 429 remain transient).
 A successful body can still update its validated cache, but cannot permit an
 early later request. No query, cache lifetime, source, schedule or budget changes.
 
+Level-crossing acquisition also keeps a `Retry-After` from a successful full
+region, change response or affected-ID response for the next query. It captures
+the deadline at headers and consumes it only before a later request. A pause
+above 15 minutes stops further requests even after successful data; completed
+checkpoint work and the existing last-good publication are retained. Query,
+checkpoint identity, the five-attempt ceiling, byte budget, subdivision rules
+and incremental-region staging are unchanged.
+
 **Rules for adding an upstream:**
 - Add it to this table, with the operator verified, before any workflow uses it.
 - Instances run by operators in the PRC or Russia are not added.
