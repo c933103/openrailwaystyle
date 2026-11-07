@@ -67,10 +67,16 @@ export async function buildSignals({
         try {
           response = await fetcher(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(200000),
             headers: {'User-Agent': 'RailwayAtlas-signals/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-          text = await response.text();
         } catch (error) { throw new SignalTransportError(error); }
+        if (!response.ok) {
+          // The status is authoritative. Reading or awaiting disposal of an
+          // unused error body must not replace it or stall its retry/failure path.
+          try { response.body?.cancel?.()?.catch(() => {}); } catch {}
+          throw new Error(`Overpass HTTP ${response.status}: response body discarded`);
+        }
+        try { text = await response.text(); }
+        catch (error) { throw new SignalTransportError(error); }
         downloaded += Buffer.byteLength(text);
-        if (!response.ok) throw new Error(`Overpass HTTP ${response.status}: ${text.replace(/<[^>]*>/g, ' ').slice(0, 200)}`);
         // A result cut short by a timeout or memory limit says so in a remark
         // (JSON) or <remark> (XML); report it as such, so the region splits.
         const remark = /"remark"\s*:\s*"([^"]*)"|<remark>([\s\S]*?)<\/remark>/.exec(text);
