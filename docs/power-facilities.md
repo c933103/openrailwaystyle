@@ -264,8 +264,15 @@ establish a spatial query failure. An explicit Overpass query timeout or
 memory-limit response subdivides immediately: repeating the same execution-limited
 box consumes capacity and a later transport failure can obscure its limit evidence.
 Transport and admission failures still retry the same box, without subdivision. Retry-After is
-honoured up to five minutes; longer waits or an exhausted time budget stop the
-run for later resumption. Completed child boxes and split decisions survive
+honoured up to five minutes from receipt of the response headers, including
+successful responses and interrupted bodies. The remaining pause carries across
+changes, retries, later boxes and query-limit subdivisions; body-reading time
+counts toward it and an early timer wake is rechecked. The existing 10-second
+spacing and 40-second retry backoff remain minimums. Longer requested waits or
+an exhausted time budget stop before another request, retaining completed
+checkpoints for later resumption. A final successful response needs no further
+wait and may still publish. This is shared with the standalone electricity-signal
+builder and is a per-run pause, not a durable cross-run or provider-wide daily cap. Completed child boxes and split decisions survive
 failed runs, so resumption does not repeat failed parent queries. Refresh mode
 ignores completed responses but keeps split decisions.
 
