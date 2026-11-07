@@ -12,6 +12,13 @@ import {updateElements} from './overpass-adiff.mjs';
 import {quarters, worldRegions} from './world-regions.mjs';
 import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
+// A timer may wake before the requested interval. Keep each existing quiet
+// or retry floor on elapsed time and recheck before the next provider call.
+async function pause(ms) {
+  const notBefore = performance.now() + ms;
+  for (let remaining; (remaining = notBefore - performance.now()) > 0;)
+    await new Promise(resolve => setTimeout(resolve, remaining));
+}
 // Do not log messages, stacks, URLs, headers or arbitrary error properties.
 // Node's fetch hides the useful transport code in its cause; retain only
 // bounded, known classifications and the measured time of the failed fetch.
@@ -142,7 +149,7 @@ async function collect(box, depth=0, minimum=-Infinity) {
     if(!split) {
       const query = regionQuery(box);
       for(let attempt=0;attempt<3;attempt++) {
-        await new Promise(r=>setTimeout(r,attempt ? 60000 : 15000));
+        await pause(attempt ? 60000 : 15000);
         console.log('Fetching world region', box, 'attempt',attempt+1);
         try {
           const {response,text}=await fetchOverpass(query,130000,'full');
@@ -228,7 +235,7 @@ async function updateRegion(box, minimum=-Infinity) {
     // query: it has not changed since the cache began (2026-09-22).
     previousQuery:json.query||query,query,pick,warn:(...args)=>console.warn(String(box),...args),
     fetchText:async request=>{
-      await new Promise(r=>setTimeout(r,5000));
+      await pause(5000);
       // A request that fails before its whole answer arrived (connection,
       // HTTP status, or the body cut off or timed out) says nothing about the
       // region: it keeps its data and is asked again next run.
