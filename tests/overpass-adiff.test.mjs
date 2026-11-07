@@ -174,7 +174,7 @@ test('street running keeps its elements, updates from changes and the query diff
   const changes = Number(/const CHANGE_MS=(\d+);/.exec(source)[1]);
   assert.match(source, /signal:AbortSignal\.timeout\(left\)/, 'each change request within the time left');
   const [full] = [...source.matchAll(/AbortSignal\.timeout\((\d+)\)/g)].map(m => Number(m[1]));
-  const pauses = [...source.matchAll(/setTimeout\(r,(\d+)\)/g)].map(m => Number(m[1]));
+  const pauses = [...source.matchAll(/waitForProvider\(660000,acquisitionUntil,(\d+)\)/g)].map(m => Number(m[1]));
   assert.deepEqual([changes, full, pauses], [360000, 660000, [120000, 120000]]);
   const worst = (changes + pauses[0] + 3 * full + 2 * pauses[1]) / 60000;
   assert.equal(worst, 45);

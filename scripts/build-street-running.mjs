@@ -23,10 +23,11 @@ function requireRequestTime(requestMs,scheduledWait=0,limit=acquisitionUntil){
   if(!Number.isFinite(wait)||now+wait+requestMs>Math.min(limit,acquisitionUntil))
     throw new Error('Street-running acquisition deferred: provider pause and request do not fit the available time budget');
 }
-async function waitForProvider(requestMs,limit=acquisitionUntil){
+async function waitForProvider(requestMs,limit=acquisitionUntil,scheduledWait=0){
+  const notBefore=Math.max(performance.now()+scheduledWait,providerNotBefore);
   while(true){
-    requireRequestTime(requestMs,0,limit);
-    const remaining=providerNotBefore-performance.now();
+    const remaining=notBefore-performance.now();
+    requireRequestTime(requestMs,Math.max(0,remaining),limit);
     if(remaining<=0)return;
     await new Promise(resolve=>setTimeout(resolve,remaining));
   }
@@ -77,7 +78,7 @@ if(process.env.PREVIOUS_DATA) {
 }
 // A server that refused the change request gets the same two-minute pause
 // as between full attempts before the full download.
-if(!update && changeError?.status) { requireRequestTime(660000,120000); console.log('Waiting at least two minutes before the full download'); await new Promise(r=>setTimeout(r,120000)); }
+if(!update && changeError?.status) { console.log('Waiting at least two minutes before the full download'); await waitForProvider(660000,acquisitionUntil,120000); }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed; query change: ${update.added} added, ${update.dropped} dropped`);
 else for(let attempt=0;attempt<3;attempt++) {
   await waitForProvider(660000);
@@ -88,7 +89,7 @@ else for(let attempt=0;attempt<3;attempt++) {
     data=await response.json();
     if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
     break;
-  } catch(error) {if(attempt===2) throw error;requireRequestTime(660000,120000);console.log(error.message,'— retrying after at least two minutes');await new Promise(r=>setTimeout(r,120000));}
+  } catch(error) {if(attempt===2) throw error;console.log(error.message,'— retrying after at least two minutes');await waitForProvider(660000,acquisitionUntil,120000);}
 }
 const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id-b.id);
 const features=toFeatures(elements);
