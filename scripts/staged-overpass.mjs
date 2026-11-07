@@ -113,10 +113,10 @@ export function createStagedSnapshot(config) {
         // HTTP classification precedes parsing; a 403 saying "timeout" is not
         // evidence that a spatial query executed or can benefit from subdivision.
         if(!response.ok) {
-          // Discarding an error body can itself reject after a transport reset.
-          // Preserve the authoritative HTTP category rather than reclassifying
-          // that cleanup error as a query/body timeout.
-          try {await response.body?.cancel?.();}catch{}
+          // Discarding an error body may reject or never settle. Initiate it
+          // without awaiting cleanup, preserving the authoritative HTTP category
+          // and its bounded retry/failure path rather than a cleanup timeout.
+          try {response.body?.cancel?.()?.catch(()=>{});}catch{}
           const status=response.status,wait=retryAfter(response.headers?.get('retry-after'),now());
           if(status===429||status===408||[500,502,503,504].includes(status))throw new AcquisitionError(`HTTP ${status}`,status===429?'rate-limit':'http-transient',{retry:true,retryAfterMs:wait});
           throw fatal(`HTTP ${status}`,'http-permanent');
