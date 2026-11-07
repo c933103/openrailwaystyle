@@ -30,9 +30,10 @@ export function createConveyingProviderPause(deadline) {
     observe(response) {
       notBefore = Math.max(notBefore, performance.now() + providerDelay(response.headers.get('retry-after')));
     },
-    async wait() {
+    async wait(backoffMs = 0) {
+      const earliest = Math.max(notBefore, performance.now() + backoffMs);
       let remaining;
-      while ((remaining = notBefore - performance.now()) > 0) {
+      while ((remaining = earliest - performance.now()) > 0) {
         if (!conveyingRequestFits(deadline, remaining))
           throw new Error('Acquisition deferred: provider pause and full request do not fit the 52-minute budget');
         await new Promise(resolve => setTimeout(resolve, remaining));

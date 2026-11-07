@@ -40,12 +40,14 @@ if(process.env.PREVIOUS_DATA) {
     },failed:error=>{changeError=error;}});
 }
 // A server that refused the change request is given the wait it asked for
-// (Retry-After) before the full download, as between full attempts.
+// (Retry-After) before the full download, as between full attempts. Headers
+// were observed before body consumption: combine the remaining pause with
+// local backoff, without reparsing or restarting the original header here.
 if(!update && changeError?.status) {
-  const wait = conveyingRetryDelay(changeError, 0);
+  const wait = conveyingRetryDelay({kind:changeError.kind}, 0);
   if (!conveyingRequestFits(deadline, wait)) throw new Error('Aerialway acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:changeError});
-  console.log(`Waiting ${wait / 60000} minutes before the full download`);
-  await new Promise(r=>setTimeout(r,wait));
+  console.log(`Waiting at least ${wait / 60000} minutes before the full download`);
+  await providerPause.wait(wait);
 }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed; query change: ${update.added} added, ${update.dropped} dropped`);
 else for(let attempt=0,attempts=3-requests;;attempt++) {
@@ -64,10 +66,10 @@ else for(let attempt=0,attempts=3-requests;;attempt++) {
     break;
   } catch(error) {
     if(attempt===attempts-1) throw error;
-    const wait = conveyingRetryDelay(error, attempt);
+    const wait = conveyingRetryDelay({kind:error.kind}, attempt);
     if (!conveyingRequestFits(deadline, wait)) throw new Error('Aerialway acquisition deferred: required wait and full request do not fit the 52-minute budget', {cause:error});
-    console.log(error.message, `— retrying after ${wait / 60000} minutes`);
-    await new Promise(r=>setTimeout(r,wait));
+    console.log(error.message, `— retrying no sooner than ${wait / 60000} minutes`);
+    await providerPause.wait(wait);
   }
 }
 const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id-b.id);
