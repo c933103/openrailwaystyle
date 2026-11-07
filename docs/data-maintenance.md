@@ -612,6 +612,15 @@ fallback) for local maintenance. These builders use the public Overpass service;
 visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
 for the tag rules and primary references.
 
+The combined signal builder honors `Retry-After` seconds or HTTP dates from every
+response, including successful headers whose bodies later fail. The pause applies
+to retries and later regions, using monotonic elapsed time so a wall-clock change
+or early timer wake cannot shorten it. The existing 10-second request interval,
+30-second retry backoff and three-attempt limit remain in place. A provider pause
+over five minutes stops before another request instead of retrying early; a final
+successful response can still complete the run when no further request is needed.
+This is a per-run pause, not a durable cross-run cooldown or a provider-wide budget.
+
 ### Required aerialway snapshot at deployment
 
 Aerialway geometry comes only from `aerialway-data`. The site build must fetch
