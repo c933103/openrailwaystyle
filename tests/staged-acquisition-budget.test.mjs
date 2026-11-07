@@ -39,10 +39,13 @@ globalThis.setTimeout = (callback, ms) => {appendFileSync(process.env.MOCK_SLEEP
 globalThis.fetch = async (url, options) => {
   appendFileSync(process.env.MOCK_LOG, JSON.stringify({url, query: options.body.get('data')}) + '\\n');
   const next = observations[count++]; if (!next) throw new Error('Unexpected fixture request');
+  if (next.clientTimeout) {elapsed+=300000;throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');}
   const text = next.text ?? JSON.stringify(next.body);
   const bytes=new TextEncoder().encode(text.padEnd(next.bytes ?? text.length, ' '));
   const body=next.stuckCancel?new ReadableStream({start(controller){controller.enqueue(bytes);},cancel(){return new Promise(()=>{});}}):bytes;
-  return new Response(body, {status: next.status ?? 200});
+  const response=new Response(body, {status: next.status ?? 200});
+  if(next.bodyTimeout)response.body.getReader=()=>{let first=true;return{async read(){if(first){first=false;return{done:false,value:bytes};}elapsed+=300000;throw new DOMException('The operation was aborted due to timeout','TimeoutError');},async cancel(){},releaseLock(){}};};
+  return response;
 };`);
     const initial = pipeline.table();
     const run = async (responses, {runs = [], state, previous = initial} = {}) => {
@@ -257,3 +260,34 @@ for(const pipeline of pipelines){
   assert.equal(result.requests.length,6);assert.notEqual(result.requests[1].query,result.requests[0].query);
  }));
 }
+
+
+for(const pipeline of pipelines){
+ test(`${pipeline.name} a client request deadline retries the original region instead of subdividing it`,async()=>fixture(pipeline,async run=>{
+  const result=await run([{clientTimeout:true},{body},{body}]);
+  assert.equal(result.attempt.status,'acquired');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,2);
+  assert.equal(result.requests.length,3);assert.equal(result.requests[0].query,result.requests[1].query);
+  assert.deepEqual(result.sleeps,[0,60000,15000]);assert.equal(result.attempt.downloadedBytes,2*Buffer.byteLength(JSON.stringify(body)));
+ }));
+ test(`${pipeline.name} five client deadlines preserve the queued region and accepted data`,async()=>fixture(pipeline,async(run,initial)=>{
+  const result=await run(Array(5).fill({clientTimeout:true}));
+  assert.equal(result.attempt.status,'deferred');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,0);
+  assert.deepEqual(result.saved.stages.japan.pending,queue);assert.equal(result.table,initial);assert.equal(result.output,'publish=true\nredeploy=false\n');
+  assert.equal(result.requests.length,5);assert.equal(new Set(result.requests.map(x=>x.query)).size,1);
+  assert.deepEqual(result.sleeps,[0,60000,120000,180000,240000]);assert.equal(result.attempt.downloadedBytes,0);
+ }));
+ test(`${pipeline.name} client deadline after progress retains the next region and partial status`,async()=>fixture(pipeline,async run=>{
+  const result=await run([{body},...Array(5).fill({clientTimeout:true})]);
+  assert.equal(result.attempt.status,'partial');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,1);
+  assert.deepEqual(result.saved.stages.japan.pending,[queue[1]]);assert.equal(result.requests.length,6);
+  assert.equal(new Set(result.requests.slice(1).map(x=>x.query)).size,1);assert.equal(result.output,'publish=true\nredeploy=true\n');
+ }));
+}
+
+for(const pipeline of pipelines)test(`${pipeline.name} a streamed body deadline retries without losing consumed-byte accounting`,async()=>fixture(pipeline,async run=>{
+ const result=await run([{body,bodyTimeout:true},{body},{body}]);
+ assert.equal(result.attempt.status,'acquired');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,2);
+ assert.equal(result.requests.length,3);assert.equal(result.requests[0].query,result.requests[1].query);
+ assert.equal(result.attempt.downloadedBytes,3*Buffer.byteLength(JSON.stringify(body)));
+ assert.equal(result.saved.runs.at(-1).bytes,result.attempt.downloadedBytes);
+}));

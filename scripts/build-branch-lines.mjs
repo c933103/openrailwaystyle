@@ -162,6 +162,9 @@ async function overpass(query) {
       // memory calls for a smaller area (null); anything else, try again.
       // A Gateway Timeout title can be an admission refusal, not a query
       // that ran. Use the same full-diagnostic distinction as Service.
+      // Our AbortSignal deadline can expire before the provider executes
+      // the query. Its TimeoutError is not evidence for geographic splitting.
+      if (error.name === 'TimeoutError') continue;
       const message = failureText || error.message;
       if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
       if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(message)) return null;
