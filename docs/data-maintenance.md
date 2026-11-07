@@ -120,6 +120,17 @@ The lifecycle workflow prepares these assets with `scripts/build-polar.mjs`, bot
 
 The workflow [street-running.yml](../.github/workflows/street-running.yml) runs weekly on Sunday, started by the scheduler above, and can be run manually. It builds a validated worldwide Overpass extract of explicitly mapped shared roadway, then publishes the complete tiles atomically to `street-data`. `street-data` also keeps `elements.json.gz`, the OSM elements the features are made from, which the site does not copy. A run asks only for their changes since their `osmBase`, however old, and for the difference when the query changed (`scripts/overpass-adiff.mjs`, `updateElements`); the change requests share six minutes. The features are converted from all elements on every run, so changed conversion code needs no download. The full download is the fallback. Failed refreshes retain the last published snapshot.
 
+Street-running requests carry provider `Retry-After` pauses across successful
+headers, interrupted bodies, selection changes and full fallback. Seconds and
+HTTP-date pauses begin at header receipt and use monotonic elapsed time. Existing
+two-minute retry/fallback waits remain minimums. A pause that cannot fit the
+six-minute change window defers that change request; the full fallback still
+honors the pause. A full eleven-minute request and any required pause must fit
+the existing 45-minute acquisition envelope, otherwise the run stops and leaves
+the published snapshot intact. Query definitions, retry limits, coverage filters and publication checks stay
+unchanged; complete final data needs no wait when
+there is no next request.
+
 Each website build copies `12/`, `index.json`, `manifest.json` and `street-running.geojson.gz` into `styles/data/street-running/`. The manifest and ODbL GeoJSON download are linked under About. Visitors do not make Overpass requests. See [rail-road rendering](rendering.md#rail-road-interfaces) for qualifying tags and display zooms.
 
 ## Escalator, moving-walkway, elevator and aerialway snapshot
