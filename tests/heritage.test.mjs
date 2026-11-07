@@ -131,7 +131,12 @@ test('a failing Overpass server is retried, then the run fails; only a query too
   assert.equal(heritageFailure('Invalid response: Unexpected end of JSON input', HERITAGE_RETRY_DELAYS.length, 0), 'fail', 'nor is a cut-off body');
   assert.equal(heritageFailure('Invalid response: Unexpected end of JSON input', 0, 0), 'retry', 'a cut-off body');
   assert.equal(heritageFailure('Incomplete heritage response: runtime error: Query timed out in "query" at line 1 after 301 seconds.', 0, 0), 'split');
-  assert.equal(heritageFailure('Network: The operation was aborted due to timeout', 0, 0), 'split', 'a query running past the client timeout');
+  for (const message of ['Network: The operation was aborted due to timeout', 'Network: Connection timeout']) {
+    for (const depth of [0, 6]) {
+      for (let attempt = 0; attempt < HERITAGE_RETRY_DELAYS.length; attempt++) assert.equal(heritageFailure(message, attempt, depth), 'retry', 'a client timeout is not proof of query execution');
+      assert.equal(heritageFailure(message, HERITAGE_RETRY_DELAYS.length, depth), 'fail');
+    }
+  }
   assert.equal(heritageFailure('HTTP 504: Gateway timeout', 0, 0), 'retry', 'an admission error saying timeout did not run the query');
   assert.equal(heritageFailure('HTTP 504: OSM3S Response Error : runtime error: Query timed out in "query" at line 1 after 301 seconds.', 0, 0), 'split', 'an executed query that timed out, reported as HTTP 504');
   assert.equal(heritageFailure('HTTP 504: OSM3S Response Error : runtime error: Query run out of memory using about 2048 MB of RAM.', 0, 0), 'split');
