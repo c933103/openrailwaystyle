@@ -74,3 +74,14 @@ for(const builder of ['conveying','aerialway']) {
   assert.equal((await run(t,builder,{body:'http'})).requests[1].at,420000);
  });
 }
+
+for(const builder of ['conveying','aerialway']) {
+ for(const [name,header] of [['invalid day','Tue, 31 Nov 2026 12:00:00 GMT'],['invalid weekday','Foo, 06 Nov 2026 12:07:00 GMT']]) {
+  for(const body of ['http','read-error']) test(`${builder}: ${name} cannot defer ${body} recovery`,async t=>{
+   const {requests}=await run(t,builder,{header,body});
+   assert.equal(requests.length,3,'malformed date does not prematurely exhaust the acquisition window');
+   assert.equal(requests[1].at,120000,'only the existing retry backoff applies');
+   assert.equal(requests[2].at,360000,'existing second admission backoff remains in place');
+  });
+ }
+}
