@@ -36,6 +36,11 @@ async function waitForProvider(requestMs,limit=acquisitionUntil){
     await new Promise(resolve=>setTimeout(resolve,remaining));
   }
 }
+// Release unused HTTP-error bodies without letting cleanup delay retries or
+// replace the HTTP error. Header-time provider pauses are already retained.
+function discardResponse(response){
+  try{response.body?.cancel().catch(()=>{});}catch{}
+}
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
 const toFeatures=elements=>elements.flatMap(e=>{
   if(e.type!==undefined&&e.type!=='way') return [];
@@ -71,7 +76,7 @@ if(process.env.PREVIOUS_DATA) {
     if(left<=0) throw new Error('The change requests\' six minutes are used');
     const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(left),headers});
     observePause(response);
-    if(!response.ok) throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});
+    if(!response.ok){discardResponse(response);throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});}
     return response.text();
   },failed:error=>{changeError=error;}});
 }
@@ -84,7 +89,7 @@ else for(let attempt=0;attempt<3;attempt++) {
   try {
     const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(660000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
     observePause(response);
-    if(!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
+    if(!response.ok){discardResponse(response);throw new Error(`Overpass HTTP ${response.status}`);}
     data=await response.json();
     if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
     break;

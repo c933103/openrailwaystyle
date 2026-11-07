@@ -129,7 +129,9 @@ honors the pause. A full eleven-minute request and any required pause must fit
 the existing 45-minute acquisition envelope, otherwise the run stops and leaves
 the published snapshot intact. Query definitions, retry limits, coverage filters and publication checks stay
 unchanged; complete final data needs no wait when
-there is no next request.
+there is no next request. Unused HTTP-error bodies in both change and full
+requests are cancelled without awaiting cleanup; a pending or failed cancellation
+never replaces the HTTP status or changes the provider pause and retry schedule.
 
 Each website build copies `12/`, `index.json`, `manifest.json` and `street-running.geojson.gz` into `styles/data/street-running/`. The manifest and ODbL GeoJSON download are linked under About. Visitors do not make Overpass requests. See [rail-road rendering](rendering.md#rail-road-interfaces) for qualifying tags and display zooms.
 
