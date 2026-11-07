@@ -2,6 +2,7 @@
 // with one, from Overpass as CSV (about 4 MB). The map colours its zoom 0–6
 // overview with it (styles/loading-gauge-list.mjs). If Overpass fails, the
 // previous list in .snapshot-cache is kept.
+import {retryAfterMs} from './retry-after.mjs';
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import {encodeLoadingGauges, parseCsv} from '../styles/loading-gauge-list.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
@@ -18,10 +19,7 @@ for (let attempt = 0; attempt < 3 && !text; attempt++) {
     const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}),
       headers: {'User-Agent': 'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal: AbortSignal.timeout(300000)});
     // Capture the pause before reading the body, which can fail independently.
-    const receivedAt = Date.now(), value = String(response.headers.get('retry-after') ?? '').trim();
-    let pause = 0;
-    if (/^\d+$/.test(value)) pause = Number(value) * 1000;
-    else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) pause = Math.max(0, date - receivedAt); }
+    const receivedAt = Date.now(), pause = retryAfterMs(response.headers.get('retry-after'), receivedAt);
     pauseTooLong = pause > MAX_PROVIDER_WAIT_MS;
     if (pause > 0) retryNotBefore = Math.max(retryNotBefore, receivedAt + pause);
     terminal = response.status >= 400 && response.status < 500 && ![406, 408, 429].includes(response.status);

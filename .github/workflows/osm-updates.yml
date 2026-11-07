@@ -51,6 +51,7 @@ on:
       - scripts/polar-contours.mjs
       - scripts/polar-depth.mjs
       - scripts/polar-features.mjs
+      - scripts/polar-fetch.mjs
       - scripts/power-facility-data.mjs
       - scripts/power-method-data.mjs
       - scripts/railway-ways-branch.mjs

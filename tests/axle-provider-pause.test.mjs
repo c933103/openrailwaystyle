@@ -97,3 +97,13 @@ test('axle complete cached remaining parts do not wait for an unnecessary reques
  const r=await run(t,[{headers:{'Retry-After':'3600'}}],{parts});
  assert.equal(r.requests.length,1);assert.equal(r.output.ways,0);
 });
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])test(`axle rejects malformed calendar pause ${value}`,async t=>{
+ const r=await run(t,[{headers:{'Retry-After':value}}]);
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,5);assert.equal(r.requests[1].elapsed,0);assert.equal(r.output.ways,0);
+});
+for(const value of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:00 GMT','Sat Nov  7 00:10:00 2026'])test(`axle retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const r=await run(t,[{headers:{'Retry-After':value}}]);assert.equal(r.result.status,0,r.result.stderr);
+ assert.equal(r.requests.length,5);assert.equal(r.requests[1].elapsed,600000);assert.equal(r.output.ways,0);
+});

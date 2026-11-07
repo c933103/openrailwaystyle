@@ -1,4 +1,5 @@
 // Maintenance only: a compact way-ID lookup; no Overpass calls from viewers.
+import {retryAfterMs} from './retry-after.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createAxlePartCache} from './axle-load-parts.mjs';
 import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
@@ -27,13 +28,7 @@ async function query(text) {
  const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:text}),headers:{'User-Agent':'RailwayAtlas-axle-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(REQUEST_MS)});
  // Capture header time before a possibly slow or interrupted body, and carry
  // the pause across all uncached parts without using wall time for elapsed time.
- const receivedAt=performance.now(),header=String(response.headers.get('retry-after')??'').trim();
- let pause=0;
- if(/^\d+$/.test(header))pause=Number(header)*1000;
- else if(/^(?:[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]+, \d{2}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4})$/.test(header)){
-  const date=Date.parse(header.endsWith(' GMT')?header:`${header} GMT`);
-  if(Number.isFinite(date))pause=Math.max(0,date-Date.now());
- }
+ const receivedAt=performance.now(),pause=retryAfterMs(response.headers.get('retry-after'),Date.now());
  providerNotBefore=Math.max(providerNotBefore,receivedAt+pause);
  if(!response.ok) throw new Error(`Overpass HTTP ${response.status}: ${(await response.text()).slice(0,1800)}`);
  const body=await response.text();

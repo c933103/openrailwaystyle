@@ -1,5 +1,6 @@
 // Maintenance only. Produce a complete worldwide, tag-backed energy supply
 // snapshot. Visitors fetch the published GeoJSON rather than querying Overpass.
+import {retryAfterMs} from './retry-after.mjs';
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilitySplitAccepted,powerFacilityCachedResponse,powerFacilityChangesSince} from './power-facility-data.mjs';
@@ -24,10 +25,7 @@ const MAX_PROVIDER_WAIT_MS=15*60_000;
 let retryNotBefore=0,providerWaitExceeded=false;
 const providerPauseError=()=>new Error('Energy facility Retry-After wait budget exceeded; data retained');
 function rememberProviderPause(response) {
-  const value=String(response.headers.get('retry-after')??'').trim(),receivedAt=Date.now();
-  let delay=0;
-  if(/^\d+$/.test(value))delay=Number(value)*1000;
-  else if(value){const date=Date.parse(value);if(Number.isFinite(date))delay=Math.max(0,date-receivedAt);}
+  const receivedAt=Date.now(),delay=retryAfterMs(response.headers.get('retry-after'),receivedAt);
   if(delay>MAX_PROVIDER_WAIT_MS)providerWaitExceeded=true;
   if(delay>0)retryNotBefore=Math.max(retryNotBefore,receivedAt+delay);
 }

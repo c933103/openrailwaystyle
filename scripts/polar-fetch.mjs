@@ -1,5 +1,6 @@
 // Shared only by the existing polar elevation and OSM maintenance reads.
 // A provider pause belongs to its origin, not only the query that received it.
+import {retryAfterMs} from './retry-after.mjs';
 const MAX_PROVIDER_WAIT_MS=15*60_000;
 export function createPolarTextFetcher({userAgent,fetcher=fetch,now=()=>Date.now(),
  wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),warn=console.warn}={}){
@@ -15,9 +16,7 @@ export function createPolarTextFetcher({userAgent,fetcher=fetch,now=()=>Date.now
    let terminal=false;
    try{
     const response=await fetcher(url,{...options,headers:{'User-Agent':userAgent,...options.headers},signal:AbortSignal.timeout(300000)});
-    const receivedAt=now(),value=String(response.headers.get('retry-after')??'').trim();let pause=0;
-    if(/^\d+$/.test(value))pause=Number(value)*1000;
-    else if(value){const date=Date.parse(value);if(Number.isFinite(date))pause=Math.max(0,date-receivedAt);}
+    const receivedAt=now(),pause=retryAfterMs(response.headers.get('retry-after'),receivedAt);
     if(pause>MAX_PROVIDER_WAIT_MS)provider.stopped=true;
     if(pause>0)provider.notBefore=Math.max(provider.notBefore,receivedAt+pause);
     terminal=response.status>=400&&response.status<500&&![406,408,429].includes(response.status);

@@ -92,3 +92,12 @@ for(const previous of [false,true])for(const cleanup of ['resolved','pending','r
  if(previous)assert.match(requests[0].query,/^\[out:xml\]/);else assert.equal(requests[0].query,query);
  assert.ok(requests.slice(previous?1:0).every(r=>r.query===query),'no changed or subdivided query');
 });
+
+for(const header of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const previous of [false,true])test(`street rejects malformed calendar pause ${header} (previous=${previous})`,async t=>{
+ const {requests}=await run(t,{header,previous});
+ assert.deepEqual(requests.map(r=>r.at),previous?[0,0,120000,240000,360000]:[0,120000,240000]);
+});
+for(const header of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:00 GMT','Sat Nov  7 00:10:00 2026'])test(`street retains valid calendar pause ${header}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const {requests}=await run(t,{header,body:'read-error'});assert.equal(requests[1].at,600000);
+});

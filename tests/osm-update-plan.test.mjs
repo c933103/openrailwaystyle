@@ -130,6 +130,15 @@ test('traction runs every six hours but republishes and redeploys only when its 
 
 test('shared provider calendar changes rebuild exactly its current dataset consumers', () => {
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/retry-after.mjs')).map(entry => entry.id),
-    ['crossings', 'conveying', 'aerialways', 'branch-lines', 'service-routes', 'traction']);
+    ['lifecycle', 'crossings', 'street-running', 'conveying', 'aerialways', 'heritage', 'branch-lines', 'service-routes', 'traction']);
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/crossing-request.mjs')).map(entry => entry.id), ['crossings']);
+  assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/polar-fetch.mjs')).map(entry => entry.id), ['lifecycle']);
+});
+
+test('axle-load push trigger includes its shared calendar parser without changing its schedule', async () => {
+  const workflow = await readFile(new URL('axle-load.yml', workflows), 'utf8');
+  const push = workflow.split('  push:')[1].split('  workflow_dispatch:')[0];
+  assert.match(push, /- scripts\/retry-after\.mjs/);
+  assert.match(workflow, /cron: '17 2 \* \* 0'/);
+  assert.match(workflow, /cancel-in-progress: false/);
 });

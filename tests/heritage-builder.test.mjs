@@ -13,6 +13,7 @@ import * as bundles from '../styles/tile-bundles.mjs';
 import * as adiff from '../scripts/overpass-adiff.mjs';
 import * as worldRegions from '../scripts/world-regions.mjs';
 import * as zlib from 'node:zlib';
+import * as retryAfter from '../scripts/retry-after.mjs';
 import * as transport from '../scripts/response-chunks.mjs';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
@@ -90,6 +91,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     './world-regions.mjs':worldRegions,
     'node:zlib':zlib,
     './response-chunks.mjs':transport,
+    './retry-after.mjs':retryAfter,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
@@ -541,4 +543,14 @@ test('heritage streamed JSON preserves UTF-8 split across chunks and exact byte 
   assert.deepEqual(JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`))).response, data);
   assert.equal(stream.state.cancelled, 0, 'completed streams are not cancelled');
   assert.equal(stream.body.locked, false);
+});
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const path of ['retry','changes'])test(`heritage rejects malformed calendar pause ${value} (${path})`,async t=>{
+ const result=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders(value)):response(200,complete),path==='changes'?{env:previousEnv,files:storedParent()}:{});
+ assert.ifError(result.error);assert.equal(result.calls.length,2);assert.equal(result.times[1]-result.times[0],path==='changes'?10000:30000);
+});
+for(const value of ['Fri, 06 Nov 2026 00:10:00 GMT','Friday, 06-Nov-26 00:10:00 GMT','Fri Nov  6 00:10:00 2026'])test(`heritage retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const result=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders(value)):response(200,complete));
+ assert.ifError(result.error);assert.equal(result.calls.length,2);assert.equal(result.times[1]-result.times[0],600000);
 });
