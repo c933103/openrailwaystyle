@@ -22,7 +22,12 @@ const UPDATE_EVERY = Number(process.env.SIGNAL_UPDATE_DAYS || 7) * 86400000;
 // Legacy direction-only responses and remainders count as current for 28
 // days; they are folded into one stored region on first use.
 const AGE = 28 * 86400000;
-const timeoutLike = message => !/^Overpass HTTP \d+:/.test(message) && /timed? ?out|timeout|memory|maxsize/i.test(message);
+class SignalTransportError extends Error {
+  constructor(cause) { super(cause?.message || String(cause), {cause}); this.name = 'SignalTransportError'; }
+}
+// A client/connection deadline says nothing about the spatial query's size.
+const timeoutLike = error => !(error instanceof SignalTransportError)
+  && !/^Overpass HTTP \d+:/.test(error.message) && /timed? ?out|timeout|memory|maxsize/i.test(error.message);
 
 export async function buildSignals({
   api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter',
@@ -58,9 +63,13 @@ export async function buildSignals({
       if (requests) await sleep(attempt ? 30000 : 10000);
       requests++;
       try {
-        const response = await fetcher(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(200000),
-          headers: {'User-Agent': 'RailwayAtlas-signals/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-        const text = await response.text(); downloaded += Buffer.byteLength(text);
+        let response, text;
+        try {
+          response = await fetcher(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(200000),
+            headers: {'User-Agent': 'RailwayAtlas-signals/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
+          text = await response.text();
+        } catch (error) { throw new SignalTransportError(error); }
+        downloaded += Buffer.byteLength(text);
         if (!response.ok) throw new Error(`Overpass HTTP ${response.status}: ${text.replace(/<[^>]*>/g, ' ').slice(0, 200)}`);
         // A result cut short by a timeout or memory limit says so in a remark
         // (JSON) or <remark> (XML); report it as such, so the region splits.
@@ -69,7 +78,7 @@ export async function buildSignals({
         return text;
       } catch (error) {
         // An execution timeout or memory limit splits the region instead.
-        if (timeoutLike(error.message) || attempt === 2) throw error;
+        if (timeoutLike(error) || attempt === 2) throw error;
         warn('Signal request retry:', error.message);
       }
     }
@@ -97,7 +106,7 @@ export async function buildSignals({
       return response.elements;
     } catch (error) {
       warn('Signal remainder', box.join(','), error.message);
-      if (!timeoutLike(error.message) || depth >= 5) throw error;
+      if (!timeoutLike(error) || depth >= 5) throw error;
       await writeFile(new URL(file, cacheRoot), JSON.stringify({query, generated: new Date(now()).toISOString(), split: true}));
       return split();
     }
@@ -118,7 +127,7 @@ export async function buildSignals({
       return {...changes, ...(until ? {timestamp: until} : {}), parts: [box]};
     } catch (error) {
       warn('Signal changes', box.join(','), error.message);
-      if (!timeoutLike(error.message) || depth >= 5) throw error;
+      if (!timeoutLike(error) || depth >= 5) throw error;
       return changesOver(quarters(box), since, until, () => depth + 1);
     }
   }
@@ -201,7 +210,7 @@ export async function buildSignals({
       return [{box, timestamp: response.osm3s?.timestamp_osm_base || null, elements: response.elements}];
     } catch (error) {
       warn('Signal region', box.join(','), error.message);
-      if (!timeoutLike(error.message) || depth >= 5) throw error;
+      if (!timeoutLike(error) || depth >= 5) throw error;
       await writeFile(new URL(combinedFile, cacheRoot), JSON.stringify({query: combinedQuery, generated: new Date(now()).toISOString(), split: true}));
       return split();
     }
