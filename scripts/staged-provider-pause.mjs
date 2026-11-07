@@ -1,3 +1,4 @@
+import {retryAfterMs} from './retry-after.mjs';
 // Shared by the staged branch/Service fallback, not their local-store path.
 // A provider pause survives body failure and region subdivision. Use monotonic
 // elapsed time so a wall-clock correction cannot shorten an observed pause.
@@ -7,13 +8,7 @@ export function createStagedProviderPause({budgetMs, requestMs = 300000}) {
   return {
     observe(response) {
       const receivedAt = performance.now();
-      const header = String(response.headers.get('retry-after') ?? '').trim();
-      let pause = 0;
-      if (/^\d+$/.test(header)) pause = Number(header) * 1000;
-      else if (/^(?:[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]+, \d{2}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4})$/.test(header)) {
-        const date = Date.parse(header.endsWith(' GMT') ? header : `${header} GMT`);
-        if (Number.isFinite(date)) pause = Math.max(0, date - Date.now());
-      }
+      const pause = retryAfterMs(response.headers.get('retry-after'));
       notBefore = Math.max(notBefore, receivedAt + pause);
     },
     async wait(backoffMs) {

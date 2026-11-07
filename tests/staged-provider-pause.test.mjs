@@ -20,7 +20,7 @@ const pipelines = [
   {name:'service', script:'build-service-routes.mjs', folder:'service-data', file:'service-routes.ndjson.gz', version:1,
     table:()=>{const t={routes:new Map(),ways:new Map()};addResult(t,toTable(body),'japan');commitStage(t,'japan');return writeServices(t);}},
 ];
-async function run(t,pipeline,responses,{budget=100,oversleep=0,priorQueue=queue}={}) {
+async function run(t,pipeline,responses,{budget=100,oversleep=0,priorQueue=queue,clock=epoch}={}) {
   const root=await mkdtemp(join(tmpdir(),'atlas-staged-pause-'));t.after(()=>rm(root,{recursive:true,force:true}));
   await cp('scripts',join(root,'scripts'),{recursive:true});await mkdir(join(root,'styles'));
   for(const file of ['pbf-utf8.mjs','service-frequency.mjs'])await cp(`styles/${file}`,join(root,'styles',file));
@@ -33,7 +33,7 @@ async function run(t,pipeline,responses,{budget=100,oversleep=0,priorQueue=queue
   await writeFile(join(root,'previous',pipeline.file),gzipSync(initial));
   await writeFile(join(root,'mock.mjs'),`import fs from 'node:fs';
 let elapsed=0,shift=0,calls=0,oversleep=${oversleep};const rows=${JSON.stringify(responses)};
-Date.now=()=>${epoch}+elapsed+shift;Object.defineProperty(performance,'now',{value:()=>elapsed});
+Date.now=()=>${clock}+elapsed+shift;Object.defineProperty(performance,'now',{value:()=>elapsed});
 globalThis.setTimeout=(callback,ms)=>{fs.appendFileSync(${JSON.stringify(join(root,'sleeps'))},JSON.stringify(ms)+'\\n');elapsed+=ms;if(ms){elapsed+=oversleep;oversleep=0;}callback();return 0;};
 globalThis.fetch=async(url,options)=>{
  fs.appendFileSync(${JSON.stringify(join(root,'requests'))},JSON.stringify({url,query:options.body.get('data'),at:elapsed})+'\\n');
@@ -96,3 +96,20 @@ for(const pipeline of pipelines){
 test('shared provider-pause changes rebuild only their two fallback consumers',()=>{
  assert.deepEqual(OSM_UPDATES.filter(x=>x.paths.includes('scripts/staged-provider-pause.mjs')).map(x=>x.id),['branch-lines','service-routes']);
 });
+
+for(const pipeline of pipelines) {
+ for(const header of ['Sun, 31 Feb 2027 12:00:00 GMT','Foo, 07 Nov 2026 00:07:00 GMT','Sun, 07 Nov 2026 00:07:00 GMT']) {
+  for(const path of ['success','HTTP error','body failure']) test(`${pipeline.name} malformed calendar never defers ${path}: ${header}`,async t=>{
+   const first=path==='HTTP error'?{status:503,text:'busy'}:path==='body failure'?{readError:true}:{};
+   const r=await run(t,pipeline,[{...first,header},{},{}]);
+   assert.equal(r.attempt.status,'acquired');assert.equal(r.attempt.splitBoxes,0);assert.equal(r.saved.stages.japan.pending,null);
+   assert.deepEqual(r.requests.map(x=>x.at),path==='success'?[0,15000]:[0,60000,75000]);
+   if(path!=='success')assert.equal(r.requests[0].query,r.requests[1].query);
+  });
+ }
+ test(`${pipeline.name} RFC850 rolling century preserves a valid future provider pause`,async t=>{
+  const clock=Date.parse('2090-01-01T12:00:00Z');
+  const r=await run(t,pipeline,[{header:'Sunday, 01-Jan-90 12:07:00 GMT'},{}],{clock});
+  assert.deepEqual(r.requests.map(x=>x.at),[0,420000]);assert.equal(r.attempt.status,'acquired');
+ });
+}

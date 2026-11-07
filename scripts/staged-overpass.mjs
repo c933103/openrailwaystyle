@@ -1,3 +1,4 @@
+import {retryAfterMs as retryAfter} from './retry-after.mjs';
 import {responseChunks} from './response-chunks.mjs';
 // Maintenance-only staged worldwide Overpass acquisition shared by snapshot
 // builders. Each snapshot supplies its own query, response transform, cache
@@ -24,11 +25,6 @@ export class AcquisitionError extends Error {
   constructor(message,category,{retry=false,split=false,retryAfterMs=0,cause}={}) {super(message,{cause});Object.assign(this,{category,retry,split,retryAfterMs});}
 }
 const fatal=(message,category='validation',cause)=>new AcquisitionError(message,category,{cause});
-function retryAfter(value,now) {
-  if(!value)return 0;
-  if(/^\d+$/.test(value.trim()))return Number(value)*1000;
-  const date=Date.parse(value);return Number.isFinite(date)?Math.max(0,date-now):0;
-}
 
 // config: {noun, label, userAgent, query(box), transform(json), cachePrefix,
 // cacheVersion, files:{data,gzip,manifest}, stagePrefix, emptyMessage,

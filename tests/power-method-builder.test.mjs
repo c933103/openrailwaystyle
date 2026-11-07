@@ -564,3 +564,26 @@ test(`${name} redownloads ${changedQuery?'changed':'current'}-query checkpoint w
   const before=calls.length;assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
   assert.equal(calls.length,before,'repaired checkpoint is reusable');
 },builder));
+
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]]) {
+ for(const header of ['Sun, 31 Feb 2027 12:00:00 GMT','Foo, 28 Feb 2027 12:02:00 GMT','Mon, 28 Feb 2027 12:02:00 GMT']) {
+  for(const path of ['success','HTTP error','body failure']) test(`${name} malformed calendar never stops ${path}: ${header}`,()=>fixture(async({run,calls,sleeps,advance,options})=>{
+   advance(Date.parse('2027-02-28T12:00:00Z')-options.now());
+   const result=await run(n=>{
+    if(n!==1)return response(sharedComplete);
+    if(path==='HTTP error')return response('busy',{status:503,headers:{'Retry-After':header}});
+    if(path==='body failure')return new Response(new ReadableStream({pull(controller){controller.error(Object.assign(new Error('interrupted body'),{code:'UND_ERR_BODY_TIMEOUT'}));}},{highWaterMark:0}),{headers:{'Retry-After':header}});
+    return response(sharedComplete,{headers:{'Retry-After':header}});
+   });
+   assert.equal(calls.length,path==='success'?8:9);assert.equal(sleeps[0],path==='success'?10000:40000);
+   assert.equal(result.manifest.coverage.length,8);assert.equal(result.manifest.complete,true);
+   if(path!=='success')assert.equal(calls[0].query,calls[1].query);
+  },builder));
+ }
+ for(const [label,header] of [['IMF','Sun, 01 Jan 2090 12:02:00 GMT'],['RFC850','Sunday, 01-Jan-90 12:02:00 GMT'],['asctime','Sun Jan  1 12:02:00 2090']])
+ test(`${name} valid ${label} future date respects the observed century`,()=>fixture(async({run,sleeps,options,advance})=>{
+  advance(Date.parse('2090-01-01T12:00:00Z')-options.now());
+  const result=await run(n=>response(sharedComplete,{headers:n===1?{'Retry-After':header}:{}}));
+  assert.equal(sleeps[0],120000);assert.equal(result.manifest.complete,true);
+ },builder));
+}
