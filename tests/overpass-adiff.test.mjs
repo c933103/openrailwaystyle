@@ -112,9 +112,9 @@ test('the conveying build updates from changes and keeps the full download as it
   assert.match(source, /if\(update\) console\.log[^\n]*\nelse for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
   assert.match(source, /if \(!conveyingRequestFits\(deadline, 0\)\) throw new Error\('No request fits/);
   // A refused change request's wait (Retry-After) comes before the full download, within the budget.
-  const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
+  const wait = source.indexOf('const wait = conveyingRetryDelay({kind:changeError.kind}, 0);');
   assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'));
-  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
+  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await providerPause.wait(wait);', wait));
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-conveying') < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-conveying.mjs'));
 });
@@ -144,9 +144,9 @@ test('the aerialway build keeps its elements and converts all of them on every r
   assert.match(source, /const \{features\}=aerialwaysGeoJSON\(\{elements\}\);/);
   assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
   assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
-  const wait = source.indexOf('const wait = conveyingRetryDelay(changeError, 0);');
+  const wait = source.indexOf('const wait = conveyingRetryDelay({kind:changeError.kind}, 0);');
   assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'), 'a refused change request\'s wait comes first');
-  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await new Promise(r=>setTimeout(r,wait));', wait));
+  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)', wait) < source.indexOf('await providerPause.wait(wait);', wait));
   const workflow = readFileSync(new URL('../.github/workflows/aerialways.yml', import.meta.url), 'utf8');
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
   assert.ok(workflow.indexOf('PREVIOUS_DATA=/tmp/previous-aerialways') < workflow.indexOf('node --import ./scripts/overpass-meter.mjs scripts/build-aerialways.mjs'));
@@ -369,10 +369,12 @@ test('the conveying build makes at most three requests, its change requests incl
     const previousQuery = name === 'refused' ? CONVEYING_QUERY : CONVEYING_QUERY.replace('way[highway=elevator];', '');
     await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
     await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
-      globalThis.setTimeout = f => { f(); return 0; };
+      let elapsed=0;Object.defineProperty(performance,'now',{value:()=>elapsed});
+      globalThis.setTimeout = (f,ms) => { elapsed+=ms;f();return 0; };
       globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
     const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-conveying.mjs', import.meta.url))],
-      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8', timeout:15000});
+    assert.equal(result.error,undefined,result.error?.message);
     assert.notEqual(result.status, 0, name);
     assert.deepEqual((await read(join(dir, 'requests'), 'utf8')).trim().split('\n'), expected, name);
     if (name === 'query changed, elements unusable') assert.match(result.stderr, /no request left of the three/, name);
@@ -401,12 +403,14 @@ test('the aerialway build makes at most three requests, its change requests incl
     t.after(() => rm(dir, {recursive: true, force: true}));
     await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {aerialway: 'gondola'}, [[46, 7], [46.01, 7]])])));
     await writeFile(join(dir, 'manifest.json'), JSON.stringify({osmBase: '2026-10-30T00:00:00Z', query: previousQuery}));
-    // Timers run at once.
+    // Timers advance the independent elapsed clock without real waits.
     await writeFile(join(dir, 'fake.mjs'), `const fs = await import('node:fs');
-      globalThis.setTimeout = f => { f(); return 0; };
+      let elapsed=0;Object.defineProperty(performance,'now',{value:()=>elapsed});
+      globalThis.setTimeout = (f,ms) => { elapsed+=ms;f();return 0; };
       globalThis.fetch = async (url, {body}) => { const q = body.get('data'); fs.appendFileSync(${JSON.stringify(join(dir, 'requests'))}, q.slice(0, 12) + '\\n'); ${answer} };`);
     const result = spawnSync(process.execPath, ['--import', join(dir, 'fake.mjs'), fileURLToPath(new URL('../scripts/build-aerialways.mjs', import.meta.url))],
-      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8'});
+      {env: {...process.env, PREVIOUS_DATA: dir}, encoding: 'utf8', timeout:15000});
+    assert.equal(result.error,undefined,result.error?.message);
     assert.notEqual(result.status, 0, name);
     const requests = await read(join(dir, 'requests'), 'utf8');
     assert.deepEqual(requests.trim().split('\n'), expected, name);

@@ -145,7 +145,10 @@ rules are unchanged. This does not add a request deadline or a shared daily cap.
 Conveying and aerialway acquisitions retain a provider pause from every response,
 including HTTP 200, before reading its body. A later change/selection request or
 full retry waits for the remaining pause even if parsing, validation or body
-reading failed. A pause that cannot fit with the existing full request timeout
+reading failed. HTTP retries and change-to-full fallback consume the header-time
+deadline rather than restarting a seconds value or reparsing a date after body
+consumption. Local retry floors share the elapsed-time wait loop, so early timer
+wakes cannot shorten them; wall-clock changes cannot extend an observed pause. A pause that cannot fit with the existing full request timeout
 inside the 52-minute run budget defers the run without a further request. The
 three-request ceiling, existing retry backoff, source/query, validation and
 publication rules are unchanged. A final successful response does not sleep

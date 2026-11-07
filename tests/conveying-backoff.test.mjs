@@ -41,16 +41,22 @@ test('the original 52-minute acquisition ceiling includes every wait and full ti
 });
 
 test('builder keeps three requests in all and checks deadline before sleep and before requests', () => {
-  const source=readFileSync(new URL('../scripts/build-conveying.mjs',import.meta.url),'utf8');
+ for(const builder of ['conveying','aerialways']) {
+  const source=readFileSync(new URL(`../scripts/build-${builder}.mjs`,import.meta.url),'utf8');
   // Three requests in all, the change requests included (a run test in
   // overpass-adiff.test.mjs counts them).
   assert.match(source,/for\(let attempt=0,attempts=3-requests;;attempt\+\+\)/);
   assert.match(source,/if \(attempt >= attempts\) throw/);
   assert.match(source,/if\(attempt===attempts-1\) throw error/);
   assert.ok(source.indexOf('conveyingRequestFits(deadline, 0)')<source.indexOf('await fetch('));
-  assert.ok(source.indexOf('conveyingRequestFits(deadline, wait)')<source.indexOf('setTimeout(r,wait)'));
+  const checked=source.indexOf('conveyingRequestFits(deadline, wait)'),wait=source.indexOf('await providerPause.wait(wait)');
+  assert.ok(checked>=0&&checked<wait,'check local floor before the combined provider wait');
   assert.match(source,/AbortSignal\.timeout\(CONVEYING_REQUEST_MS\)/);
   assert.doesNotMatch(source,/OVERPASS_BUDGET_MINUTES|OVERPASS_RETRY_MINUTES/);
+ }
+ const shared=readFileSync(new URL('../scripts/conveying-data.mjs',import.meta.url),'utf8');
+ assert.match(shared,/const earliest = Math.max\(notBefore, performance.now\(\) \+ backoffMs\)/);
+ assert.match(shared,/while \(\(remaining = earliest - performance.now\(\)\) > 0\)/);
 });
 
 const calendarCases = [
