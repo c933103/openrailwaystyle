@@ -222,7 +222,7 @@ The basemap's `park` layer holds only national parks, protected areas and nature
 - A response with an Overpass remark (partial data) is rejected. An empty world is not published.
 - Multipolygon rings are joined from their member ways. Each hole goes to the outer ring around it, and holes outside every outer ring are dropped. An area crossing the antimeridian is kept as one shape.
 - Each area keeps its OSM id, its kind and the `name` keys the label languages read; other tags are dropped.
-- The run is monthly (the 3rd, from 21:23 UTC, started by the scheduler above), on a manual run, and when the builder changes on `main`. The download is capped at 1.5 GB.
+- The run is monthly (the 3rd, from 21:23 UTC, started by the scheduler above), on a manual run, and when the builder changes on `main`. The 1.5 GB per-run cap counts consumed response-body bytes as they arrive, including failed or interrupted full and change requests. The final transport chunk can cross the cap and is counted in full; consumption then stops and cancels the stream without awaiting cleanup. Exhaustion prevents another delay, request or full-download fallback. The previous publication and completed-region cache remain intact. This is a per-run limit, not a shared daily provider allowance.
 
 The tiles are published in bundles (`styles/tile-bundles.mjs`): one file per zoom-8 tile, holding every zoom 10–12 tile under it, gzip-compressed together.
 - The first worldwide build had 70,530 areas in 142,087 tiles: 49 MB in 142,087 files, plus a 2 MB index every visitor downloaded first.

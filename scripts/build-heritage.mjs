@@ -6,6 +6,7 @@ import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 import {updateElements, requireGeometry} from './overpass-adiff.mjs';
 import {quarters} from './world-regions.mjs';
 import {gzipSync, gunzipSync} from 'node:zlib';
+import {responseChunks} from './response-chunks.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output = process.env.HERITAGE_OUTPUT || 'heritage-data';
@@ -36,9 +37,25 @@ const pick = element => slim(requireGeometry([element])[0]);
 await mkdir(cache, {recursive:true});
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let requests = 0, downloaded = 0, providerNotBefore = 0, providerStopped = false;
+const DOWNLOAD_LIMIT = 1_500_000_000;
+const budgetError = () => Object.assign(new Error('Historic area download budget exceeded'), {budget:true});
+async function responseText(response) {
+  if (!response.body) return '';
+  const decoder = new TextDecoder(), parts = [];
+  for await (const chunk of responseChunks(response)) {
+    // Count successful, HTTP-error and interrupted response bytes as consumed.
+    // The crossing transport chunk counts in full; never read the remaining body.
+    downloaded += Buffer.byteLength(chunk);
+    if (downloaded > DOWNLOAD_LIMIT) throw budgetError();
+    parts.push(decoder.decode(chunk, {stream:true}));
+  }
+  parts.push(decoder.decode());
+  return parts.join('');
+}
 const pauseError = () => Object.assign(new Error('Historic area provider Retry-After exceeds the 15-minute wait limit; previous publication retained'), {providerPause:true});
 async function waitForProvider(delay) {
   if (providerStopped) throw pauseError();
+  if (downloaded >= DOWNLOAD_LIMIT) throw budgetError();
   await sleep(Math.max(delay, providerNotBefore - Date.now()));
   providerNotBefore = 0;
 }
@@ -72,9 +89,7 @@ async function collect(box, depth = 0) {
           const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:request}),
             headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
           retainProviderPause(response);
-          const text = await response.text();
-          downloaded += Buffer.byteLength(text);
-          if (downloaded > 1_500_000_000) throw Object.assign(new Error('Historic area download budget exceeded'), {budget:true});
+          const text = await responseText(response);
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return text;
         },
@@ -99,10 +114,8 @@ async function collect(box, depth = 0) {
         response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
           headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
         retainProviderPause(response);
-        text = await response.text();
-      } catch (error) { throw new Error(`Network: ${error.message}`); }
-      downloaded += Buffer.byteLength(text);
-      if (downloaded > 1_500_000_000) throw new Error('Historic area download budget exceeded');
+        text = await responseText(response);
+      } catch (error) { if (error.budget) throw error; throw new Error(`Network: ${error.message}`); }
       if (!response.ok) {
         const error = new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160)}`);
         // Keep the budget-checked body for classification, non-enumerable so
