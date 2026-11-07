@@ -490,3 +490,51 @@ for(const [name,builder] of [['power methods',buildPowerMethods],['electricity s
     assert.ok(calls.slice(first).every(call=>call.query.includes('[adiff:')),'same-query failure keeps cache without a full fallback');
   },builder));
 }
+
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]]) {
+  for(const path of ['region','body retry','query split'])
+  test(`${name} exact byte exhaustion prevents the next ${path} request and pause`,()=>fixture(async({run,calls,sleeps,options})=>{
+    const body=Buffer.from(JSON.stringify(path==='query split'?{remark:'Query timed out',elements:[]}:sharedComplete));
+    await assert.rejects(run(()=>path==='body retry'?new Response(new ReadableStream({
+      start(controller){controller.enqueue(body);},pull(controller){controller.error(Object.assign(new Error('body interrupted'),{code:'UND_ERR_BODY_TIMEOUT'}));}
+    },{highWaterMark:0})):new Response(body),{limits:{bytes:body.length}}),error=>error.category==='budget'&&/download budget/.test(error.message));
+    assert.equal(calls.length,1,'no provider request when no byte budget remains');assert.deepEqual(sleeps,[]);
+    const cache=await readdir(options.cache);assert.equal(cache.length,path==='body retry'?0:1);
+    if(path==='query split')assert.ok(cache[0].endsWith('.split'),'retain proven execution-limit checkpoint');
+    assert.deepEqual(await readdir(options.output),[]);
+  },builder));
+
+  test(`${name} bytes accumulated across interrupted reads prevent a third request`,()=>fixture(async({run,calls,sleeps,options})=>{
+    await assert.rejects(run(()=>new Response(new ReadableStream({
+      start(controller){controller.enqueue(Buffer.alloc(5));},pull(controller){controller.error(Object.assign(new Error('body interrupted'),{code:'UND_ERR_BODY_TIMEOUT'}));}
+    },{highWaterMark:0})),{limits:{bytes:10}}),error=>error.category==='budget'&&/download budget/.test(error.message));
+    assert.equal(calls.length,2);assert.deepEqual(sleeps,[40000]);assert.equal(new Set(calls.map(call=>call.query)).size,1);
+    assert.deepEqual(await readdir(options.cache),[]);assert.deepEqual(await readdir(options.output),[]);
+  },builder));
+
+  for(const path of ['valid','interrupted'])
+  test(`${name} exact change-body byte exhaustion retains prior publication after ${path} response`,()=>fixture(async({run,calls,sleeps,options,advance})=>{
+    await run(()=>response(sharedComplete));advance(8*86400000);
+    const previous=await Promise.all((await readdir(options.output)).map(async file=>[file,await readFile(join(options.output,file))]));
+    const first=calls.length,before=sleeps.length,body=Buffer.from(unchangedXml);
+    await assert.rejects(run(()=>path==='valid'?new Response(body):new Response(new ReadableStream({
+      start(controller){controller.enqueue(body);},pull(controller){controller.error(Object.assign(new Error('body interrupted'),{code:'UND_ERR_BODY_TIMEOUT'}));}
+    },{highWaterMark:0})),{limits:{bytes:body.length}}),error=>error.category==='budget'&&/download budget/.test(error.message));
+    assert.equal(calls.length-first,1);assert.equal(sleeps.length,before);
+    for(const [file,bytes] of previous)assert.deepEqual(await readFile(join(options.output,file)),bytes);
+  },builder));
+
+  test(`${name} a complete final response may publish at the exact byte cap`,()=>fixture(async({run,calls})=>{
+    const bytes=Buffer.byteLength(JSON.stringify(sharedComplete))*8;
+    const result=await run(()=>response(sharedComplete),{limits:{bytes}});
+    assert.equal(calls.length,8);assert.equal(result.manifest.downloadedBytes,bytes);assert.equal(result.manifest.complete,true);
+  },builder));
+
+  test(`${name} exact byte exhaustion still permits finishing from other cached regions`,()=>fixture(async({run,calls,options})=>{
+    await run(()=>response(sharedComplete));
+    await rm(join(options.cache,(await readdir(options.cache))[0]));
+    const first=calls.length,bytes=Buffer.byteLength(JSON.stringify(sharedComplete));
+    const result=await run(()=>response(sharedComplete),{limits:{bytes}});
+    assert.equal(calls.length-first,1);assert.equal(result.manifest.downloadedBytes,bytes);assert.equal(result.manifest.coverage.length,8);
+  },builder));
+}

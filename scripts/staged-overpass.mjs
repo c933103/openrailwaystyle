@@ -96,9 +96,10 @@ export function createStagedSnapshot(config) {
     // Every response can ask for a pause, even a success whose body later
     // fails. Retain its header-time deadline for the next actual request.
     let providerNotBefore=0,providerStopped=false;
+    const requireDownloadBudget=()=>{if(downloaded>=policy.bytes)throw fatal(`${Noun} download budget exceeded`,'budget');};
     const pause=()=>delay(policy.pauseMs);
     async function delay(ms) {
-      checkTime();
+      checkTime();requireDownloadBudget();
       if(providerStopped)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
       do {
         const wait=Math.max(ms,providerNotBefore-now());
@@ -108,7 +109,7 @@ export function createStagedSnapshot(config) {
       }while(providerNotBefore>now());
     }
     async function request(query,{text=false}={}) {
-      checkTime();
+      checkTime();requireDownloadBudget();
       if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
       const signal=AbortSignal.timeout(Math.max(1,Math.min(policy.timeoutMs,remaining())));
       requests++;

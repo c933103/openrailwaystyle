@@ -254,8 +254,11 @@ It covers every world quadrant and keeps exact completed responses. A response a
 A spatial split decision stays for as long as its query is unchanged, so a
 region known to exceed the server's limits is asked for in its parts, never
 whole again. Each run has hard limits of 96 requests, 100 MB of
-downloaded response bodies and one hour, with at most three attempts per query and at
-most six subdivision levels. HTTP request/authentication failures, malformed
+downloaded response bodies and one hour. Consumed bytes include interrupted
+bodies; once the byte budget is used, no further request or retry delay starts.
+A complete final response at the exact limit may still publish, including when
+remaining regions come from cache. There are at most three attempts per query
+and six subdivision levels. HTTP request/authentication failures, malformed
 JSON, unknown error remarks and incomplete geometry terminate immediately.
 HTTP 408/429/500/502/503/504 and temporary transport failures retry the same box;
 they never cause spatial fan-out. Connection/header/body timeouts and opaque
