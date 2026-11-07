@@ -133,14 +133,20 @@ export async function buildSignals({
     }
     return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes), parts: parts.flatMap(part => part.parts)};
   }
-  // A region's recorded change boxes, when they still partition it. Each
-  // box's depth counts from the region by its own width, so the split limit
-  // stays the same for every box.
+  // Reuse only leaves of the same bounded quarter tree that changesSince
+  // creates. Equal total area alone can hide overlapping and missing boxes.
+  // Each accepted box then retains its actual depth and remaining split allowance.
   const recordedParts = (box, parts) => {
-    if (!Array.isArray(parts) || parts.length < 2) return null;
-    const area = ([s, w, n, e]) => (n - s) * (e - w), [s, w, n, e] = box;
-    const inside = parts.every(p => Array.isArray(p) && p.length === 4 && p[0] >= s && p[1] >= w && p[2] <= n && p[3] <= e && p[0] < p[2] && p[1] < p[3]);
-    return inside && Math.abs(parts.reduce((sum, p) => sum + area(p), 0) - area(box)) < 1e-9 ? parts : null;
+    if (!Array.isArray(parts) || parts.length < 2 || parts.length > 4 ** 5
+      || parts.some(p => !Array.isArray(p) || p.length !== 4 || !p.every(Number.isFinite))) return null;
+    const leaves = new Set(parts.map(p => p.join(',')));
+    if (leaves.size !== parts.length) return null;
+    let visited = 0;
+    const visit = (part, depth = 0) => {
+      if (leaves.has(part.join(','))) { visited++; return true; }
+      return depth < 5 && quarters(part).every(child => visit(child, depth + 1));
+    };
+    return visit(box) && visited === leaves.size ? parts : null;
   };
 
   // Leaves of the world partition, each with the combined element set.
