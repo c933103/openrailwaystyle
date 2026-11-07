@@ -52,7 +52,7 @@ The synthetic sensitivity check deliberately inserts forbidden chord MVT feature
 
 ## Run and review
 
-From the repository root, with Node 22 and installed dependencies:
+From the repository root, using the current [development prerequisites](development.md#prerequisites) and installed dependencies:
 
 ```sh
 npm run build
