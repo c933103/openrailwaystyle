@@ -42,11 +42,12 @@ async function leafFixture(directory) {
 // provider is this synchronous fixture. Published output writes are forbidden.
 async function run(directory, reply, extraEnv = {}) {
   const calls = [], writes = [], warnings = [];
+  let elapsed = 0;
   const context = vm.createContext({
     process: {env: {OVERPASS_URL: api, CROSSING_CHECKPOINT_DIR: directory, PREVIOUS_SNAPSHOT_ID: parentSnapshot, ...extraEnv}},
-    URL, URLSearchParams, Buffer, AbortSignal: {timeout: () => undefined},
+    URL, URLSearchParams, Buffer, performance:{now:()=>elapsed}, AbortSignal: {timeout: () => undefined},
     console: {log() {}, warn: (...args) => warnings.push(args.join(' '))},
-    setTimeout: callback => callback(),
+    setTimeout: (callback, ms) => { elapsed += ms; callback(); },
     fetch: async (url, request) => {
       assert.equal(url, api);
       const query = request.body.get('data'); calls.push(query);
