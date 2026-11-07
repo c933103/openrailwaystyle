@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 // Execute the actual trusted shell with metadata-only API fixtures and real jq.
 // No GitHub credentials, network requests or source artifacts are available.
 const workflow=await readFile('.github/workflows/mainline-reference-completed.yml','utf8');
-const script=workflow.split('        run: |\n')[1].split('\n').map(line=>line.slice(10)).join('\n');
+const script=workflow.split('\n  release-obsolete-waits:')[0].split('        run: |\n')[1].split('\n').map(line=>line.slice(10)).join('\n');
 const mock=`#!/usr/bin/env python3
 import os,sys,json,subprocess
 args=sys.argv[1:];sha=os.environ['SOURCE_SHA'];case=os.environ['RETRY_CASE']
