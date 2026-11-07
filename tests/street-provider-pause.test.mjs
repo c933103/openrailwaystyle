@@ -9,18 +9,25 @@ import {gzipSync} from 'node:zlib';
 const epoch=Date.parse('2026-11-07T00:00:00Z');
 const source=await readFile(new URL('../scripts/build-street-running.mjs',import.meta.url),'utf8');
 const query=/const query='([^']+)'/.exec(source)[1];
-async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0}={}){
+async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0,cleanup=null}={}){
  const dir=await mkdtemp(join(tmpdir(),'street-provider-pause-'));t.after(()=>rm(dir,{recursive:true,force:true}));
  const retained=gzipSync(JSON.stringify([{type:'way',id:1,tags:{embedded:'yes'},geometry:[{lon:0,lat:0},{lon:.001,lat:.001}]}]));
  await writeFile(join(dir,'elements.json.gz'),retained);
  await writeFile(join(dir,'manifest.json'),JSON.stringify({osmBase:'2026-11-01T00:00:00Z',query:query.replace('way[embedded_rails];','')}));
- const fixture=join(dir,'fake.mjs'),log=join(dir,'requests');
+ const fixture=join(dir,'fake.mjs'),log=join(dir,'requests'),cancelLog=join(dir,'cancellations');
+ await writeFile(cancelLog,'');
  await writeFile(fixture,`import fs from 'node:fs';
  let elapsed=0,shift=0,calls=0,oversleep=${oversleep};Date.now=()=>${epoch}+elapsed+shift;
  Object.defineProperty(performance,'now',{value:()=>elapsed});
  globalThis.setTimeout=(f,ms,...args)=>{elapsed+=ms+oversleep;oversleep=0;f(...args);return 0;};
  globalThis.fetch=async(url,{body:query})=>{
   fs.appendFileSync(${JSON.stringify(log)},JSON.stringify({url:String(url),at:elapsed,query:query.get('data')})+'\\n');
+  ${cleanup?`{const response=new Response(${cleanup==='absent'?'null':"'busy'"},{status:503,headers:++calls===1?{'retry-after':${JSON.stringify(header)}}:{}});
+  if(response.body){const cancel=response.body.cancel.bind(response.body);response.body.cancel=()=>{
+   fs.appendFileSync(${JSON.stringify(cancelLog)},JSON.stringify({at:elapsed,query:query.get('data')})+'\\n');
+   ${cleanup==='pending'?`return new Promise(()=>{});`:cleanup==='rejects'?`return Promise.reject(new Error('cleanup rejected'));`:cleanup==='throws'?`throw new Error('cleanup threw');`:`return cancel();`}
+  };}
+  return response;}`:''}
   if(++calls>1)return new Response('busy',{status:503});
   const headers={'retry-after':${JSON.stringify(header)}};
   ${previous?`return new Response('<osm><meta osm_base="2026-11-06T00:00:00Z"/></osm>',{headers});`:
@@ -33,8 +40,9 @@ async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShi
  const env={...process.env};delete env.PREVIOUS_DATA;if(previous)env.PREVIOUS_DATA=dir;
  const result=spawnSync(process.execPath,['--import',fixture,fileURLToPath(new URL('../scripts/build-street-running.mjs',import.meta.url))],{env,encoding:'utf8',timeout:10000});
  assert.equal(result.error,undefined,result.error?.message);assert.notEqual(result.status,0,'unusable input must not publish');
+ assert.doesNotMatch(result.stderr,/SyntaxError:/,'the fixture and builder must parse');
  assert.deepEqual(await readFile(join(dir,'elements.json.gz')),retained,'previous source is unchanged');
- return {result,requests:(await readFile(log,'utf8')).trim().split('\n').map(JSON.parse)};
+ return {result,requests:(await readFile(log,'utf8')).trim().split('\n').map(JSON.parse),cancellations:(await readFile(cancelLog,'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse)};
 }
 for(const body of ['remark','malformed','read-error','http'])test(`street retry respects headers after ${body}`,async t=>{
  const {requests}=await run(t,{body});assert.equal(requests.length,3);assert.equal(requests[1].at,420000);assert.equal(requests[2].at,540000);
@@ -72,4 +80,15 @@ for(const header of ['soon','-1','Fri, 06 Nov 2026 00:00:00 GMT'])test(`street i
 });
 test('street final complete response requires no future-request wait',async t=>{
  const {requests,result}=await run(t,{header:'86400',body:'empty'});assert.equal(requests.length,1);assert.match(result.stderr,/Suspiciously small/);
+});
+
+for(const previous of [false,true])for(const cleanup of ['resolved','pending','rejects','throws','absent'])test(`street HTTP errors cancel unread bodies without awaiting ${cleanup} cleanup (previous=${previous})`,async t=>{
+ const {requests,cancellations,result}=await run(t,{previous,cleanup});
+ assert.equal(requests.length,previous?4:3,'unchanged full-attempt allowance and changes fallback');
+ assert.deepEqual(requests.map(r=>r.at),previous?[0,420000,540000,660000]:[0,420000,540000],'provider pause and local backoffs remain intact');
+ assert.deepEqual(cancellations,cleanup==='absent'?[]:requests.map(({at,query})=>({at,query})),'each unread error body is cancelled before the next request');
+ assert.match(result.stderr,/Overpass HTTP 503/,'the original HTTP error remains primary');
+ assert.doesNotMatch(result.stderr,/cleanup (rejected|threw)/);
+ if(previous)assert.match(requests[0].query,/^\[out:xml\]/);else assert.equal(requests[0].query,query);
+ assert.ok(requests.slice(previous?1:0).every(r=>r.query===query),'no changed or subdivided query');
 });
