@@ -389,3 +389,54 @@ test('a same-area duplicate partition cannot silently lose a signal created in i
   assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
   assert.deepEqual(answer.queries, [signalChangesQuery(HOME_BOX, '2026-10-20T00:00:00Z')]);
 });
+
+for (const kind of ['full', 'remainder', 'changes']) {
+  for (const phase of ['headers', 'body']) {
+    for (const recover of [true, false]) {
+      test(`${kind} signal ${phase} transport deadline ${recover ? 'retries the same query' : 'preserves checkpoints and publications'}`, async t => {
+        const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+        const home = await seed(d, '2026-10-31T00:00:00Z');
+        await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('initial cache should be complete'); }});
+        const previous = await publishedFiles(d), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+        const saved = JSON.parse(await readFile(file, 'utf8'));
+        let expected = combinedSignalQuery(home);
+        if (kind === 'changes') {
+          await writeFile(file, JSON.stringify({...saved, generated: '2026-10-20T01:00:00Z'}));
+          expected = signalChangesQuery(home, '2026-10-20T00:00:00Z');
+        } else {
+          await rm(file);
+          if (kind === 'remainder') {
+            await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({...saved, query: signalQuery(home)}));
+            expected = electricWithDirectionQuery(home, '2026-10-20T00:00:00Z');
+          }
+        }
+        const cacheFiles = async () => Object.fromEntries(await Promise.all((await readdir(d.cacheRoot)).sort().map(async name => [name, await readFile(new URL(name, d.cacheRoot), 'utf8')])));
+        const before = await cacheFiles(), queries = [];
+        const failure = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+        const fetcher = async (url, {body}) => {
+          const query = new URLSearchParams(String(body)).get('data'); queries.push(query);
+          assert.equal(query, expected, 'only the original region/projection may be requested');
+          if (!recover || queries.length === 1) {
+            if (phase === 'headers') throw failure;
+            return {ok: true, text: async () => { throw failure; }};
+          }
+          return {ok: true, text: async () => kind === 'changes'
+            ? adiff('2026-10-31T11:00:00Z', `<action type="create">${node(DIRECTED_ELECTRIC)}</action>`)
+            : JSON.stringify({osm3s: {timestamp_osm_base: '2026-10-31T11:00:00Z'}, elements: kind === 'remainder' ? [DIRECTED_ELECTRIC] : [UNDIRECTED, ELECTRIC, DIRECTED_ELECTRIC]})};
+        };
+        if (!recover) {
+          await assert.rejects(buildSignals({...d, ...quiet, fetcher}), /operation was aborted due to timeout/);
+          assert.deepEqual(queries, [expected, expected, expected]);
+          assert.deepEqual(await cacheFiles(), before, 'a transport failure never leaves a durable spatial split');
+          assert.deepEqual(await publishedFiles(d), previous);
+          return;
+        }
+        await buildSignals({...d, ...quiet, fetcher});
+        assert.deepEqual(queries, [expected, expected]);
+        const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+        assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+        assert.ok(Object.values(await cacheFiles()).every(text => !JSON.parse(text).split));
+      });
+    }
+  }
+}
