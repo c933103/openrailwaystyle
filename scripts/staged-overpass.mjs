@@ -1,3 +1,4 @@
+import {responseChunks} from './response-chunks.mjs';
 // Maintenance-only staged worldwide Overpass acquisition shared by snapshot
 // builders. Each snapshot supplies its own query, response transform, cache
 // naming and published file names; the acquisition, retry, budget, checkpoint
@@ -123,7 +124,7 @@ export function createStagedSnapshot(config) {
         }
         const chunks=[];
         try {
-          for await(const chunk of response.body) {
+          for await(const chunk of responseChunks(response)) {
             downloaded+=chunk.length;
             if(downloaded>policy.bytes)throw fatal(`${Noun} download budget exceeded`,'budget');
             checkTime();chunks.push(chunk);

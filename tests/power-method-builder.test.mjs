@@ -91,10 +91,10 @@ for(const initial of ['transport','rate-limit'])test(`${initial} still backs off
   assert.equal(result.manifest.coverage.length,11);assert.equal(result.data.features.length,1);
 }));
 for(const kind of ['body-timeout','body-deadline'])test(`${kind} retries without persisting an unproven spatial split`,()=>fixture(async({run,calls,options})=>{
-  await assert.rejects(run(()=>({ok:true,body:(async function*(){
-    if(kind==='body-timeout')throw Object.assign(new Error('body read failed'),{code:'UND_ERR_BODY_TIMEOUT'});
-    throw new DOMException('body read timed out','TimeoutError');
-  })()})),error=>error.category==='transport');
+  await assert.rejects(run(()=>new Response(new ReadableStream({start(controller){
+    controller.error(kind==='body-timeout'?Object.assign(new Error('body read failed'),{code:'UND_ERR_BODY_TIMEOUT'})
+      :new DOMException('body read timed out','TimeoutError'));
+  }}))),error=>error.category==='transport');
   assert.equal(calls.length,3);assert.equal(new Set(calls.map(c=>c.query)).size,1);
   const {readdir}=await import('node:fs/promises');assert.deepEqual(await readdir(options.cache),[]);
   assert.equal((await run()).manifest.coverage.length,8);
@@ -126,7 +126,9 @@ test('depth budget caps repeated spatial failures independently of request budge
 }));
 test('download bytes include malformed responses and stop mid-stream without retry',()=>fixture(async({run,calls,options})=>{
   let closed=false;
-  await assert.rejects(run(()=>({ok:true,body:(async function*(){try{yield Buffer.alloc(6);yield Buffer.alloc(6);throw new Error('should not read third chunk');}finally{closed=true;}})()}),{limits:{bytes:10}}),/download budget/);
+  let reads=0;
+  await assert.rejects(run(()=>new Response(new ReadableStream({pull(controller){if(++reads>2)throw new Error('should not read third chunk');controller.enqueue(Buffer.alloc(6));},cancel(){closed=true;}},{highWaterMark:0})),{limits:{bytes:10}}),/download budget/);
+  assert.equal(reads,2);
   assert.equal(calls.length,1);assert.equal(closed,true);await unpublished(options.output);
 }));
 test('elapsed-time budget refuses excessive backoff before another request',()=>fixture(async({run,calls,sleeps,options})=>{
@@ -360,4 +362,35 @@ test(`${name} preserves HTTP ${status} with ${cleanup} unused-body cleanup`,()=>
   assert.deepEqual(sleeps,status===403?[]:[120000,120000],'provider wait and existing retry limit are retained');
   assert.deepEqual(await readdir(options.cache),[],'no cache or split checkpoint is written');
   assert.deepEqual(await readdir(options.output),[],'neither builder publishes any output');
+},builder));
+
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]])
+for(const budget of ['bytes','elapsed'])for(const cleanup of ['resolved','pending','rejects','throws'])
+test(`${name} ${budget} budget remains terminal with ${cleanup} native-stream cancellation`,()=>fixture(async({run,calls,sleeps,options,advance})=>{
+  let reads=0,cancellations=0,timer;
+  const body=new ReadableStream({
+    pull(controller){
+      reads++;controller.enqueue(Buffer.alloc(6));
+      if(budget==='elapsed')advance(51);
+    },
+    cancel(){
+      cancellations++;
+      if(cleanup==='pending')return new Promise(()=>{});
+      if(cleanup==='rejects')return Promise.reject(new Error('cleanup failed'));
+      if(cleanup==='throws')throw new Error('cleanup threw');
+    },
+  },{highWaterMark:0});
+  const limits=budget==='bytes'?{bytes:10}:{elapsedMs:50,timeoutMs:50,pauseMs:0,retryMs:0};
+  const work=run(()=>new Response(body),{limits});
+  const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('stream cleanup blocked budget failure')),2000);});
+  try {
+    await assert.rejects(Promise.race([work,deadline]),error=>error.category==='budget'&&new RegExp(budget==='bytes'?'download budget':'elapsed-time budget').test(error.message));
+  } finally {clearTimeout(timer);}
+  assert.equal(calls.length,1,'a consumed budget never retries or subdivides');
+  assert.equal(reads,budget==='bytes'?2:1,'stop at the first budget-crossing chunk');
+  assert.equal(cancellations,1);
+  assert.equal(body.locked,false,'release the lock without waiting for cancellation');
+  assert.deepEqual(sleeps,[]);
+  assert.deepEqual(await readdir(options.cache),[],'no failed cache or split checkpoint');
+  assert.deepEqual(await readdir(options.output),[],'neither builder publishes partial output');
 },builder));
