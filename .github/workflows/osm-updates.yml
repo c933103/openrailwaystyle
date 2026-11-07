@@ -37,6 +37,7 @@ on:
       - scripts/conveying-data.mjs
       - scripts/crossing-checkpoint.mjs
       - scripts/crossing-data.mjs
+      - scripts/crossing-request.mjs
       - scripts/crossing-rows.mjs
       - scripts/download-stages.mjs
       - scripts/electricity-signal-data.mjs

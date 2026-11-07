@@ -34,7 +34,7 @@ export const OSM_UPDATES = Object.freeze([
       'scripts/build-polar.mjs', 'scripts/polar-depth.mjs', 'styles/bathymetry.mjs', 'scripts/polar-contours.mjs',
       'scripts/polar-features.mjs', 'styles/polar.mjs', 'scripts/pack-snapshot.py']},
   {id:'crossings', workflow:'crossings.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-rows.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/crossing-request.mjs', 'scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-rows.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs']},
   {id:'street-running', workflow:'street-running.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-street-running.mjs', 'scripts/overpass-adiff.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},

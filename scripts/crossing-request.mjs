@@ -1,3 +1,4 @@
+import {retryAfterMs} from './retry-after.mjs';
 // Transport policy only: no query, row-parser or checkpoint identity changes.
 export const CROSSING_DOWNLOAD_LIMIT = 200_000_000;
 const MAX_RETRY_WAIT = 15 * 60_000;
@@ -37,10 +38,7 @@ export function crossingFailureAction({status, detail, error}) {
 // A provider's Retry-After is a minimum, never shortened to our local cap.
 // If it asks longer than this job should wait, stop and retain the checkpoint.
 export function crossingRetryDelay(attempt, retryAfter, now = Date.now()) {
-  const value = String(retryAfter ?? '').trim();
-  let asked = 0;
-  if (/^\d+$/.test(value)) asked = Number(value) * 1000;
-  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) asked = Math.max(0, date - now); }
+  const asked = retryAfterMs(retryAfter, now);
   if (asked > MAX_RETRY_WAIT) return null;
   return Math.max(60_000 * (attempt + 1), asked);
 }

@@ -76,3 +76,13 @@ test('an unresponsive stream cancellation cannot postpone the download-budget er
   assert.equal(usage.bytes, 9, 'the oversized chunk is still metered');
   assert.equal(response.body.locked, false, 'the reader is released on failure');
 });
+
+for(const header of ['Sun, 31 Feb 2027 12:00:00 GMT','Foo, 28 Feb 2027 12:08:00 GMT','Mon, 28 Feb 2027 12:08:00 GMT'])
+ test(`malformed crossing provider date leaves retry and next-region minima intact: ${header}`,()=>{
+  const now=Date.parse('2027-02-28T12:00:00Z');
+  assert.equal(crossingRetryDelay(0,header,now),60000);assert.equal(crossingRetryDelay(-1,header,now),0);
+ });
+for(const header of ['Sun, 01 Jan 2090 12:08:00 GMT','Sunday, 01-Jan-90 12:08:00 GMT','Sun Jan  1 12:08:00 2090'])
+ test(`valid crossing provider date preserves eight minutes: ${header}`,()=>{
+  assert.equal(crossingRetryDelay(0,header,Date.parse('2090-01-01T12:00:00Z')),480000);
+ });

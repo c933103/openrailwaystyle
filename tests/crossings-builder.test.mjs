@@ -230,3 +230,10 @@ test('successful crossing body with exact 15-minute pause defers, rather than st
   assert.deepEqual(result.calls, [parentQuery, ...otherQueries]);
   assert.equal(result.sleeps[1], 900000);
 });
+
+for(const header of ['Tue, 31 Nov 2026 06:00:00 GMT','Foo, 01 Nov 2026 06:10:00 GMT']) {
+ for(const status of [200,503])test(`malformed crossing date does not defer HTTP ${status}: ${header}`,async()=>{
+  const result=await run((_query,count)=>count===1?new Response(status===200?empty:'busy',{status,headers:{'Retry-After':header}}):response(200,empty));
+  checkAcquired(result,status===200?[parentQuery]:[parentQuery,parentQuery],status===200?[0]:[0,60000]);
+ });
+}
