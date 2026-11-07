@@ -115,13 +115,14 @@ async function changeRun(t, extra = {}) {
   await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra, reply: undefined}));
   await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
   const SEP = crossingData.SEP, calls = [], sleeps = [];
+  let elapsed = 0;
   const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
   const source = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
   const fs = await import('node:fs/promises');
   const context = vm.createContext({
     process: {env: {OVERPASS_URL: 'https://overpass.fixture.invalid/api/interpreter', PREVIOUS_DATA: previous}},
-    URL, URLSearchParams, Buffer, Date: FixedDate, AbortSignal: {timeout: () => undefined},
-    console: {log() {}, warn() {}}, setTimeout: (callback, ms) => { sleeps.push(ms); callback(); },
+    URL, URLSearchParams, Buffer, Date: FixedDate, performance:{now:()=>elapsed}, AbortSignal: {timeout: () => undefined},
+    console: {log() {}, warn() {}}, setTimeout: (callback, ms) => { sleeps.push(ms); elapsed += ms; callback(); },
     fetch: async (url, request) => {
       const query = request.body.get('data'); calls.push(query);
       assert.ok(calls.length <= 40);

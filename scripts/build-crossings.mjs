@@ -26,7 +26,11 @@ async function request(query, parse, describe, box) {
   let delay = requests ? 10000 : 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-    await new Promise(r => setTimeout(r, Math.max(delay, retryNotBefore - Date.now())));
+    // Wall time interprets HTTP dates only. Once observed, elapsed time
+    // carries the provider minimum through body reads and clock corrections.
+    const earliest = Math.max(performance.now() + delay, retryNotBefore);
+    do { await new Promise(r => setTimeout(r, Math.max(0, earliest - performance.now()))); }
+    while (performance.now() < earliest);
     // The awaited pause is consumed; a new response may establish another.
     retryNotBefore = 0;
     requests++;
@@ -38,9 +42,9 @@ async function request(query, parse, describe, box) {
       status = response.status;
       retryAfter = response.headers.get('retry-after');
       // A successful body does not cancel a provider's pause for later queries.
-      const providerWait = crossingRetryDelay(-1, retryAfter, Date.now());
+      const receivedAt = performance.now(), providerWait = crossingRetryDelay(-1, retryAfter, Date.now());
       if (providerWait === null) providerWaitExceeded = true;
-      else retryNotBefore = Date.now() + providerWait;
+      else retryNotBefore = Math.max(retryNotBefore, receivedAt + providerWait);
       const text = await crossingResponseText(response, usage);
       // Use the full diagnostic for classification, but never log it whole.
       detail = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -54,15 +58,12 @@ async function request(query, parse, describe, box) {
       if (error.message === 'Download budget exceeded') throw error;
       const action = crossingFailureAction({status, detail, error});
       if (action === 'stop') throw error;
-      if (action === 'split') {
-        const wait = crossingRetryDelay(-1, retryAfter);
-        if (wait === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-        retryNotBefore = Math.max(retryNotBefore, Date.now() + wait);
-        return null;
-      }
-      delay = crossingRetryDelay(attempt, retryAfter);
-      if (delay === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-      retryNotBefore = Date.now() + delay;
+      if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
+      if (action === 'split') return null;
+      // Interpret the provider header once, at receipt. Do not rebase its
+      // deadline after a body failure or turn a wall-clock jump into a pause.
+      delay = crossingRetryDelay(attempt, null);
+      retryNotBefore = Math.max(retryNotBefore, performance.now() + delay);
     }
   }
   throw new Error(`Overpass stayed unavailable for region ${box}`);

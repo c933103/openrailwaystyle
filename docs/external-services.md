@@ -83,7 +83,9 @@ early later request. No query, cache lifetime, source, schedule or budget change
 
 Level-crossing acquisition also keeps a `Retry-After` from a successful full
 region, change response or affected-ID response for the next query. It captures
-the deadline at headers and consumes it only before a later request. A pause
+the deadline at headers and consumes it only before a later request. Elapsed
+time carries that deadline across body reads, wall-clock corrections and early
+timer wakeups; a failed body never reparses the header against a later clock. A pause
 above 15 minutes stops further requests even after successful data; completed
 checkpoint work and the existing last-good publication are retained. Query,
 checkpoint identity, the five-attempt ceiling, byte budget, subdivision rules
