@@ -218,6 +218,9 @@ async function overpass(query) {
       // box before considering smaller areas, even when the capacity wording
       // follows the shortened log excerpt. Genuine query time/memory limits
       // and incomplete JSON still call for a smaller area (null).
+      // Our AbortSignal deadline can expire before the provider executes
+      // the query. Its TimeoutError is not evidence for geographic splitting.
+      if (error.name === 'TimeoutError') continue;
       const message = failureText || error.message;
       if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
       if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(message)) return null;
