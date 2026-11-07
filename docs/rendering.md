@@ -199,7 +199,9 @@ converted to empty success. The shared request pool limits transfers to six
 concurrent requests overall and four per origin, shares same-URL work, cancels
 obsolete queued tiles and gives visible geometry priority over derived counts.
 Timeouts apply to the transport, starting only when it gets a network slot;
-late readers cannot keep a stalled transport running indefinitely. Underzoom
+late readers cannot keep a stalled transport running indefinitely. Error-body
+cleanup is best-effort and cannot delay or replace the HTTP status, including
+terminal access errors and shared-origin provider cooldowns. Underzoom
 station children load concurrently through the same bounds. See
 [loading investigation](investigations/rail-loading-20261007.md).
 
