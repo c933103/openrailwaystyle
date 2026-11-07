@@ -13,6 +13,7 @@ import * as bundles from '../styles/tile-bundles.mjs';
 import * as adiff from '../scripts/overpass-adiff.mjs';
 import * as worldRegions from '../scripts/world-regions.mjs';
 import * as zlib from 'node:zlib';
+import * as transport from '../scripts/response-chunks.mjs';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
 const parent = [0, 0, 45, 45];
@@ -63,7 +64,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     },
   };
   const context = vm.createContext({
-    process:{env}, URLSearchParams, Date:Clock,
+    process:{env}, URLSearchParams, TextDecoder, Date:Clock,
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
     setTimeout:(callback, ms) => { sleeps.push(ms); now += ms; callback(); },
@@ -88,6 +89,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     './overpass-adiff.mjs':adiff,
     './world-regions.mjs':worldRegions,
     'node:zlib':zlib,
+    './response-chunks.mjs':transport,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
@@ -228,7 +230,7 @@ for (const location of ['fetch', 'body']) for (const native of [false, true]) {
     const error = native ? new DOMException('The operation was aborted due to timeout', 'TimeoutError')
       : new Error('The operation was aborted due to timeout');
     if (location === 'fetch') throw error;
-    return {ok:true, status:200, headers:new Headers(), text:async () => { throw error; }};
+    return streamResponse(200, [], {failure:error}).response;
   };
   test(`builder retries the same region after ${name} and caches only its recovery`, async t => {
     const result = await run(t, (_query, attempt) => attempt === 1 ? fail() : response(200, complete));
@@ -278,7 +280,7 @@ for (const name of ['invalid JSON', 'body read failure', 'network failure']) {
     const result = await run(t, (_query, attempt) => {
       if (attempt > 1) return response(200, complete);
       if (name === 'invalid JSON') return response(200, '{');
-      if (name === 'body read failure') return {ok:true, status:200, text:async () => { throw new Error('connection reset'); }};
+      if (name === 'body read failure') return streamResponse(200, [], {failure:new Error('connection reset')}).response;
       throw new TypeError('fetch failed');
     });
     assert.ifError(result.error);
@@ -396,7 +398,7 @@ for (const [name, value] of [['seconds', '600'], ['HTTP date', 'Fri, 06 Nov 2026
   });
 }
 test('heritage provider pause survives a failed response body', async t => {
-  const result = await run(t, (_, count) => count === 1 ? {headers:new Headers(pauseHeaders('600')), text:async () => {throw new Error('interrupted body');}}
+  const result = await run(t, (_, count) => count === 1 ? streamResponse(200, [], {headers:pauseHeaders('600'), failure:new Error('interrupted body')}).response
     : response(200, complete));
   assert.ifError(result.error);
   assert.equal(result.times[1] - result.times[0], 600000);
@@ -459,3 +461,84 @@ for (const value of ['not a date', 'Thu, 05 Nov 2026 23:59:00 GMT']) {
     assert.deepEqual(result.sleeps, [0, 30000]);
   });
 }
+
+// Real streams, with tiny synthetic chunks and a virtual byte scale only for
+// boundary checks: no gigabyte allocation or provider traffic is required.
+function streamResponse(status, chunks, {failure, headers, cancellation = 'resolved'} = {}) {
+  const state = {reads:0, cancelled:0};
+  const body = new ReadableStream({
+    pull(controller) {
+      const index = state.reads++;
+      if (index < chunks.length) controller.enqueue(Buffer.from(chunks[index]));
+      else if (failure) controller.error(failure);
+      else controller.close();
+    },
+    cancel() {
+      state.cancelled++;
+      if (cancellation === 'pending') return new Promise(() => {});
+      if (cancellation === 'rejects') return Promise.reject(new Error('cleanup failed'));
+      if (cancellation === 'throws') throw new Error('cleanup threw');
+    },
+  }, {highWaterMark:0});
+  return {response:new Response(body, {status, headers}), state, body};
+}
+const virtualBytes = value => Buffer.byteLength(value) * 100_000_000;
+const bounded = async promise => {
+  let timer;
+  const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('cleanup held the budget error open')), 2000); });
+  try { return await Promise.race([promise, deadline]); } finally { clearTimeout(timer); }
+};
+for (const phase of ['full', 'changes']) for (const status of [200, 504]) for (const cancellation of ['resolved', 'pending', 'rejects', 'throws']) {
+  test(`heritage ${phase} HTTP ${status} cap stops consumption when cancellation ${cancellation}`, async t => {
+    const stream = streamResponse(status, Array(5).fill('xxxx'), {cancellation});
+    const result = await bounded(run(t, () => stream.response, {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})}));
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.equal(result.error.budget, true, 'budget identity survives transport and changes fallback');
+    assert.equal(stream.state.reads, 4, 'stop on the crossing chunk, do not read the remaining body');
+    assert.equal(stream.state.cancelled, 1);
+    assert.equal(stream.body.locked, false, 'the reader lock is released even when cancellation never settles');
+    assert.equal(result.writes.length, 0);
+  });
+}
+for (const phase of ['full', 'changes']) {
+  test(`heritage ${phase} interrupted body counts its consumed bytes before recovery`, async t => {
+    const partial = Buffer.from('unfinished héritage');
+    const stream = streamResponse(200, [partial], {failure:new TypeError('connection reset')});
+    const result = await run(t, (_query, attempt) => attempt === 1 ? stream.response : response(200, complete),
+      phase === 'changes' ? {env:previousEnv, files:storedParent()} : {});
+    assert.ifError(result.error);
+    assert.equal(result.calls.length, 2);
+    const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+    assert.equal(manifest.downloadedBytes, partial.byteLength + Buffer.byteLength(JSON.stringify(complete)));
+    assert.equal(manifest.areas, 1);
+    assert.equal(stream.body.locked, false);
+  });
+  test(`heritage ${phase} exhausted HTTP-error budget stops before another delay or request`, async t => {
+    const result = await run(t, () => response(504, 'Gateway timeout'), {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})});
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.deepEqual(result.sleeps, [0]);
+    assert.equal(result.writes.length, 0);
+  });
+  test(`heritage ${phase} interrupted exact-budget body stops before another delay or request`, async t => {
+    const stream = streamResponse(200, ['xxxxxxxxxxxxxxx'], {failure:new Error('connection reset')});
+    const result = await run(t, () => stream.response, {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})});
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.deepEqual(result.sleeps, [0]);
+    assert.equal(result.writes.length, 0);
+  });
+}
+test('heritage streamed JSON preserves UTF-8 split across chunks and exact byte accounting', async t => {
+  const data = {...complete, elements:[{...complete.elements[0], tags:{historic:'district', name:'Synthetic Héritage 港'}}]};
+  const bytes = Buffer.from(JSON.stringify(data)), offset = bytes.indexOf(Buffer.from('港')) + 1;
+  const stream = streamResponse(200, [bytes.subarray(0, offset), bytes.subarray(offset, offset + 1), bytes.subarray(offset + 1)]);
+  const result = await run(t, () => stream.response);
+  assert.ifError(result.error);
+  const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+  assert.equal(manifest.downloadedBytes, bytes.byteLength);
+  assert.deepEqual(JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`))).response, data);
+  assert.equal(stream.state.cancelled, 0, 'completed streams are not cancelled');
+  assert.equal(stream.body.locked, false);
+});
