@@ -1,5 +1,0 @@
-{"composite":"München Hbf / Munich","names":["München Hbf","Munich"],"previous":["a"],"actual":["a","b"]}
-{"composite":"München Hbf / Munich","names":["München Hbf"],"previous":["a"],"actual":["a"]}
-{"composite":"München (Munich)","names":["München Hbf","Munich"],"previous":["a"],"actual":["a","b"]}
-{"composite":"München (Munich)","names":["München Hbf"],"previous":["a"],"actual":["a"]}
-{"positiveChecks":504,"negativeChecks":558,"totalChecks":1062,"requestPlannerScenarios":2,"result":"passed"}
