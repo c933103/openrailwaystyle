@@ -44,11 +44,11 @@ export async function buildSignals({
   let requests = 0, downloaded = 0, providerNotBefore = 0, providerStopped = false;
   async function pause(backoff) {
     if (providerStopped) throw new Error('Signal Retry-After exceeds the five-minute wait budget');
+    const deadline = Math.max(clock() + backoff, providerNotBefore);
     do {
-      const wait = Math.max(backoff, providerNotBefore - clock());
+      const wait = Math.max(0, deadline - clock());
       if (wait > 0) await sleep(wait);
-      backoff = 0;
-    } while (providerNotBefore > clock());
+    } while (deadline > clock());
   }
   await mkdir(cacheRoot, {recursive: true});
   const read = async name => { try { return JSON.parse(await readFile(new URL(name, cacheRoot), 'utf8')); } catch { return undefined; } };

@@ -76,6 +76,11 @@ five-minute provider-pause, request, byte and one-hour run limits remain binding
 complete-only publication and resumable checkpoints are unchanged. This does
 not change queries, schedules, stored-way builds or the combined signal builder.
 
+The combined signal builder rechecks its existing ten-second request spacing
+and thirty-second retry floor after early timer wakes, even when no provider
+header extends the pause. Its monotonic provider deadline, five-minute pause
+cap, three-attempt ceiling, query/cache identity and publication are unchanged.
+
 The loading-gauge maintenance list keeps its existing three-attempt ceiling,
 initial five-second pause and one-minute retry baseline. It also honors a
 longer `Retry-After` captured at response headers, even if reading the body
