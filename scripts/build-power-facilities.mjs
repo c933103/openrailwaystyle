@@ -25,14 +25,14 @@ const MAX_PROVIDER_WAIT_MS=15*60_000;
 let retryNotBefore=0,providerWaitExceeded=false;
 const providerPauseError=()=>new Error('Energy facility Retry-After wait budget exceeded; data retained');
 function rememberProviderPause(response) {
-  const receivedAt=Date.now(),delay=retryAfterMs(response.headers.get('retry-after'),receivedAt);
+  const receivedAt=performance.now(),delay=retryAfterMs(response.headers.get('retry-after'),Date.now());
   if(delay>MAX_PROVIDER_WAIT_MS)providerWaitExceeded=true;
   if(delay>0)retryNotBefore=Math.max(retryNotBefore,receivedAt+delay);
 }
 async function waitForRequest(delay) {
   if(providerWaitExceeded)throw providerPauseError();
-  await sleep(delay);
-  while(retryNotBefore>Date.now())await sleep(retryNotBefore-Date.now());
+  const earliest=Math.max(performance.now()+delay,retryNotBefore);
+  do{await sleep(Math.max(0,earliest-performance.now()));}while(performance.now()<earliest);
 }
 const features=new Map(),coverage=[];
 
@@ -122,8 +122,8 @@ async function collect(box,depth=0) {
         // Admission HTTP errors can say "timeout" without executing the query.
         if(!error.transport && !/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
         if(attempt===attempts-1)throw error;
-        wait=Math.max(overpassBusy(error)?overpassRetryDelayMs(attempt):Math.min(60000,20000*(attempt+2)),retryNotBefore-Date.now());
-        if(overpassBusy(error))console.warn(`Overpass busy or unreachable; retrying in ${Math.round(wait/60000)} min`);
+        wait=overpassBusy(error)?overpassRetryDelayMs(attempt):Math.min(60000,20000*(attempt+2));
+        if(overpassBusy(error))console.warn(`Overpass busy or unreachable; retrying in ${Math.round(Math.max(wait,retryNotBefore-performance.now())/60000)} min`);
       }
     }
   }
