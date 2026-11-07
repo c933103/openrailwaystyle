@@ -100,7 +100,9 @@ Historic-area acquisition shares a provider-pause deadline across change
 queries, the existing full-download fallback, later regions and query-limit
 subdivisions. It captures `Retry-After` before reading a body, so interrupted
 or successfully parsed responses cannot erase the pause. Requests wait for
-both the provider minimum and existing spacing/backoff. A pause over 15 minutes
+both the provider minimum and existing spacing/backoff using elapsed time after
+header receipt. Body time consumes the pause; wall-clock corrections cannot
+shorten or extend it and early timer wakes are rechecked. A pause over 15 minutes
 stops further requests for the run, retaining previous publication and completed
 region caches. A complete acquisition with no requests left may still publish.
 The four-attempt ceiling, change-first/fallback behavior, query/cache identity,

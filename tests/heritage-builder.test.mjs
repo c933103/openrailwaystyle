@@ -38,7 +38,7 @@ const response = (status, body, headers) => new Response(typeof body === 'string
 
 // Evaluate the unchanged executable, linking its real classifier/geometry/tile
 // modules. Only external effects (fetch, time, filesystem root) are controlled.
-async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}) {
+async function run(t, reply, {writeError, byteLength, env = {}, files = {}, wallShift = 0, bodyMs = 0, earlyWakeAt = -1} = {}) {
   const root = await fs.mkdtemp(join(tmpdir(), 'heritage-builder-'));
   t.after(() => fs.rm(root, {recursive:true, force:true}));
   await fs.mkdir(join(root, '.snapshot-cache'));
@@ -51,8 +51,8 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
-  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [], times = [];
-  let now = Date.parse('2026-11-06T00:00:00Z');
+  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [], times = [], elapsedTimes = [];
+  let now = Date.parse('2026-11-06T00:00:00Z'), elapsed = 0;
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const io = {
     mkdir:(path, options) => fs.mkdir(join(root, path), options),
@@ -65,18 +65,26 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
     },
   };
   const context = vm.createContext({
-    process:{env}, URLSearchParams, TextDecoder, Date:Clock,
+    process:{env}, URLSearchParams, TextDecoder, Date:Clock, performance:{now:()=>elapsed},
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
-    setTimeout:(callback, ms) => { sleeps.push(ms); now += ms; callback(); },
+    setTimeout:(callback, ms) => { const step = sleeps.length === earlyWakeAt ? ms / 2 : ms; sleeps.push(ms); now += step; elapsed += step; callback(); },
     console:{log:() => {}, warn:(...args) => warnings.push(args.join(' '))},
     fetch:async (url, options) => {
       assert.equal(url, 'https://overpass-api.de/api/interpreter');
       assert.equal(options.method, 'POST');
       const query = options.body.get('data');
-      calls.push(query); times.push(now);
+      calls.push(query); times.push(now); elapsedTimes.push(elapsed);
       assert.ok(calls.length <= 40, 'unexpected request loop');
-      return reply(query, calls.length);
+      const response = await reply(query, calls.length);
+      if (calls.length === 1 && (wallShift || bodyMs)) {
+        const reader = response.body.getReader(); let shifted = false;
+        Object.defineProperty(response, 'body', {value:{getReader:()=>({
+          read:async()=>{if(!shifted){shifted=true;now+=wallShift+bodyMs;elapsed+=bodyMs;}return reader.read();},
+          cancel:reason=>reader.cancel(reason), releaseLock:()=>reader.releaseLock(),
+        })}});
+      }
+      return response;
     },
   });
   const dependencies = {
@@ -103,7 +111,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}} = {}
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
-  return {root, calls, sleeps, warnings, writes, decisions, times, error};
+  return {root, calls, sleeps, warnings, writes, decisions, times, elapsedTimes, error};
 }
 
 async function checkPublished(result) {
@@ -553,4 +561,22 @@ for(const value of ['Fri, 06 Nov 2026 00:10:00 GMT','Friday, 06-Nov-26 00:10:00 
  const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
  const result=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders(value)):response(200,complete));
  assert.ifError(result.error);assert.equal(result.calls.length,2);assert.equal(result.times[1]-result.times[0],600000);
+});
+
+for(const path of ['retry','changes','split','success'])for(const wallShift of [3600000,-3600000])test(`heritage ${path} provider minimum survives ${wallShift}ms wall correction`,async t=>{
+ const nextFile='.snapshot-cache/heritage-v2-0_45_45_90.json';
+ const options={wallShift,...(path==='changes'?{env:previousEnv,files:storedParent()}:path==='success'?{files:{[nextFile]:'{}'}}:{})};
+ const header=path==='retry'||path==='changes'?'Fri, 06 Nov 2026 00:10:00 GMT':'600';
+ const r=await run(t,(query,count)=>count===1?response(path==='split'?504:path==='success'?200:503,path==='split'?oom:path==='success'?complete:'busy',pauseHeaders(header)):response(200,complete),options);
+ assert.ifError(r.error);assert.equal(r.calls.length,path==='split'?5:2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],600000);
+ if(path==='split')await checkPublished(r);
+});
+for(const bodyMs of [300000,700000])test(`heritage retry consumes ${bodyMs}ms body time without resetting the observed pause`,async t=>{
+ const r=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders('600')):response(200,complete),{bodyMs});
+ assert.ifError(r.error);assert.equal(r.calls.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],Math.max(600000,bodyMs+30000));
+});
+for(const mode of ['provider','retry','spacing'])test(`heritage rechecks early ${mode} timer wakes`,async t=>{
+ const options={earlyWakeAt:1,...(mode==='spacing'?{files:{'.snapshot-cache/heritage-v2-0_45_45_90.json':'{}'}}:{})};
+ const r=await run(t,(_,count)=>count===1?response(mode==='spacing'?200:503,mode==='spacing'?complete:'busy',mode==='provider'?pauseHeaders('600'):undefined):response(200,complete),options);
+ assert.ifError(r.error);assert.equal(r.calls.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],mode==='provider'?600000:mode==='retry'?30000:10000);
 });

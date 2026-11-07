@@ -57,11 +57,12 @@ const pauseError = () => Object.assign(new Error('Historic area provider Retry-A
 async function waitForProvider(delay) {
   if (providerStopped) throw pauseError();
   if (downloaded >= DOWNLOAD_LIMIT) throw budgetError();
-  await sleep(Math.max(delay, providerNotBefore - Date.now()));
+  const earliest = Math.max(performance.now() + delay, providerNotBefore);
+  do { await sleep(Math.max(0, earliest - performance.now())); } while (performance.now() < earliest);
   providerNotBefore = 0;
 }
 function retainProviderPause(response) {
-  const received = Date.now(), pause = retryAfterMs(response.headers.get('retry-after'), received);
+  const received = performance.now(), pause = retryAfterMs(response.headers.get('retry-after'), Date.now());
   if (pause > 15 * 60_000) providerStopped = true;
   if (pause > 0) providerNotBefore = Math.max(providerNotBefore, received + pause);
 }
