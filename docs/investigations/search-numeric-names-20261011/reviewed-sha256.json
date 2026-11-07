@@ -1,6 +1,0 @@
-{
-  "styles/map-model.mjs": "4088d1c57e9ab2067d9af3ff1a271e17b4d3d788aee124fe097ae36c55f3074c",
-  "tests/search-numeric-names.test.mjs": "cd19aa6ddf0817810def6b74e24b5431fa705b80b2819adf457b883b25869c33",
-  "tests/sw-install.test.mjs": "3a7ba484f9dde75751821a6bd2f6f60ca54dada39a962a717d7d8070c3b24b2f",
-  "tests/fixtures/search-numeric-predecessor.json.gz": "e257dcf6c5dcba65ec3b37c47b2f31d007f3bdc1ef36ef0253ae6e1180b96a7d"
-}

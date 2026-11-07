@@ -1,0 +1,29 @@
+✔ actual request pool honors UTC provider date Wed, 07 Oct 2026 00:02:00 GMT (4.200195ms)
+✖ actual request pool honors UTC provider date Wed Oct  7 00:02:00 2026 (3.254587ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95.662928
+
+✖ failing tests:
+
+test at ../../../tmp/atlas-request-calendar-diagnostic.mjs:6:84
+✖ actual request pool honors UTC provider date Wed Oct  7 00:02:00 2026 (3.254587ms)
+  AssertionError [ERR_ASSERTION]: no subsequent request before the actual UTC deadline
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///tmp/atlas-request-calendar-diagnostic.mjs:19:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
