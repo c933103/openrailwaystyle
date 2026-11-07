@@ -87,3 +87,14 @@ test('loading-gauge long pause with a broken successful body preserves old bytes
  assert.equal(r.requests.length,1);assert.equal(r.cache,'123\tGB\n');
  assert.equal(decodeLoadingGauges(r.output).get(123),'GB');
 });
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const bodyError of [false,true])test(`loading-gauge rejects malformed calendar pause ${value} (bodyError=${bodyError})`,async t=>{
+ const r=await run(t,[{status:bodyError?200:503,bodyError,headers:{'Retry-After':value}},good]);
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.requests[1].at-r.requests[0].at,60000);
+ assert.equal(r.cache,good.body);assert.equal(decodeLoadingGauges(r.output).get(456),'GC');
+});
+for(const value of ['Fri, 06 Nov 2026 00:10:05 GMT','Friday, 06-Nov-26 00:10:05 GMT','Fri Nov  6 00:10:05 2026'])test(`loading-gauge retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const r=await run(t,[{headers:{'Retry-After':value}},good]);assert.equal(r.result.status,0,r.result.stderr);
+ assert.equal(r.requests.length,2);assert.equal(r.requests[1].at-r.requests[0].at,600000);assert.equal(r.cache,good.body);
+});

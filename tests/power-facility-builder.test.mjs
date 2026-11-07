@@ -23,7 +23,7 @@ const osm = (actions = '') => `<?xml version="1.0" encoding="UTF-8"?>\n<osm vers
 
 // Replies: the first rule whose substrings all appear in the request; else a
 // refused full download.
-async function run(t, files, rules, {old = true, existingOutput = {}} = {}) {
+async function run(t, files, rules, {old = true, existingOutput = {}, now = Date.now()} = {}) {
   const root = await mkdtemp(join(tmpdir(), 'energy-supplies-'));
   t.after(() => rm(root, {recursive: true, force: true}));
   await mkdir(join(root, '.snapshot-cache'));
@@ -36,7 +36,7 @@ async function run(t, files, rules, {old = true, existingOutput = {}} = {}) {
   }
   await writeFile(join(root, 'fake.mjs'), `
     const fs = await import('node:fs'), rules = ${JSON.stringify(rules)}, log = [];
-    let clock = Date.now(); Date.now = () => clock;
+    let clock = ${now}; Date.now = () => clock;
     globalThis.setTimeout = (f, ms) => { clock += ms || 0; f(); return 0; };
     const times = []; const used = new Map();
     globalThis.fetch = async (url, {body}) => {
@@ -235,4 +235,20 @@ for (const failure of [{fetchError: 'request timed out'}, {bodyError: 'body time
   assert.deepEqual(times.slice(1).map((time, index) => time - times[index]), [120000, 300000, 600000]);
   assert.ok(!(await names()).some(name => name.endsWith('.split')));
   await assert.rejects(published(), {code: 'ENOENT'});
+});
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const path of ['full','changes'])test(`energy rejects malformed calendar pause ${value} (${path})`,async t=>{
+ const files={...current};
+ if(path==='full')delete files[file(boxes[0])];else files[file(boxes[0])]=stored(older(boxes[0]),[at(boxes[0],100)]);
+ const r=await run(t,files,[{has:[],times:1,status:503,text:'busy',headers:{'Retry-After':value}},
+  {has:['[out:json]'],status:200,text:ids([at(boxes[0],100)])}],{old:false,now:Date.parse('2026-11-07T00:00:00Z')});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.times[1]-r.times[0],path==='full'?120000:10000);
+ assert.equal((await r.published()).features.length,8);
+});
+for(const value of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:00 GMT','Sat Nov  7 00:10:00 2026'])test(`energy retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const files={...current,[file(boxes[0])]:stored(older(boxes[0]),[at(boxes[0],100)])};
+ const r=await run(t,files,[{has:['[adiff:'],status:503,text:'busy',headers:{'Retry-After':value}},
+  {has:['[out:json]'],status:200,text:ids([at(boxes[0],100)])}],{old:false,now:Date.parse('2026-11-07T00:00:00Z')});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.times[1]-r.times[0],600000);
 });

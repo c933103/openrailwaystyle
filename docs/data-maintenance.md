@@ -622,13 +622,18 @@ over five minutes stops before another request instead of retrying early; a fina
 successful response can still complete the run when no further request is needed.
 This is a per-run pause, not a durable cross-run cooldown or a provider-wide budget.
 
-Crossings, signals, conveying/aerialways, the branch/Service fallback and the staged power
-methods/electricity-signals builders share calendar-validated HTTP-date parsing.
+Crossings, signals, conveying/aerialways, the branch/Service fallback, staged power
+methods/electricity-signals, street-running, axle-load, loading-gauge, polar,
+historic-area and energy-facility builders share calendar-validated HTTP-date parsing.
 Impossible dates and unknown or inconsistent weekdays are ignored, leaving each
 client's existing backoff in place. RFC850 two-digit years use the rolling
 50-year interpretation, and asctime dates are UTC rather than local time.
-Changes to the shared parser are tracked as builder changes for those six
-scheduled datasets; their existing schedules and serial run order stay unchanged.
+Changes to the shared parser are tracked as builder changes for its nine
+scheduler datasets and by the axle-load workflow's existing push trigger.
+Polar-fetch changes also belong to the lifecycle builder dependency list.
+Existing schedules, serial run order, retry minimums, cache reuse and request,
+byte and wait limits stay unchanged. This parser does not create a cross-run
+cooldown or start a new acquisition by itself.
 
 ### Required aerialway snapshot at deployment
 

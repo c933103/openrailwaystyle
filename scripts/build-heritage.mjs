@@ -1,5 +1,6 @@
 // Maintenance only. Build the worldwide historic-area tiles (heritage-data.mjs)
 // from Overpass, region by region. Run: node scripts/build-heritage.mjs
+import {retryAfterMs} from './retry-after.mjs';
 import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {heritageQuery, heritageFeatures, heritageFailure, heritageRegions, heritageDepth, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
@@ -60,10 +61,7 @@ async function waitForProvider(delay) {
   providerNotBefore = 0;
 }
 function retainProviderPause(response) {
-  const received = Date.now(), value = String(response.headers.get('retry-after') ?? '').trim();
-  let pause = 0;
-  if (/^\d+$/.test(value)) pause = Number(value) * 1000;
-  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) pause = Math.max(0, date - received); }
+  const received = Date.now(), pause = retryAfterMs(response.headers.get('retry-after'), received);
   if (pause > 15 * 60_000) providerStopped = true;
   if (pause > 0) providerNotBefore = Math.max(providerNotBefore, received + pause);
 }

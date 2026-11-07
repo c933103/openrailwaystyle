@@ -1,4 +1,5 @@
 // Build-time OSM extract. Browsers never query Overpass for street running.
+import {retryAfterMs} from './retry-after.mjs';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
@@ -14,13 +15,7 @@ let providerNotBefore=0;
 // Keep a provider pause across change/selection/full requests, even when a
 // successful response body later fails. Wall time is used only for HTTP dates.
 function observePause(response){
-  const receivedAt=performance.now(),header=String(response.headers.get('retry-after')??'').trim();
-  let pause=0;
-  if(/^\d+$/.test(header))pause=Number(header)*1000;
-  else if(/^(?:[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]+, \d{2}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4})$/.test(header)){
-    const date=Date.parse(header.endsWith(' GMT')?header:`${header} GMT`);
-    if(Number.isFinite(date))pause=Math.max(0,date-Date.now());
-  }
+  const receivedAt=performance.now(),pause=retryAfterMs(response.headers.get('retry-after'),Date.now());
   providerNotBefore=Math.max(providerNotBefore,receivedAt+pause);
 }
 function requireRequestTime(requestMs,scheduledWait=0,limit=acquisitionUntil){

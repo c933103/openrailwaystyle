@@ -68,3 +68,13 @@ test('polar final failed attempt still protects a later call from an early reque
  await assert.rejects(r.read(url),/HTTP 503/);await r.read('https://overpass.example/next');
  assert.equal(r.calls.length,5);assert.equal(r.calls[4].at-r.calls[3].at,600000);
 });
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const bodyError of [false,true])test(`polar rejects malformed calendar pause ${value} (bodyError=${bodyError})`,async()=>{
+ const r=setup([{status:bodyError?200:503,bodyError,headers:{'Retry-After':value}},{}]);
+ assert.equal(await r.read(url),'valid');assert.equal(r.calls.length,2);assert.equal(r.calls[1].at-r.calls[0].at,30000);
+});
+for(const value of ['Fri, 06 Nov 2026 00:10:00 GMT','Friday, 06-Nov-26 00:10:00 GMT','Fri Nov  6 00:10:00 2026'])test(`polar retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const r=setup([{headers:{'Retry-After':value}},{}]);await r.read(url);await r.read('https://overpass.example/next');
+ assert.equal(r.calls.length,2);assert.equal(r.calls[1].at-r.calls[0].at,600000);
+});
