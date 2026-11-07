@@ -594,3 +594,39 @@ for (const [index, header] of excessiveSignalPauses.entries()) {
     assert.equal(requests, 1);
   });
 }
+
+const signalRetryDates = [
+  ['invalid February day', 'Sun, 31 Feb 2027 12:00:00 GMT', false],
+  ['invalid April day', 'Fri, 31 Apr 2027 12:00:00 GMT', false],
+  ['invalid weekday token', 'Foo, 28 Feb 2027 12:02:00 GMT', false],
+  ['weekday disagrees with date', 'Mon, 28 Feb 2027 12:02:00 GMT', false],
+  ['obsolete invalid day', 'Sunday, 31-Feb-27 12:00:00 GMT', false],
+  ['obsolete invalid weekday', 'Funday, 28-Feb-27 12:02:00 GMT', false],
+  ['asctime invalid day', 'Sun Feb 31 12:00:00 2027', false],
+  ['asctime invalid weekday', 'Foo Feb 28 12:02:00 2027', false],
+  ['valid IMF date', 'Sun, 28 Feb 2027 12:02:00 GMT', true],
+  ['valid obsolete date', 'Sunday, 28-Feb-27 12:02:00 GMT', true],
+  ['valid asctime date', 'Sun Feb 28 12:02:00 2027', true],
+];
+for (const year of [2028, 2090, 2100]) {
+  const start = Date.parse(`${year}-01-01T12:00:00Z`), end = new Date(start + 120000);
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const header = `${weekdays[end.getUTCDay()]}, 01-Jan-${String(year).slice(-2)} 12:02:00 GMT`;
+  signalRetryDates.push([`valid obsolete year ${year}`, header, true, start]);
+}
+for (const [name, header, valid, initial] of signalRetryDates) {
+  test(`signal provider pause validates ${name}`, async t => {
+    const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+    const start = initial ?? Date.parse('2027-02-28T12:00:00Z'), home = await seed(d, new Date(start).toISOString());
+    await rm(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot));
+    let elapsed = 0;
+    const times = [];
+    await buildSignals({...d, ...quiet, now: () => start + elapsed, clock: () => elapsed,
+      sleep: async ms => { elapsed += ms; }, fetcher: async () => {
+        times.push(elapsed);
+        if (times.length === 1) return {ok: false, status: 503, headers: new Headers({'retry-after': header}), body: {cancel: () => Promise.resolve()}};
+        return {ok: true, status: 200, text: async () => JSON.stringify({osm3s: {timestamp_osm_base: new Date(start).toISOString().replace('.000Z', 'Z')}, elements: [UNDIRECTED, ELECTRIC]})};
+      }});
+    assert.deepEqual(times, [0, valid ? 120000 : 30000], 'only a valid calendar date supplies a provider deadline');
+  });
+}
