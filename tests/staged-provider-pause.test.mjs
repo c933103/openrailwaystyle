@@ -23,7 +23,7 @@ const pipelines = [
 async function run(t,pipeline,responses,{budget=100,oversleep=0,priorQueue=queue,clock=epoch}={}) {
   const root=await mkdtemp(join(tmpdir(),'atlas-staged-pause-'));t.after(()=>rm(root,{recursive:true,force:true}));
   await cp('scripts',join(root,'scripts'),{recursive:true});await mkdir(join(root,'styles'));
-  for(const file of ['pbf-utf8.mjs','service-frequency.mjs'])await cp(`styles/${file}`,join(root,'styles',file));
+  for(const file of ['pbf-utf8.mjs','service-frequency.mjs','retry-after.mjs'])await cp(`styles/${file}`,join(root,'styles',file));
   await symlink(resolve('node_modules'),join(root,'node_modules'),'dir');await mkdir(join(root,'previous'));
   const initial=pipeline.table(),state={version:pipeline.version,downloadStages:3,runs:[],stages:{
     ...Object.fromEntries(STAGES.map(s=>[s.name,{completed:new Date().toISOString(),pending:null,seen:[]}])),

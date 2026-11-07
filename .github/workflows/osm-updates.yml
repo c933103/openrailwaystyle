@@ -82,6 +82,7 @@ on:
       - styles/pbf-utf8.mjs
       - styles/polar.mjs
       - styles/power-facilities.mjs
+      - styles/retry-after.mjs
       - styles/street-running.mjs
       - styles/tile-bundles.mjs
   workflow_dispatch:

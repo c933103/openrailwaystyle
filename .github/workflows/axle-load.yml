@@ -8,6 +8,7 @@ on:
       - scripts/axle-load-csv.mjs
       - scripts/axle-load-parts.mjs
       - scripts/retry-after.mjs
+      - styles/retry-after.mjs
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * 0'
