@@ -23,7 +23,7 @@ const osm = (actions = '') => `<?xml version="1.0" encoding="UTF-8"?>\n<osm vers
 
 // Replies: the first rule whose substrings all appear in the request; else a
 // refused full download.
-async function run(t, files, rules, {old = true, existingOutput = {}, now = Date.now()} = {}) {
+async function run(t, files, rules, {old = true, existingOutput = {}, now = Date.now(), earlyWakeAt = -1} = {}) {
   const root = await mkdtemp(join(tmpdir(), 'energy-supplies-'));
   t.after(() => rm(root, {recursive: true, force: true}));
   await mkdir(join(root, '.snapshot-cache'));
@@ -36,28 +36,32 @@ async function run(t, files, rules, {old = true, existingOutput = {}, now = Date
   }
   await writeFile(join(root, 'fake.mjs'), `
     const fs = await import('node:fs'), rules = ${JSON.stringify(rules)}, log = [];
-    let clock = ${now}; Date.now = () => clock;
-    globalThis.setTimeout = (f, ms) => { clock += ms || 0; f(); return 0; };
-    const times = []; const used = new Map();
+    let clock = ${now}, elapsed = 0, timer = 0; Date.now = () => clock;
+    Object.defineProperty(globalThis, 'performance', {value: {now: () => elapsed}, configurable: true});
+    globalThis.setTimeout = (f, ms) => { const step = timer++ === ${earlyWakeAt} ? (ms || 0) / 2 : ms || 0; clock += step; elapsed += step; f(); return 0; };
+    const times = [], elapsedTimes = []; const used = new Map();
     globalThis.fetch = async (url, {body}) => {
       const query = body.get('data'); log.push(query); fs.writeFileSync('requests.json', JSON.stringify(log));
       times.push(clock); fs.writeFileSync('times.json', JSON.stringify(times));
+      elapsedTimes.push(elapsed); fs.writeFileSync('elapsed-times.json', JSON.stringify(elapsedTimes));
       const rule = rules.find(r => r.has.every(part => query.includes(part)) && (used.get(r) || 0) < (r.times ?? Infinity));
       if (rule) used.set(rule, (used.get(rule) || 0) + 1);
       if (rule?.fetchError) throw new DOMException(rule.fetchError, 'TimeoutError');
       const headers = {...rule?.headers};
       if (rule?.dateDelay) headers['Retry-After'] = new Date(clock + rule.dateDelay).toUTCString();
       const response = new Response(rule ? rule.text : 'no full download', {status: rule ? rule.status : 500, headers});
-      if (rule?.bodyError) response.text = async () => { throw new TypeError(typeof rule.bodyError === 'string' ? rule.bodyError : 'fetch failed: interrupted body'); };
+      const originalText = response.text.bind(response);
+      response.text = async () => { elapsed += rule?.bodyMs || 0; clock += (rule?.bodyMs || 0) + (rule?.wallShift || 0); if (rule?.bodyError) throw new TypeError(typeof rule.bodyError === 'string' ? rule.bodyError : 'fetch failed: interrupted body'); return originalText(); };
       return response;
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd: root, env: {...process.env, POWER_OUTPUT: 'out', POWER_REFRESH: ''}, encoding: 'utf8'});
-  let requests = [], times = [];
+  let requests = [], times = [], elapsedTimes = [];
   try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
   try { times = JSON.parse(await readFile(join(root, 'times.json'), 'utf8')); } catch {}
+  try { elapsedTimes = JSON.parse(await readFile(join(root, 'elapsed-times.json'), 'utf8')); } catch {}
   const read = async name => JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8'));
   const published = async () => JSON.parse(await readFile(join(root, 'out', 'power-facilities.geojson'), 'utf8'));
-  return {result, requests, times, read, published, outputBytes: name => readFile(join(root, 'out', name)), names: () => readdir(join(root, '.snapshot-cache'))};
+  return {result, requests, times, elapsedTimes, read, published, outputBytes: name => readFile(join(root, 'out', name)), names: () => readdir(join(root, '.snapshot-cache'))};
 }
 const stored = (query, elements, time = SINCE) => ({query, response: {osm3s: {timestamp_osm_base: time}, elements}});
 const current = Object.fromEntries(boxes.map((box, i) => [file(box), stored(powerFacilityQuery(box), [at(box, 100 + i)])]));
@@ -251,4 +255,29 @@ for(const value of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:0
  const r=await run(t,files,[{has:['[adiff:'],status:503,text:'busy',headers:{'Retry-After':value}},
   {has:['[out:json]'],status:200,text:ids([at(boxes[0],100)])}],{old:false,now:Date.parse('2026-11-07T00:00:00Z')});
  assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.times[1]-r.times[0],600000);
+});
+
+for(const path of ['full','fallback','change','split','success'])for(const wallShift of [3600000,-3600000])test(`energy ${path} retains elapsed provider deadline across ${wallShift}ms wall correction`,async t=>{
+ const files={...current},box=boxes[0];let rules,old=false;
+ const pause=path==='full'||path==='fallback'?{dateDelay:600000}:{headers:{'Retry-After':'600'}};
+ if(path==='fallback')files[file(box)]=stored(older(box),[at(box,100)]);
+ else if(path!=='change')delete files[file(box)];
+ if(path==='success')delete files[file(boxes[1])];
+ if(path==='change'){old=true;rules=[{has:['(-90,-180,0,-90)'],status:200,text:'',bodyError:true,wallShift,...pause},{has:[],status:200,text:osm()}];}
+ else if(path==='split')rules=[{has:['(-90,-180,0,-90)'],status:200,text:JSON.stringify({remark:'runtime error: Query timed out',elements:[]}),wallShift,...pause},{has:[],status:200,text:ids([at(box,100)])}];
+ else rules=[{has:[],times:1,status:200,text:ids([at(box,100)]),bodyError:path!=='success',wallShift,...pause},{has:[],status:200,text:ids([at(box,100)])}];
+ const r=await run(t,files,rules,{old,now:Date.parse('2026-11-07T00:00:00Z')});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,path==='change'?8:path==='split'?5:2);
+ assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],600000);assert.ok((await r.published()).features.length>0);
+ if(path==='full')assert.equal(r.requests[0],r.requests[1]);
+});
+for(const bodyMs of [300000,700000])test(`energy full retry consumes ${bodyMs}ms body time without rebasing the header`,async t=>{
+ const files={...current};delete files[file(boxes[0])];
+ const r=await run(t,files,[{has:[],times:1,status:200,text:'',bodyError:true,bodyMs,dateDelay:600000},{has:[],status:200,text:ids([at(boxes[0],100)])}],{old:false,now:Date.parse('2026-11-07T00:00:00Z')});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],Math.max(600000,bodyMs+120000));
+});
+for(const mode of ['retry','spacing'])test(`energy rechecks early ${mode} timer wake`,async t=>{
+ const files={...current};delete files[file(boxes[0])];if(mode==='spacing')delete files[file(boxes[1])];
+ const r=await run(t,files,[{has:[],times:1,status:mode==='retry'?503:200,text:mode==='retry'?'busy':ids([at(boxes[0],100)])},{has:[],status:200,text:ids([at(boxes[0],100)])}],{old:false,earlyWakeAt:1});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],mode==='retry'?120000:10000);
 });

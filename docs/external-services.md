@@ -53,7 +53,9 @@ the complete consumed chunk still counts, and no over-budget retry is started.
 
 The energy-supply facility builder likewise keeps the provider pause across
 change requests, query-change fallback, interrupted bodies, full-download
-retries and subdivisions. It records the deadline before reading the body and
+retries and subdivisions. It records the deadline before reading the body,
+then carries it on elapsed time independent of wall-clock corrections. Body
+time consumes the pause; early timer wakes recheck provider and local floors. It
 stops the run if the pause exceeds its 15-minute wait limit, preserving the
 published snapshot and completed region caches. The existing retry count,
 query identity, weekly cache refresh and acquisition schedule are unchanged.
