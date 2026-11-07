@@ -76,6 +76,13 @@ five-minute provider-pause, request, byte and one-hour run limits remain binding
 complete-only publication and resumable checkpoints are unchanged. This does
 not change queries, schedules, stored-way builds or the combined signal builder.
 
+Lifecycle acquisition rechecks its existing 15-second initial region wait,
+one-minute full-retry wait and five-second change-request spacing after early
+timer wakes. These local floors use elapsed time. The three-attempt limit,
+query-limit-only subdivision, region/delta caches, byte accounting, publication
+and schedule remain unchanged. This is a local timing safeguard, not a new
+provider-header policy or shared cross-process/provider-wide budget.
+
 Street-running acquisition rechecks its existing two-minute full-retry and
 HTTP-change fallback floor after early timer wakes, combining it with the
 header-time provider deadline. Its three full attempts, six-minute change
