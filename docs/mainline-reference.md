@@ -230,3 +230,24 @@ Geofabrik offers raw OSM extracts for download and reuse under ODbL with
 attribution. Public Overpass guidance identifies world scraping by stitched
 bounding boxes as inappropriate. This pipeline uses the export service and
 local filtering instead of either public Overpass scraping or ORM tiles.
+
+## Superseded production reference waits
+
+The production site queue remains non-canceling. The reviewed default-branch
+completion controller runs after a main reference succeeds or its own workflow
+is updated on main (then it verifies an existing successful main reference).
+It may release an older main revision only while its sole
+active job is waiting for the exact reference digest, before any validation,
+browser or deployment job exists. It requires a successful same-repository main
+reference completion and a queued, running or already successful site run for
+current main. It rechecks current main, candidate identity and all job pages
+immediately before requesting cancellation. Active or queued validation and any
+deployment job, PR/fork runs, failed startup jobs and uncertain API responses
+remain untouched. A canceled obsolete wait is recorded as canceled, not passed.
+
+This handles an older reference digest whose queued producer was superseded by
+newer main commits. It does not waive current-head reference acceptance, alter
+production concurrency, dispatch a replacement, or cancel an active deployment.
+The controller reads trusted GitHub metadata only and never checks out source or
+downloads artifacts. Its existing Actions write authority is retained; only
+repository-content read access is needed to verify the current main ref.
