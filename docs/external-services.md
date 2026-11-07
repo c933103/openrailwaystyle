@@ -65,7 +65,9 @@ checkpoint. Previously recorded splits are not reclassified without evidence.
 The loading-gauge maintenance list keeps its existing three-attempt ceiling,
 initial five-second pause and one-minute retry baseline. It also honors a
 longer `Retry-After` captured at response headers, even if reading the body
-then fails. A requested pause over 15 minutes stops further attempts and
+then fails. The observed deadline uses elapsed time, so wall-clock corrections
+cannot shorten or extend it; body time consumes the pause and early timer wakes
+are rechecked before sending. A requested pause over 15 minutes stops further attempts and
 uses the previous cached list, rather than shortening that pause. Permanent
 4xx responses are not retried (406, 408 and 429 remain transient). A complete
 successful response needs no further request and may still replace the cache.

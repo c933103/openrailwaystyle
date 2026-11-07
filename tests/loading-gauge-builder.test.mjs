@@ -7,22 +7,24 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {decodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
 const builder=fileURLToPath(new URL('../scripts/build-loading-gauge-list.mjs',import.meta.url));
-async function run(t,rules,{cached='123\tGB\n'}={}){
+async function run(t,rules,{cached='123\tGB\n',earlyWakeAt=-1}={}){
  const root=await mkdtemp(join(tmpdir(),'loading-gauge-'));t.after(()=>rm(root,{recursive:true,force:true}));
  await mkdir(join(root,'.snapshot-cache'));
  if(cached!==null)await writeFile(join(root,'.snapshot-cache/loading-gauge.csv'),cached);
  await writeFile(join(root,'fake.mjs'),`
   import {writeFileSync} from 'node:fs';
-  let clock=Date.parse('2026-11-06T00:00:00Z');Date.now=()=>clock;
-  globalThis.setTimeout=(f,ms)=>{clock+=ms||0;f();return 0;};
+  let clock=Date.parse('2026-11-06T00:00:00Z'),elapsed=0,timer=0;Date.now=()=>clock;
+  Object.defineProperty(globalThis,'performance',{value:{now:()=>elapsed},configurable:true});
+  globalThis.setTimeout=(f,ms)=>{const advance=timer++===${earlyWakeAt}?Math.floor((ms||0)/2):ms||0;clock+=advance;elapsed+=advance;f();return 0;};
   const rules=${JSON.stringify(rules)},requests=[];
   globalThis.fetch=async(url,init)=>{
-   requests.push({url:String(url),query:init.body.get('data'),at:clock});writeFileSync('requests.json',JSON.stringify(requests));
+   requests.push({url:String(url),query:init.body.get('data'),at:clock,elapsed});writeFileSync('requests.json',JSON.stringify(requests));
    const rule=rules[Math.min(requests.length-1,rules.length-1)],headers={...rule.headers};
    if(rule.dateDelay)headers['Retry-After']=new Date(clock+rule.dateDelay).toUTCString();
    if(rule.fetchError)throw new TypeError('fetch failed');
    const response=new Response(rule.body??'busy',{status:rule.status??503,headers});
-   if(rule.bodyError)response.text=async()=>{throw new TypeError('body interrupted');};
+   const originalText=response.text.bind(response);
+   response.text=async()=>{elapsed+=rule.bodyMs||0;clock+=(rule.bodyMs||0)+(rule.wallShift||0);if(rule.bodyError)throw new TypeError('body interrupted');return originalText();};
    return response;
   };
  `);
@@ -97,4 +99,26 @@ for(const value of ['Fri, 06 Nov 2026 00:10:05 GMT','Friday, 06-Nov-26 00:10:05 
  const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
  const r=await run(t,[{headers:{'Retry-After':value}},good]);assert.equal(r.result.status,0,r.result.stderr);
  assert.equal(r.requests.length,2);assert.equal(r.requests[1].at-r.requests[0].at,600000);assert.equal(r.cache,good.body);
+});
+
+for(const date of [false,true])for(const wallShift of [3600000,-3600000])test(`loading-gauge ${date?'HTTP-date':'seconds'} deadline survives body clock correction ${wallShift}`,async t=>{
+ const pause=date?{dateDelay:600000}:{headers:{'Retry-After':'600'}};
+ const r=await run(t,[{status:200,...pause,bodyError:true,wallShift},good]);
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);
+ assert.equal(r.requests[1].elapsed-r.requests[0].elapsed,600000);
+ assert.equal(r.cache,good.body);assert.equal(decodeLoadingGauges(r.output).get(456),'GC');
+});
+for(const bodyMs of [300000,700000])test(`loading-gauge body duration ${bodyMs} consumes its observed provider pause`,async t=>{
+ const r=await run(t,[{status:200,dateDelay:600000,bodyError:true,bodyMs},good]);
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);
+ assert.equal(r.requests[1].elapsed-r.requests[0].elapsed,Math.max(600000,bodyMs+60000));assert.equal(r.cache,good.body);
+});
+test('loading-gauge rechecks a provider-pause timer that wakes early',async t=>{
+ const r=await run(t,[{headers:{'Retry-After':'600'}},good],{earlyWakeAt:1});
+ assert.equal(r.result.status,0,r.result.stderr);assert.equal(r.requests.length,2);
+ assert.equal(r.requests[1].elapsed-r.requests[0].elapsed,600000);assert.equal(r.cache,good.body);
+});
+test('loading-gauge rechecks the initial five-second timer when it wakes early',async t=>{
+ const r=await run(t,[good],{earlyWakeAt:0});assert.equal(r.result.status,0,r.result.stderr);
+ assert.equal(r.requests.length,1);assert.equal(r.requests[0].elapsed,5000);assert.equal(r.cache,good.body);
 });
