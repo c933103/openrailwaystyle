@@ -1,14 +1,14 @@
 {
-  "generated": "2026-11-02T00:46:53.220Z",
-  "osmBase": "2026-11-02T00:43:59Z",
+  "generated": "2026-11-07T09:00:11.344Z",
+  "osmBase": "2026-11-07T08:57:21Z",
   "update": "full",
-  "features": 24164,
+  "features": 24155,
   "kinds": {
-    "cableway": 3306,
-    "lift": 20858
+    "cableway": 3304,
+    "lift": 20851
   },
   "zoom": 12,
-  "tiles": 8534,
+  "tiles": 8524,
   "source": "https://overpass-api.de/api/interpreter",
   "query": "[out:json][timeout:900][maxsize:1073741824];way[aerialway~\"^(cable_car|gondola|mixed_lift|chair_lift|drag_lift|t-bar|j-bar|platter)$\"];out tags geom;",
   "license": "ODbL-1.0",
