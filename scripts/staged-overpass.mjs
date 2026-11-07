@@ -93,15 +93,19 @@ export function createStagedSnapshot(config) {
     const started=now(),features=new Map(),coverage=[];let downloaded=0,requests=0;
     const remaining=()=>policy.elapsedMs-(now()-started);
     const checkTime=()=>{if(remaining()<=0)throw fatal(`${Noun} elapsed-time budget exceeded`,'budget');};
-    // A wait the server asked for (Retry-After) on a change request that
-    // failed, kept for the next request of the run, whichever it is.
-    let serverWait=0;
-    const pause=async()=>{const ms=Math.max(policy.pauseMs,serverWait);serverWait=0;await delay(ms);};
+    // Every response can ask for a pause, even a success whose body later
+    // fails. Retain its header-time deadline for the next actual request.
+    let providerNotBefore=0,providerStopped=false;
+    const pause=()=>delay(policy.pauseMs);
     async function delay(ms) {
       checkTime();
-      if(ms>=remaining())throw fatal(`${Noun} elapsed-time budget exceeded before retry`,'budget');
-      if(ms)await sleep(ms);
-      checkTime();
+      if(providerStopped)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
+      do {
+        const wait=Math.max(ms,providerNotBefore-now());
+        if(wait>=remaining())throw fatal(`${Noun} elapsed-time budget exceeded before retry`,'budget');
+        if(wait>0)await sleep(wait);
+        checkTime();ms=0;
+      }while(providerNotBefore>now());
     }
     async function request(query,{text=false}={}) {
       checkTime();
@@ -111,6 +115,9 @@ export function createStagedSnapshot(config) {
       let response;
       try {
         response=await fetcher(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':`${config.userAgent} (+https://github.com/c933103/openrailwaystyle)`},signal,redirect:'error'});
+        const received=now(),wait=retryAfter(response.headers?.get('retry-after'),received);
+        if(wait>policy.maxRetryAfterMs)providerStopped=true;
+        if(wait>0)providerNotBefore=Math.max(providerNotBefore,received+wait);
         // HTTP classification precedes parsing; a 403 saying "timeout" is not
         // evidence that a spatial query executed or can benefit from subdivision.
         if(!response.ok) {
@@ -118,7 +125,7 @@ export function createStagedSnapshot(config) {
           // without awaiting cleanup, preserving the authoritative HTTP category
           // and its bounded retry/failure path rather than a cleanup timeout.
           try {response.body?.cancel?.()?.catch(()=>{});}catch{}
-          const status=response.status,wait=retryAfter(response.headers?.get('retry-after'),now());
+          const status=response.status;
           if(status===429||status===408||[500,502,503,504].includes(status))throw new AcquisitionError(`HTTP ${status}`,status===429?'rate-limit':'http-transient',{retry:true,retryAfterMs:wait});
           throw fatal(`HTTP ${status}`,'http-permanent');
         }
@@ -184,7 +191,6 @@ export function createStagedSnapshot(config) {
             failed:error=>{
               if(error.category==='budget')throw error;
               if(error.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
-              serverWait=Math.max(serverWait,error.retryAfterMs||0);
             }});
           if(update) {
             const next={...base,osm3s:{...base.osm3s,timestamp_osm_base:update.osmBase},elements:update.elements};
@@ -202,7 +208,7 @@ export function createStagedSnapshot(config) {
           if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
           if(attempt) {
             if(failure.retryAfterMs>policy.maxRetryAfterMs)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
-            await delay(Math.max(policy.retryMs,failure.retryAfterMs));
+            await delay(policy.retryMs);
           }else if(requests)await pause();
           log(`Collecting ${config.label}`,box.join(','),'attempt',attempt+1);
           try {return {json:await request(body)};}catch(error) {

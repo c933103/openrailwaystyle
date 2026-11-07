@@ -394,3 +394,99 @@ test(`${name} ${budget} budget remains terminal with ${cleanup} native-stream ca
   assert.deepEqual(await readdir(options.cache),[],'no failed cache or split checkpoint');
   assert.deepEqual(await readdir(options.output),[],'neither builder publishes partial output');
 },builder));
+
+const sharedComplete={...complete,elements:[element,{type:'node',id:13,lon:135,lat:34,tags:{railway:'signal','railway:signal:electricity':'yes'}}]};
+const unchangedXml='<osm version="0.6"><meta osm_base="2026-10-20T00:00:00Z"/></osm>';
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]]) {
+  for(const path of ['region','body failure','query split'])for(const kind of ['seconds','HTTP date'])
+  test(`${name} retains ${kind} header pause across ${path}`,()=>fixture(async({run,calls,sleeps,options,advance})=>{
+    let received,deadline;
+    const result=await run(n=>{
+      if(n!==1){if(n===2)assert.ok(options.now()>=deadline,'next request honors the header deadline');return response(sharedComplete);}
+      received=options.now();const header=kind==='seconds'?'120':new Date(received+120000).toUTCString();
+      deadline=kind==='seconds'?received+120000:Date.parse(header);
+      const body=new ReadableStream({pull(controller){
+        // Advance only when the body is consumed, after the header is observed.
+        advance(30000);
+        if(path==='body failure')controller.error(Object.assign(new Error('interrupted body'),{code:'UND_ERR_BODY_TIMEOUT'}));
+        else {controller.enqueue(Buffer.from(JSON.stringify(path==='query split'?{remark:'Query timed out',elements:[]}:sharedComplete)));controller.close();}
+      }},{highWaterMark:0});
+      return new Response(body,{headers:{'Retry-After':header}});
+    });
+    assert.equal(calls.length,path==='region'?8:path==='body failure'?9:12);
+    assert.equal(sleeps[0],deadline-received-30000,'body time is deducted from the provider pause');
+    assert.equal(result.manifest.coverage.length,path==='query split'?11:8);
+    if(path==='body failure')assert.equal(calls[0].query,calls[1].query,'transport retries the same box');
+  },builder));
+
+  for(const wait of ['301','9'.repeat(400)])
+  test(`${name} successful excessive header pause stops before another request (${wait.length} digits)`,()=>fixture(async({run,calls,sleeps,options})=>{
+    await assert.rejects(run(()=>response(sharedComplete,{headers:{'Retry-After':wait}})),error=>error.category==='budget'&&/Retry-After exceeds wait budget/.test(error.message));
+    assert.equal(calls.length,1);assert.deepEqual(sleeps,[]);
+    const files=await readdir(options.cache);assert.equal(files.length,1,'completed region stays checkpointed');
+    assert.ok(files[0].endsWith('.json'));assert.deepEqual(await readdir(options.output),[]);
+  },builder));
+
+  test(`${name} header pause that cannot fit the elapsed budget preserves completed progress`,()=>fixture(async({run,calls,sleeps,options})=>{
+    await assert.rejects(run(()=>response(sharedComplete,{headers:{'Retry-After':'120'}}),{limits:{elapsedMs:60000}}),error=>error.category==='budget'&&/elapsed-time/.test(error.message));
+    assert.equal(calls.length,1);assert.deepEqual(sleeps,[]);assert.equal((await readdir(options.cache)).length,1);assert.deepEqual(await readdir(options.output),[]);
+  },builder));
+
+  test(`${name} final successful header pause does not prevent complete publication`,()=>fixture(async({run,calls,sleeps})=>{
+    const result=await run(n=>response(sharedComplete,{headers:n===8?{'Retry-After':'301'}:{}}));
+    assert.equal(calls.length,8);assert.equal(result.manifest.coverage.length,8);assert.equal(result.manifest.complete,true);
+    assert.deepEqual(sleeps,Array(7).fill(10000));
+  },builder));
+
+  test(`${name} provider deadline is rechecked after an early timer wake`,()=>fixture(async({run,options,advance})=>{
+    let deadline,sleeps=0;
+    await run(n=>{
+      if(n===1){deadline=options.now()+120000;return response(sharedComplete,{headers:{'Retry-After':'120'}});}
+      assert.ok(options.now()>=deadline,'an early wake does not admit a request');return response(sharedComplete);
+    },{sleep:async ms=>{sleeps++;advance(sleeps===1?ms/2:ms);}});
+    assert.equal(sleeps,8,'one additional wait completes the provider pause');
+  },builder));
+
+  test(`${name} failed changed-query update retains its header pause before the full fallback`,()=>fixture(async({run,calls,sleeps,options})=>{
+    await run(()=>response(sharedComplete));
+    const file=join(options.cache,(await readdir(options.cache))[0]);
+    const saved=JSON.parse(await readFile(file,'utf8'));saved.query=saved.query.replace(/\[timeout:\d+\]/,'[timeout:239]');await writeFile(file,JSON.stringify(saved));
+    const first=calls.length,before=sleeps.length;let deadline;
+    const result=await run((n,init)=>{
+      if(n===first+1){assert.ok(init.body.get('data').includes('[adiff:'));deadline=options.now()+120000;return response('malformed changes',{headers:{'Retry-After':'120'}});}
+      assert.ok(options.now()>=deadline);return response(sharedComplete);
+    });
+    assert.equal(calls.length-first,2,'one failed change, one full fallback; other caches are reused');
+    assert.equal(sleeps[before],120000);assert.equal(result.manifest.coverage.length,8);
+  },builder));
+
+  test(`${name} a consumed provider pause leaves only the existing quiet interval`,()=>fixture(async({run,sleeps,advance})=>{
+    await run(n=>n===1?new Response(new ReadableStream({pull(controller){
+      advance(130000);controller.enqueue(Buffer.from(JSON.stringify(sharedComplete)));controller.close();
+    }},{highWaterMark:0}),{headers:{'Retry-After':'120'}}):response(sharedComplete));
+    assert.deepEqual(sleeps,Array(7).fill(10000));
+  },builder));
+
+  test(`${name} excessive pause after accepted refresh progress leaves prior publication unchanged`,()=>fixture(async({run,calls,options})=>{
+    await run(()=>response(sharedComplete));
+    const published=await Promise.all((await readdir(options.output)).map(async file=>[file,await readFile(join(options.output,file))]));
+    const first=calls.length;
+    await assert.rejects(run(()=>response(sharedComplete,{headers:{'Retry-After':'301'}}),{refresh:true}),/Retry-After exceeds wait budget/);
+    assert.equal(calls.length-first,1);
+    for(const [file,bytes] of published)assert.deepEqual(await readFile(join(options.output,file)),bytes);
+  },builder));
+
+  for(const path of ['valid','malformed','interrupted'])
+  test(`${name} keeps a successful change header pause after a ${path} body`,()=>fixture(async({run,calls,sleeps,options,advance})=>{
+    await run(()=>response(sharedComplete));advance(8*86400000);
+    const first=calls.length,before=sleeps.length;let deadline;
+    const result=await run(n=>{
+      if(n>first+1){assert.ok(options.now()>=deadline);return response(unchangedXml);}
+      deadline=options.now()+120000;
+      if(path==='interrupted')return new Response(new ReadableStream({pull(controller){controller.error(Object.assign(new Error('body failed'),{code:'UND_ERR_BODY_TIMEOUT'}));}},{highWaterMark:0}),{headers:{'Retry-After':'120'}});
+      return response(path==='valid'?unchangedXml:'not XML',{headers:{'Retry-After':'120'}});
+    });
+    assert.equal(calls.length-first,8);assert.equal(sleeps[before],120000);assert.equal(result.manifest.coverage.length,8);
+    assert.ok(calls.slice(first).every(call=>call.query.includes('[adiff:')),'same-query failure keeps cache without a full fallback');
+  },builder));
+}
