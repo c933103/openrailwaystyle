@@ -220,3 +220,40 @@ for(const pipeline of pipelines)for(const status of [200,503]){
   }
  }));
 }
+
+// Capacity messages can use a gateway-timeout status/title without having
+// executed the geographic query. Preserve the original box in both consumers.
+for(const pipeline of pipelines){
+ const admission=[
+  [502,'Gateway Timeout: this server is at capacity'],
+  [504,'Gateway Timeout: all query workers are busy'],
+  [502,'Gateway Timeout: the request queue is full'],
+  [504,'<h1>Gateway Timeout</h1><p>THE REQUEST\nQUEUE IS FULL</p>'],
+  [502,`<h1>Gateway Timeout</h1>${'Synthetic preamble. '.repeat(20)}The request queue is full`],
+ ];
+ for(const [index,[status,text]] of admission.entries())test(`${pipeline.name} capacity ${index}: retry the original box without subdivision`,async()=>fixture(pipeline,async run=>{
+  const result=await run([{status,text},{body},{body}]);
+  assert.equal(result.attempt.status,'acquired');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,2);
+  assert.equal(result.requests.length,3);assert.equal(result.requests[0].query,result.requests[1].query);
+  assert.deepEqual(result.sleeps,[0,60000,15000]);
+  assert.equal(result.attempt.downloadedBytes,Buffer.byteLength(text)+2*Buffer.byteLength(JSON.stringify(body)));
+ }));
+ test(`${pipeline.name} repeated capacity retains accepted data and the exact pending queue`,async()=>fixture(pipeline,async(run,initial)=>{
+  const text='Gateway Timeout: all query workers are busy',result=await run(Array(5).fill({status:504,text}));
+  assert.equal(result.attempt.status,'deferred');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,0);
+  assert.deepEqual(result.saved.stages.japan.pending,queue);assert.equal(result.table,initial);assert.equal(result.output,'publish=true\nredeploy=false\n');
+  assert.equal(result.requests.length,5);assert.equal(new Set(result.requests.map(x=>x.query)).size,1);
+  assert.deepEqual(result.sleeps,[0,60000,120000,180000,240000]);assert.equal(result.attempt.downloadedBytes,5*Buffer.byteLength(text));
+ }));
+ test(`${pipeline.name} capacity after progress retains the second box and publishes partial status`,async()=>fixture(pipeline,async run=>{
+  const text='Gateway Timeout: the request queue is full',result=await run([{body},...Array(5).fill({status:502,text})]);
+  assert.equal(result.attempt.status,'partial');assert.equal(result.attempt.splitBoxes,0);assert.equal(result.attempt.fetchedBoxes,1);
+  assert.deepEqual(result.saved.stages.japan.pending,[queue[1]]);assert.equal(result.requests.length,6);
+  assert.equal(new Set(result.requests.slice(1).map(x=>x.query)).size,1);assert.equal(result.output,'publish=true\nredeploy=true\n');
+ }));
+ test(`${pipeline.name} an executed query timeout still subdivides rather than classifying it as admission`,async()=>fixture(pipeline,async run=>{
+  const result=await run([{status:504,text:'runtime error: Query timed out in query after 180 seconds'},...Array(5).fill({body})]);
+  assert.equal(result.attempt.splitBoxes,1);assert.equal(result.attempt.fetchedBoxes,5);assert.equal(result.attempt.status,'acquired');
+  assert.equal(result.requests.length,6);assert.notEqual(result.requests[1].query,result.requests[0].query);
+ }));
+}
