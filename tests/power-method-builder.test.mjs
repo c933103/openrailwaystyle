@@ -13,10 +13,10 @@ const complete={osm3s:{timestamp_osm_base:'2026-10-13T00:00:00Z'},elements:[elem
 const response=(json=complete,{status=200,headers={}}={})=>new Response(typeof json==='string'?json:JSON.stringify(json),{status,headers});
 async function fixture(fn,builder=buildPowerMethods) {
   const dir=await mkdtemp(join(tmpdir(),'atlas-power-builder-'));
-  let clock=Date.now(),calls=[],sleeps=[];
-  const options={cache:join(dir,'cache'),output:join(dir,'output'),now:()=>clock,sleep:async ms=>{sleeps.push(ms);clock+=ms;},log:()=>{}};
-  const run=async(fetcher=()=>response(),extra={})=>builder({...options,fetcher:async(url,init)=>{calls.push({query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
-  try {await fn({dir,options,run,calls,sleeps,advance:ms=>clock+=ms});}finally{await rm(dir,{recursive:true,force:true});}
+  let wall=Date.now(),elapsed=0,calls=[],sleeps=[];
+  const options={cache:join(dir,'cache'),output:join(dir,'output'),now:()=>wall,clock:()=>elapsed,sleep:async ms=>{sleeps.push(ms);wall+=ms;elapsed+=ms;},log:()=>{}};
+  const run=async(fetcher=()=>response(),extra={})=>builder({...options,fetcher:async(url,init)=>{calls.push({at:elapsed,query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
+  try {await fn({dir,options,run,calls,sleeps,advance:ms=>{wall+=ms;elapsed+=ms;},jump:ms=>wall+=ms});}finally{await rm(dir,{recursive:true,force:true});}
 }
 async function unpublished(output) {
   for(const file of ['power-methods.geojson','power-methods.geojson.gz','methods-manifest.json'])await assert.rejects(access(join(output,file)));
@@ -587,3 +587,62 @@ for(const [name,builder] of [['power methods',buildPowerMethods],['electricity s
   assert.equal(sleeps[0],120000);assert.equal(result.manifest.complete,true);
  },builder));
 }
+
+// Independent wall and elapsed clocks exercise the shared acquisition engine
+// through both real callers, without network requests or real-time waits.
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]]) {
+ for(const path of ['region','body failure','query split','changes','changed-query fallback'])for(const shift of [-3600000,3600000])
+ test(`${name} elapsed provider deadline survives ${shift}ms wall correction across ${path}`,()=>fixture(async({run,calls,options,advance,jump})=>{
+  const cached=path==='changes'||path==='changed-query fallback';
+  if(cached){
+   await run(()=>response(sharedComplete));
+   if(path==='changes')advance(8*86400000);
+   else {
+    const file=join(options.cache,(await readdir(options.cache))[0]);
+    const saved=JSON.parse(await readFile(file,'utf8'));saved.query=saved.query.replace(/\[timeout:\d+\]/,'[timeout:239]');await writeFile(file,JSON.stringify(saved));
+   }
+  }
+  const first=calls.length,started=options.clock();
+  const result=await run(n=>{
+   if(n!==first+1)return response(path==='changes'?unchangedXml:sharedComplete);
+   const header=new Date(Math.floor(options.now()/1000)*1000+120000).toUTCString();
+   const expected=Date.parse(header)-options.now();
+   // Save the expected deadline before wall correction and body consumption.
+   calls[first].deadline=started+expected;
+   return new Response(new ReadableStream({pull(controller){
+    advance(30000);jump(shift);
+    if(path==='body failure')controller.error(Object.assign(new Error('interrupted body'),{code:'UND_ERR_BODY_TIMEOUT'}));
+    else {controller.enqueue(Buffer.from(path==='changes'?unchangedXml:path==='changed-query fallback'?'not XML':JSON.stringify(path==='query split'?{remark:'Query timed out',elements:[]}:sharedComplete)));controller.close();}
+   }},{highWaterMark:0}),{headers:{'Retry-After':header}});
+  });
+  assert.equal(calls[first+1].at,calls[first].deadline,'wall corrections neither shorten nor extend the observed pause');
+  assert.equal(result.manifest.complete,true);assert.equal(result.manifest.coverage.length,path==='query split'?11:8);
+  if(path==='body failure')assert.equal(calls[first].query,calls[first+1].query);
+  if(path==='changes')assert.ok(calls.slice(first).every(c=>c.query.includes('[adiff:')));
+  if(path==='changed-query fallback'){assert.match(calls[first].query,/\[adiff:/);assert.ok(!calls[first+1].query.includes('[adiff:'));}
+ },builder));
+ for(const path of ['spacing','HTTP backoff','transport backoff'])
+ test(`${name} early timer cannot shorten ${path} without provider headers`,()=>fixture(async({run,calls,advance})=>{
+  let waits=0;
+  await run(n=>{
+   if(n===1&&path==='HTTP backoff')return response('busy',{status:503});
+   if(n===1&&path==='transport backoff')throw new TypeError('fetch failed');
+   return response(sharedComplete);
+  },{sleep:async ms=>{advance(++waits===1?ms/2:ms);}});
+  assert.equal(calls[1].at,path==='spacing'?10000:40000);assert.equal(calls.length,path==='spacing'?8:9);
+ },builder));
+ test(`${name} backward wall correction cannot extend elapsed acquisition budget`,()=>fixture(async({run,calls,advance,jump,options})=>{
+  await assert.rejects(run(()=>{advance(60001);jump(-3600000);return response(sharedComplete);},{limits:{elapsedMs:60000}}),/elapsed-time budget/);
+  assert.equal(calls.length,1);assert.deepEqual(await readdir(options.output),[]);
+ },builder));
+ test(`${name} forward wall correction cannot falsely exhaust elapsed acquisition budget`,()=>fixture(async({run,calls,advance,jump})=>{
+  const result=await run(n=>{if(n===1){advance(30000);jump(3600000);}return response(sharedComplete);},{limits:{elapsedMs:600000}});
+  assert.equal(calls.length,8);assert.equal(result.manifest.complete,true);
+ },builder));
+}
+
+test('fractional elapsed clock supplies an integer AbortSignal timeout within the remaining budget',()=>fixture(async({run,calls})=>{
+ let elapsed=0;
+ const result=await run(()=>response(sharedComplete),{clock:()=>{elapsed+=0.125;return elapsed;},sleep:async ms=>{elapsed+=ms;},limits:{elapsedMs:80000}});
+ assert.equal(result.manifest.complete,true);assert.equal(calls.length,8);
+}));
