@@ -116,6 +116,47 @@ const ASK = base => `
 const outcomesOf = result => JSON.parse(String(result.stdout).split('\n').find(l => l.startsWith('OUTCOMES ')).slice(9));
 const FAILED = 'TypeError failed: fetch failed', SKIPPED = 'TypeError skipped: fetch failed';
 
+for (const wallShift of [-3_600_000, 3_600_000]) for (const failure of ['connection', 'timeout']) {
+  test(`host cooldown uses elapsed time across a ${wallShift} ms wall correction after ${failure} failures`, async () => {
+    // Stub the transport and both clocks in an isolated process. Nothing is
+    // downloaded, and the full minute boundaries need no real-time sleep.
+    const {stdout} = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', `
+      let elapsed = 0, wall = Date.UTC(2026, 10, 7), answer = false;
+      const sent = [], outcomes = [];
+      Date.now = () => wall;
+      Object.defineProperty(performance, 'now', {value: () => elapsed});
+      globalThis.fetch = async () => {
+        sent.push(elapsed);
+        if (answer) return new Response(null, {status: 503});
+        throw ${failure === 'connection' ? "new TypeError('fetch failed')" : "new DOMException('timed out', 'TimeoutError')"};
+      };
+      const {overpassUsage} = await import(${JSON.stringify(new URL('../scripts/overpass-meter.mjs', import.meta.url).href)});
+      const ask = async () => {
+        try { outcomes.push((await fetch('https://fixture.invalid/query')).status); }
+        catch (error) { outcomes.push(error.cause?.message?.startsWith('not sent') ? 'skipped' : error.name); }
+      };
+      for (let i = 0; i < 3; i++) await ask();
+      wall += ${wallShift};
+      elapsed = 59_999; await ask();
+      elapsed = 60_000; await ask(); // A failed probe starts a full new minute.
+      elapsed = 119_999; await ask();
+      elapsed = 120_000; answer = true; await ask(); await ask();
+      answer = false; await ask(); await ask();
+      answer = true; await ask(); // Even 503 resets consecutive failures.
+      answer = false; for (let i = 0; i < 4; i++) await ask();
+      console.log('CLOCK_RESULT ' + JSON.stringify({outcomes, sent, usage: overpassUsage()}));
+    `], {timeout: 10_000, env: {...process.env, OVERPASS_STOP_AFTER: '3', OVERPASS_COOLDOWN_MS: '60000', GITHUB_STEP_SUMMARY: ''}});
+    const result = JSON.parse(stdout.split('\n').find(line => line.startsWith('CLOCK_RESULT ')).slice('CLOCK_RESULT '.length));
+    const failed = failure === 'connection' ? 'TypeError' : 'TimeoutError';
+    assert.deepEqual(result.outcomes, [failed, failed, failed, 'skipped', failed, 'skipped', 503, 503,
+      failed, failed, 503, failed, failed, failed, 'skipped']);
+    assert.deepEqual(result.sent, [0, 0, 0, 60_000, ...Array(8).fill(120_000)]);
+    assert.deepEqual(result.usage.hosts, {'fixture.invalid': {bytes: 0, requests: 12, skipped: 3}});
+    assert.equal(result.usage.requests, 12);
+    assert.equal(result.usage.skipped, 3);
+  });
+}
+
 test('after three unanswered requests in a row a host is not asked again during the cooldown', async t => {
   const down = await dropping(t), other = await serve(t);
   const {usage, result} = await run(t, `${ASK(down.base)}

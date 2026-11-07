@@ -19,7 +19,8 @@
 // builder already treats as "unavailable, keep the data, ask again". After
 // the cooldown one request goes through; another failure starts a new
 // cooldown, any answer (even an HTTP error) ends it. So an unreachable server
-// is asked about once a minute instead of once for every remaining region
+// is asked about once a minute instead of once for every remaining region,
+// using elapsed time unaffected by wall-clock corrections
 // (#330: a failing lifecycle run asked about 97 times every six hours during
 // an outage). The builders' own retry waits are at least as long as the
 // cooldown before any decision that splits a region (heritage waits 120 s
@@ -44,14 +45,14 @@ const hostOf = input => { try { return new URL(input instanceof Request ? input.
 if (typeof original === 'function') {
   globalThis.fetch = async function meteredFetch(input, init) {
     const host = hostOf(input), counted = entry(host);
-    if (counted.failures >= STOP_AFTER && Date.now() - counted.failedAt < COOLDOWN_MS) {
+    if (counted.failures >= STOP_AFTER && performance.now() - counted.failedAt < COOLDOWN_MS) {
       counted.skipped++;
       throw new TypeError('fetch failed', {cause: new Error(`not sent: ${host} did not answer ${counted.failures} requests in a row; asked again after a ${COOLDOWN_MS / 1000} s pause`)});
     }
     counted.requests++; requests++;
     let response;
     try { response = await original(input, init); }
-    catch (error) { if (unanswered(error)) { counted.failures++; counted.failedAt = Date.now(); } throw error; }
+    catch (error) { if (unanswered(error)) { counted.failures++; counted.failedAt = performance.now(); } throw error; }
     counted.failures = 0;
     if (!response.body) return response;
     const header = response.headers.get('content-length'), length = /^\d+$/.test(header || '') ? Number(header) : NaN;
