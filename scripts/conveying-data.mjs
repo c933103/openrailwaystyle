@@ -1,4 +1,5 @@
 // Build-time extract. Browsers never query Overpass for escalators or lifts.
+import {retryAfterMs as providerDelay} from './retry-after.mjs';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {conveying, viewValues} from '../styles/conveying.mjs';
@@ -16,17 +17,7 @@ export const CONVEYING_ERROR_BYTES = 64 * 1024;
 export const CONVEYING_REQUEST_MS = 960000;
 export const CONVEYING_ACQUISITION_MS = 52 * 60000;
 // Retry-After is a minimum, never a value to cap down to fit our deadline.
-function providerDelay(value, now = Date.now()) {
-  const header = String(value ?? '').trim();
-  let asked = 0;
-  if (/^\d+$/.test(header)) asked = Number(header) * 1000;
-  // Accept HTTP-date forms, not Date.parse's permissive numbers such as -5.
-  else if (/^(?:[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]+, \d{2}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4})$/.test(header)) {
-    const date = Date.parse(header.endsWith(' GMT') ? header : `${header} GMT`);
-    if (Number.isFinite(date)) asked = Math.max(0, date - now);
-  }
-  return asked;
-}
+
 export function conveyingRetryDelay(error, retry, now = Date.now()) {
   const scheduled = error?.kind === 'admission' ? [120000, 240000][retry] : 120000;
   return Math.max(scheduled, providerDelay(error?.retryAfter, now));

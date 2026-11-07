@@ -52,3 +52,27 @@ test('builder keeps three requests in all and checks deadline before sleep and b
   assert.match(source,/AbortSignal\.timeout\(CONVEYING_REQUEST_MS\)/);
   assert.doesNotMatch(source,/OVERPASS_BUDGET_MINUTES|OVERPASS_RETRY_MINUTES/);
 });
+
+const calendarCases = [
+ ['impossible February day', 'Sun, 31 Feb 2027 12:00:00 GMT', false],
+ ['impossible April day', 'Fri, 31 Apr 2027 12:00:00 GMT', false],
+ ['unknown weekday', 'Foo, 28 Feb 2027 12:08:00 GMT', false],
+ ['mismatched weekday', 'Mon, 28 Feb 2027 12:08:00 GMT', false],
+ ['obsolete invalid day', 'Sunday, 31-Feb-27 12:00:00 GMT', false],
+ ['obsolete invalid weekday', 'Funday, 28-Feb-27 12:08:00 GMT', false],
+ ['asctime invalid day', 'Sun Feb 31 12:00:00 2027', false],
+ ['asctime invalid weekday', 'Foo Feb 28 12:08:00 2027', false],
+ ['valid IMF date', 'Sun, 28 Feb 2027 12:08:00 GMT', true],
+ ['valid obsolete date', 'Sunday, 28-Feb-27 12:08:00 GMT', true],
+ ['valid asctime date', 'Sun Feb 28 12:08:00 2027', true],
+];
+for (const year of [2090, 2100]) {
+ const start = Date.parse(`${year}-01-01T12:00:00Z`), date = new Date(start);
+ const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+ calendarCases.push([`obsolete century ${year}`,`${weekdays[date.getUTCDay()]}, 01-Jan-${String(year).slice(-2)} 12:08:00 GMT`,true,start]);
+}
+for (const [name,header,valid,start] of calendarCases) test(`conveying backoff validates ${name}`,()=>{
+ const now = start ?? Date.parse('2027-02-28T12:00:00Z');
+ assert.equal(conveyingRetryDelay({retryAfter:header},0,now),valid?480000:120000);
+ assert.equal(conveyingRetryDelay({kind:'admission',retryAfter:header},1,now),valid?480000:240000);
+});
