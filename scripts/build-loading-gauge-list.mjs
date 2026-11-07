@@ -13,13 +13,16 @@ await mkdir('snapshot', {recursive: true});
 let text, retryNotBefore = 0;
 const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
 for (let attempt = 0; attempt < 3 && !text; attempt++) {
-  await new Promise(r => setTimeout(r, Math.max(attempt ? 60000 : 5000, retryNotBefore - Date.now())));
+  // Provider and baseline waits use elapsed time after the header is observed.
+  const earliest = Math.max(performance.now() + (attempt ? 60000 : 5000), retryNotBefore);
+  do { await new Promise(r => setTimeout(r, Math.max(0, earliest - performance.now()))); }
+  while (performance.now() < earliest);
   let terminal = false, pauseTooLong = false;
   try {
     const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}),
       headers: {'User-Agent': 'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal: AbortSignal.timeout(300000)});
     // Capture the pause before reading the body, which can fail independently.
-    const receivedAt = Date.now(), pause = retryAfterMs(response.headers.get('retry-after'), receivedAt);
+    const receivedAt = performance.now(), pause = retryAfterMs(response.headers.get('retry-after'), Date.now());
     pauseTooLong = pause > MAX_PROVIDER_WAIT_MS;
     if (pause > 0) retryNotBefore = Math.max(retryNotBefore, receivedAt + pause);
     terminal = response.status >= 400 && response.status < 500 && ![406, 408, 429].includes(response.status);
