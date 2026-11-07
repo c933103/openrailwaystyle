@@ -261,3 +261,65 @@ test('each recorded box keeps its own split allowance, whatever the depth of the
   const stored = JSON.parse(await readFile(file, 'utf8')).changeParts;
   assert.equal(stored.length, parts.length + 3, 'the new split is recorded with the old ones');
 });
+
+async function publishedFiles(d) {
+  const files = {};
+  for (const root of [d.output, pathToFileURL(d.powerOutput + '/')]) {
+    for (const name of (await readdir(root, {recursive: true})).sort()) {
+      try { files[new URL(name, root).href] = (await readFile(new URL(name, root))).toString('base64'); }
+      catch (error) { if (error.code !== 'EISDIR') throw error; }
+    }
+  }
+  return files;
+}
+
+for (const kind of ['combined', 'combined-stale', 'legacy', 'remainder']) {
+  for (const remark of ['runtime error: Query timed out in "query"', 'runtime error: incomplete result']) {
+    for (const repaired of [true, false]) {
+      test(`${kind} checkpoint with ${remark} requires a complete replacement (${repaired ? 'available' : 'failed'})`, async t => {
+        const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+        const home = await seed(d, '2026-10-31T00:00:00Z');
+        await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('initial cache should be complete'); }});
+        const previous = await publishedFiles(d);
+        const combinedFile = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+        const original = JSON.parse(await readFile(combinedFile, 'utf8'));
+        const baseTime = original.response.osm3s.timestamp_osm_base;
+        let file = combinedFile, query = combinedSignalQuery(home), saved = original;
+        if (!kind.startsWith('combined')) {
+          await rm(combinedFile);
+          file = new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot);
+          saved = {...original, query: signalQuery(home)};
+          await writeFile(file, JSON.stringify(saved));
+          if (kind === 'remainder') {
+            file = new URL(`signals-electric-v1-${home.join('_')}.json`, d.cacheRoot);
+            query = electricWithDirectionQuery(home, baseTime);
+            saved = {...original, query, response: {...original.response, elements: []}};
+          }
+        }
+        await writeFile(file, JSON.stringify({...saved, ...(kind === 'combined-stale' ? {generated: '2026-10-20T01:00:00Z'} : {}), response: {...saved.response, remark}}));
+        const before = await readFile(file, 'utf8');
+        const answer = fakeOverpass(request => {
+          assert.equal(request, query, 'only the invalid region/projection is fetched; cached errors do not cause subdivision');
+          if (!repaired) return {status: 403};
+          return {elements: kind === 'remainder' ? [DIRECTED_ELECTRIC] : [UNDIRECTED, ELECTRIC, DIRECTED_ELECTRIC]};
+        });
+        if (!repaired) {
+          await assert.rejects(buildSignals({...d, ...quiet, fetcher: answer.fetcher}), /Overpass HTTP 403/);
+          assert.equal(answer.queries.length, 3, 'existing HTTP retry policy is unchanged');
+          assert.deepEqual(await publishedFiles(d), previous, 'neither published snapshot is changed on repair failure');
+          assert.equal(await readFile(file, 'utf8'), before, 'failure does not overwrite the source checkpoint');
+          return;
+        }
+        await buildSignals({...d, ...quiet, fetcher: answer.fetcher});
+        assert.deepEqual(answer.queries, [query]);
+        const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+        assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3'], 'the omitted directed signal is recovered');
+        const validCombined = JSON.parse(await readFile(combinedFile, 'utf8'));
+        assert.equal(validCombined.response.remark, undefined, 'a partial response is never promoted into the combined cache');
+        const again = fakeOverpass(() => { throw new Error('repaired cache should be reusable'); });
+        await buildSignals({...d, ...quiet, fetcher: again.fetcher});
+        assert.equal(again.queries.length, 0);
+      });
+    }
+  }
+}
