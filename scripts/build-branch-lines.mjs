@@ -128,6 +128,7 @@ async function overpass(query) {
     // A quiet interval between requests, growing after each failure.
     await providerPause.wait(attempt ? 60000 * attempt : requests ? 15000 : 0);
     requests++;
+    let failureText;
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-branch-lines/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
@@ -148,15 +149,22 @@ async function overpass(query) {
         return response.ok && fresh && received > RUN_BUDGET ? null : BUDGET;
       }
       const text = Buffer.concat(chunks).toString();
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
+      if (!response.ok) {
+        // Match admission diagnostics before truncating the displayed excerpt.
+        failureText = `HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')}`;
+        throw new Error(failureText.slice(0, 210));
+      }
       return toFeatures(JSON.parse(text));
     } catch (error) {
       lastFailure = describeOverpassError(error);
       console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
       // A busy server calls for waiting; a query that ran out of time or
       // memory calls for a smaller area (null); anything else, try again.
-      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
-      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
+      // A Gateway Timeout title can be an admission refusal, not a query
+      // that ran. Use the same full-diagnostic distinction as Service.
+      const message = failureText || error.message;
+      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
+      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(message)) return null;
     }
   }
   throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
