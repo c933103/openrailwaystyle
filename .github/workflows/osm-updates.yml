@@ -63,6 +63,7 @@ on:
       - scripts/signals-data.mjs
       - scripts/snapshot-delta.mjs
       - scripts/staged-overpass.mjs
+      - scripts/staged-provider-pause.mjs
       - scripts/station-acquisition.mjs
       - scripts/station-overview.mjs
       - scripts/station-point.mjs

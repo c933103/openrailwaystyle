@@ -23,6 +23,7 @@ import {execFileSync} from 'node:child_process';
 // (touched by every asset-version bump) are left out on purpose: those
 // rebuilds are started by hand.
 const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
+const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs'];
 // The railway-ways store's reader and views, which the datasets built from it use.
 const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];
 export const OSM_UPDATES = Object.freeze([
@@ -50,9 +51,9 @@ export const OSM_UPDATES = Object.freeze([
     paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/overpass-adiff.mjs', 'scripts/service-routes.mjs',
       'scripts/power-method-data.mjs', 'scripts/station-acquisition.mjs']},
   {id:'branch-lines', workflow:'branch-lines.yml', due:{every:true},
-    paths:[...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-branch.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
+    paths:[...STAGED_FALLBACK, ...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-branch.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
   {id:'service-routes', workflow:'service-routes.yml', due:{every:true},
-    paths:[...STAGES, 'scripts/maintain-data-workflows.mjs', 'scripts/timetable-frequency.mjs', 'scripts/timetable-frequency-version.mjs',
+    paths:[...STAGED_FALLBACK, ...STAGES, 'scripts/maintain-data-workflows.mjs', 'scripts/timetable-frequency.mjs', 'scripts/timetable-frequency-version.mjs',
       'scripts/timetable-operator-bindings.mjs', 'scripts/timetable-operator-bindings.json', 'scripts/service-acquisition-trigger.mjs',
       '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs',
       'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', ...RAILWAY_WAYS]},

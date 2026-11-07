@@ -23,7 +23,8 @@ async function fixture(fn) {
     await mkdir(join(root,'previous'));
     await writeFile(join(root,'mock.mjs'), `import {readFileSync,appendFileSync} from 'node:fs';
 const observations=JSON.parse(readFileSync(process.env.MOCK_PATH,'utf8')); let count=0;
-globalThis.setTimeout=(callback,ms)=>{appendFileSync(process.env.MOCK_SLEEPS,JSON.stringify(ms)+'\\n');callback();return 0;};
+let elapsed=0;Object.defineProperty(performance,'now',{value:()=>elapsed});
+globalThis.setTimeout=(callback,ms)=>{appendFileSync(process.env.MOCK_SLEEPS,JSON.stringify(ms)+'\\n');elapsed+=ms;callback();return 0;};
 globalThis.fetch=async(url,options)=>{appendFileSync(process.env.MOCK_LOG,JSON.stringify({url,query:options.body.get('data')})+'\\n');
 const next=observations[count++];if(!next)throw new Error('Unexpected fetch');
 if(next.error)throw new TypeError('fetch failed',{cause:Object.assign(new Error('transport'),{code:next.error})});
