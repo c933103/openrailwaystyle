@@ -127,8 +127,8 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
 // the builder labels them: `Network:` (no response), `Invalid response:` (a
 // cut-off body), `Incomplete heritage response:` (an Overpass remark) and
 // HTTP 5xx or 429. A region is split only when its query was too large: it
-// timed out or ran out of memory on the server, or ran past the client's
-// timeout. That is the rule the other builders follow (#331): a server that
+// timed out or ran out of memory on the server. A local client deadline is
+// not evidence that the server executed the query. As in #331, a server that
 // gives no answer, cuts a body off or keeps failing says nothing about the
 // region's size, and splitting it during an outage only sends more requests
 // (2026-11-03: each failing region became four, each retried again). So such
@@ -155,10 +155,10 @@ export function heritageFailure(failure, attempt, depth, maxDepth = 6) {
   const request = /^(Network|Invalid response|Incomplete heritage response):/.test(message);
   // An executed query that ran out of time or memory, reported in a remark or
   // an HTTP 5xx body ("runtime error: Query timed out ...", "... out of
-  // memory"), or one the client stopped waiting for. Retrying it would run
-  // the same heavy query again; an admission error ("Gateway timeout") or a
-  // server fault ("runtime error: open64", including dispatcher timeout) is retried.
-  const tooHeavy = /runtime error:\s*Query\b[^]*?(timed? ?out|out of memory)/i.test(detail) || /^Network: .*timeout/i.test(message);
+  // memory"). Retrying it would run the same heavy query again. A client
+  // deadline, admission error ("Gateway timeout") or server fault
+  // ("runtime error: open64", including dispatcher timeout) is retried.
+  const tooHeavy = /runtime error:\s*Query\b[^]*?(timed? ?out|out of memory)/i.test(detail);
   if ((request || status >= 500) && tooHeavy) return depth < maxDepth ? 'split' : 'fail';
   if (!request && !(status >= 500 || status === 429)) return 'fail';
   return attempt < HERITAGE_RETRY_DELAYS.length ? 'retry' : 'fail';

@@ -213,17 +213,56 @@ test('builder accepts the exact download budget boundary', async t => {
   assert.equal(result.calls.length, 1);
 });
 
-for (const name of ['incomplete remark', 'client timeout']) {
-  test(`builder splits ${name} without caching partial success`, async t => {
-    const result = await run(t, query => {
-      if (query !== parentQuery) return response(200, complete);
-      if (name === 'client timeout') throw new Error('The operation was aborted due to timeout');
-      return response(200, {...complete, elements:[{...complete.elements[0], id:99}], remark:'runtime error: Query timed out after 301 seconds.'});
-    });
-    await checkPublished(result);
-    assert.equal(result.calls.length, 5);
-    assert.equal(result.decisions[0].decision, 'split');
-    assert.match(result.decisions[0].error.message, /^(Network|Incomplete heritage response):/);
+test('builder splits an incomplete query-limit remark without caching partial success', async t => {
+  const result = await run(t, query => query !== parentQuery ? response(200, complete)
+    : response(200, {...complete, elements:[{...complete.elements[0], id:99}], remark:'runtime error: Query timed out after 301 seconds.'}));
+  await checkPublished(result);
+  assert.equal(result.calls.length, 5);
+  assert.equal(result.decisions[0].decision, 'split');
+  assert.match(result.decisions[0].error.message, /^Incomplete heritage response:/);
+});
+
+for (const location of ['fetch', 'body']) for (const native of [false, true]) {
+  const name = `${native ? 'native' : 'generic'} ${location} timeout`;
+  const fail = () => {
+    const error = native ? new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+      : new Error('The operation was aborted due to timeout');
+    if (location === 'fetch') throw error;
+    return {ok:true, status:200, headers:new Headers(), text:async () => { throw error; }};
+  };
+  test(`builder retries the same region after ${name} and caches only its recovery`, async t => {
+    const result = await run(t, (_query, attempt) => attempt === 1 ? fail() : response(200, complete));
+    assert.ifError(result.error);
+    assert.deepEqual(result.calls, [parentQuery, parentQuery], 'a client deadline is not an executed-query limit');
+    assert.deepEqual(result.sleeps, [0, 30000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry']);
+    assert.deepEqual(result.writes.filter(path => path.startsWith('.snapshot-cache/')), [`.snapshot-cache/heritage-v2-${parent.join('_')}.json`]);
+    const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+    assert.equal(manifest.coverage.length, 32, 'the original region remains whole');
+    assert.equal(manifest.downloadedBytes, Buffer.byteLength(JSON.stringify(complete)));
+    assert.equal(manifest.areas, 1);
+  });
+  test(`builder exhausts ${name} without splitting or publishing`, async t => {
+    const result = await run(t, fail);
+    await checkUnpublished(result, /^Network: .*timeout/, 4);
+    assert.deepEqual(result.calls, Array(4).fill(parentQuery));
+    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
+    assert.equal(result.writes.length, 0, 'failed bodies are never cached');
+    assert.equal((await fs.readdir(join(result.root, '.snapshot-cache'))).length, 31, 'other completed regions are retained');
+  });
+  test(`builder retains completed progress when the next region exhausts ${name}`, async t => {
+    const next = [0, 45, 45, 90], nextQuery = heritage.heritageQuery(next);
+    const nextFile = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+    const stale = JSON.stringify({query:'a different query', response:empty});
+    const result = await run(t, query => query === parentQuery ? response(200, complete) : fail(), {files:{[nextFile]:stale}});
+    await checkUnpublished(result, /^Network: .*timeout/, 5);
+    assert.deepEqual(result.calls, [parentQuery, ...Array(4).fill(nextQuery)]);
+    assert.deepEqual(result.sleeps, [0, 10000, 30000, 60000, 120000]);
+    const completed = `.snapshot-cache/heritage-v2-${parent.join('_')}.json`;
+    assert.deepEqual(result.writes, [completed], 'no child or failed region is cached');
+    assert.deepEqual(JSON.parse(await fs.readFile(join(result.root, completed))), {query:parentQuery, response:complete});
+    assert.equal(await fs.readFile(join(result.root, nextFile), 'utf8'), stale, 'failed region cache is not replaced');
   });
 }
 
