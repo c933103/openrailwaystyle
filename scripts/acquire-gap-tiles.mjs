@@ -1,3 +1,4 @@
+import {retryAfterMs} from './retry-after.mjs';
 // The gap tiles (scripts/gap-tiles.mjs) from Overpass, one request each,
 // with the extract filter's selection in Overpass QL (#330, B0b). Run by
 // `.github/workflows/osm-extract.yml`:
@@ -51,11 +52,8 @@ const providerPauseError = () => new Error('Overpass Retry-After exceeds this ru
 // Shared by every tile and subdivision in this run. Capture at headers so
 // an interrupted body or a final failed attempt cannot discard the pause.
 function rememberProviderPause(response, budget, now) {
-  const value = String(response.headers.get('retry-after') ?? '').trim();
   const receivedAt = now();
-  let delay = 0;
-  if (/^\d+$/.test(value)) delay = Number(value) * 1000;
-  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) delay = Math.max(0, date - receivedAt); }
+  const delay = retryAfterMs(response.headers.get('retry-after'), receivedAt);
   if (delay > MAX_PROVIDER_WAIT_MS) budget.providerWaitExceeded = true;
   if (delay > 0) budget.retryNotBefore = Math.max(budget.retryNotBefore || 0, receivedAt + delay);
 }

@@ -84,8 +84,8 @@ const tile = {key: '0_-45_45_0', box: [0, -45, 45, 0], polygon: [square(-40, 5, 
 const budget = (extra = {}) => ({requests: 0, bytes: 0, maxRequests: 400, maxBytes: 1024 ** 3, ...extra});
 const fake = replies => { const calls = []; return {calls, fetcher: async (url, init) => { calls.push(init.body.get('data')); const r = replies(calls.length); return r instanceof Error ? Promise.reject(r) : r; }}; };
 
-const fakeClock = () => {
-  let time = Date.parse('2026-11-06T19:00:00Z');
+const fakeClock = (start = '2026-11-06T19:00:00Z') => {
+  let time = Date.parse(start);
   return {now: () => time, wait: async ms => { time += ms; }};
 };
 
@@ -334,3 +334,29 @@ for(const mode of ['pending','rejects','throws'])test(`gap byte-budget failure d
   await assert.rejects(fetchTile(tile,{fetcher,wait:async()=>{},budget:b}),/budget/);assert.equal(calls,1);
  }finally{clearTimeout(timer);release();await result.catch(()=>{});}
 });
+
+for(const header of ['Tue, 31 Nov 2026 19:00:00 GMT','Foo, 06 Nov 2026 19:08:00 GMT']) {
+ for(const path of ['next tile','HTTP error','body failure','query split']) test(`gap calendar ignores malformed date across ${path}: ${header}`,async()=>{
+  const clock=fakeClock(),b=budget(),sent=[],queries=[];
+  const fetcher=async(_url,init)=>{
+   sent.push(clock.now());queries.push(init.body.get('data'));
+   if(sent.length!==1)return new Response(answer());
+   const headers={'retry-after':header};
+   if(path==='body failure')return new Response(new ReadableStream({start(controller){controller.error(new Error('body reset'));}}),{headers});
+   return new Response(path==='HTTP error'?'busy':path==='query split'?timeoutRemark:answer(),{status:path==='HTTP error'?503:200,headers});
+  };
+  const parts=await fetchTile(tile,{...clock,fetcher,budget:b});
+  if(path==='next tile')await fetchTile({...tile,key:'next'},{...clock,fetcher,budget:b});
+  assert.equal(sent.length,path==='query split'?5:2);assert.equal(sent[1]-sent[0],path==='HTTP error'||path==='body failure'?130000:10000);
+  assert.equal(parts.length,path==='query split'?4:1);assert.equal(!!b.providerWaitExceeded,false);
+  if(path==='HTTP error'||path==='body failure')assert.equal(queries[0],queries[1]);
+ });
+}
+for(const header of ['Sun, 01 Jan 2090 12:08:00 GMT','Sunday, 01-Jan-90 12:08:00 GMT','Sun Jan  1 12:08:00 2090'])
+ test(`gap calendar honors valid provider date through header capture and HTTP backoff: ${header}`,async()=>{
+  const clock=fakeClock('2090-01-01T12:00:00Z'),sent=[];
+  await fetchTile(tile,{...clock,budget:budget(),fetcher:async()=>{
+   sent.push(clock.now());return sent.length===1?new Response('busy',{status:503,headers:{'retry-after':header}}):new Response(answer());
+  }});
+  assert.equal(sent.length,2);assert.equal(sent[1]-sent[0],490000);
+ });
