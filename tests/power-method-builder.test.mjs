@@ -538,3 +538,29 @@ for(const [name,builder] of [['power methods',buildPowerMethods],['electricity s
     assert.equal(calls.length-first,1);assert.equal(result.manifest.downloadedBytes,bytes);assert.equal(result.manifest.coverage.length,8);
   },builder));
 }
+
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]])
+for(const changedQuery of [false,true])for(const corruption of ['unknown remark','execution-limit remark','invalid geometry'])
+test(`${name} redownloads ${changedQuery?'changed':'current'}-query checkpoint with ${corruption} instead of updating an invalid base`,()=>fixture(async({run,calls,options})=>{
+  await run(()=>response(sharedComplete));
+  const files=await readdir(options.cache),file=join(options.cache,files[0]);
+  const untouched=await Promise.all(files.slice(1).map(async name=>[name,await readFile(join(options.cache,name))]));
+  const saved=JSON.parse(await readFile(file,'utf8'));
+  if(changedQuery)saved.query=saved.query.replace(/\[timeout:\d+\]/,'[timeout:239]');
+  if(corruption==='unknown remark')saved.response.remark='runtime error: backend failure';
+  else if(corruption==='execution-limit remark')saved.response.remark='Query timed out';
+  else {
+    const bad=saved.response.elements.find(e=>e.type===(name==='power methods'?'way':'node'));
+    if(bad.type==='way')bad.geometry=[{}];else bad.lon=null;
+  }
+  await writeFile(file,JSON.stringify(saved));
+  const first=calls.length;
+  const result=await run((n,init)=>response(init.body.get('data').includes('[adiff:')?unchangedXml:sharedComplete));
+  assert.equal(calls.length-first,1,'invalid response is downloaded once rather than used as an incremental base');
+  assert.equal(calls[first].query.includes('[adiff:'),false);
+  assert.equal(result.manifest.coverage.length,8);assert.equal(result.manifest.complete,true);
+  const repaired=JSON.parse(await readFile(file,'utf8'));assert.deepEqual(repaired.response,sharedComplete);
+  for(const [name,bytes] of untouched)assert.deepEqual(await readFile(join(options.cache,name)),bytes,'other valid checkpoints are unchanged');
+  const before=calls.length;assert.equal((await run(()=>{throw new Error('Unexpected request');})).manifest.requests,0);
+  assert.equal(calls.length,before,'repaired checkpoint is reusable');
+},builder));

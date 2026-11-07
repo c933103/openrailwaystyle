@@ -163,7 +163,10 @@ export function createStagedSnapshot(config) {
       if(refresh)return undefined;
       try {
         const saved=JSON.parse(await readFile(file,'utf8'));
-        return typeof saved.query==='string'&&Array.isArray(saved.response?.elements)?saved:undefined;
+        if(typeof saved.query!=='string')return undefined;
+        // A rejected exact checkpoint must not re-enter through the older-query
+        // path: changes cannot certify a partial or invalid cached base.
+        completedResponse(saved.response);return saved;
       }catch{return undefined;}
     }
     async function save(file,value) {
