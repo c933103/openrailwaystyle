@@ -44,7 +44,10 @@ limit from failing promptly. The reader is released and no PBF is requested.
 The manual gap-tile extractor preserves a received `Retry-After` across
 interrupted bodies, exhausted retries, later tiles and query-limit subdivisions.
 It waits for the provider's minimum as well as its existing retry/spacing
-schedule. A requested pause longer than 15 minutes stops further requests in
+schedule. Header dates use wall time only at receipt; elapsed time carries the
+observed deadline through body reads and clock corrections. Early timer wakes
+are rechecked, and HTTP retries consume rather than restart that pause while
+retaining the existing extra ten-second spacing. A requested pause longer than 15 minutes stops further requests in
 that run rather than shortening the pause; remaining tiles retain their working
 copies or stay explicitly missing. This does not add retries, change queries,
 expand budgets or establish a provider-wide daily budget. Its byte-limit or
