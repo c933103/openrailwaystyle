@@ -1037,3 +1037,22 @@ test('source recovery release caches the existing recovery module and preserves 
  b.state='loaded';state.noteSourceData({tile:b});assert.equal(state.hasFailures(),false);
  assert.deepEqual([...next.stores.keys()],caches);assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+test('Help date refresh release upgrades the app offline while preserving previous tabs',async()=>{
+ const previous='20261106-geojson-parse-1',page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+ const version=page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];assert.notEqual(version,previous,'request-ordering changes need a fresh cache-first token');
+ const paths=['app.mjs','data-ages.mjs'],prior=new Map(paths.map(path=>[new URL(path,scope).pathname,`previous Help fixture ${path}`]));
+ const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
+ const old=startWorker({version:previous,assetBodies:prior,rejectExternal:true});await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+ const caches=[...old.stores.keys()];
+ const unchanged=startWorker({version:previous,stores:old.stores,assetBodies:current,rejectExternal:true});
+ await bounded(unchanged.request('./',true));
+ assert.equal(await(await unchanged.request('app.mjs?v='+previous)).text(),prior.get(new URL('app.mjs',scope).pathname),'unchanged token would keep the old application');
+ const next=startWorker({version,stores:old.stores,assetBodies:current,rejectExternal:true});await bounded(next.request('./',true));next.setOffline();
+ for(const path of paths){
+  assert.equal(await(await next.request(path+'?v='+version)).text(),current.get(new URL(path,scope).pathname));
+  assert.equal(await(await next.request(path+'?v='+previous)).text(),prior.get(new URL(path,scope).pathname));
+ }
+ assert.deepEqual([...next.stores.keys()],caches,'no shell-generation change or purge');
+ assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
