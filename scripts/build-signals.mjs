@@ -62,8 +62,9 @@ function retryAfterMs(value, now) {
 class SignalTransportError extends Error {
   constructor(cause) { super(cause?.message || String(cause), {cause}); this.name = 'SignalTransportError'; }
 }
-// A client/connection deadline says nothing about the spatial query's size.
-const timeoutLike = error => !(error instanceof SignalTransportError)
+// A transport deadline or malformed JSON says nothing about the spatial query's size.
+// JSON.parse can quote words such as timeout from an invalid response in its error.
+const timeoutLike = error => !(error instanceof SignalTransportError) && !(error instanceof SyntaxError)
   && !/^Overpass HTTP \d+:/.test(error.message) && /timed? ?out|timeout|memory|maxsize/i.test(error.message);
 
 export async function buildSignals({

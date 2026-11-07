@@ -630,3 +630,26 @@ for (const [name, header, valid, initial] of signalRetryDates) {
     assert.deepEqual(times, [0, valid ? 120000 : 30000], 'only a valid calendar date supplies a provider deadline');
   });
 }
+
+for (const kind of ['full', 'remainder']) {
+  for (const body of ['timeout', 'memory', 'maxsize']) {
+    test(`${kind} malformed JSON mentioning ${body} cannot create spatial checkpoints`, async t => {
+      const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+      const home = await seed(d, '2026-10-31T00:00:00Z'), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+      await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('complete cache needs no requests'); }});
+      const previous = await publishedFiles(d), saved = JSON.parse(await readFile(file, 'utf8'));
+      await rm(file);
+      if (kind === 'remainder') await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({...saved, query: signalQuery(home)}));
+      const checkpointFiles = async () => Object.fromEntries(await Promise.all((await readdir(d.cacheRoot)).sort().map(async name => [name, await readFile(new URL(name, d.cacheRoot), 'utf8')])));
+      const before = await checkpointFiles(), queries = [];
+      await assert.rejects(buildSignals({...d, ...quiet, fetcher: async (url, {body: request}) => {
+        queries.push(new URLSearchParams(String(request)).get('data'));
+        return {ok: true, status: 200, text: async () => body};
+      }}), SyntaxError);
+      assert.equal(queries.length, 1, 'malformed JSON is not evidence that the spatial query exceeded a limit');
+      assert.equal(queries[0], kind === 'full' ? combinedSignalQuery(home) : electricWithDirectionQuery(home, '2026-10-20T00:00:00Z'));
+      assert.deepEqual(await checkpointFiles(), before, 'no permanent subdivision or corrupt response is stored');
+      assert.deepEqual(await publishedFiles(d), previous, 'both prior publications remain intact');
+    });
+  }
+}
