@@ -22,6 +22,43 @@ const UPDATE_EVERY = Number(process.env.SIGNAL_UPDATE_DAYS || 7) * 86400000;
 // Legacy direction-only responses and remainders count as current for 28
 // days; they are folded into one stored region on first use.
 const AGE = 28 * 86400000;
+const MAX_RETRY_AFTER_MS = 300000;
+function retryAfterMs(value, now) {
+  const header = String(value ?? '').trim();
+  if (/^\d+$/.test(header)) return Number(header) * 1000;
+  const shortDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const longDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  let match = /^([A-Za-z]{3}), (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/.exec(header);
+  let days = shortDays, obsolete = false;
+  if (!match) {
+    match = /^([A-Za-z]+), (\d{2})-([A-Za-z]{3})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) GMT$/.exec(header);
+    if (match) { days = longDays; obsolete = true; }
+  }
+  if (!match) {
+    const old = /^([A-Za-z]{3}) ([A-Za-z]{3}) {1,2}(\d{1,2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})$/.exec(header);
+    if (old) match = [old[0], old[1], old[3], old[2], old[7], old[4], old[5], old[6]];
+  }
+  if (!match) return 0;
+  const [, weekday, dayText, monthText, yearText, hourText, minuteText, secondText] = match;
+  const month = months.indexOf(monthText.toLowerCase()), day = Number(dayText);
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
+  let year = Number(yearText);
+  if (obsolete) year += Math.floor((new Date(now).getUTCFullYear() + 50) / 100) * 100;
+  const date = new Date(0);
+  date.setUTCFullYear(year, month, day); date.setUTCHours(hour, minute, second, 0);
+  if (obsolete) {
+    const futureLimit = new Date(now); futureLimit.setUTCFullYear(futureLimit.getUTCFullYear() + 50);
+    if (date > futureLimit) { year -= 100; date.setUTCFullYear(year, month, day); }
+  }
+  // Date constructors normalize invalid dates too. Reject every changed field
+  // and unknown or inconsistent weekday before treating a header as a deadline.
+  if (month < 0 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day
+    || date.getUTCHours() !== hour || date.getUTCMinutes() !== minute || date.getUTCSeconds() !== second
+    || days.indexOf(weekday.toLowerCase()) !== date.getUTCDay()) return 0;
+  return Math.max(0, date.getTime() - now);
+}
+
 class SignalTransportError extends Error {
   constructor(cause) { super(cause?.message || String(cause), {cause}); this.name = 'SignalTransportError'; }
 }
@@ -35,9 +72,17 @@ export async function buildSignals({
   powerOutput = process.env.POWER_OUTPUT || 'power-data',
   cacheRoot = new URL('../.snapshot-cache/', import.meta.url),
   fetcher = globalThis.fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
-  now = Date.now, regions = startRegions().map(({box}) => box), log = console.log, warn = console.warn,
+  now = Date.now, clock = () => performance.now(), regions = startRegions().map(({box}) => box), log = console.log, warn = console.warn,
 } = {}) {
-  let requests = 0, downloaded = 0;
+  let requests = 0, downloaded = 0, providerNotBefore = 0, providerStopped = false;
+  async function pause(backoff) {
+    if (providerStopped) throw new Error('Signal Retry-After exceeds the five-minute wait budget');
+    do {
+      const wait = Math.max(backoff, providerNotBefore - clock());
+      if (wait > 0) await sleep(wait);
+      backoff = 0;
+    } while (providerNotBefore > clock());
+  }
   await mkdir(cacheRoot, {recursive: true});
   const read = async name => { try { return JSON.parse(await readFile(new URL(name, cacheRoot), 'utf8')); } catch { return undefined; } };
   // Both projections must accept a response before it is saved or reused, so
@@ -60,7 +105,7 @@ export async function buildSignals({
   }
   async function fetchText(query) {
     for (let attempt = 0; attempt < 3; attempt++) {
-      if (requests) await sleep(attempt ? 30000 : 10000);
+      if (requests) await pause(attempt ? 30000 : 10000);
       requests++;
       try {
         let response, text;
@@ -68,6 +113,11 @@ export async function buildSignals({
           response = await fetcher(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(200000),
             headers: {'User-Agent': 'RailwayAtlas-signals/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
         } catch (error) { throw new SignalTransportError(error); }
+        // Retain every response's header-time pause, even if a successful
+        // response body later fails. Subsequent wall-clock changes cannot shorten it.
+        const received = clock(), wait = retryAfterMs(response.headers?.get?.('retry-after'), now());
+        if (wait > MAX_RETRY_AFTER_MS) providerStopped = true;
+        if (wait > 0) providerNotBefore = Math.max(providerNotBefore, received + wait);
         if (!response.ok) {
           // The status is authoritative. Reading or awaiting disposal of an
           // unused error body must not replace it or stall its retry/failure path.

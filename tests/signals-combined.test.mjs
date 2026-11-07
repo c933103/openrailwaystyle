@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 import {buildSignals} from '../scripts/build-signals.mjs';
-import {quarters} from '../scripts/crossing-data.mjs';
+import {quarters, startRegions} from '../scripts/crossing-data.mjs';
 import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery} from '../scripts/signals-data.mjs';
 import {validateElectricitySignalsSnapshot} from '../scripts/build-electricity-signals.mjs';
 
@@ -495,4 +495,138 @@ for (const kind of ['full', 'remainder', 'changes']) {
       });
     }
   }
+}
+
+for (const kind of ['full', 'remainder', 'changes']) {
+  for (const format of ['seconds', 'date']) {
+    for (const first of ['http', 'body']) {
+      test(`${kind} signals honor ${format} Retry-After from a ${first} failure`, async t => {
+        const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+        const home = await seed(d, '2026-10-31T00:00:00Z'), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+        const saved = JSON.parse(await readFile(file, 'utf8'));
+        let expected = combinedSignalQuery(home);
+        if (kind === 'changes') {
+          await writeFile(file, JSON.stringify({...saved, generated: '2026-10-20T01:00:00Z'}));
+          expected = signalChangesQuery(home, '2026-10-20T00:00:00Z');
+        } else {
+          await rm(file);
+          if (kind === 'remainder') {
+            await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({...saved, query: signalQuery(home)}));
+            expected = electricWithDirectionQuery(home, '2026-10-20T00:00:00Z');
+          }
+        }
+        const start = quiet.now(), times = [], pauses = [];
+        let elapsed = 0;
+        const header = format === 'seconds' ? '120' : new Date(start + 120000).toUTCString();
+        const fetcher = async (url, {body}) => {
+          assert.equal(new URLSearchParams(String(body)).get('data'), expected);
+          times.push(elapsed);
+          if (times.length === 1) return {ok: first === 'body', status: first === 'body' ? 200 : 503, headers: new Headers({'retry-after': header}),
+            body: {cancel: () => Promise.resolve()}, text: async () => { elapsed += 40000; throw new Error('body failed after headers'); }};
+          return {ok: true, text: async () => kind === 'changes'
+            ? adiff('2026-10-31T11:00:00Z', `<action type="create">${node(DIRECTED_ELECTRIC)}</action>`)
+            : JSON.stringify({osm3s: {timestamp_osm_base: '2026-10-31T11:00:00Z'}, elements: kind === 'remainder' ? [DIRECTED_ELECTRIC] : [UNDIRECTED, ELECTRIC, DIRECTED_ELECTRIC]})};
+        };
+        await buildSignals({...d, ...quiet, now: () => start + elapsed, clock: () => elapsed,
+          sleep: async ms => { pauses.push(ms); elapsed += ms; }, fetcher});
+        assert.deepEqual(times, [0, 120000], 'no next request before the header-time provider deadline');
+        assert.deepEqual(pauses, [first === 'body' ? 80000 : 120000], 'time already spent reading the body is not waited twice');
+        const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+        assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+      });
+    }
+  }
+}
+
+for (const wallJump of [false, true]) {
+  test(`a successful signal response delays the next region through an early wake${wallJump ? ' and a wall-clock jump' : ''}`, async t => {
+    const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+    const home = await seed(d, '2026-10-31T00:00:00Z'), regions = startRegions().map(r => r.box);
+    const next = regions[regions.findIndex(b => b.join(',') === HOME) + 1];
+    assert.ok(next);
+    for (const region of [home, next]) await rm(new URL(`signals-v2-${region.join('_')}.json`, d.cacheRoot));
+    const start = quiet.now(), times = [], pauses = [];
+    let elapsed = 0, adjustment = 0;
+    const fetcher = async (url, {body}) => {
+      const query = new URLSearchParams(String(body)).get('data');
+      assert.equal(query, combinedSignalQuery(times.length ? next : home)); times.push(elapsed);
+      return {ok: true, headers: new Headers(times.length === 1 ? {'retry-after': new Date(start + 120000).toUTCString()} : {}),
+        text: async () => JSON.stringify({osm3s: {timestamp_osm_base: '2026-10-31T11:00:00Z'}, elements: times.length === 1 ? [UNDIRECTED, ELECTRIC] : []})};
+    };
+    await buildSignals({...d, ...quiet, now: () => start + elapsed + adjustment, clock: () => elapsed, fetcher,
+      sleep: async ms => { pauses.push(ms); elapsed += pauses.length === 1 ? ms / 2 : ms; if (wallJump) adjustment = 600000; }});
+    assert.deepEqual(times, [0, 120000]);
+    assert.deepEqual(pauses, [120000, 60000], 'early wake rechecks the monotonic provider deadline');
+  });
+}
+
+const excessiveSignalPauses = ['301', '9'.repeat(400), new Date(quiet.now() + 360000).toUTCString()];
+for (const [index, header] of excessiveSignalPauses.entries()) {
+  for (const first of ['http', 'body']) {
+    test(`excessive signal provider pause ${index} stops before another request after ${first} failure`, async t => {
+      const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+      const home = await seed(d, '2026-10-31T00:00:00Z');
+      await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('initial cache should be complete'); }});
+      const previous = await publishedFiles(d), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+      await rm(file);
+      let requests = 0, sleeps = 0;
+      const fetcher = async () => {
+        requests++;
+        return {ok: first === 'body', status: first === 'body' ? 200 : 503, headers: new Headers({'retry-after': header}), body: {cancel: () => Promise.resolve()},
+          text: async () => { throw new Error('body read failed'); }};
+      };
+      await assert.rejects(buildSignals({...d, ...quiet, clock: () => 0, sleep: async () => { sleeps++; }, fetcher}), /Retry-After exceeds/);
+      assert.equal(requests, 1); assert.equal(sleeps, 0);
+      assert.deepEqual(await publishedFiles(d), previous);
+      await assert.rejects(readFile(file), {code: 'ENOENT'});
+    });
+  }
+  test(`excessive signal pause ${index} permits final success when no request remains`, async t => {
+    const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+    const home = await seed(d, '2026-10-31T00:00:00Z');
+    await rm(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot));
+    let requests = 0;
+    await buildSignals({...d, ...quiet, clock: () => 0, sleep: async () => { throw new Error('no wait without another request'); },
+      fetcher: async () => {
+        requests++;
+        return {ok: true, headers: new Headers({'retry-after': header}), text: async () => JSON.stringify({osm3s: {timestamp_osm_base: '2026-10-31T11:00:00Z'}, elements: [UNDIRECTED, ELECTRIC]})};
+      }});
+    assert.equal(requests, 1);
+  });
+}
+
+const signalRetryDates = [
+  ['invalid February day', 'Sun, 31 Feb 2027 12:00:00 GMT', false],
+  ['invalid April day', 'Fri, 31 Apr 2027 12:00:00 GMT', false],
+  ['invalid weekday token', 'Foo, 28 Feb 2027 12:02:00 GMT', false],
+  ['weekday disagrees with date', 'Mon, 28 Feb 2027 12:02:00 GMT', false],
+  ['obsolete invalid day', 'Sunday, 31-Feb-27 12:00:00 GMT', false],
+  ['obsolete invalid weekday', 'Funday, 28-Feb-27 12:02:00 GMT', false],
+  ['asctime invalid day', 'Sun Feb 31 12:00:00 2027', false],
+  ['asctime invalid weekday', 'Foo Feb 28 12:02:00 2027', false],
+  ['valid IMF date', 'Sun, 28 Feb 2027 12:02:00 GMT', true],
+  ['valid obsolete date', 'Sunday, 28-Feb-27 12:02:00 GMT', true],
+  ['valid asctime date', 'Sun Feb 28 12:02:00 2027', true],
+];
+for (const year of [2028, 2090, 2100]) {
+  const start = Date.parse(`${year}-01-01T12:00:00Z`), end = new Date(start + 120000);
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const header = `${weekdays[end.getUTCDay()]}, 01-Jan-${String(year).slice(-2)} 12:02:00 GMT`;
+  signalRetryDates.push([`valid obsolete year ${year}`, header, true, start]);
+}
+for (const [name, header, valid, initial] of signalRetryDates) {
+  test(`signal provider pause validates ${name}`, async t => {
+    const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+    const start = initial ?? Date.parse('2027-02-28T12:00:00Z'), home = await seed(d, new Date(start).toISOString());
+    await rm(new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot));
+    let elapsed = 0;
+    const times = [];
+    await buildSignals({...d, ...quiet, now: () => start + elapsed, clock: () => elapsed,
+      sleep: async ms => { elapsed += ms; }, fetcher: async () => {
+        times.push(elapsed);
+        if (times.length === 1) return {ok: false, status: 503, headers: new Headers({'retry-after': header}), body: {cancel: () => Promise.resolve()}};
+        return {ok: true, status: 200, text: async () => JSON.stringify({osm3s: {timestamp_osm_base: new Date(start).toISOString().replace('.000Z', 'Z')}, elements: [UNDIRECTED, ELECTRIC]})};
+      }});
+    assert.deepEqual(times, [0, valid ? 120000 : 30000], 'only a valid calendar date supplies a provider deadline');
+  });
 }
