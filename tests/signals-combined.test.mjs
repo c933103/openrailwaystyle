@@ -440,3 +440,59 @@ for (const kind of ['full', 'remainder', 'changes']) {
     }
   }
 }
+
+for (const kind of ['full', 'remainder', 'changes']) {
+  for (const status of [403, 503]) {
+    for (const cleanup of ['resolves', 'rejects', 'throws', 'pending']) {
+      test(`${kind} signal HTTP ${status} remains authoritative when body cleanup ${cleanup}`, async t => {
+        const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+        const home = await seed(d, '2026-10-31T00:00:00Z');
+        await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('initial cache should be complete'); }});
+        const previous = await publishedFiles(d), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+        const saved = JSON.parse(await readFile(file, 'utf8'));
+        let expected = combinedSignalQuery(home);
+        if (kind === 'changes') {
+          await writeFile(file, JSON.stringify({...saved, generated: '2026-10-20T01:00:00Z'}));
+          expected = signalChangesQuery(home, '2026-10-20T00:00:00Z');
+        } else {
+          await rm(file);
+          if (kind === 'remainder') {
+            await writeFile(new URL(`signals-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify({...saved, query: signalQuery(home)}));
+            expected = electricWithDirectionQuery(home, '2026-10-20T00:00:00Z');
+          }
+        }
+        const cacheFiles = async () => Object.fromEntries(await Promise.all((await readdir(d.cacheRoot)).sort().map(async name => [name, await readFile(new URL(name, d.cacheRoot), 'utf8')])));
+        const before = await cacheFiles(), queries = [];
+        let reads = 0, cancels = 0;
+        const fetcher = async (url, {body}) => {
+          const query = new URLSearchParams(String(body)).get('data'); queries.push(query);
+          assert.equal(query, expected);
+          return {ok: false, status,
+            body: {cancel() {
+              cancels++;
+              if (cleanup === 'throws') throw new Error('cleanup failed');
+              if (cleanup === 'rejects') return Promise.reject(new Error('cleanup failed'));
+              if (cleanup === 'pending') return new Promise(() => {});
+              return Promise.resolve();
+            }},
+            text() {
+              reads++;
+              return cleanup === 'pending' ? new Promise(() => {}) : Promise.reject(new Error('error body read failed'));
+            }};
+        };
+        let timer;
+        try {
+          await Promise.race([
+            assert.rejects(buildSignals({...d, ...quiet, fetcher}), new RegExp(`Overpass HTTP ${status}`)),
+            new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('HTTP classification waited for an unused response body')), 1000); }),
+          ]);
+        } finally { clearTimeout(timer); }
+        assert.deepEqual(queries, [expected, expected, expected], 'the existing three-attempt HTTP policy is unchanged');
+        assert.equal(reads, 0, 'unused error bodies are never consumed');
+        assert.equal(cancels, 3, 'each error response receives best-effort cleanup');
+        assert.deepEqual(await cacheFiles(), before);
+        assert.deepEqual(await publishedFiles(d), previous);
+      });
+    }
+  }
+}
