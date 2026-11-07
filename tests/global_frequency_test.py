@@ -2227,6 +2227,70 @@ class GlobalFrequency(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(pipeline.retry_after_delay(value, now), expected)
 
+    def test_retry_after_calendar_rejects_invalid_http_dates(self):
+        now = pipeline.dt.datetime(2026, 11, 7, tzinfo=pipeline.dt.timezone.utc).timestamp()
+        for value in ['Mon, 07 Nov 2026 00:10:00 GMT', 'Foo, 07 Nov 2026 00:10:00 GMT',
+                      'Wed, 31 Feb 2027 00:10:00 GMT', 'Sat, 07 Nov 2026 24:00:00 GMT',
+                      'Sat, 07 Nov 2026 00:10:00 +0000', 'Sat, 07 Nov 2026 00:10:00 UTC',
+                      '07 Nov 2026 00:10:00 GMT', 'Sat, 7 Nov 2026 00:10:00 GMT']:
+            with self.subTest(value=value):
+                self.assertIsNone(pipeline.retry_after_delay(value, now))
+
+    def test_retry_after_calendar_obsolete_forms_follow_utc_and_rolling_century(self):
+        now = pipeline.dt.datetime(2090, 1, 1, 12, tzinfo=pipeline.dt.timezone.utc).timestamp()
+        for value in ['Sun, 01 Jan 2090 12:08:00 GMT', 'Sunday, 01-Jan-90 12:08:00 GMT',
+                      'Sun Jan  1 12:08:00 2090']:
+            with self.subTest(value=value):
+                self.assertEqual(pipeline.retry_after_delay(value, now), 480)
+        # The 50-year boundary is an instant, not only a calendar year.
+        now = pipeline.dt.datetime(2040, 1, 1, 12, tzinfo=pipeline.dt.timezone.utc).timestamp()
+        self.assertEqual(pipeline.retry_after_delay('Sunday, 01-Jan-90 12:00:00 GMT', now),
+                         pipeline.dt.datetime(2090, 1, 1, 12, tzinfo=pipeline.dt.timezone.utc).timestamp() - now)
+        self.assertEqual(pipeline.retry_after_delay('Monday, 01-Jan-90 12:00:01 GMT', now), 0)
+        self.assertIsNone(pipeline.retry_after_delay('Sunday, 01-Jan-90 12:00:01 GMT', now))
+
+    def test_retry_after_calendar_invalid_weekday_cannot_create_a_persistent_pause(self):
+        from urllib.error import HTTPError
+        now = pipeline.dt.datetime(2026, 11, 7, tzinfo=pipeline.dt.timezone.utc).timestamp()
+        url = 'https://operator.example/rail.zip'
+        for number, header in enumerate(['Mon, 07 Nov 2026 00:10:00 GMT', 'Foo, 07 Nov 2026 00:10:00 GMT']):
+            with self.subTest(header=header):
+                state = pipeline.retry.RetryAfterCache(self.root / f'invalid-date-cache-{number}', clock=lambda: now)
+                def unavailable(request, timeout=45, **kwargs):
+                    raise HTTPError(request.full_url, 503, 'Unavailable', {'Retry-After':header}, io.BytesIO())
+                with patch.object(pipeline, 'urlopen', side_effect=unavailable) as request, \
+                     patch.object(pipeline.time, 'sleep') as sleep:
+                    with self.assertRaises(HTTPError) as caught:
+                        pipeline.get(url, retry_state=state)
+                self.assertEqual(request.call_count, 3)
+                self.assertEqual([call.args[0] for call in sleep.call_args_list], [1.0, 2.0])
+                self.assertFalse(state.path(url).exists())
+                self.assertFalse(hasattr(caught.exception, 'retry_after_not_before'))
+                caught.exception.close()
+
+    def test_retry_after_calendar_valid_obsolete_deadline_is_retained_without_another_request(self):
+        from urllib.error import HTTPError
+        now = pipeline.dt.datetime(2090, 1, 1, 12, tzinfo=pipeline.dt.timezone.utc).timestamp()
+        url = 'https://operator.example/rail.zip'
+        for number, header in enumerate(['Sun, 01 Jan 2090 12:08:00 GMT',
+                                          'Sunday, 01-Jan-90 12:08:00 GMT', 'Sun Jan  1 12:08:00 2090']):
+            with self.subTest(header=header):
+                state = pipeline.retry.RetryAfterCache(self.root / f'valid-date-cache-{number}', clock=lambda: now)
+                def unavailable(request, timeout=45, **kwargs):
+                    raise HTTPError(request.full_url, 503, 'Unavailable', {'Retry-After':header}, io.BytesIO())
+                with patch.object(pipeline, 'urlopen', side_effect=unavailable) as request, \
+                     patch.object(pipeline.time, 'sleep') as sleep:
+                    with self.assertRaises(HTTPError) as caught:
+                        pipeline.get(url, retry_state=state)
+                    self.assertEqual(request.call_count, 1)
+                    sleep.assert_not_called()
+                    self.assertEqual(state.read(url)['not_before'], now + 480)
+                    self.assertEqual(caught.exception.retry_after_not_before, now + 480)
+                    caught.exception.close()
+                    with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+                        pipeline.get(url, retry_state=state)
+                    self.assertEqual(request.call_count, 1, 'retained hint stops the next acquisition too')
+
     def test_short_retry_after_date_waits_until_the_publisher_deadline(self):
         from email.utils import formatdate
         from urllib.error import HTTPError

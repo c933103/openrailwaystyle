@@ -329,7 +329,10 @@ manifest, inventory and empty standalone tile index, not per-feed archives.
 
 On the existing retryable HTTP statuses (408, 425, 429, 500, 502, 503 and 504),
 a positive numeric or HTTP-date `Retry-After` with a representable finite
-epoch deadline becomes a per-endpoint receipt.
+epoch deadline becomes a per-endpoint receipt. HTTP dates must be a valid IMF,
+RFC850 or asctime calendar date with a consistent weekday. RFC850 two-digit years
+use the rolling 50-year rule; asctime is UTC. Malformed dates use the ordinary
+backoff and do not create a receipt.
 The final attempt records the hint too. An unchanged source is not contacted
 before its retained deadline, including conditional GET, range reads, full ZIP
 downloads and already known redirect targets. Hints up to eight seconds keep
