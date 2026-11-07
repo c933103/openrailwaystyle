@@ -27,7 +27,8 @@ test('the facility snapshot build uses the long busy-server wait',()=>{
   assert.match(facilities,/overpassBusy\(error\)\?overpassRetryDelayMs\(attempt\)/);
   assert.match(facilities,/rememberProviderPause\(response\);\s*const text=await response\.text\(\)/);
   assert.match(facilities,/if\(providerWaitExceeded\)throw providerPauseError\(\);/);
-  assert.match(facilities,/while\(retryNotBefore>Date\.now\(\)\)await sleep\(retryNotBefore-Date\.now\(\)\);/);
+  assert.match(facilities,/const earliest=Math\.max\(performance\.now\(\)\+delay,retryNotBefore\);/);
+  assert.match(facilities,/do\{await sleep\(Math\.max\(0,earliest-performance\.now\(\)\)\);\}while\(performance\.now\(\)<earliest\);/);
   // Whole-builder behavior, including interrupted bodies and the long-pause
   // stop, is exercised in power-facility-builder.test.mjs.
   assert.match(facilities,/retryAfter:response\.headers\.get\('retry-after'\)/);
