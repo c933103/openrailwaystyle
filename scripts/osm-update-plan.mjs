@@ -23,7 +23,8 @@ import {execFileSync} from 'node:child_process';
 // (touched by every asset-version bump) are left out on purpose: those
 // rebuilds are started by hand.
 const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
-const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs'];
+const PROVIDER_DATES = ['scripts/retry-after.mjs'];
+const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs', ...PROVIDER_DATES];
 // The railway-ways store's reader and views, which the datasets built from it use.
 const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];
 export const OSM_UPDATES = Object.freeze([
@@ -37,9 +38,9 @@ export const OSM_UPDATES = Object.freeze([
   {id:'street-running', workflow:'street-running.yml', due:{weekly:[0], hour:3},
     paths:['scripts/build-street-running.mjs', 'scripts/overpass-adiff.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
-    paths:['scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'heritage', workflow:'heritage.yml', due:{monthly:3, hour:21},
     paths:['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},
@@ -61,7 +62,7 @@ export const OSM_UPDATES = Object.freeze([
   // completed region responses and bring each up to date with its changes
   // once a week; the workflow republishes only when the data changed.
   {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
-    paths:['scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
+    paths:[...PROVIDER_DATES, 'scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
       'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
       'scripts/build-signals.mjs', 'scripts/signals-data.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-rows.mjs', 'scripts/electricity-signal-data.mjs',
       'scripts/build-electricity-signals.mjs', 'styles/power-facilities.mjs', 'styles/han-region.mjs', 'styles/pbf-utf8.mjs']},

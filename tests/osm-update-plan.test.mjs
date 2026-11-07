@@ -126,3 +126,9 @@ test('traction runs every six hours but republishes and redeploys only when its 
   assert.ok(publish.indexOf('changed=false') < publish.indexOf('git push --force'), 'an unchanged result is not pushed');
   assert.match(workflow, /- name: Redeploy the site with the new facilities\n\s+if: github\.ref == 'refs\/heads\/main' && steps\.publish\.outputs\.changed == 'true'/);
 });
+
+
+test('shared provider calendar changes rebuild exactly its current dataset consumers', () => {
+  assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/retry-after.mjs')).map(entry => entry.id),
+    ['conveying', 'aerialways', 'branch-lines', 'service-routes', 'traction']);
+});

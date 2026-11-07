@@ -621,6 +621,14 @@ over five minutes stops before another request instead of retrying early; a fina
 successful response can still complete the run when no further request is needed.
 This is a per-run pause, not a durable cross-run cooldown or a provider-wide budget.
 
+Signals, conveying/aerialways, the branch/Service fallback and the staged power
+methods/electricity-signals builders share calendar-validated HTTP-date parsing.
+Impossible dates and unknown or inconsistent weekdays are ignored, leaving each
+client's existing backoff in place. RFC850 two-digit years use the rolling
+50-year interpretation, and asctime dates are UTC rather than local time.
+Changes to the shared parser are tracked as builder changes for those five
+scheduled datasets; their existing schedules and serial run order stay unchanged.
+
 ### Required aerialway snapshot at deployment
 
 Aerialway geometry comes only from `aerialway-data`. The site build must fetch

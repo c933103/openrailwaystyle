@@ -56,6 +56,7 @@ on:
       - scripts/railway-ways-release.mjs
       - scripts/railway-ways.mjs
       - scripts/refresh-snapshot-cache.mjs
+      - scripts/retry-after.mjs
       - scripts/service-acquisition-trigger.mjs
       - scripts/service-geometry-health.mjs
       - scripts/service-geometry.mjs
