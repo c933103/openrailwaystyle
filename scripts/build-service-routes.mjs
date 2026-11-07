@@ -10,6 +10,7 @@
 // in, each run refreshes the stage checked longest ago if it is older than
 // REFRESH_DAYS, which also removes deleted and retagged routes.
 import {responseChunks} from './response-chunks.mjs';
+import {createStagedProviderPause} from './staged-provider-pause.mjs';
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync, gunzipSync} from 'node:zlib';
@@ -30,11 +31,11 @@ const RUN_BUDGET = Number(process.env.BUDGET_BYTES || 50_000_000);
 // about 1 GB a day (both use it).
 const DAY_BUDGET = Number(process.env.DAY_BUDGET_BYTES || 100_000_000);
 const REFRESH_DAYS = Number(process.env.REFRESH_DAYS || 14);
-// No new request after this long, so a run publishes its progress well
-// before the job's 150-minute limit (one request with its retries can take
-// about 35 minutes).
+// Each pause plus the next five-minute request must fit this acquisition
+// window, leaving the rest of the existing 150-minute job for publication.
 const TIME_BUDGET_MS = Number(process.env.TIME_BUDGET_MINUTES || 100) * 60000;
-const started = Date.now();
+const started = performance.now();
+const providerPause = createStagedProviderPause({budgetMs: TIME_BUDGET_MS});
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 let downloaded = 0, requests = 0;
 
@@ -181,12 +182,13 @@ async function overpass(query) {
     // for or start another request once its bytes have exhausted this run.
     if (downloaded >= BUDGET_BYTES) return BUDGET;
     // A quiet interval between requests, growing after each failure.
-    await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
+    await providerPause.wait(attempt ? 60000 * attempt : requests ? 15000 : 0);
     requests++;
     let failureText;
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-service-routes/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
+      providerPause.observe(response);
       // Stop at the remaining allowance, counting every received byte. A fresh
       // region is oversized only if this successful response alone exceeds a
       // full run's allowance. HTTP error bodies, earlier failed-response bytes
@@ -227,7 +229,7 @@ async function overpass(query) {
 let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
 while (current.pending.length) {
   if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-  if (Date.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((Date.now() - started) / 60000)} minutes)`; break; }
+  if (performance.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((performance.now() - started) / 60000)} minutes)`; break; }
   const item = current.pending[0], part = stage.parts[item.part];
   let result;
   try { result = await overpass(partQuery(part, item.box)); }
