@@ -1038,10 +1038,13 @@ test('source recovery release caches the existing recovery module and preserves 
  assert.deepEqual([...next.stores.keys()],caches);assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
-test('Help date refresh release upgrades the app offline while preserving previous tabs',async()=>{
- const previous='20261106-geojson-parse-1',page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+for (const [release,previous,paths] of [
+ ['Help date refresh','20261106-geojson-parse-1',['app.mjs','data-ages.mjs']],
+ ['request-pool HTTP cleanup','20261107-help-dates-order-1',['app.mjs','vendor/tile-labels.js']],
+]) test(`${release} release upgrades exact app bytes offline while preserving previous tabs`,async()=>{
+ const page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  const version=page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];assert.notEqual(version,previous,'request-ordering changes need a fresh cache-first token');
- const paths=['app.mjs','data-ages.mjs'],prior=new Map(paths.map(path=>[new URL(path,scope).pathname,`previous Help fixture ${path}`]));
+ const prior=new Map(paths.map(path=>[new URL(path,scope).pathname,`previous ${release} fixture ${path}`]));
  const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
  const old=startWorker({version:previous,assetBodies:prior,rejectExternal:true});await bounded(old.lifecycle('install'));await old.lifecycle('activate');
  const caches=[...old.stores.keys()];
