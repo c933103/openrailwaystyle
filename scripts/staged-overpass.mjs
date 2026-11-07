@@ -82,37 +82,39 @@ export function createStagedSnapshot(config) {
     return manifest;
   }
 
-  async function build({api=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter',output=process.env.POWER_OUTPUT||'power-data',cache='.snapshot-cache',refresh=process.env.POWER_REFRESH==='1',fetcher=globalThis.fetch,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),now=Date.now,limits={},log=console.log}={}) {
+  async function build({api=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter',output=process.env.POWER_OUTPUT||'power-data',cache='.snapshot-cache',refresh=process.env.POWER_REFRESH==='1',fetcher=globalThis.fetch,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),now=Date.now,clock=()=>performance.now(),limits={},log=console.log}={}) {
     const policy={...STAGED_LIMITS,...limits};
     for(const [key,value] of Object.entries(policy))if(!Number.isSafeInteger(value)||value<0||['attempts','requests','bytes','elapsedMs','timeoutMs'].includes(key)&&value===0||value>STAGED_LIMITS[key])throw fatal(`Invalid ${noun} limit: ${key}`,'budget');
     await mkdir(cache,{recursive:true});await mkdir(output,{recursive:true});
-    const started=now(),features=new Map(),coverage=[];let downloaded=0,requests=0;
-    const remaining=()=>policy.elapsedMs-(now()-started);
+    const started=clock(),features=new Map(),coverage=[];let downloaded=0,requests=0;
+    const remaining=()=>policy.elapsedMs-(clock()-started);
     const checkTime=()=>{if(remaining()<=0)throw fatal(`${Noun} elapsed-time budget exceeded`,'budget');};
     // Every response can ask for a pause, even a success whose body later
-    // fails. Retain its header-time deadline for the next actual request.
+    // fails. Keep header-time deadlines and run duration on elapsed time; wall
+    // time is only for HTTP dates, cache age and publication timestamps.
     let providerNotBefore=0,providerStopped=false;
     const requireDownloadBudget=()=>{if(downloaded>=policy.bytes)throw fatal(`${Noun} download budget exceeded`,'budget');};
     const pause=()=>delay(policy.pauseMs);
     async function delay(ms) {
       checkTime();requireDownloadBudget();
       if(providerStopped)throw fatal(`${Noun} Retry-After exceeds wait budget`,'budget');
+      const deadline=Math.max(clock()+ms,providerNotBefore);
       do {
-        const wait=Math.max(ms,providerNotBefore-now());
+        const wait=Math.max(0,deadline-clock());
         if(wait>=remaining())throw fatal(`${Noun} elapsed-time budget exceeded before retry`,'budget');
         if(wait>0)await sleep(wait);
-        checkTime();ms=0;
-      }while(providerNotBefore>now());
+        checkTime();
+      }while(deadline>clock());
     }
     async function request(query,{text=false}={}) {
       checkTime();requireDownloadBudget();
       if(requests>=policy.requests)throw fatal(`${Noun} request budget exceeded`,'budget');
-      const signal=AbortSignal.timeout(Math.max(1,Math.min(policy.timeoutMs,remaining())));
+      const signal=AbortSignal.timeout(Math.max(1,Math.floor(Math.min(policy.timeoutMs,remaining()))));
       requests++;
       let response;
       try {
         response=await fetcher(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':`${config.userAgent} (+https://github.com/c933103/openrailwaystyle)`},signal,redirect:'error'});
-        const received=now(),wait=retryAfter(response.headers?.get('retry-after'),received);
+        const received=clock(),wait=retryAfter(response.headers?.get('retry-after'),now());
         if(wait>policy.maxRetryAfterMs)providerStopped=true;
         if(wait>0)providerNotBefore=Math.max(providerNotBefore,received+wait);
         // HTTP classification precedes parsing; a 403 saying "timeout" is not

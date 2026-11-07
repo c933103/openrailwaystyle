@@ -67,6 +67,15 @@ transport errors, including timeout or memory wording, retry the same full query
 with the existing four-attempt backoff; they never create a spatial split
 checkpoint. Previously recorded splits are not reclassified without evidence.
 
+The shared conductor-rail/charging and manual electricity-signal acquisition
+engine also measures run duration, provider pauses and local retry/quiet
+intervals with elapsed time. Wall time remains only for interpreting HTTP dates,
+cache age and publication timestamps. It captures the provider deadline before
+body consumption and rechecks early timer wakes. Existing three-attempt,
+five-minute provider-pause, request, byte and one-hour run limits remain binding;
+complete-only publication and resumable checkpoints are unchanged. This does
+not change queries, schedules, stored-way builds or the combined signal builder.
+
 The loading-gauge maintenance list keeps its existing three-attempt ceiling,
 initial five-second pause and one-minute retry baseline. It also honors a
 longer `Retry-After` captured at response headers, even if reading the body
