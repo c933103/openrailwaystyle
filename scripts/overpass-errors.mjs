@@ -1,3 +1,4 @@
+import {retryAfterMs} from './retry-after.mjs';
 // Node fetch wraps DNS/socket/TLS failures in the unhelpful "fetch failed".
 // Log bounded system error codes (including AggregateError children), without
 // traversing arbitrary objects or dumping request headers/credentials.
@@ -27,10 +28,7 @@ export const OVERPASS_RETRY_MINUTES = Object.freeze([2, 5, 10]);
 const RETRY_AFTER_CAP_MS = 15 * 60_000;
 export function overpassRetryDelayMs(retry, retryAfter, now = Date.now()) {
   const scheduled = OVERPASS_RETRY_MINUTES[Math.min(retry, OVERPASS_RETRY_MINUTES.length - 1)] * 60_000;
-  let asked = 0;
-  const value = String(retryAfter ?? '').trim();
-  if (/^\d+$/.test(value)) asked = Number(value) * 1000;
-  else if (value) { const date = Date.parse(value); if (Number.isFinite(date)) asked = date - now; }
+  const asked = retryAfterMs(retryAfter, now);
   return Math.max(scheduled, Math.min(Math.max(asked, 0), RETRY_AFTER_CAP_MS));
 }
 // Server busy (429, 502–504) or no connection at all: worth waiting for.

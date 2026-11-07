@@ -34,3 +34,13 @@ test('the facility snapshot build uses the long busy-server wait',()=>{
   assert.match(facilities,/const attempts=OVERPASS_RETRY_MINUTES\.length\+1/);
 });
 
+
+for(const header of ['Sun, 31 Feb 2027 12:00:00 GMT','Foo, 28 Feb 2027 12:08:00 GMT','Mon, 28 Feb 2027 12:08:00 GMT'])
+ test(`shared busy backoff ignores malformed calendar: ${header}`,()=>{
+  const now=Date.parse('2027-02-28T12:00:00Z');
+  assert.equal(overpassRetryDelayMs(0,header,now),120000);assert.equal(overpassRetryDelayMs(1,header,now),300000);
+ });
+for(const header of ['Sunday, 01-Jan-90 12:08:00 GMT','Sun Jan  1 12:08:00 2090'])
+ test(`shared busy backoff preserves calendar century and UTC: ${header}`,()=>{
+  assert.equal(overpassRetryDelayMs(0,header,Date.parse('2090-01-01T12:00:00Z')),480000);
+ });
