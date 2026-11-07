@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 import {buildSignals} from '../scripts/build-signals.mjs';
+import {quarters} from '../scripts/crossing-data.mjs';
 import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery} from '../scripts/signals-data.mjs';
 import {validateElectricitySignalsSnapshot} from '../scripts/build-electricity-signals.mjs';
 
@@ -323,3 +324,68 @@ for (const kind of ['combined', 'combined-stale', 'legacy', 'remainder']) {
     }
   }
 }
+
+const HOME_BOX = HOME.split(',').map(Number);
+const HOME_QUARTERS = [[45, 0, 67.5, 22.5], [45, 22.5, 67.5, 45], [67.5, 0, 90, 22.5], [67.5, 22.5, 90, 45]];
+const tooDeep = [];
+let deepestChangeBox = HOME_BOX;
+for (let depth = 0; depth < 6; depth++) {
+  const [first, ...rest] = quarters(deepestChangeBox);
+  tooDeep.push(...rest); deepestChangeBox = first;
+}
+tooDeep.push(deepestChangeBox);
+const invalidChangePartitions = [
+  ['duplicate quarter replacing a missing quarter', [HOME_QUARTERS[0], HOME_QUARTERS[0], HOME_QUARTERS[2], HOME_QUARTERS[3]]],
+  ['overlap balanced by a gap', [...HOME_QUARTERS.slice(0, 2), [67.5, 0, 90, 30], [67.5, 7.5, 90, 22.5]]],
+  ['non-quadtree strips', [[45, 0, 90, 22.5], [45, 22.5, 90, 45]]],
+  ['coerced coordinate strings', HOME_QUARTERS.map(p => p.map(String))],
+  ['subdivision beyond the existing depth budget', tooDeep],
+];
+
+for (const [name, parts] of invalidChangePartitions) {
+  for (const repaired of [true, false]) {
+    test(`signal change partition rejects ${name} (${repaired ? 'full-region repair' : 'failed repair'})`, async t => {
+      const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+      const home = await seed(d, '2026-10-31T00:00:00Z');
+      await buildSignals({...d, ...quiet, fetcher: async () => { throw new Error('initial cache should be complete'); }});
+      const previous = await publishedFiles(d), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+      const saved = JSON.parse(await readFile(file, 'utf8'));
+      await writeFile(file, JSON.stringify({...saved, generated: '2026-10-20T01:00:00Z', changeParts: parts}));
+      const before = await readFile(file, 'utf8'), expected = signalChangesQuery(home, '2026-10-20T00:00:00Z');
+      const answer = fakeOverpass(query => {
+        assert.equal(query, expected, 'invalid subdivision must fall back to the complete region changes, not re-download its data');
+        return repaired ? {raw: adiff('2026-10-31T11:00:00Z', `<action type="create">${node(DIRECTED_ELECTRIC)}</action>`)} : {status: 502};
+      });
+      if (!repaired) {
+        await assert.rejects(buildSignals({...d, ...quiet, fetcher: answer.fetcher}), /Overpass HTTP 502/);
+        assert.deepEqual(answer.queries, [expected, expected, expected]);
+        assert.equal(await readFile(file, 'utf8'), before);
+        assert.deepEqual(await publishedFiles(d), previous);
+        return;
+      }
+      await buildSignals({...d, ...quiet, fetcher: answer.fetcher});
+      assert.deepEqual(answer.queries, [expected]);
+      const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+      assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+      const updated = JSON.parse(await readFile(file, 'utf8'));
+      assert.equal(updated.changeParts, undefined);
+      assert.equal(updated.response.osm3s.timestamp_osm_base, '2026-10-31T11:00:00Z');
+    });
+  }
+}
+
+test('a same-area duplicate partition cannot silently lose a signal created in its missing quarter', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-31T00:00:00Z'), file = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+  const saved = JSON.parse(await readFile(file, 'utf8'));
+  await writeFile(file, JSON.stringify({...saved, generated: '2026-10-20T01:00:00Z', changeParts: invalidChangePartitions[0][1]}));
+  const added = {...DIRECTED_ELECTRIC, lat: 50, lon: 30};
+  const answer = fakeOverpass(query => {
+    const [s, w, n, e] = box(query).split(',').map(Number);
+    return {raw: adiff('2026-10-31T11:00:00Z', added.lat >= s && added.lat <= n && added.lon >= w && added.lon <= e ? `<action type="create">${node(added)}</action>` : '')};
+  });
+  await buildSignals({...d, ...quiet, fetcher: answer.fetcher});
+  const electric = JSON.parse(await readFile(join(d.powerOutput, 'electricity-signals.geojson'), 'utf8'));
+  assert.deepEqual(electric.features.map(f => f.id), ['node-2', 'node-3']);
+  assert.deepEqual(answer.queries, [signalChangesQuery(HOME_BOX, '2026-10-20T00:00:00Z')]);
+});
