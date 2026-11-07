@@ -9,6 +9,33 @@ import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {streetRunning} from '../styles/street-running.mjs';
 const query='[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;';
 const CHANGE_MS=360000;
+const acquisitionUntil=performance.now()+45*60000;
+let providerNotBefore=0;
+// Keep a provider pause across change/selection/full requests, even when a
+// successful response body later fails. Wall time is used only for HTTP dates.
+function observePause(response){
+  const receivedAt=performance.now(),header=String(response.headers.get('retry-after')??'').trim();
+  let pause=0;
+  if(/^\d+$/.test(header))pause=Number(header)*1000;
+  else if(/^(?:[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]+, \d{2}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2} GMT|[A-Za-z]{3} [A-Za-z]{3} {1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4})$/.test(header)){
+    const date=Date.parse(header.endsWith(' GMT')?header:`${header} GMT`);
+    if(Number.isFinite(date))pause=Math.max(0,date-Date.now());
+  }
+  providerNotBefore=Math.max(providerNotBefore,receivedAt+pause);
+}
+function requireRequestTime(requestMs,scheduledWait=0,limit=acquisitionUntil){
+  const now=performance.now(),wait=Math.max(scheduledWait,providerNotBefore-now);
+  if(!Number.isFinite(wait)||now+wait+requestMs>Math.min(limit,acquisitionUntil))
+    throw new Error('Street-running acquisition deferred: provider pause and request do not fit the available time budget');
+}
+async function waitForProvider(requestMs,limit=acquisitionUntil){
+  while(true){
+    requireRequestTime(requestMs,0,limit);
+    const remaining=providerNotBefore-performance.now();
+    if(remaining<=0)return;
+    await new Promise(resolve=>setTimeout(resolve,remaining));
+  }
+}
 const api='https://overpass-api.de/api/interpreter', headers={'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'};
 const toFeatures=elements=>elements.flatMap(e=>{
   if(e.type!==undefined&&e.type!=='way') return [];
@@ -37,27 +64,31 @@ if(process.env.PREVIOUS_DATA) {
   // way to the full download. Worst case before the build: 6 + 2 (pause) +
   // 3 × 11 (full attempts) + 2 × 2 (pauses) = 45 minutes, within the
   // workflow's time limit.
-  const changesUntil=Date.now()+CHANGE_MS;
+  const changesUntil=performance.now()+CHANGE_MS;
   if(previous) update=await updateElements({...previous,query,pick,validate:toFeatures,fetchText:async request=>{
-    const left=changesUntil-Date.now();
+    await waitForProvider(1,changesUntil);
+    const left=Math.floor(changesUntil-performance.now());
     if(left<=0) throw new Error('The change requests\' six minutes are used');
     const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:request}),signal:AbortSignal.timeout(left),headers});
+    observePause(response);
     if(!response.ok) throw Object.assign(new Error(`Overpass HTTP ${response.status}`),{status:response.status});
     return response.text();
   },failed:error=>{changeError=error;}});
 }
 // A server that refused the change request gets the same two-minute pause
 // as between full attempts before the full download.
-if(!update && changeError?.status) { console.log('Waiting two minutes before the full download'); await new Promise(r=>setTimeout(r,120000)); }
+if(!update && changeError?.status) { requireRequestTime(660000,120000); console.log('Waiting at least two minutes before the full download'); await new Promise(r=>setTimeout(r,120000)); }
 if(update) console.log(`Changes since ${update.since}: ${update.upserts} added or changed, ${update.deletes} removed; query change: ${update.added} added, ${update.dropped} dropped`);
 else for(let attempt=0;attempt<3;attempt++) {
+  await waitForProvider(660000);
   try {
     const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(660000),headers:{'User-Agent':'OpenRailwayAtlas snapshot (github.com/c933103/openrailwaystyle)'}});
+    observePause(response);
     if(!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
     data=await response.json();
     if(data.remark || !Array.isArray(data.elements)) throw new Error(data.remark || 'Incomplete response');
     break;
-  } catch(error) {if(attempt===2) throw error;console.log(error.message,'— retrying after two minutes');await new Promise(r=>setTimeout(r,120000));}
+  } catch(error) {if(attempt===2) throw error;requireRequestTime(660000,120000);console.log(error.message,'— retrying after at least two minutes');await new Promise(r=>setTimeout(r,120000));}
 }
 const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id-b.id);
 const features=toFeatures(elements);
