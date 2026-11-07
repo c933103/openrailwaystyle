@@ -77,7 +77,8 @@ Polar maintenance shares a provider-pause clock across its existing cap/sector
 queries, separately for the Overpass and elevation origins. It retains the
 four-attempt ceiling, 30/60/90-second retry waits and five-minute request timeout.
 A longer `Retry-After` applies from response headers through body failure and
-later calls. Pauses over 15 minutes stop that origin for the run; valid cached
+later calls. The observed deadline and normal retry baseline use elapsed time,
+not the wall clock; body time consumes a pause and early timer wakes are rechecked. Pauses over 15 minutes stop that origin for the run; valid cached
 copies remain available through the existing fallback and atomic publication.
 Permanent 4xx responses are not retried (406, 408 and 429 remain transient).
 A successful body can still update its validated cache, but cannot permit an

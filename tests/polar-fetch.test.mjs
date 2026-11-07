@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createPolarTextFetcher} from '../scripts/polar-fetch.mjs';
-function setup(replies){
- let clock=Date.parse('2026-11-06T00:00:00Z');const calls=[],waits=[];
- const read=createPolarTextFetcher({userAgent:'Atlas test',now:()=>clock,wait:async ms=>{waits.push(ms);clock+=ms;},warn:()=>{},fetcher:async(url,options)=>{
-  calls.push({url,options,at:clock});const rule=replies[Math.min(calls.length-1,replies.length-1)];
+function setup(replies,{earlyWake=false}={}){
+ let clock=Date.parse('2026-11-06T00:00:00Z'),elapsed=0;const calls=[],waits=[];
+ const read=createPolarTextFetcher({userAgent:'Atlas test',now:()=>clock,clock:()=>elapsed,wait:async ms=>{const n=earlyWake&&waits.length===0?ms/2:ms;waits.push(ms);clock+=n;elapsed+=n;},warn:()=>{},fetcher:async(url,options)=>{
+  calls.push({url,options,at:clock,elapsed});const rule=replies[Math.min(calls.length-1,replies.length-1)];
   if(rule.error)throw new TypeError(rule.error);
   const headers={...rule.headers};if(rule.dateDelay)headers['Retry-After']=new Date(clock+rule.dateDelay).toUTCString();
   const response=new Response(rule.body??'valid',{status:rule.status??200,headers});
-  if(rule.bodyError)response.text=async()=>{throw Error('body reset');};
+  const originalText=response.text.bind(response);
+  response.text=async()=>{elapsed+=rule.bodyMs||0;clock+=(rule.bodyMs||0)+(rule.wallShift||0);if(rule.bodyError)throw Error('body reset');return originalText();};
   return response;
  }});
  return {read,calls,waits};
@@ -77,4 +78,18 @@ for(const value of ['Fri, 06 Nov 2026 00:10:00 GMT','Friday, 06-Nov-26 00:10:00 
  const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
  const r=setup([{headers:{'Retry-After':value}},{}]);await r.read(url);await r.read('https://overpass.example/next');
  assert.equal(r.calls.length,2);assert.equal(r.calls[1].at-r.calls[0].at,600000);
+});
+
+for(const date of [false,true])for(const wallShift of [3600000,-3600000])test(`polar ${date?'HTTP-date':'seconds'} deadline survives body clock correction ${wallShift}`,async()=>{
+ const pause=date?{dateDelay:600000}:{headers:{'Retry-After':'600'}};
+ const r=setup([{...pause,bodyError:true,wallShift},{}]);assert.equal(await r.read(url),'valid');
+ assert.equal(r.calls.length,2);assert.equal(r.calls[1].elapsed-r.calls[0].elapsed,600000);
+});
+test('polar rechecks its normal retry timer when it wakes early',async()=>{
+ const r=setup([{status:503},{}],{earlyWake:true});assert.equal(await r.read(url),'valid');
+ assert.equal(r.calls.length,2);assert.equal(r.calls[1].elapsed-r.calls[0].elapsed,30000);
+});
+test('polar body time consumes the observed pause without restarting its header',async()=>{
+ const r=setup([{dateDelay:600000,bodyError:true,bodyMs:300000},{}]);assert.equal(await r.read(url),'valid');
+ assert.equal(r.calls.length,2);assert.equal(r.calls[1].elapsed-r.calls[0].elapsed,600000);
 });
