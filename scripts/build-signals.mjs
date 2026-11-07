@@ -39,7 +39,13 @@ export async function buildSignals({
   // a malformed response is never checkpointed and a bad cached one is
   // fetched again instead of blocking every later build.
   const valid = elements => { signalFeatures({elements}); electricitySignalsGeoJSON({elements}); return elements; };
-  const usable = saved => { if (saved.split) return true; try { valid(saved.response?.elements); return true; } catch { return false; } };
+  const usable = saved => {
+    if (saved.split) return true;
+    // Cached responses must meet the same completion condition as fresh ones.
+    // Valid elements alone do not certify a result cut short by an Overpass remark.
+    if (saved.response?.remark) return false;
+    try { valid(saved.response?.elements); return true; } catch { return false; }
+  };
   const fresh = (saved, query) => saved?.query === query && now() - Date.parse(saved.generated) < AGE && usable(saved);
 
   async function fetchJson(query) {
