@@ -84,9 +84,10 @@ const tile = {key: '0_-45_45_0', box: [0, -45, 45, 0], polygon: [square(-40, 5, 
 const budget = (extra = {}) => ({requests: 0, bytes: 0, maxRequests: 400, maxBytes: 1024 ** 3, ...extra});
 const fake = replies => { const calls = []; return {calls, fetcher: async (url, init) => { calls.push(init.body.get('data')); const r = replies(calls.length); return r instanceof Error ? Promise.reject(r) : r; }}; };
 
-const fakeClock = (start = '2026-11-06T19:00:00Z') => {
-  let time = Date.parse(start);
-  return {now: () => time, wait: async ms => { time += ms; }};
+const fakeClock = (start = '2026-11-06T19:00:00Z', {earlyWakeAt = -1} = {}) => {
+  let time = Date.parse(start), elapsed = 0, timers = 0;
+  return {now: () => time, clock: () => elapsed, jump: (wall, body = 0) => {time += wall + body; elapsed += body;},
+    wait: async ms => {const step = timers++ === earlyWakeAt ? ms / 2 : ms; time += step; elapsed += step;}};
 };
 
 test('the last failed tile retains Retry-After for the next tile', async () => {
@@ -171,36 +172,36 @@ test('long date and overflowing delay values retain every remaining tile without
 
 test('a tile splits only when the query itself is too large; an outage keeps its copy', async () => {
   const waits = [];
-  const wait = async ms => { waits.push(ms); };
+  let elapsed = 0; const wait = async ms => { waits.push(ms); elapsed += ms; };
   // An executed-query timeout: the tile is asked for in its quarters.
   let f = fake(n => new Response(n === 1 ? timeoutRemark : answer()));
-  let parts = await fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()});
+  let parts = await fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()});
   assert.equal(f.calls.length, 5);
   assert.equal(parts.length, 4);
   // No answer at all: asked again after 2, 5 and 10 minutes, then the tile fails. Never split.
   waits.length = 0;
   f = fake(() => new TypeError('fetch failed'));
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()}), /fetch failed/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()}), /fetch failed/);
   assert.equal(f.calls.length, 4);
   assert.deepEqual(waits.filter(ms => ms > 10_000), [120_000, 300_000, 600_000]);
   // Busy: the same, never split.
   f = fake(() => new Response('busy', {status: 503}));
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()}), /HTTP 503/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()}), /HTTP 503/);
   assert.equal(f.calls.length, 4);
   // A 504 with an executed-query timeout in its body does split.
   f = fake(n => new Response(n === 1 ? 'runtime error: Query ran out of memory' : answer(), {status: n === 1 ? 504 : 200}));
-  parts = await fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()});
+  parts = await fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()});
   assert.equal(parts.length, 4);
   // Any other remark, or a cut-off answer, fails the tile.
   f = fake(() => new Response(answer('2026-11-05T06:00:00Z', '<remark>something else</remark>')));
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()}), /remark/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()}), /remark/);
   f = fake(() => new Response('<?xml version="1.0"?><osm><meta osm_base="2026-11-05T06:00:00Z"/>'));
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget()}), /incomplete/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget()}), /incomplete/);
   // The budget: nothing more is asked.
   f = fake(() => new Response(answer()));
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget({requests: 400})}), /budget/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget({requests: 400})}), /budget/);
   assert.equal(f.calls.length, 0);
-  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, budget: budget({bytes: 1024 ** 3})}), /budget/);
+  await assert.rejects(fetchTile(tile, {fetcher: f.fetcher, wait, clock:()=>elapsed, budget: budget({bytes: 1024 ** 3})}), /budget/);
 });
 
 const osmium = spawnSync('osmium', ['--version'], {encoding: 'utf8'});
@@ -210,7 +211,7 @@ test('with osmium installed, a tile becomes a file and record that publish takes
   const body = '<node id="2" version="1" timestamp="2026-10-01T00:00:00Z" lat="10" lon="-30"/><node id="1" version="3" timestamp="2026-10-01T00:00:00Z" lat="10" lon="-31"><tag k="railway" v="halt"/></node>';
   const answers = [answer('2026-11-05T06:00:00Z', body), answer('2026-11-05T05:59:00Z', '<node id="1" version="3" timestamp="2026-10-01T00:00:00Z" lat="10" lon="-31"><tag k="railway" v="halt"/></node>')];
   let n = 0;
-  const {results} = await acquireGapTiles([tile, {...tile, key: 'empty'}], root, {fetcher: async () => new Response(n++ === 1 ? answer() : answers[0]), wait: async () => {}});
+  const {results} = await acquireGapTiles([tile, {...tile, key: 'empty'}], root, {fetcher: async () => new Response(n++ === 1 ? answer() : answers[0]), ...fakeClock()});
   assert.equal(results.length, 2);
   const manifest = JSON.parse(await readFile(join(root, `gap-${tile.key}`, 'extract.json'), 'utf8'));
   assert.deepEqual(manifest.counts, {nodes: 2, ways: 0, relations: 0});
@@ -227,7 +228,7 @@ test('with osmium installed, a tile becomes a file and record that publish takes
   await assert.rejects(writeTile(tile, [{text: answers[0], osmBase: '2026-11-05T06:00:00Z'}], join(root, 'older'), {previous: {sourceTimestamp: '2026-11-06T00:00:00Z'}}), /older than the working copy/);
   assert.ok(!(await readdir(join(root, 'older'))).includes('filtered.osm.pbf'));
   // A failed tile records why.
-  const failed = await acquireGapTiles([{...tile, key: 'down'}], root, {fetcher: async () => new Response('busy', {status: 429}), wait: async () => {}});
+  const failed = await acquireGapTiles([{...tile, key: 'down'}], root, {fetcher: async () => new Response('busy', {status: 429}), ...fakeClock()});
   assert.match(failed.results[0].failed, /HTTP 429/);
   assert.match(JSON.parse(await readFile(join(root, 'gap-down', 'failed.json'), 'utf8')).error, /HTTP 429/);
 });
@@ -269,7 +270,7 @@ test('publication imports on a fresh runner without npm dependencies', async t =
 test('gap query completely resolves a selected parent with an unselected child relation', async () => {
   const nested = '<relation id="20"><member type="relation" ref="21"/><tag k="route" v="train"/></relation>';
   const descendants = '<relation id="21"><member type="way" ref="22"/></relation><way id="22"><nd ref="23"/></way><node id="23" lat="0" lon="0"/>';
-  const parts = await fetchTile(tile, {budget: budget(), wait: async () => {}, fetcher: async (_url, init) => {
+  const parts = await fetchTile(tile, {budget: budget(), ...fakeClock(), fetcher: async (_url, init) => {
     const query = init.body.get('data');
     // This fixture models > versus >>: only complete recursion returns
     // the child relation and its descendants, which do not match the tags.
@@ -288,12 +289,12 @@ test('byte cap cancels a streamed response immediately and does not retry', asyn
       cancel() { cancelled = true; },
     }, {highWaterMark: 0}));
   };
-  await assert.rejects(fetchTile(tile, {fetcher, wait: async () => {}, budget: b}), /byte budget/);
+  await assert.rejects(fetchTile(tile, {fetcher, ...fakeClock(), budget: b}), /byte budget/);
   assert.equal(reads, 2);
   assert.equal(b.bytes, 8, 'count the entire chunk that crossed the boundary');
   assert.equal(cancelled, true);
   assert.equal(calls, 1);
-  await assert.rejects(fetchTile(tile, {fetcher, wait: async () => {}, budget: b}), /budget/);
+  await assert.rejects(fetchTile(tile, {fetcher, ...fakeClock(), budget: b}), /budget/);
   assert.equal(calls, 1, 'no subsequent tile can request more');
 });
 
@@ -302,7 +303,7 @@ test('bytes from failed body reads count against retries; UTF-8 is decoded acros
   const b = budget();
   const text = answer(undefined, '<note>日本</note>');
   const bytes = Buffer.from(text);
-  const parts = await fetchTile(tile, {budget: b, wait: async () => {}, fetcher: async () => {
+  const parts = await fetchTile(tile, {budget: b, ...fakeClock(), fetcher: async () => {
     calls++;
     let offset = 0;
     return new Response(new ReadableStream({pull(controller) {
@@ -327,11 +328,11 @@ for(const mode of ['pending','rejects','throws'])test(`gap byte-budget failure d
   cancel(){cancelled++;if(mode==='throws')throw Error('cleanup throw');if(mode==='rejects')return Promise.reject(Error('cleanup rejection'));return cancellation;},
  },{highWaterMark:0});
  const fetcher=async()=>{calls++;return new Response(body);};
- const result=fetchTile(tile,{fetcher,wait:async()=>{},budget:b});
+ const result=fetchTile(tile,{fetcher,...fakeClock(),budget:b});
  try{
   await assert.rejects(Promise.race([result,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('gap checkpoint waited for cleanup')),1000);})]),error=>error.budget===true&&/byte budget/.test(error.message));
   assert.equal(cancelled,1);assert.equal(body.locked,false);assert.equal(reads,2);assert.equal(b.bytes,8);assert.equal(calls,1);
-  await assert.rejects(fetchTile(tile,{fetcher,wait:async()=>{},budget:b}),/budget/);assert.equal(calls,1);
+  await assert.rejects(fetchTile(tile,{fetcher,...fakeClock(),budget:b}),/budget/);assert.equal(calls,1);
  }finally{clearTimeout(timer);release();await result.catch(()=>{});}
 });
 
@@ -360,3 +361,30 @@ for(const header of ['Sun, 01 Jan 2090 12:08:00 GMT','Sunday, 01-Jan-90 12:08:00
   }});
   assert.equal(sent.length,2);assert.equal(sent[1]-sent[0],490000);
  });
+
+for(const path of ['HTTP seconds','HTTP date','body failure','next tile','query split'])for(const wallShift of [3600000,-3600000])test(`gap ${path} retains observed pause through ${wallShift}ms wall correction`,async()=>{
+ const clock=fakeClock(),b=budget(),sent=[],queries=[];
+ const fetcher=async(_url,init)=>{
+  sent.push(clock.clock());queries.push(init.body.get('data'));if(sent.length!==1)return new Response(answer());
+  const isHttp=path.startsWith('HTTP'),header=path==='HTTP date'?new Date(clock.now()+600000).toUTCString():'600';
+  const bytes=Buffer.from(isHttp?'busy':path==='query split'?timeoutRemark:answer());let read=false;
+  const body=new ReadableStream({pull(controller){if(read){controller.close();return;}read=true;clock.jump(wallShift,path==='HTTP seconds'?300000:0);if(path==='body failure')controller.error(Error('body reset'));else controller.enqueue(bytes);}}, {highWaterMark:0});
+  return new Response(body,{status:isHttp?503:200,headers:{'retry-after':header}});
+ };
+ const parts=await fetchTile(tile,{...clock,fetcher,budget:b});
+ if(path==='next tile')await fetchTile({...tile,key:'next'},{...clock,fetcher,budget:b});
+ assert.equal(sent.length,path==='query split'?5:2);assert.equal(parts.length,path==='query split'?4:1);
+ assert.equal(sent[1]-sent[0],path.startsWith('HTTP')?610000:600000);
+ if(path.startsWith('HTTP')||path==='body failure')assert.equal(queries[0],queries[1]);
+});
+for(const path of ['HTTP error','body failure','spacing'])test(`gap rechecks an early ${path} wait without changing its retry-plus-spacing schedule`,async()=>{
+ const clock=fakeClock(undefined,{earlyWakeAt:0}),b=budget(),sent=[];
+ const fetcher=async()=>{sent.push(clock.clock());if(sent.length!==1)return new Response(answer());if(path==='body failure')throw Error('fetch failed');return new Response(path==='HTTP error'?'busy':answer(),{status:path==='HTTP error'?503:200,headers:path==='HTTP error'?{'retry-after':'600'}:{}});};
+ await fetchTile(tile,{...clock,fetcher,budget:b});if(path==='spacing')await fetchTile({...tile,key:'next'},{...clock,fetcher,budget:b});
+ assert.equal(sent.length,2);assert.equal(sent[1]-sent[0],path==='HTTP error'?610000:path==='body failure'?130000:10000);
+});
+test('gap body failure already consumes an observed pause while keeping normal retry spacing',async()=>{
+ const clock=fakeClock(),b=budget(),sent=[];
+ await fetchTile(tile,{...clock,budget:b,fetcher:async()=>{sent.push(clock.clock());if(sent.length>1)return new Response(answer());return new Response(new ReadableStream({pull(controller){clock.jump(0,300000);controller.error(Error('body reset'));}},{highWaterMark:0}),{headers:{'retry-after':'600'}});}});
+ assert.equal(sent.length,2);assert.equal(sent[1]-sent[0],600000);
+});
