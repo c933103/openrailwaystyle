@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,writeFile,utimes,rm,access} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,utimes,rm,access,readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {gunzipSync} from 'node:zlib';
@@ -11,11 +11,11 @@ import {buildElectricitySignals} from '../scripts/build-electricity-signals.mjs'
 const element={type:'way',id:12,tags:{railway:'subway',electrified:'rail'},geometry:[{lon:135,lat:34},{lon:135.001,lat:34.001}]};
 const complete={osm3s:{timestamp_osm_base:'2026-10-13T00:00:00Z'},elements:[element]};
 const response=(json=complete,{status=200,headers={}}={})=>new Response(typeof json==='string'?json:JSON.stringify(json),{status,headers});
-async function fixture(fn) {
+async function fixture(fn,builder=buildPowerMethods) {
   const dir=await mkdtemp(join(tmpdir(),'atlas-power-builder-'));
   let clock=Date.now(),calls=[],sleeps=[];
   const options={cache:join(dir,'cache'),output:join(dir,'output'),now:()=>clock,sleep:async ms=>{sleeps.push(ms);clock+=ms;},log:()=>{}};
-  const run=async(fetcher=()=>response(),extra={})=>buildPowerMethods({...options,fetcher:async(url,init)=>{calls.push({query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
+  const run=async(fetcher=()=>response(),extra={})=>builder({...options,fetcher:async(url,init)=>{calls.push({query:init.body.get('data'),signal:init.signal,redirect:init.redirect});return fetcher(calls.length,init);},...extra});
   try {await fn({dir,options,run,calls,sleeps,advance:ms=>clock+=ms});}finally{await rm(dir,{recursive:true,force:true});}
 }
 async function unpublished(output) {
@@ -337,3 +337,27 @@ test('a wait the server asked for on a change request comes before the next requ
   await assert.rejects(run(n=>n===again+1?response('busy',{status:429,headers:{'Retry-After':'600'}}):response(changeXml)),/Retry-After exceeds wait budget/);
   assert.equal(calls.length-again,1);
 }));
+
+for(const [name,builder] of [['power methods',buildPowerMethods],['electricity signals',buildElectricitySignals]])
+for(const status of [403,429])for(const cleanup of ['resolved','pending','rejects','throws'])
+test(`${name} preserves HTTP ${status} with ${cleanup} unused-body cleanup`,()=>fixture(async({run,calls,sleeps,options})=>{
+  let cancellations=0,timer;
+  const failure=Object.assign(new Error('cleanup timed out'),{code:'UND_ERR_BODY_TIMEOUT'});
+  const work=run(()=>({ok:false,status,headers:new Headers({'Retry-After':'120'}),body:{cancel:()=>{
+    cancellations++;
+    if(cleanup==='pending')return new Promise(()=>{});
+    if(cleanup==='rejects')return Promise.reject(failure);
+    if(cleanup==='throws')throw failure;
+    return Promise.resolve();
+  }}}));
+  const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('cleanup blocked HTTP classification')),2000);});
+  try {
+    await assert.rejects(Promise.race([work,deadline]),error=>error.message===`HTTP ${status}`&&error.category===(status===403?'http-permanent':'rate-limit'));
+  } finally {clearTimeout(timer);}
+  assert.equal(calls.length,status===403?1:3);
+  assert.equal(cancellations,calls.length,'each error body is discarded once');
+  assert.equal(new Set(calls.map(c=>c.query)).size,1,'cleanup never causes spatial subdivision');
+  assert.deepEqual(sleeps,status===403?[]:[120000,120000],'provider wait and existing retry limit are retained');
+  assert.deepEqual(await readdir(options.cache),[],'no cache or split checkpoint is written');
+  assert.deepEqual(await readdir(options.output),[],'neither builder publishes any output');
+},builder));
