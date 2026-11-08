@@ -31,8 +31,8 @@ async function run(t, files, rules, {old = true, existingOutput = {}, now = Date
   for (const [name, content] of Object.entries(existingOutput)) await writeFile(join(root, 'out', name), content);
   for (const [name, data] of Object.entries(files)) {
     await writeFile(join(root, '.snapshot-cache', name), JSON.stringify(data));
-    // Last written over a week ago, so its changes are due.
-    if (old) await utimes(join(root, '.snapshot-cache', name), new Date(Date.now() - 8 * DAY), new Date(Date.now() - 8 * DAY));
+    // Age fixtures against the builder clock, not the date this test runs.
+    if (old) await utimes(join(root, '.snapshot-cache', name), new Date(now - 8 * DAY), new Date(now - 8 * DAY));
   }
   await writeFile(join(root, 'fake.mjs'), `
     const fs = await import('node:fs'), rules = ${JSON.stringify(rules)}, log = [];
