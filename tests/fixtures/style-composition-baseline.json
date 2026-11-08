@@ -1829,7 +1829,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 6,
-      "sha256": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3"
+      "sha256": "abeb4f56091927c29438011eff8e530e915187640b28ee717d80dd9eccfe3027"
     },
     {
       "id": "station-stationMed-dots",
@@ -1838,7 +1838,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d"
+      "sha256": "29bc6e6bafe415279b30c79b005d1ab762c44cdf919cf71f92e0d0fdb019040a"
     },
     {
       "id": "station-major-dots",
@@ -1846,7 +1846,7 @@
       "source": "stationMajor",
       "minzoom": 3,
       "maxzoom": 7,
-      "sha256": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66"
+      "sha256": "0fa6c1f4f0d00362ee10b3c5fa4c8ae285a26d29d01a0dd54e83bb74a01b8df8"
     },
     {
       "id": "station-provider-dots",
@@ -1855,7 +1855,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
+      "sha256": "eb663b51d1af16d4262637f639202a61134e1219b243d4ad26c19725e691404a"
     },
     {
       "id": "station-former-dots",
@@ -2552,6 +2552,23 @@
       "layers": [
         "road-labels"
       ]
+    },
+    {
+      "date": "2026-11-08",
+      "baseCommit": "541ad251f25f474648e4d07f94470dcfda9d4b1a",
+      "reason": "User-requested smaller station dots and thinner outlines at regional/city zooms; preserve all point selections and existing detailed sizes from zoom 12. Only circle-radius and circle-stroke-width change on these four generated layers. Current-head rendering review remains required before merge.",
+      "layers": [
+        "station-stationLow-dots",
+        "station-stationMed-dots",
+        "station-major-dots",
+        "station-provider-dots"
+      ],
+      "previousLayerSha256": {
+        "station-stationLow-dots": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3",
+        "station-stationMed-dots": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d",
+        "station-major-dots": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66",
+        "station-provider-dots": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
+      }
     }
   ]
 }

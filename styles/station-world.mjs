@@ -2,7 +2,7 @@
 // snapshot. Incomplete or missing acquisition never changes live station layers.
 // Source: station-points-data, built by station-overview.mjs and published only
 // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
-import {createBundleReader} from './tile-bundles.mjs?v=20261107-help-dates-order-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261108-station-marker-weight-1';
 
 export const WORLD_STATION_SOURCE = 'stationWorld';
 export const WORLD_STATION_DOTS = 'station-world-dots';
@@ -43,8 +43,10 @@ export function worldStationLayer() {
       'visibility':'none'},
     paint: {
       'circle-color':'#ffa323','circle-stroke-color':'#123e52',
-      'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.55,7,1.05,12,1.45],
-      'circle-radius':['interpolate',['linear'],['zoom'],3,1.1,5,1.45,7,2.2,12,3.4],
+      // Keep the full inventory legible without turning dense networks into
+      // orange bands. Stronger station symbols return near the z12 detail handoff.
+      'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.25,7,0.4,10,0.6,12,1.45],
+      'circle-radius':['interpolate',['linear'],['zoom'],3,0.55,5,0.75,7,1,10,1.6,12,3.4],
     },
     metadata:{
       'atlas:semantics-version':1, 'atlas:group':'stations',

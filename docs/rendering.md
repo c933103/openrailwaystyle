@@ -133,6 +133,13 @@ by the station/crossing ordering contract. The old low-zoom dots and
 error-fallback circles are then suppressed to avoid duplicate markers; detailed
 provider dots remain from zoom 12.
 
+Regional and city overview markers use small dots with thin outlines so dense
+station inventories do not obscure the railway lines. The worldwide markers'
+outer diameter is about 2.7 CSS pixels at zoom 6.6 and 4.2 at zoom 9.7, increasing
+smoothly towards the existing detailed symbols at zoom 12. Curated, provider and
+error-fallback overview dots follow the same restrained scale. This changes
+marker paint only; it does not thin the inventory or depend on name collisions.
+
 If the independent tile source fails, the application restores the previous
 markers rather than inventing a completed geographic result. All points in
 this source are mapped features, not verified operating services. Extreme polar

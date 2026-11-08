@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261107-help-dates-order-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261108-station-marker-weight-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
