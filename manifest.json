@@ -1,13 +1,7 @@
 {
-  "generated": "2026-11-07T17:11:00.554Z",
-  "osmBase": "2026-11-07T17:07:00Z",
-  "update": {
-    "changesSince": "2026-11-07T08:37:06Z",
-    "upserts": 19,
-    "deletes": 0,
-    "added": 0,
-    "dropped": 0
-  },
+  "generated": "2026-11-08T12:05:05.837Z",
+  "osmBase": "2026-11-08T12:03:21Z",
+  "update": "full",
   "features": 16013,
   "tiles": 556,
   "source": "https://overpass-api.de/api/interpreter",
