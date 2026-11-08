@@ -1,12 +1,12 @@
 {
-  "generated": "2026-11-08T02:24:41.948Z",
-  "osmBase": "2026-11-08T02:21:48Z",
+  "generated": "2026-11-08T12:13:24.731Z",
+  "osmBase": "2026-11-08T12:10:23Z",
   "update": "full",
-  "features": 44540,
+  "features": 44541,
   "kinds": {
     "escalator": 32365,
     "travelator": 3828,
-    "elevator": 8347
+    "elevator": 8348
   },
   "zoom": 14,
   "tiles": 8716,
