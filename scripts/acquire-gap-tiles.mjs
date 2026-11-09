@@ -16,6 +16,12 @@ import {retryAfterMs} from './retry-after.mjs';
 // Retry-After remains binding across retries, failed tiles and subdivisions.
 // A pause over 15 minutes stops further requests in this run instead of
 // shortening the provider's minimum; all unreached tiles keep their copies.
+// Two tiles in a row that got no answer to any of their requests stop the
+// run too: the server is down, not busy. A time budget (the workflow sets it
+// below the job's limit) ends the run with its outputs and meter line
+// written: no request starts unless its whole timeout fits before it.
+// Tiles without a working copy go first, then the oldest, so a run cut short
+// never leaves the same tiles behind every time.
 import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
@@ -37,6 +43,8 @@ export const MAX_BYTES = 1024 ** 3;
 export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
 const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
+export const REQUEST_TIMEOUT_MS = 360_000;
+export const MAX_UNANSWERED_TILES = 2;
 
 // Per part of the tile: the selection inside its outer ring, less what lies
 // in its holes (islands a planned region covers), so their data is not sent
@@ -58,6 +66,10 @@ async function waitUntil(deadline, wait, clock) {
 }
 
 const providerPauseError = () => new Error('Overpass Retry-After exceeds this run’s wait limit; working copies retained');
+const unansweredError = () => new Error(`not asked: Overpass did not answer ${MAX_UNANSWERED_TILES} tiles in a row; working copies retained`);
+const timeBudgetError = last => Object.assign(new Error(`not asked: the run's time budget is reached${last ? ` (last: ${last})` : ''}; working copy retained`), {budget: true});
+// Why fetch gave no answer: undici puts the reason in the cause.
+const fetchReason = error => [error.message, error.cause?.code, error.cause?.message].filter(Boolean).filter((x, i, all) => all.indexOf(x) === i).join(': ');
 
 // Shared by every tile and subdivision in this run. Capture at headers so
 // an interrupted body or a final failed attempt cannot discard the pause.
@@ -96,24 +108,33 @@ async function readBudgetedBody(response, budget) {
 
 // One tile, split on an executed-query limit. Returns the OSM XML parts
 // with their database times, or throws (the tile keeps its copy).
-export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0} = {}) {
+export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0, log = () => {}} = {}) {
   const query = gapQuery(tile.polygon);
+  // A wait that would leave no time for a whole request is not waited out.
+  const pauseUntil = async (until, last) => {
+    // Then the run ends: a later tile is not asked sooner than this retry.
+    if (budget.timeUp || (budget.deadline != null && Math.max(until, clock()) + REQUEST_TIMEOUT_MS > budget.deadline)) { budget.timeUp = true; throw timeBudgetError(last); }
+    if (until > clock()) await waitUntil(until, wait, clock);
+  };
   for (let retry = 0; ; retry++) {
     if (budget.requests >= budget.maxRequests || budget.bytes >= budget.maxBytes) throw Object.assign(new Error('request or byte budget reached'), {budget: true});
     if (budget.providerWaitExceeded) throw providerPauseError();
-    if (budget.requests) await waitUntil(clock() + PAUSE_MS, wait, clock);
-    if ((budget.retryNotBefore || 0) > clock()) await waitUntil(budget.retryNotBefore, wait, clock);
+    if ((budget.unansweredTiles || 0) >= MAX_UNANSWERED_TILES) throw unansweredError();
+    await pauseUntil(Math.max(budget.requests ? clock() + PAUSE_MS : 0, budget.retryNotBefore || 0));
     budget.requests++;
+    const sent = clock();
     let response, text;
     try {
-      response = await fetcher(API, {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(360_000)});
+      response = await fetcher(API, {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
+      budget.answers = (budget.answers || 0) + 1;
       rememberProviderPause(response, budget, now, clock);
       text = await readBudgetedBody(response, budget);
     } catch (error) {
       if (error.budget) throw error;
       if (budget.providerWaitExceeded) throw providerPauseError();
-      const failure = new Error(`fetch failed: ${error.message}`);
-      if (retry < 3) { await waitUntil(clock() + overpassRetryDelayMs(retry), wait, clock); continue; }
+      const failure = new Error(`fetch failed: ${fetchReason(error)}`);
+      log(`${tile.key}: request ${retry + 1} failed after ${Math.round((clock() - sent) / 1000)} s: ${failure.message}`);
+      if (retry < 3) { await pauseUntil(clock() + overpassRetryDelayMs(retry), failure.message); continue; }
       throw failure;
     }
     const remark = /<remark>([\s\S]*?)<\/remark>/.exec(text)?.[1] ?? '';
@@ -122,14 +143,18 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
       const parts = [];
       for (const box of quarters(tile.box)) {
         const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box));
-        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, clock, budget, depth: depth + 1}));
+        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, clock, budget, depth: depth + 1, log}));
       }
       return parts;
     }
     if (!response.ok) {
       const error = new Error(`HTTP ${response.status}`);
+      log(`${tile.key}: request ${retry + 1} answered ${error.message} after ${Math.round((clock() - sent) / 1000)} s`);
       if (overpassBusy(error) && budget.providerWaitExceeded) throw providerPauseError();
-      if (overpassBusy(error) && retry < 3) { await waitUntil(Math.max(clock() + overpassRetryDelayMs(retry), budget.retryNotBefore || 0), wait, clock); continue; }
+      if (overpassBusy(error) && retry < 3) {
+        await pauseUntil(Math.max(clock() + overpassRetryDelayMs(retry), budget.retryNotBefore || 0), error.message);
+        continue;
+      }
       throw error;
     }
     if (remark) throw new Error(`${tile.key}: Overpass remark: ${remark.trim().slice(0, 200)}`);
@@ -176,19 +201,34 @@ export async function writeTile(tile, parts, out, {run = promisify(execFile), pr
   return manifest;
 }
 
-export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES} = {}) {
-  const budget = {requests: 0, bytes: 0, maxRequests, maxBytes};
+// Tiles without a working copy first, then the oldest; otherwise as planned.
+export function tileOrder(tiles, index = null) {
+  const time = tile => { const t = Date.parse(index?.regions?.[`gap/${tile.key}`]?.sourceTimestamp); return Number.isFinite(t) ? t : -Infinity; };
+  return tiles.map((tile, i) => ({tile, i, t: time(tile)})).sort((a, b) => a.t - b.t || a.i - b.i).map(({tile}) => tile);
+}
+
+export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
+  const budget = {requests: 0, bytes: 0, maxRequests, maxBytes, answers: 0, unansweredTiles: 0, deadline: timeBudgetMs == null ? null : clock() + timeBudgetMs};
   const results = [];
-  for (const tile of tiles) {
+  for (const tile of tileOrder(tiles, index)) {
     const dir = join(out, `gap-${tile.key}`);
+    const started = clock(), requests = budget.requests, answers = budget.answers;
+    const seconds = () => Math.round((clock() - started) / 1000);
     try {
-      const parts = await fetchTile(tile, {fetcher, wait, now, clock, budget});
-      results.push(await writeTile(tile, parts, dir, {run, previous: index?.regions?.[`gap/${tile.key}`]}));
+      const parts = await fetchTile(tile, {fetcher, wait, now, clock, budget, log});
+      const manifest = await writeTile(tile, parts, dir, {run, previous: index?.regions?.[`gap/${tile.key}`]});
+      results.push(manifest);
+      const {nodes, ways, relations} = manifest.counts;
+      log(`gap/${tile.key}: ${nodes} nodes, ${ways} ways, ${relations} relations, ${manifest.filteredBytes} bytes; ${budget.requests - requests} requests, ${seconds()} s`);
     } catch (error) {
       await mkdir(dir, {recursive: true});
       await writeFile(join(dir, 'failed.json'), `${JSON.stringify({region: `gap/${tile.key}`, error: String(error.message || error)})}\n`);
       results.push({region: `gap/${tile.key}`, failed: String(error.message || error)});
+      log(`gap/${tile.key}: kept its copy: ${String(error.message || error)}; ${budget.requests - requests} requests, ${seconds()} s`);
     }
+    // A tile whose requests all went unanswered counts towards the stop;
+    // any answer starts the count again.
+    budget.unansweredTiles = budget.answers === answers ? budget.unansweredTiles + 1 : 0;
   }
   return {results, requests: budget.requests, bytes: budget.bytes};
 }
@@ -199,7 +239,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const {tiles} = JSON.parse(await readFile(gapsFile, 'utf8'));
   let index = null;
   try { if (indexFile) index = JSON.parse(await readFile(indexFile, 'utf8')); } catch {}
-  const {results, requests, bytes} = await acquireGapTiles(tiles, out, {index});
+  const minutes = Number(process.env.GAP_TIME_BUDGET_MINUTES || '');
+  if (process.env.GAP_TIME_BUDGET_MINUTES && !(minutes > 0)) throw new Error(`Invalid GAP_TIME_BUDGET_MINUTES ${process.env.GAP_TIME_BUDGET_MINUTES}`);
+  const {results, requests, bytes} = await acquireGapTiles(tiles, out, {index, timeBudgetMs: minutes > 0 ? minutes * 60_000 : null,
+    log: line => console.log(line.replace(/[\r\n]/g, ' '))});
   const failed = results.filter(r => r.failed);
   console.log(`${tiles.length} gap tiles: ${results.length - failed.length} fetched, ${failed.length} kept their copy; ${requests} requests, ${bytes} bytes`);
   for (const f of failed) console.log(`::warning::${f.region}: ${f.failed}`.replace(/[\r\n]/g, ' '));
