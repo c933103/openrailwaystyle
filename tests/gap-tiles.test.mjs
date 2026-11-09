@@ -6,7 +6,6 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
-import {areaKm2} from '../scripts/measure-osm-gaps.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
 import {fetchTile, gapQuery, writeTile, acquireGapTiles, GAP_FILTER_HASH} from '../scripts/acquire-gap-tiles.mjs';
 import {nextIndex, planWithGaps, withGaps} from '../scripts/extract-release.mjs';
@@ -51,7 +50,11 @@ test('the Overpass form selects exactly what the osmium filter selects', () => {
 });
 
 const square = (w, s, e, n) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
-const union = parts => parts.length ? polygonClipping.union(...parts.map(p => [p])) : [];
+// Planar area in degrees², exact for the clipped geometry. The spherical
+// areaKm2 is not additive when a polygon is cut along a parallel (on the
+// 2026-11-05 plan it differs by 0.02%), so it cannot check coverage.
+const ringArea = r => { let a = 0; for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return Math.abs(a) / 2; };
+const planar = multi => multi.reduce((sum, [outer, ...holes]) => sum + ringArea(outer) - holes.reduce((h, ring) => h + ringArea(ring), 0), 0);
 
 test('the tiles cover exactly the remainder, cut where a polygon is too long', () => {
   // A sea gap crossing tile edges, one with a hole (an island a region has),
@@ -59,13 +62,14 @@ test('the tiles cover exactly the remainder, cut where a polygon is too long', (
   const ragged = [[...Array.from({length: 900}, (_, i) => [-30 + 20 * i / 899, -40 + (i % 2) * 0.01]), [-10, -30], [-30, -30], [-30, -40]]];
   const remainder = [{polygon: square(-60, 10, -20, 40)}, {polygon: [square(100, -20, 120, 0)[0], square(105, -15, 110, -10)[0]]}, {polygon: ragged}];
   const tiles = gapTiles(remainder);
-  const covered = union(tiles.map(t => t.polygon[0]));
-  const gap = union(remainder.map(r => r.polygon[0]));
-  assert.ok(Math.abs(areaKm2(covered) - areaKm2(gap)) / areaKm2(gap) < 1e-9, 'the outer rings, all covered');
-  assert.ok(polygonClipping.difference(gap, covered).every(p => areaKm2([p]) < 1e-6), 'no remainder left out');
+  const gap = polygonClipping.union(...remainder.map(r => [r.polygon]));
+  const covered = polygonClipping.union(...tiles.map(t => t.polygon));
+  assert.equal(planar(polygonClipping.difference(gap, covered)), 0, 'no remainder left out');
+  assert.equal(planar(polygonClipping.difference(covered, gap)), 0, 'nothing outside the remainder: holes stay out');
+  assert.ok(Math.abs(tiles.reduce((sum, t) => sum + planar(t.polygon), 0) - planar(gap)) < 1e-9, 'the tiles do not overlap');
   assert.ok(tiles.every(t => t.polygon.reduce((n, [ring]) => n + ring.length - 1, 0) <= MAX_VERTICES || t.box[3] - t.box[1] <= 45 / 64), 'a long polygon is cut until it fits');
   assert.ok(tiles.some(t => t.box[3] - t.box[1] < 45), 'the ragged gap was cut');
-  assert.ok(tiles.find(t => t.key === '-45_90_0_135').polygon.every(part => part.length === 1), 'holes are not cut out');
+  assert.deepEqual(tiles.find(t => t.key === '-45_90_0_135').polygon.map(part => part.length), [2], 'the hole (an island a region covers) is kept');
   assert.deepEqual(gapTiles([]), []);
   assert.deepEqual(gapTiles([{polygon: square(170, 0, 180, 5)}, {polygon: square(-180, 0, -170, 5)}]).map(t => t.key), ['0_-180_45_-135', '0_135_45_180'], 'both sides of the antimeridian');
 });
@@ -74,8 +78,13 @@ test('a poly filter is lat lon, without the closing point', () => {
   assert.equal(polyFilter(square(1, 2, 3, 4)[0]), 'poly:"2 1 2 3 4 3 4 1"');
   const query = gapQuery([square(1, 2, 3, 4)]);
   assert.match(query, /^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];\(/);
-  assert.match(query, /\);\(\._;>>;\);out meta;$/);
+  assert.match(query, /\(\.p0;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
   assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 23);
+  // A hole is taken out of its own part once, never asked for with every filter.
+  const holed = gapQuery([[square(0, 0, 10, 10)[0], square(2, 2, 3, 3)[0]], square(20, 0, 21, 1)]);
+  assert.equal(holed.split('(poly:"2 2 2 3 3 3 3 2")').length - 1, 1);
+  assert.match(holed, /->\.p0;nwr\.p0\(poly:"2 2 2 3 3 3 3 2"\)->\.h0_0;\(\.p0; - \.h0_0;\)->\.p0;/);
+  assert.match(holed, /\(\.p0;\.p1;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
 });
 
 const answer = (base = '2026-11-05T06:00:00Z', body = '') => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6"><meta osm_base="${base}"/>${body}</osm>\n`;
@@ -274,7 +283,7 @@ test('gap query completely resolves a selected parent with an unselected child r
     const query = init.body.get('data');
     // This fixture models > versus >>: only complete recursion returns
     // the child relation and its descendants, which do not match the tags.
-    return new Response(answer(undefined, nested + (query.includes('(._;>>;);') ? descendants : '')));
+    return new Response(answer(undefined, nested + (query.includes('.g >>;') ? descendants : '')));
   }});
   for (const id of [20, 21, 22, 23]) assert.match(parts[0].text, new RegExp(`id="${id}"`));
 });
@@ -387,4 +396,15 @@ test('gap body failure already consumes an observed pause while keeping normal r
  const clock=fakeClock(),b=budget(),sent=[];
  await fetchTile(tile,{...clock,budget:b,fetcher:async()=>{sent.push(clock.clock());if(sent.length>1)return new Response(answer());return new Response(new ReadableStream({pull(controller){clock.jump(0,300000);controller.error(Error('body reset'));}},{highWaterMark:0}),{headers:{'retry-after':'600'}});}});
  assert.equal(sent.length,2);assert.equal(sent[1]-sent[0],600000);
+});
+
+test('a tile split for size keeps its holes in the quarters', async () => {
+  // A hole (an island a region covers) in the south-west quarter of the tile.
+  const holed = {key: '0_-45_45_0', box: [0, -45, 45, 0], polygon: [[square(-40, 5, -5, 40)[0], square(-30, 10, -29, 11)[0]]]};
+  const f = fake(n => new Response(n === 1 ? timeoutRemark : answer()));
+  await fetchTile(holed, {fetcher: f.fetcher, budget: budget(), ...fakeClock()});
+  // Clipping may reverse the ring, so the hole is matched by its corners.
+  const cutsHole = query => /nwr\.p0\(poly:"(?=[^"]*10 -30)(?=[^"]*11 -29)[^"]*"\)->\.h0_0;\(\.p0; - \.h0_0;\)/.test(query);
+  assert.equal(f.calls.length, 5);
+  assert.equal(f.calls.filter(cutsHole).length, 2, 'the whole tile and the quarter holding the hole both take it out');
 });
