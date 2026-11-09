@@ -61,7 +61,7 @@ test('every run, every attempt and every job log of the day is read; a log that 
     }
     if ((m = /\/actions\/runs\/(\d+)\/jobs\?filter=all&per_page=100&page=1$/.exec(path))) {
       const run = Number(m[1]);
-      return Response.json({jobs: run === 1 ? [{id: 10, status: 'completed'}, {id: 11, status: 'completed'}, {id: 12, status: 'in_progress'}] : run === 2 ? [{id: 20, status: 'completed'}] : []});
+      return Response.json({jobs: run === 1 ? [{id: 10, status: 'completed'}, {id: 11, status: 'completed'}, {id: 12, status: 'in_progress'}, {id: 13, status: 'completed', conclusion: 'skipped'}] : run === 2 ? [{id: 20, status: 'completed'}] : []});
     }
     if (path.endsWith('/actions/jobs/10/logs')) return new Response(line(usage({'overpass-api.de': {bytes: 10, requests: 1}})));
     if (path.endsWith('/actions/jobs/11/logs')) return new Response(line(usage({'overpass-api.de': {bytes: 20, requests: 2}}), '2026-11-05T07:00:00Z'));
@@ -73,6 +73,7 @@ test('every run, every attempt and every job log of the day is read; a log that 
   assert.deepEqual(result.jobs.map(j => [j.workflow, j.job]), [['Heritage', 10], ['Heritage', 11]]);
   assert.deepEqual(result.unread, [20]);
   assert.ok(!asked.some(path => path.includes('/jobs/12/')), 'a job still running is not read');
+  assert.ok(!asked.some(path => path.includes('/jobs/13/')), 'a skipped job has no log and is not counted as unreadable');
   assert.ok(asked.every(path => !path.includes('jobs?') || path.includes('filter=all')), 're-run attempts are included');
 });
 
