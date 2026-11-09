@@ -1,9 +1,9 @@
 // The parts of the world no planned Geofabrik region covers (the plan's
 // remainder, scripts/plan-osm-regions.mjs), cut into tiles that one Overpass
 // request each can ask for (#330, B0b). A tile is a box of the shared region
-// tree (scripts/world-regions.mjs) and the remainder's outer rings inside it.
-// Holes (islands a region covers) are not cut out: asking for them again only
-// brings objects the assembly already has, kept once.
+// tree (scripts/world-regions.mjs) and the remainder inside it, holes and
+// all: a hole is an island a planned region covers (Ireland, Taiwan, Sri
+// Lanka …), whose data must not come from Overpass again.
 //   node scripts/gap-tiles.mjs <plan.json> <gaps.json>
 import {readFile, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -18,9 +18,9 @@ export const MAX_DEPTH = 6;
 export const START_SIZE = 45;
 
 const boxPolygon = ([s, w, n, e]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
+// The outer rings' vertices: each goes into every filter of the query, a
+// hole's only into one (scripts/acquire-gap-tiles.mjs).
 const vertices = multi => multi.reduce((sum, [outer]) => sum + outer.length - 1, 0);
-// The outer rings only: holes are asked for too (see above).
-const outerOnly = multi => multi.map(([outer]) => [outer]);
 
 export function gapTiles(remainder, {maxVertices = MAX_VERTICES, maxDepth = MAX_DEPTH, startSize = START_SIZE} = {}) {
   const gaps = (remainder || []).map(part => part.polygon);
@@ -29,7 +29,7 @@ export function gapTiles(remainder, {maxVertices = MAX_VERTICES, maxDepth = MAX_
   const visit = (box, depth) => {
     const inside = polygonClipping.intersection(gaps, boxPolygon(box));
     if (!inside.length || areaKm2(inside) <= 0) return;
-    const polygon = outerOnly(inside);
+    const polygon = inside;
     if (vertices(polygon) > maxVertices && depth < maxDepth) { for (const part of quarters(box)) visit(part, depth + 1); return; }
     tiles.push({key: box.join('_'), box, polygon, areaKm2: areaKm2(inside)});
   };

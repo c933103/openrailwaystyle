@@ -38,10 +38,17 @@ export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
 const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
 
+// Per part of the tile: the selection inside its outer ring, less what lies
+// in its holes (islands a planned region covers), so their data is not sent
+// again. Each part has its own sets, so a hole of one part never removes
+// another part lying inside it. Then complete downward recursion (>>).
 export function gapQuery(polygon) {
-  const statements = [];
-  for (const [ring] of polygon) for (const {type, tag} of overpassFilters()) statements.push(`${type}${tag}(${polyFilter(ring)});`);
-  return `[out:xml][timeout:180][maxsize:536870912];(${statements.join('')});(._;>>;);out meta;`;
+  const parts = polygon.map(([outer, ...holes], i) => {
+    const select = `(${overpassFilters().map(({type, tag}) => `${type}${tag}(${polyFilter(outer)});`).join('')})->.p${i};`;
+    const cut = holes.map((hole, j) => `nwr.p${i}(${polyFilter(hole)})->.h${i}_${j};(.p${i}; - .h${i}_${j};)->.p${i};`).join('');
+    return select + cut;
+  });
+  return `[out:xml][timeout:180][maxsize:536870912];${parts.join('')}(${polygon.map((_, i) => `.p${i};`).join('')})->.g;(.g;.g >>;);out meta;`;
 }
 
 const boxPolygon = ([s, w, n, e]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
@@ -114,7 +121,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
       if (depth >= MAX_SPLIT_DEPTH) throw new Error(`${tile.key}: too large for one query at depth ${depth}`);
       const parts = [];
       for (const box of quarters(tile.box)) {
-        const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box)).map(([outer]) => [outer]);
+        const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box));
         if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, clock, budget, depth: depth + 1}));
       }
       return parts;
