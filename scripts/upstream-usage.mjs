@@ -95,8 +95,9 @@ export async function collect({repo, start, end, token, fetcher = fetch}) {
     for (let page = 1; ; page++) {
       const {jobs: batch} = await github(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=all&per_page=100&page=${page}`, {token, fetcher});
       for (const job of batch) {
-        // A skipped job never ran and has no log (HTTP 404); it used nothing.
-        if (job.status !== 'completed' || job.conclusion === 'skipped') continue;
+        // A skipped job, or one cancelled before its first step, never ran
+        // and has no log (HTTP 404); it used nothing.
+        if (job.status !== 'completed' || job.conclusion === 'skipped' || !job.steps?.length) continue;
         try {
           const records = usageRecords(await github(`/repos/${repo}/actions/jobs/${job.id}/logs`, {token, fetcher, text: true}));
           if (records.length) jobs.push({workflow: run.name, run: run.id, job: job.id, records});
