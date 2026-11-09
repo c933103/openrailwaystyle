@@ -143,6 +143,11 @@ jobs:
           name: extract-plan
           path: plan
       - name: Fetch the gap tiles from Overpass
+        # The run stops asking 10 minutes before the job limit, so its
+        # outputs and meter line are written; no request starts unless its
+        # whole 6-minute timeout fits in this budget.
+        env:
+          GAP_TIME_BUDGET_MINUTES: 170
         run: node --import ./scripts/overpass-meter.mjs scripts/acquire-gap-tiles.mjs plan/gaps.json gaps plan/index.json
       # Not named extract-*: the publish job downloads it into the same
       # directory as the regions.

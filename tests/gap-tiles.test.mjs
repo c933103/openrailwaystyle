@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
-import {fetchTile, gapQuery, writeTile, acquireGapTiles, GAP_FILTER_HASH} from '../scripts/acquire-gap-tiles.mjs';
+import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES} from '../scripts/acquire-gap-tiles.mjs';
 import {nextIndex, planWithGaps, withGaps} from '../scripts/extract-release.mjs';
 
 // What osmium selects, per object type, straight from the expressions: the
@@ -407,4 +407,107 @@ test('a tile split for size keeps its holes in the quarters', async () => {
   const cutsHole = query => /nwr\.p0\(poly:"(?=[^"]*10 -30)(?=[^"]*11 -29)[^"]*"\)->\.h0_0;\(\.p0; - \.h0_0;\)/.test(query);
   assert.equal(f.calls.length, 5);
   assert.equal(f.calls.filter(cutsHole).length, 2, 'the whole tile and the quarter holding the hole both take it out');
+});
+
+// Run limits: a run that cannot finish in its job's time still writes its
+// outputs, and an unreachable server is not asked for every remaining tile.
+const noOsmium = async () => { throw new Error('osmium must not run without an answer'); };
+const failedNames = async out => Object.fromEntries(await Promise.all((await readdir(out)).map(async d => [d, JSON.parse(await readFile(join(out, d, 'failed.json'), 'utf8')).error])));
+
+test('the time budget stops before a request that could not finish, and keeps every unreached tile', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-deadline-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const tiles = ['a', 'b', 'c'].map(key => ({...tile, key}));
+  // Busy every time: each tile takes 4 requests and 17 minutes of waits.
+  const clock = fakeClock(), sent = [];
+  const fetcher = async () => { sent.push(clock.clock()); return new Response('busy', {status: 503}); };
+  const budgetMs = 40 * 60_000;
+  const {results, requests} = await acquireGapTiles(tiles, root, {...clock, fetcher, run: noOsmium, timeBudgetMs: budgetMs});
+  assert.ok(sent.every(at => at + REQUEST_TIMEOUT_MS <= budgetMs), 'every request could run to its timeout inside the budget');
+  // Tile a: 4 requests. Tile b: 3 sent; its last retry (10 min) would leave no time.
+  assert.equal(requests, 7);
+  assert.equal(sent.length, 7);
+  assert.equal(results.length, 3);
+  const errors = await failedNames(root);
+  assert.match(errors['gap-a'], /HTTP 503/);
+  assert.match(errors['gap-b'], /time budget.*HTTP 503/);
+  assert.match(errors['gap-c'], /^not asked: the run's time budget/);
+  assert.ok(clock.clock() <= budgetMs, 'the run ends inside its budget, without waiting out a retry it cannot use');
+  // No budget: the old behaviour, every tile asked 4 times.
+  const free = fakeClock(); let calls = 0;
+  await acquireGapTiles(tiles, join(root, 'free'), {...free, fetcher: async () => { calls++; return new Response('busy', {status: 503}); }, run: noOsmium});
+  assert.equal(calls, 12);
+});
+
+test('two tiles in a row without any answer stop the run; an answer in between does not', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-unanswered-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  assert.equal(MAX_UNANSWERED_TILES, 2);
+  const tiles = ['a', 'b', 'c', 'd'].map(key => ({...tile, key}));
+  const down = () => new TypeError('fetch failed', {cause: Object.assign(new Error('other side closed'), {code: 'UND_ERR_SOCKET'})});
+  let f = fake(down);
+  let result = await acquireGapTiles(tiles, join(root, 'down'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  assert.equal(f.calls.length, 8, 'tiles a and b are asked 4 times each, c and d never');
+  const errors = await failedNames(join(root, 'down'));
+  assert.match(errors['gap-a'], /fetch failed: fetch failed: UND_ERR_SOCKET: other side closed/, 'the reason is kept');
+  assert.match(errors['gap-c'], /not asked: Overpass did not answer 2 tiles in a row/);
+  assert.match(errors['gap-d'], /not asked/);
+  assert.equal(result.results.length, 4);
+  // Tile b is answered (busy): the count starts again, so c and d are asked.
+  f = fake(n => n > 4 && n <= 8 ? new Response('busy', {status: 503}) : down());
+  result = await acquireGapTiles(tiles, join(root, 'busy'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  assert.equal(f.calls.length, 16);
+  // A fetched tile in between starts the count again too.
+  const fakeOsmium = async (_cmd, args) => { if (args[0] === 'cat') return {stdout: ''}; await writeFile(args[args.indexOf('-o') + 1], ''); return {stdout: ''}; };
+  f = fake(n => n === 5 ? new Response(answer()) : down());
+  result = await acquireGapTiles(tiles, join(root, 'fetched'), {...fakeClock(), fetcher: f.fetcher, run: fakeOsmium});
+  assert.ok(!result.results[1].failed);
+  assert.equal(f.calls.length, 13, 'a 4, b 1, c 4, d 4');
+  // One answer among a tile's retries is an answer: the tile does not count.
+  f = fake(n => n === 2 || n === 6 ? new Response('busy', {status: 503}) : down());
+  await acquireGapTiles(tiles, join(root, 'mixed'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  assert.equal(f.calls.length, 16);
+});
+
+test('tiles without a working copy go first, then the oldest', async t => {
+  const tiles = ['a', 'b', 'c', 'd', 'e'].map(key => ({key}));
+  const index = {regions: {'gap/a': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/b': {sourceTimestamp: '2026-11-05T06:00:00Z'},
+    'gap/d': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/e': {sourceTimestamp: 'not a date'}}};
+  assert.deepEqual(tileOrder(tiles, index).map(t => t.key), ['c', 'e', 'b', 'a', 'd']);
+  assert.deepEqual(tileOrder(tiles).map(t => t.key), ['a', 'b', 'c', 'd', 'e'], 'the first run keeps the planned order');
+  const root = await mkdtemp(join(tmpdir(), 'gap-order-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const {results} = await acquireGapTiles(tiles.map(({key}) => ({...tile, key})), root, {...fakeClock(), index, run: noOsmium,
+    fetcher: async () => new Response('bad', {status: 400})});
+  assert.deepEqual(results.map(r => r.region), ['gap/c', 'gap/e', 'gap/b', 'gap/a', 'gap/d'], 'the run asks in that order');
+});
+
+test('each tile and each failed request is logged as it happens', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-log-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const lines = [];
+  const f = fake(n => n === 1 ? new TypeError('fetch failed', {cause: Object.assign(new Error('connect ETIMEDOUT'), {code: 'ETIMEDOUT'})}) : new Response('busy', {status: 429}));
+  await acquireGapTiles([tile], root, {...fakeClock(), fetcher: f.fetcher, run: noOsmium, log: line => lines.push(line)});
+  assert.match(lines[0], /^0_-45_45_0: request 1 failed after \d+ s: fetch failed: fetch failed: ETIMEDOUT: connect ETIMEDOUT$/);
+  assert.match(lines[1], /^0_-45_45_0: request 2 answered HTTP 429 after \d+ s$/);
+  assert.match(lines.at(-1), /^gap\/0_-45_45_0: kept its copy: HTTP 429; 4 requests, \d+ s$/);
+  assert.equal(lines.length, 5);
+});
+
+test('the workflow gives the gaps run a time budget inside its job limit', async t => {
+  const workflow = await readFile(new URL('../.github/workflows/osm-extract.yml', import.meta.url), 'utf8');
+  const job = workflow.slice(workflow.indexOf('\n  gaps:'), workflow.indexOf('\n  publish:'));
+  const limit = Number(/timeout-minutes: (\d+)/.exec(job)[1]);
+  const budgetMinutes = Number(/GAP_TIME_BUDGET_MINUTES: (\d+)/.exec(job)[1]);
+  assert.ok(budgetMinutes > 0 && budgetMinutes <= limit - 10, `${budgetMinutes} min leaves set-up, writing and the upload under ${limit} min`);
+  // A bad value fails loudly instead of running without a budget.
+  const root = await mkdtemp(join(tmpdir(), 'gap-cli-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  await writeFile(join(root, 'gaps.json'), '{"tiles":[]}');
+  const cli = env => spawnSync(process.execPath, [new URL('../scripts/acquire-gap-tiles.mjs', import.meta.url).pathname, join(root, 'gaps.json'), join(root, 'out')], {encoding: 'utf8', env: {...process.env, ...env}});
+  assert.notEqual(cli({GAP_TIME_BUDGET_MINUTES: 'soon'}).status, 0);
+  assert.notEqual(cli({GAP_TIME_BUDGET_MINUTES: '0'}).status, 0);
+  const ok = cli({GAP_TIME_BUDGET_MINUTES: '170'});
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /^0 gap tiles/);
 });
