@@ -39,11 +39,14 @@ test('the day totals per host and per workflow, with every job counted once per 
   assert.deepEqual(GUIDANCE['overpass-api.de'].regular, {requests: 100, bytes: 1e7});
 });
 
-test('a day runs from 05:00 UTC to 05:00 UTC; by default the one that ended last', () => {
+test('a day runs from 05:00 UTC to 05:00 UTC; by default the one that ended at least 24 hours ago', () => {
   assert.deepEqual(dayWindow('2026-11-05'), {start: '2026-11-05T05:00:00Z', end: '2026-11-06T05:00:00Z'});
-  assert.deepEqual(dayWindow('', new Date('2026-11-09T05:47:00Z')), {start: '2026-11-08T05:00:00Z', end: '2026-11-09T05:00:00Z'});
-  // Before 05:00 the day that ended last is the one before: never a day still running.
-  assert.deepEqual(dayWindow('', new Date('2026-11-09T04:00:00Z')), {start: '2026-11-07T05:00:00Z', end: '2026-11-08T05:00:00Z'});
+  // At the scheduled 05:47 the day that ended 24 h 47 min ago: every job
+  // of it (6 hours at most) has finished.
+  assert.deepEqual(dayWindow('', new Date('2026-11-09T05:47:00Z')), {start: '2026-11-07T05:00:00Z', end: '2026-11-08T05:00:00Z'});
+  // Run by hand just before 05:00, the day before that: never one that ended under 24 hours ago.
+  assert.deepEqual(dayWindow('', new Date('2026-11-09T04:59:00Z')), {start: '2026-11-06T05:00:00Z', end: '2026-11-07T05:00:00Z'});
+  assert.deepEqual(dayWindow('', new Date('2026-11-09T05:00:00Z')), {start: '2026-11-07T05:00:00Z', end: '2026-11-08T05:00:00Z'});
   assert.throws(() => dayWindow('2026-13-40'), /Invalid date/);
   assert.throws(() => dayWindow('yesterday'), /Invalid date/);
 });
@@ -75,6 +78,10 @@ test('every run, every attempt and every job log of the day is read; a log that 
   assert.deepEqual(result.jobs.map(j => [j.workflow, j.job]), [['Heritage', 10], ['Heritage', 11]]);
   assert.deepEqual(result.unread, [20]);
   assert.ok(!asked.some(path => path.includes('/jobs/12/')), 'a job still running is not read');
+  assert.deepEqual(result.unfinished, [12], 'but listed, so the report is marked incomplete');
+  const incomplete = usageReport({start: 's', end: 'e', runs: 1, jobs: 0, unread: [], unfinished: result.unfinished}, summarize([]));
+  assert.match(incomplete, /\*\*Incomplete:\*\* 1 jobs of this day were still running and are not counted \(12\)/);
+  assert.doesNotMatch(usageReport({start: 's', end: 'e', runs: 1, jobs: 0, unread: []}, summarize([])), /Incomplete/);
   assert.ok(!asked.some(path => path.includes('/jobs/13/')), 'a skipped job has no log and is not counted as unreadable');
   assert.ok(!asked.some(path => path.includes('/jobs/14/')), 'nor one cancelled before its first step');
   assert.ok(asked.some(path => path.endsWith('/jobs/11/logs')), 'a job cancelled after it started is read');

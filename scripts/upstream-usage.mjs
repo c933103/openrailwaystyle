@@ -4,7 +4,10 @@
 // api.github.com, for the runs, their jobs (every attempt) and the job logs.
 //   node scripts/upstream-usage.mjs [YYYY-MM-DD]
 // The day runs from 05:00 UTC on that date to 05:00 UTC the next day (the
-// window of the daily sums on #330); by default the one that ended last.
+// window of the daily sums on #330). By default it is the day that ended
+// at least 24 hours ago: every job has at most 6 hours, so all of that day's
+// jobs have finished. A job still running is listed, and the report marked
+// incomplete, never silently left out.
 // It writes usage.md and usage.json, and the Markdown to the step summary.
 import {appendFile, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -54,8 +57,9 @@ export function summarize(jobs) {
 }
 
 const MB = 1e6;
-export function usageReport({start, end, runs, jobs, unread}, summary) {
+export function usageReport({start, end, runs, jobs, unread, unfinished = []}, summary) {
   const lines = [`# Upstream usage ${start.slice(0, 16)} → ${end.slice(0, 16)} UTC`, '',
+    ...(unfinished.length ? [`**Incomplete:** ${unfinished.length} jobs of this day were still running and are not counted (${unfinished.slice(0, 20).join(', ')}). Run this date again once they finish.`, ''] : []),
     `- ${runs} workflow runs; ${jobs} jobs with usage lines${unread.length ? `; ${unread.length} job logs could not be read: ${unread.slice(0, 20).join(', ')}` : ''}`, '',
     '| Host | Requests | MB | Held back (meter pause) | Jobs | Against the guidance |', '| --- | ---: | ---: | ---: | ---: | --- |'];
   for (const [host, t] of Object.entries(summary.hosts)) {
@@ -70,7 +74,7 @@ export function usageReport({start, end, runs, jobs, unread}, summary) {
 }
 
 export function dayWindow(date, now = new Date()) {
-  const day = date || new Date(now.getTime() - 29 * 3600_000).toISOString().slice(0, 10);
+  const day = date || new Date(now.getTime() - 53 * 3600_000).toISOString().slice(0, 10);
   if (!/^\d{4}-\d\d-\d\d$/.test(day) || !Number.isFinite(Date.parse(day))) throw new Error(`Invalid date ${date}`);
   const start = new Date(`${day}T05:00:00Z`), end = new Date(start.getTime() + 86400_000);
   const iso = date => date.toISOString().replace('.000Z', 'Z');
@@ -90,14 +94,15 @@ export async function collect({repo, start, end, token, fetcher = fetch}) {
     runs.push(...batch);
     if (batch.length < 100) break;
   }
-  const jobs = [], unread = [];
+  const jobs = [], unread = [], unfinished = [];
   for (const run of runs) {
     for (let page = 1; ; page++) {
       const {jobs: batch} = await github(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=all&per_page=100&page=${page}`, {token, fetcher});
       for (const job of batch) {
         // A skipped job, or one cancelled before its first step, never ran
         // and has no log (HTTP 404); it used nothing.
-        if (job.status !== 'completed' || job.conclusion === 'skipped' || !job.steps?.length) continue;
+        if (job.status !== 'completed') { unfinished.push(job.id); continue; }
+        if (job.conclusion === 'skipped' || !job.steps?.length) continue;
         try {
           const records = usageRecords(await github(`/repos/${repo}/actions/jobs/${job.id}/logs`, {token, fetcher, text: true}));
           if (records.length) jobs.push({workflow: run.name, run: run.id, job: job.id, records});
@@ -106,7 +111,7 @@ export async function collect({repo, start, end, token, fetcher = fetch}) {
       if (batch.length < 100) break;
     }
   }
-  return {runs: runs.length, jobs, unread};
+  return {runs: runs.length, jobs, unread, unfinished};
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
@@ -114,9 +119,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const repo = process.env.GITHUB_REPOSITORY || 'c933103/openrailwaystyle';
   const collected = await collect({repo, start, end, token: process.env.GH_TOKEN || process.env.GITHUB_TOKEN});
   const summary = summarize(collected.jobs);
-  const markdown = usageReport({start, end, runs: collected.runs, jobs: collected.jobs.length, unread: collected.unread}, summary);
+  const markdown = usageReport({start, end, runs: collected.runs, jobs: collected.jobs.length, unread: collected.unread, unfinished: collected.unfinished}, summary);
   await writeFile('usage.md', markdown);
-  await writeFile('usage.json', `${JSON.stringify({start, end, runs: collected.runs, unread: collected.unread, ...summary}, null, 2)}\n`);
+  await writeFile('usage.json', `${JSON.stringify({start, end, complete: !collected.unfinished.length, runs: collected.runs, unread: collected.unread, unfinished: collected.unfinished, ...summary}, null, 2)}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, markdown);
   process.stdout.write(markdown);
 }

@@ -2,8 +2,10 @@
 # download.geofabrik.de, …), summed from the OVERPASS_USAGE lines of every
 # metered job (#330, B6). Read-only: it reads this repository's runs and job
 # logs through api.github.com and asks no data provider.
-# The day is 05:00 → 05:00 UTC; the report goes to the step summary and an
-# artifact. Daily, and by hand for any date.
+# The day is 05:00 → 05:00 UTC; by default the one that ended at least 24
+# hours ago, so all its jobs (6 hours at most) have finished; a job still
+# running marks the report incomplete. The report goes to the step summary
+# and an artifact. Daily, and by hand for any date.
 name: Upstream usage per day
 on:
   schedule:
@@ -11,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'The day starting 05:00 UTC (YYYY-MM-DD); blank uses the day that ended last'
+        description: 'The day starting 05:00 UTC (YYYY-MM-DD); blank uses the day that ended at least 24 hours ago'
         required: false
 permissions:
   actions: read
