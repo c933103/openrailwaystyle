@@ -133,20 +133,26 @@ by the station/crossing ordering contract. The old low-zoom dots and
 error-fallback circles are then suppressed to avoid duplicate markers; detailed
 provider dots remain from zoom 12.
 
-Regional and city overview markers use small dots with thin outlines so dense
-station inventories do not obscure the railway lines. The worldwide markers'
-outer diameter is about 2.7 CSS pixels at zoom 6.6 and 4.2 at zoom 9.7, increasing
-smoothly towards the existing detailed symbols at zoom 12. Curated, provider and
-error-fallback overview dots follow the same restrained scale. This changes
-marker paint only; it does not thin the inventory or depend on name collisions.
+Across all nine views, station locations use subdued neutral hollow rings.
+Their outer diameter, including the outline, equals the standard single-line
+width at the current zoom: fill radius is 40% of that width and the outline is
+10%, so `2 × (radius + outline) = line width`. Former stations retain their muted
+brown outline. This applies to curated, provider, worldwide and fallback points.
+No locations are thinned or tied to name collisions; tap tolerance is unchanged.
 
-In Service view, station locations use small neutral hollow rings with subdued
-outlines. Service route colours paint above the rings, while accepted place
-names remain above both. Every existing station point and its tap tolerance
-remain available; source selection, name placement and station settings do not
-change. Other views restore their ordinary station colours and sizes. The rule
-applies before the first frame and to runtime worldwide and fallback markers,
-including after language changes and source recovery.
+The line builder and marker sizing share the existing overview and mainline
+width stops. Numeric zoom updates preserve the exact overview/detail handoff
+at zoom 7 without changing the railway widths. For example, ordinary markers
+are 1.71 CSS px across at zoom 6.6, 1.84 at 7.8 and 2.41 at 9.7. Service uses
+the ordinary single-service stroke from zoom 7 (2.24 px at 7.8); parallel route
+bundles do not enlarge its stations. Station records lack per-track siding,
+dual-gauge and timetable-frequency width attributes, so those individual
+variants are not inferred from station names or proximity.
+
+Service route colours additionally paint above the station rings, while
+accepted place names remain above both. Source selection, name placement and
+station settings do not change. The shared marker rule applies before the first
+frame, during zoom and view changes, and after language reload or source recovery.
 
 If the independent tile source fails, the application restores the previous
 markers rather than inventing a completed geographic result. All points in
@@ -285,7 +291,7 @@ The settings switch between metric and imperial units: imperial colours speeds b
 
 ## Station hierarchy
 
-The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have larger markers and first choice of label placement: each importance tier is its own map layer — heavy rail (large, normal, small, then halts), metro, light rail, people movers, monorail, funicular and tram, then former and planned stations from zoom 12 — because MapLibre orders labels by sort key only within a tile, but places layers top-down across all tiles; less complete route mapping can understate station importance.
+The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have first choice of label placement: each importance tier is its own map layer — heavy rail (large, normal, small, then halts), metro, light rail, people movers, monorail, funicular and tram, then former and planned stations from zoom 12 — because MapLibre orders labels by sort key only within a tile, but places layers top-down across all tiles; less complete route mapping can understate station importance. Marker diameter follows the shared line-width rule above rather than station importance.
 
 Zooms 3–6 give reviewed station candidates in `styles/data-src/major-stations.json` priority, with eligibility based on passenger-network role and regional coverage. Zoom 3 preserves its 550 km globe separation and 14-pixel label padding. Regional bands use minimum Mercator separations of 78, 68 and 56 pixels at zooms 4, 5 and 6, and padding of 14, 12 and 10 pixels. Provider stations fill remaining space from zoom 4, so the curated list never caps the worldwide regional inventory. The selection wraps the date line and clamps the poles; globe collision placement still applies. Only one principal station per metro/country enters zooms 3–4. Earlier selections persist, and regional round-robin selection prevents the first region in the file taking all the available space. Additional terminals such as Shinjuku and Grand Central remain deferred when they are too close to Tokyo or New York Penn.
 
@@ -293,7 +299,7 @@ Each generated tier is a separate layer above provider fill at zooms 4–6. Prov
 
 From zoom 7, regional stations use the provider’s spaced selection without discarding stations classified as small; closer views add more stations with collision spacing. Halts appear from zoom 11, tram stops from zoom 10.
 
-By mode, metro stations appear from zoom 8 (the first station tiles that carry them), light rail, monorails, people movers, trams, funiculars and tram stops from 10, so a tram stop never shows before a metro station. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names and markers are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. Where markers meet at street zoom, the higher-capacity station's is drawn on top.
+For provider names, metro stations appear from zoom 8 (the first station tiles that carry them), light rail, monorails, people movers, trams, funiculars and tram stops from 10, so a tram stop's name never shows before a metro station's. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. The independent worldwide location overlay has its own complete point inventory and does not inherit these name thresholds.
 
 Metro tracks are drawn from zoom 7 where data exists (the provider's tiles hold them only from zoom 10); light rail, monorail, tram, funicular and miniature tracks from zoom 10.
 
@@ -305,8 +311,9 @@ zoom 8. Every station *actually present in the loaded source tiles* can retain
 its point even when its name is deferred or collides. Below zoom 8 the provider
 station tiles are selective; rendering every station worldwide at zoom 3 still
 requires a prebuilt nationwide/worldwide station-point dataset, not a burst of
-on-demand detailed tile requests. From zoom 12 the detailed marker hierarchy
-continues unchanged. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
+on-demand detailed tile requests. From zoom 12 the detailed provider's station
+selection and draw priority continue, with the same shared line-width sizing.
+Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
 The browser has an additional independent station fallback, inserted after the checked-in style is loaded and before localization. From zoom 8 it uses only already-requested En Liberté `openmaptiles/poi` features explicitly classed as railway stations, halts, tram stops or subway stations. Fallback dots paint above level crossings but beneath the ordinary ORM station dots. Both fallback dots and collision-managed fallback names remain hidden while the relevant ORM station source is healthy; they are enabled only inside that source's failed canonical tile areas, avoiding double-rendering nearby but differently positioned station objects in healthy neighboring tiles. Only a metadata failure enables source-wide fallback. A successful tile clears its own failure mask; unloaded tiles, source replacement and language URL changes retire stale masks. Nonretryable station failures retain the same spatial boundary without initiating retries. Names are enabled only from zoom 8. Vetted major-station GeoJSON dots also remain eligible beyond zoom 7 without causing extra ORM name-tile lookups, but draw only on the corresponding station-source failure. All fallback layers respect the station toggle and remain visible in Carto/Hybrid, but not Satellite-only. The basemap can omit POIs at some zooms and regions; curated hubs are selective. **Neither fallback establishes complete worldwide station coverage or operating status.** Issue #175's independently extracted station-point generation remains incomplete and unintegrated until validated for publication. Fallback POIs have only the basemap-provided identity and may link to coordinates rather than a verified OSM object.
 

@@ -2,6 +2,7 @@ import { MODES, INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrif
 import {present, notFerry, hasService, byKindZoom, hasRack} from './railway-expressions.mjs';
 import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
+import {railwayOverviewWidth,railwayTrackWidth} from '../../../styles/map-model.mjs';
 
 // Each group has a fixed position in the atlas composition. Returning separate
 // groups keeps roads and structural cues ordered without searching layer IDs.
@@ -17,7 +18,7 @@ export function createRailwayLayers() {
     ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
   const electricPaint = electrificationPaint();
   // World-scale railways need a full CSS pixel, including negative camera zoom.
-  const width = ['interpolate', ['linear'], ['zoom'], 0, 1, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
+  const width = railwayOverviewWidth();
   const line = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => ({
     id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
     filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' || source === 'axleRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -25,8 +26,7 @@ export function createRailwayLayers() {
   });
   // Track width by zoom; scale multiplies each stop, so halves and offsets
   // follow the same curve (zoom expressions cannot be nested in arithmetic).
-  const trackWidth = (scale = 1) => ['interpolate', ['linear'], ['zoom'],
-    7, 1.6 * scale, 11, ['case', hasService, 1.1 * scale, 2.8 * scale], 16, ['case', hasService, 2 * scale, 4.8 * scale], 20, 7 * scale];
+  const trackWidth = railwayTrackWidth;
   // Concurrent protection systems occupy adjacent longitudinal bands. All
   // bands use the same count and offsets, keeping them centred on the track.
   // A small minimum band width preserves multiple colours at overview zooms.

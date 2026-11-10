@@ -9,6 +9,8 @@ import {encodeBundle} from '../styles/tile-bundles.mjs';
 import {launchBrowser} from './browser.mjs';
 import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
+import {MODES,stationMarkerDiameter} from '../styles/map-model.mjs';
+import {serviceFrequencyPaint} from '../styles/service-frequency.mjs';
 
 const server=await serveAtlasAppFixture(),base=server.origin+'/',assets=await rendererFixture(base);
 const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.2.js'));
@@ -87,7 +89,7 @@ if(process.env.ATLAS_TEST_ENGINE==='webkit'){
    await browser.close();await server.close();process.exit(0);
  }
 }
-await page.evaluate(({center})=>{
+await page.evaluate(({center,serviceWidth})=>{
   window.fixtureMap=new maplibregl.Map({
     container:'map',center,zoom:3,attributionControl:false,fadeDuration:0,preserveDrawingBuffer:true,
     style:{version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',
@@ -103,14 +105,14 @@ await page.evaluate(({center})=>{
         {id:'infrastructure-crossing-overview',type:'circle',source:'crossings',
           minzoom:5,paint:{'circle-radius':2.4,'circle-color':'#70412e'}},
         {id:'service-routes',type:'line',source:'service',layout:{visibility:'none'},
-          paint:{'line-color':'#d62c2c','line-width':2}},
+          paint:{'line-color':'#d62c2c','line-width':serviceWidth}},
         {id:'place_label_city',type:'symbol',source:'places',
           layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':14,
           'text-allow-overlap':false}},
       ]},
   });
   fixtureMap.on('error',e=>{(window.errors||=[]).push(e.error?.message||'unknown')});
-},{center});
+},{center,serviceWidth:serviceFrequencyPaint().width});
 try {await page.waitForFunction(()=>fixtureMap.isStyleLoaded(),null,{timeout:30000});}
 catch(error){console.error('STATION_STYLE_FAILURE',await page.evaluate(()=>({errors:window.errors,styleLoaded:fixtureMap.isStyleLoaded()})),errors);throw error;}
 const installed=await page.evaluate(async root=>{
@@ -157,7 +159,7 @@ console.log('PASS: all 8 synthetic station nodes independent of text and crossin
 // with and without the complete, deliberately overlapping station inventory.
 await page.evaluate(async()=>{
  const {createStationViewPaint}=await import('/station-world.mjs');
- const map=fixtureMap,paint=createStationViewPaint()(map.getLayer('station-world-dots'),'service');
+ const map=fixtureMap,paint=createStationViewPaint()(map.getLayer('station-world-dots'),'service',7.8);
  for(const [key,value] of Object.entries(paint))map.setPaintProperty('station-world-dots',key,value);
  map.setLayoutProperty('service-routes','visibility','visible');
  map.setLayoutProperty('place_label_city','visibility','none');
@@ -238,11 +240,20 @@ for(const fresh of [false,true,true]){
 // Intentional source cancellation is not a data failure, even after reload.
 await page.evaluate(()=>stationAppMap.fire('error',{sourceId:'stationWorld',error:new DOMException('The operation was aborted','AbortError')}));
 appResults.push({action:'intentional abort',...await appReady()});
-for(const mode of ['service','infrastructure','service']){
+for(const mode of [...MODES,'service']){
  await page.click(`[data-mode="${mode}"]`);
  appResults.push({action:`${mode} view`,...await appReady()});
  const paint=await page.evaluate(()=>stationAppMap.getPaintProperty('station-world-dots','circle-opacity'));
- assert.equal(paint,mode==='service'?0:1,'mode changes preserve station appearance ownership');
+ assert.equal(paint,0,'every view keeps hollow station markers');
+ for(const zoom of [6.999999,7,7.8,9.7]){
+  await page.evaluate(zoom=>stationAppMap.jumpTo({center:[15,15],zoom}),zoom);
+  await appReady();
+  const actual=await page.evaluate(()=>({zoom:stationAppMap.getZoom(),
+    radius:stationAppMap.getPaintProperty('station-world-dots','circle-radius'),
+    stroke:stationAppMap.getPaintProperty('station-world-dots','circle-stroke-width')}));
+  assert.ok(Math.abs(2*(actual.radius+actual.stroke)-stationMarkerDiameter(mode,actual.zoom))<1e-12,
+    `${mode} z${zoom}: outer diameter follows the live line-width scale`);
+ }
 }
 await page.selectOption('#language','fr');
 appResults.push({action:'Service language reload',...await appReady()});

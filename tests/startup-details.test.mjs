@@ -2,7 +2,7 @@
 // retain their contexts on Node 24 even after JSDOM closes and GC runs.
 import {test,encodeTile,assert,gzipSync,model,powerFacilities,stationFallbackModule,featureFilter,code,style,start,tick,providerHubTile,deferredHubHarness} from './startup-harness.mjs';
 
-test('Service view starts with hollow stations and restores ordinary markers when changing mode',async()=>{
+test('all views keep hollow stations sized to line width before the first frame and throughout zoom changes',async()=>{
  const {dom,window,maps,errors}=await start({search:'?mode=service&stations=1&language=en'});
  try{
   const map=maps[0],layers=map.options.style.layers;
@@ -10,19 +10,24 @@ test('Service view starts with hollow stations and restores ordinary markers whe
   assert.ok(stations.length>=7,'provider and both fallback sources are covered');
   for(const layer of stations){
    assert.equal(layer.paint['circle-opacity'],0,`${layer.id}: hollow before the first frame`);
-   assert.equal(layer.paint['circle-stroke-color'],'#657571');
+   assert.equal(layer.paint['circle-stroke-color'],layer.id==='station-former-dots'?'#8a8076':'#657571');
+   const outer=2*(layer.paint['circle-radius']+layer.paint['circle-stroke-width']);
+   assert.ok(Math.abs(outer-model.stationMarkerDiameter('service',map.options.zoom))<1e-12);
   }
   const route=layers.findIndex(layer=>layer.id==='service-routes');
   assert.ok(stations.every(layer=>layers.indexOf(layer)<route),'routes paint above every ordinary station source');
   assert.ok(route<layers.findIndex(layer=>layer.id==='place_label_city'),'accepted place text remains above routes');
   map.handlers['style.load']();
-  window.document.querySelector('[data-mode="infrastructure"]').click();
-  for(const layer of stations){
-   const original=style.layers.find(item=>item.id===layer.id)
-    ||stationFallbackModule.stationFallbackLayers(model.labelExpression).find(item=>item.id===layer.id);
-   assert.equal(map.paintProperties[layer.id]['circle-color'],original.paint['circle-color']);
-   assert.deepEqual(map.paintProperties[layer.id]['circle-radius'],original.paint['circle-radius']);
-   assert.equal(map.paintProperties[layer.id]['circle-opacity'],1,'ordinary visibility is restored');
+  for(const mode of model.MODES){
+   window.document.querySelector(`[data-mode="${mode}"]`).click();
+   for(const zoom of [6.999999,7,7.8,9.7,16]){
+    map.zoom=zoom;map.handlers.zoom();
+    for(const layer of stations){
+     const paint=map.paintProperties[layer.id],outer=2*(paint['circle-radius']+paint['circle-stroke-width']);
+     assert.ok(Math.abs(outer-model.stationMarkerDiameter(mode,zoom))<1e-12,`${layer.id} ${mode} z${zoom}`);
+     assert.equal(paint['circle-opacity'],0,'mode changes do not restore an opaque fill');
+    }
+   }
   }
   window.document.querySelector('[data-mode="service"]').click();
   assert.equal(map.paintProperties['station-provider-dots']['circle-opacity'],0);

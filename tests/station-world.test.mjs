@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
+import {readFile} from 'node:fs/promises';
+import {createExpression} from '@maplibre/maplibre-gl-style-spec';
+import {MODES,stationMarkerDiameter} from '../styles/map-model.mjs';
 import {encodeBundle} from '../styles/tile-bundles.mjs';
 import {
   WORLD_STATION_SOURCE,WORLD_STATION_DOTS,WORLD_STATION_PROTOCOL,
@@ -61,27 +64,44 @@ test('the independent worldwide station layer is a pure marker with no name plac
  assert.ok(WORLD_STATION_SUPERSEDED_DOTS.includes('station-provider-dots'));
 });
 
-test('Service station paint survives serialized reloads and restores ordinary source paint',()=>{
+test('all-view station paint survives serialized reloads without restoring oversized dots',()=>{
  const paintForView=createStationViewPaint();
  for(const layer of [worldStationLayer(),{id:'station-former-dots',type:'circle',
    paint:{'circle-color':'#fffef8','circle-stroke-color':'#8a8076',
     'circle-radius':3,'circle-stroke-width':1.5}}]){
-  const original=structuredClone(layer),ordinary=paintForView(layer,'infrastructure');
-  const service=paintForView(layer,'service');
-  assert.equal(service['circle-opacity'],0,'a station must not fill over service colours');
+  const original=structuredClone(layer),ordinary=paintForView(layer,'infrastructure',7.8);
+  const service=paintForView(layer,'service',7.8);
+  assert.equal(service['circle-opacity'],0,'a station must not fill over thematic colours');
   assert.equal(service['circle-stroke-opacity'],0.55);
-  assert.notEqual(service['circle-stroke-color'],ordinary['circle-stroke-color']);
+  assert.equal(service['circle-stroke-color'],ordinary['circle-stroke-color']);
   Object.assign(layer.paint,service);
   const serialized=JSON.parse(JSON.stringify(layer));
-  assert.deepEqual(paintForView(serialized,'infrastructure'),ordinary,
-   'serialized Service paint must not replace the saved ordinary appearance');
-  assert.deepEqual(paintForView(serialized,'service'),service);
+  assert.deepEqual(paintForView(serialized,'infrastructure',7.8),ordinary,
+   'serialized Service paint must not leak its different line width to another view');
+  assert.deepEqual(paintForView(serialized,'service',7.8),service);
   assert.deepEqual(original.filter,layer.filter,'paint never selects or removes locations');
-  service['circle-radius'][3]=99;
-  assert.notEqual(paintForView(layer,'service')['circle-radius'][3],99,'returned paint is isolated');
+  service['circle-radius']=99;
+  assert.notEqual(paintForView(layer,'service',7.8)['circle-radius'],99,'returned paint is isolated');
  }
  assert.equal(paintForView({id:'station-detail-large-names',type:'symbol'},'service'),null);
  assert.equal(paintForView({id:'platform-points',type:'circle'},'service'),null);
+});
+
+test('outer station diameter equals the generated standard line width in every view across the handoff',async()=>{
+ const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+ const paintForView=createStationViewPaint();
+ for(const mode of MODES)for(const zoom of [0,3,4,6.6,6.999999,7,7.000001,7.8,9.7,11,12,16,20]){
+  const id=mode==='service'&&zoom>=7?'service-routes':`${mode}-${zoom<7?'overview':'tracks'}`;
+  const compiled=createExpression(style.layers.find(l=>l.id===id).paint['line-width']);
+  assert.equal(compiled.result,'success');
+  const width=compiled.value.evaluate({zoom},{type:2,properties:{service:''}});
+  const paint=paintForView(worldStationLayer(),mode,zoom);
+  const outer=2*(paint['circle-radius']+paint['circle-stroke-width']);
+  // Four arithmetic operations may round; allow only their IEEE-754 error.
+  assert.ok(Math.abs(outer-width)<=4*Number.EPSILON*Math.max(1,width),`${mode} z${zoom}: ${outer} != ${width}`);
+  assert.equal(stationMarkerDiameter(mode,zoom),width);
+  assert.equal(paint['circle-opacity'],0);
+ }
 });
 
 test('incomplete, missing and tampered snapshots never install a map source',async()=>{
