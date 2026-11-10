@@ -118,6 +118,16 @@ How the choice is made:
 - **Dates.** The manifest is dated by the oldest region it was built from (`oldestSource`).
 - **Not used yet.** The site keeps the Overpass build until `DATA_SOURCES` selects `branch-lines`, which is a separate decision after the two builds have been compared.
 
+**Urban rail services.** The same workflow then builds them with `scripts/build-extract-service-routes.mjs` and, on `main`, publishes them to `service-routes-extract-data`. The branch lines are published first, so a failed service build does not hold them back.
+- **Same conversion as the Overpass build.** The selection (`isServiceRoute`, and each route's member ways with a track `railway` value, as `serviceView`), the conversion (`tableBuilder`, which `toTable` also uses) and the writer (`service-routes-files.mjs`) are shared. The same elements therefore give byte-identical tiles and table.
+- **Two passes.** An OSM file lists ways before relations, so the first pass reads the route relations and the second only their member track ways. Each way's geometry evidence is made as it is read.
+- **One stage.** The table's stage is `extract`; there is no state file, since each build starts from nothing.
+- **Observed as of the oldest region.** Every element is observed as of the assembly's `oldestTimestamp`, the time every region vouches for.
+  - An element edited after it (it came from a newer region) is not certified as of that time. Its geometry is still drawn, and it is listed under `waysWithUnknownProvenance` in the manifest, as an Overpass element newer than its answer would be.
+  - The gap closes as the regions' dates come closer.
+- **Memory.** On germany (51,419 track ways) the table is 188 MB and the peak 928 MB, while tiling. The step runs with a 6 GB heap; the Overpass build tiles a world table of about 275,000 ways within Node's default heap.
+- **Completeness, dates and use** are as for the branch lines: complete only when no region or gap tile is missing, dated by `oldestSource`, and not used until `DATA_SOURCES` selects `service-routes`.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.

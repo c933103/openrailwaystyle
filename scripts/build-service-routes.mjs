@@ -13,10 +13,11 @@ import {responseChunks} from './response-chunks.mjs';
 import {createStagedProviderPause} from './staged-provider-pause.mjs';
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {gzipSync, gunzipSync} from 'node:zlib';
+import {gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable} from './service-routes.mjs';
 import {createHash} from 'node:crypto';
+import {writeServiceFiles} from './service-routes-files.mjs';
 import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
 
 import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
@@ -98,20 +99,9 @@ async function publish({run, redeploy, source = api}) {
   refreshRelationDependencyHealth(state, table, now);
   await rm(out, {recursive: true, force: true});
   await mkdir(out, {recursive: true});
-  await writeFile(new URL('service-routes.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
+  const {tiles, tileBytes} = await writeServiceFiles(out, table);
   await writeFile(new URL('state.json', out), JSON.stringify(state));
-  const index = [];
-  let tileBytes = 0;
-  for (const [key, data] of buildTiles(table)) {
-    const [z, x] = key.split('/');
-    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-    const gz = gzipSync(data, {level: 9});
-    tileBytes += gz.length;
-    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-    index.push(key);
-  }
-  await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-  const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+  const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
     stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
       routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
       retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
