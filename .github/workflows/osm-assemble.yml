@@ -4,7 +4,8 @@
 # region files it names. No OpenStreetMap provider is asked. The report goes
 # to the step summary and an artifact; the assembled file is not kept.
 # From it, the extract builds (#330, step 9) are made and, on main,
-# published to their own branches (branch-lines-extract-data). The site uses
+# published to their own branches (branch-lines-extract-data,
+# service-routes-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -79,6 +80,31 @@ jobs:
           if ! git push --force origin HEAD:branch-lines-extract-data; then
             test "$(git ls-remote origin refs/heads/branch-lines-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build service routes from the extract
+        # Measured on germany from the release (51,419 track ways): 188 MB of
+        # table, 928 MB peak while tiling. The Overpass build tiles a world
+        # table of ~275,000 ways (more history per way) within Node's default
+        # heap; 6 GB, as the branch lines, leaves room.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-service-routes.mjs assembled.osm.pbf assembled.osm.pbf.json service-routes-extract | tee service-routes-extract.json
+          { echo '# Service routes from the extract'; echo; echo '```json'; node -e 'const {geometry, ...m} = JSON.parse(require("fs").readFileSync("service-routes-extract/manifest.json", "utf8")); console.log(JSON.stringify(m, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish service-routes-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/service-publish
+          cd /tmp/service-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan service-routes-extract-data
+          cp -r "$GITHUB_WORKSPACE/service-routes-extract/." .
+          git add .
+          git commit -q -m "Service routes from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:service-routes-extract-data; then
+            test "$(git ls-remote origin refs/heads/service-routes-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -86,5 +112,6 @@ jobs:
           path: |
             assembled.osm.pbf.json
             branch-lines-extract/manifest.json
+            service-routes-extract/manifest.json
           if-no-files-found: ignore
           retention-days: 30
