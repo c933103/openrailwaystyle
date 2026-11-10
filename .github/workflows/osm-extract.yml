@@ -16,6 +16,9 @@
 # all sea) come from overpass-api.de as gap tiles (scripts/gap-tiles.mjs,
 # scripts/acquire-gap-tiles.mjs): one request per tile, 10 s apart, never in
 # parallel, at most 400 requests and 1 GB a run.
+# With gaps_only, no region is downloaded: the run plans (one HEAD per region
+# looked at), fetches the gap tiles and publishes them; every region keeps
+# its working copy.
 name: Geofabrik region extracts
 on:
   workflow_dispatch:
@@ -23,6 +26,10 @@ on:
       source_date:
         description: 'Dated Geofabrik files (YYYY-MM-DD); blank uses two days ago'
         required: false
+      gaps_only:
+        description: 'Only the gap tiles from Overpass: no region is downloaded'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -72,6 +79,7 @@ jobs:
           path: plan
   extract:
     needs: plan
+    if: ${{ !inputs.gaps_only }}
     runs-on: ubuntu-latest
     # GitHub-hosted jobs run at most 6 hours. The largest region (8 GiB) at
     # the slowest speed measured, 0.53 MB/s, needs about 270 minutes.
