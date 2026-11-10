@@ -34,17 +34,18 @@ export function checkAssembly(report) {
 // Every planned region and gap tile has a file: the world is covered.
 export const coversWorld = report => Array.isArray(report.missingRegions) && report.missingRegions.length === 0;
 
-export function branchTable(ways) {
-  const table = new Map();
-  for (const feature of toFeatures({elements: ways})) table.set(feature.id, {...feature, stage: EXTRACT_STAGE});
+// Each way becomes its line at once (toFeatures converts ways one by one),
+// so only the simplified lines are held, never the ways' full geometry.
+export function addBranchWay(table, way) {
+  for (const feature of toFeatures({elements: [way]})) table.set(feature.id, {...feature, stage: EXTRACT_STAGE});
   return table;
 }
+export const branchTable = ways => ways.reduce(addBranchWay, new Map());
 
 export async function buildExtractBranchLines(pbf, report, out, {read = readElements, now = () => new Date()} = {}) {
   checkAssembly(report);
-  const ways = [];
-  const counts = await read(pbf, {keep: isBranchWay, onElement: way => ways.push(way)});
-  const table = branchTable(ways);
+  const table = new Map();
+  const counts = await read(pbf, {keep: isBranchWay, onElement: way => addBranchWay(table, way)});
   await rm(out, {recursive: true, force: true});
   const {tiles, tileBytes} = await writeBranchFiles(out, table);
   const manifest = {generated: now().toISOString(), oldestSource: report.oldestTimestamp, newestSource: report.newestTimestamp,

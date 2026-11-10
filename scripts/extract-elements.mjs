@@ -27,14 +27,17 @@ function parseTags(text) {
 }
 const TYPES = {n: 'node', w: 'way', r: 'relation'};
 
-// One OPL line as an element; null for a way missing a node location.
-export function parseLine(line) {
+// One OPL line as an element; null for a way missing a node location;
+// undefined when `accept`, given {type, id, tags} only, turns it down, so
+// the geometry of the many ways a build does not want is never made.
+export function parseLine(line, accept = () => true) {
   const fields = line.split(' ');
   const type = TYPES[fields[0][0]], id = Number(fields[0].slice(1));
   if (!type || !Number.isSafeInteger(id)) throw new Error(`Not an OPL object line: ${line.slice(0, 80)}`);
   const field = key => fields.find(f => f[0] === key)?.slice(1) ?? '';
-  const element = {type, id, timestamp: field('t'), version: Number(field('v'))};
   const tags = parseTags(field('T'));
+  if (!accept({type, id, tags})) return undefined;
+  const element = {type, id, timestamp: field('t'), version: Number(field('v'))};
   if (type === 'node') {
     const lon = Number(field('x')), lat = Number(field('y'));
     if (field('x') === '' || field('y') === '') return null;
@@ -59,7 +62,9 @@ export function parseLine(line) {
 }
 
 // The extract's elements that `keep` accepts, streamed from osmium; resolves
-// to the counts. onElement receives each kept element.
+// to the counts. keep decides on {type, id, tags}; onElement receives each
+// kept element whole, and should convert it at once rather than hold it:
+// a world extract holds millions of ways.
 export async function readElements(pbf, {keep = () => true, onElement, run = spawn} = {}) {
   const child = run('osmium', ['add-locations-to-ways', '--ignore-missing-nodes', pbf, '-f', 'opl', '-o', '-'], {stdio: ['ignore', 'pipe', 'pipe']});
   let stderr = '';
@@ -69,9 +74,12 @@ export async function readElements(pbf, {keep = () => true, onElement, run = spa
   for await (const line of createInterface({input: child.stdout, crlfDelay: Infinity})) {
     if (!line) continue;
     counts.read++;
-    const element = parseLine(line);
-    if (!element) { counts.withoutGeometry++; continue; }
-    if (keep(element)) { counts.kept++; await onElement?.(element); }
+    // keep sees the type and tags first; a way it wants is then made whole.
+    const element = parseLine(line, keep);
+    if (element === undefined) continue;
+    if (element === null) { counts.withoutGeometry++; continue; }
+    counts.kept++;
+    await onElement?.(element);
   }
   const code = await exited;
   if (code !== 0) throw new Error(`osmium add-locations-to-ways failed (${code}): ${stderr.trim().slice(0, 500)}`);

@@ -74,6 +74,18 @@ test('only a complete assembly is built from', async () => {
   await assert.rejects(buildExtractBranchLines('x', report({missingNodeRefs: 1}), 'never-written', {read: () => assert.fail('nothing is read from an incomplete assembly')}), /missing 1/);
 });
 
+test('each way becomes its line as it is read, so the ways are never all held', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'extract-branch-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  // The reader hands over each way and then drops it: the build must have
+  // converted it by then.
+  const read = async (pbf, {keep, onElement}) => { for (const w of WAYS) if (keep(w)) { const copy = structuredClone(w); await onElement(copy); copy.geometry.length = 0; copy.tags = {}; } return {read: WAYS.length, kept: 3, withoutGeometry: 0}; };
+  const manifest = await buildExtractBranchLines('x', report(), join(dir, 'out'), {read});
+  assert.equal(manifest.lines, 3);
+  const rows = gunzipSync(await readFile(join(dir, 'out', 'branch-lines.ndjson.gz'))).toString().trim().split('\n').map(JSON.parse);
+  assert.ok(rows.every(row => row.geometry.coordinates.length > 1 && row.properties.feature), 'lines keep their geometry and tags');
+});
+
 test('every line is one row, keyed by its way', () => {
   const table = branchTable(WAYS.filter(w => w.id <= 2));
   assert.deepEqual([...table.keys()], [1, 2]);
@@ -98,7 +110,7 @@ test('with osmium, from a real extract file', {skip: osmium.status !== 0 && 'osm
 
 test('the assembly workflow builds from the assembled file and publishes only the extract branch, only on main', async () => {
   const workflow = await readFile(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
-  const build = workflow.indexOf('node scripts/build-extract-branch-lines.mjs assembled.osm.pbf assembled.osm.pbf.json branch-lines-extract');
+  const build = workflow.indexOf('node --max-old-space-size=6144 scripts/build-extract-branch-lines.mjs assembled.osm.pbf assembled.osm.pbf.json branch-lines-extract');
   assert.ok(build > workflow.indexOf('node scripts/assemble-extracts.mjs'), 'built after the assembly');
   assert.match(workflow, /- name: Publish branch-lines-extract-data\n\s+if: github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /git push --force origin HEAD:branch-lines-extract-data/);
