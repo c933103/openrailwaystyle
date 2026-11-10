@@ -72,3 +72,38 @@ test('a way with a node the extract lacks is counted and left out; the rest of t
 test('a failing osmium fails the read instead of returning a short list', {skip: osmium.status !== 0 && 'osmium is not installed'}, async () => {
   await assert.rejects(readElements('/nonexistent/extract.osm.pbf'), /osmium add-locations-to-ways failed/);
 });
+
+test('a kept element holds only its own data, not the chunk of output it arrived in', async () => {
+  const {setFlagsFromString} = await import('node:v8');
+  const {runInNewContext} = await import('node:vm');
+  const {PassThrough} = await import('node:stream');
+  const {EventEmitter} = await import('node:events');
+  setFlagsFromString('--expose-gc');
+  const gc = runInNewContext('gc');
+  // 400 chunks of about 256 KB, as a pipe delivers them, each with one kept
+  // node among untagged padding.
+  const padding = 'n1 v1 dV c0 t2026-01-01T00:00:00Z i0 u T x1 y1\n'.repeat(5500);
+  const run = () => {
+    const child = new EventEmitter(), stdout = new PassThrough(), stderr = new PassThrough();
+    Object.assign(child, {stdout, stderr});
+    (async () => {
+      for (let i = 0; i < 400; i++) {
+        stdout.write(`${padding}n${1000 + i} v1 dV c0 t2026-01-01T00:00:00Z i0 u Trailway=signal,name=Signal%20%${i} x11.5 y48.1\n`);
+        await new Promise(resolve => setImmediate(resolve));
+      }
+      stdout.end(); stderr.end();
+      child.emit('close', 0);
+    })();
+    return child;
+  };
+  gc();
+  const before = process.memoryUsage().heapUsed;
+  const kept = [];
+  await readElements('x', {keep: e => e.type === 'node' && e.tags?.railway === 'signal', onElement: e => kept.push(e), run});
+  gc();
+  const held = process.memoryUsage().heapUsed - before;
+  assert.equal(kept.length, 400);
+  assert.deepEqual(kept[7].tags, {railway: 'signal', name: 'Signal 7'});
+  // The chunks total about 100 MB; 400 small elements are well under 10 MB.
+  assert.ok(held < 10e6, `${Math.round(held / 1e6)} MB held for 400 elements`);
+});

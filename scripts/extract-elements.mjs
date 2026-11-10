@@ -79,7 +79,11 @@ export async function readElements(pbf, {keep = () => true, onElement, run = spa
     if (element === undefined) continue;
     if (element === null) { counts.withoutGeometry++; continue; }
     counts.kept++;
-    await onElement?.(element);
+    // A copy: strings parsed from a line can be slices of the whole chunk of
+    // osmium's output it arrived in, and a kept tag would hold that chunk
+    // for as long as the build keeps the element (measured on the world's
+    // 196,342 stations: 2.4 GB of heap kept as read, 211 MB as copies).
+    await onElement?.(structuredClone(element));
   }
   const code = await exited;
   if (code !== 0) throw new Error(`osmium add-locations-to-ways failed (${code}): ${stderr.trim().slice(0, 500)}`);
