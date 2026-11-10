@@ -2,6 +2,35 @@
 // retain their contexts on Node 24 even after JSDOM closes and GC runs.
 import {test,encodeTile,assert,gzipSync,model,powerFacilities,stationFallbackModule,featureFilter,code,style,start,tick,providerHubTile,deferredHubHarness} from './startup-harness.mjs';
 
+test('Service view starts with hollow stations and restores ordinary markers when changing mode',async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&stations=1&language=en'});
+ try{
+  const map=maps[0],layers=map.options.style.layers;
+  const stations=layers.filter(layer=>layer.id.startsWith('station-')&&layer.type==='circle');
+  assert.ok(stations.length>=7,'provider and both fallback sources are covered');
+  for(const layer of stations){
+   assert.equal(layer.paint['circle-opacity'],0,`${layer.id}: hollow before the first frame`);
+   assert.equal(layer.paint['circle-stroke-color'],'#657571');
+  }
+  const route=layers.findIndex(layer=>layer.id==='service-routes');
+  assert.ok(stations.every(layer=>layers.indexOf(layer)<route),'routes paint above every ordinary station source');
+  assert.ok(route<layers.findIndex(layer=>layer.id==='place_label_city'),'accepted place text remains above routes');
+  map.handlers['style.load']();
+  window.document.querySelector('[data-mode="infrastructure"]').click();
+  for(const layer of stations){
+   const original=style.layers.find(item=>item.id===layer.id)
+    ||stationFallbackModule.stationFallbackLayers(model.labelExpression).find(item=>item.id===layer.id);
+   assert.equal(map.paintProperties[layer.id]['circle-color'],original.paint['circle-color']);
+   assert.deepEqual(map.paintProperties[layer.id]['circle-radius'],original.paint['circle-radius']);
+   assert.equal(map.paintProperties[layer.id]['circle-opacity'],1,'ordinary visibility is restored');
+  }
+  window.document.querySelector('[data-mode="service"]').click();
+  assert.equal(map.paintProperties['station-provider-dots']['circle-opacity'],0);
+  assert.equal(map.visibility['service-routes'],'visible');
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 
 test('curated hub names with rare Han wait for their slices before reaching the map',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');

@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261108-station-marker-weight-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261110-service-station-emphasis-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

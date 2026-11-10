@@ -1467,14 +1467,6 @@
       "sha256": "d5768714c8e53d256ceb34597747d8c41432f05dd02ba13239cf5235741dcfe9"
     },
     {
-      "id": "service-routes",
-      "type": "line",
-      "source": "serviceRoutes",
-      "sourceLayer": "service_routes",
-      "minzoom": 7,
-      "sha256": "b72fc4ff135db346eb7586f263e5a2c816c4930548deb95c9dd618a0e962e6ea"
-    },
-    {
       "id": "structure-tunnel",
       "type": "line",
       "source": "railway",
@@ -1872,6 +1864,14 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 12,
       "sha256": "7724bec24aa4403aae5c4ca647c081192175999a034765f37071f410ee872e83"
+    },
+    {
+      "id": "service-routes",
+      "type": "line",
+      "source": "serviceRoutes",
+      "sourceLayer": "service_routes",
+      "minzoom": 7,
+      "sha256": "b72fc4ff135db346eb7586f263e5a2c816c4930548deb95c9dd618a0e962e6ea"
     },
     {
       "id": "place_label_city",
@@ -2569,6 +2569,13 @@
         "station-major-dots": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66",
         "station-provider-dots": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
       }
+    },
+    {
+      "date": "2026-11-10",
+      "reason": "Service route colours must remain continuous through dense station fields. Move the Service-only route layer above station circles and below accepted place-name paint. Every layer definition and all other relative order remain unchanged. Current-head rendering review remains required before merge.",
+      "movedLayer": "service-routes",
+      "previousIndex": 119,
+      "beforeLayer": "place_label_city"
     }
   ]
 }

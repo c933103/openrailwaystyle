@@ -8,6 +8,7 @@ import {
   WORLD_STATION_SOURCE,WORLD_STATION_DOTS,WORLD_STATION_PROTOCOL,
   WORLD_STATION_SUPERSEDED_DOTS,worldStationLayer,
   validWorldStationSnapshot,prepareWorldStationOverlay,installWorldStationLifecycle,
+  createStationViewPaint,
 } from '../styles/station-world.mjs';
 
 const root=new URL('https://atlas.example.invalid/data/station-points/');
@@ -60,6 +61,29 @@ test('the independent worldwide station layer is a pure marker with no name plac
  assert.ok(WORLD_STATION_SUPERSEDED_DOTS.includes('station-provider-dots'));
 });
 
+test('Service station paint survives serialized reloads and restores ordinary source paint',()=>{
+ const paintForView=createStationViewPaint();
+ for(const layer of [worldStationLayer(),{id:'station-former-dots',type:'circle',
+   paint:{'circle-color':'#fffef8','circle-stroke-color':'#8a8076',
+    'circle-radius':3,'circle-stroke-width':1.5}}]){
+  const original=structuredClone(layer),ordinary=paintForView(layer,'infrastructure');
+  const service=paintForView(layer,'service');
+  assert.equal(service['circle-opacity'],0,'a station must not fill over service colours');
+  assert.equal(service['circle-stroke-opacity'],0.55);
+  assert.notEqual(service['circle-stroke-color'],ordinary['circle-stroke-color']);
+  Object.assign(layer.paint,service);
+  const serialized=JSON.parse(JSON.stringify(layer));
+  assert.deepEqual(paintForView(serialized,'infrastructure'),ordinary,
+   'serialized Service paint must not replace the saved ordinary appearance');
+  assert.deepEqual(paintForView(serialized,'service'),service);
+  assert.deepEqual(original.filter,layer.filter,'paint never selects or removes locations');
+  service['circle-radius'][3]=99;
+  assert.notEqual(paintForView(layer,'service')['circle-radius'][3],99,'returned paint is isolated');
+ }
+ assert.equal(paintForView({id:'station-detail-large-names',type:'symbol'},'service'),null);
+ assert.equal(paintForView({id:'platform-points',type:'circle'},'service'),null);
+});
+
 test('incomplete, missing and tampered snapshots never install a map source',async()=>{
  assert.equal(validWorldStationSnapshot(manifest,index),true);
  assert.equal(validWorldStationSnapshot({...manifest,complete:false},index),false);
@@ -110,6 +134,13 @@ test('completed snapshot registers bounded local tile protocol and places statio
  assert.ok(seen.some(path=>path.endsWith('/3/4/4.bundle.gz')));
  await assert.rejects(protocols[WORLD_STATION_PROTOCOL]({url:WORLD_STATION_PROTOCOL+'://7/999/0'},{}),/Invalid/);
  await assert.rejects(protocols[WORLD_STATION_PROTOCOL]({url:WORLD_STATION_PROTOCOL+'://7/7/..'},{}),/Invalid/);
+});
+
+test('runtime worldwide stations install below Service routes and above the existing crossing stack',async()=>{
+ const overlay=await prepareWorldStationOverlay({root,fetcher:fixtureFetcher()});
+ const map=fakeMap();map.layers.set('service-routes',{id:'service-routes',type:'line'});
+ overlay.install(map);
+ assert.deepEqual(map.calls.at(-1),['layer',WORLD_STATION_DOTS,'service-routes']);
 });
 
 test('a failed vector tile never becomes a fabricated successful station inventory',async()=>{

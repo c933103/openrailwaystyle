@@ -2,7 +2,7 @@
 // snapshot. Incomplete or missing acquisition never changes live station layers.
 // Source: station-points-data, built by station-overview.mjs and published only
 // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
-import {createBundleReader} from './tile-bundles.mjs?v=20261108-station-marker-weight-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261110-service-station-emphasis-1';
 
 export const WORLD_STATION_SOURCE = 'stationWorld';
 export const WORLD_STATION_DOTS = 'station-world-dots';
@@ -12,6 +12,27 @@ export const WORLD_STATION_SUPERSEDED_DOTS = Object.freeze([
   'station-provider-dots', 'station-curated-fallback-dots',
   'station-basemap-fallback-dots',
 ]);
+// Service routes carry the colour information in that view. Keep station
+// locations as small neutral rings, including when the world source falls back
+// to provider or basemap points. Capture ordinary paint before first-frame
+// styling so switching modes and serialized language reloads restore it exactly.
+export function createStationViewPaint() {
+  const originals = new Map();
+  const defaults = {'circle-color':'#000000', 'circle-stroke-color':'#000000',
+    'circle-opacity':1, 'circle-stroke-opacity':1, 'circle-radius':5, 'circle-stroke-width':0};
+  const service = {
+    'circle-color':'#fffef8', 'circle-stroke-color':'#657571',
+    'circle-opacity':0, 'circle-stroke-opacity':0.55,
+    'circle-radius':['interpolate',['linear'],['zoom'],3,0.55,7,0.8,10,1.15,12,1.6,16,2.2,20,3],
+    'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.25,8,0.35,12,0.6,16,0.85],
+  };
+  return (layer, mode) => {
+    if (layer.type !== 'circle' || !layer.id.startsWith('station-')) return null;
+    if (!originals.has(layer.id)) originals.set(layer.id, structuredClone(
+      Object.fromEntries(Object.entries(defaults).map(([key, value]) => [key, layer.paint?.[key] ?? value]))));
+    return structuredClone(mode === 'service' ? service : originals.get(layer.id));
+  };
+}
 const ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>';
 const TILE_KEY = /^(3|4|5|6|7)\/(\d{1,3})\/(\d{1,3})$/;
 const manifestValid = m => m && m.complete === true && m.schema === 1 &&
@@ -125,7 +146,9 @@ export async function prepareWorldStationOverlay({
       if(!map.getLayer('place_label_city') || !map.getLayer('infrastructure-crossing-overview'))
         throw new Error('Required station/crossing ordering anchors absent');
       if(!map.getSource(WORLD_STATION_SOURCE))map.addSource(WORLD_STATION_SOURCE,snapshotSource());
-      map.addLayer(worldStationLayer(),'place_label_city');
+      // Service colours paint above the station rings; accepted place names
+      // still paint above both. Isolated/legacy styles can lack that route layer.
+      map.addLayer(worldStationLayer(),map.getLayer('service-routes')?'service-routes':'place_label_city');
       return true;
     },
   };

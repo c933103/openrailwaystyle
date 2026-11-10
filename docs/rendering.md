@@ -140,6 +140,14 @@ smoothly towards the existing detailed symbols at zoom 12. Curated, provider and
 error-fallback overview dots follow the same restrained scale. This changes
 marker paint only; it does not thin the inventory or depend on name collisions.
 
+In Service view, station locations use small neutral hollow rings with subdued
+outlines. Service route colours paint above the rings, while accepted place
+names remain above both. Every existing station point and its tap tolerance
+remain available; source selection, name placement and station settings do not
+change. Other views restore their ordinary station colours and sizes. The rule
+applies before the first frame and to runtime worldwide and fallback markers,
+including after language changes and source recovery.
+
 If the independent tile source fails, the application restores the previous
 markers rather than inventing a completed geographic result. All points in
 this source are mapped features, not verified operating services. Extreme polar

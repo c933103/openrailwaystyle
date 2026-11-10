@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261108-station-marker-weight-1';
+import { MODES } from './map-model.mjs?v=20261110-service-station-emphasis-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
