@@ -54,10 +54,10 @@ jobs:
           df -h . | tail -1
           { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Build branch lines from the extract
-        # Measured on germany (23,881 lines): about 6 KB a line once
-        # converted, and twice that at peak while tiling; the world's ~290,000
-        # lines need about 3.6 GB, more than Node's default heap here (4 GB
-        # reached on 2026-11-10). 6 GB, as the other large builds use.
+        # 6 GB, as the other large builds use. The first world build ran out
+        # of Node's default 4 GB heap (2026-11-10); since then each way is
+        # converted as it is read and kept elements are copies (germany:
+        # 23,881 lines, 17 MB of table, 226 MB peak).
         run: |
           node --max-old-space-size=6144 scripts/build-extract-branch-lines.mjs assembled.osm.pbf assembled.osm.pbf.json branch-lines-extract | tee branch-lines-extract.json
           { echo '# Branch lines from the extract'; echo; echo '```json'; cat branch-lines-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
