@@ -511,3 +511,15 @@ test('the workflow gives the gaps run a time budget inside its job limit', async
   assert.equal(ok.status, 0, ok.stderr);
   assert.match(ok.stdout, /^0 gap tiles/);
 });
+
+test('a gaps-only run downloads no region, and still fetches and publishes the gap tiles', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/osm-extract.yml', import.meta.url), 'utf8');
+  const jobs = ['plan', 'extract', 'gaps', 'publish'].map(name => workflow.indexOf(`\n  ${name}:\n`));
+  assert.ok(jobs.every((at, i) => at > 0 && (i === 0 || at > jobs[i - 1])), 'the four jobs, in order');
+  const job = name => { const i = ['plan', 'extract', 'gaps', 'publish'].indexOf(name); return workflow.slice(jobs[i], jobs[i + 1]); };
+  assert.match(workflow, /\n      gaps_only:\n        description: .+\n        type: boolean\n        default: false\n/);
+  assert.match(job('extract'), /\n    needs: plan\n    if: \$\{\{ !inputs\.gaps_only \}\}\n/);
+  assert.doesNotMatch(job('gaps'), /gaps_only/, 'the gap tiles are fetched either way');
+  // The publish job runs when the region jobs are skipped: it needs only the plan.
+  assert.match(job('publish'), /\n    if: \$\{\{ !cancelled\(\) && needs\.plan\.result == 'success' \}\}\n/);
+});
