@@ -5,13 +5,13 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {buildExtractBranchLines, branchTable, checkAssembly, EXTRACT_STAGE} from '../scripts/build-extract-branch-lines.mjs';
+import {buildExtractBranchLines, branchTable, checkAssembly, coversWorld, EXTRACT_STAGE} from '../scripts/build-extract-branch-lines.mjs';
 import {writeBranchFiles} from '../scripts/branch-lines-files.mjs';
 import {toFeatures} from '../scripts/branch-lines.mjs';
 import {branchView} from '../scripts/railway-ways.mjs';
 import {checkMarker} from '../scripts/data-source.mjs';
 
-const report = (extra = {}) => ({schema: 1, index: '20261110T023604Z-42630187750', regions: 163, oldestTimestamp: '2026-11-03T21:24:23Z', newestTimestamp: '2026-11-09T15:06:50Z', missingNodeRefs: 0, ...extra});
+const report = (extra = {}) => ({schema: 1, index: '20261110T023604Z-42630187750', regions: 163, oldestTimestamp: '2026-11-03T21:24:23Z', newestTimestamp: '2026-11-09T15:06:50Z', missingNodeRefs: 0, missingRegions: [], ...extra});
 // Two lines the branch selection takes (a branch line, a metro line) and
 // three it leaves (a main line, a branch siding, a disused branch).
 const way = (id, tags, coords) => ({type: 'way', id, timestamp: '2026-11-01T00:00:00Z', version: 1,
@@ -50,6 +50,20 @@ test('the extract build selects and converts lines as the Overpass build does, a
   assert.equal(manifest.oldestSource, '2026-11-03T21:24:23Z');
   assert.equal(JSON.parse(await readFile(join(dir, 'extract', 'manifest.json'), 'utf8')).source, 'extract');
   assert.equal(checkMarker(await readFile(join(dir, 'extract', 'source.json'), 'utf8'), 'branch-lines'), null);
+});
+
+test('a build missing part of the world is published for comparison but never marked complete', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'extract-branch-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  assert.equal(coversWorld(report()), true);
+  for (const [extra, name] of [[{missingRegions: ['gap/0_0_45_45', 'africa']}, 'partial'], [{missingRegions: null}, 'unknown'], [{missingRegions: undefined}, 'older report']]) {
+    assert.equal(coversWorld(report(extra)), false, name);
+    const manifest = await buildExtractBranchLines('x', report(extra), join(dir, name), {read: fakeRead});
+    assert.equal(manifest.complete, false);
+    assert.equal(manifest.lines, 3, 'the lines it has are still built');
+    assert.match(checkMarker(await readFile(join(dir, name, 'source.json'), 'utf8'), 'branch-lines'), /not complete/, `${name}: the site's switch falls back to Overpass`);
+  }
+  assert.deepEqual((await buildExtractBranchLines('x', report({missingRegions: ['africa']}), join(dir, 'listed'), {read: fakeRead})).extract.missingRegions, ['africa']);
 });
 
 test('only a complete assembly is built from', async () => {

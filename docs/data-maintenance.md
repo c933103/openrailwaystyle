@@ -113,6 +113,7 @@ How the choice is made:
 - **Elements.** `scripts/extract-elements.mjs` reads the extract in the shape of an Overpass answer: ways with nodes, geometry and bounds, and relations with members. A test checks this field for field against real Overpass answers.
 - **Same conversion as the Overpass build.** The selection (`isBranchWay`), the conversion and the writer (`branch-lines-files.mjs`) are the same, so the same lines give byte-identical tiles. Only the table's `stage` differs: it is `extract`, because the world is built at once rather than in region stages.
 - **Complete assemblies only.** The build refuses an assembly whose report lists missing way nodes.
+- **Whole world, or not complete.** The assembly report carries the index's regions and gap tiles that have no file (`missingRegions`). When any is missing, or the report does not say, the build is still published for comparison, but its `source.json` says `complete: false`, so the site's switch keeps the Overpass build.
 - **Dates.** The manifest is dated by the oldest region it was built from (`oldestSource`).
 - **Not used yet.** The site keeps the Overpass build until `DATA_SOURCES` selects `branch-lines`, which is a separate decision after the two builds have been compared.
 

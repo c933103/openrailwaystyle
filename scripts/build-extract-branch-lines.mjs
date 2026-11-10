@@ -7,8 +7,10 @@
 // world at once, so there are no region stages: every line's stage is
 // `extract`, which only the downloadable table shows.
 // It writes source.json, which the site's source switch reads
-// (scripts/data-source.mjs): complete, with the oldest OSM time the
-// assembled regions vouch for.
+// (scripts/data-source.mjs), with the oldest OSM time the assembled regions
+// vouch for. It says complete only when the assembly covers every planned
+// region and gap tile (`missingRegions` empty): a build missing some of the
+// world is still published, for comparison, but the switch never takes it.
 import {readFile, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -29,6 +31,9 @@ export function checkAssembly(report) {
   return report;
 }
 
+// Every planned region and gap tile has a file: the world is covered.
+export const coversWorld = report => Array.isArray(report.missingRegions) && report.missingRegions.length === 0;
+
 export function branchTable(ways) {
   const table = new Map();
   for (const feature of toFeatures({elements: ways})) table.set(feature.id, {...feature, stage: EXTRACT_STAGE});
@@ -44,11 +49,11 @@ export async function buildExtractBranchLines(pbf, report, out, {read = readElem
   const {tiles, tileBytes} = await writeBranchFiles(out, table);
   const manifest = {generated: now().toISOString(), oldestSource: report.oldestTimestamp, newestSource: report.newestTimestamp,
     lines: table.size, tiles, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM], source: 'extract',
-    extract: {index: report.index, regions: report.regions, waysWithoutGeometry: counts.withoutGeometry},
+    complete: coversWorld(report), extract: {index: report.index, regions: report.regions, missingRegions: report.missingRegions, waysWithoutGeometry: counts.withoutGeometry},
     query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service] and way[railway=subway][!service], from the assembled Geofabrik extracts', license: 'ODbL-1.0',
     description: 'OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither.'};
   await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  await writeFile(join(out, 'source.json'), `${JSON.stringify({schema: 1, dataset: 'branch-lines', source: 'extract', complete: true, osmTimestamp: report.oldestTimestamp})}\n`);
+  await writeFile(join(out, 'source.json'), `${JSON.stringify({schema: 1, dataset: 'branch-lines', source: 'extract', complete: coversWorld(report), osmTimestamp: report.oldestTimestamp})}\n`);
   return manifest;
 }
 

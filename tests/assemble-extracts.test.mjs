@@ -79,13 +79,15 @@ test('with osmium installed, regions of different dates assemble into one file',
   assert.deepEqual(report.deletions, {a: 4});
   assert.equal(report.pairsCompared, 1);
   assert.equal(report.missingNodeRefs, 0);
+  assert.equal(report.missingRegions, null, 'an index without a missing list does not vouch for full coverage');
   assert.deepEqual(report.counts, {nodes: 6, ways: 1, relations: 0});
   assert.deepEqual(JSON.parse(await readFile(join(dir, 'out.osm.pbf.json'), 'utf8')).deletions, {a: 4});
 });
 
 test('with osmium installed, regions made with different filters are only merged, and the skip is reported', {skip: osmium.status !== 0 && 'osmium is not installed'}, async t => {
   const {dir, index, contents} = await regions(t, {bFilter: 'other'});
-  const report = await assemble(index, dir, join(dir, 'out.osm.pbf'));
+  const report = await assemble({...index, missing: ['gap/0_0_45_45']}, dir, join(dir, 'out.osm.pbf'));
+  assert.deepEqual(report.missingRegions, ['gap/0_0_45_45'], 'the index\'s regions without a file are carried into the report');
   assert.deepEqual(await contents(), ['n1 v1', 'n2 v1', 'n3 v1', 'n4 v1', 'n5 v1', 'n6 v1', 'n7 v2', 'n8 v1', 'n9 v1', 'w10 v1', 'w11 v1']);
   assert.deepEqual(report.deletions, {});
   assert.deepEqual(report.pairsSkipped, [{newer: 'b', older: 'a', reason: 'made with different filters'}]);
