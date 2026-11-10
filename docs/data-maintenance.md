@@ -90,6 +90,30 @@ The same workflow also plans which Geofabrik files the extract pipeline would do
   - **Missing references.** `osmium check-refs` counts ways whose nodes are missing. They are reported, not dropped.
   - **Report:** `<output>.json` holds the object counts, size, deletions per region, the pairs compared and skipped, the missing references and the time.
 
+## Data source per dataset
+
+The site takes each dataset from one branch (`site.yml`, step "Choose each dataset's source", `scripts/data-source.mjs`; #330 step 8). There are two possible sources:
+
+- its **Overpass** build: `rail-data`, `traction-data`, `axle-data`, `street-data`, `station-points-data`, `crossing-data`, `conveying-data`, `aerialway-data`, `heritage-data`, `branch-data` or `service-data`;
+- its **extract** build from the Geofabrik working copies: `<dataset>-extract-data`, where the dataset is one of `lifecycle`, `traction`, `axle-load`, `street-running`, `station-points`, `crossings`, `conveying`, `aerialways`, `heritage`, `branch-lines` or `service-routes`.
+
+`mainline-data` is already built from Geofabrik extracts and is not switched.
+
+How the choice is made:
+
+- **The setting.** The repository variable `DATA_SOURCES` is a JSON object of dataset → `"overpass"` or `"extract"`, for example `{"heritage":"extract"}`. A dataset not named uses Overpass, and so does every dataset when the variable is unset. A name or value the script does not know fails the deploy, and the last deployment stays.
+- **The extract build must say it is complete.** A dataset set to `extract` takes its extract branch only when the branch exists and its `source.json` is `{"schema":1, "dataset":"<dataset>", "source":"extract", "complete":true, "osmTimestamp":"<ISO time>"}`.
+- **Fallback.** Otherwise the dataset takes its Overpass branch: when the branch is missing, the lookup fails, or `source.json` is missing or wrong. The step summary names each dataset's branch, and each fallback with its reason.
+- **Format.** Both builds publish the same format, and the staging step's own checks apply to whichever branch is chosen. An extract branch that says it is complete but fails those checks stops the deploy, and the last deployment stays. Checking each dataset's content before switching comes with its extract builder.
+- **The Overpass workflows stay runnable** (`workflow_dispatch`) with their stores, so the fallback always has data to catch up from.
+
+**Fallback drill.**
+1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
+2. Run `site.yml` on `main` by hand.
+3. The step summary must show that dataset on its Overpass branch, with the reason, and the deploy must pass with the same data as before.
+4. Remove the variable, or set the dataset back to `"overpass"`.
+5. Record the run on #330.
+
 ## Railway lifecycle snapshot
 
 The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선.
