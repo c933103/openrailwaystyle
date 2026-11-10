@@ -81,34 +81,57 @@ export function dayWindow(date, now = new Date()) {
   return {start: iso(start), end: iso(end)};
 }
 
-async function github(path, {token, fetcher = fetch, text = false} = {}) {
-  const response = await fetcher(`https://api.github.com${path}`, {headers: {Accept: 'application/vnd.github+json', 'User-Agent': 'RailwayAtlas-usage/1', ...(token ? {Authorization: `Bearer ${token}`} : {})}});
-  if (!response.ok) throw new Error(`GitHub ${path}: HTTP ${response.status}`);
-  return text ? response.text() : response.json();
+// A job list page of 30: GitHub answered 502 after about 10 s for page 2
+// of a 303-job run at 100 a page, and in about 1.4 s at 30 (2026-11-10).
+export const JOBS_PER_PAGE = 30;
+export const RETRY_MS = 15_000;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// A server error (5xx) is asked once more after a pause; anything else, or a
+// second failure, stops the sum rather than leave the day short.
+async function github(path, {token, fetcher = fetch, text = false, wait = sleep} = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetcher(`https://api.github.com${path}`, {headers: {Accept: 'application/vnd.github+json', 'User-Agent': 'RailwayAtlas-usage/1', ...(token ? {Authorization: `Bearer ${token}`} : {})}});
+    if (response.ok) return text ? response.text() : response.json();
+    if (response.status >= 500 && attempt === 0) { await wait(RETRY_MS); continue; }
+    throw new Error(`GitHub ${path}: HTTP ${response.status}`);
+  }
 }
 
-export async function collect({repo, start, end, token, fetcher = fetch}) {
+export async function collect({repo, start, end, token, fetcher = fetch, wait = sleep}) {
   const runs = [];
   for (let page = 1; ; page++) {
-    const {workflow_runs: batch} = await github(`/repos/${repo}/actions/runs?created=${start}..${end}&per_page=100&page=${page}`, {token, fetcher});
+    const {workflow_runs: batch} = await github(`/repos/${repo}/actions/runs?created=${start}..${end}&per_page=100&page=${page}`, {token, fetcher, wait});
     runs.push(...batch);
     if (batch.length < 100) break;
   }
   const jobs = [], unread = [], unfinished = [];
   for (const run of runs) {
+    // A re-run attempt lists the jobs it carries over from the earlier one
+    // again, under new ids but with the same runner, times and log: each
+    // job is counted once.
+    const seen = new Set();
     for (let page = 1; ; page++) {
-      const {jobs: batch} = await github(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=all&per_page=100&page=${page}`, {token, fetcher});
+      const {jobs: batch} = await github(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=all&per_page=${JOBS_PER_PAGE}&page=${page}`, {token, fetcher, wait});
       for (const job of batch) {
+        if (job.started_at && job.runner_name) {
+          const key = `${job.name}\u0000${job.started_at}\u0000${job.runner_name}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+        }
+        // Not done while its run is: it will not run any more (a re-run can
+        // leave such jobs queued, with no runner and no steps) and used
+        // nothing. Not done while its run goes on: still running.
+        if (job.status !== 'completed') { if (run.status !== 'completed') unfinished.push(job.id); continue; }
         // A skipped job, or one cancelled before its first step, never ran
         // and has no log (HTTP 404); it used nothing.
-        if (job.status !== 'completed') { unfinished.push(job.id); continue; }
         if (job.conclusion === 'skipped' || !job.steps?.length) continue;
         try {
-          const records = usageRecords(await github(`/repos/${repo}/actions/jobs/${job.id}/logs`, {token, fetcher, text: true}));
+          const records = usageRecords(await github(`/repos/${repo}/actions/jobs/${job.id}/logs`, {token, fetcher, text: true, wait}));
           if (records.length) jobs.push({workflow: run.name, run: run.id, job: job.id, records});
         } catch { unread.push(job.id); }
       }
-      if (batch.length < 100) break;
+      if (batch.length < JOBS_PER_PAGE) break;
     }
   }
   return {runs: runs.length, jobs, unread, unfinished};
