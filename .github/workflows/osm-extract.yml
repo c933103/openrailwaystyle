@@ -74,7 +74,7 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     # GitHub-hosted jobs run at most 6 hours. The largest region (8 GiB) at
-    # 0.55 MB/s (the slowest measured was about 0.57) needs about 260 minutes.
+    # the slowest speed measured, 0.53 MB/s, needs about 270 minutes.
     timeout-minutes: 360
     strategy:
       fail-fast: false
