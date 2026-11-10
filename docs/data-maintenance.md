@@ -107,6 +107,16 @@ How the choice is made:
 - **Format.** Both builds publish the same format, and the staging step's own checks apply to whichever branch is chosen. An extract branch that says it is complete but fails those checks stops the deploy, and the last deployment stays. Checking each dataset's content before switching comes with its extract builder.
 - **The Overpass workflows stay runnable** (`workflow_dispatch`) with their stores, so the fallback always has data to catch up from.
 
+**Extract builds so far.**
+
+**Branch and metro lines.** `osm-assemble.yml` builds them from the assembled extract with `scripts/build-extract-branch-lines.mjs` and, on `main`, publishes them to `branch-lines-extract-data`.
+- **Elements.** `scripts/extract-elements.mjs` reads the extract in the shape of an Overpass answer: ways with nodes, geometry and bounds, and relations with members. A test checks this field for field against real Overpass answers.
+- **Same conversion as the Overpass build.** The selection (`isBranchWay`), the conversion and the writer (`branch-lines-files.mjs`) are the same, so the same lines give byte-identical tiles. Only the table's `stage` differs: it is `extract`, because the world is built at once rather than in region stages.
+- **Complete assemblies only.** The build refuses an assembly whose report lists missing way nodes.
+- **Whole world, or not complete.** The assembly report carries the index's regions and gap tiles that have no file (`missingRegions`). When any is missing, or the report does not say, the build is still published for comparison, but its `source.json` says `complete: false`, so the site's switch keeps the Overpass build.
+- **Dates.** The manifest is dated by the oldest region it was built from (`oldestSource`).
+- **Not used yet.** The site keeps the Overpass build until `DATA_SOURCES` selects `branch-lines`, which is a separate decision after the two builds have been compared.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.

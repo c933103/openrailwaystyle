@@ -3,6 +3,10 @@
 # osm-extract (scripts/extract-release.mjs): the newest usable index and the
 # region files it names. No OpenStreetMap provider is asked. The report goes
 # to the step summary and an artifact; the assembled file is not kept.
+# From it, the extract builds (#330, step 9) are made and, on main,
+# published to their own branches (branch-lines-extract-data). The site uses
+# one only when the repository variable DATA_SOURCES selects it
+# (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
 name: Assemble Geofabrik region extracts
 on:
@@ -16,6 +20,9 @@ jobs:
   assemble:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # Only the publication of the extract builds writes, on main.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,10 +53,34 @@ jobs:
           node scripts/assemble-extracts.mjs index.json regions assembled.osm.pbf
           df -h . | tail -1
           { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build branch lines from the extract
+        run: |
+          node scripts/build-extract-branch-lines.mjs assembled.osm.pbf assembled.osm.pbf.json branch-lines-extract | tee branch-lines-extract.json
+          { echo '# Branch lines from the extract'; echo; echo '```json'; cat branch-lines-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish branch-lines-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/extract-publish
+          cd /tmp/extract-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time, as the Overpass branches are.
+          git checkout -q --orphan branch-lines-extract-data
+          cp -r "$GITHUB_WORKSPACE/branch-lines-extract/." .
+          git add .
+          git commit -q -m "Branch lines from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:branch-lines-extract-data; then
+            test "$(git ls-remote origin refs/heads/branch-lines-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: assemble-report
-          path: assembled.osm.pbf.json
+          path: |
+            assembled.osm.pbf.json
+            branch-lines-extract/manifest.json
           if-no-files-found: ignore
           retention-days: 30
