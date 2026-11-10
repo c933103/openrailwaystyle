@@ -25,6 +25,11 @@ test('OPL lines become Overpass elements: ways with nodes, geometry and bounds, 
   assert.equal(parseLine('w11 v1 dV c0 t2026-10-02T00:00:00Z i0 u T Nn1x11.5y48.1').tags, undefined, 'no tags, no tags field');
   assert.equal(unescapeOpl('a%20%b%1f600%'), 'a b😀');
   assert.throws(() => parseLine('x1 v1'), /Not an OPL object line/);
+  // A selection that turns an element down on its type and tags alone gets
+  // no element: the geometry of the ways a build does not want is never made.
+  const seen = [];
+  assert.equal(parseLine('w10 v3 dV c0 t2026-10-02T00:00:00Z i0 u Trailway=rail Nn1x11.5y48.1,n9xy', e => { seen.push(e); return false; }), undefined);
+  assert.deepEqual(seen, [{type: 'way', id: 10, tags: {railway: 'rail'}}]);
 });
 
 const osmium = spawnSync('osmium', ['--version'], {encoding: 'utf8'});
@@ -43,6 +48,8 @@ test('with osmium, a real Overpass way and route relation come back field for fi
   const counts = await readElements(join(dir, 'in.osm.pbf'), {onElement: e => got.push(e)});
   assert.deepEqual(got, [way, relation], 'the same fields and values as Overpass gave');
   assert.deepEqual(counts, {read: 2, kept: 2, withoutGeometry: 0}, 'untagged nodes are not elements of their own');
+  const none = await readElements(join(dir, 'in.osm.pbf'), {keep: e => e.type === 'node', onElement: () => assert.fail('nothing kept')});
+  assert.deepEqual(none, {read: 2, kept: 0, withoutGeometry: 0});
   // A selection keeps only what it accepts.
   const ways = [];
   await readElements(join(dir, 'in.osm.pbf'), {keep: e => e.type === 'way', onElement: e => ways.push(e.id)});
