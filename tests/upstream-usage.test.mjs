@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {collect, dayWindow, GUIDANCE, summarize, usageRecords, usageReport} from '../scripts/upstream-usage.mjs';
+import {collect, dayWindow, GUIDANCE, JOBS_PER_PAGE, RETRY_MS, summarize, usageRecords, usageReport} from '../scripts/upstream-usage.mjs';
 
 const line = (usage, time = '2026-11-05T06:00:00.1234567Z') => `${time} OVERPASS_USAGE ${JSON.stringify(usage)}`;
 const usage = (hosts, extra = {}) => ({script: 's.mjs', bytes: 0, requests: 0, unread: 0, unmeasured: 0, hosts, ...extra});
@@ -62,7 +62,7 @@ test('every run, every attempt and every job log of the day is read; a log that 
       assert.equal(m[1], '2026-11-05T05:00:00Z..2026-11-06T05:00:00Z');
       return Response.json({workflow_runs: runs.slice((m[2] - 1) * 100, m[2] * 100)});
     }
-    if ((m = /\/actions\/runs\/(\d+)\/jobs\?filter=all&per_page=100&page=1$/.exec(path))) {
+    if ((m = /\/actions\/runs\/(\d+)\/jobs\?filter=all&per_page=30&page=1$/.exec(path))) {
       const run = Number(m[1]);
       const ran = [{name: 'Set up job'}];
       return Response.json({jobs: run === 1 ? [{id: 10, status: 'completed', steps: ran}, {id: 11, status: 'completed', conclusion: 'cancelled', steps: ran}, {id: 12, status: 'in_progress', steps: ran},
@@ -73,7 +73,7 @@ test('every run, every attempt and every job log of the day is read; a log that 
     if (path.endsWith('/actions/jobs/20/logs')) return new Response('gone', {status: 410});
     throw new Error(`unexpected ${path}`);
   };
-  const result = await collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher});
+  const result = await collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher, wait: async () => {}});
   assert.equal(result.runs, 101, 'the second page of runs is read');
   assert.deepEqual(result.jobs.map(j => [j.workflow, j.job]), [['Heritage', 10], ['Heritage', 11]]);
   assert.deepEqual(result.unread, [20]);
@@ -96,4 +96,30 @@ test('the workflow runs daily, reads only, and keeps its report', () => {
   assert.doesNotMatch(workflow, /overpass-meter/, 'it asks no data provider');
   assert.match(workflow, /USAGE_DATE: \$\{\{ inputs\.date \}\}/);
   assert.match(workflow, /path: \|\n\s+usage\.md\n\s+usage\.json/);
+});
+
+test('jobs are listed 30 a page, and a server error is asked once more before the sum stops', async () => {
+  assert.equal(JOBS_PER_PAGE, 30);
+  const waits = [];
+  // A run of 31 jobs: two pages. Page 2 answers 502 once.
+  const jobs = Array.from({length: 31}, (_, i) => ({id: 100 + i, status: 'completed', conclusion: 'skipped', steps: []}));
+  let failures = 0;
+  const fetcher = async url => {
+    const path = url.replace('https://api.github.com', '');
+    if (path.includes('/actions/runs?')) return Response.json({workflow_runs: [{id: 7, name: 'Big'}]});
+    const m = /\/actions\/runs\/7\/jobs\?filter=all&per_page=(\d+)&page=(\d+)$/.exec(path);
+    assert.ok(m, path);
+    assert.equal(Number(m[1]), 30);
+    if (m[2] === '2' && failures++ === 0) return new Response('bad gateway', {status: 502});
+    return Response.json({jobs: jobs.slice((m[2] - 1) * 30, m[2] * 30)});
+  };
+  await collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher, wait: async ms => { waits.push(ms); }});
+  assert.equal(failures, 2, 'page 2 asked twice');
+  assert.deepEqual(waits, [RETRY_MS]);
+  // A second server error, or a client error, stops the sum.
+  const always = code => async url => url.includes('/actions/runs?') ? Response.json({workflow_runs: [{id: 7, name: 'Big'}]}) : new Response('x', {status: code});
+  await assert.rejects(collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher: always(502), wait: async () => {}}), /HTTP 502/);
+  const asked = [];
+  await assert.rejects(collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher: async url => { asked.push(url); return always(403)(url); }, wait: async () => assert.fail('no pause before a 403')}), /HTTP 403/);
+  assert.equal(asked.length, 2, 'a 403 is not asked again');
 });
