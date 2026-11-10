@@ -107,12 +107,24 @@ export async function collect({repo, start, end, token, fetcher = fetch, wait = 
   }
   const jobs = [], unread = [], unfinished = [];
   for (const run of runs) {
+    // A re-run attempt lists the jobs it carries over from the earlier one
+    // again, under new ids but with the same runner, times and log: each
+    // job is counted once.
+    const seen = new Set();
     for (let page = 1; ; page++) {
       const {jobs: batch} = await github(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=all&per_page=${JOBS_PER_PAGE}&page=${page}`, {token, fetcher, wait});
       for (const job of batch) {
+        if (job.started_at && job.runner_name) {
+          const key = `${job.name}\u0000${job.started_at}\u0000${job.runner_name}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+        }
+        // Not done while its run is: it will not run any more (a re-run can
+        // leave such jobs queued, with no runner and no steps) and used
+        // nothing. Not done while its run goes on: still running.
+        if (job.status !== 'completed') { if (run.status !== 'completed') unfinished.push(job.id); continue; }
         // A skipped job, or one cancelled before its first step, never ran
         // and has no log (HTTP 404); it used nothing.
-        if (job.status !== 'completed') { unfinished.push(job.id); continue; }
         if (job.conclusion === 'skipped' || !job.steps?.length) continue;
         try {
           const records = usageRecords(await github(`/repos/${repo}/actions/jobs/${job.id}/logs`, {token, fetcher, text: true, wait}));

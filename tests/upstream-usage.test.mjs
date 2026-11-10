@@ -123,3 +123,25 @@ test('jobs are listed 30 a page, and a server error is asked once more before th
   await assert.rejects(collect({repo: 'o/r', ...dayWindow('2026-11-05'), fetcher: async url => { asked.push(url); return always(403)(url); }, wait: async () => assert.fail('no pause before a 403')}), /HTTP 403/);
   assert.equal(asked.length, 2, 'a 403 is not asked again');
 });
+
+test('a re-run counts each job once, and a job its finished run left queued is not running', async () => {
+  const log = (bytes) => new Response(`2026-11-09T15:32:48.7563842Z OVERPASS_USAGE ${JSON.stringify({script: 'a.mjs', hosts: {'download.geofabrik.de': {bytes, requests: 3}}})}`);
+  const runs = [{id: 1, name: 'Geofabrik region extracts', status: 'completed'}, {id: 2, name: 'Still going', status: 'in_progress'}];
+  const job = (id, extra) => ({id, name: 'extract africa', status: 'completed', conclusion: 'failure', started_at: '2026-11-09T14:00:36Z', runner_name: 'GitHub Actions 1000026950', steps: [{name: 'Set up job'}], ...extra});
+  const fetcher = async url => {
+    const path = url.replace('https://api.github.com', '');
+    if (path.includes('/actions/runs?')) return Response.json({workflow_runs: runs});
+    if (path.includes('/runs/1/jobs')) return Response.json({jobs: [
+      job(10), job(20, {run_attempt: 2}),                                // the original and its carried-over copy
+      job(30, {name: 'extract netherlands', started_at: '2026-11-10T01:49:35Z', runner_name: 'GitHub Actions 1000027294'}),
+      {id: 40, name: 'extract netherlands', status: 'queued', started_at: '2026-11-10T01:49:33Z', runner_name: null, steps: []}]});
+    if (path.includes('/runs/2/jobs')) return Response.json({jobs: [{id: 50, name: 'x', status: 'queued', runner_name: null, steps: []}]});
+    if (path.endsWith('/jobs/10/logs') || path.endsWith('/jobs/20/logs')) return log(7955597141);
+    if (path.endsWith('/jobs/30/logs')) return log(1410306841);
+    throw new Error(`unexpected ${path}`);
+  };
+  const result = await collect({repo: 'o/r', ...dayWindow('2026-11-09'), fetcher, wait: async () => {}});
+  assert.deepEqual(result.jobs.map(j => j.job), [10, 30], 'the carried-over copy (20) is not counted again');
+  assert.equal(summarize(result.jobs).hosts['download.geofabrik.de'].bytes, 7955597141 + 1410306841);
+  assert.deepEqual(result.unfinished, [50], 'only a job whose run goes on is still running');
+});
