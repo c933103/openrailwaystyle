@@ -32,11 +32,13 @@ export const DISK_MARGIN = 4 * 1024 ** 3;
 // (REGION_TIME_BUDGET_MINUTES). The download must stop early enough for the
 // checks, the filter and the record to finish, so the failure, the meter
 // line and the artifact are written. The largest region (8 GiB, the plan's
-// cap) at 0.55 MB/s, a little under the slowest speed measured (ukraine,
-// 0.82 GiB in 1,549 s, about 0.57 MB/s, 2026-11-04), needs about 260 minutes; GitHub-hosted jobs run at most 6 hours.
+// cap) at the slowest speed measured, 0.53 MB/s (netherlands, 1.31 GiB in
+// 2,631 s, 2026-11-10), needs about 270 minutes; the download's 320 minutes
+// cover down to about 0.45 MB/s. GitHub-hosted jobs run at most 6 hours.
 export const TIME_BUDGET_MINUTES = 340;
-// After the download: canada's 6.5 GB took about 4 minutes on 2026-11-09.
-// Osmium's time grows with the objects, not only the bytes, so 4 times that.
+// After the download: the longest filter measured took 281 s (germany,
+// 2026-11-09). Osmium's time grows with the objects, not only the bytes, so
+// about 4 times that.
 export const FILTER_RESERVE_MS = 20 * 60_000;
 export const MAX_SIDECAR = 4096;
 // The filter a working copy was made with; a copy made with another filter

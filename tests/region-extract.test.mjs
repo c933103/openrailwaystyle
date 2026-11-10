@@ -153,8 +153,9 @@ test('the workflow gives each region the time its largest size needs at the slow
   assert.ok(limit <= 360, 'GitHub-hosted jobs run at most 6 hours');
   assert.ok(budget + 15 <= limit, 'set-up and the upload fit around the script');
   assert.equal(budget, TIME_BUDGET_MINUTES, 'a run by hand gets the same budget');
-  // 8 GiB, the plan's cap, at 0.55 MB/s (ukraine on 2026-11-04: about 0.57).
-  assert.ok(budget * 60_000 - FILTER_RESERVE_MS >= 8 * 1024 ** 3 / 0.55e6 * 1000);
+  // 8 GiB, the plan's cap, at the slowest speed measured: 0.53 MB/s
+  // (netherlands on 2026-11-10: 1.31 GiB in 2,631 s).
+  assert.ok(budget * 60_000 - FILTER_RESERVE_MS >= 8 * 1024 ** 3 / 0.53e6 * 1000);
 });
 
 test('the command takes its budget from REGION_TIME_BUDGET_MINUTES', () => {
