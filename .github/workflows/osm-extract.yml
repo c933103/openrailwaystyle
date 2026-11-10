@@ -73,7 +73,9 @@ jobs:
   extract:
     needs: plan
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # GitHub-hosted jobs run at most 6 hours. The largest region (8 GiB) at
+    # 0.55 MB/s (the slowest measured was about 0.57) needs about 260 minutes.
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -101,6 +103,9 @@ jobs:
       - name: Download, check and filter the region
         env:
           REGION: ${{ toJSON(matrix.region) }}
+          # 20 minutes of the job left for set-up and the upload; the script
+          # keeps 20 more of its own for checking and filtering.
+          REGION_TIME_BUDGET_MINUTES: 340
         run: |
           printf '%s' "$REGION" > region.json
           df -h . | tail -1

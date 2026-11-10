@@ -5,7 +5,7 @@ import {existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {acquireRegion, checkRegion, DISK_MARGIN, FILTER_HASH, MAX_SIDECAR} from '../scripts/acquire-region-extract.mjs';
+import {acquireRegion, checkRegion, DISK_MARGIN, FILTER_HASH, MAX_SIDECAR, TIME_BUDGET_MINUTES, FILTER_RESERVE_MS} from '../scripts/acquire-region-extract.mjs';
 import {extractMatrix, extractReport, regionKey, MAX_RUN_BYTES} from '../scripts/extract-run.mjs';
 
 const URL_OF = (id, date = '261101') => `https://download.geofabrik.de/${id}-${date}.osm.pbf`;
@@ -95,6 +95,99 @@ test('a connection dropped during the download stops the region and leaves no pa
     assert.deepEqual(readdirSync(dir), []);
     assert.deepEqual(f.commands, []);
   } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+// The download may use the script's budget less the time kept for checking
+// and filtering; a stopped download says how far it got.
+test('the download stops at the time budget less the filter reserve, counted from the start', async () => {
+  const dir = temp(), f = fixture(), asked = [];
+  let t = 1000;
+  try {
+    const fetcher = async (url, init) => { t += 60_000; return f.fetcher(url, init); };
+    await acquireRegion(region('europe/germany', 9), dir, {...f, fetcher, now: () => t, timeBudgetMs: 100 * 60_000, timeoutSignal: ms => { asked.push(ms); return AbortSignal.timeout(ms); }});
+    // HEAD and sidecar took 2 minutes of the 100; 20 are kept for the filter.
+    assert.deepEqual(asked, [100 * 60_000 - FILTER_RESERVE_MS - 2 * 60_000]);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const slowBody = (signal, delayMs, whole = true) => new ReadableStream({start(controller) {
+  controller.enqueue(new TextEncoder().encode('pbf-'));
+  signal.addEventListener('abort', () => controller.error(signal.reason));
+  setTimeout(() => { if (whole && !signal.aborted) { controller.enqueue(new TextEncoder().encode('bytes')); controller.close(); } }, delayMs);
+}});
+
+test('a slow download that ends inside the budget is kept; one that does not is stopped with the bytes received', async () => {
+  for (const [delayMs, whole, budgetMs] of [[50, true, FILTER_RESERVE_MS + 2000], [10_000, false, FILTER_RESERVE_MS + 200]]) {
+    const dir = temp(), f = fixture();
+    try {
+      const fetcher = async (url, init) => init.method === 'HEAD' || url.endsWith('.md5') ? f.fetcher(url, init)
+        : new Response(slowBody(init.signal, delayMs, whole), {headers: {'content-length': '9'}});
+      const result = acquireRegion(region('europe/germany', 9), dir, {...f, fetcher, timeBudgetMs: budgetMs});
+      if (whole) {
+        assert.equal((await result).pbfBytes, 9);
+        assert.deepEqual(readdirSync(dir).sort(), ['extract.json', 'filtered.osm.pbf']);
+      } else {
+        await assert.rejects(result, /europe\/germany: download stopped after 0 minutes, the time budget less 20 for checking and filtering; 4 of 9 bytes received/);
+        assert.deepEqual(readdirSync(dir), [], 'no partial file is left');
+        assert.deepEqual(f.commands, []);
+      }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+  }
+});
+
+test('with no time left after the checks, the file is not asked for', async () => {
+  const dir = temp(), f = fixture();
+  let t = 0;
+  try {
+    const fetcher = async (url, init) => { t += 11 * 60_000; return f.fetcher(url, init); };
+    await assert.rejects(acquireRegion(region('europe/germany', 9), dir, {...f, fetcher, now: () => t, timeBudgetMs: FILTER_RESERVE_MS + 22 * 60_000}), /no time left to download within the 42-minute budget/);
+    assert.deepEqual(f.calls.map(c => c.method), ['HEAD', 'GET'], 'HEAD and the sidecar only');
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('the workflow gives each region the time its largest size needs at the slowest speed measured', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/osm-extract.yml', import.meta.url), 'utf8');
+  const job = workflow.slice(workflow.indexOf('\n  extract:'), workflow.indexOf('\n  gaps:'));
+  const limit = Number(/timeout-minutes: (\d+)/.exec(job)[1]);
+  const budget = Number(/REGION_TIME_BUDGET_MINUTES: (\d+)/.exec(job)[1]);
+  assert.ok(limit <= 360, 'GitHub-hosted jobs run at most 6 hours');
+  assert.ok(budget + 15 <= limit, 'set-up and the upload fit around the script');
+  assert.equal(budget, TIME_BUDGET_MINUTES, 'a run by hand gets the same budget');
+  // 8 GiB, the plan's cap, at 0.55 MB/s (ukraine on 2026-11-04: about 0.57).
+  assert.ok(budget * 60_000 - FILTER_RESERVE_MS >= 8 * 1024 ** 3 / 0.55e6 * 1000);
+});
+
+test('the command takes its budget from REGION_TIME_BUDGET_MINUTES', () => {
+  const dir = temp();
+  try {
+    writeFileSync(join(dir, 'region.json'), JSON.stringify(region('europe/germany', 9)));
+    // No network: fetch answers HEAD and the sidecar, then sends 4 bytes and waits.
+    writeFileSync(join(dir, 'offline.mjs'), `globalThis.fetch = async (url, init = {}) => {
+      if (init.method === 'HEAD') return new Response(null, {headers: {'content-length': '9'}});
+      if (url.endsWith('.md5')) return new Response('${'0'.repeat(32)}  f.osm.pbf\\n');
+      const signal = init.signal;
+      // A socket would keep the process alive; the timeout timer alone does not.
+      const socket = setInterval(() => {}, 1000);
+      return new Response(new ReadableStream({start(c) { c.enqueue(new TextEncoder().encode('pbf-')); signal.addEventListener('abort', () => { clearInterval(socket); c.error(signal.reason); }); }}), {headers: {'content-length': '9'}});
+    };`);
+    // 20.01 minutes: 0.6 s of download time, not the default 340 minutes.
+    const out = spawnSync(process.execPath, ['--import', join(dir, 'offline.mjs'), 'scripts/acquire-region-extract.mjs', join(dir, 'region.json'), join(dir, 'out')],
+      {encoding: 'utf8', timeout: 30_000, env: {...process.env, REGION_TIME_BUDGET_MINUTES: '20.01'}});
+    assert.notEqual(out.status, 0, out.stderr);
+    assert.match(JSON.parse(readFileSync(join(dir, 'out', 'failed.json'), 'utf8')).error, /download stopped after 0 minutes.*4 of 9 bytes received/);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('the command refuses a budget that leaves no time to download', () => {
+  for (const value of ['soon', '20', '0']) {
+    const dir = temp();
+    try {
+      writeFileSync(join(dir, 'region.json'), JSON.stringify(region('europe/germany', 9)));
+      const out = spawnSync(process.execPath, ['scripts/acquire-region-extract.mjs', join(dir, 'region.json'), join(dir, 'out')], {encoding: 'utf8', env: {...process.env, REGION_TIME_BUDGET_MINUTES: value}});
+      assert.notEqual(out.status, 0);
+      assert.match(JSON.parse(readFileSync(join(dir, 'out', 'failed.json'), 'utf8')).error, new RegExp(`Invalid REGION_TIME_BUDGET_MINUTES ${value}`));
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+  }
 });
 
 test('the checksum sidecar limit counts received bytes, including a multibyte filename', async () => {

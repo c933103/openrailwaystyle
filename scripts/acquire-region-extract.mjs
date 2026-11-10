@@ -28,7 +28,16 @@ import {expressionsFile} from './extract-filter.mjs';
 export const HOST = 'download.geofabrik.de';
 export const USER_AGENT = 'RailwayAtlas-extract/1 (+https://github.com/c933103/openrailwaystyle/issues/330)';
 export const DISK_MARGIN = 4 * 1024 ** 3;
-export const DOWNLOAD_MS = 90 * 60_000;
+// The time this script may take, set by the workflow from its job limit
+// (REGION_TIME_BUDGET_MINUTES). The download must stop early enough for the
+// checks, the filter and the record to finish, so the failure, the meter
+// line and the artifact are written. The largest region (8 GiB, the plan's
+// cap) at 0.55 MB/s, a little under the slowest speed measured (ukraine,
+// 0.82 GiB in 1,549 s, about 0.57 MB/s, 2026-11-04), needs about 260 minutes; GitHub-hosted jobs run at most 6 hours.
+export const TIME_BUDGET_MINUTES = 340;
+// After the download: canada's 6.5 GB took about 4 minutes on 2026-11-09.
+// Osmium's time grows with the objects, not only the bytes, so 4 times that.
+export const FILTER_RESERVE_MS = 20 * 60_000;
 export const MAX_SIDECAR = 4096;
 // The filter a working copy was made with; a copy made with another filter
 // is never taken as current.
@@ -81,7 +90,7 @@ async function checksumText(response, id) {
 }
 
 export async function acquireRegion(input, out, {fetcher = fetch, run = promisify(execFile), freeBytes = async dir => { const s = await statfs(dir); return s.bavail * s.bsize; },
-  now = () => performance.now(), downloadMs = DOWNLOAD_MS} = {}) {
+  now = () => performance.now(), timeBudgetMs = TIME_BUDGET_MINUTES * 60_000, timeoutSignal = ms => AbortSignal.timeout(ms)} = {}) {
   const region = checkRegion(input), previous = input.previous || null;
   await mkdir(out, {recursive: true});
   const started = now();
@@ -108,8 +117,12 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
   const source = join(out, 'source.osm.pbf'), partial = `${source}.part`;
   const md5 = createHash('md5'), sha256 = createHash('sha256');
   let received = 0, file;
+  // What is left of the budget once the checks and filter are set aside.
+  const downloadMs = Math.floor(timeBudgetMs - FILTER_RESERVE_MS - (now() - started));
+  if (!(downloadMs > 0)) throw new Error(`${region.id}: no time left to download within the ${timeBudgetMs / 60_000}-minute budget`);
+  const signal = timeoutSignal(downloadMs);
   try {
-    const body = answered(await request(fetcher, region.url, {signal: AbortSignal.timeout(downloadMs)}), region.url);
+    const body = answered(await request(fetcher, region.url, {signal}), region.url);
     if (Number(body.headers.get('content-length')) !== size) throw new Error(`${region.id}: size changed between HEAD and download`);
     // pipeline ends the file and passes on a write error (a full disk) as
     // this region's failure; the partial file is removed below.
@@ -124,6 +137,9 @@ export async function acquireRegion(input, out, {fetcher = fetch, run = promisif
     if (received !== size) throw new Error(`${region.id}: received ${received} of ${size} bytes`);
     if (md5.digest('hex') !== expected) throw new Error(`${region.id}: MD5 does not match the sidecar`);
     await rename(partial, source);
+  } catch (error) {
+    if (signal.aborted) throw new Error(`${region.id}: download stopped after ${Math.round(downloadMs / 60_000)} minutes, the time budget less ${FILTER_RESERVE_MS / 60_000} for checking and filtering; ${received} of ${size} bytes received`);
+    throw error;
   } finally {
     // An aborted pipeline can return before the file stream has finished
     // opening and closing; removing the file first would let it reappear.
@@ -181,7 +197,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (!regionFile || !out) throw new Error('Usage: acquire-region-extract.mjs <region.json> <output directory>');
   const input = JSON.parse(await readFile(regionFile, 'utf8'));
   try {
-    console.log(JSON.stringify(await acquireRegion(input, out)));
+    const minutes = process.env.REGION_TIME_BUDGET_MINUTES;
+    if (minutes !== undefined && !(Number(minutes) * 60_000 > FILTER_RESERVE_MS)) throw new Error(`Invalid REGION_TIME_BUDGET_MINUTES ${minutes}: must be more than ${FILTER_RESERVE_MS / 60_000}`);
+    console.log(JSON.stringify(await acquireRegion(input, out, minutes === undefined ? {} : {timeBudgetMs: Number(minutes) * 60_000})));
   } catch (error) {
     // The reason goes to the publish job's report; this region keeps its
     // working copy (scripts/extract-release.mjs).
