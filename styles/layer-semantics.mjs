@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261107-help-dates-order-1';
+import { MODES } from './map-model.mjs?v=20261110-station-line-width-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

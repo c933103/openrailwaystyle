@@ -9,6 +9,8 @@ import {encodeBundle} from '../styles/tile-bundles.mjs';
 import {launchBrowser} from './browser.mjs';
 import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
+import {MODES,stationMarkerDiameter} from '../styles/map-model.mjs';
+import {serviceFrequencyPaint} from '../styles/service-frequency.mjs';
 
 const server=await serveAtlasAppFixture(),base=server.origin+'/',assets=await rendererFixture(base);
 const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.2.js'));
@@ -87,26 +89,30 @@ if(process.env.ATLAS_TEST_ENGINE==='webkit'){
    await browser.close();await server.close();process.exit(0);
  }
 }
-await page.evaluate(({center})=>{
+await page.evaluate(({center,serviceWidth})=>{
   window.fixtureMap=new maplibregl.Map({
-    container:'map',center,zoom:3,attributionControl:false,fadeDuration:0,
+    container:'map',center,zoom:3,attributionControl:false,fadeDuration:0,preserveDrawingBuffer:true,
     style:{version:8,glyphs:'https://glyph-fixture.invalid/{fontstack}/{range}.pbf',
       sources:{
         crossings:{type:'geojson',data:{type:'FeatureCollection',features:[
           {type:'Feature',properties:{id:'crossing'},geometry:{type:'Point',coordinates:center}}]}},
         places:{type:'geojson',data:{type:'FeatureCollection',features:[
           {type:'Feature',properties:{name:'Repeated name'},geometry:{type:'Point',coordinates:center}}]}},
+        service:{type:'geojson',data:{type:'FeatureCollection',features:[
+          {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[14.99,15],[15.01,15]]}}]}},
       },layers:[
         {id:'background',type:'background',paint:{'background-color':'#ffffff'}},
         {id:'infrastructure-crossing-overview',type:'circle',source:'crossings',
           minzoom:5,paint:{'circle-radius':2.4,'circle-color':'#70412e'}},
+        {id:'service-routes',type:'line',source:'service',layout:{visibility:'none'},
+          paint:{'line-color':'#d62c2c','line-width':serviceWidth}},
         {id:'place_label_city',type:'symbol',source:'places',
           layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':14,
           'text-allow-overlap':false}},
       ]},
   });
   fixtureMap.on('error',e=>{(window.errors||=[]).push(e.error?.message||'unknown')});
-},{center});
+},{center,serviceWidth:serviceFrequencyPaint().width});
 try {await page.waitForFunction(()=>fixtureMap.isStyleLoaded(),null,{timeout:30000});}
 catch(error){console.error('STATION_STYLE_FAILURE',await page.evaluate(()=>({errors:window.errors,styleLoaded:fixtureMap.isStyleLoaded()})),errors);throw error;}
 const installed=await page.evaluate(async root=>{
@@ -148,6 +154,49 @@ await mkdir('browser-review',{recursive:true});
 await writeFile('browser-review/station-world-overlay.json',JSON.stringify({scope:'synthetic only',calls,results},null,2)+'\n');
 await page.screenshot({path:'browser-review/station-world-z12.png'});
 console.log('PASS: all 8 synthetic station nodes independent of text and crossing ink at z3–11; preserved detail handoff at z12');
+
+// At the reporting user's regional Service zoom, compare actual route pixels
+// with and without the complete, deliberately overlapping station inventory.
+await page.evaluate(async()=>{
+ const {createStationViewPaint}=await import('/station-world.mjs');
+ const map=fixtureMap,paint=createStationViewPaint()(map.getLayer('station-world-dots'),'service',7.8);
+ for(const [key,value] of Object.entries(paint))map.setPaintProperty('station-world-dots',key,value);
+ map.setLayoutProperty('service-routes','visibility','visible');
+ map.setLayoutProperty('place_label_city','visibility','none');
+ map.setLayoutProperty('station-world-dots','visibility','none');
+ map.jumpTo({center:[15,15],zoom:7.8});
+});
+const servicePixels=()=>page.evaluate(async()=>{
+ const map=fixtureMap;
+ await new Promise(resolve=>{map.once('idle',resolve);map.triggerRepaint();});
+ const canvas=map.getCanvas(),ratio=canvas.width/map.getContainer().clientWidth;
+ const point=map.project([15,15]),radius=Math.ceil(6*ratio),size=radius*2+1;
+ const copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+ const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+ const rgba=[...context.getImageData(Math.round(point.x*ratio)-radius,Math.round(point.y*ratio)-radius,size,size).data];
+ return {rgba,stations:new Set(map.queryRenderedFeatures({layers:['station-world-dots']}).map(f=>f.properties.id)).size};
+});
+const lineOnly=await servicePixels();
+const red=[];
+for(let i=0;i<lineOnly.rgba.length;i+=4)
+ if(lineOnly.rgba[i]===214&&lineOnly.rgba[i+1]===44&&lineOnly.rgba[i+2]===44&&lineOnly.rgba[i+3]===255)red.push(i);
+assert.ok(red.length>0,'the synthetic Service route must have solid coloured pixels');
+await page.evaluate(()=>fixtureMap.setLayoutProperty('station-world-dots','visibility','visible'));
+const servicePositive=await servicePixels();
+assert.equal(servicePositive.stations,8,'Service view keeps every station identity');
+assert.ok(red.every(i=>lineOnly.rgba.slice(i,i+4).every((v,n)=>servicePositive.rgba[i+n]===v)),
+ 'all solid route pixels survive the station inventory byte-for-byte');
+await page.evaluate(()=>fixtureMap.moveLayer('station-world-dots','place_label_city'));
+const wrongServiceOrder=await servicePixels();
+assert.ok(red.some(i=>lineOnly.rgba.slice(i,i+4).some((v,n)=>wrongServiceOrder.rgba[i+n]!==v)),
+ 'negative control: station rings painted above the route must obstruct some measured route pixels');
+await page.evaluate(()=>fixtureMap.moveLayer('station-world-dots','service-routes'));
+const serviceRestored=await servicePixels();
+assert.ok(red.every(i=>lineOnly.rgba.slice(i,i+4).every((v,n)=>serviceRestored.rgba[i+n]===v)));
+await page.screenshot({path:'browser-review/station-world-service-z7.8.png'});
+await writeFile('browser-review/station-world-service-pixels.json',JSON.stringify({scope:'synthetic only',zoom:7.8,
+ redPixels:red.length,lineOnly,servicePositive,wrongServiceOrder,serviceRestored},null,2)+'\n');
+console.log('PASS: Service route colours remain exact through eight overlapping station rings; reversed paint order fails');
 
 // Exercise the actual app handler as well as the isolated layer. A serialized
 // language style retains runtime entries; a fresh replacement does not.
@@ -191,6 +240,24 @@ for(const fresh of [false,true,true]){
 // Intentional source cancellation is not a data failure, even after reload.
 await page.evaluate(()=>stationAppMap.fire('error',{sourceId:'stationWorld',error:new DOMException('The operation was aborted','AbortError')}));
 appResults.push({action:'intentional abort',...await appReady()});
+for(const mode of [...MODES,'service']){
+ await page.click(`[data-mode="${mode}"]`);
+ appResults.push({action:`${mode} view`,...await appReady()});
+ const paint=await page.evaluate(()=>stationAppMap.getPaintProperty('station-world-dots','circle-opacity'));
+ assert.equal(paint,0,'every view keeps hollow station markers');
+ for(const zoom of [6.999999,7,7.8,9.7]){
+  await page.evaluate(zoom=>stationAppMap.jumpTo({center:[15,15],zoom}),zoom);
+  await appReady();
+  const actual=await page.evaluate(()=>({zoom:stationAppMap.getZoom(),
+    radius:stationAppMap.getPaintProperty('station-world-dots','circle-radius'),
+    stroke:stationAppMap.getPaintProperty('station-world-dots','circle-stroke-width')}));
+  assert.ok(Math.abs(2*(actual.radius+actual.stroke)-stationMarkerDiameter(mode,actual.zoom))<1e-12,
+    `${mode} z${zoom}: outer diameter follows the live line-width scale`);
+ }
+}
+await page.selectOption('#language','fr');
+appResults.push({action:'Service language reload',...await appReady()});
+assert.equal(await page.evaluate(()=>stationAppMap.getPaintProperty('station-world-dots','circle-opacity')),0);
 assert.deepEqual(calls.filter(call=>call!=='bundle'),metadata,'style/language reloads reuse the verified manifest/index');
 assert.deepEqual(errors,[],'the full app must not throw during style replacement');
 await writeFile('browser-review/station-world-app-reloads.json',JSON.stringify({scope:'synthetic only',appResults,calls},null,2)+'\n');

@@ -1,7 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261107-help-dates-order-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261107-help-dates-order-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261110-station-line-width-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261110-station-line-width-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261107-help-dates-order-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261110-station-line-width-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261110-station-line-width-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -560,6 +561,30 @@ const VIEW_LINE_WIDTHS = {gauge: [12, 0.8, 16, 0.9, 20, 1.6], default: [12, 0.9,
 export function viewLineWidth(id, mode) {
   if (showsType(mode)) return structuredClone(VIEW_LINE_LAYERS[id].width);
   return ['interpolate', ['linear'], ['zoom'], ...(VIEW_LINE_WIDTHS[mode] || VIEW_LINE_WIDTHS.default)];
+}
+// Shared by the line builder and station sizing. Keep the overview/detail
+// handoff exact; station data has no per-track siding/gauge/frequency fields.
+const RAIL_OVERVIEW_STOPS = [[0,1],[4,1.15],[7,1.8],[11,2.6],[16,4.5],[20,7]];
+const RAIL_TRACK_STOPS = [[7,1.6],[11,2.8],[16,4.8],[20,7]];
+const interpolateWidth = (stops,zoom) => {
+  const z=Number.isFinite(zoom)?zoom:0;
+  for(let i=1;i<stops.length;i++)if(z<stops[i][0]){
+    const [a,x]=stops[i-1],[b,y]=stops[i];
+    return x+(y-x)*Math.max(0,(z-a)/(b-a));
+  }
+  return stops.at(-1)[1];
+};
+export const railwayOverviewWidth = () => ['interpolate',['linear'],['zoom'],...RAIL_OVERVIEW_STOPS.flat()];
+export const railwayTrackWidth = (scale=1) => {
+  const siding=['!=',['coalesce',['get','service'],''],''];
+  return ['interpolate',['linear'],['zoom'],...RAIL_TRACK_STOPS.flatMap(([zoom,width])=>
+    [zoom,zoom===11?['case',siding,1.1*scale,width*scale]:
+      zoom===16?['case',siding,2*scale,width*scale]:width*scale])];
+};
+export function stationMarkerDiameter(mode,zoom) {
+  const z=Number.isFinite(zoom)?zoom:0;
+  if(mode==='service'&&z>=7)return standardServiceWidth(z);
+  return interpolateWidth(z<7?RAIL_OVERVIEW_STOPS:RAIL_TRACK_STOPS,z);
 }
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];

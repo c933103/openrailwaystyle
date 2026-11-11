@@ -911,7 +911,7 @@ test('search row-isolation release updates cached app/model together and retains
   const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.notEqual(version,previous,'the changed search parser requires a fresh release token');
-  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs'];
+  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs','service-frequency.mjs'];
   const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
   // Compact preceding-cache payloads exercise version isolation, not historical
   // source reconstruction. New module bytes are exact current build inputs.

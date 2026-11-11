@@ -2,7 +2,8 @@
 // snapshot. Incomplete or missing acquisition never changes live station layers.
 // Source: station-points-data, built by station-overview.mjs and published only
 // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
-import {createBundleReader} from './tile-bundles.mjs?v=20261107-help-dates-order-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261110-station-line-width-1';
+import {stationMarkerDiameter} from './map-model.mjs?v=20261110-station-line-width-1';
 
 export const WORLD_STATION_SOURCE = 'stationWorld';
 export const WORLD_STATION_DOTS = 'station-world-dots';
@@ -12,6 +13,21 @@ export const WORLD_STATION_SUPERSEDED_DOTS = Object.freeze([
   'station-provider-dots', 'station-curated-fallback-dots',
   'station-basemap-fallback-dots',
 ]);
+// All views share the station overlay. Match the outer diameter (including
+// stroke) to one standard railway line, without inflating service bundles.
+// Numeric zoom updates preserve the line's discontinuous overview/detail handoff.
+export function createStationViewPaint() {
+  return (layer, mode, zoom=7) => {
+    if (layer.type !== 'circle' || !layer.id.startsWith('station-')) return null;
+    const diameter=stationMarkerDiameter(mode,zoom);
+    return {'circle-color':'#fffef8',
+      'circle-stroke-color':layer.id==='station-former-dots'?'#8a8076':'#657571',
+      'circle-opacity':0,'circle-stroke-opacity':0.55,
+      'circle-radius':diameter*0.4,'circle-stroke-width':diameter*0.1,
+      'circle-radius-transition':{duration:0,delay:0},
+      'circle-stroke-width-transition':{duration:0,delay:0}};
+  };
+}
 const ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>';
 const TILE_KEY = /^(3|4|5|6|7)\/(\d{1,3})\/(\d{1,3})$/;
 const manifestValid = m => m && m.complete === true && m.schema === 1 &&
@@ -43,8 +59,10 @@ export function worldStationLayer() {
       'visibility':'none'},
     paint: {
       'circle-color':'#ffa323','circle-stroke-color':'#123e52',
-      'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.55,7,1.05,12,1.45],
-      'circle-radius':['interpolate',['linear'],['zoom'],3,1.1,5,1.45,7,2.2,12,3.4],
+      // Keep the full inventory legible without turning dense networks into
+      // orange bands. Stronger station symbols return near the z12 detail handoff.
+      'circle-stroke-width':['interpolate',['linear'],['zoom'],3,0.25,7,0.4,10,0.6,12,1.45],
+      'circle-radius':['interpolate',['linear'],['zoom'],3,0.55,5,0.75,7,1,10,1.6,12,3.4],
     },
     metadata:{
       'atlas:semantics-version':1, 'atlas:group':'stations',
@@ -123,7 +141,9 @@ export async function prepareWorldStationOverlay({
       if(!map.getLayer('place_label_city') || !map.getLayer('infrastructure-crossing-overview'))
         throw new Error('Required station/crossing ordering anchors absent');
       if(!map.getSource(WORLD_STATION_SOURCE))map.addSource(WORLD_STATION_SOURCE,snapshotSource());
-      map.addLayer(worldStationLayer(),'place_label_city');
+      // Service colours paint above the station rings; accepted place names
+      // still paint above both. Isolated/legacy styles can lack that route layer.
+      map.addLayer(worldStationLayer(),map.getLayer('service-routes')?'service-routes':'place_label_city');
       return true;
     },
   };
