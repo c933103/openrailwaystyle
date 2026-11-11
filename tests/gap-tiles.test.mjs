@@ -583,8 +583,8 @@ test('every request of a run, split parts included, carries the run\'s agent', a
   await fetchTile(tile, {...fakeClock(), fetcher, dispatcher, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
   assert.ok(seen.length > 1, 'the tile was split');
   assert.ok(seen.every(d => d === dispatcher));
-  // A run without an agent sends none (Node's default).
+  // A run without an agent (null; undefined would take the default) sends none: Node's default.
   seen.length = 0;
-  await fetchTile(tile, {...fakeClock(), fetcher: async (_u, init) => { seen.push('dispatcher' in init); return new Response(answer()); }, dispatcher: undefined, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
+  await fetchTile(tile, {...fakeClock(), fetcher: async (_u, init) => { seen.push('dispatcher' in init); return new Response(answer()); }, dispatcher: null, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
   assert.deepEqual(seen, [false]);
 });
