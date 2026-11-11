@@ -2,6 +2,7 @@
 // nodes), kept as a table and cut into static vector tiles, so the
 // Infrastructure view can show them from zoom 5 without the provider's
 // street-zoom tiles. Pure functions; scripts/build-crossings.mjs does the I/O.
+import {gzipSync} from 'node:zlib';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
@@ -193,4 +194,27 @@ export function buildTiles(table, z, {detail = false} = {}) {
     out.set(key, vtpbf.fromGeojsonVt({level_crossings: {features}}, {version: 2, extent: EXTENT}));
   }
   return out;
+}
+
+// The files of a crossing snapshot, as the site loads them: the ODbL table
+// (crossings.tsv.gz), the overview and detail tiles ('z/x/y.pbf.gz') and
+// their index, by path, with the counts its manifest gives. Both builders
+// write these (build-crossings.mjs from Overpass, build-extract-crossings.mjs
+// from the Geofabrik extracts), so the same table gives the same files.
+export function crossingFiles(table) {
+  const files = new Map([['crossings.tsv.gz', gzipSync(writeTable(table), {level: 9})]]);
+  const index = [];
+  let tileBytes = 0;
+  for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
+    for (const [key, data] of buildTiles(table, z, {detail})) {
+      const gz = gzipSync(data, {level: 9});
+      tileBytes += gz.length;
+      files.set(`${key}.pbf.gz`, gz);
+      index.push(key);
+    }
+  }
+  files.set('index.json', JSON.stringify({tiles: index.sort()}));
+  const counts = {road: 0, foot: 0, minor: 0};
+  for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
+  return {files, tiles: index.length, tileBytes, counts};
 }
