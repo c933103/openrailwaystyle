@@ -35,6 +35,9 @@ import {quarters} from './world-regions.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
 import {overpassBusy, overpassRetryDelayMs} from './overpass-errors.mjs';
 import polygonClipping from 'polygon-clipping';
+import {Agent as UndiciAgent} from 'undici';
+import {createRequire} from 'node:module';
+const undiciVersion = createRequire(import.meta.url)('undici/package.json').version;
 
 // The Overpass instances asked, in order (docs/external-services.md: each
 // one's operator and terms were checked before it was listed). The next is
@@ -56,6 +59,19 @@ export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
 const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
 export const REQUEST_TIMEOUT_MS = 360_000;
+// Node's fetch stops waiting for a response's headers after 300 s (undici's
+// default headersTimeout), before this request's own 360 s limit: a busy
+// instance still working on a tile was cut off with UND_ERR_HEADERS_TIMEOUT
+// (#330, run 42936994932). Requests get an undici Agent with both timeouts at
+// the request's limit. Node's fetch accepts an Agent only from the undici
+// major version it bundles (Node 22's, 6, refuses 8's), so the package's
+// Agent is used only when the majors match; otherwise requests keep Node's
+// default, as before, and the run says so.
+const bundledUndici = Number(String(process.versions.undici || '').split('.')[0]);
+export const UNDICI_AGENT = bundledUndici === Number(undiciVersion.split('.')[0]);
+export function requestDispatcher(timeoutMs = REQUEST_TIMEOUT_MS) {
+  return UNDICI_AGENT ? new UndiciAgent({headersTimeout: timeoutMs, bodyTimeout: timeoutMs}) : undefined;
+}
 export const MAX_UNANSWERED_TILES = 2;
 
 // Per part of the tile: the selection inside its outer ring, less what lies
@@ -121,7 +137,7 @@ async function readBudgetedBody(response, budget) {
 
 // One tile, split on an executed-query limit. Returns the OSM XML parts
 // with their database times, or throws (the tile keeps its copy).
-export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0, log = () => {}} = {}) {
+export async function fetchTile(tile, {fetcher = fetch, dispatcher = requestDispatcher(), wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0, log = () => {}} = {}) {
   const query = gapQuery(tile.polygon);
   // A wait that would leave no time for a whole request is not waited out.
   const pauseUntil = async (until, last) => {
@@ -138,7 +154,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
     const sent = clock();
     let response, text;
     try {
-      response = await fetcher(instanceOf(budget), {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
+      response = await fetcher(instanceOf(budget), {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...(dispatcher ? {dispatcher} : {})});
       budget.answers = (budget.answers || 0) + 1;
       rememberProviderPause(response, budget, now, clock);
       text = await readBudgetedBody(response, budget);
@@ -156,7 +172,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
       const parts = [];
       for (const box of quarters(tile.box)) {
         const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box));
-        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, clock, budget, depth: depth + 1, log}));
+        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, dispatcher, wait, now, clock, budget, depth: depth + 1, log}));
       }
       return parts;
     }
@@ -220,7 +236,7 @@ export function tileOrder(tiles, index = null) {
   return tiles.map((tile, i) => ({tile, i, t: time(tile)})).sort((a, b) => a.t - b.t || a.i - b.i).map(({tile}) => tile);
 }
 
-export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
+export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, dispatcher = requestDispatcher(), wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
   const budget = {requests: 0, bytes: 0, maxRequests, maxBytes, answers: 0, unansweredTiles: 0, instances, instance: 0, deadline: timeBudgetMs == null ? null : clock() + timeBudgetMs};
   const results = [];
   for (const tile of tileOrder(tiles, index)) {
@@ -228,7 +244,7 @@ export async function acquireGapTiles(tiles, out, {index = null, instances = ove
     const started = clock(), requests = budget.requests, answers = budget.answers;
     const seconds = () => Math.round((clock() - started) / 1000);
     try {
-      const parts = await fetchTile(tile, {fetcher, wait, now, clock, budget, log});
+      const parts = await fetchTile(tile, {fetcher, dispatcher, wait, now, clock, budget, log});
       const manifest = await writeTile(tile, parts, dir, {run, previous: index?.regions?.[`gap/${tile.key}`]});
       results.push(manifest);
       const {nodes, ways, relations} = manifest.counts;
@@ -267,4 +283,5 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const failed = results.filter(r => r.failed);
   console.log(`${tiles.length} gap tiles: ${results.length - failed.length} fetched, ${failed.length} kept their copy; ${requests} requests, ${bytes} bytes`);
   for (const f of failed) console.log(`::warning::${f.region}: ${f.failed}`.replace(/[\r\n]/g, ' '));
+  if (!UNDICI_AGENT) console.log(`::warning::Node ${process.version} bundles undici ${process.versions.undici}, not ${undiciVersion.split('.')[0]}.x: requests keep Node's 300 s wait for headers`);
 }

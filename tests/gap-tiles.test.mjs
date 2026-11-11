@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
-import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES, INSTANCES, overpassInstances} from '../scripts/acquire-gap-tiles.mjs';
+import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, requestDispatcher, UNDICI_AGENT, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES, INSTANCES, overpassInstances} from '../scripts/acquire-gap-tiles.mjs';
 import {nextIndex, planWithGaps, withGaps} from '../scripts/extract-release.mjs';
 
 // What osmium selects, per object type, straight from the expressions: the
@@ -556,4 +556,35 @@ test('a gaps-only run downloads no region, and still fetches and publishes the g
   assert.doesNotMatch(job('gaps'), /gaps_only/, 'the gap tiles are fetched either way');
   // The publish job runs when the region jobs are skipped: it needs only the plan.
   assert.match(job('publish'), /\n    if: \$\{\{ !cancelled\(\) && needs\.plan\.result == 'success' \}\}\n/);
+});
+
+test('gap requests wait for headers as long as their own time limit, not Node\'s 300 s default', async t => {
+  const bundled = String(process.versions.undici);
+  const pkg = JSON.parse(await readFile(new URL('../node_modules/undici/package.json', import.meta.url), 'utf8')).version;
+  t.diagnostic(`Node ${process.version} bundles undici ${bundled}; the package is ${pkg}`);
+  // The package's Agent only where Node's fetch takes it: the same major.
+  assert.equal(UNDICI_AGENT, bundled.split('.')[0] === pkg.split('.')[0]);
+  if (!UNDICI_AGENT) { assert.equal(requestDispatcher(), undefined, 'otherwise Node\'s default, as before'); return; }
+  const {createServer} = await import('node:http');
+  // A server that answers its headers after 3 s.
+  const server = createServer((req, res) => setTimeout(() => res.end('late'), 3000)).listen(0, '127.0.0.1');
+  t.after(() => server.close());
+  await new Promise(resolve => server.on('listening', resolve));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  // The agent sets the headers wait: 1 s gives up, 5 s gets the answer.
+  await assert.rejects(fetch(url, {dispatcher: requestDispatcher(1000)}), error => error.cause?.code === 'UND_ERR_HEADERS_TIMEOUT');
+  assert.equal(await (await fetch(url, {dispatcher: requestDispatcher(5000)})).text(), 'late');
+});
+
+test('every request of a run, split parts included, carries the run\'s agent', async () => {
+  const dispatcher = {marker: 'agent'};
+  const seen = [];
+  const fetcher = async (_url, init) => { seen.push(init.dispatcher); return seen.length === 1 ? new Response('runtime error: Query timed out in "query" at line 1 after 180 seconds.', {status: 504}) : new Response(answer()); };
+  await fetchTile(tile, {...fakeClock(), fetcher, dispatcher, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
+  assert.ok(seen.length > 1, 'the tile was split');
+  assert.ok(seen.every(d => d === dispatcher));
+  // A run without an agent (null; undefined would take the default) sends none: Node's default.
+  seen.length = 0;
+  await fetchTile(tile, {...fakeClock(), fetcher: async (_u, init) => { seen.push('dispatcher' in init); return new Response(answer()); }, dispatcher: null, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
+  assert.deepEqual(seen, [false]);
 });
