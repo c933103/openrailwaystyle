@@ -13,7 +13,8 @@
 # size or MD5 differs from the working copy's source; two regions at a time.
 # A plan that is not valid, or over 100 GiB, stops the run before any
 # download. The parts no planned region covers (the plan's remainder, almost
-# all sea) come from overpass-api.de as gap tiles (scripts/gap-tiles.mjs,
+# all sea) come from Overpass as gap tiles: overpass-api.de, then
+# overpass.private.coffee when it stops answering (scripts/gap-tiles.mjs,
 # scripts/acquire-gap-tiles.mjs): one request per tile, 10 s apart, never in
 # parallel, at most 400 requests and 1 GB a run.
 # With gaps_only, no region is downloaded: the run plans (one HEAD per region

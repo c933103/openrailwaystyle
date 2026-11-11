@@ -36,7 +36,19 @@ import {stationQueryExceededLimits} from './station-acquisition.mjs';
 import {overpassBusy, overpassRetryDelayMs} from './overpass-errors.mjs';
 import polygonClipping from 'polygon-clipping';
 
-export const API = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
+// The Overpass instances asked, in order (docs/external-services.md: each
+// one's operator and terms were checked before it was listed). The next is
+// asked only when the current one did not answer MAX_UNANSWERED_TILES tiles
+// in a row; never two at once. OVERPASS_URLS (comma-separated) replaces the
+// list, OVERPASS_URL a single instance.
+export const INSTANCES = Object.freeze(['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter']);
+export function overpassInstances(env = process.env) {
+  const list = env.OVERPASS_URLS ? env.OVERPASS_URLS.split(',').map(url => url.trim()).filter(Boolean) : env.OVERPASS_URL ? [env.OVERPASS_URL] : [...INSTANCES];
+  for (const url of list) if (new URL(url).protocol !== 'https:') throw new Error(`Overpass instance ${url} is not HTTPS`);
+  if (!list.length) throw new Error('No Overpass instance');
+  return list;
+}
+export const API = overpassInstances()[0];
 export const USER_AGENT = 'RailwayAtlas-extract-gaps/1 (+https://github.com/c933103/openrailwaystyle/issues/330)';
 export const MAX_REQUESTS = 400;
 export const MAX_BYTES = 1024 ** 3;
@@ -59,6 +71,7 @@ export function gapQuery(polygon) {
   return `[out:xml][timeout:180][maxsize:536870912];${parts.join('')}(${polygon.map((_, i) => `.p${i};`).join('')})->.g;(.g;.g >>;);out meta;`;
 }
 
+const instanceOf = budget => budget.instances?.[budget.instance ?? 0] ?? API;
 const boxPolygon = ([s, w, n, e]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitUntil(deadline, wait, clock) {
@@ -66,7 +79,7 @@ async function waitUntil(deadline, wait, clock) {
 }
 
 const providerPauseError = () => new Error('Overpass Retry-After exceeds this run’s wait limit; working copies retained');
-const unansweredError = () => new Error(`not asked: Overpass did not answer ${MAX_UNANSWERED_TILES} tiles in a row; working copies retained`);
+const unansweredError = () => new Error(`not asked: no Overpass instance answered ${MAX_UNANSWERED_TILES} tiles in a row; working copies retained`);
 const timeBudgetError = last => Object.assign(new Error(`not asked: the run's time budget is reached${last ? ` (last: ${last})` : ''}; working copy retained`), {budget: true});
 // Why fetch gave no answer: undici puts the reason in the cause.
 const fetchReason = error => [error.message, error.cause?.code, error.cause?.message].filter(Boolean).filter((x, i, all) => all.indexOf(x) === i).join(': ');
@@ -125,7 +138,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
     const sent = clock();
     let response, text;
     try {
-      response = await fetcher(API, {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
+      response = await fetcher(instanceOf(budget), {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
       budget.answers = (budget.answers || 0) + 1;
       rememberProviderPause(response, budget, now, clock);
       text = await readBudgetedBody(response, budget);
@@ -160,7 +173,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
     if (remark) throw new Error(`${tile.key}: Overpass remark: ${remark.trim().slice(0, 200)}`);
     const osmBase = /<meta osm_base="([^"]+)"/.exec(text)?.[1];
     if (!osmBase || !/<\/osm>\s*$/.test(text)) throw new Error(`${tile.key}: incomplete answer`);
-    return [{text, osmBase}];
+    return [{text, osmBase, url: instanceOf(budget)}];
   }
 }
 
@@ -194,7 +207,7 @@ export async function writeTile(tile, parts, out, {run = promisify(execFile), pr
   const {stdout} = await run('osmium', ['cat', filtered, '-f', 'opl', '-o', '-'], {maxBuffer: 1024 ** 3});
   const count = prefix => stdout.split('\n').filter(line => line.startsWith(prefix)).length;
   const nodes = count('n'), ways = count('w'), relations = count('r');
-  const manifest = {schema: 1, region: `gap/${tile.key}`, kind: 'gap', sourceDate: sourceTimestamp.slice(0, 10), url: API, sourceTimestamp,
+  const manifest = {schema: 1, region: `gap/${tile.key}`, kind: 'gap', sourceDate: sourceTimestamp.slice(0, 10), url: parts[0].url || API, sourceTimestamp,
     pbfBytes: 0, sourceMd5: null, filteredBytes: (await stat(filtered)).size, filteredSha256: await fileSha256(filtered),
     counts: {nodes, ways, relations}, filter: GAP_FILTER_HASH, parts: parts.length, source: 'OpenStreetMap via Overpass API', license: 'ODbL-1.0'};
   await writeFile(join(out, 'extract.json'), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -207,8 +220,8 @@ export function tileOrder(tiles, index = null) {
   return tiles.map((tile, i) => ({tile, i, t: time(tile)})).sort((a, b) => a.t - b.t || a.i - b.i).map(({tile}) => tile);
 }
 
-export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
-  const budget = {requests: 0, bytes: 0, maxRequests, maxBytes, answers: 0, unansweredTiles: 0, deadline: timeBudgetMs == null ? null : clock() + timeBudgetMs};
+export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
+  const budget = {requests: 0, bytes: 0, maxRequests, maxBytes, answers: 0, unansweredTiles: 0, instances, instance: 0, deadline: timeBudgetMs == null ? null : clock() + timeBudgetMs};
   const results = [];
   for (const tile of tileOrder(tiles, index)) {
     const dir = join(out, `gap-${tile.key}`);
@@ -229,8 +242,16 @@ export async function acquireGapTiles(tiles, out, {index = null, fetcher = fetch
     // A tile whose requests all went unanswered counts towards the stop;
     // any answer starts the count again.
     budget.unansweredTiles = budget.answers === answers ? budget.unansweredTiles + 1 : 0;
+    // An instance that stopped answering: the next one, from the next tile
+    // on, with its own count (a Retry-After pause belongs to the old one).
+    if (budget.unansweredTiles >= MAX_UNANSWERED_TILES && budget.instance + 1 < instances.length) {
+      budget.instance++;
+      budget.unansweredTiles = 0;
+      budget.retryNotBefore = 0;
+      log(`${instances[budget.instance - 1]} did not answer ${MAX_UNANSWERED_TILES} tiles in a row; asking ${instances[budget.instance]}`);
+    }
   }
-  return {results, requests: budget.requests, bytes: budget.bytes};
+  return {results, requests: budget.requests, bytes: budget.bytes, instance: instances[budget.instance]};
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {

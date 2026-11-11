@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
-import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES} from '../scripts/acquire-gap-tiles.mjs';
+import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES, INSTANCES, overpassInstances} from '../scripts/acquire-gap-tiles.mjs';
 import {nextIndex, planWithGaps, withGaps} from '../scripts/extract-release.mjs';
 
 // What osmium selects, per object type, straight from the expressions: the
@@ -443,30 +443,64 @@ test('two tiles in a row without any answer stop the run; an answer in between d
   const root = await mkdtemp(join(tmpdir(), 'gap-unanswered-'));
   t.after(() => rm(root, {recursive: true, force: true}));
   assert.equal(MAX_UNANSWERED_TILES, 2);
+  // One instance: the stop itself (the list's failover is tested below).
+  const one = {instances: ['https://overpass-api.de/api/interpreter']};
   const tiles = ['a', 'b', 'c', 'd'].map(key => ({...tile, key}));
   const down = () => new TypeError('fetch failed', {cause: Object.assign(new Error('other side closed'), {code: 'UND_ERR_SOCKET'})});
   let f = fake(down);
-  let result = await acquireGapTiles(tiles, join(root, 'down'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  let result = await acquireGapTiles(tiles, join(root, 'down'), {...fakeClock(), ...one, fetcher: f.fetcher, run: noOsmium});
   assert.equal(f.calls.length, 8, 'tiles a and b are asked 4 times each, c and d never');
   const errors = await failedNames(join(root, 'down'));
   assert.match(errors['gap-a'], /fetch failed: fetch failed: UND_ERR_SOCKET: other side closed/, 'the reason is kept');
-  assert.match(errors['gap-c'], /not asked: Overpass did not answer 2 tiles in a row/);
+  assert.match(errors['gap-c'], /not asked: no Overpass instance answered 2 tiles in a row/);
   assert.match(errors['gap-d'], /not asked/);
   assert.equal(result.results.length, 4);
   // Tile b is answered (busy): the count starts again, so c and d are asked.
   f = fake(n => n > 4 && n <= 8 ? new Response('busy', {status: 503}) : down());
-  result = await acquireGapTiles(tiles, join(root, 'busy'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  result = await acquireGapTiles(tiles, join(root, 'busy'), {...fakeClock(), ...one, fetcher: f.fetcher, run: noOsmium});
   assert.equal(f.calls.length, 16);
   // A fetched tile in between starts the count again too.
   const fakeOsmium = async (_cmd, args) => { if (args[0] === 'cat') return {stdout: ''}; await writeFile(args[args.indexOf('-o') + 1], ''); return {stdout: ''}; };
   f = fake(n => n === 5 ? new Response(answer()) : down());
-  result = await acquireGapTiles(tiles, join(root, 'fetched'), {...fakeClock(), fetcher: f.fetcher, run: fakeOsmium});
+  result = await acquireGapTiles(tiles, join(root, 'fetched'), {...fakeClock(), ...one, fetcher: f.fetcher, run: fakeOsmium});
   assert.ok(!result.results[1].failed);
   assert.equal(f.calls.length, 13, 'a 4, b 1, c 4, d 4');
   // One answer among a tile's retries is an answer: the tile does not count.
   f = fake(n => n === 2 || n === 6 ? new Response('busy', {status: 503}) : down());
-  await acquireGapTiles(tiles, join(root, 'mixed'), {...fakeClock(), fetcher: f.fetcher, run: noOsmium});
+  await acquireGapTiles(tiles, join(root, 'mixed'), {...fakeClock(), ...one, fetcher: f.fetcher, run: noOsmium});
   assert.equal(f.calls.length, 16);
+});
+
+test('an instance that stops answering hands the next tiles to the next instance on the list, one at a time; the run stops when the list is used up', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'gap-instances-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  assert.deepEqual(INSTANCES, ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter']);
+  const tiles = ['a', 'b', 'c', 'd', 'e'].map(key => ({...tile, key}));
+  const down = () => new TypeError('fetch failed', {cause: Object.assign(new Error('Connect Timeout Error'), {code: 'UND_ERR_CONNECT_TIMEOUT'})});
+  const fakeOsmium = async (_cmd, args) => { if (args[0] === 'cat') return {stdout: ''}; await writeFile(args[args.indexOf('-o') + 1], ''); return {stdout: ''}; };
+  // The first instance never answers; the second answers every tile.
+  const urls = [], lines = [];
+  let inFlight = 0, most = 0;
+  const fetcher = async url => { urls.push(url); inFlight++; most = Math.max(most, inFlight); try { await null; if (url === INSTANCES[0]) throw down(); return new Response(answer()); } finally { inFlight--; } };
+  const result = await acquireGapTiles(tiles, join(root, 'failover'), {...fakeClock(), instances: [...INSTANCES], fetcher, run: fakeOsmium, log: line => lines.push(line)});
+  assert.deepEqual(urls.map(url => url === INSTANCES[0] ? 1 : 2), [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2], 'a and b on the first (4 each), then c, d and e on the second');
+  assert.equal(most, 1, 'never two requests at once');
+  assert.deepEqual(result.results.map(r => Boolean(r.failed)), [true, true, false, false, false]);
+  assert.equal(result.instance, INSTANCES[1]);
+  assert.ok(lines.includes(`${INSTANCES[0]} did not answer 2 tiles in a row; asking ${INSTANCES[1]}`));
+  const manifest = JSON.parse(await readFile(join(root, 'failover', 'gap-c', 'extract.json'), 'utf8'));
+  assert.equal(manifest.url, INSTANCES[1], 'a tile records the instance that answered it');
+  // Both down: two tiles on each, then the run stops.
+  urls.length = 0;
+  const none = await acquireGapTiles(tiles, join(root, 'down'), {...fakeClock(), instances: [...INSTANCES], fetcher: async url => { urls.push(url); throw down(); }, run: fakeOsmium});
+  assert.equal(urls.length, 16);
+  assert.match(none.results[4].failed, /not asked: no Overpass instance answered 2 tiles in a row/);
+  // The list from the environment: OVERPASS_URLS, else OVERPASS_URL, else the default; HTTPS only.
+  assert.deepEqual(overpassInstances({}), [...INSTANCES]);
+  assert.deepEqual(overpassInstances({OVERPASS_URL: 'https://example.org/api/interpreter'}), ['https://example.org/api/interpreter']);
+  assert.deepEqual(overpassInstances({OVERPASS_URLS: ' https://a.example/i , https://b.example/i ', OVERPASS_URL: 'https://c.example/i'}), ['https://a.example/i', 'https://b.example/i']);
+  assert.throws(() => overpassInstances({OVERPASS_URLS: 'http://a.example/i'}), /not HTTPS/);
+  assert.throws(() => overpassInstances({OVERPASS_URLS: ' , '}), /No Overpass instance/);
 });
 
 test('tiles without a working copy go first, then the oldest', async t => {
