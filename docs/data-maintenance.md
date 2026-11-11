@@ -143,6 +143,18 @@ How the choice is made:
 - **Two reads.** The first reads every tagged object for the stations. The station relations' node and way members are then cut out with `osmium getid --add-referenced`, and only that small file is read with its untagged nodes. The world took about 3 minutes locally.
 - **Completeness, dates and use** are as above; the manifest carries the fields the site checks, with the assembly's regions as the completed ones. It is not used until `DATA_SOURCES` selects `station-points`.
 
+**Level crossings.** Then `scripts/build-extract-crossings.mjs` builds them and, on `main`, publishes them to `crossings-extract-data`.
+- **Same table and files.** The crossings are the `railway=level_crossing` and `railway=crossing` nodes. A crossing is minor when railway ways pass through it and every one is a minor track, the four kinds of `MINOR_TRACKS`; one with no railway way is major, as in the query.
+  - The tags are the crossing tag keys with a value, written as Overpass's CSV writes them: a value holding a comma, a line break or a double quote is put in double quotes, its own quotes doubled (`escape_csv` in Overpass's `output_csv.cc`), and `parseRows` keeps those quotes. So the Overpass table stores `"km 18,145"`, and so does this one.
+  - The world's region boxes end below 90° N and 180° E, so a crossing exactly there is in neither table.
+  - Both builders write the table, tiles and index with `crossingFiles` (`scripts/crossing-data.mjs`).
+- **One read.** An OSM file lists nodes before ways, so the crossings are known when the railway ways through them are read. Ways are read without geometry (`readElements` with `geometry: false`): only their node ids count, so a way through a node the extract lacks still counts. The world took about 3 minutes and 2.3 GB locally.
+- **Checked against the Overpass table.** The world assembled from the 2026-11-10 index was compared with `crossing-data` of 2026-11-01, whose regions date from 2026-10-16 or 2026-11-01.
+  - 1,227,458 of the 1,231,044 crossings in both are identical.
+  - Every crossing only in the extract has a node edited after its region's time.
+  - Every differing row but 16 has a node, or a railway way through it, edited after that time. In those 16 the extract has no railway way through the crossing. In 2 of them the ways lost their `railway` tag after that time; for the other 14, no way through the crossing is left in the extract at all.
+- **Completeness, dates and use** are as above. It is not used until `DATA_SOURCES` selects `crossings`.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.

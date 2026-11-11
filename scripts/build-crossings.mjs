@@ -7,8 +7,8 @@
 // ways through them, deletions included; the crossings that may have changed
 // are read again by id.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
-import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {gunzipSync} from 'node:zlib';
+import {inBox, applyChanges, crossingFiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 import {crossingResponseText, crossingFailureAction, crossingRetryDelay} from './crossing-request.mjs';
 
@@ -199,28 +199,17 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
+const {files, tiles, tileBytes: bytes, counts} = crossingFiles(table);
+for (const [path, data] of files) {
+  await mkdir(new URL('./', new URL(path, out)), {recursive: true});
+  await writeFile(new URL(path, out), data);
+}
 await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, extraction, since: changes ? since : startedAt, ...(changes ? {changes} : {}), regions,
   ...(checkpoint ? {acquisition: checkpoint.summary()} : {})}));
-const index = [];
-let bytes = 0;
-for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
-  for (const [key, data] of buildTiles(table, z, {detail})) {
-    const [, x] = key.split('/');
-    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-    const gz = gzipSync(data, {level: 9});
-    bytes += gz.length;
-    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-    index.push(key);
-  }
-}
-await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const counts = {road: 0, foot: 0, minor: 0};
-for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
 // tags: the detail tiles carry the crossing tags (tables from version 3).
 const manifest = {generated: new Date().toISOString(), changesSince: changesFrom || null, deferredRegions: deferred, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   ...(checkpoint ? {tableVersion: VERSION, acquisition: checkpoint.summary()} : {}),
-  tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: usage.bytes, source: api,
+  tiles, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: usage.bytes, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));

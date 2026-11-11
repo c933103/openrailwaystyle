@@ -5,7 +5,8 @@
 # to the step summary and an artifact; the assembled file is not kept.
 # From it, the extract builds (#330, step 9) are made and, on main,
 # published to their own branches (branch-lines-extract-data,
-# service-routes-extract-data, station-points-extract-data). The site uses
+# service-routes-extract-data, station-points-extract-data,
+# crossings-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -128,6 +129,29 @@ jobs:
           if ! git push --force origin HEAD:station-points-extract-data; then
             test "$(git ls-remote origin refs/heads/station-points-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build level crossings from the extract
+        # The world in a local run (2026-11-10 index): 1,233,077 crossings,
+        # about 3 minutes, one read of the crossings and railway ways.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-crossings.mjs assembled.osm.pbf assembled.osm.pbf.json crossings-extract | tee crossings-extract.json
+          { echo '# Level crossings from the extract'; echo; echo '```json'; cat crossings-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish crossings-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/crossings-publish
+          cd /tmp/crossings-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan crossings-extract-data
+          cp -r "$GITHUB_WORKSPACE/crossings-extract/." .
+          git add .
+          git commit -q -m "Level crossings from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:crossings-extract-data; then
+            test "$(git ls-remote origin refs/heads/crossings-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -137,5 +161,6 @@ jobs:
             branch-lines-extract/manifest.json
             service-routes-extract/manifest.json
             station-points-extract/manifest.json
+            crossings-extract/manifest.json
           if-no-files-found: ignore
           retention-days: 30
