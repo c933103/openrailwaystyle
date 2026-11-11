@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
-import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES, INSTANCES, overpassInstances} from '../scripts/acquire-gap-tiles.mjs';
+import {fetchTile, gapQuery, writeTile, acquireGapTiles, tileOrder, requestDispatcher, GAP_FILTER_HASH, REQUEST_TIMEOUT_MS, MAX_UNANSWERED_TILES, INSTANCES, overpassInstances} from '../scripts/acquire-gap-tiles.mjs';
 import {nextIndex, planWithGaps, withGaps} from '../scripts/extract-release.mjs';
 
 // What osmium selects, per object type, straight from the expressions: the
@@ -556,4 +556,24 @@ test('a gaps-only run downloads no region, and still fetches and publishes the g
   assert.doesNotMatch(job('gaps'), /gaps_only/, 'the gap tiles are fetched either way');
   // The publish job runs when the region jobs are skipped: it needs only the plan.
   assert.match(job('publish'), /\n    if: \$\{\{ !cancelled\(\) && needs\.plan\.result == 'success' \}\}\n/);
+});
+
+test('gap requests wait for headers as long as their own time limit, not Node\'s 300 s default', async t => {
+  const {createServer} = await import('node:http');
+  // A server that answers its headers after 3 s.
+  const server = createServer((req, res) => setTimeout(() => res.end('late'), 3000)).listen(0, '127.0.0.1');
+  t.after(() => server.close());
+  await new Promise(resolve => server.on('listening', resolve));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  // The agent sets the headers wait: 1 s gives up, 5 s gets the answer.
+  await assert.rejects(fetch(url, {dispatcher: requestDispatcher(1000)}), error => error.cause?.code === 'UND_ERR_HEADERS_TIMEOUT');
+  assert.equal(await (await fetch(url, {dispatcher: requestDispatcher(5000)})).text(), 'late');
+  // Every request of a run, split parts included, carries the run's agent.
+  const dispatcher = requestDispatcher();
+  assert.ok(dispatcher, 'this Node keeps its fetch agent where the gap acquirer looks');
+  const seen = [];
+  const fetcher = async (_url, init) => { seen.push(init.dispatcher); return seen.length === 1 ? new Response('runtime error: Query timed out in "query" at line 1 after 180 seconds.', {status: 504}) : new Response(answer()); };
+  await fetchTile(tile, {...fakeClock(), fetcher, dispatcher, budget: {requests: 0, bytes: 0, maxRequests: 100, maxBytes: 1e9}});
+  assert.ok(seen.length > 1, 'the tile was split');
+  assert.ok(seen.every(d => d === dispatcher));
 });

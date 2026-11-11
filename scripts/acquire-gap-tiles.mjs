@@ -56,6 +56,17 @@ export const PAUSE_MS = 10_000;
 export const MAX_SPLIT_DEPTH = 6;
 const MAX_PROVIDER_WAIT_MS = 15 * 60_000;
 export const REQUEST_TIMEOUT_MS = 360_000;
+// Node's fetch stops waiting for a response's headers after 300 s (undici's
+// default headersTimeout), before this request's own 360 s limit: a busy
+// instance still working on a tile was cut off with UND_ERR_HEADERS_TIMEOUT
+// (#330, run 42936994932). Requests get an agent of the fetch's own undici
+// class (the one Node keeps as its global dispatcher), so it fits whichever
+// Node runs, with both timeouts at the request's limit. Without one (an
+// unexpected Node), requests keep Node's default.
+export function requestDispatcher(timeoutMs = REQUEST_TIMEOUT_MS) {
+  const Agent = globalThis[Symbol.for('undici.globalDispatcher.1')]?.constructor;
+  return typeof Agent === 'function' ? new Agent({headersTimeout: timeoutMs, bodyTimeout: timeoutMs}) : undefined;
+}
 export const MAX_UNANSWERED_TILES = 2;
 
 // Per part of the tile: the selection inside its outer ring, less what lies
@@ -121,7 +132,7 @@ async function readBudgetedBody(response, budget) {
 
 // One tile, split on an executed-query limit. Returns the OSM XML parts
 // with their database times, or throws (the tile keeps its copy).
-export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0, log = () => {}} = {}) {
+export async function fetchTile(tile, {fetcher = fetch, dispatcher = requestDispatcher(), wait = sleep, now = Date.now, clock = () => performance.now(), budget, depth = 0, log = () => {}} = {}) {
   const query = gapQuery(tile.polygon);
   // A wait that would leave no time for a whole request is not waited out.
   const pauseUntil = async (until, last) => {
@@ -138,7 +149,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
     const sent = clock();
     let response, text;
     try {
-      response = await fetcher(instanceOf(budget), {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)});
+      response = await fetcher(instanceOf(budget), {method: 'POST', body: new URLSearchParams({data: query}), headers: {'User-Agent': USER_AGENT}, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...(dispatcher ? {dispatcher} : {})});
       budget.answers = (budget.answers || 0) + 1;
       rememberProviderPause(response, budget, now, clock);
       text = await readBudgetedBody(response, budget);
@@ -156,7 +167,7 @@ export async function fetchTile(tile, {fetcher = fetch, wait = sleep, now = Date
       const parts = [];
       for (const box of quarters(tile.box)) {
         const inside = polygonClipping.intersection(tile.polygon, boxPolygon(box));
-        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, wait, now, clock, budget, depth: depth + 1, log}));
+        if (inside.length) parts.push(...await fetchTile({key: box.join('_'), box, polygon: inside}, {fetcher, dispatcher, wait, now, clock, budget, depth: depth + 1, log}));
       }
       return parts;
     }
@@ -220,7 +231,7 @@ export function tileOrder(tiles, index = null) {
   return tiles.map((tile, i) => ({tile, i, t: time(tile)})).sort((a, b) => a.t - b.t || a.i - b.i).map(({tile}) => tile);
 }
 
-export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
+export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, dispatcher = requestDispatcher(), wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {
   const budget = {requests: 0, bytes: 0, maxRequests, maxBytes, answers: 0, unansweredTiles: 0, instances, instance: 0, deadline: timeBudgetMs == null ? null : clock() + timeBudgetMs};
   const results = [];
   for (const tile of tileOrder(tiles, index)) {
@@ -228,7 +239,7 @@ export async function acquireGapTiles(tiles, out, {index = null, instances = ove
     const started = clock(), requests = budget.requests, answers = budget.answers;
     const seconds = () => Math.round((clock() - started) / 1000);
     try {
-      const parts = await fetchTile(tile, {fetcher, wait, now, clock, budget, log});
+      const parts = await fetchTile(tile, {fetcher, dispatcher, wait, now, clock, budget, log});
       const manifest = await writeTile(tile, parts, dir, {run, previous: index?.regions?.[`gap/${tile.key}`]});
       results.push(manifest);
       const {nodes, ways, relations} = manifest.counts;
