@@ -64,9 +64,11 @@ export function parseLine(line, accept = () => true) {
 // The extract's elements that `keep` accepts, streamed from osmium; resolves
 // to the counts. keep decides on {type, id, tags}; onElement receives each
 // kept element whole, and should convert it at once rather than hold it:
-// a world extract holds millions of ways.
-export async function readElements(pbf, {keep = () => true, onElement, run = spawn} = {}) {
-  const child = run('osmium', ['add-locations-to-ways', '--ignore-missing-nodes', pbf, '-f', 'opl', '-o', '-'], {stdio: ['ignore', 'pipe', 'pipe']});
+// a world extract holds millions of ways. Untagged nodes (the nodes of
+// ways) are elements too only with untaggedNodes, for a build that needs the
+// positions of relation members.
+export async function readElements(pbf, {keep = () => true, onElement, untaggedNodes = false, run = spawn} = {}) {
+  const child = run('osmium', ['add-locations-to-ways', '--ignore-missing-nodes', ...(untaggedNodes ? ['--keep-untagged-nodes'] : []), pbf, '-f', 'opl', '-o', '-'], {stdio: ['ignore', 'pipe', 'pipe']});
   let stderr = '';
   child.stderr.on('data', chunk => { stderr += chunk; });
   const exited = new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });

@@ -129,6 +129,18 @@ How the choice is made:
 - **Memory.** On germany (51,419 track ways) the table is 188 MB and the peak 928 MB, while tiling. The step runs with a 6 GB heap; the Overpass build tiles a world table of about 275,000 ways within Node's default heap.
 - **Completeness, dates and use** are as for the branch lines: complete only when no region or gap tile is missing, dated by `oldestSource`, and not used until `DATA_SOURCES` selects `service-routes`.
 
+**Station points.** Then `scripts/build-extract-station-points.mjs` builds them and, on `main`, publishes them to `station-points-extract-data`.
+- **Same selection, records and tiles.** The selection is the Overpass query's: `railway=station|halt|tram_stop`, or `public_transport=station` with a rail mode. The kept elements (`stationElement`), the records (`stationRecords`) and the tiles (`stationOverviewData`) are the Overpass build's.
+- **Centres.** Overpass gives a way or relation its `out center`. `scripts/osm-centre.mjs` computes it the same way:
+  - the middle of the bounding box of a way's nodes, or of a relation's node and way members (member relations have no effect, as the Overpass QL documentation says);
+  - latitudes held as whole 1e-7 degrees offset by 91, the two edges averaged as doubles, printed to 7 decimals.
+- **Checked against Overpass's own records.** The world assembled from the 2026-11-10 index was compared with the Overpass records of the 2026-10-11 to 11-02 cycle.
+  - Every record at the same OSM version is identical: 181,074 nodes, 7,302 ways and 511 relations.
+  - The exceptions are 28 ways and 2 relations with a node or member edited after Overpass answered.
+  - A relation with only relation members has no centre, in Overpass too, and is not a record.
+- **Two reads.** The first reads every tagged object for the stations. The station relations' node and way members are then cut out with `osmium getid --add-referenced`, and only that small file is read with its untagged nodes. The world took about 3 minutes locally.
+- **Completeness, dates and use** are as above; the manifest carries the fields the site checks, with the assembly's regions as the completed ones. It is not used until `DATA_SOURCES` selects `station-points`.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
