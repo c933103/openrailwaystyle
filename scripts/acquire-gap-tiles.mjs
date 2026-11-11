@@ -35,6 +35,9 @@ import {quarters} from './world-regions.mjs';
 import {stationQueryExceededLimits} from './station-acquisition.mjs';
 import {overpassBusy, overpassRetryDelayMs} from './overpass-errors.mjs';
 import polygonClipping from 'polygon-clipping';
+import {Agent as UndiciAgent} from 'undici';
+import {createRequire} from 'node:module';
+const undiciVersion = createRequire(import.meta.url)('undici/package.json').version;
 
 // The Overpass instances asked, in order (docs/external-services.md: each
 // one's operator and terms were checked before it was listed). The next is
@@ -59,13 +62,15 @@ export const REQUEST_TIMEOUT_MS = 360_000;
 // Node's fetch stops waiting for a response's headers after 300 s (undici's
 // default headersTimeout), before this request's own 360 s limit: a busy
 // instance still working on a tile was cut off with UND_ERR_HEADERS_TIMEOUT
-// (#330, run 42936994932). Requests get an agent of the fetch's own undici
-// class (the one Node keeps as its global dispatcher), so it fits whichever
-// Node runs, with both timeouts at the request's limit. Without one (an
-// unexpected Node), requests keep Node's default.
+// (#330, run 42936994932). Requests get an undici Agent with both timeouts at
+// the request's limit. Node's fetch accepts an Agent only from the undici
+// major version it bundles (Node 22's, 6, refuses 8's), so the package's
+// Agent is used only when the majors match; otherwise requests keep Node's
+// default, as before, and the run says so.
+const bundledUndici = Number(String(process.versions.undici || '').split('.')[0]);
+export const UNDICI_AGENT = bundledUndici === Number(undiciVersion.split('.')[0]);
 export function requestDispatcher(timeoutMs = REQUEST_TIMEOUT_MS) {
-  const Agent = globalThis[Symbol.for('undici.globalDispatcher.1')]?.constructor;
-  return typeof Agent === 'function' ? new Agent({headersTimeout: timeoutMs, bodyTimeout: timeoutMs}) : undefined;
+  return UNDICI_AGENT ? new UndiciAgent({headersTimeout: timeoutMs, bodyTimeout: timeoutMs}) : undefined;
 }
 export const MAX_UNANSWERED_TILES = 2;
 
@@ -278,4 +283,5 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const failed = results.filter(r => r.failed);
   console.log(`${tiles.length} gap tiles: ${results.length - failed.length} fetched, ${failed.length} kept their copy; ${requests} requests, ${bytes} bytes`);
   for (const f of failed) console.log(`::warning::${f.region}: ${f.failed}`.replace(/[\r\n]/g, ' '));
+  if (!UNDICI_AGENT) console.log(`::warning::Node ${process.version} bundles undici ${process.versions.undici}, not ${undiciVersion.split('.')[0]}.x: requests keep Node's 300 s wait for headers`);
 }
