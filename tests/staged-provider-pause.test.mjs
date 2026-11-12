@@ -94,8 +94,8 @@ for(const pipeline of pipelines){
   const r=await run(t,pipeline,[{}, {header:'86400'}]);assert.equal(r.attempt.status,'acquired');assert.deepEqual(r.requests.map(x=>x.at),[0,15000]);
  });
 }
-test('shared provider-pause changes rebuild only their two fallback consumers',()=>{
- assert.deepEqual(OSM_UPDATES.filter(x=>x.paths.includes('scripts/staged-provider-pause.mjs')).map(x=>x.id),['branch-lines','service-routes']);
+test('shared provider-pause changes rebuild the railway store and both fallback consumers',()=>{
+ assert.deepEqual(OSM_UPDATES.filter(x=>x.paths.includes('scripts/staged-provider-pause.mjs')).map(x=>x.id),['railway-ways','branch-lines','service-routes']);
 });
 
 for(const pipeline of pipelines) {
