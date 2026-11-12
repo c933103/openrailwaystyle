@@ -62,7 +62,9 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
             const seconds = /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) * 1000 : Date.parse(raw) - now();
             if (Number.isFinite(seconds)) error.retryAfter = Math.max(0, seconds);
           }
-          await response.body?.cancel?.().catch(() => {});
+          // Cleanup must not replace the HTTP policy or wait until the
+          // transport timeout discards its status and provider cooldown.
+          try { response.body?.cancel?.().catch(() => {}); } catch {}
           throw error;
         }
         return entry.json ? response.json() : response.arrayBuffer();

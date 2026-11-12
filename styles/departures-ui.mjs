@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261110-station-line-width-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261112-request-cleanup-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
