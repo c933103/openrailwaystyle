@@ -1,0 +1,26 @@
+{
+  "generated": "2026-11-12T11:45:37.549Z",
+  "complete": true,
+  "tags": true,
+  "crossings": 1233077,
+  "road": 1005039,
+  "pedestrian": 228038,
+  "onMinorTracksOnly": 488319,
+  "tiles": 13116,
+  "tileBytes": 16243659,
+  "oldestSource": "2026-11-03T21:24:23Z",
+  "newestSource": "2026-11-11T10:58:20Z",
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "query": "node[railway=level_crossing] and node[railway=crossing]; minor: only on tram, light rail, funicular, miniature, service or street-running tracks",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.",
+  "extract": {
+    "index": "20261111T121854Z-42996345331",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 5426746,
+    "railwayWays": 4193669,
+    "crossings": 1233077,
+    "outsideWorldBoxes": 0
+  }
+}
