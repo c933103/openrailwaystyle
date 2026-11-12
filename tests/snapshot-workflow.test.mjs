@@ -14,10 +14,10 @@ const step = name => {
 };
 const restore = step('Restore raw Overpass responses from the release');
 const save = step('Store raw Overpass responses in the release');
-const eligible = (merged, assembled) => {
+const eligible = (merged, assembled, cancelled = false) => {
   const condition = save.match(/^        if: (.+)$/m)?.[1];
   assert.ok(condition, 'durable preservation must explicitly survive failure');
-  return vm.runInNewContext(condition, {always: () => true, steps: {
+  return vm.runInNewContext(condition, {always: () => true, cancelled: () => cancelled, steps: {
     restore_raw: {outputs: {merged}}, assemble: {outcome: assembled},
   }});
 };
@@ -27,7 +27,8 @@ test('failed acquisition preserves durable work only after merging its prior rel
   assert.match(step('Assemble complete worldwide archive'), /id: assemble/);
   assert.equal(eligible('true', 'skipped'), true);
   assert.equal(eligible('true', 'failure'), true);
-  assert.equal(eligible('true', 'cancelled'), true);
+  assert.equal(eligible('true', 'cancelled', true), false);
+  assert.equal(eligible('true', 'success', true), false, 'cancellation cannot publish interrupted writes');
   for (const merged of [undefined, '', 'false']) {
     for (const outcome of ['skipped', 'failure', 'cancelled']) assert.equal(eligible(merged, outcome), false);
     assert.equal(eligible(merged, 'success'), true, 'a complete first build can bootstrap its archive');

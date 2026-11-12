@@ -194,8 +194,9 @@ jobs:
       # Only replace the durable archive after its prior contents were merged,
       # or after a complete assembly bootstraps the first archive. A failed
       # download/restore must not turn a partial cache into the only copy.
+      # Cancellation may interrupt a writer; keep the durable archive unchanged.
       - name: Store raw Overpass responses in the release
-        if: always() && (steps.restore_raw.outputs.merged == 'true' || steps.assemble.outcome == 'success')
+        if: always() && !cancelled() && (steps.restore_raw.outputs.merged == 'true' || steps.assemble.outcome == 'success')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
