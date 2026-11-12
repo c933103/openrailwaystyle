@@ -131,7 +131,7 @@ test('traction runs every six hours but republishes and redeploys only when its 
 test('shared provider calendar changes rebuild exactly its current dataset consumers', () => {
   for (const path of ['scripts/retry-after.mjs','styles/retry-after.mjs'])
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes(path)).map(entry => entry.id),
-    ['lifecycle', 'crossings', 'street-running', 'conveying', 'aerialways', 'heritage', 'branch-lines', 'service-routes', 'traction']);
+    ['lifecycle', 'crossings', 'street-running', 'conveying', 'aerialways', 'heritage', 'railway-ways', 'branch-lines', 'service-routes', 'traction']);
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/crossing-request.mjs')).map(entry => entry.id), ['crossings']);
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/polar-fetch.mjs')).map(entry => entry.id), ['lifecycle']);
 });

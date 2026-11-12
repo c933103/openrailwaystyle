@@ -11,6 +11,7 @@
 // stored regions are replaced only when its new pass is complete; until then
 // the previous pass's regions stay (`regions/` and `next/`).
 import {responseChunks} from './response-chunks.mjs';
+import {createStagedProviderPause} from './staged-provider-pause.mjs';
 import {mkdir, readFile, readdir, rename, rm, writeFile, cp} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {join, resolve} from 'node:path';
@@ -41,9 +42,11 @@ export async function buildRailwayWays({
   previous = process.env.PREVIOUS_DATA, output = process.env.RAILWAY_WAYS_OUTPUT || 'railway-ways-data',
   runBudget = Number(process.env.BUDGET_BYTES || 220_000_000), dayBudget = Number(process.env.DAY_BUDGET_BYTES || 900_000_000),
   refreshDays = Number(process.env.REFRESH_DAYS || 14), timeBudgetMs = Number(process.env.TIME_BUDGET_MINUTES || 100) * 60000,
-  fetcher = globalThis.fetch, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now, log = console.log, warn = console.warn,
+  fetcher = globalThis.fetch, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now,
+  elapsed = () => performance.now(), log = console.log, warn = console.warn,
 } = {}) {
-  const started = now();
+  const started = now(), startedElapsed = elapsed();
+  const providerPause = createStagedProviderPause({budgetMs: timeBudgetMs, elapsed, now, sleep});
   // Start from the published store, never from nothing when one exists but
   // cannot be read (a fresh store would drop every stored region).
   await rm(output, {recursive: true, force: true});
@@ -116,7 +119,7 @@ export async function buildRailwayWays({
         // changed since is brought to it like the rest).
         if (current.changePass.done.includes(name) && region.query === railwayWaysQuery(stage.parts[region.part], region.box)) continue;
         if (downloaded >= budget) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-        if (now() - started > timeBudgetMs) { stopped = 'time budget reached'; break; }
+        if (elapsed() - startedElapsed > timeBudgetMs) { stopped = 'time budget reached'; break; }
         const since = region.response.osm3s.timestamp_osm_base, query = railwayWaysQuery(stage.parts[region.part], region.box);
         const before = railwayWaysQueries(region.query), after = railwayWaysQueries(query);
         let failure = null;
@@ -166,11 +169,14 @@ export async function buildRailwayWays({
     let lastFailure;
     for (let attempt = 0; attempt < 5; attempt++) {
       if (downloaded >= budget) return BUDGET;
-      await sleep(attempt ? 60000 * attempt : requests ? 15000 : 0);
+      // A deferral is outside the retry catch: no request was sent, and the
+      // pending region/checkpoint must survive without consuming more tries.
+      await providerPause.wait(attempt ? 60000 * attempt : requests ? 15000 : 0);
       requests++;
       try {
         const response = await fetcher(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
           headers: {'User-Agent': 'RailwayAtlas-railway-ways/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
+        providerPause.observe(response);
         const chunks = [], fresh = fetched + split === 0;
         let received = 0, over = false;
         for await (const chunk of responseChunks(response)) {
@@ -207,7 +213,7 @@ export async function buildRailwayWays({
 
   while (current.pending.length) {
     if (downloaded >= budget) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-    if (now() - started > timeBudgetMs) { stopped = 'time budget reached'; break; }
+    if (elapsed() - startedElapsed > timeBudgetMs) { stopped = 'time budget reached'; break; }
     const item = current.pending[0], part = stage.parts[item.part];
     let json;
     try { json = await overpass(railwayWaysQuery(part, item.box)); } catch (error) { stopped = error.message; break; }

@@ -31,8 +31,12 @@ function overpass(answer) {
   };
   return {queries, fetcher};
 }
-const quiet = {log: () => {}, warn: () => {}, sleep: async () => {}};
-const run = (root, fetcher, extra = {}) => buildRailwayWays({output: join(root, 'out'), fetcher, ...quiet, ...extra});
+const quiet = {log: () => {}, warn: () => {}};
+const run = (root, fetcher, extra = {}) => {
+  let elapsed = 0;
+  return buildRailwayWays({output: join(root, 'out'), fetcher, ...quiet,
+    elapsed: () => elapsed, sleep: async ms => { elapsed += ms; }, ...extra});
+};
 // Stored regions whose query cannot be compared with the current one (not
 // a railway-ways query at all): only a full pass can bring them up to date.
 async function staleQueries(store, stage = 'japan') {
@@ -361,4 +365,107 @@ for(const status of [200,503]) test(`railway-ways byte-limit checkpoint does not
   assert.deepEqual(state.stages.japan.pending.map(item=>item.box),status===200?quarters(part.box):[part.box]);
   for await(const region of storedRegions(join(root,'out')))assert.fail(`partial body stored for ${region.box}`);
  } finally {clearTimeout(timer);release();await result;}
+});
+
+
+// Provider pauses and the existing acquisition envelope use one virtual
+// elapsed clock. No provider requests or real sleeps in these regressions.
+function pauseClock() {
+  let elapsed = 0, wall = Date.parse('2026-11-12T00:00:00Z');
+  const sleeps = [];
+  return {elapsed: () => elapsed, now: () => wall, sleeps,
+    sleep: async ms => { sleeps.push(ms); elapsed += ms; },
+    advance: ms => { elapsed += ms; }, jumpWall: ms => { wall += ms; }};
+}
+
+for (const jump of [-86400000, 86400000]) test(`railway ways retain a header-time pause through body failure and wall jump ${jump}`, async t => {
+  const root = await fixture(t), clock = pauseClock(), starts = [];
+  const manifest = await run(root, async () => {
+    starts.push(clock.elapsed());
+    if (starts.length > 1) return new Response(ok([]).text);
+    const body = new ReadableStream({pull(controller) {
+      clock.advance(40000); clock.jumpWall(jump); controller.error(new Error('interrupted body'));
+    }}, {highWaterMark: 0});
+    return new Response(body, {status: 503, headers: {'Retry-After': '120'}});
+  }, clock);
+  assert.deepEqual(starts, [0, 120000]);
+  assert.equal(manifest.run.status, 'acquired');
+  assert.equal(manifest.run.requests, 2);
+  assert.equal(manifest.run.splitBoxes, 0);
+});
+
+test('railway ways keep a successful query-limit pause across subdivision and ordinary spacing', async t => {
+  const root = await fixture(t), clock = pauseClock(), starts = [];
+  const manifest = await run(root, async () => {
+    starts.push(clock.elapsed());
+    return starts.length === 1
+      ? new Response(JSON.stringify({elements: [], remark: timedOut.text}), {headers: {'Retry-After': '90'}})
+      : new Response(ok([]).text);
+  }, clock);
+  assert.deepEqual(starts, [0, 90000, 105000, 120000, 135000]);
+  assert.equal(manifest.run.splitBoxes, 1);
+  assert.equal(manifest.run.status, 'acquired');
+});
+
+test('railway ways preserve completed children when a later provider pause cannot fit the run', async t => {
+  const root = await fixture(t), clock = pauseClock(); let calls = 0;
+  const manifest = await run(root, async () => {
+    calls++;
+    if (calls === 1) return new Response(timedOut.text, {status: 504});
+    return new Response(ok([]).text, {headers: {'Retry-After': '10000'}});
+  }, {...clock, timeBudgetMs: 600000});
+  assert.equal(calls, 2);
+  assert.equal(manifest.run.status, 'partial');
+  assert.equal(manifest.run.fetchedBoxes, 1);
+  assert.equal(manifest.run.splitBoxes, 1);
+  assert.match(manifest.run.reason, /acquisition time budget/);
+  const state = JSON.parse(await readFile(join(root, 'out/state.json')));
+  assert.equal(state.stages.japan.pending.length, 3);
+  assert.equal((await readdir(join(root, 'out/next/japan'))).length, 1);
+});
+
+test('railway ways require a full request window after retry backoff and before the first request', async t => {
+  for (const budget of [299999, 350000]) {
+    const root = await fixture(t), clock = pauseClock(); let calls = 0;
+    const manifest = await run(root, async () => {
+      calls++; clock.advance(40000); throw new TypeError('fetch failed');
+    }, {...clock, timeBudgetMs: budget});
+    assert.equal(calls, budget < 300000 ? 0 : 1);
+    assert.equal(manifest.run.requests, calls);
+    assert.equal(manifest.run.splitBoxes, 0);
+    assert.equal(manifest.run.status, 'deferred');
+    assert.match(manifest.run.reason, /acquisition time budget/);
+    const state = JSON.parse(await readFile(join(root, 'out/state.json')));
+    assert.deepEqual(state.stages.japan.pending.map(item => item.box), [part.box]);
+  }
+});
+
+test('railway ways recheck early wakeups and an oversleep cannot send an out-of-budget request', async t => {
+  for (const oversleep of [false, true]) {
+    const root = await fixture(t), clock = pauseClock(), starts = [];
+    const manifest = await run(root, async () => {
+      starts.push(clock.elapsed());
+      return starts.length === 1 ? new Response('busy', {status: 503, headers: {'Retry-After': '120'}}) : new Response(ok([]).text);
+    }, {...clock, timeBudgetMs: 500000, sleep: async ms => {
+      clock.advance(oversleep && ms ? ms + 300000 : ms ? Math.max(1, Math.floor(ms / 2)) : 0);
+    }});
+    assert.deepEqual(starts, oversleep ? [0] : [0, 120000]);
+    assert.equal(manifest.run.status, oversleep ? 'deferred' : 'acquired');
+  }
+});
+
+test('railway ways honor a successful relation-change pause before fetching way changes', async t => {
+  const root = await fixture(t);
+  await run(root, overpass(() => ok([])).fetcher);
+  const previous = await publish(root); await currentExceptJapan(previous);
+  const clock = pauseClock(), starts = [];
+  const manifest = await run(root, async () => {
+    starts.push(clock.elapsed());
+    return new Response(adiff('2026-11-12T01:00:00Z').text, {headers: {'Retry-After': starts.length === 1 ? '120' : '10000'}});
+  }, {...clock, previous, timeBudgetMs: 600000});
+  assert.deepEqual(starts, [0, 120000]);
+  assert.equal(manifest.run.status, 'acquired');
+  assert.equal(clock.elapsed(), 120000, 'no sleep after the final successful response');
+  const [region] = await japanRegions(root);
+  assert.equal(region.response.osm3s.timestamp_osm_base, '2026-11-12T01:00:00Z');
 });

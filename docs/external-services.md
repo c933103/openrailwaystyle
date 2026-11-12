@@ -168,6 +168,19 @@ three-request ceiling, existing retry backoff, source/query, validation and
 publication rules are unchanged. A final successful response does not sleep
 when there is no further provider request.
 
+The railway-ways collector shares that elapsed-time pause with the staged
+branch/service fallbacks. A header received on success, an HTTP error or an
+interrupted body stays binding across retries, change requests, later regions
+and query-limit subdivision. The existing 15-second spacing and linear
+one-to-four-minute retry waits are rechecked after early timer wakes. Each
+request must fit its full five-minute timeout inside the existing acquisition
+envelope; otherwise the unchanged pending queue and completed regional files
+are saved, without another request. Wall time remains for cache age, publication
+and interpreting HTTP dates only. There is no sleep after the final successful
+response, and no source, query identity, five-attempt ceiling, byte budget,
+schedule or complete-only publication change. This does not restore provider
+availability or establish a provider-wide daily budget.
+
 ## Bounded maintenance diagnostics
 
 Conveying/aerialway HTTP diagnostics stop at their existing 64 KiB bound and
