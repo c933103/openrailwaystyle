@@ -1041,6 +1041,7 @@ test('source recovery release caches the existing recovery module and preserves 
 for (const [release,previous,paths] of [
  ['Help date refresh','20261106-geojson-parse-1',['app.mjs','data-ages.mjs']],
  ['request-pool HTTP cleanup','20261110-station-line-width-1',['app.mjs','vendor/tile-labels.js']],
+ ['request-pool calendar','20261112-request-cleanup-1',['app.mjs','vendor/tile-labels.js']],
 ]) test(`${release} release upgrades exact app bytes offline while preserving previous tabs`,async()=>{
  const page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  const version=page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];assert.notEqual(version,previous,'request-ordering changes need a fresh cache-first token');

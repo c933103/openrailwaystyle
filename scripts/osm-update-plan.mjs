@@ -23,7 +23,7 @@ import {execFileSync} from 'node:child_process';
 // (touched by every asset-version bump) are left out on purpose: those
 // rebuilds are started by hand.
 const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
-const PROVIDER_DATES = ['scripts/retry-after.mjs'];
+const PROVIDER_DATES = ['scripts/retry-after.mjs', 'styles/retry-after.mjs'];
 const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs', ...PROVIDER_DATES];
 // The railway-ways store's reader and views, which the datasets built from it use.
 const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];

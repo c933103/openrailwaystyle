@@ -222,7 +222,10 @@ obsolete queued tiles and gives visible geometry priority over derived counts.
 Timeouts apply to the transport, starting only when it gets a network slot;
 late readers cannot keep a stalled transport running indefinitely. Error-body
 cleanup is best-effort and cannot delay or replace the HTTP status, including
-terminal access errors and shared-origin provider cooldowns. Underzoom
+terminal access errors and shared-origin provider cooldowns. Provider calendar
+dates use the shared maintenance parser: malformed dates cannot invent a
+cooldown, and obsolete HTTP dates use UTC and the rolling 50-year century rule.
+Existing fractional delay-seconds handling is unchanged. Underzoom
 station children load concurrently through the same bounds. See
 [loading investigation](investigations/rail-loading-20261007.md).
 

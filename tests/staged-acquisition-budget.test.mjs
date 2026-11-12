@@ -29,7 +29,7 @@ async function fixture(pipeline, fn) {
   try {
     await cp('scripts', join(root, 'scripts'), {recursive: true});
     await mkdir(join(root, 'styles'));
-    for (const name of ['pbf-utf8.mjs', 'service-frequency.mjs']) await cp(`styles/${name}`, join(root, 'styles', name));
+    for (const name of ['pbf-utf8.mjs', 'service-frequency.mjs', 'retry-after.mjs']) await cp(`styles/${name}`, join(root, 'styles', name));
     await symlink(resolve('node_modules'), join(root, 'node_modules'), 'dir');
     await mkdir(join(root, 'previous'));
     await writeFile(join(root, 'mock.mjs'), `import {readFileSync, appendFileSync} from 'node:fs';
