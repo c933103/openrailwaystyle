@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {sourceCopyOptions} from './helpers/source-copy.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp, readFile, readdir, rm, writeFile, mkdir, cp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -271,7 +272,7 @@ test('publish takes gap tiles as regions of their own, and keeps stored ones whe
 test('publication imports on a fresh runner without npm dependencies', async t => {
   const root = await mkdtemp(join(tmpdir(), 'gap-publish-import-'));
   t.after(() => rm(root, {recursive: true, force: true}));
-  await cp(new URL('../scripts/', import.meta.url), join(root, 'scripts'), {recursive: true});
+  await cp(new URL('../scripts/', import.meta.url), join(root, 'scripts'), sourceCopyOptions);
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', "await import('./scripts/extract-release.mjs')"], {cwd: root, encoding: 'utf8'});
   assert.equal(result.status, 0, result.stderr);
 });

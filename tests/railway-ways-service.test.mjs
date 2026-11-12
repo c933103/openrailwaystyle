@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {sourceCopyOptions} from './helpers/source-copy.mjs';
 import assert from 'node:assert/strict';
 import {cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -25,7 +26,7 @@ test('service routes, given the store, are built from it without any Overpass re
   await writeFile(join(root, 'store', 'regions', 'japan', '0_20_122_46_154.json.gz'), gzipSync(JSON.stringify({stage: 'japan', part: 0, box: [20, 122, 46, 154],
     query: 'q', generated: '2026-10-30T00:00:00Z', response: metro})));
   await writeFile(join(root, 'no-fetch.mjs'), 'globalThis.fetch = async () => { throw new Error("Overpass requested"); };');
-  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), {recursive: true});
+  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), sourceCopyOptions);
   await symlink(resolve('node_modules'), join(root, 'app', 'node_modules'), 'dir');
   const run = async previous => {
     await writeFile(join(root, 'output'), '');

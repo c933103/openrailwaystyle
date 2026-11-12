@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {sourceCopyOptions} from './helpers/source-copy.mjs';
 import assert from 'node:assert/strict';
 import {cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -64,7 +65,7 @@ test('the builder, given the store, publishes from it without any Overpass reque
   await writeFile(join(root, 'previous', 'state.json'), JSON.stringify({version: 3, downloadStages: 3, stages: {}, runs: []}));
   await writeFile(join(root, 'no-fetch.mjs'), 'globalThis.fetch = async () => { throw new Error("Overpass requested"); };');
   // A copy of the builders, so their output folder is inside this fixture.
-  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), {recursive: true});
+  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), sourceCopyOptions);
   await symlink(resolve('node_modules'), join(root, 'app', 'node_modules'), 'dir');
   const child = spawnSync(process.execPath, ['--import', join(root, 'no-fetch.mjs'), join(root, 'app', 'scripts', 'build-branch-lines.mjs')], {
     cwd: root, encoding: 'utf8', timeout: 60_000,
@@ -92,7 +93,7 @@ test('a store run that only retires the old Europe fallback still redeploys the 
   await writeFile(join(root, 'previous', 'state.json'), JSON.stringify({version: 3, downloadStages: 3, stages, runs: [],
     legacyEurope: {completed: '2026-01-01T00:00:00Z', migrated: '2026-02-01T00:00:00Z', requireAsia: true, branchStages: {'europe:europe-a': 1}, lines: 1}}));
   await writeFile(join(root, 'no-fetch.mjs'), 'globalThis.fetch = async () => { throw new Error("Overpass requested"); };');
-  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), {recursive: true});
+  for (const dir of ['scripts', 'styles']) await cp(dir, join(root, 'app', dir), sourceCopyOptions);
   await symlink(resolve('node_modules'), join(root, 'app', 'node_modules'), 'dir');
   const child = spawnSync(process.execPath, ['--import', join(root, 'no-fetch.mjs'), join(root, 'app', 'scripts', 'build-branch-lines.mjs')], {
     cwd: root, encoding: 'utf8', timeout: 60_000,

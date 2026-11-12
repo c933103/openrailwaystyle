@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {sourceCopyOptions} from './helpers/source-copy.mjs';
 import assert from 'node:assert/strict';
 import {cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -16,7 +17,7 @@ const state = () => ({version:1,downloadStages:3,stages:{japan:{completed:null,p
 async function fixture(fn) {
   const root = await mkdtemp(join(tmpdir(), 'atlas-geometry-acquisition-'));
   try {
-    await cp('scripts', join(root,'scripts'), {recursive:true});
+    await cp('scripts', join(root,'scripts'), sourceCopyOptions);
     await mkdir(join(root,'styles'));
     for (const name of ['pbf-utf8.mjs','service-frequency.mjs','retry-after.mjs']) await cp(`styles/${name}`,join(root,'styles',name));
     await symlink(resolve('node_modules'),join(root,'node_modules'),'dir');
