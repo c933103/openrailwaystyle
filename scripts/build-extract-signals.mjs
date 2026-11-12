@@ -1,17 +1,13 @@
 // Railway signals built from the assembled Geofabrik extract
 // (scripts/assemble-extracts.mjs) instead of Overpass (#330, step 9):
-//   node scripts/build-extract-signals.mjs <assembled.osm.pbf> <assembled.osm.pbf.json> <output directory>
 // The selection of combinedSignalQuery, which serves both signal supplements
 // of the traction dataset: signals without a direction (signals/, the same
 // features and files as build-signals.mjs) and electrification signals
 // (power/electricity-signals.*, published by the same validated writer).
-// The output has the traction-data layout. That branch also holds the power
-// facilities and methods, which are not built from the extracts yet, so
-// source.json is never complete here: the site's source switch
-// (scripts/data-source.mjs) keeps traction on Overpass until they are.
-import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
+// The output has the traction-data layout; build-extract-traction.mjs adds
+// the power facilities and writes source.json for the whole dataset.
+import {mkdir, rm, writeFile} from 'node:fs/promises';
 import {dirname, join} from 'node:path';
-import {pathToFileURL} from 'node:url';
 import {checkAssembly, coversWorld} from './build-extract-branch-lines.mjs';
 import {readElements} from './extract-elements.mjs';
 import {startRegions} from './crossing-data.mjs';
@@ -19,8 +15,6 @@ import {signalFeatures, signalFiles} from './signals-data.mjs';
 import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
 import {publishElectricitySignals} from './build-electricity-signals.mjs';
 
-// The parts of traction-data this build does not make yet.
-export const MISSING_TRACTION_PARTS = Object.freeze(['power/power-facilities', 'power/power-methods', 'power/manifest.json']);
 const SOURCE = 'OpenStreetMap via the Geofabrik extracts';
 
 // combinedSignalQuery, node by node: a signal without
@@ -68,14 +62,5 @@ export async function buildExtractSignals(pbf, report, out, {read = readElements
   const power = complete
     ? await publishElectricitySignals(electric, coverage, {output: join(out, 'power'), requests: 0, downloadedBytes: 0, now: () => now().getTime(), log: () => {}, source: SOURCE})
     : null;
-  await writeFile(join(out, 'source.json'), `${JSON.stringify({schema: 1, dataset: 'traction', source: 'extract', complete: false, osmTimestamp: report.oldestTimestamp,
-    assemblyComplete: complete, missing: [...(power ? [] : ['power/electricity-signals']), ...MISSING_TRACTION_PARTS]})}\n`);
   return {signals: manifest, electricity: power?.manifest ?? null};
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
-  const [pbf, reportFile, out] = process.argv.slice(2);
-  if (!pbf || !reportFile || !out) throw new Error('Usage: build-extract-signals.mjs <assembled.osm.pbf> <assembled.osm.pbf.json> <output directory>');
-  const {signals, electricity} = await buildExtractSignals(pbf, JSON.parse(await readFile(reportFile, 'utf8')), out);
-  console.log(JSON.stringify({signals, electricity: electricity && {...electricity, coverage: electricity.coverage.length}}));
 }
