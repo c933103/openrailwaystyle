@@ -1,0 +1,257 @@
+{
+  "artifact": 13966805089,
+  "artifactSha256": "4319d7dd7b849aa1198263a0b05b761c7e142262c5c5b0fe452d472561043966",
+  "entryHashes": {
+    "mainline-actual-atlas-outage.png": "572aaed9c5d1dcfe55e022964f42e028d8b3a61b99e3d4231b47ab9c7f65f363",
+    "mainline-android.png": "58da414149c7e3c9e27146425aeff06dc000ca1be5c663e36fbf26d2ffdbab48",
+    "mainline-desktop.png": "0d7d650d9954867d215305a0876f6e2e3d76908239c181bc68a26de13c5dfd32",
+    "mainline-reference.json": "3d9a29af35be7ac59d34b36fd1181bf6620fe3ed9754f5aba1efd0f8d253e826",
+    "mainline-safari.png": "f59428d85f42c213449be3ae47f36d85c6ff9d44c0a9047147274ab971c29bc3",
+    "orm-fixture-evidence.json": "07dca2450570f46f84014213758e06cfb4ce847b6d5c2b87eff3f8b54c9d19c9",
+    "orm-fixture-wuhan-infrastructure-z6.png": "7d22cffd15a4fdea941ca9f0dda2b1136692c7c7939ad6a232a40f9a66b8cfdf",
+    "orm-fixture-wuhan-infrastructure-z7.png": "ef776ede859dddcce5bf71816864f3c64eae74f5af323e8f10aecbf4b7ef6bcf",
+    "orm-fixture-wuhan-infrastructure-z8.png": "800273c24fed30c1a02f2149e03380ef97d155491728af23c72a0aa0ad6417ea",
+    "orm-fixture-wuhan-z14-track-count.png": "77ea91237c2b43350d527045aec7b197f4ee3538d4b8eecf81801e8077ff397a",
+    "orm-fixture-wuhan-z7.png": "5fcdbfb49a775e75e01b6d42be890a1b64efbf1c5659432a7e261f0674b6a5b5",
+    "orm-network-ledger.json": "7a6a0208f2d9e3c46a4eac417452db7718191b6ee1b22db24bf59c3da10812fb",
+    "rail-outage-after.png": "33eceb074dc25d6eb0a42479f48521a61ad76560abfa35c1febe20d01d4e5b64",
+    "rail-outage-before.png": "bdb7fec03fdf33711ddf0b4cc5b39fce133e98a1b4f4be0a0a10c6f789e3634a",
+    "rail-outage-partial.png": "dc6de602d29d5a0754e6ff08598512a2cdd52ca5168081d3c1a23f4acfa6ff83"
+  },
+  "mainline": {
+    "scope": "Actual OSM generation; exact chain identities",
+    "assetBase": "https://10671435.xyz/",
+    "generation": "5df37536a3c7f6e2ed5916a5",
+    "profiles": [
+      {
+        "name": "desktop",
+        "engine": "chromium",
+        "width": 800,
+        "height": 450,
+        "assetRequests": 414,
+        "assetBytes": 23387374,
+        "decodedTileBytes": 63321378,
+        "cachedTileBytes": 15905800
+      },
+      {
+        "name": "android",
+        "engine": "chromium",
+        "width": 360,
+        "height": 450,
+        "assetRequests": 328,
+        "assetBytes": 19276837,
+        "decodedTileBytes": 50103277,
+        "cachedTileBytes": 16506195
+      },
+      {
+        "name": "safari",
+        "engine": "webkit",
+        "width": 390,
+        "height": 450,
+        "assetRequests": 335,
+        "assetBytes": 19527833,
+        "decodedTileBytes": 51194605,
+        "cachedTileBytes": 16531304
+      }
+    ],
+    "assetRequests": 1077,
+    "requestBytes": 62192044,
+    "timing": {
+      "medianMs": 337,
+      "p95Ms": 891
+    },
+    "providerRequests": 0
+  },
+  "mainlineSampleCount": 840,
+  "appSampleCount": 18,
+  "profileSampleCounts": {
+    "desktop": 280,
+    "android": 280,
+    "safari": 280
+  },
+  "sampleNames": [
+    "Africa–Cape Town",
+    "Alpine crossing",
+    "Canada–Toronto",
+    "China–Beijing",
+    "China–Wuhan",
+    "France–Paris",
+    "Germany–Berlin",
+    "India–Mumbai",
+    "Italy–Milan",
+    "Japan–Tokyo",
+    "Oceania–Sydney",
+    "Poland–Warsaw",
+    "Russia–Moscow",
+    "South America–São Paulo",
+    "South Korea–Seoul",
+    "Spain–Madrid",
+    "Sparse Australia–Kalgoorlie",
+    "Taiwan–Taipei",
+    "United Kingdom–London",
+    "United States–Chicago"
+  ],
+  "samplePaintedRange": [
+    5,
+    45
+  ],
+  "fixture": {
+    "base": "https://10671435.xyz/",
+    "libraryAssets": [
+      {
+        "url": "https://10671435.xyz/vendor/maplibre-gl-5.24.0-atlas.2.js",
+        "status": 200,
+        "type": "application/javascript",
+        "bytes": 1056971,
+        "sha256": "1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e"
+      },
+      {
+        "url": "https://10671435.xyz/vendor/maplibre-gl-5.24.0.css",
+        "status": 200,
+        "type": "text/css",
+        "bytes": 70024,
+        "sha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732"
+      },
+      {
+        "url": "https://10671435.xyz/vendor/pmtiles-4.2.1.js",
+        "status": 200,
+        "type": "application/javascript",
+        "bytes": 19565,
+        "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79"
+      }
+    ],
+    "archiveContract": {
+      "rejected": "Wrong magic number for PMTiles archive",
+      "version": 3,
+      "entries": 1,
+      "metadata": {
+        "vector_layers": []
+      },
+      "bytes": 0,
+      "missing": true
+    },
+    "wuhan": [
+      {
+        "zoom": 6,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-overview",
+        "source": "network",
+        "sourceLayer": "standard_railway_line_low",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 1,
+        "providerPresentRail": 1,
+        "rendered": 1
+      },
+      {
+        "zoom": 7,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-tracks",
+        "source": "railway",
+        "sourceLayer": "railway_line_high",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 1,
+        "providerPresentRail": 1,
+        "rendered": 1
+      },
+      {
+        "zoom": 8,
+        "center": [
+          114.305,
+          30.593
+        ],
+        "layer": "infrastructure-tracks",
+        "source": "railway",
+        "sourceLayer": "railway_line_high",
+        "infrastructureVisibility": "visible",
+        "speedVisibility": "none",
+        "sourceLoaded": true,
+        "providerSourceFeatures": 2,
+        "providerPresentRail": 1,
+        "rendered": 1
+      }
+    ],
+    "filtered": {
+      "zoom": 7,
+      "center": [
+        114.305,
+        30.593
+      ],
+      "layer": "infrastructure-tracks",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "infrastructureVisibility": "visible",
+      "speedVisibility": "none",
+      "sourceLoaded": true,
+      "providerSourceFeatures": 1,
+      "providerPresentRail": 1,
+      "rendered": 0
+    },
+    "initial": {
+      "requests": 43,
+      "unique": 43,
+      "byDataset": {
+        "railway_line_high,railway_text_km": 25,
+        "standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,standard_station_entrances,standard_railway_stop_positions,standard_interlocking,standard_interlocking_text": 18
+      }
+    },
+    "afterPan": {
+      "requests": 51,
+      "unique": 51,
+      "byDataset": {
+        "railway_line_high,railway_text_km": 30,
+        "standard_railway_text_stations,standard_railway_grouped_stations,standard_railway_grouped_station_areas,standard_station_entrances,standard_railway_stop_positions,standard_interlocking,standard_interlocking_text": 21
+      }
+    },
+    "panAdded": 8,
+    "namedEmpty": {
+      "tiles": 18,
+      "namedEmpty": 17,
+      "status": "Explore the rail network · click a line or station"
+    }
+  },
+  "fixtureRecovery": {
+    "settings": {
+      "at": 2467.5999999999767,
+      "center": [
+        114.4,
+        30.55
+      ],
+      "hidden": "none",
+      "shown": "visible",
+      "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing."
+    },
+    "before": {
+      "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+      "pending": true,
+      "at": 2566.20000000007
+    },
+    "partial": {
+      "status": "OpenRailwayMap railway data unavailable. Retrying failed tiles. Independent map references remain where available; detail may be missing.",
+      "error": true,
+      "pending": true,
+      "at": 7544.099999999977
+    },
+    "after": {
+      "status": "Explore the rail network · click a line or station",
+      "pending": true,
+      "loaded": false,
+      "rails": 1,
+      "at": 7868.300000000047
+    },
+    "failedPaths": [
+      "/railway_line_high,railway_text_km/7/104/52",
+      "/railway_line_high,railway_text_km/7/105/52"
+    ],
+    "unknownMetadataFallback": true
+  }
+}

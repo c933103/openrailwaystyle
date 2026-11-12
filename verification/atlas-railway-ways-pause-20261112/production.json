@@ -1,0 +1,707 @@
+{
+  "recordedAt": "2026-11-12T17:09:45Z",
+  "repository": "c933103/openrailwaystyle",
+  "pr": 446,
+  "merge": "fd1b52ce80ada782a5551eaeb052d94b892483b1",
+  "qualificationCommit": "5ab5ae20114695ee99be989c7162ddfe63337863",
+  "site": {
+    "id": 43263354293,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/43263354293",
+    "head": "fd1b52ce80ada782a5551eaeb052d94b892483b1",
+    "status": "completed",
+    "conclusion": "success",
+    "completedAt": "2026-11-12T17:06:59Z",
+    "jobs": [
+      {
+        "id": 131340235678,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Wait for the first complete worldwide facility snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          }
+        ]
+      },
+      {
+        "id": 131340235760,
+        "name": "reference",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Identify required reference inputs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Require worldwide railway reference 21a277852566205296efa3cd5c8900a7b77d4981880cfa16a1f295d133d916de",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          }
+        ]
+      },
+      {
+        "id": 131340236169,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run node scripts/ci-plan.mjs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      },
+      {
+        "id": 131340444742,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Install style validator",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Choose each dataset's source",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Rebuild world style",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Check committed style is reproducible",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Validate speed semantics and MapLibre style",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Check JavaScript syntax",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Check public station search and CORS",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Check station search and CORS with offline PR fixtures",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 12
+          },
+          {
+            "name": "Wait for initial snapshot build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Assemble site data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Load and verify the complete independently acquired railway reference",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16
+          },
+          {
+            "name": "Load a fork's verified reference artifact with read-only permissions",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 17
+          },
+          {
+            "name": "Verify source completeness and current provenance before assembling either reference path",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          },
+          {
+            "name": "Build rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 20
+          },
+          {
+            "name": "Load the published axle-load lookup",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 21
+          },
+          {
+            "name": "Wait for first street-running snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 22
+          },
+          {
+            "name": "Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 23
+          },
+          {
+            "name": "Assemble street-running tiles",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 24
+          },
+          {
+            "name": "Stage independently verified station-point overview",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 25
+          },
+          {
+            "name": "Load level crossings",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 26
+          },
+          {
+            "name": "Load escalators, moving walkways and elevators",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27
+          },
+          {
+            "name": "Load aerial cableways and lifts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 28
+          },
+          {
+            "name": "Load historic areas",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29
+          },
+          {
+            "name": "Load branch lines",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30
+          },
+          {
+            "name": "Load urban rail services",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31
+          },
+          {
+            "name": "Apply matched timetable counts and headways to the OSM service tiles",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 32
+          },
+          {
+            "name": "Keep the ODbL download tables out of the site",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 33
+          },
+          {
+            "name": "Load worldwide railway signals and energy supplies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 34
+          },
+          {
+            "name": "Identify code and data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 35
+          },
+          {
+            "name": "Look for a passed result for this code and data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 36
+          },
+          {
+            "name": "Record the data dates",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 37
+          },
+          {
+            "name": "Check the site size",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 38
+          },
+          {
+            "name": "Save reviewable site",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39
+          },
+          {
+            "name": "Post Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 74
+          },
+          {
+            "name": "Post Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 75
+          },
+          {
+            "name": "Post Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 76
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 77
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 78
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 79
+          }
+        ]
+      },
+      {
+        "id": 131343738674,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run echo \"plan: $PLAN, browser checks needed: $NEEDED, earlier result reused: $REUSED, browser jobs: $BROWSER\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          }
+        ]
+      },
+      {
+        "id": 131343739965,
+        "name": "browser (${{ matrix.group }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": null
+      },
+      {
+        "id": 131343806122,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Configure satellite imagery provider",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Require complete ODbL release and pin immutable download links",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Keep the service-route ODbL table out of the published site",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Run actions/configure-pages@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Run actions/upload-pages-artifact@v3",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Verify deployed reference manifest matches the reviewed artifact",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Verify deployed vector tile bytes",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Run npx playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16
+          },
+          {
+            "name": "Install Safari engine for deployed reference verification",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Verify deployed independent OSM geometry with live overview unavailable",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Verify published map with local railway fixture",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          },
+          {
+            "name": "Save published map screenshots",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 20
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 38
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 40
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 41
+          }
+        ]
+      },
+      {
+        "id": 131343808807,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 43263354293,
+        "logs_url": null,
+        "steps": null
+      }
+    ]
+  },
+  "validation": {
+    "tests": 4148,
+    "passed": 4132,
+    "failed": 0,
+    "skipped": 16,
+    "skipReason": "Existing tests requiring unavailable osmium",
+    "lines": [
+      "2026-11-12T16:54:49.3853144Z ℹ tests 4148",
+      "2026-11-12T16:54:49.3853556Z ℹ pass 4132",
+      "2026-11-12T16:54:49.3853682Z ℹ fail 0",
+      "2026-11-12T16:54:49.3853943Z ℹ skipped 16",
+      "2026-11-12T16:56:45.0506255Z This code and data passed every needed browser check in pull request #446"
+    ],
+    "browserGate": [
+      "2026-11-12T16:57:54.9540482Z   NEEDED: true",
+      "2026-11-12T16:57:54.9541066Z   REUSED: true",
+      "2026-11-12T16:57:54.9541609Z   BROWSER: skipped",
+      "2026-11-12T16:57:54.9730219Z plan: success, browser checks needed: true, earlier result reused: true, browser jobs: skipped"
+    ]
+  },
+  "productionBrowserArtifact": {
+    "id": 13966805089,
+    "sha256": "4319d7dd7b849aa1198263a0b05b761c7e142262c5c5b0fe452d472561043966",
+    "expiresAt": "2027-02-10T16:52:19Z",
+    "bytes": 1934910,
+    "downloadVerified": true,
+    "summaryFile": "production-browser-summary.json",
+    "visualInspection": "mainline-actual-atlas-outage.png visibly retains independent railway geometry and service lines during simulated provider outage"
+  },
+  "reference": {
+    "id": 43263354328,
+    "conclusion": "success"
+  },
+  "nextRuns": {
+    "followOnSite": 43264871694,
+    "followOnSiteStatus": "in_progress",
+    "serialCoordinator": 43263354077,
+    "lifecycleChild": 43263442910,
+    "lifecycleStep": "Bring cached regions up to date",
+    "railwayWays": "queued behind preceding serial datasets; no new China checkpoint yet"
+  },
+  "limits": [
+    "No new provider availability success; earlier status metadata GET timed out.",
+    "No source, URL, query identity, retry count, schedule interval, or publication completeness change.",
+    "No manually dispatched or duplicate acquisition.",
+    "China remains 36 valid payloads plus 16 pending boxes in state-20261112T151656Z-43236417804.json; prior 28 payload bytes preserved.",
+    "Deployment job logs returned Transport closed twice; successful step metadata plus hash-verified published artifact independently verify the deployment."
+  ]
+}
