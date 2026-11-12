@@ -1,14 +1,18 @@
-import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {installEmptyMapProviders,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
-import {readFile, mkdir} from 'node:fs/promises';
+import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import assert from 'node:assert/strict';
+import {assertLegendFits,assertLegacyLegendOverflows} from './legend-layout.mjs';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
+import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
+import {conveyingGeoJSON,aerialwaysGeoJSON} from './conveying-data.mjs';
 
 // Exercise real MapLibre/WebGL paint, placement, pointer handling and accessible
 // disclosure controls. Every map request uses a deterministic OSM-shaped tile;
@@ -17,6 +21,10 @@ const feature = (properties, type, coordinates, id) => ({type:'Feature', ...(id 
 const control = {train_protection0:'atc', train_protection1:'pzb', train_protection2:'etcs_2'};
 const rail = {id:'9200-0', name:'Shared protection test track', feature:'rail', railway:'rail', state:'present', usage:'main', service:'', ...control};
 const detailed = feature(rail, 'LineString', [[-.0002,.0005],[.0016,.0005]]);
+// rack=* arrives on the provider's detailed lines (abt, strub, riggenbach…).
+// Funiculars arrive as feature=funicular on the same provider lines.
+const providerFunicular = feature({...rail,id:'9431-0',name:'Provider funicular test line',railway:'funicular',feature:'funicular',usage:''}, 'LineString', [[-.0002,-.00093],[.0016,-.00093]]);
+const providerRack = feature({...rail,id:'9430-0',name:'Provider rack test line',railway:'narrow_gauge',feature:'narrow_gauge',rack:'abt'}, 'LineString', [[-.0002,-.00075],[.0016,-.00075]]);
 const mainOverview = feature({...rail,id:'9201-0'}, 'LineString', [[-4,1],[4,1]]);
 const branchOverview = feature({...rail,id:'9202-0',usage:'branch'}, 'LineString', [[-4,-1],[4,-1]]);
 const metroOverview = feature({...rail,id:'9203-0',feature:'subway',railway:'subway',usage:''}, 'LineString', [[-.5,.2],[.5,.2]]);
@@ -27,34 +35,69 @@ const culture = [
   feature({name:'Test theatre',class:'theatre',subclass:'theatre',rank:1},'Point',[.00115,-.00085],93011),
 ];
 const datasets = {
-  railway_line_high:[detailed],
+  railway_line_high:[detailed,providerRack,providerFunicular],
   signals_railway_line_low:[mainOverview],
   standard_railway_line_low:[mainOverview],
   electrification_railway_line_low:[mainOverview],
   railway_signals:[directed, feature({id:9999,railway:'buffer_stop',ref:'Buffer'},'Point',[.0007,-.0003])],
+  electrification_catenary:[feature({id:'9410-mast',feature:'mast',ref:'M1'},'Point',[.00095,-.0005]),feature({id:'9411-portal',feature:'portal',ref:'P1'},'LineString',[[.0009,-.00065],[.001,-.00065]])],
   electrification_substation:[feature({id:'way-9400',name:'Traction substation footprint'},'Polygon',[[[.00015,.00085],[.00035,.00085],[.00035,.00105],[.00015,.00105],[.00015,.00085]]])],
 };
 const supplies=powerFacilitiesGeoJSON({elements:[
   {type:'node',id:9401,lon:.00025,lat:.00095,tags:{name:'Test traction substation',power:'substation',substation:'traction',voltage:'25000',frequency:'50'}},
-  {type:'node',id:9402,lon:.0007,lat:.00095,tags:{name:'Test railway power station',power:'plant',usage:'railway','plant:source':'hydro'}},
-  {type:'node',id:9403,lon:.00105,lat:.00095,tags:{name:'Test locomotive diesel supply',railway:'fuel',fuel:'diesel'}},
-  {type:'node',id:9404,lon:.00025,lat:.00073,tags:{name:'Test coaling facility',railway:'coaling_facility'}},
+  {type:'node',id:9402,lon:.0007,lat:.00095,tags:{name:'Test railway power station',power:'plant',usage:'railway','plant:source':'hydro','generator:source':'solar'}},
+  {type:'node',id:9403,lon:.00105,lat:.00095,tags:{name:'Test locomotive diesel supply',railway:'fuel',fuel:'diesel','fuel:adblue':'yes','fuel:hydrogen':'yes'}},
+  // A facility mapped as an area keeps its outline.
+  {type:'way',id:9404,tags:{name:'Test coaling facility',railway:'coaling_facility'},geometry:[[.00019,.00069],[.00031,.00069],[.00031,.00077],[.00019,.00077],[.00019,.00069]].map(([lon,lat])=>({lon,lat}))},
   {type:'node',id:9405,lon:.0007,lat:.00073,tags:{name:'Test steam water tank',railway:'water_tank',capacity:'100 m³'}},
-  {type:'node',id:9406,lon:.00105,lat:.00073,tags:{name:'Test disused water tower','disused:railway':'water_tower'}},
+  {type:'node',id:9406,lon:.00105,lat:.00073,tags:{name:'Test disused water tower','disused:man_made':'water_tower',usage:'railway'}},
   {type:'node',id:9499,lon:.0007,lat:-.0007,tags:{name:'Ordinary roadside fuel station',amenity:'fuel'}},
 ]});
 assert.equal(supplies.features.length,6,'a roadside fuel station is not a railway supply');
+const methods=powerMethodsGeoJSON({elements:[
+  {type:'node',id:9420,lon:.0011,lat:-.00012,tags:{name:'Test battery train charger',amenity:'charging_station',train:'yes','socket:pantograph:output':'1000 kW'}},
+  {type:'way',id:9421,tags:{railway:'subway',electrified:'rail',voltage:'750',frequency:'0','electrified:rail':'bottom'},geometry:[{lon:-.0002,lat:.0002},{lon:.0016,lat:.0002}]},
+  {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
+  // Each other means of delivery or traction on its own track.
+  {type:'way',id:9423,tags:{railway:'tram',electrified:'inductive'},geometry:[{lon:-.0002,lat:.0004},{lon:.0016,lat:.0004}]},
+  {type:'way',id:9424,tags:{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line'},geometry:[{lon:-.0002,lat:.0006},{lon:.0016,lat:.0006}]},
+  {type:'way',id:9425,tags:{railway:'narrow_gauge',traction:'rack',electrified:'no'},geometry:[{lon:-.0002,lat:-.001},{lon:.0016,lat:-.001}]},
+  {type:'way',id:9426,tags:{railway:'funicular',traction:'cable'},geometry:[{lon:-.0002,lat:-.0011},{lon:.0016,lat:-.0011}]},
+  {type:'way',id:9427,tags:{railway:'tram',electrified:'ground-level_power_supply'},geometry:[{lon:-.0002,lat:.00112},{lon:.0016,lat:.00112}]},
+]});
+// Electrification signals by tag, whatever the national value: a French end of
+// catenary sign the provider catalogue lacks, a German El 2, and a deactivated
+// one that follows the planned/former setting.
+const electricitySignals=electricitySignalsGeoJSON({elements:[
+  {type:'node',id:9460,lon:.0004,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'FR:end_of_catenary','railway:signal:electricity:type':'end_of_catenary','railway:signal:electricity:form':'sign'}},
+  {type:'node',id:9461,lon:.0011,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el2','railway:signal:electricity:type':'power_on',ref:'E7'}},
+  {type:'node',id:9462,lon:.0007,lat:-.001,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el1','railway:signal:electricity:deactivated':'yes'}},
+]});
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
 const branchIndex = index([branchOverview,metroOverview]);
 const signalIndex = index([undirected]);
-const basemapIndex = index(culture);
+// Aerialways from the project snapshot: a named, owned gondola and an
+// unnamed chair lift with no owner.
+const aerialwayWays=aerialwaysGeoJSON({elements:[
+  {type:'way',id:9310,tags:{aerialway:'gondola',name:'Test gondola',owner:'Test Cableway Owner'},geometry:[{lon:-.0002,lat:.0003},{lon:.0016,lat:.0003}]},
+  {type:'way',id:9311,tags:{aerialway:'chair_lift'},geometry:[{lon:-.0002,lat:-.0002},{lon:.0016,lat:-.0002}]},
+]});
+const basemapIndexes = {poi:index(culture)};
 const center = [.0007,0];
 const coordinatesAt = (z,[lon,lat]) => [Math.floor((lon+180)/360*2**z),Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*2**z)];
 function localKeys(zooms,radius=3) {
   return zooms.flatMap(z=>{const [x,y]=coordinatesAt(z,center),n=2**z;return Array.from({length:2*radius+1},(_,dx)=>Array.from({length:2*radius+1},(_,dy)=>`${z}/${(x+dx-radius+n)%n}/${Math.max(0,Math.min(n-1,y+dy-radius))}`)).flat();});
 }
+// Escalators from the conveying snapshot: a reversible piece (two arrows)
+// and a backward one (stored reversed, one arrow).
+const conveyingWays=conveyingGeoJSON({elements:[
+  {type:'way',id:9501,tags:{highway:'steps',conveying:'reversible',name:'Test escalator'},geometry:[{lon:.0005,lat:-.0004},{lon:.0008,lat:-.0004}]},
+  {type:'way',id:9502,tags:{highway:'steps',conveying:'backward'},geometry:[{lon:.0008,lat:-.0004},{lon:.0011,lat:-.0004}]},
+]});
 const snapshotIndexes = {
+  conveying:{tiles:localKeys([14]),index:index(conveyingWays.features),layer:'conveying'},
+  aerialways:{tiles:localKeys([12]),index:index(aerialwayWays.features),layer:'aerialways'},
   'branch-lines':{tiles:localKeys([4,5,6,7,8,9],4),index:branchIndex,layer:'branch_lines'},
   'traction/signals':{tiles:localKeys([12,16]),index:signalIndex,layer:'railway_signals'},
 };
@@ -72,8 +115,8 @@ function tileId(z,x,y) {
 function varint(value) {
   const bytes=[];do{const low=value%128;value=Math.floor(value/128);bytes.push(low+(value?128:0));}while(value);return bytes;
 }
-function archiveFor(index,z=18) {
-  const entries=localKeys([z]).map(key=>{const [zoom,x,y]=key.split('/').map(Number),tile=index.getTile(zoom,x,y);return tile?{id:tileId(zoom,x,y),bytes:Buffer.from(vtpbf.fromGeojsonVt({poi:tile},{version:2}))}:null;}).filter(Boolean).sort((a,b)=>a.id-b.id);
+function archiveFor(indexes,z=18) {
+  const entries=localKeys([z]).map(key=>{const [zoom,x,y]=key.split('/').map(Number),tiles=Object.fromEntries(Object.entries(indexes).map(([layer,index])=>[layer,index.getTile(zoom,x,y)]).filter(([,tile])=>tile));return Object.keys(tiles).length?{id:tileId(zoom,x,y),bytes:Buffer.from(vtpbf.fromGeojsonVt(tiles,{version:2}))}:null;}).filter(Boolean).sort((a,b)=>a.id-b.id);
   let previous=0;
   const directory=Buffer.from([...varint(entries.length),...entries.flatMap(e=>{const delta=e.id-previous;previous=e.id;return varint(delta);}),...entries.flatMap(()=>varint(1)),...entries.flatMap(e=>varint(e.bytes.length)),...entries.flatMap((_,i)=>varint(i?0:1))]);
   const metadata=Buffer.from(JSON.stringify({vector_layers:[{id:'poi',fields:{name:'String',class:'String',subclass:'String',rank:'Number'}}]})),data=Buffer.concat(entries.map(e=>e.bytes));
@@ -83,7 +126,7 @@ function archiveFor(index,z=18) {
   for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])header.writeInt32LE(value,offset);
   header[118]=z;return Buffer.concat([header,directory,metadata,data]);
 }
-const archive=archiveFor(basemapIndex);
+const archive=archiveFor(basemapIndexes);
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
@@ -93,7 +136,7 @@ await mkdir('browser-review',{recursive:true});
 try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:2,serviceWorkers:'block'});setDefaultTimeout(page,60000);
   await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
-  const errors=[];let supplyRequests=0;page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];let supplyRequests=0,signalRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
@@ -102,7 +145,10 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   });
   if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
   await page.route('**/data/**',async route=>{
-    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
+    const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson.gz')){await route.fulfill({body:gzipSync(JSON.stringify(methods)),contentType:'application/gzip'});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson.gz')){supplyRequests++;await route.fulfill({body:gzipSync(JSON.stringify(supplies)),contentType:'application/gzip'});return;}
+    if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/electricity-signals.geojson.gz')){signalRequests++;await route.fulfill({body:gzipSync(JSON.stringify(electricitySignals)),contentType:'application/gzip'});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
     const [,folder,file]=match,snapshot=snapshotIndexes[folder];
@@ -135,8 +181,102 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const clickCoordinates=async coordinates=>{const point=await page.evaluate(coordinates=>{const point=window.reviewMap.project(coordinates);return{x:point.x,y:point.y};},coordinates);await page.locator('#map canvas').click({position:point});};
   const sharedBands=async prefix=>{for(const id of [prefix,`${prefix}-system-2`,`${prefix}-system-3`])await visible(id);assert.deepEqual(await page.evaluate(prefix=>[prefix,`${prefix}-system-2`,`${prefix}-system-3`].map(id=>window.reviewMap.getLayoutProperty(id,'visibility')),prefix),['visible','visible','visible']);};
 
+  // Each basemap aerialway is drawn once, by its own kind's cable and ticks.
+  const aerialwaysDrawn=async()=>{
+    for(const id of ['aerialway-cableway-cable','aerialway-cableway-ticks','aerialway-lift-cable','aerialway-lift-ticks'])await visible(id);
+    assert.deepEqual(await page.evaluate(()=>Object.fromEntries(['cableway','lift'].map(kind=>[kind,[...new Set(window.reviewMap.queryRenderedFeatures({layers:[`aerialway-${kind}-cable`,`aerialway-${kind}-ticks`]}).map(f=>f.properties.aerialway))]]))),{cableway:['gondola'],lift:['chair_lift']});
+    // Clicking opens its name (from the basemap name layer), kind and OSM way.
+    for(const [at,name,kindLabel,way] of [[[.0004,.0003],'Test gondola','Aerial cableway (cable car, gondola)',9310],[[.0004,-.0002],'Unnamed aerialway','Ski or chair lift',9311]]){
+      await clickCoordinates(at);await page.waitForSelector('#details:not([hidden])');
+      const text=await page.locator('#detail-content').innerText();
+      assert.match(text,/AERIALWAY/);assert.ok(text.includes(name),`${name} in ${text}`);assert.ok(text.includes(kindLabel));
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/way/${way}"]`).count(),1);
+      await page.locator('#details-close').click();
+    }
+  };
+  // Drawn in every view as a plain line with direction arrows, and not clickable.
+  const conveyingDrawn=async()=>{
+    for(const id of ['conveying-lines','conveying-arrows','conveying-arrows-back'])await visible(id);
+    assert.deepEqual(await page.evaluate(()=>['conveying-arrows','conveying-arrows-back'].map(id=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:[id]}).map(f=>f.properties.arrows))].sort())),[['one_way','two_way'],['two_way']]);
+    await clickCoordinates([.00065,-.0004]);assert.equal(await page.locator('#details').isHidden(),true,'no pop-up for escalators');
+  };
+  const legendLayout=()=>page.evaluate(()=>{
+    const panel=document.querySelector('.panel'),grid=document.querySelector('#legend .legend-grid');
+    const bounds=node=>{const {left,right,width}=node.getBoundingClientRect();return {left,right,width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth};};
+    return {viewport:{width:innerWidth,height:innerHeight},panel:{...bounds(panel),scrollLeft:panel.scrollLeft},grid:bounds(grid),
+      rows:[...grid.children].map(row=>{
+        const label=row.lastElementChild,range=document.createRange();range.selectNodeContents(label);
+        return {label:label.textContent,row:bounds(row),text:bounds(label),
+          lines:[...range.getClientRects()].map(({left,right,width,height})=>({left,right,width,height}))};
+      })};
+  });
+
+
+  const powerLegend = async former => {
+    await openControls();
+    if (await page.locator('#settings-view').isVisible()) await page.locator('#settings-close').click();
+    // A fixed key of the drawing: an outlined area and a plain dot, no pictograms.
+    const samples = await page.evaluate(() => [...document.querySelectorAll('#legend .point-swatch')].map(sample => ({
+      label:sample.nextElementSibling.textContent, hidden:sample.getAttribute('aria-hidden'), line:sample.classList.contains('swatch'),
+      shapes:[...sample.querySelectorAll('svg')].map(svg=>({rect:!!svg.querySelector('rect'),circle:!!svg.querySelector('circle'),path:!!svg.querySelector('path'),dash:svg.querySelector('rect')?.getAttribute('stroke-dasharray')??null,width:svg.getBoundingClientRect().width})),
+    })));
+    assert.equal(samples.length,2,'one area and one point sample');
+    for (const [i,sample] of samples.entries()) {
+      assert.match(sample.label,i?/mapped point/:/mapped outline/);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
+      assert.equal(sample.shapes.length,former?2:1);
+      for (const [j,shape] of sample.shapes.entries()) {
+        assert.equal(shape.path,false,'no pictogram');assert.equal(i?shape.circle:shape.rect,true);
+        if(!i)assert.equal(shape.dash,j?'2 2':null);
+        assert.ok(shape.width>=12);
+      }
+    }
+    const values=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].map(row=>({gradient:row.firstElementChild.style.background.includes('gradient'),label:row.lastElementChild.textContent})));
+    assert.equal(values.filter(row=>row.gradient).length,0,'exact values, no gradient rows');
+    assert.equal(values.filter(row=>/ (DC|AC [\d.]+ Hz)$/.test(row.label)).length,15,`fixed key of exact values: ${values.map(row=>row.label)}`);
+    const track=await page.evaluate(()=>{
+      const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Not electrified');
+      const sample=row.firstElementChild,box=sample.getBoundingClientRect();return {line:sample.classList.contains('swatch'),width:box.width,height:box.height,text:sample.textContent};
+    });
+    assert.deepEqual(track,{line:true,width:25,height:4,text:''},'ordinary track sample retains its line geometry');
+    const accessible=await page.locator('#legend').ariaSnapshot();
+    assert.ok(accessible.includes('Railway power or servicing facility (mapped outline)'));
+    const layouts=[];
+    for(const constrained of [false,true]){
+      // The observed desktop panel had a 257px content box after its classic
+      // scrollbar and padding. Check that width as well as each browser's
+      // natural layout; overlay scrollbars must not hide the regression.
+      const narrow=constrained?await page.addStyleTag({content:'#legend{max-width:257px}'}):null;
+      try {
+        await page.locator('.panel').evaluate(panel=>{panel.scrollLeft=0;});
+        const measured=await legendLayout();
+        layouts.push({constrained,...measured});assertLegendFits(measured);
+        if(former&&constrained){
+          const previous=await page.addStyleTag({content:'#legend .legend-item:has(.pattern-swatch){grid-column:auto}'});
+          try {
+            const broken=await legendLayout();
+            assertLegacyLegendOverflows(broken);
+            layouts.push({constrained,negativeControl:true,...broken});
+          } finally {await previous.evaluate(node=>node.remove());}
+          assertLegendFits(await legendLayout());
+        }
+      } finally {if(narrow)await narrow.evaluate(node=>node.remove());}
+    }
+    await writeFile(`browser-review/power-legend-layout-${former?'former':'active'}-${kind}.json`,JSON.stringify(layouts,null,2)+'\n');
+    const last=page.locator('#legend .legend-item').last();
+    await last.scrollIntoViewIfNeeded();
+    assertLegendFits(await legendLayout());
+    assert.equal(await last.evaluate(row=>{
+      const panel=row.closest('.panel'),box=panel.getBoundingClientRect(),item=row.getBoundingClientRect();
+      return item.top>=box.top+panel.clientTop&&item.bottom<=box.top+panel.clientTop+panel.clientHeight;
+    }),true,'the final legend row remains reachable by vertical scrolling');
+    await page.screenshot({path:`browser-review/power-legend-viewport-${former?'former':'active'}-${kind}.png`});
+    await page.locator('#legend').screenshot({path:`browser-review/power-legend-${former?'former':'active'}-${kind}.png`});
+    await closeControls();
+  };
+
   try {
     console.log(`CHECK: ${kind} loaded real map; checking control and signal fixtures`);
+    await conveyingDrawn();
     await sharedBands('control-tracks');
     await visible('infrastructure-signal-points');await visible('infrastructure-signal-supplement-points');
     assert.ok(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-signal-points']}).every(f=>f.properties.railway==='signal')),'buffers must not be reported as signals');
@@ -169,7 +309,23 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
       assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`).count(),1);
       assert.match(await page.locator('#detail-content').innerText(),/signal/i);await page.locator('#details-close').click();
     }
-    await mode('infrastructure');await closeControls();
+    await mode('infrastructure');
+    const infraLegend=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].map(row=>row.lastElementChild.textContent));
+    for(const label of ['Funicular','Rack railway (ladder ticks)','Aerial cableway (cable car, gondola)','Ski or chair lift'])assert.ok(infraLegend.includes(label),`Infrastructure legend has ${label}`);
+    assert.equal(await page.locator('#legend .aerialway-swatch').count(),2,'each aerialway kind has a cable-and-ticks sample');
+    assert.equal(await page.locator('#legend .conveying-swatch').count(),1,'escalators, walkways and elevators share one line-and-arrow sample');
+    await closeControls();
+    await aerialwaysDrawn();
+    // Aerialway names follow the railway Names setting, like railway names.
+    await openSettings();await page.locator('#names').check();await closeControls();
+    await visible('aerialway-names');await visible('railway-names');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['aerialway-names']}).map(f=>f.properties.atlas_name||f.properties.name))]),['Test gondola'],'only the named gondola is labelled');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['road-labels']}).length),0,'no road label for an aerialway');
+    await openSettings();await page.locator('#names').uncheck();await closeControls();
+    assert.equal(await page.evaluate(()=>window.reviewMap.getLayoutProperty('aerialway-names','visibility')),'none','Names off hides them, as railway names');
+    await visible('infrastructure-rack');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['infrastructure-rack']}).map(f=>String(f.properties.id)))]),['9430-0'],'Infrastructure rack ticks only on the rack line');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-tracks']}).some(f=>String(f.properties.id)==='9431-0')),true,'the funicular is drawn as a track');
     await visible('infrastructure-signal-points');await visible('infrastructure-signal-supplement-points');
     for(const [point,id] of [[directed,9004],[undirected,9006]]) {
       await clickCoordinates(point.geometry.coordinates);await page.waitForSelector('#details:not([hidden])');
@@ -183,32 +339,107 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     }
     await page.screenshot({path:`browser-review/signal-power-infrastructure-${kind}.png`});
     console.log(`CHECK: ${kind} shared signals, compact descriptions and cultural context passed; checking energy supplies`);
-    await mode('speed');assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
+    await mode('speed');await closeControls();await aerialwaysDrawn();
+    // Thematic views colour the cable by their own value: the gondola's owner
+    // joins the Owner legend; the ownerless lift and escalators stay unknown.
+    await mode('owner');await closeControls();await aerialwaysDrawn();
+    assert.equal(await page.evaluate(()=>JSON.stringify(window.reviewMap.getPaintProperty('aerialway-cableway-cable','line-color'))),JSON.stringify(['coalesce',['get','owner_color'],'#899197']));
+    await openControls();
+    await waitUntil(page,()=>[...document.querySelectorAll('#legend .legend-item')].some(row=>row.lastElementChild.textContent==='Test Cableway Owner'));
+    for(const label of ['Aerial cableway (cable car, gondola)','Ski or chair lift'])assert.equal(await page.evaluate(label=>[...document.querySelectorAll('#legend .legend-item')].some(row=>row.lastElementChild.textContent===label),label),false,'no type rows in the Owner legend');
+    await closeControls();
+    await clickCoordinates([.0004,.0003]);await page.waitForSelector('#details:not([hidden])');assert.match(await page.locator('#detail-content').innerText(),/Owner\s+Test Cableway Owner/);await page.locator('#details-close').click();
+    await page.screenshot({path:`browser-review/aerialway-owner-${kind}.png`});
+    assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
+    assert.equal(signalRequests,0,'electrification signals are deferred until Power view');
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
-    await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_kind)).size===5);
-    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['coal','electricity','fuel','water']);
+    await powerLegend(false);
+    await aerialwaysDrawn();await conveyingDrawn();
+    await visible('electrification-conductor-rails');await visible('electrification-charging-points');
+    for(const id of ['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack'])await visible(`electrification-${id}`);
+    const providerRackIds=await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-rack']}).map(f=>String(f.properties.id)))]);
+    assert.deepEqual(providerRackIds,['9430-0'],'only the rack=abt provider line gets the rack stroke');
+    await visible('electrification-provider-cable');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-provider-cable']}).map(f=>String(f.properties.id)))]),['9431-0'],'only the funicular gets the cable stroke');
+    await clickCoordinates([.0006,-.00075]);assert.match(await page.locator('#detail-content').innerText(),/Rack\s+abt/,'the track inspector names the rack system');await page.locator('#details-close').click();
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-fourth-rails']}).map(f=>f.properties.osm_id))]),['9422'],'only the fourth-rail track has its second conductor rail');
+    await clickCoordinates([.0007,.0004]);assert.match(await page.locator('#detail-content').innerText(),/Inductive power supply/);await page.locator('#details-close').click();
+    await clickCoordinates([.00125,-.001]);assert.match(await page.locator('#detail-content').innerText(),/Rack railway/);assert.match(await page.locator('#detail-content').innerText(),/Traction\s+rack/);await page.locator('#details-close').click();
+    await openControls();
+    const methodSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>row.lastElementChild.textContent));
+    assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
+    const sampleLines=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>[row.lastElementChild.textContent,row.firstElementChild.querySelectorAll('line').length])));
+    assert.equal(sampleLines['Third rail (dashed, one side)'],2,'third-rail sample is the track and one conductor stroke');
+    assert.equal(sampleLines['Fourth rail (dashed, both sides)'],3,'fourth-rail sample shows both conductor strokes as on the map');
+    await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});
+    await closeControls();
+    await visible('electrification-catenary-masts');await visible('electrification-catenary-portals');
+    await visible('electrification-signal-points');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-signal-points']}).map(f=>f.properties.osm_id))].sort()),['9460','9461'],'a deactivated signal follows the planned/former setting');
+    for(const [coordinates,id,title,value] of [[[.0004,.00115],'9460','End of catenary','FR:end_of_catenary'],[[.0011,.00115],'9461','Signal E7','DE-ESO:el2']]) {
+      await clickCoordinates(coordinates);await page.waitForSelector('#details:not([hidden])');
+      assert.match(await page.locator('#detail-content').innerText(),/ELECTRIFICATION SIGNAL/);
+      assert.equal(await page.locator('#detail-content h2').innerText(),title);
+      const rows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
+      assert.equal(rows.Signal,value);
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`).count(),1);
+      if(id==='9460')await page.locator('#details').screenshot({path:`browser-review/power-electricity-signal-details-${kind}.png`});
+      await page.locator('#details-close').click();
+    }
+    const dotSample=await page.evaluate(()=>{const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Electrification signal');return row&&{dot:row.firstElementChild.classList.contains('dot-swatch'),hidden:row.firstElementChild.getAttribute('aria-hidden')};});
+    assert.deepEqual(dotSample,{dot:true,hidden:'true'},'the legend shows electrification signals as a dot sample');
+    await clickCoordinates([.0011,-.00012]);assert.match(await page.locator('#detail-content').innerText(),/Battery train charging facility/);assert.match(await page.locator('#detail-content').innerText(),/1000 kW/);await page.locator('#details-close').click();
+    await clickCoordinates([.0007,.0002]);assert.match(await page.locator('#detail-content').innerText(),/Third rail/);await page.locator('#details-close').click();
+    await clickCoordinates([.00095,-.0005]);assert.match(await page.locator('#detail-content').innerText(),/Catenary mast/);assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/node/9410"]').count(),1);await page.locator('#details-close').click();
+    await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points','electrification-supply-areas']}).map(f=>f.properties.power_kind)).size===5);
+    assert.deepEqual(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-areas']}).map(f=>f.properties.power_kind)).then(k=>[...new Set(k)]),['coaling_facility'],'an area-mapped facility is drawn as its outline');
+    assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).some(f=>f.properties.power_kind==='coaling_facility')),false,'and not also as a dot');
+    assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['electricity','fuel','water']);
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-former-supply-points']}).length),0,'disused supply follows the inactive setting');
     for(const supply of supplies.features.filter(f=>f.properties.power_state==='present')) {
-      await clickCoordinates(supply.geometry.coordinates);await page.waitForSelector('#details:not([hidden])');
+      const at=supply.geometry.type==='Point'?supply.geometry.coordinates:(ring=>[(Math.min(...ring.map(p=>p[0]))+Math.max(...ring.map(p=>p[0])))/2,(Math.min(...ring.map(p=>p[1]))+Math.max(...ring.map(p=>p[1])))/2])(supply.geometry.coordinates[0]);
+      await clickCoordinates(at);await page.waitForSelector('#details:not([hidden])');
       assert.match(await page.locator('#detail-content').innerText(),/RAILWAY ENERGY SUPPLY/);
-      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${supply.properties.osm_id}"]`).count(),1);
-      if(supply.properties.fuel)assert.match(await page.locator('#detail-content').innerText(),/diesel/);
+      assert.equal(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/${supply.properties.osm_type}/${supply.properties.osm_id}"]`).count(),1);
+      const detailRows=await page.locator('#detail-content dt').evaluateAll(terms=>Object.fromEntries(terms.map(term=>[term.textContent,term.nextElementSibling.textContent])));
+      if(supply.properties.fuel){assert.equal(detailRows.Type,'Train refuelling point');assert.equal(detailRows['Recorded supplies'],'diesel, adblue, hydrogen');}
+      if(supply.properties.power_kind==='coaling_facility')assert.equal(detailRows.Type,'Steam engine coaling');
+      if(supply.properties['plant:source']){assert.equal(detailRows['Plant energy source'],'hydro');assert.equal(detailRows['Generator energy source'],'solar');assert.equal(detailRows['Recorded supplies'],undefined);}
+      if(supply.properties.power_kind==='plant')await page.locator('#details').screenshot({path:`browser-review/power-generation-details-${kind}.png`});
+      if(supply.properties.power_kind==='fuel')await page.locator('#details').screenshot({path:`browser-review/power-refuelling-details-${kind}.png`});
       if(supply.properties.capacity)assert.match(await page.locator('#detail-content').innerText(),/100 m³/);
       await page.locator('#details-close').click();
     }
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
+    await openControls();await page.locator('#about-open').click();
+    const powerHelp=await page.locator('#help-power').innerText();
+    for(const label of ['drawn as they are mapped','outlines for areas, small dots for points','coaling stages, water towers','electrification signals'])assert.ok(powerHelp.includes(label));
+    assert.match(powerHelp,/whole electricity grid.*not yet/);
+    await page.locator('#help-power').scrollIntoViewIfNeeded();
+    await page.locator('#about').screenshot({path:`browser-review/power-help-${kind}.png`});
+    await page.locator('#about-close').click();await closeControls();
     await openSettings();await page.locator('#inactive').check();
-    await visible('electrification-former-supply-points');
+    await visible('electrification-former-supply-points');await visible('electrification-former-signal-points');
+    await closeControls();await clickCoordinates([.00105,.00073]);
+    assert.match(await page.locator('#detail-content').innerText(),/Railway water tower/);
+    assert.doesNotMatch(await page.locator('#detail-content').innerText(),/Steam locomotive water tower/);
+    await page.locator('#details-close').click();
+    await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
-    assert.ok(await page.evaluate(()=>window.reviewMap.getLayoutProperty('electrification-supply-names','visibility')==='none'&&window.reviewMap.getLayoutProperty('electrification-supply-points','visibility')==='visible'));
+    assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-supply-areas','electrification-supply-outlines'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='visible')),'Power facilities stay drawn with value labels off');
+    assert.equal(await page.evaluate(()=>window.reviewMap.getStyle().layers.filter(l=>l.id.startsWith('electrification-')&&l.type==='symbol'&&!['electrification-catenary-references','electrification-labels'].includes(l.id)).length),0,'no icons or type text on the Power map (only voltage values and mast numbers)');
+    await closeControls();
+    const area=await page.evaluate(()=>{const p=window.reviewMap.project([.00025,.00073]);return {x:p.x,y:p.y};});
+    await page.locator('#map canvas').click({position:area});assert.match(await page.locator('#detail-content').innerText(),/coaling/i,'clicking an area opens its facility');await page.locator('#details-close').click();
+    await openSettings();
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
-    await mode('control');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
+    await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     await openSettings();await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>['infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')&&window.reviewMap.getLayoutProperty('infrastructure-signal-points','visibility')==='visible'));
     await page.locator('#labels').check();
-    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');
+    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');assert.equal(signalRequests,1,'electrification signals are downloaded once');await powerLegend(false);
     await mode('control');await closeControls();
     console.log(`CHECK: ${kind} energy supplies passed; checking overview control bands`);
     await jump([0,0],5);console.log(`CHECK: ${kind} moved to overview`);await sharedBands('control-overview');await sharedBands('control-branch-overview');

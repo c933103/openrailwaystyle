@@ -1,0 +1,35 @@
+✔ search names: numeric differences never become bilingual aliases (6.979179ms)
+✔ search names: bilingual aliases retain matching numeric identities (1.36867ms)
+✔ search reconciliation keeps nearby distinct numbered geocoder stations (4.209194ms)
+✔ tile search keeps nearby distinct numbered stations already found by name (40.154931ms)
+✔ both search reconciliation paths still merge nearby bilingual aliases (29.610413ms)
+✔ stable OSM identities still deduplicate despite differing numbered names (1.221215ms)
+✔ name-based deduplication still requires nearby coordinates (0.940262ms)
+✔ tile search ranks an exact numbered name before a closer numeric extension (0.377534ms)
+✔ installation drains response bodies without exhausting its three network slots (96.728415ms)
+✔ a truncated map-model.mjs response cannot publish or activate an incomplete shell (14.063806ms)
+✔ a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell (12.230688ms)
+✔ a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell (8.996222ms)
+✔ a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell (8.824217ms)
+✔ a complete replacement keeps the previous version and revised icons available offline (98.361075ms)
+✔ the current departure release refreshes app.mjs from 20261011-power-legend-1 while previous tabs retain their version (103.509787ms)
+✔ the current departure release refreshes departures.mjs from 20261011-power-legend-1 while previous tabs retain their version (43.365235ms)
+✔ the current departure release refreshes app.mjs from 20261011-departure-availability-1 while previous tabs retain their version (49.535267ms)
+✔ the current departure release refreshes departures.mjs from 20261011-departure-availability-1 while previous tabs retain their version (104.002112ms)
+✔ numeric station search refreshes exact app.mjs bytes from the immediate predecessor (36.585934ms)
+✔ numeric station search refreshes exact map-model.mjs bytes from the immediate predecessor (89.037341ms)
+✔ first-party libraries install together and remain available offline with every external origin blocked (16.267428ms)
+✔ actual CDN-era worker copies remain usable after first-party migration without new CDN requests (79.457048ms)
+✔ an old CDN JS URL receives the fixed library even without a legacy cache entry (27.78129ms)
+✔ legacy cache migration and serving reject tampered-bytes with otherwise valid responses (44.547357ms)
+✔ legacy cache migration and serving reject crypto-unavailable with otherwise valid responses (44.340683ms)
+✔ actual first-party worker migration serves fixed bytes to delayed old tabs (58.888834ms)
+✔ Power legend release upgrades the cached app, CSS and facility metadata together (41.270333ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1166.127907

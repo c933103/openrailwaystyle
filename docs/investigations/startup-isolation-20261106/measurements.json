@@ -1,0 +1,222 @@
+{
+  "runtime": "Node 24.22.1",
+  "baselineCommit": "22717de0007c7396264fea2883f241496326e501",
+  "normalHeapBaseline": {
+    "startupPassedBeforeTermination": 165,
+    "signal": "SIGKILL",
+    "seconds": 20.669,
+    "maxRssKiB": 1948672,
+    "sourceCommit": "08a30cab4d812c4a0722f223dbf9b84d69846727",
+    "startupSourcesUnchangedThroughBaselineCommit": true
+  },
+  "forcedGcBaseline": {
+    "startupPassedBeforeTermination": 162,
+    "signal": "SIGKILL",
+    "seconds": 88.428,
+    "maxRssKiB": 1823724,
+    "lastNativeContexts": 164,
+    "lastLiveHeapBytes": 1651130000,
+    "sourceCommit": "22717de0007c7396264fea2883f241496326e501"
+  },
+  "minimalReproduction": [
+    {
+      "mode": "dom",
+      "i": 0,
+      "rss": 111558656,
+      "heapTotal": 107147264,
+      "heapUsed": 34855752,
+      "external": 5544450,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "dom",
+      "i": 30,
+      "rss": 114470912,
+      "heapTotal": 109588480,
+      "heapUsed": 39199784,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "dom",
+      "i": 60,
+      "rss": 114470912,
+      "heapTotal": 109588480,
+      "heapUsed": 39218656,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "dom",
+      "i": 90,
+      "rss": 114511872,
+      "heapTotal": 109588480,
+      "heapUsed": 39247320,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "dom",
+      "i": 120,
+      "rss": 114577408,
+      "heapTotal": 109588480,
+      "heapUsed": 39256320,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "module",
+      "i": 0,
+      "rss": 113758208,
+      "heapTotal": 111603712,
+      "heapUsed": 34856448,
+      "external": 5544450,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "module",
+      "i": 30,
+      "rss": 140091392,
+      "heapTotal": 143659008,
+      "heapUsed": 73268096,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 31,
+      "detached": 0
+    },
+    {
+      "mode": "module",
+      "i": 60,
+      "rss": 173383680,
+      "heapTotal": 246673408,
+      "heapUsed": 107148232,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 61,
+      "detached": 0
+    },
+    {
+      "mode": "module",
+      "i": 90,
+      "rss": 208117760,
+      "heapTotal": 284413952,
+      "heapUsed": 141072280,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 91,
+      "detached": 0
+    },
+    {
+      "mode": "module",
+      "i": 120,
+      "rss": 241672192,
+      "heapTotal": 321105920,
+      "heapUsed": 174967848,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 121,
+      "detached": 0
+    },
+    {
+      "mode": "dynamic",
+      "i": 0,
+      "rss": 114688000,
+      "heapTotal": 107671552,
+      "heapUsed": 34854768,
+      "external": 5544450,
+      "arrayBuffers": 1006740,
+      "contexts": 1,
+      "detached": 0
+    },
+    {
+      "mode": "dynamic",
+      "i": 30,
+      "rss": 144928768,
+      "heapTotal": 143396864,
+      "heapUsed": 73272616,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 31,
+      "detached": 0
+    },
+    {
+      "mode": "dynamic",
+      "i": 60,
+      "rss": 177434624,
+      "heapTotal": 247721984,
+      "heapUsed": 107158144,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 61,
+      "detached": 0
+    },
+    {
+      "mode": "dynamic",
+      "i": 90,
+      "rss": 210989056,
+      "heapTotal": 284151808,
+      "heapUsed": 141084576,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 91,
+      "detached": 0
+    },
+    {
+      "mode": "dynamic",
+      "i": 120,
+      "rss": 245592064,
+      "heapTotal": 321630208,
+      "heapUsed": 174985744,
+      "external": 4945026,
+      "arrayBuffers": 1006740,
+      "contexts": 121,
+      "detached": 0
+    }
+  ],
+  "splitMeasurements": [
+    {
+      "file": "tests/startup.test.mjs",
+      "returncode": 0,
+      "seconds": 7.386,
+      "maxRssKiB": 909552
+    },
+    {
+      "file": "tests/startup-details.test.mjs",
+      "returncode": 0,
+      "seconds": 7.198,
+      "maxRssKiB": 818096
+    },
+    {
+      "file": "tests/startup-status.test.mjs",
+      "returncode": 0,
+      "seconds": 6.736,
+      "maxRssKiB": 849868
+    }
+  ],
+  "startupSerial": {
+    "tests": 169,
+    "passed": 169,
+    "failed": 0,
+    "skipped": 0,
+    "milliseconds": 23089.55523
+  },
+  "startupNormalParallel": {
+    "tests": 169,
+    "passed": 169,
+    "failed": 0,
+    "skipped": 0,
+    "milliseconds": 8518.335378
+  }
+}

@@ -26,6 +26,11 @@ def data(tag, value):
 
 
 font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
+# Match fontnik's FreeType-origin metric, not Pillow's alphabetic baseline.
+# Bitmap drawing stays baseline-relative; only the serialized bearing changes.
+# At 24 px DejaVu Sans reports ascent 23.
+ascent, _ = font.getmetrics()
+assert ascent == 23, 'Fixture font metrics changed; review glyph origins before rebuilding'
 stack = data(1, b'DejaVu Sans fixture') + data(2, b'0-255')
 for code in range(32, 256):
     char = chr(code)
@@ -41,6 +46,6 @@ for code in range(32, 256):
         bitmap = bytes((width + 6) * (height + 6))
     signed = lambda value: value * 2 if value >= 0 else -value * 2 - 1
     glyph = (integer(1, code) + data(2, bitmap) + integer(3, width) + integer(4, height)
-             + integer(5, signed(left)) + integer(6, signed(-top)) + integer(7, round(font.getlength(char))))
+             + integer(5, signed(left)) + integer(6, signed(-top - ascent)) + integer(7, round(font.getlength(char))))
     stack += data(3, glyph)
 Path('tests/fixtures/browser-glyphs/0-255.pbf').write_bytes(data(1, stack))

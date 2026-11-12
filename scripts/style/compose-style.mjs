@@ -11,7 +11,11 @@ import {createRailwayLayers} from './layers/railway.mjs';
 import {lifecycleLayers} from './layers/lifecycle.mjs';
 import {stationLayers} from './layers/stations.mjs';
 import {infrastructureContextLayers} from './layers/infrastructure.mjs';
+import {powerMethodLayers} from './layers/power-methods.mjs';
 import {powerFacilityLayers} from './layers/power-facilities.mjs';
+import {electricitySignalLayers} from './layers/electricity-signals.mjs';
+import {aerialwayLayers} from './layers/aerialways.mjs';
+import {conveyingLayers} from './layers/conveying.mjs';
 import {roadLayers, constraintLayers} from '../planning-style.mjs';
 import {contextLayers} from '../context-style.mjs';
 import {assertSourceContracts} from './source-contract.mjs';
@@ -24,18 +28,25 @@ export function composeStyle({majorStationData, curatedFilter}) {
   const stations = stationLayers(curatedFilter,curatedStationMarkerFilter(majorStationData)), infrastructure = infrastructureContextLayers();
   const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
   const [background, ...fills] = baseFills;
+  // Identical-layout symbol twins share the pinned renderer's placement bucket.
+  // The first, non-painted twin keeps place collision priority below crossings;
+  // the original layer paints only accepted labels above station circles.
+  const placePlacement=placeLayers.map(layer=>({...layer,id:layer.id+'-placement',paint:{...layer.paint,'text-opacity':0,'icon-opacity':0}}));
   const layers = structuredClone([
     background, ...backgroundLayers, ...fills,
     ...reliefLayers,
     ...context.areas, ...constraints.areas, ...buildingLayers,
     ...context.lines, ...constraints.lines,
     ...contourLayers, ...baseLines, ...contourLabels,
-    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview,
+    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
-    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
+    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details.filter(layer=>layer.id!=='service-routes'), ...aerialwayLayers(), ...conveyingLayers(),
     ...lifecycle.lines, ...rail.values,
-    ...stations.platforms, ...stations.dots, ...placeLayers,
-    ...infrastructure.crossings, ...powerFacilityLayers(),
+    ...stations.platforms, ...placePlacement, ...infrastructure.crossings,
+    // Separate symbol placement priority from the visible paint stack.
+    // Service route colours stay continuous through even dense station fields.
+    // This layer is Service-only; other views retain their station paint order.
+    ...stations.dots, ...rail.details.filter(layer=>layer.id==='service-routes'), ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(), ...electricitySignalLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

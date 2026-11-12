@@ -1,16 +1,12 @@
 name: Build operating branch lines
 on:
   workflow_dispatch:
-  # Every six hours: one region stage per run (Japan first), each capped at
+  # Every six hours, started by osm-updates.yml (one Overpass dataset at a
+  # time): one region stage per run (Japan first), each capped at
   # 220 MB of Overpass downloads, so a day stays under the public server's
   # guidance of about 1 GB. Once every region is in, a run refreshes the
   # region checked longest ago when it is two weeks old, and otherwise ends
   # without downloading anything.
-  schedule:
-    - cron: '41 */6 * * *'
-  push:
-    branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/branch-lines.yml']
 permissions:
   contents: write
   actions: write
@@ -28,7 +24,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Load the previous table
         run: |
@@ -45,11 +44,21 @@ jobs:
             echo "Could not look up the branch-data snapshot (git exit $status)"
             exit 1
           fi
+      - name: Load the stored railway-ways regions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Branch lines are built from the shared store (railway-ways.yml,
+        # scripts/railway-ways-release.mjs) when it loads, with no Overpass
+        # request; when it cannot be loaded, this run downloads them itself.
+        run: |
+          if ! node scripts/railway-ways-release.mjs load /tmp/railway-ways-store RAILWAY_WAYS_STORE; then
+            echo "::warning::The railway-ways store could not be loaded; downloading from Overpass instead"
+          fi
       - name: Fetch the next region from OpenStreetMap
         id: build
         run: |
           if [ -f /tmp/previous-branch/state.json ]; then export PREVIOUS_DATA=/tmp/previous-branch; fi
-          node scripts/build-branch-lines.mjs
+          node --import ./scripts/overpass-meter.mjs scripts/build-branch-lines.mjs
       - name: Publish the table and tiles
         if: steps.build.outputs.publish == 'true'
         run: |

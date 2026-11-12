@@ -67,10 +67,33 @@ export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.
   // Unknown peers must retain the source expiry so known routes in a mixed
   // OSM bundle remain usable; unknown width is still the baseline.
   const expiry=Math.min(...records.filter(Boolean).map(r=>r.properties.frequency_until));
-  return profileBundle(records.map(r=>r||{properties:{frequency_until:Number.isFinite(expiry)?expiry:0},profiles:{}}));
+  return profileBundle(records.map((r,i)=>{
+    const timetable=timetables[i];
+    const properties={...(r?.properties||{
+      frequency_until:Number.isFinite(expiry)?expiry:0,
+      // Missing bindings may be withheld or unavailable, not explicit no-match.
+      frequency_status:timetable?.properties.frequency_status==='unmatched'?'unmatched':'unknown',
+    })};
+    // Discarded evidence can certify expiry only for the periods it covered.
+    if(Number.isFinite(timetable?.properties.frequency_until)&&timetable.properties.frequency_until>0&&timetable.properties.frequency_until*1000<now)
+      for(const profile of FREQUENCY_PROFILES)
+        if(usable(timetable.profiles?.[profile])&&!usable(r?.profiles?.[profile]))properties[`frequency_status_${profile}`]='expired';
+    return {properties,profiles:r?.profiles||{}};
+  }));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
-const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
+const SERVICE_STROKE_STOPS = [[7,2],[12,3.5],[16,5]];
+const zoomScale=value=>['interpolate',['linear'],['zoom'],...SERVICE_STROKE_STOPS.flatMap(([zoom,width])=>
+  [zoom,width===3.5?value:['*',value,width/3.5]])];
+// One ordinary service stroke, never the combined width of parallel routes.
+export function standardServiceWidth(zoom) {
+  const z=Number.isFinite(zoom)?zoom:7;
+  for(let i=1;i<SERVICE_STROKE_STOPS.length;i++)if(z<SERVICE_STROKE_STOPS[i][0]){
+    const [a,x]=SERVICE_STROKE_STOPS[i-1],[b,y]=SERVICE_STROKE_STOPS[i];
+    return x+(y-x)*Math.max(0,(z-a)/(b-a));
+  }
+  return SERVICE_STROKE_STOPS.at(-1)[1];
+}
 const valid=now=>['>=',['coalesce',['get','frequency_until'],0],now/1000];
 const legacyLabels=()=>['match',['get','slot'],...Array.from({length:127},(_,k)=>k-63).filter(k=>k).flatMap(k=>[k,['literal',[0,k*.65]]]),['literal',[0,0]]];
 export function serviceFrequencyPaint(settings={},now=Date.now()) {
@@ -100,6 +123,21 @@ export function frequencyDetails(properties,profile,now=Date.now()) {
   const directions=forward!==undefined&&backward!==undefined?`; directions ${format(forward)} / ${format(backward)}; width uses the lower rate`:'';
   const date=frequencyAttribution(properties,profile).frequency_date;
   return `${rate} (${quality}${date?' · '+date:''}${directions})`;
+}
+
+export function frequencyAvailability(properties,profile,now=Date.now()) {
+  if(!FREQUENCY_PROFILES.includes(profile))return {status:'unknown',text:'Frequency status is unknown.'};
+  const rate=properties[`frequency_${profile}`],until=Number(properties.frequency_until);
+  const numeric=typeof rate==='number'&&Number.isFinite(rate)&&rate>=0;
+  if(numeric&&Number.isFinite(until)&&until>0){
+    if(until*1000<now)return {status:'expired',text:'Matched frequency profile has expired; current frequency is unknown.'};
+    return {status:'available',text:frequencyDetails(properties,profile,now)};
+  }
+  if(!numeric&&properties[`frequency_status_${profile}`]==='expired')
+    return {status:'expired',text:'Matched frequency evidence had expired at this snapshot build; current frequency is unknown.'};
+  if(!numeric&&properties.frequency_status==='unmatched')
+    return {status:'unmatched',text:'No timetable or headway profile matched this map service in this snapshot.'};
+  return {status:'unknown',text:'No usable frequency profile is recorded for this period; the reason is unknown.'};
 }
 
 export function nearestServiceFeature(services, point, project, z, settings, now=Date.now()) {

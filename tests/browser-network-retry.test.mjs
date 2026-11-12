@@ -1,15 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import http from 'node:http';
-import {createRequire} from 'node:module';
-import {dirname, join} from 'node:path';
-import {request as playwrightRequest} from 'playwright';
 import {guardBrowserNetwork} from '../scripts/browser-network-guard.mjs';
 
-// Exercise the pinned Route.fetch implementation and real API transport without
-// launching/downloading a browser. Only the intercepted Request is synthetic.
-const require = createRequire(import.meta.url);
-const {Route} = require(join(dirname(require.resolve('playwright-core/package.json')), 'lib/client/network.js'));
+// The real Route.fetch/TCP reset and redirect cases run in the required
+// check-network-guard-browser.mjs check using public routing APIs. Keep these
+// browserless cases for the full eligibility, error and redaction matrix.
 
 const body = Buffer.from('real first-party fixture bytes');
 const response = (status = 200, headers = {}) => ({
@@ -120,49 +115,4 @@ test('redirects before or after a reset stay blocked, without another fetch or f
     await assert.rejects(h.run('fetch', {maxRedirects: 100, maxRetries: 100}), /redirected/);
     assert.equal(h.calls.length, precedingReset ? 2 : 1); assert.deepEqual(h.fulfilled, []); assert.equal(h.blocked.length, 1);
   }
-});
-
-// Real loopback TCP resets exercise Playwright's serialization: Node error.code
-// is absent, but the exact route.fetch headline must survive for classification.
-async function loopback(t, handler) {
-  const server = http.createServer(handler);
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  t.after(async () => {server.closeAllConnections(); await new Promise(resolve => server.close(resolve));});
-  return `http://127.0.0.1:${server.address().port}/asset.mjs`;
-}
-async function localFetch(t) {
-  const api = await playwrightRequest.newContext({timeout: 5000});
-  t.after(() => api.dispose());
-  return options => {
-    assert.equal(options.maxRedirects, 0); assert.equal(options.maxRetries, 0);
-    assert.equal(new URL(options.url).hostname, '127.0.0.1', 'test transport is loopback-only');
-    const route = Object.assign(Object.create(Route.prototype), {
-      _context: {request: api}, _wrapApiCall: api._wrapApiCall.bind(api),
-      request: () => ({url: () => options.url, method: () => 'GET', headers: () => ({}), postDataBuffer: () => null}),
-    });
-    return route.fetch(options);
-  };
-}
-test('real loopback reset then success preserves the server bytes', async t => {
-  for (const reset of ['destroy', 'resetAndDestroy']) {
-    let requests = 0;
-    const url = await loopback(t, (req, res) => {if (++requests === 1) req.socket[reset](); else res.end(body);});
-    const h = await harness({url, fetch: await localFetch(t)});
-    await h.run('continue');
-    assert.equal(requests, 2); assert.deepEqual(h.fulfilled[0].body, body);
-  }
-});
-test('real loopback persistent resets fail after two requests', async t => {
-  let requests = 0;
-  const url = await loopback(t, req => {requests++; req.socket.destroy();});
-  const h = await harness({url, fetch: await localFetch(t)});
-  await assert.rejects(h.run(), error => error.code === undefined && /^route\.fetch: socket hang up\n/.test(error.message));
-  assert.equal(requests, 2); assert.deepEqual(h.fulfilled, []);
-});
-test('real loopback redirect to a public destination is rejected without following', async t => {
-  let requests = 0;
-  const url = await loopback(t, (req, res) => {requests++; res.writeHead(302, {location: 'https://provider.invalid/never-fetch'}).end();});
-  const h = await harness({url, fetch: await localFetch(t)});
-  await assert.rejects(h.run(), /redirected/);
-  assert.equal(requests, 1); assert.equal(h.calls.length, 1); assert.deepEqual(h.fulfilled, []); assert.deepEqual(h.warnings, []);
 });

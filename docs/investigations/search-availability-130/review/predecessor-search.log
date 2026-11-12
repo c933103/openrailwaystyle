@@ -1,0 +1,265 @@
+✖ search partial-empty stays incomplete after station HTTP failure (110.468216ms)
+✖ search partial-empty stays incomplete after station transport failure (13.184804ms)
+✖ search partial-empty stays incomplete after station JSON failure (11.408887ms)
+✖ search partial-empty stays incomplete after station envelope failure (9.337304ms)
+✖ search partial-empty stays incomplete after place HTTP failure (9.736135ms)
+✖ search partial-empty stays incomplete after place transport failure (9.966603ms)
+✖ search partial-empty stays incomplete after place JSON failure (12.977029ms)
+✖ search partial-empty stays incomplete after place envelope failure (23.322573ms)
+✖ search keeps healthy rows and their incomplete status after station failure (20.71256ms)
+✖ search keeps healthy rows and their incomplete status after place failure (14.043598ms)
+✔ search keeps complete-empty distinct from all-failed and from complete results (36.845065ms)
+✖ search retains drawn station fallback and marks both remote sources unavailable (31.207426ms)
+✖ search source timeout is incomplete while both timed-out sources are unavailable (10.549541ms)
+✖ search rate-limit cooldown is incomplete, bounded and resumes after ten minutes (9.141063ms)
+✖ search caches only successful place responses with the language in the key (9.647768ms)
+✔ search replacement suppresses late old results and status even when fetch ignores abort (8.701366ms)
+✔ search replaced while queued does not consume a geocoder request or overwrite the latest status (10.734839ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 3
+ℹ fail 14
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1285.698118
+
+✖ failing tests:
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after station HTTP failure (110.468216ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after station transport failure (13.184804ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after station JSON failure (11.408887ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after station envelope failure (9.337304ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after place HTTP failure (9.736135ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after place transport failure (9.966603ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after place JSON failure (12.977029ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:11:98
+✖ search partial-empty stays incomplete after place envelope failure (23.322573ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:19:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:21:41
+✖ search keeps healthy rows and their incomplete status after station failure (20.71256ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  '0 railway results, 1 place (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:23:119)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '0 railway results, 1 place (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:21:41
+✖ search keeps healthy rows and their incomplete status after place failure (14.043598ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  '1 railway result, 0 places (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:23:119)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '1 railway result, 0 places (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:30:1
+✖ search retains drawn station fallback and marks both remote sources unavailable (31.207426ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete: station search and place search unavailable/. Input:
+  
+  '1 railway result, 0 places (station search and place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:32:187)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '1 railway result, 0 places (station search and place search unavailable)',
+    expected: /Search incomplete: station search and place search unavailable/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:34:1
+✖ search source timeout is incomplete while both timed-out sources are unavailable (10.549541ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete: station search unavailable/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:37:97)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete: station search unavailable/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:40:1
+✖ search rate-limit cooldown is incomplete, bounded and resumes after ten minutes (9.141063ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (station search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:43:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (station search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/search-availability.test.mjs:45:1
+✖ search caches only successful place responses with the language in the key (9.647768ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Search incomplete/. Input:
+  
+  'No matching facility or place found. Try a local name or railway code. (place search unavailable)'
+  
+      at TestContext.<anonymous> (file:///workspace/shared/atlas-search-status-20261012/review/predecessor/tests/search-availability.test.mjs:48:30)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No matching facility or place found. Try a local name or railway code. (place search unavailable)',
+    expected: /Search incomplete/,
+    operator: 'match',
+    diff: 'simple'
+  }

@@ -27,6 +27,335 @@ test('multiple failed tiles share a timer and preserve separate recovery evidenc
  b.state='reloading';f.next();assert.equal(f.reloads.length,1,'do not restart already loading tiles');
  f.recovery.dispose();
 });
+test('same-canonical world copies recover independently in either success order',()=>{
+ for(const first of [0,1]){
+  const f=fixture(),copies=[tile(),tile()];
+  copies.forEach((t,wrap)=>{t.tileID.wrap=wrap;f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});});
+  f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+  const pending=[...f.timers.keys()];
+  copies[first].state='loaded';
+  assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:copies[first]}),true);
+  assert.equal(f.recovery.hasFailures(),true,`copy ${1-first} still needs recovery`);
+  assert.deepEqual([...f.timers.keys()],pending,'one success preserves the pending sibling retry');
+  f.next();assert.deepEqual(f.reloads[1],f.reloads[0]);
+  assert.equal([...f.timers.values()][0].delay,45000,'partial success does not reset backoff');
+  copies[1-first].state='loaded';
+  assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:copies[1-first]}),true);
+  assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0,'final success cancels the timer');
+  f.recovery.noteError({sourceId:'railway',tile:tile(2),error:{status:520}});
+  assert.equal([...f.timers.values()][0].delay,5000,'fully settled failures reset backoff');f.recovery.dispose();
+ }
+});
+test('a loaded clone cannot settle a known failure at the same canonical coordinate',()=>{
+ const f=fixture(),a=tile(),b=tile(),clone=tile();clone.state='loaded';
+ for(const t of [a,b])f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+ const pending=[...f.timers.keys()];
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:clone}),false);
+ assert.equal(f.recovery.hasFailures(),true);assert.deepEqual([...f.timers.keys()],pending);
+ f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+ b.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:b});
+ assert.equal(f.recovery.hasFailures(),true);a.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:a});
+ assert.equal(f.timers.size,0);f.recovery.dispose();
+});
+test('repeated instance errors deduplicate without replacing the deadline or canonical retry',()=>{
+ const f=fixture(),a=tile(),b=tile();
+ f.recovery.noteError({sourceId:'railway',tile:a,error:{status:520}});const pending=[...f.timers.keys()];
+ for(let i=0;i<5;i++)for(const t of [a,b])f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+ assert.deepEqual([...f.timers.keys()],pending);f.next();assert.equal(f.reloads[0].tiles.length,1);
+ a.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:a}),true);
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:a}),false);
+ assert.equal(f.recovery.hasFailures(),true);
+ b.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:b}),true);
+ assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+});
+test('aborted, unloaded and loaded world copies are pruned individually',()=>{
+ for(const state of ['aborted','unloaded','loaded'])for(const retired of [0,1]){
+  const f=fixture(),copies=[tile(),tile()];
+  for(const t of copies)f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+  if(state==='aborted')copies[retired].aborted=true;else copies[retired].state=state;
+  f.recovery.wake();assert.equal(f.recovery.hasFailures(),true,`${state} copy ${retired} must not retire its sibling`);
+  f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+  copies[1-retired].state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:copies[1-retired]});
+  assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+});
+test('canonical retries wait for loading, reloading and expired world copies',()=>{
+ const states=['errored','expired','loading','reloading'];
+ for(const first of states)for(const second of states){
+  const f=fixture(),copies=[tile(),tile()];
+  for(const t of copies)f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+  copies[0].state=first;copies[1].state=second;
+  const inFlight=[first,second].some(state=>['loading','reloading','expired'].includes(state));
+  f.next();assert.equal(f.recovery.hasFailures(),true,`${first}/${second}`);
+  assert.equal(f.reloads.length,inFlight?0:1,`${first}/${second} must not restart an in-flight canonical request`);
+  if(!inFlight)assert.equal(f.reloads[0].tiles.length,1);
+  assert.equal([...f.timers.values()][0].delay,inFlight?5000:15000);
+  if(inFlight){
+   f.next();assert.equal(f.reloads.length,0);assert.equal([...f.timers.values()][0].delay,5000);
+   copies.forEach(t=>{t.state='errored';});f.next();
+   assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+   assert.equal([...f.timers.values()][0].delay,15000);
+  }
+  f.recovery.dispose();assert.equal(f.timers.size,0);
+ }
+});
+test('an in-flight world copy blocks only its canonical coordinate',()=>{
+ const f=fixture(),a=tile(),b=tile(),other=tile(2);
+ for(const t of [a,b,other])f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+ a.state='reloading';f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:2,y:2}]}]);
+ assert.equal([...f.timers.values()][0].delay,15000);
+ a.state='loaded';other.state='loaded';
+ for(const t of [a,other])f.recovery.noteSourceData({sourceId:'railway',tile:t});
+ f.next();assert.deepEqual(f.reloads[1],{id:'railway',tiles:[{z:7,x:1,y:2}]});
+ assert.equal([...f.timers.values()][0].delay,45000);f.recovery.dispose();
+});
+test('active unrecorded world copies block canonical retries until their requests settle',()=>{
+ for(const state of ['loading','reloading','expired'])for(const settle of ['loaded','unloaded','aborted','removed']){
+  const f=fixture(),failed=tile(),sibling=tile(),inventory=[failed,sibling];sibling.state=state;
+  f.map.style={tileManagers:{railway:{getSource:()=>f.source,getIds:()=>inventory.map((_,i)=>i),getTileByID:i=>inventory[i]}}};
+  f.recovery.noteError({sourceId:'railway',tile:failed,error:{status:520}});
+  for(let i=0;i<2;i++){f.next();assert.deepEqual(f.reloads,[],`${state}/${settle}`);assert.equal([...f.timers.values()][0].delay,5000);}
+  if(settle==='removed')inventory.pop();else if(settle==='aborted')sibling.aborted=true;else sibling.state=settle;
+  assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:sibling}),false,'unrecorded sibling cannot settle the failure');
+  assert.equal(f.recovery.hasFailures(),true);f.next();
+  assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);assert.equal([...f.timers.values()][0].delay,15000);
+  failed.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:failed});assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+});
+test('active inventory blocking is scoped to the matching canonical coordinate and source',()=>{
+ const f=fixture(),a=tile(),b=tile(2),other=tile(),unrecorded=tile();unrecorded.state='expired';
+ const inventory=[a,b,unrecorded];
+ f.map.style={tileManagers:{railway:{getSource:()=>f.source,getIds:()=>inventory.map((_,i)=>i),getTileByID:i=>inventory[i]}}};
+ for(const [sourceId,t] of [['railway',a],['railway',b],['other',other]])f.recovery.noteError({sourceId,tile:t,error:{status:520}});
+ f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:2,y:2}]},{id:'other',tiles:[{z:7,x:1,y:2}]}]);
+ assert.equal([...f.timers.values()][0].delay,15000);
+ for(const [sourceId,t] of [['railway',unrecorded],['railway',b],['other',other]]){t.state='loaded';f.recovery.noteSourceData({sourceId,tile:t});}
+ f.next();assert.deepEqual(f.reloads[2],{id:'railway',tiles:[{z:7,x:1,y:2}]});
+ assert.equal([...f.timers.values()][0].delay,45000);f.recovery.dispose();
+});
+test('unavailable or mismatched inventory preserves the recorded-instance compatibility guard',()=>{
+ for(const kind of ['absent','incomplete','mismatched']){
+  const f=fixture(),a=tile(),b=tile();a.state='reloading';
+  if(kind==='incomplete')f.map.style={tileManagers:{railway:{getIds:()=>[]}}};
+  if(kind==='mismatched')f.map.style={tileManagers:{railway:{getSource:()=>({url:f.source.url}),getIds:()=>{throw Error('obsolete manager');},getTileByID:()=>undefined}}};
+  for(const t of [a,b])f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+  f.next();assert.deepEqual(f.reloads,[],kind);assert.equal([...f.timers.values()][0].delay,5000);
+  a.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:a});f.next();
+  assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);f.recovery.dispose();
+ }
+});
+test('settled, aborted or malformed inventory entries do not block valid canonical failures',()=>{
+ for(const kind of ['loaded','unloaded','aborted','malformed']){
+  const f=fixture(),a=tile(),b=tile();
+  b.state=['loaded','unloaded'].includes(kind)?kind:'expired';
+  if(kind==='aborted')b.aborted=true;
+  if(kind==='malformed')b.tileID.canonical.z='7';
+  const inventory=[a,b];
+  f.map.style={tileManagers:{railway:{getSource:()=>f.source,getIds:()=>inventory.map((_,i)=>i),getTileByID:i=>inventory[i]}}};
+  f.recovery.noteError({sourceId:'railway',tile:a,error:{status:520}});f.next();
+  assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}],kind);f.recovery.dispose();
+ }
+});
+test('verified empty inventory retires known and coordinate-only failures without refreshing healthy copies',()=>{
+ for(const coordinateOnly of [false,true])for(const initiallyKnown of [false,true])for(const remaining of ['empty','healthy','different']){
+  const f=fixture(),a=tile(),inventory=[a];
+  const style={tileManagers:{railway:{getSource:()=>f.source,getIds:()=>inventory.map((_,i)=>i),getTileByID:i=>inventory[i]}}};
+  if(initiallyKnown)f.map.style=style;
+  const event={sourceId:'railway',...(coordinateOnly?{coord:a.tileID}:{tile:a}),error:{status:520}};
+  f.recovery.noteError(event);f.next();assert.equal(f.reloads.length,1);
+  inventory.length=0;
+  if(remaining!=='empty'){const replacement=tile(remaining==='different'?2:1);replacement.state='loaded';inventory.push(replacement);}
+  f.map.style=style;
+  f.recovery.wake();assert.equal(f.recovery.hasFailures(),false,`${coordinateOnly}/${remaining}`);assert.equal(f.timers.size,0);
+  f.recovery.noteError(event);assert.equal(f.recovery.hasFailures(),false,'late cached errors do not recreate demand');
+  assert.equal(f.timers.size,0);assert.equal(f.reloads.length,1);f.recovery.dispose();
+ }
+});
+test('coordinate-only failures bind unresolved active identities instead of settling on a loaded clone',()=>{
+ const f=fixture(),a=tile(),b=tile(),clone=tile(),inventory=[a,b,clone];clone.state='loaded';
+ f.map.style={tileManagers:{railway:{getSource:()=>f.source,getIds:()=>inventory.map((_,i)=>i),getTileByID:i=>inventory[i]}}};
+ f.recovery.noteError({sourceId:'railway',coord:a.tileID,error:{status:520}});
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:clone}),false);
+ a.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:a}),true);assert.equal(f.recovery.hasFailures(),true);
+ f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+ b.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:b}),true);
+ assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+});
+test('unobtainable inventory snapshots preserve compatibility failures',()=>{
+ for(const kind of ['throws','non-array','missing-tile'])for(const coordinateOnly of [false,true]){
+  const f=fixture(),a=tile();
+  const manager={getSource:()=>f.source,getIds:()=>kind==='non-array'?null:['missing'],getTileByID:()=>undefined};
+  if(kind==='throws')manager.getIds=()=>{throw Error('style transition');};
+  f.map.style={tileManagers:{railway:manager}};
+  f.recovery.noteError({sourceId:'railway',...(coordinateOnly?{coord:a.tileID}:{tile:a}),error:{status:520}});
+  assert.equal(f.recovery.hasFailures(),true,`${kind}/${coordinateOnly}`);f.next();
+  assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);f.recovery.dispose();
+ }
+});
+test('real MapLibre cached expired copies cannot keep refreshing a healthy active sibling',async()=>{
+ const [{build},{JSDOM},{fileURLToPath}]=await Promise.all([import('esbuild'),import('jsdom'),import('node:url')]);
+ const compiled=await build({stdin:{
+  contents:"export {TileManager} from './src/tile/tile_manager.ts'; export {Evented} from './src/util/evented.ts'; export {Tile} from './src/tile/tile.ts'; export {TileCache} from './src/tile/tile_cache.ts'; export {InViewTiles} from './src/tile/tile_manager_in_view_tiles.ts'; export {OverscaledTileID} from './src/tile/tile_id.ts';",
+  resolveDir:fileURLToPath(new URL('.',import.meta.resolve('maplibre-gl/package.json'))),loader:'ts',
+ },bundle:true,write:false,format:'iife',globalName:'fixtureLibrary',platform:'browser',
+ tsconfigRaw:{compilerOptions:{useDefineForClassFields:false}},loader:{'.glsl':'text'}});
+ const dom=new JSDOM('',{runScripts:'outside-only'});
+ try{
+  dom.window.eval(compiled.outputFiles[0].text);
+  const {TileManager,Evented,Tile,TileCache,InViewTiles,OverscaledTileID}=dom.window.fixtureLibrary;
+  for(const removed of [0,1])for(const cachedFirst of [false,true]){
+   const source=new Evented(),requests=[],timers=new Map();let sequence=0,refreshes=0,errors=0;
+   source.url='https://openrailwaymap.app/railway_line_high';source.loaded=()=>true;
+   source.loadTile=tile=>{const request={tile,...Promise.withResolvers()};requests.push(request);return request.promise;};
+   const manager=Object.create(TileManager.prototype);
+   Object.assign(manager,{_source:source,_inViewTiles:new InViewTiles(),_outOfViewCache:new TileCache(10,tile=>tile.unloadVectorData()),_timers:{},_state:{initializeTileState(){}},map:null});
+   const copies=[0,1].map(wrap=>new Tile(new OverscaledTileID(7,wrap,7,1,2),512));
+   for(const tile of copies){tile.state='errored';tile.uses=1;manager._inViewTiles.setTile(tile.tileID.key,tile);}
+   const map={getSource:()=>source,style:{tileManagers:{railway:manager}},refreshTiles:(_id,coords)=>{
+    refreshes++;manager.refreshTiles(coords.map(c=>({equals:other=>c.z===other.z&&c.x===other.x&&c.y===other.y})));
+   }};
+   const recovery=createRailProviderRecovery(map,{active:()=>true,setTimer:(fn,delay)=>{timers.set(++sequence,{fn,delay});return sequence;},clearTimer:id=>timers.delete(id)});
+   source.on('error',event=>{errors++;recovery.noteError({sourceId:'railway',tile:event.tile,error:event.error});});
+   source.on('data',event=>recovery.noteSourceData({sourceId:'railway',tile:event.tile}));
+   try{
+    for(const tile of copies)recovery.noteError({sourceId:'railway',tile,error:{status:520}});
+    const [id,timer]=timers.entries().next().value;timers.delete(id);timer.fn();
+    assert.equal(requests.length,2);assert.ok(copies.every(tile=>tile.state==='expired'));
+    assert.equal([...timers.values()][0].delay,15000);const staleRetry=[...timers.values()][0].fn;
+    const cached=copies[removed],active=copies[1-removed];manager._removeTile(cached.tileID.key);
+    assert.equal(manager._outOfViewCache.order.length,1);assert.equal(manager.getIds().length,1);
+    assert.equal(Boolean(cached.aborted),false,'real expired removal caches without aborting');
+    const failCached=()=>requests.find(request=>request.tile===cached).reject(Object.assign(new dom.window.Error('synthetic HTTP 520'),{status:520}));
+    const loadActive=()=>{active.state='loaded';requests.find(request=>request.tile===active).resolve();};
+    for(const settle of cachedFirst?[failCached,loadActive]:[loadActive,failCached]){settle();await new Promise(setImmediate);}
+    assert.equal(errors,1);assert.equal(cached.state,'errored');assert.equal(active.state,'loaded');
+    assert.equal(recovery.hasFailures(),false);assert.equal(timers.size,0);
+    staleRetry();recovery.wake();assert.equal(timers.size,0);assert.equal(refreshes,1);assert.equal(requests.length,2,'no healthy-only refresh amplification');
+   }finally{recovery.dispose();manager._outOfViewCache.reset();}
+  }
+ }finally{dom.window.close();}
+});
+test('coordinate-only errors remain tile-scoped and settle with loaded coordinate evidence',()=>{
+ const f=fixture(),t=tile(),coord=t.tileID;
+ for(let i=0;i<3;i++)f.recovery.noteError({sourceId:'railway',coord,error:{status:520}});
+ f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',coord,isSourceLoaded:true}),false);
+ const other=tile(2);other.state='loaded';
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:other}),false);
+ assert.equal(f.recovery.hasFailures(),true);
+ t.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:t}),true);
+ assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+});
+test('coordinate-only compatibility never clears known sibling instances or restarts them in flight',()=>{
+ for(const coordinateFirst of [false,true]){
+  const f=fixture(),a=tile(),b=tile(),clone=tile(),coord=a.tileID;
+  const events=[{sourceId:'railway',coord,error:{status:520}},...[a,b].map(tile=>({sourceId:'railway',tile,error:{status:520}}))];
+  for(const event of coordinateFirst?events:events.reverse())f.recovery.noteError(event);
+  a.state='loading';f.next();assert.deepEqual(f.reloads,[]);
+  clone.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:clone}),true,'settles the coordinate-only marker');
+  assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:clone}),false);
+  assert.equal(f.recovery.hasFailures(),true);f.next();assert.deepEqual(f.reloads,[]);
+  a.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:a});
+  f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:7,x:1,y:2}]}]);
+  b.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:b});
+  assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+});
+test('grouped failures preserve visibility, activity, source and off-screen boundaries',()=>{
+ for(const retire of ['removed','replaced','offscreen']){
+  const f=fixture(),copies=[tile(),tile()];let visible=true;
+  f.map.getZoom=()=>7;f.map.getStyle=()=>({layers:[{source:'railway',layout:{visibility:visible?'visible':'none'}}]});
+  for(const t of copies)f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+  f.next();assert.equal(f.reloads.length,1);
+  visible=false;f.recovery.wake();assert.equal(f.timers.size,0);assert.equal(f.recovery.hasFailures(),false);
+  visible=true;f.recovery.wake();assert.equal([...f.timers.values()][0].delay,15000);
+  f.setActive(false);f.recovery.wake();assert.equal(f.timers.size,0);
+  f.setActive(true);f.recovery.wake();assert.equal([...f.timers.values()][0].delay,15000);
+  if(retire==='removed')f.map.getSource=()=>undefined;
+  else if(retire==='replaced'){const replacement={url:f.source.url};f.map.getSource=()=>replacement;}
+  else f.map.getBounds=()=>({getWest:()=>0,getEast:()=>20,getSouth:()=>-90,getNorth:()=>90});
+  f.recovery.wake();assert.equal(f.recovery.hasFailures(),false,retire);assert.equal(f.timers.size,0);
+  assert.deepEqual(f.recovery.failedSourceIds(),[]);assert.equal(f.reloads.length,1);f.recovery.dispose();
+ }
+});
+test('disposing grouped failures prevents stale timer and event callbacks from retrying',()=>{
+ const f=fixture(),copies=[tile(),tile()];
+ for(const t of copies)f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+ const stale=[...f.timers.values()][0].fn;f.recovery.dispose();stale();f.recovery.wake();
+ assert.equal(f.recovery.noteError({sourceId:'railway',tile:copies[0],error:{status:520}}),false);
+ copies[1].state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:copies[1]}),false);
+ assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);assert.deepEqual(f.reloads,[]);
+});
+function malformedLocations(){
+ const locations=[['empty coord',{coord:{}}],['null coord',{coord:null}],['undefined coord',{coord:undefined}],
+  ['empty tile',{tile:{}}],['null tile',{tile:null}],['undefined tile',{tile:undefined}],
+  ['missing tile canonical',{tile:{tileID:{}}}],['missing coord canonical',{coord:{z:7,x:1,y:2}}]];
+ const invalid=[['empty',{}],['null',null],['undefined',undefined],['zoom too large',{z:31,x:1,y:2}],
+  ['x outside grid',{z:7,x:128,y:2}],['y outside grid',{z:7,x:1,y:128}],
+  ['x outside zoom zero',{z:0,x:1,y:0}],['y outside zoom zero',{z:0,x:0,y:1}],
+  ['x outside maximum zoom',{z:30,x:2**30,y:0}],['y outside maximum zoom',{z:30,x:0,y:2**30}]];
+ for(const axis of ['z','x','y'])for(const value of [-1,0.5,NaN,Infinity,'1',null,undefined]){
+  invalid.push([`${axis}=${String(value)}`,{z:7,x:1,y:2,[axis]:value}]);
+ }
+ for(const [label,canonical] of invalid){
+  locations.push([`coord canonical ${label}`,{coord:{canonical}}]);
+  locations.push([`tile canonical ${label}`,{tile:{state:'errored',tileID:{canonical}}}]);
+ }
+ return locations;
+}
+test('malformed error locations neither invent metadata failures nor erase existing retries',()=>{
+ for(const [label,location] of malformedLocations())for(const existing of [false,true]){
+  const f=fixture(),copies=[tile(),tile()];
+  if(existing){for(const t of copies)f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});f.next();}
+  const pending=[...f.timers],calls=[...f.reloads];
+  for(let i=0;i<2;i++)assert.equal(f.recovery.noteError({sourceId:'railway',...location,error:{status:520}}),false,label);
+  assert.equal(f.recovery.hasFailures(),existing,label);
+  assert.deepEqual(f.recovery.failedSourceIds(),existing?['railway']:[],label);
+  assert.deepEqual([...f.timers],pending,`${label}: preserve timer and deadline`);assert.deepEqual(f.reloads,calls);
+  if(existing){
+   f.next();assert.deepEqual(f.reloads,[calls[0],calls[0]],`${label}: no metadata or invalid tile refresh`);
+   assert.equal([...f.timers.values()][0].delay,45000,`${label}: preserve backoff`);
+   for(const t of copies){t.state='loaded';f.recovery.noteSourceData({sourceId:'railway',tile:t});}
+   assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);
+  }
+  f.recovery.dispose();
+ }
+});
+test('malformed success locations cannot settle metadata or existing tile failures',()=>{
+ for(const [label,location] of malformedLocations()){
+  const f=fixture(),t=tile();
+  f.recovery.noteError({sourceId:'railway',error:{status:520}});
+  f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});
+  const event={sourceId:'railway',sourceDataType:'metadata',...location};
+  if(event.tile)event.tile={...event.tile,state:'loaded'};
+  const pending=[...f.timers];
+  assert.equal(f.recovery.noteSourceData(event),false,label);assert.deepEqual([...f.timers],pending,label);
+  f.next();assert.deepEqual(f.reloads,['metadata'],`${label}: metadata remains unresolved`);
+  assert.equal(f.recovery.noteSourceData({sourceId:'railway',sourceDataType:'metadata'}),true);
+  f.next();assert.deepEqual(f.reloads[1],{id:'railway',tiles:[{z:7,x:1,y:2}]},`${label}: tile remains unresolved`);
+  t.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:t}),true);
+  assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+});
+test('valid canonical boundary coordinates remain tile-scoped',()=>{
+ for(const canonical of [{z:0,x:0,y:0},{z:30,x:0,y:0},{z:30,x:2**30-1,y:2**30-1}])for(const coordinateOnly of [false,true]){
+  const f=fixture(),t={state:'errored',tileID:{canonical}};
+  const location=coordinateOnly?{coord:t.tileID}:{tile:t};
+  assert.equal(f.recovery.noteError({sourceId:'railway',...location,error:{status:520}}),true);
+  f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[canonical]}]);
+  t.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',tile:t}),true);
+  assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+});
+test('only events without tile or coord fields establish or settle metadata failure',()=>{
+ const f=fixture(),t=tile();
+ assert.equal(f.recovery.noteError({sourceId:'railway',sourceDataType:'metadata',error:{status:520}}),true);
+ t.state='loaded';assert.equal(f.recovery.noteSourceData({sourceId:'railway',sourceDataType:'metadata',tile:t}),false);
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',sourceDataType:'metadata',coord:t.tileID}),false);
+ f.next();assert.deepEqual(f.reloads,['metadata']);
+ assert.equal(f.recovery.noteSourceData({sourceId:'railway',sourceDataType:'metadata'}),true);
+ assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+});
 test('HTTP status takes priority over AJAXError text; cancellation is not an outage',()=>{
  for(const status of [403,404])assert.equal(isRetryableRailError(new Error('AJAXError: '+status)),false);
  for(const status of [408,429,503,520])assert.equal(isRetryableRailError({status,message:'provider response'}),true);
@@ -137,7 +466,7 @@ test('mixed eligible and in-flight sources advance once per dispatching run',()=
  assert.equal(f.timers.size,0);f.recovery.dispose();
 });
 
-test('two slow request attempts do not advance recovery backoff while the tile reloads',async t=>{
+for(const inFlightState of ['reloading','expired'])test(`two slow request attempts preserve backoff while the tile is ${inFlightState}`,async t=>{
  const {createRequestPool}=await import('../styles/request-pool.mjs');
  t.mock.timers.enable({apis:['setTimeout']});
  let now=0,fetches=0;const dispatches=[],delays=[],tileState=tile();
@@ -148,7 +477,7 @@ test('two slow request attempts do not advance recovery backoff while the tile r
  const source={url:'https://openrailwaymap.app/railway_line_high'};
  let recovery;
  const map={getSource:()=>source,refreshTiles:()=>{
-  dispatches.push(now);tileState.state='reloading';
+  dispatches.push(now);tileState.state=inFlightState;
   pool.get('https://openrailwaymap.app/railway_line_high/7/1/2').then(()=>{
    tileState.state='loaded';recovery.noteSourceData({sourceId:'railway',tile:tileState});
   },error=>{tileState.state='errored';recovery.noteError({sourceId:'railway',tile:tileState,error});});
@@ -159,7 +488,7 @@ test('two slow request attempts do not advance recovery backoff while the tile r
   recovery.noteError({sourceId:'railway',tile:tileState,error:{status:520}});
   await advance(5000);assert.deepEqual(dispatches,[5000]);
   await advance(12000);await advance(1000);assert.equal(fetches,2);
-  await advance(2000);assert.equal(tileState.state,'reloading');assert.deepEqual(dispatches,[5000]);assert.deepEqual(delays,[5000,15000,15000]);
+  await advance(2000);assert.equal(tileState.state,inFlightState);assert.deepEqual(dispatches,[5000]);assert.deepEqual(delays,[5000,15000,15000]);
   await advance(10000);assert.equal(tileState.state,'errored');
   await advance(5000);assert.deepEqual(dispatches,[5000,35000]);assert.equal(fetches,3);
   assert.equal(tileState.state,'loaded');assert.equal(recovery.hasFailures(),false);

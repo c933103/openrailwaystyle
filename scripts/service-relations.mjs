@@ -9,6 +9,54 @@ const refs = values => [...new Map(values.map(value => [JSON.stringify(value), v
 const tagsOf = tags => Object.fromEntries(Object.entries(tags || {}).filter(([key]) => /^(type|route|service|ref|name|name:[^:]+|colour|network|operator)$/.test(key)).sort(([a], [b]) => a.localeCompare(b)));
 export const trackMember = member => member.type === 'way' && typeof member.role === 'string' && !/platform|stop/.test(member.role);
 const declarationKey = evidence => hash([evidence.version, evidence.timestamp, evidence.tags, evidence.members]);
+// Supplemental identity/context is evidence, not a new classifier or a wider
+// core declaration. Keep the deployed hashes and revision keys above unchanged.
+// A missing envelope in an older table means unobserved, not source-tag absent.
+const supplementalKeys = ['brand', 'brand:wikidata', 'duration', 'from', 'gtfs:feed', 'gtfs:feed_id', 'gtfs:route_id', 'gtfs:source',
+  'interval', 'interval:conditional', 'network:full', 'network:short', 'network:wikidata', 'opening_hours',
+  'operator:full', 'operator:short', 'operator:wikidata', 'passenger', 'public_transport:version', 'to', 'usage', 'via', 'wikidata'].sort();
+const supplement = revisions => ({schema: 1, revisions, fingerprint: hash([1, revisions])});
+function observeSupplemental(el, evidence) {
+  // Only a complete, chronologically verified declaration can bind this
+  // projection to an exact revision. No partial-source absence is inferred.
+  if (!evidence.snapshot) return undefined;
+  const tags = {};
+  for (const key of supplementalKeys) if (Object.hasOwn(el.tags || {}, key)) {
+    const value = el.tags[key];
+    // Withhold the whole projection rather than manufacture absence or a
+    // contradiction from a partially observed/malformed tag set.
+    if (typeof value !== 'string' || value.length > 1024) return undefined;
+    tags[key] = value;
+  }
+  const revision = {relation: el.id, version: evidence.version, timestamp: evidence.timestamp, declaration: declarationKey(evidence)};
+  const variant = {fingerprint: hash([1, revision, tags]), tags,
+    sources: evidence.sources.map(source => ({sourceSnapshot: evidence.sourceSnapshot, ...source}))};
+  return supplement([{...revision, variants: [variant], conflict: false}]);
+}
+function reconcileSupplemental(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const revisions = new Map();
+  for (const item of [...a.revisions, ...b.revisions]) {
+    const key = JSON.stringify([item.relation, item.version, item.timestamp, item.declaration]), previous = revisions.get(key);
+    if (!previous) { revisions.set(key, item); continue; }
+    const variants = new Map();
+    for (const variant of [...previous.variants, ...item.variants]) {
+      const old = variants.get(variant.fingerprint);
+      variants.set(variant.fingerprint, {...variant, sources: refs([...(old?.sources || []), ...variant.sources])});
+    }
+    const ordered = [...variants.values()].sort((x, y) => x.fingerprint.localeCompare(y.fingerprint));
+    // Two deterministic witnesses suffice to keep a contradiction explicit;
+    // duplicate replay cannot resolve it or grow the retained envelope.
+    revisions.set(key, {...item, variants: ordered.length > 2 ? [ordered[0], ordered.at(-1)] : ordered,
+      conflict: previous.conflict || item.conflict || ordered.length > 1});
+  }
+  // Keep two highest revision identities, not an unbounded history. The rank
+  // is immutable (never acquisition time), so pruning is order-independent.
+  const ordered = [...revisions.values()].sort((x, y) => y.version - x.version || Date.parse(y.timestamp) - Date.parse(x.timestamp) ||
+    x.declaration.localeCompare(y.declaration) || x.relation - y.relation);
+  return supplement(ordered.slice(0, 2));
+}
 export function observeRelation(el, json, source, view, returnedWays) {
   const sourceSnapshot = time(json.osm3s?.timestamp_osm_base), timestamp = time(el.timestamp);
   const version = Number.isSafeInteger(el.version) && el.version > 0 ? el.version : null;
@@ -25,13 +73,17 @@ export function observeRelation(el, json, source, view, returnedWays) {
   const reference = {observation: hash([sourceSnapshot, version, timestamp, fingerprint, eligible]), dataset: 'openstreetmap',
     ...Object.fromEntries(['endpoint', 'acquired', 'stage', 'pass', 'query'].filter(key => source[key] != null).map(key => [key, source[key]]))};
   const evidence = {schema: 1, snapshot, sourceSnapshot, version, timestamp, complete, tags, members, eligible, fingerprint, view, sources: [reference], conflict: false};
-  return snapshot ? {...evidence, maxVersion: version, maxTimestamp: timestamp, revisionKeys: [declarationKey(evidence)]} : evidence;
+  return snapshot ? {...evidence, maxVersion: version, maxTimestamp: timestamp, revisionKeys: [declarationKey(evidence)], supplemental: observeSupplemental(el, evidence)} : evidence;
 }
 export function legacyRelation(view, eligible) {
   return {schema: 1, snapshot: null, sourceSnapshot: null, version: null, timestamp: null, complete: false,
     tags: null, members: null, eligible: [...new Set(eligible)].sort((a, b) => a - b), fingerprint: hash(view), view, sources: [], conflict: false, legacy: true};
 }
 export function reconcileRelations(a, b) {
+  const evidence = reconcileDeclarations(a, b), supplemental = reconcileSupplemental(a?.supplemental, b?.supplemental);
+  return supplemental ? {...evidence, supplemental} : evidence;
+}
+function reconcileDeclarations(a, b) {
   if (!a) return b;
   if (!b) return a;
   if (!a.snapshot || !b.snapshot) {

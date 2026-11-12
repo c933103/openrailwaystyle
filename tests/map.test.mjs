@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
-import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject } from '../styles/map-model.mjs';
+import {createRequire} from 'node:module';
+// Resolve from MapLibre, not the older direct validator dependency.
+const rendererRequire=createRequire(import.meta.resolve('maplibre-gl'));
+const rendererStyleSpec=rendererRequire('@maplibre/maplibre-gl-style-spec');
+import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject, labelExpression } from '../styles/map-model.mjs';
 import { CONTEXT_CATEGORIES, AREA_CATEGORIES } from '../styles/context.mjs';
+import {layerVisibility,shouldLocalizeLayer} from '../styles/layer-semantics.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
 test('unknown speed is never turned into zero, low speed, or high-speed-class inference', () => {
@@ -39,18 +44,28 @@ test('source mph and directional speed labels are preserved', async () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:false,relief:true,terrainExaggeration:3,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
   assert.equal(readSettings('?mode=invalid').mode, 'infrastructure', 'the Infrastructure view on a first visit');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').background, 'hybrid');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').trackCounts, false);
   assert.equal(readSettings('?stationImportanceColors=1').stationImportanceColors, true);
   assert.equal(readSettings('').stationImportanceColors, false, 'low-zoom station importance colours are opt-in');
   assert.equal(readSettings('?background=photo').background, 'map');
+  assert.equal(readSettings('').terrainExaggeration,3,'3D relief is visually enhanced by default');
+  assert.equal(readSettings('?terrainExaggeration=1').terrainExaggeration,1,'true scale is available');
+  assert.equal(readSettings('?terrainExaggeration=5').terrainExaggeration,5,'strong relief can be selected');
+  assert.equal(readSettings('?terrainExaggeration=2',{terrainExaggeration:5}).terrainExaggeration,2,'shared URL takes precedence');
+  assert.equal(readSettings('',{terrainExaggeration:1}).terrainExaggeration,1,'remembered true scale persists');
+  for (const invalid of ['-1','0','100','3.5','NaN','Infinity','yes','']) {
+    assert.equal(readSettings('?terrainExaggeration='+invalid).terrainExaggeration,3,'invalid scale rejected: '+invalid);
+  }
+  assert.equal(readSettings('',{terrainExaggeration:99}).terrainExaggeration,3,'invalid remembered scale rejected');
+
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false,stationImportanceColors:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false,stationImportanceColors:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:true,relief:true,terrainExaggeration:3,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
 });
 test('cursor readout: hemispheres, longitude wrapped, zoom and the More detail scale', async () => {
   const {formatReadout} = await import('../styles/map-model.mjs');
@@ -192,6 +207,21 @@ test('regional station dots survive name collision and begin before level crossi
   assert.ok(names(11,{feature:'halt'}).length);
   const firstCrossing=Math.min(...style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')).map(l=>l.minzoom));
   assert.equal(firstCrossing,5);
+  // Layer order is independent of source completeness and minzoom.
+  const crossingLayers=style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')||l.id==='infrastructure-level-crossings');
+  const stationDots=layers.filter(l=>l.type==='circle');
+  assert.ok(crossingLayers.length===4&&stationDots.length>=6);
+  for(const dot of stationDots)for(const crossing of crossingLayers)
+    assert.ok(style.layers.indexOf(dot)>style.layers.indexOf(crossing),`${dot.id} must be above ${crossing.id}`);
+  for(const id of ['place_label_city','place_label_other','state_label']){
+    const visible=style.layers.find(l=>l.id===id),placement=style.layers.find(l=>l.id===id+'-placement');
+    for(const crossing of crossingLayers)
+      assert.ok(style.layers.indexOf(placement)<style.layers.indexOf(crossing),`${crossing.id} retains placement priority over ${id}`);
+    for(const dot of stationDots)assert.ok(style.layers.indexOf(visible)>style.layers.indexOf(dot),`${id} remains painted above ${dot.id}`);
+    for(const key of ['type','source','source-layer','minzoom','maxzoom','filter','layout'])
+      assert.deepEqual(placement[key],visible[key],`${id} twins share the exact placement layout: ${key}`);
+    assert.deepEqual(placement.paint,{...visible.paint,'text-opacity':0,'icon-opacity':0},'placement twin has no ink');
+  }
   assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
   for (const [id,zmin,zmax] of [
     ['station-stationLow-dots',4,6],['station-stationMed-dots',6,8],
@@ -736,13 +766,14 @@ test('each view writes its values along the tracks from zoom 10', async () => {
   assert.equal(text('loading-labels', {loading_gauge:'W6A, W7, W8, W9, W10'}), 'W10');
   assert.equal(text('loading-labels', {loading_gauge:'TSI_GC'}), 'TSI_GC');
 });
-test('weekly changes add, update and remove snapshot ways, newest data winning', async () => {
-  const {mergeDelta, applyDelta, deltaQueries} = await import('../scripts/snapshot-delta.mjs');
+test('a kept change log adds, updates and removes snapshot ways, newest data winning', async () => {
+  const {applyDelta} = await import('../scripts/snapshot-delta.mjs');
   const way = (id, tags) => ({type:'way', id, tags, geometry:[{lon:0,lat:0},{lon:1,lat:1}]});
-  const lifecycle = {osm3s:{timestamp_osm_base:'2026-10-05T03:00:00Z'}, elements:[way(1, {railway:'construction', construction:'rail', name:'New line'}), way(3, {railway:'proposed', proposed:'rail'})]};
-  const opened = {osm3s:{timestamp_osm_base:'2026-10-05T03:01:00Z'}, elements:[{type:'way', id:2}, {type:'way', id:9}]};
-  const delta = mergeDelta(null, lifecycle, opened);
-  assert.equal(delta.since, '2026-10-05T03:00:00Z');
+  // A change log as the earlier weekly update recorded it.
+  const {toGeoJSON} = await import('../scripts/lifecycle.mjs');
+  const time = '2026-10-05T03:00:00Z', feature = (id, tags) => toGeoJSON({elements:[way(id, tags)]}).features[0];
+  const delta = {since:time, changes:{1:{time, feature:feature(1, {railway:'construction', construction:'rail', name:'New line'})},
+    3:{time, feature:feature(3, {railway:'proposed', proposed:'rail'})}, 2:{time, feature:null}, 9:{time, feature:null}}};
   const features = new Map([[1, {id:1, properties:{state:'proposed'}}], [2, {id:2, properties:{state:'construction'}}], [4, {id:4, properties:{state:'abandoned'}}]]);
   const base = new Map([[1, '2026-09-22T12:00:00Z'], [2, '2026-09-22T12:00:00Z'], [4, '2026-10-10T00:00:00Z']]);
   const result = applyDelta(features, base, delta);
@@ -756,9 +787,6 @@ test('weekly changes add, update and remove snapshot ways, newest data winning',
   const newer = new Map([[1, {id:1, properties:{state:'disused'}}]]);
   applyDelta(newer, new Map([[1, '2026-11-01T00:00:00Z']]), delta);
   assert.equal(newer.get(1).properties.state, 'disused');
-  const q = deltaQueries('2026-10-01T00:00:00Z', '50,0,51,1');
-  assert.match(q.lifecycle, /changed:"2026-10-01T00:00:00Z"/);
-  assert.match(q.opened, /out ids/);
 });
 
 test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag variants, imperial units', async () => {
@@ -1185,4 +1213,44 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
   for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
   assert.equal(stationTracks(scissors, [zone], 1)[0].tracks, 2);
+});
+
+test('place paint twins retain shared placement across localization, fonts, backgrounds and reloads',()=>{
+  for(const language of ['en','ja'])for(const background of ['standard','satellite','hybrid','carto']){
+    const layers=structuredClone(style.layers);
+    for(const layer of layers){
+      if(shouldLocalizeLayer(layer))layer.layout['text-field']=labelExpression(language);
+      if(Array.isArray(layer.layout?.['text-font']))layer.layout['text-font']=[...layer.layout['text-font'],'Fixture fallback'];
+      const visible=layerVisibility(layer,{background,mode:'infrastructure',stations:true});
+      if(visible!==undefined){layer.layout||={};layer.layout.visibility=visible?'visible':'none';}
+    }
+    for(const reloaded of [layers,JSON.parse(JSON.stringify(layers))]){
+      const groups=rendererStyleSpec.groupByLayout(reloaded,{});
+      for(const id of ['place_label_city','place_label_other','state_label']){
+        const group=groups.find(group=>group.some(layer=>layer.id===id));
+        assert.equal(group[0].id,id+'-placement','the invisible first family member alone controls collision placement');
+        assert.ok(group.some(layer=>layer.id===id));
+        assert.equal(group[0].paint['text-opacity'],0);
+        assert.deepEqual(group[0].layout,reloaded.find(layer=>layer.id===id).layout);
+      }
+    }
+  }
+});
+
+test('place placement twins require the full replacement path used by Atlas',async()=>{
+  assert.equal(rendererRequire('@maplibre/maplibre-gl-style-spec/package.json').version,'24.10.0',
+    'review this regression when MapLibre’s locked style-spec changes');
+  const ids=new Set(['place_label_city-placement','infrastructure-level-crossings','place_label_city']);
+  const layers=style.layers.filter(layer=>ids.has(layer.id));
+  const sourceStyle={version:8,sources:style.sources,layers:[]};
+  const targetStyle={...sourceStyle,layers};
+  // Actual pinned diff insertion order differs from final paint order.
+  // Worker StyleLayerIndex keeps this insertion order when forming families.
+  const inserted=rendererStyleSpec.diff(sourceStyle,targetStyle).filter(op=>op.command==='addLayer').map(op=>op.args[0]);
+  const diffFamily=rendererStyleSpec.groupByLayout(inserted,{}).find(group=>group.some(layer=>layer.id==='place_label_city'));
+  assert.equal(diffFamily[0].id,'place_label_city','default diff reproduces the wrong placement representative');
+  const fullFamily=rendererStyleSpec.groupByLayout(layers,{}).find(group=>group.some(layer=>layer.id==='place_label_city'));
+  assert.equal(fullFamily[0].id,'place_label_city-placement','full style load retains the intended representative');
+  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/map\.setStyle\(style,\{diff:false,/,'changing Atlas to diff-based reloads needs a new placement contract');
 });

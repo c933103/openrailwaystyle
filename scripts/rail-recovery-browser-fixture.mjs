@@ -1,5 +1,7 @@
 import {writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {RAIL_OUTAGE_STATUS,railOutageReady} from './rail-fixture-readiness.mjs';
+import {RAIL_COMPOSITE_PATHS} from '../styles/rail-source-catalog.mjs';
 
 // A real MapLibre source remains pending while rail recovery completes. This
 // rules out idle as the cause of the visible status update. All data is local.
@@ -14,7 +16,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage,setupDelay=
   let arm, recoverFirst, recoverAll;
   const armed=new Promise(resolve=>{arm=resolve;}), first=new Promise(resolve=>{recoverFirst=resolve;}), all=new Promise(resolve=>{recoverAll=resolve;});
   const initialGate=async route=>{await armed;await route.fallback();};
-  const pattern='https://openrailwaymap.app/railway_line_high/7/**';
+  const pattern=`https://openrailwaymap.app/${RAIL_COMPOSITE_PATHS.railway_line_high}/7/**`;
   await page.route(pattern,initialGate);
   const attempts=new Map();
   // The request pool makes one internal retry. Let both initial failures
@@ -45,9 +47,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage,setupDelay=
     try {await Promise.race([started,new Promise((_,reject)=>{pendingTimer=setTimeout(()=>reject(new Error('Pending local source was not requested')),10000);})]);}
     finally {clearTimeout(pendingTimer);}
     outage.enabled=true;arm(); // Initiate controlled requests only after both observers and pending source exist.
-    await page.waitForFunction(()=>document.getElementById('map-status').classList.contains('error')&&
-      document.getElementById('map-status').textContent.includes('Retrying automatically')&&
-      new Set(recoveryEvents.filter(e=>e.type==='error'&&e.sourceId==='railway').map(e=>JSON.stringify(e.coordinate))).size>=2,null,{timeout:30000});
+    await page.waitForFunction(railOutageReady,RAIL_OUTAGE_STATUS,{timeout:30000});
     const settings=await page.evaluate(()=>{
       const at=performance.now(),center=fixtureMap.getCenter().toArray();
       document.querySelector('[data-background="satellite"]').click();
@@ -56,7 +56,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage,setupDelay=
       return {at,center,hidden,shown:fixtureMap.getLayoutProperty('speed-tracks','visibility'),status:document.getElementById('map-status').textContent};
     });
     assert.equal(settings.hidden,'none');assert.equal(settings.shown,'visible');
-    assert.match(settings.status,/Retrying automatically/);
+    assert.equal(settings.status,RAIL_OUTAGE_STATUS);
     const before=await page.evaluate(()=>({status:document.getElementById('map-status').textContent,
       pending:!fixtureMap.isSourceLoaded('pendingRecovery'),at:performance.now()}));
     assert.equal(before.pending,true);
@@ -70,7 +70,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage,setupDelay=
     const partial=await page.evaluate(()=>({status:document.getElementById('map-status').textContent,
       error:document.getElementById('map-status').classList.contains('error'),pending:!fixtureMap.isSourceLoaded('pendingRecovery'),at:performance.now()}));
     assert.equal(partial.error,true,'one remaining failed tile must retain the outage warning');
-    assert.match(partial.status,/Retrying automatically/);assert.equal(partial.pending,true);
+    assert.equal(partial.status,RAIL_OUTAGE_STATUS);assert.equal(partial.pending,true);
     if(captureDelay)await page.waitForTimeout(captureDelay);
     await page.screenshot({path:'browser-review/rail-outage-partial.png'});
     outage.allowSuccess=true;recoverAll();

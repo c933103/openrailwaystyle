@@ -1,232 +1,440 @@
-import * as globeModule from '../styles/globe-drag.mjs';
-import test from 'node:test';
-import * as labelModule from '../styles/tile-labels.mjs';
-import encodeTile from 'vt-pbf';
-import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import {webcrypto,createHash} from 'node:crypto';
-import vm from 'node:vm';
-import { JSDOM } from 'jsdom';
-import * as model from '../styles/map-model.mjs';
-import * as draw from '../styles/draw.mjs';
-import * as departuresModule from '../styles/departures.mjs';
-import * as departuresUiModule from '../styles/departures-ui.mjs';
-import * as elevationModule from '../styles/elevation.mjs';
-import * as contextFeatures from '../styles/context.mjs';
-import * as cjkFontFeatures from '../styles/cjk-font.mjs';
-import * as rareHanFeatures from '../styles/rare-han.mjs';
-import * as bathymetryModule from '../styles/bathymetry.mjs';
-import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
-import * as frequencyModule from '../styles/service-frequency.mjs';
-import * as powerFacilities from '../styles/power-facilities.mjs';
-import * as controlFunctions from '../styles/map-controls.mjs';
-import * as watchModule from '../styles/watch-map.mjs';
-import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
-import * as tileBundleModule from '../styles/tile-bundles.mjs';
-import * as layerSemantics from '../styles/layer-semantics.mjs';
-import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
+// Keep startup fixtures in separate Node test processes: evaluated VM modules
+// retain their contexts on Node 24 even after JSDOM closes and GC runs.
+import {globeModule,test,encodeTile,assert,readFile,createHash,vm,gzipSync,net,https,frequencyModule,unmockedRequests,html,code,style,legacyDistributions,start,ALL_PROBES} from './startup-harness.mjs';
 
-const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
-const appURL = new URL('../styles/app.mjs', import.meta.url);
-const code = await readFile(appURL, 'utf8');
-const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
-const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
-  url:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
-  body:await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
-}))).then(async libraries=>Promise.all(libraries.map(async library=>({...library,
-  patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
-}))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
-  const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
-  if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
-  const window = dom.window;
-  const errors = [], maps = [];
-  const fonts=[];
-  if(fontFaces){
-    const registered=new Set();Object.defineProperty(window.document,'fonts',{value:{ready:Promise.resolve(),add:f=>registered.add(f),delete:f=>registered.delete(f)}});
-    window.FontFace=class{constructor(family,url){this.family=family;this.url=url;fonts.push(this);}load(){return new Promise((resolve,reject)=>{this.finish=()=>resolve(this);this.fail=()=>reject(new Error('font offline'));});}};
-  }
-  if(installedFonts){
-    // A 2D context measuring Han characters by the first listed family that
-    // has them; the probe font ("Atlas Probe") draws nothing.
-    const measure=(font,character)=>{const family=/"([^"]+)"/.exec(font)?.[1];return installedFonts[family]?.includes(character)?32:0;};
-    window.OffscreenCanvas=class{getContext(){return {font:'',measureText(text){return {width:measure(this.font,text)};}};}};
-    window.CanvasRenderingContext2D=class{constructor(){this.value='';}};
-    Object.defineProperty(window.CanvasRenderingContext2D.prototype,'font',{configurable:true,get(){return this.value;},set(value){this.value=value;}});
-    window.CanvasRenderingContext2D.prototype.lang='';
-  }
-  window.console.error = error => errors.push(error);
-  class Map {
-    constructor(options) {
-      if (failWebGL) throw new Error('Failed to initialize WebGL');
-      this.options = options; this.handlers = {}; this.visibility = {};
-      maps.push(this);
+for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 'already loaded' : 'cold'} style readiness`, async () => {
+  const {dom,maps,errors}=await start({styleLoaded});
+  try {
+    const map=maps[0];
+    assert.equal(map.isStyleLoaded(),styleLoaded);
+    assert.equal(dom.window.document.body.dataset.mapReady,styleLoaded?'true':undefined);
+    if (!styleLoaded) {
+      assert.equal(map.sourceData?.stationMajor,undefined,'cold startup cannot populate the worldwide placeholder viewport');
+      map.handlers['style.load']();
+      assert.equal(map.isStyleLoaded(),true);
+      assert.equal(dom.window.document.body.dataset.mapReady,'true');
     }
-    once(name,handler) {this.handlers[name]=handler;}
-    setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
-    removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
-    addControl(control) { (this.controls ||= []).push(control); }
-    addImage(id, data, options) { this.image = {id,data,options}; }
-    off(name, handler) {
-      if (!handler) { delete this.handlers[name]; delete this.listeners?.[name]; return; }
-      this.listeners?.[name]?.delete(handler);
-    }
-    on(name, handler) {
-      const listeners=(this.listeners ||= {})[name] ||= new Set();listeners.add(handler);
-      this.handlers[name]=(...args)=>{for(const listener of [...listeners])listener(...args);};
-    }
-    getStyle() { return this.options.style; }
-    getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
-    setLayoutProperty(id, property, value) { if (property === 'visibility') { this.visibility[id] = value; const layer=this.options.style.layers.find(l=>l.id===id); if(layer)(layer.layout ||= {}).visibility=value; } else (this.layout ||= {})[id] = value; }
-    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
-    setPixelRatio(ratio) { this.pixelRatio = ratio; }
-    zoom = 20;
-    getZoom() { return this.zoom; }
-    setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
-    setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
-    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
-    getLayer() {}
-    addLayer(layer) { (this.added ||= []).push(layer.id); }
-    addSource() {}
-    getCanvas() { return this.canvas ||= {style:{}}; }
-    getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
-    doubleClickZoom = {enable:()=>{this.doubleClickEnabled=true;}, disable:()=>{this.doubleClickEnabled=false;}};
-    queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
-    querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
-    isSourceLoaded() { return true; }
-    projection = {type:'mercator'};
-    getProjection() { return this.projection; }
-    setProjection(projection) { this.projection = projection; }
-    getContainer() { return {clientWidth:1000, clientHeight:700}; }
-    getCenter() { return {lng:0, lat:0}; }
-    getBounds() { return {getWest:()=>-180,getEast:()=>180,getSouth:()=>-85,getNorth:()=>85}; }
-    getBearing() { return 0; }
-    getPitch() { return 0; }
-    unproject() { return {lng:0, lat:0}; }
-  }
-  // This is the MapLibre 5 public surface used by the app. In particular,
-  // supported() is absent: older Mapbox examples must not gate startup.
-  const libraries = {};
-  maps.protocols = {};
-  libraries.maplibregl = {Map, addProtocol(id,handler){maps.protocols[id]=handler;}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
-  maps.controls = [];
-  libraries.pmtiles = {
-    Protocol:class { constructor(){this.tiles=new globalThis.Map();maps.pmtiles=this;} tile() {} },
-    FetchSource:class { constructor(url){this.url=url;} },
-    PMTiles:class { constructor(source){this.source=source;} },
-  };
-  libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
-  // Delayed libraries are provided later by loadLibraries().
-  const loadLibraries = () => {
-    Object.assign(window, libraries);
-    for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
-  };
-  const scriptLoads=[],revoked=[];
-  if (cacheOnlyLibraries) {
-    window.caches=cacheOnlyLibraries;
-    window.Blob=Blob; window.Response=Response; window.TextDecoder=TextDecoder; window.TextEncoder=TextEncoder;
-    Object.defineProperty(window.crypto,'subtle',{value:noLegacyCrypto?undefined:webcrypto.subtle});
-    Object.assign(window,{mlcontour:libraries.mlcontour});
-    const blobs=new globalThis.Map();let sequence=0;
-    window.URL.createObjectURL=blob=>{const url=`blob:https://example.org/${++sequence}`;blobs.set(url,blob);return url;};
-    window.URL.revokeObjectURL=url=>{revoked.push(url);blobs.delete(url);};
-    const append=window.document.head.append.bind(window.document.head);
-    window.document.head.append=(...nodes)=>{
-      append(...nodes);
-      for(const script of nodes.filter(node=>node.tagName==='SCRIPT')) {
-        scriptLoads.push(script.src);
-        queueMicrotask(async()=>{
-          const saved=blobs.get(script.src);
-          if(!saved){script.onerror?.();return;}
-          try {
-            const body=Buffer.from(await saved.arrayBuffer());
-            const library=legacyDistributions.find(library=>(library.patchedBody || library.body).equals(body));
-            // The real app has hashed the actual upstream bytes. This DOM
-            // unit harness substitutes only the renderer API after accepting
-            // those exact bytes; browser coverage also executes the real code.
-            if(library)window[library.package==='maplibre-gl'?'maplibregl':'pmtiles']=libraries[library.package==='maplibre-gl'?'maplibregl':'pmtiles'];
-            else window.eval(body.toString('utf8'));
-            script.onload?.();
-          }
-          catch {script.onerror?.();}
-        });
-      }
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+    assert.deepEqual(errors,[]);
+  } finally {maps[0]?.handlers.remove?.();dom.window.close();}
+});
+
+test('pitch activates 3D terrain and overhead preserves mode until explicitly disabled', async () => {
+  const {dom,window,maps,errors}=await start();
+  try {
+    const map=maps[0];
+    map.handlers['style.load']();
+    assert.equal(map.getTerrain(),null,'2D startup remains mesh-free');
+    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+    assert.ok(button,'a live 3D control is registered');
+    assert.equal(map.getMaxPitch(),85,'gesture tilt is allowed down to 85°');
+    assert.equal(map.options.maxTileCacheSize,96,'each rendered source retains bounded tile cache');
+    map.setPitch(55);
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+    assert.equal(button.getAttribute('aria-pressed'),'true');
+    assert.match(button.getAttribute('aria-label'),/3× vertical/);
+    const scale=window.document.getElementById('terrain-exaggeration');
+    assert.equal(scale.value,'3');
+    scale.value='5';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5},'scale switches without pitching again');
+    assert.match(button.getAttribute('aria-label'),/5× vertical/);
+    assert.equal(button.querySelector('.terrain-scale-indicator').textContent,'5×');
+    scale.value='1';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(map.getTerrain().exaggeration,1,'true-scale 3D can be restored');
+    scale.value='99';
+    scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+    assert.equal(scale.value,'1','invalid UI input is rejected');
+    assert.equal(map.getTerrain().exaggeration,1,'invalid input cannot poison the mesh');
+    assert.ok(maps.protocols['atlas-terrain'],'the 3D protocol must be installed');
+    const relief=window.document.getElementById('relief');
+    relief.click();
+    assert.equal(map.getTerrain(),null,'turning relief off removes terrain');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    relief.click();
+    assert.equal(map.getTerrain().source,'terrain3d','restored settings reactivate 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','restoring relief without changing pitch refreshes the icon');
+    assert.match(button.getAttribute('aria-label'),/Switch to 2D map/);
+    map.setPitch(0);
+    assert.equal(map.getTerrain()?.source,'terrain3d','overhead camera must not switch out of selected 3D');
+    assert.equal(button.getAttribute('aria-pressed'),'true','3D icon stays selected at zero pitch');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('3D mountain icon starts an actually detailed terrain view, not just a pitch flag',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   // The startup Map mock collects addControl() calls without mounting the
+   // control. Mount this one through its real MapLibre onAdd() interface.
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   assert.ok(control,'the native terrain control must be registered');
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   assert.ok(button,'native control must have a stable accessible identifier');
+   assert.equal(button.textContent.trim(),'3×','visible badge discloses the default exaggeration');
+   assert.doesNotMatch(button.textContent,/3D/,'mountain icon remains vector art rather than the old 3D text');
+   assert.equal(button.querySelector('.terrain-scale-indicator')?.getAttribute('aria-hidden'),'true');
+   assert.equal(button.querySelector('svg')?.getAttribute('viewBox'),'0 0 24 24');
+   assert.ok(button.querySelectorAll('svg path').length>=3);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   map.zoom=2;
+   button.click();
+   assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'initial 60° pitch must not enable the over-65° horizon budget');
+   assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','manual overhead rotation keeps the 3D mesh');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   // The loading policy responds to actual subsequent manual tilt, not to
+   // the first 3D button press. Cross 65° explicitly before its assertions.
+   map.setPitch(82);
+   assert.ok(map.tileLodCalls?.some(args=>args.length===2&&args[0]===11&&args[1]===2),
+     'tilt beyond 65° enables coarser horizon tiles for all sources');
+   assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
+     '3D DEM uses a stronger distant-tile LOD budget');
+   // Mock the intermediate frames of MapLibre's 750 ms exit animation.
+   // They must not reselect 3D merely because their pitch remains nonzero.
+   const nativeEase=map.easeTo.bind(map);
+   map.easeTo=options=>{
+     if(options.pitch!==0)return nativeEase(options);
+     map.lastEase=options;
+     for(const pitch of [70,35,0]){
+       map.setPitch(pitch);
+       assert.equal(map.getTerrain(),null,`2D remains selected during exit at ${pitch}°`);
+       assert.equal(button.getAttribute('aria-pressed'),'false');
+     }
+   };
+   button.click();
+   map.easeTo=nativeEase;
+   assert.equal(map.lastEase.pitch,0);
+   assert.equal('zoom' in map.lastEase,false,'overhead mode retains the focused terrain view');
+   assert.ok(map.tileLodCalls.some(args=>args.length===2&&args[0]===9.314&&args[1]===3),
+     'overhead view restores MapLibre default LOD after a real high-pitch transition');
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(map.getTerrain(),null,'explicit 2D icon press releases terrain');
+   map.zoom=15;
+   button.click();
+   assert.equal('zoom' in map.lastEase,false,'already detailed views must not jump');
+   assert.equal(map.lastEase.pitch,60);
+   map.handlers.error({sourceId:'terrain3d',error:new Error('synthetic DEM outage')});
+   assert.match(window.document.getElementById('map-status').textContent,/3D elevation tiles could not load/);
+   assert.equal(errors.length,1,'the synthetic tile error must also be logged');
+   assert.match(String(errors[0]),/Map resource error/);
+ }finally{dom.window.close();}
+});
+
+test('an interrupted explicit switch to 2D does not lock out later intentional 3D tilt',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(80);
+   map.easeTo=options=>{
+     assert.equal(options.pitch,0);
+     map.setPitch(45);
+     assert.equal(map.getTerrain(),null,'interrupted exit remains 2D');
+     map.handlers.moveend();
+   };
+   button.click();
+   assert.equal(map.getTerrain(),null,'the explicit 2D transition remains selected');
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d',
+     'a later user tilt can select 3D after an interrupted exit');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','returning overhead retains new 3D mode');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('3D stays selected at 90-degree overhead through relief and scale changes',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   button.click();
+   map.setPitch(0);
+   assert.equal(map.getPitch(),0);
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3});
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   const relief=window.document.getElementById('relief');
+   relief.click();
+   assert.equal(map.getTerrain(),null);
+   relief.click();
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:3},
+     're-enabling relief restores selected 3D while still overhead');
+   const scale=window.document.getElementById('terrain-exaggeration');
+   scale.value='5';scale.dispatchEvent(new window.Event('change',{bubbles:true}));
+   assert.deepEqual(map.getTerrain(),{source:'terrain3d',exaggeration:5});
+   map.handlers.moveend();
+   const stored=JSON.parse(window.localStorage.getItem('atlas_view'));
+   assert.equal(stored.p,0);
+   assert.equal(stored.t,true,'3D state is persisted independently of pitch');
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{
+     writeText:async value=>{copied=value;}
+   }});
+   window.document.getElementById('share').click();
+   await new Promise(resolve=>setTimeout(resolve,0));
+   const shared=new URL(copied);
+   assert.equal(shared.searchParams.get('terrain3d'),'1',
+     'a zero-pitch shared link explicitly requests the 3D renderer');
+   assert.ok(shared.hash.startsWith('#'));
+   button.click();
+   assert.equal(map.getTerrain(),null,'2D requires a deliberate button press');
+   assert.equal(map.getPitch(),0);
+   assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(JSON.parse(window.localStorage.getItem('atlas_view')).t,false);
+   map.setPitch(55);
+   assert.equal(map.getTerrain()?.source,'terrain3d','a new deliberate tilt can enable 3D again');
+   map.setPitch(0);
+   assert.equal(map.getTerrain()?.source,'terrain3d','removing tilt does not undo 3D');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('shared top-down 3D initializes with the terrain mesh at zero pitch',async()=>{
+ const {dom,window,maps,errors}=await start({search:'?terrain3d=1#12.3/35/139'});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   assert.equal(map.getPitch(),0);
+   assert.equal(map.getTerrain()?.source,'terrain3d');
+   assert.equal(window.location.search,'','shared mode is consumed without dirty browser history');
+   const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
+   assert.equal(button.getAttribute('aria-pressed'),'true');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('terrain control preserves clean history while sharing the current polar 3D view',async()=>{
+ const cookie='atlas_settings='+encodeURIComponent(JSON.stringify({relief:false}));
+ const {dom,window,maps,errors}=await start({search:'?ref=terrain-history',cookie});
+ try {
+   const map=maps[0];map.handlers['style.load']();
+   map.getCenter=()=>({lat:89.7,lng:162});map.getBearing=()=>25;map.zoom=2;
+   map.projection={type:'globe'}; // the real globe carries latitude-adjusted zoom
+   const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='terrain-toggle'));
+   window.document.body.append(control.onAdd());
+   const button=window.document.getElementById('terrain-toggle');
+   const initialURL=window.location.href,initialLength=window.history.length,state={retained:'terrain-history'};
+   window.history.replaceState(state,'',initialURL);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   let copied='';
+   Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+   let focusedZoom;
+   for(const pitch of [60,0]) {
+     button.click();map.handlers.moveend();
+     assert.equal(map.getPitch(),pitch);
+     if(pitch===60){
+       focusedZoom=map.getZoom();
+       const target=globeModule.zoomForLatitude(12.3,0,89.7);
+       assert.ok(Math.abs(focusedZoom-target)<1e-7,
+         '3D focus must target polar ground scale, not raw z12.3 camera: '+focusedZoom);
+       assert.ok(focusedZoom<12.3,'no extreme zoom jump at the pole');
+     }
+     else assert.equal(map.getZoom(),focusedZoom,'overhead mode keeps the focused view');
+     const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+     assert.deepEqual(saved.c,[162,89.7]);assert.equal(saved.z,Number(focusedZoom.toFixed(2)),'stored camera zoom retains the existing two-decimal persistence contract');assert.equal(saved.p,pitch);
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     const shared=new URL(copied);
+     assert.equal(shared.hash,globeModule.viewHash({zoom:focusedZoom,lat:89.7,lng:162,bearing:25,pitch}));
+     assert.equal(shared.searchParams.get('ref'),'terrain-history');
+     assert.equal(shared.searchParams.get('relief'),'1','the shared settings include relief enabled by the control');
+     assert.equal(shared.searchParams.get('terrain3d'),pitch===60?'1':'0',
+       'share link preserves selected rendering mode separately from the camera');
+     assert.equal(window.location.href,initialURL);
+     assert.equal(window.history.length,initialLength);
+     assert.deepEqual(window.history.state,state);
+     assert.deepEqual(writes,[],'terrain focusing, overhead return and sharing never rewrite history');
+   }
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('startup network guard rejects native fetch, HTTP and socket fallbacks',async()=>{
+ const before=unmockedRequests.length;
+ await assert.rejects(globalThis.fetch('https://example.org/offline-sentinel'),/blocked unmocked network/);
+ assert.throws(()=>https.request('https://example.org/offline-sentinel'),/blocked unmocked network/);
+ const socket=new net.Socket();
+ try {assert.throws(()=>socket.connect(443,'example.org'),/blocked unmocked network/);}
+ finally {socket.destroy();}
+ assert.deepEqual(unmockedRequests.splice(before),['https://example.org/offline-sentinel','HTTP','socket']);
+});
+
+test('drawing toolbar clears a first unfinished shape only after confirmation and accepts fresh input', async () => {
+  const {dom, window, maps, errors} = await start();
+  try {
+    const map = maps[0], doc = window.document, prompts = [];
+    let accepted = false;
+    window.confirm = message => { prompts.push(message); return accepted; };
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Drawing tools').click();
+    assert.equal(doc.getElementById('draw-toolbar').hidden, false);
+    doc.querySelector('[data-draw="line"]').click();
+    const click = (lng, lat) => map.handlers.click({point: {x: lng * 100, y: lat * 100}, lngLat: {lng, lat}});
+    click(0, 0); click(1, 1);
+    assert.equal(map.sourceData['atlas-drawing'].features.length, 0);
+    const before = structuredClone(map.sourceData['atlas-drawing-draft']);
+    assert.equal(before.features.length, 1);
+    doc.getElementById('draw-clear').click();
+    assert.deepEqual(prompts, ['Delete all drawings?']);
+    assert.deepEqual(map.sourceData['atlas-drawing-draft'], before, 'declining retains the unfinished shape');
+    accepted = true; doc.getElementById('draw-clear').click();
+    assert.equal(prompts.length, 2);
+    for (const id of ['atlas-drawing', 'atlas-drawing-draft', 'atlas-drawing-handles']) assert.equal(map.sourceData[id].features.length, 0, id);
+    assert.equal(doc.querySelector('[data-draw="line"]').getAttribute('aria-pressed'), 'true');
+    doc.getElementById('draw-finish').click();
+    assert.equal(map.sourceData['atlas-drawing'].features.length, 0, 'Finish cannot restore the cleared draft');
+    doc.getElementById('draw-clear').click(); assert.equal(prompts.length, 2, 'empty Clear does not ask again');
+    click(2, 2); click(3, 3); doc.getElementById('draw-finish').click();
+    assert.deepEqual(map.sourceData['atlas-drawing'].features[0].geometry.coordinates, [[2, 2], [3, 3]]);
+    doc.getElementById('draw-close').click(); assert.equal(doc.getElementById('draw-toolbar').hidden, true);
+    assert.deepEqual(errors, []);
+  } finally { dom.window.close(); }
+});
+
+test('measurement toolbar settles unavailable endpoint heights and recovers on an explicit repeat', async () => {
+  let failing = true, requests = 0;
+  const {dom, window, maps, errors} = await start({elevationOptions: {zoom: 2, load: async () => {
+    requests++; if (failing) throw new Error('synthetic endpoint failure');
+    return {size: 1, data: Uint8ClampedArray.from([128, 10, 0, 255])};
+  }}});
+  try {
+    const map = maps[0], doc = window.document;
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
+    assert.equal(doc.getElementById('measure-toolbar').hidden, false);
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
+    const finish = () => {
+      for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
+      map.handlers.dblclick({preventDefault() {}});
     };
-  } else if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
-  window.matchMedia = () => ({matches:compact});
-  const context = dom.getInternalVMContext();
-  const dependency = new vm.SyntheticModule(Object.keys(model), function() {
-    for (const [key,value] of Object.entries(model)) this.setExport(key,key==='createPlatformTileGeometry'&&platformGeometryOptions?options=>{platformGeometryOptions(options);return value(options);}:value);
-  }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
-  // The label code is imported on demand, after the controls are wired.
-  let loadLabels;
-  const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
-  if(!delayLabels)loadLabels();
-  const app = new vm.SourceTextModule(code+'\nexport {libraries as __testLibraryLoads, legacyStyle as __testLegacyStyle};', {
-    context,
-    initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'+assetQuery; },
-    importModuleDynamically: async specifier => {
-      await labelsReady;
-      if (!specifier.includes('tile-labels')) throw new Error(`Unexpected import ${specifier}`);
-      if (protocols.status === 'unlinked') await protocols.link(() => {});
-      if (protocols.status === 'linked') await protocols.evaluate();
-      return protocols;
-    },
-  });
-  const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
-    for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
-  }, {context});
-  const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
-    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
-  }, {context});
-  // Departures without the network; a test may supply a delayed local board.
-  const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
-    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: []})) : value);
-  }, {context});
-  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
-  const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
-  const rareHanModule = new vm.SyntheticModule(Object.keys(rareHanFeatures),function() {
-    for (const [key,value] of Object.entries(rareHanFeatures)) this.setExport(key,value);
-  },{context});
-  const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
-    for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
-  },{context});
-  const crossingTagModule = new vm.SyntheticModule(Object.keys(crossingTagFeatures),function() {
-    for (const [key,value] of Object.entries(crossingTagFeatures)) this.setExport(key,value);
-  },{context});
-  const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
-    for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
-  },{context});
-  const bathymetry = new vm.SyntheticModule(Object.keys(bathymetryModule),function() {
-    for (const [key,value] of Object.entries(bathymetryModule)) this.setExport(key,value);
-  }, {context});
-  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&key==='frequencyDetails'?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
-  const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
-    for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
-  },{context});
-  const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
-    for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
-  }, {context});
-  const mapControls = controlSource ? new vm.SourceTextModule(controlSource, {context}) : new vm.SyntheticModule(Object.keys(controlFunctions), function() {
-    for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
-  }, {context});
-  const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
-  const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
-  const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
-    for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
-  }, {context});
-  await app.link(specifier => specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
-  await app.evaluate();
-  if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
-  for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
-}
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
+    const status = () => doc.getElementById('measure-status').textContent;
+    finish(); assert.match(status(), /Finding heights/); await settle();
+    assert.match(status(), /Distance: 111 km.*End-to-end heights unavailable/);
+    assert.doesNotMatch(status(), /Finding heights/); assert.equal(requests, 2);
+    failing = false; finish(); assert.equal(doc.getElementById('measure-retry').hidden, true); await settle();
+    assert.match(status(), /End to end: ±0 m/); assert.equal(requests, 4);
+    const label = map.sourceData['atlas-measure'].features.find(feature => feature.properties.kind === 'total').properties.label;
+    assert.equal(label, '111 km\n±0 m · ±0% (0.0‰)');
+    doc.getElementById('measure-close').click(); assert.equal(doc.getElementById('measure-toolbar').hidden, true);
+    assert.equal(status(), ''); assert.equal(errors.length, 0);
+  } finally { dom.window.close(); }
+});
 
-const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+test('measurement toolbar retries heights with existing point handles without losing editing', async () => {
+  let failing = true, requests = 0;
+  const {dom, window, maps, errors} = await start({elevationOptions: {zoom: 2, load: async () => {
+    requests++; if (failing) throw new Error('synthetic endpoint failure');
+    return {size: 1, data: Uint8ClampedArray.from([128, 10, 0, 255])};
+  }}});
+  try {
+    const map = maps[0], doc = window.document;
+    map.handlers['style.load']();
+    map.controls.flatMap(control => control.buttons || []).find(button => button.title === 'Measure').click();
+    assert.equal(doc.querySelector('[data-measure="distance"]').getAttribute('aria-pressed'), 'true', 'Distance is selected when measuring opens');
+    const retry = doc.getElementById('measure-retry');
+    assert.ok(retry, 'the toolbar exposes an explicit endpoint-height retry');
+    assert.equal(retry.parentElement.id, 'measure-toolbar', 'retry can wrap independently of the existing editing button group');
+    assert.equal(retry.hidden, true);
+    const status = () => doc.getElementById('measure-status').textContent;
+    const settle = async () => { for (let i = 0; i < 250 && status().includes('Finding heights'); i++) await Promise.resolve(); };
+    for (const lat of [0, 1]) map.handlers.click({point: {x: 0, y: lat}, lngLat: {lng: 0, lat}});
+    map.handlers.dblclick({preventDefault() {}}); assert.equal(retry.hidden, true);
+    await settle(); assert.equal(retry.hidden, false); assert.equal(requests, 2);
+    map.getLayer = id => id === 'measure-point-targets' ? {} : undefined;
+    map.rendered = [{layer: {id: 'measure-point-targets'},
+      ...map.sourceData['atlas-measure'].features.find(feature => feature.properties.index === 0)}];
+    map.handlers.click({point: {x: 0, y: 0}, lngLat: {lng: 0, lat: 0}});
+    assert.equal(doc.getElementById('measure-delete').hidden, false, 'rendered endpoint remains selectable');
+    const geometry = map.sourceData['atlas-measure'].features.map(feature => feature.geometry);
+    failing = false; retry.click(); retry.click();
+    assert.equal(retry.hidden, true); assert.match(status(), /Finding heights/); await settle();
+    assert.equal(requests, 4, 'only one explicit two-endpoint retry');
+    assert.match(status(), /End to end: ±0 m/); assert.equal(retry.hidden, true);
+    assert.deepEqual(map.sourceData['atlas-measure'].features.map(feature => feature.geometry), geometry);
+    assert.equal(doc.getElementById('measure-delete').hidden, false);
+    doc.getElementById('measure-close').click(); assert.equal(retry.hidden, true);
+    assert.equal(status(), ''); assert.equal(errors.length, 0);
+  } finally { dom.window.close(); }
+});
+
+test('startup native-realm loaders use each window fixture without external fetch',async()=>{
+ const states=[],requests=[[],[]];
+ try {
+  for(let index=0;index<2;index++){
+   const state=await start({search:'?mode=electrification',fetcher:async (input,options)=>{
+    const url=String(input);requests[index].push({url,options});
+    return url.includes('/data/traction/power/')?new Response(gzipSync(JSON.stringify({type:'FeatureCollection',features:[]}))):{ok:true,json:async()=>structuredClone(style)};
+   }});
+   states.push(state);state.maps[0].handlers['style.load']();
+   // The power-method file is gunzipped by DecompressionStream, whose work
+   // runs on a background thread: wait for it (at most 2 s) instead of a
+   // fixed number of timer ticks, which a busy CI runner can outrun.
+   for(let wait=0;wait<200 && !state.maps[0].sourceData?.electricMethods;wait++)await new Promise(resolve=>setTimeout(resolve,10));
+   assert.ok(state.maps[0].sourceData?.electricMethods,'the fixture must actually reach the native loader');
+   assert.deepEqual(state.maps[0].sourceData.electricMethods.features,[]);
+  }
+  for(const calls of requests){
+   const methods=calls.filter(call=>call.url.endsWith('/power-methods.geojson.gz'));
+   assert.equal(methods.length,1,'each native-realm loader uses its own window mock');
+   assert.equal(methods[0].url,'https://example.org/openrailwaystyle/data/traction/power/power-methods.geojson.gz');
+   assert.equal(methods[0].options.cache,'no-cache');
+   assert.equal(methods[0].options.body,undefined);
+   assert.equal(methods[0].options.headers,undefined);
+   assert.equal(methods[0].options.signal.aborted,false);
+  }
+ } finally {for(const {dom} of states)dom.window.close();}
+});
+
+test('application guards each replacement painter after WebGL context restoration',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+  assert.deepEqual(errors,[]);const map=maps[0];
+  const originalPainter=map.painter;
+  for(let restoration=0;restoration<2;restoration++){
+   // Pinned MapLibre _contextRestored calls _setupPainter, then fires this
+   // public event synchronously before its requested next frame can run.
+   map.painter={transform:{zoom:9+restoration},maskCalls:0,_renderTileClippingMasks(){this.maskCalls++;}};
+   map.handlers.webglcontextrestored?.({type:'webglcontextrestored'});
+   map.painter._renderTileClippingMasks({isHidden:()=>true},[],false);
+   assert.equal(map.painter.maskCalls,0,'replacement painter retains the guard');
+   map.painter._renderTileClippingMasks({isHidden:()=>false},[],true);
+   assert.equal(map.painter.maskCalls,1,'visible restoration draws retain normal behavior');
+   const installed=map.painter._renderTileClippingMasks;
+   map.handlers.webglcontextrestored?.({type:'webglcontextrestored'});
+   assert.equal(map.painter._renderTileClippingMasks,installed,'duplicate event does not stack guards');
+  }
+  assert.equal(originalPainter.maskCalls,0,'restoration leaves the discarded painter alone');
+ } finally {dom.window.close();}
+});
+
+test('application installs the hidden-mask guard before the first renderer frame',async()=>{
+ const {dom,maps,errors}=await start();
+ try {
+  assert.deepEqual(errors,[]);assert.equal(maps.length,1);
+  const painter=maps[0].painter;
+  painter._renderTileClippingMasks({isHidden:()=>true},[],false);
+  assert.equal(painter.maskCalls,0,'hidden layers must not reach the original painter');
+  painter._renderTileClippingMasks({isHidden:()=>false},[],false);
+  assert.equal(painter.maskCalls,1,'visible layers still reach the original painter');
+ } finally {dom.window.close();}
+});
 
 for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
   const [oldSource,newSource]=await Promise.all([
@@ -250,8 +458,8 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
     if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.1.js'))throw Error('replacement library unavailable');
-    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.1.js','.js')));
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.2.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.2.js','.js')));
     if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
       const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
@@ -283,7 +491,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
-  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.1.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.2.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
   const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
   assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
   assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
@@ -315,6 +523,25 @@ test('new app recovers verified already-patched first-party cache bytes without 
   try {
     assert.equal(result.maps.length,1);
     assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2);
+  } finally {result.dom.window.close();}
+});
+
+test('new app upgrades exact atlas.1 cached bytes when atlas.2 installation is interrupted',async()=>{
+  const scope='https://example.org/openrailwaystyle/';
+  const original=legacyDistributions.find(library=>library.sourceSha256).body.toString('utf8');
+  const previous=original.replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous')
+    .replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
+  const caches={keys:async()=>['atlas-shell-69'],open:async()=>({match:async url=>{
+    if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
+    if(url===scope+'vendor/maplibre-gl-5.24.0-atlas.1.js')return new Response(previous,{headers:{'content-type':'text/javascript'}});
+    const library=legacyDistributions.find(library=>!library.sourceSha256&&new URL(library.target,scope).href===url);
+    return library?new Response(library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}}):undefined;
+  }})};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,1);assert.deepEqual(result.errors,[]);
     assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
     assert.equal(result.revoked.length,2);
   } finally {result.dom.window.close();}
@@ -439,7 +666,7 @@ test('unavailable Chinese font preserves a working map and system fallback',asyn
 });
 
 test('clicked station, service, entrance, power and context details share the selected regional font',async()=>{
- const fetcher=async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)});
+ const fetcher=async url=>String(url).includes('/data/traction/power/')?new Response(JSON.stringify({type:'FeatureCollection',features:[]})):({ok:true,json:async()=>structuredClone(style)});
  const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES,'Yu Gothic':ALL_PROBES,'Malgun Gothic':ALL_PROBES},fetcher});
  try{
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
@@ -600,7 +827,7 @@ test('rare Han in infobox body values and later departure text loads only the di
   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
   assert.equal(doc.getElementById('details').hidden,false,'the infobox opens without waiting for a font');
   assert.equal(panel.querySelector('h2').textContent,'Central');await waitForSlice('2a7');
-  completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
+  completeBoard({stops:[{id:'fixture:central'}],stopResults:[{stopId:'fixture:central',status:'fulfilled'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
   await waitForSlice('2a8');
   const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
   assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
@@ -613,6 +840,50 @@ test('rare Han in infobox body values and later departure text loads only the di
   assert.equal(slice('2aa'),undefined,'unrendered feature properties do not download extra font slices');
   assert.equal(fonts.filter(f=>f.family==='Atlas Rare Han').length,3,'the original body is not downloaded again as asynchronous content arrives');
   assert.equal(requests.filter(url=>url.includes('rare-han-v1/index.json')).length,1);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+for(const selector of ['#service-data-status','#legend > details.legend-help:not(#service-data-status)']) test(`legend redraw keeps live ${selector} state before native toggle delivery`,async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak'});
+ try {
+   const doc=window.document;
+   const period=doc.getElementById('frequency-period');
+   const redraw=value=>{period.value=value;period.dispatchEvent(new window.Event('change'));};
+   let details=doc.querySelector(selector),toggles=0;
+   assert.equal(details.open,false);
+   details.addEventListener('toggle',()=>toggles++);
+   details.open=true;
+   assert.equal(toggles,0,'the native details toggle has not been delivered yet');
+   redraw('offpeak');
+   assert.notEqual(doc.querySelector(selector),details,'period change rebuilds the actual legend');
+   assert.equal(doc.querySelector(selector).open,true,'opening survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   details=doc.querySelector(selector);details.open=false;
+   redraw('peak');
+   assert.equal(doc.querySelector(selector).open,false,'closing also survives a redraw before its queued toggle');
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(doc.querySelector(selector).open,false,'detached-node events cannot undo the live closed state');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('detached service status toggle cannot overwrite the closed state while another mode is shown',async()=>{
+ const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency'});
+ try {
+   const doc=window.document,retired=doc.getElementById('service-data-status');
+   retired.open=true;retired.dispatchEvent(new window.Event('toggle'));
+   const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+   const current=doc.getElementById('service-data-status');
+   assert.notEqual(current,retired);assert.equal(current.open,true);
+   current.open=false;current.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="infrastructure"]').click();
+   assert.equal(doc.getElementById('service-data-status'),null);
+   assert.equal(retired.isConnected,false);
+   // Deliver the old view's queued notification after the live view closed.
+   retired.dispatchEvent(new window.Event('toggle'));
+   doc.querySelector('[data-mode="service"]').click();
+   assert.equal(doc.getElementById('service-data-status').open,false,'returning to Service retains the last live state');
+   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
 
@@ -646,7 +917,7 @@ test('service frequency profile is applied on the first frame and controls persi
   } finally {dom.window.close();}
 });
 test('frequency periods no applied source covers are not offered, and a link to one falls back',async()=>{
-  const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
+  const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({schema:3,profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
   const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=overnight',fetcher});
   try {
     assert.equal(errors.length,0);
@@ -672,7 +943,7 @@ test('equal-width service details expire even after the inspected route leaves l
     assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
     stamp=2001;scheduled.fn();
     assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
-    assert.match(doc.getElementById('detail-content').textContent,/No matched frequency profile/);
+    assert.match(doc.getElementById('detail-content').textContent,/Matched frequency profile has expired; current frequency is unknown/);
     assert.equal(errors.length,0);
     window.dispatchEvent(new window.Event('pagehide'));
   }finally{dom.window.close();}
@@ -867,6 +1138,129 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('map movements persist locally without changing URL or browser history', async () => {
+  const {dom,window,maps,errors}=await start({search:'?ref=history-check'});
+  try {
+    const map=maps[0], originalURL=window.location.href, initialLength=window.history.length;
+    const writes=[];
+    const replace=window.history.replaceState.bind(window.history);
+    window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+    map.getCenter=()=>({lat:35.6813,lng:139.7671});
+    map.getBearing=()=>45;
+    map.getPitch=()=>30;
+    for(const zoom of [8,11,13.25,16]){
+      map.zoom=zoom;
+      map.handlers.moveend();
+    }
+    assert.equal(window.location.href,originalURL,'panning and zooming leave the location unchanged');
+    assert.equal(window.history.length,initialLength,'no session history entries');
+    assert.deepEqual(writes,[],'no replaceState calls or hidden visited-URL mutations during movements');
+    const saved=JSON.parse(window.localStorage.getItem('atlas_view'));
+    assert.deepEqual(saved.c,[139.7671,35.6813],'the current centre is still saved locally');
+    assert.equal(saved.z,16);
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const url=new URL(copied);
+    assert.equal(url.hash,globeModule.viewHash({zoom:16,lat:35.6813,lng:139.7671,bearing:45,pitch:30}));
+    assert.equal(url.searchParams.get('ref'),'history-check','unrelated query parameters survive sharing');
+    assert.equal(url.searchParams.get('mode'),'infrastructure','display choices are included in links');
+    assert.equal(window.location.href,originalURL,'sharing does not navigate');
+    assert.deepEqual(writes,[],'sharing does not rewrite the current address');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+test('incoming map links are consumed once; sharing still works before map initialization',async()=>{
+  const hash='#10/35.68/139.76/25/40';
+  const {dom,window,maps,errors,loadLibraries}=await start({
+    delayLibraries:true,search:`?mode=speed&language=ja&ref=shared${hash}`,
+  });
+  try {
+    assert.equal(maps.length,0,'map libraries are still loading');
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared');
+    assert.equal(window.history.length,1,'normalizing an incoming link does not push a new history entry');
+    let copied='';
+    Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+    window.document.getElementById('share').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const share=new URL(copied);
+    assert.equal(share.hash,hash,'the original position remains shareable during startup');
+    assert.equal(share.searchParams.get('mode'),'speed');
+    assert.equal(share.searchParams.get('language'),'ja');
+    assert.equal(share.searchParams.get('ref'),'shared');
+    loadLibraries();
+    for(let i=0;i<10&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(maps.length,1,'the link still opens a map');
+    assert.equal(maps[0].zoom,10,'the deep link wins over default map zoom');
+    maps[0].handlers.moveend();
+    assert.equal(window.location.href,'https://example.org/openrailwaystyle/?ref=shared',
+      'navigating the linked map does not bring the fragment back');
+    assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+});
+
+for(const scenario of [
+ {delay:'libraries',initial:'#10/35/139/20/30',share:false},
+ {delay:'labels',initial:'',share:false},
+ {delay:'libraries',initial:'',share:true},
+ {delay:'labels',initial:'#10/35/139/20/30',share:true},
+ {delay:'libraries',initial:'',share:false,invalidCold:'#not-a-map'},
+ {delay:'labels',initial:'#10/35/139/20/30',share:false,invalidCold:''},
+]) test(`cold navigation keeps the newest view during ${scenario.delay} loading, share=${scenario.share}, invalid=${scenario.invalidCold ?? 'none'}`,async()=>{
+ const {dom,window,maps,errors,loadLibraries,loadLabels}=await start({
+   delayLibraries:scenario.delay==='libraries',delayLabels:scenario.delay==='labels',
+   search:'?ref=cold-navigation'+scenario.initial,
+ });
+ try {
+   assert.equal(maps.length,0);
+   const newest='#12/89.7/162/25/40',expected=globeModule.parseViewHash(newest);
+   const writes=[],replace=window.history.replaceState.bind(window.history);
+   window.history.replaceState=(...args)=>{writes.push(args);return replace(...args);};
+   window.location.hash=newest;
+   if(scenario.share){
+     // Copy immediately, before the queued hashchange can run. Saving settings
+     // normalizes the URL, but must not discard this new requested position.
+     let copied='';Object.defineProperty(window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+     window.document.getElementById('share').click();
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(new URL(copied).hash,newest,'cold share uses the latest requested view');
+     assert.equal(new URL(copied).searchParams.get('ref'),'cold-navigation');
+     assert.equal(window.location.hash,'');
+     assert.equal(writes.length,1,'only explicit link normalization rewrites the URL');
+   }else{
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,newest);assert.deepEqual(writes,[]);
+   }
+   if(scenario.invalidCold!==undefined){
+     window.location.hash=scenario.invalidCold;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(window.location.hash,scenario.invalidCold,'invalid or empty cold fragments stay untouched');
+   }
+   const normalizedURL=window.location.href,before=writes.length;
+   loadLibraries();loadLabels();
+   for(let i=0;i<20&&!maps.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(maps.length,1);const map=maps[0];
+   assert.deepEqual(map.lastJump,expected,'initialization applies the newest complete camera, not the startup snapshot');
+   assert.equal(map.options.style.projection.type,'globe','a newly navigated polar view starts on the globe');
+   map.handlers.moveend();
+   assert.equal(window.location.href,normalizedURL);assert.equal(writes.length,before);
+   for(const hash of ['#not-a-map','']){
+     const calls=map.jumpCalls;window.location.hash=hash;
+     await new Promise(resolve=>setTimeout(resolve,0));
+     assert.equal(map.jumpCalls,calls,'invalid and empty fragments do not move the map');
+   }
+   const later='#9/48/2/35/20';window.location.hash=later;
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'later explicit navigation remains live');
+   map.onceHandlers['style.load'][0]();
+   assert.deepEqual(map.lastJump,globeModule.parseViewHash(later),'late style readiness cannot restore an older destination');
+   assert.equal(writes.length,before,'fragment navigation and late readiness add no automatic rewrites');
+   assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
  const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
@@ -893,689 +1287,4 @@ test('curated hubs take their names from the provider station tiles by OSM ident
   assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
   assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name || (f.properties.atlas_name==='' && f.properties.name==='')),'deferred hubs retain unlabeled marker points without leaking source notes');
  }finally{dom.window.close();}
-});
-
-test('curated hub names with rare Han wait for their slices before reaching the map',async()=>{
- const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
- const member=penn.properties.osm_ids.split(';').concat([penn.properties.id])[0];
- const fetcher=async url=>String(url).includes('rare-han-v1/index.json')?{ok:true,status:200,json:async()=>({blocks:[0x2a7]})}:{ok:true,status:200,json:async()=>structuredClone(style)};
- const stationTile=async(url,lang)=>{
-  const result=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,tags:{id:`${member}-train-train-station`,name:'\u{2A700}站',atlas_name:'\u{2A700}站',atlas_language:lang},geometry:[[2049,2048]]}]}},{version:2});
-  return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
- const {dom,maps,fonts}=await start({search:'?language=local#3/40.75/-74',fetcher,stationTile,fontFaces:true});
- try{
-  const map=maps[0],source=map.getSource.bind(map);
-  map.getSource=id=>id==='stations'?{tiles:['atlasstation://local/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
-  map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
-  map.handlers['style.load']();
-  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
-  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
-  assert.ok(slice(),'the slice of the hub name is requested');
-  const named=()=>map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
-  assert.ok(named(),'the location is already present while its name waits');
-  assert.equal(named().properties.atlas_name,'','the name waits for its slice');
-  slice().finish();
-  for(let i=0;i<50&&!named()?.properties.atlas_name;i++)await new Promise(r=>setTimeout(r,0));
-  assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
- }finally{dom.window.close();}
-});
-
-const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-const providerHubTile=(hub,language)=>{
- const id=hub.properties.osm_ids.split(';')[0],name=`Provider hub (${language})`;
- const bytes=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,
-  tags:{id:`${id}-train-train-station`,name,atlas_name:name,atlas_language:language},geometry:[[2048,2048]]}]}},{version:2});
- return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
-};
-async function deferredHubHarness({tier=7,metadata=true,stationProtocol=true}={}){
- const hub=structuredClone(style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451'));
- hub.properties.tier=tier;
- const input=structuredClone(style);input.sources.stationMajor.data.features=[hub];
- const pending=[],departures=[];
- const state=await start({search:'?language=en#3/40.75/-74',fetcher:async()=>({ok:true,status:200,json:async()=>structuredClone(input)}),
-  stationTile:stationProtocol?(url,language)=>new Promise((resolve,reject)=>pending.push({url,language,resolve,reject})):undefined,
-  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[]};}});
- const map=state.maps[0],getSource=map.getSource.bind(map);
- const stationSource=metadata?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:{};
- map.getSource=id=>id==='stations'?stationSource:getSource(id);
- map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
- map.handlers['style.load']();
- const point=()=>map.sourceData?.stationMajor?.features.find(f=>f.id===hub.id);
- for(let i=0;i<50&&!point();i++)await tick();
- const click=()=>{
-  map.rendered=[{...structuredClone(point()),source:'stationMajor',layer:{id:'station-major-dots'}}];
-  map.handlers.click({point:{x:500,y:400},lngLat:{lng:hub.geometry.coordinates[0],lat:hub.geometry.coordinates[1]}});
- };
- return {...state,map,hub,pending,departures,point,click,stationSource};
-}
-for(const options of [{metadata:false},{stationProtocol:false}])test(`curated dots survive an unavailable name dependency: ${Object.keys(options)[0]}`,async()=>{
- const h=await deferredHubHarness({tier:3,...options});
- try{
-  assert.ok(h.point(),'local geometry does not require provider metadata or name protocols');
-  assert.equal(h.point().properties.atlas_name,'');assert.equal(h.pending.length,0);
- }finally{h.dom.window.close();}
-});
-test('a selected deferred dot is named when missing provider metadata later becomes available',async()=>{
- const h=await deferredHubHarness({metadata:false});
- try{
-  assert.ok(h.point());h.click();for(let i=0;i<5;i++)await tick();
-  assert.equal(h.pending.length,0,'selection cannot request a nonexistent tile template');
-  h.stationSource.tiles=['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}'];
-  h.map.handlers.sourcedata({sourceId:'stations',sourceDataType:'metadata'});
-  for(let i=0;i<50&&!h.pending.length;i++)await tick();
-  assert.equal(h.pending.length,1,'metadata recovery names only the selected deferred station');
-  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
-  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
- }finally{h.dom.window.close();}
-});
-test('curated locations publish before an eligible provider name request settles',async()=>{
- const h=await deferredHubHarness({tier:3});
- try{
-  assert.ok(h.point(),'an unresolved name must not suppress its dot');
-  assert.equal(h.point().properties.atlas_name,'');
-  assert.equal(h.pending.length,1,'only the current tile is requested initially');
-  h.pending[0].resolve(providerHubTile(h.hub,'en'));
-  for(let i=0;i<50&&!h.point().properties.atlas_name;i++)await tick();
-  assert.equal(h.point().properties.atlas_name,'Provider hub (en)');
- }finally{h.dom.window.close();}
-});
-test('opening a deferred curated dot loads its provider name and refreshes name-based departure matching',async()=>{
- const h=await deferredHubHarness();
- try{
-  assert.ok(h.point());assert.equal(h.pending.length,0,'below-tier hubs have no bulk name request');
-  h.click();h.click();
-  for(let i=0;i<50&&!h.pending.length;i++)await tick();
-  assert.equal(h.pending.length,1,'repeated selection shares the provider tile promise');
-  assert.match(h.window.document.querySelector('#detail-content h2').textContent,/Unnamed station/);
-  h.pending[0].resolve(providerHubTile(h.hub,'en'));
-  for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
-  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
-  assert.ok(h.departures.some(s=>s.names.includes('Provider hub (en)')),'the unnamed cached board cannot mask named matching');
-  assert.equal(h.pending.length,1,'selecting one dot does not name the rest of the world');
- }finally{h.dom.window.close();}
-});
-test('failed selected-hub lookups stay bounded and preserve the anonymous point',async()=>{
- const h=await deferredHubHarness();
- try{
-  h.click();
-  for(let index=0;index<5;index++){
-   for(let i=0;i<50&&h.pending.length<=index;i++)await tick();
-   assert.ok(h.pending[index],`candidate ${index+1} requested`);
-   h.pending[index].reject(new Error('synthetic unavailable tile'));
-  }
-  for(let i=0;i<10;i++)await tick();
-  assert.equal(h.pending.length,5,'one z8 tile and four neighbours, never an overview fan-out');
-  assert.ok(h.point());assert.equal(h.point().properties.atlas_name,'');
-  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Unnamed station');
- }finally{h.dom.window.close();}
-});
-for(const action of ['close','select another station'])test(`a deferred curated name cannot overwrite the panel after ${action}`,async()=>{
- const h=await deferredHubHarness();
- try{
-  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
-  if(action==='close')h.window.document.getElementById('details-close').click();
-  else{
-   h.map.rendered=[{source:'stations',layer:{id:'station-stations-dots'},properties:{id:'node-999',name:'Other station'},geometry:{type:'Point',coordinates:[1,2]}}];
-   h.map.handlers.click({point:{x:500,y:400},lngLat:{lng:1,lat:2}});
-  }
-  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
-  if(action==='close')assert.equal(h.window.document.getElementById('details').hidden,true);
-  else assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Other station');
-  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false,'stale completion must not start a new board');
- }finally{h.dom.window.close();}
-});
-test('an open deferred hub follows the newest language and ignores its older pending name',async()=>{
- const h=await deferredHubHarness();
- try{
-  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
-  const select=h.window.document.getElementById('language');select.value='fr';select.dispatchEvent(new h.window.Event('change'));
-  for(let i=0;i<50&&!h.pending.some(p=>p.language==='fr');i++)await tick();
-  const french=h.pending.find(p=>p.language==='fr');assert.ok(french);
-  french.resolve(providerHubTile(h.hub,'fr'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (fr)'));i++)await tick();
-  h.pending.find(p=>p.language==='en').resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
-  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (fr)');
-  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false);
- }finally{h.dom.window.close();}
-});
-
-test('tiles served as stored load the rare Han slices of their text, such as service route names',async()=>{
- const tile=name=>{const result=encodeTile.fromGeojsonVt({service_routes:{features:[{type:2,id:1,tags:{name,trains:268439664},geometry:[[[0,0],[4096,4096]]]}]}},{version:2});return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
- const tiles={'8/1/1':tile('\u{2A700}線'),'8/1/2':tile('Plain line')};
- const fetcher=async url=>{url=String(url);
-  if(url.includes('rare-han-v1/index.json'))return {ok:true,status:200,json:async()=>({blocks:[0x2a7]})};
-  if(url.includes('service-routes/index.json'))return {ok:true,status:200,json:async()=>({tiles:Object.keys(tiles)})};
-  const key=/service-routes\/(\d+\/\d+\/\d+)\.pbf\.gz/.exec(url)?.[1];
-  if(key)return {ok:true,status:200,arrayBuffer:async()=>tiles[key].slice(0)};
-  return {ok:true,status:200,json:async()=>structuredClone(style)};};
- const {dom,maps,fonts}=await start({fetcher,fontFaces:true});
- try{
-  for(let i=0;i<100&&!maps.protocols.servicetiles;i++)await new Promise(r=>setTimeout(r,0));
-  const plain=await maps.protocols.servicetiles({url:'servicetiles://8/1/2'},new AbortController());
-  assert.ok(plain.data.byteLength>0);assert.equal(fonts.filter(f=>/rare-han/.test(f.url)).length,0,'a number whose bytes look like UTF-8 loads nothing');
-  let done=false;const pending=maps.protocols.servicetiles({url:'servicetiles://8/1/1'},new AbortController()).then(r=>{done=true;return r;});
-  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
-  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
-  assert.ok(slice(),'the route name requests its slice');assert.equal(done,false,'the tile waits for it');
-  slice().finish();assert.ok((await pending).data.byteLength>0);
- }finally{dom.window.close();}
-});
-
-test('real renderer initialization failures reach the visible error message', async () => {
-  const {dom,window,errors} = await start({failWebGL:true});
-  try {
-    assert.equal(errors.length,1);
-    assert.match(window.document.getElementById('map-status').textContent,/could not start WebGL/);
-    assert.equal(window.document.body.dataset.mapReady,undefined);
-  } finally {dom.window.close();}
-});
-
-
-test('station inspection finds nearby interchanges and facility inspection avoids railway fields', async () => {
-  const {dom,window,maps,errors}=await start();
-  try {
-    assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=14;
-    const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
-    const bus={id:123,source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'Central Bus Interchange',class:'bus',subclass:'bus_station'},geometry:{type:'Point',coordinates:[0.001,0]}};
-    map.sourceFeatures=[bus,bus];map.rendered=[station];
-    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-    const nearby=window.document.getElementById('nearby-transport');
-    assert.match(nearby.textContent,/Central Bus Interchange/);
-    assert.match(nearby.textContent,/110 m/);
-    assert.match(nearby.textContent,/not verified/);
-    assert.equal(nearby.querySelectorAll('li').length,1);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const board = window.document.querySelector('#detail-content .departures');
-    assert.match(board.textContent, /No published timetable covers this station/);
-    assert.match(board.querySelector('.departure-links a').href, /^https:\/\/api\.transitous\.org\/\?fromPlace=/);
-    assert.equal([...board.querySelectorAll('a')].at(-1).href, 'https://transitous.org/sources/');
-    map.rendered=[bus];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0.001,lat:0}});
-    const detail=window.document.getElementById('detail-content');
-    assert.match(detail.textContent,/TRANSPORT FACILITY/);
-    assert.doesNotMatch(detail.textContent,/Speed|Not recorded|RAILWAY INFRASTRUCTURE/);
-    assert.equal(errors.length,0);
-  } finally {dom.window.close();}
-});
-
-test('museum and theatre context does not offer a pointer or intercept railway inspection',async()=>{
-  const {dom,window,maps}=await start();
-  try {
-    const map=maps[0];map.handlers['style.load']();map.zoom=14;map.isMoving=()=>false;
-    window.cancelAnimationFrame=()=>{};window.requestAnimationFrame=callback=>{callback();return 1;};
-    const point=(layer,properties)=>({source:'openmaptiles',sourceLayer:'poi',layer:{id:layer},properties,geometry:{type:'Point',coordinates:[0,0]}});
-    const event={point:{x:500,y:400},lngLat:{lng:0,lat:0},originalEvent:{buttons:0}};
-    for (const subclass of ['museum','theatre']) {
-      map.rendered=[point('context-destinations-culture-label',{name:`Test ${subclass}`,subclass})];
-      map.handlers.mousemove(event);
-      assert.equal(map.getCanvas().style.cursor,'',subclass);
-      map.handlers.click(event);
-      assert.equal(window.document.getElementById('details').hidden,true,subclass);
-    }
-    const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Station beneath theatre',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
-    map.rendered=[point('context-destinations-culture-label',{name:'Theatre',subclass:'theatre'}),station];
-    map.handlers.click(event);
-    assert.match(window.document.getElementById('detail-content').textContent,/Station beneath theatre/);
-    const bus=point('context-transport-bus-label',{name:'Bus interchange',class:'bus',subclass:'bus_station'});
-    map.rendered=[bus];map.handlers.mousemove(event);
-    assert.equal(map.getCanvas().style.cursor,'pointer');
-    map.handlers.click(event);
-    assert.match(window.document.getElementById('detail-content').textContent,/TRANSPORT FACILITY/);
-  } finally {dom.window.close();}
-});
-
-test('concurrent train-control systems use compact names with complete hover and native expandable descriptions',async()=>{
-  const {dom,window,maps,errors}=await start({search:'?mode=control'});
-  try {
-    const map=maps[0];map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
-    map.handlers['style.load']();map.zoom=18;
-    const codes=['etcs_2','lzb','pzb'];
-    const feature={source:'railway',sourceLayer:'railway',layer:{id:'control-tracks'},properties:{name:'Shared protection systems',state:'present',train_protection0:'etcs_2',train_protection1:'lzb',train_protection2:'pzb',train_protection:'etcs_2;lzb;pzb;etcs_2'},geometry:{type:'LineString',coordinates:[[0,0],[0.001,0]]}};
-    map.rendered=[feature];
-    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-    map.handlers.moveend();await new Promise(resolve=>setTimeout(resolve,300));
-    for (const container of [window.document.getElementById('detail-content'),window.document.getElementById('legend')]) {
-      const labels=[...container.querySelectorAll('details.system-label')];
-      assert.equal(labels.length,3,'all concurrent systems appear once despite repeated tags');
-      assert.deepEqual(labels.map(label=>label.querySelector('summary').textContent).sort(),['ETCS L2','LZB','PZB'].sort());
-      for (const code of codes) {
-        const system=model.trainProtection(code),label=labels.find(label=>label.querySelector('summary').textContent===model.trainProtectionShort(code));
-        const summary=label.querySelector('summary'),description=[system[1],model.CONTROL_LEVELS[system[3]],model.CONTROL_FAMILIES[system[2]].note].join(' · ');
-        assert.equal(label.open,false,'full descriptions start collapsed');
-        assert.equal(summary.title,description,'hover includes the complete name, level and compatibility explanation');
-        assert.equal(label.querySelector('.system-description').textContent,description);
-        assert.ok(label instanceof window.HTMLDetailsElement,'native details/summary keeps tap and keyboard access');
-        summary.click();assert.equal(label.open,true,'tapping the summary exposes its description');
-        summary.click();assert.equal(label.open,false);
-      }
-    }
-    assert.equal(errors.length,0);
-  } finally {dom.window.close();}
-});
-
-test('railway energy supplies download once at facility zoom and relocalize existing data on language changes',async()=>{
-  const requests=[],collection={type:'FeatureCollection',features:[{type:'Feature',id:'node-91',properties:{power_kind:'fuel',name:'Local railway depot','name:en':'Railway fuel depot','name:ja':'鉄道給油所'},geometry:{type:'Point',coordinates:[0,0]}}]};
-  const {dom,window,maps,errors}=await start({fetcher:async url=>{
-    const power=String(url).includes('/data/traction/power/power-facilities.geojson');
-    if(power)requests.push(String(url));
-    return {ok:true,json:async()=>structuredClone(power?collection:style)};
-  }});
-  try {
-    const map=maps[0];map.zoom=9;map.handlers['style.load']();
-    assert.equal(requests.length,0,'Infrastructure does not request the Power dataset');
-    window.document.querySelector('[data-mode="electrification"]').click();
-    assert.equal(requests.length,0,'Power overview does not request detailed facilities');
-    window.document.querySelector('[data-background="satellite"]').click();
-    map.zoom=12;map.handlers.moveend();
-    assert.equal(requests.length,0,'satellite without rail overlays does not request supplies');
-    window.document.querySelector('[data-background="carto"]').click();
-    await new Promise(resolve=>setTimeout(resolve,0));
-    assert.equal(requests.length,1);
-    const original=collection.features[0],loaded=map.sourceData.electricFacilities.features[0];
-    assert.equal(loaded.id,original.id);assert.equal(loaded.type,original.type);assert.deepEqual(loaded.geometry,original.geometry);
-    for(const [key,value] of Object.entries(original.properties))assert.equal(loaded.properties[key],value,'recorded supply tags are preserved');
-    assert.equal(loaded.properties.atlas_name,original.properties.name);
-    assert.equal(loaded.properties.atlas_language,'local');
-    map.rendered=[{...loaded,source:'electricFacilities',layer:{id:'electrification-supply-points'}}];
-    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-    assert.equal(window.document.querySelector('#detail-content h2').textContent,original.properties.name);
-    const language=window.document.getElementById('language');
-    for(const code of ['en','ja']) {
-      language.value=code;language.dispatchEvent(new window.Event('change'));
-      await new Promise(resolve=>setTimeout(resolve,0));
-      const localized=map.sourceData.electricFacilities.features[0].properties;
-      assert.equal(localized.atlas_name,original.properties[`name:${code}`]);
-      assert.equal(localized.atlas_language,code);
-      for(const [key,value] of Object.entries(original.properties))assert.equal(localized[key],value,'language changes keep the original mapped tags');
-      assert.equal(window.document.querySelector('#detail-content h2').textContent,original.properties[`name:${code}`]);
-      assert.equal(requests.length,1,'language changes relocalize the loaded snapshot without another download');
-    }
-    map.handlers.moveend();map.handlers.moveend();
-    window.document.querySelector('[data-mode="infrastructure"]').click();
-    window.document.querySelector('[data-mode="electrification"]').click();
-    await new Promise(resolve=>setTimeout(resolve,0));
-    assert.equal(requests.length,1,'moving and returning to Power reuse the loaded snapshot');
-    assert.equal(errors.length,0);
-  } finally {dom.window.close();}
-});
-
-test('Power facilities inspect their supply type and source object without train speed or timetable fields',async()=>{
-  const {dom,window,maps,errors}=await start({search:'?mode=electrification',fetcher:async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)})});
-  try {
-    const map=maps[0];map.handlers['style.load']();map.zoom=18;
-    const supplies=[
-      ['fuel','node',91,{railway:'fuel',fuel:'diesel'}],
-      ['coaling_facility','way',92,{railway:'coaling_facility'}],
-      ['water_tank','relation',93,{railway:'water_tank',content:'water',capacity:'100 m³'}],
-      ['plant','way',94,{power:'plant','plant:source':'hydro','plant:output:electricity':'20 MW'}],
-    ];
-    for (const [kind,type,id,tags] of supplies) {
-      const feature={source:'electricFacilities',layer:{id:'electrification-supply-points'},properties:{...tags,name:`Test ${kind}`,power_kind:kind,power_state:'present',osm_type:type,osm_id:String(id)},geometry:{type:'Point',coordinates:[0,0]}};
-      map.rendered=[feature];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-      const detail=window.document.getElementById('detail-content');
-      assert.match(detail.textContent,/RAILWAY ENERGY SUPPLY/);
-      assert.ok(detail.textContent.includes(powerFacilities.POWER_FACILITY_KINDS[kind].label));
-      assert.equal(detail.querySelector(`a[href="https://www.openstreetmap.org/${type}/${id}"]`)?.textContent,`Open this ${type} on OpenStreetMap ↗`);
-      assert.doesNotMatch(detail.textContent,/Speed label|Train protection|Departures|RAILWAY INFRASTRUCTURE/);
-      if(tags.fuel)assert.match(detail.textContent,/Fueldiesel/);
-      if(tags.capacity)assert.match(detail.textContent,/Capacity100 m³/);
-      if(tags['plant:output:electricity'])assert.match(detail.textContent,/Output20 MW/);
-    }
-    map.rendered=[{source:'electricSubstations',sourceLayer:'electrification_substation',layer:{id:'electrification-substation-areas'},properties:{name:'Traction footprint',voltage:'25000'},geometry:{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0,0.001],[0,0]]]}}];
-    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-    assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
-    assert.equal(errors.length,0);
-  } finally {dom.window.close();}
-});
-
-test('close infrastructure details follow the mode, labels and background on the initial frame and after switching',async()=>{
- const {dom,window,maps}=await start({search:'?mode=speed&names=0'});
- try{
-  const map=maps[0],ids=['platform-areas','platform-outlines','platform-points','platform-edges','platform-numbers','platform-lengths','infrastructure-signal-points','infrastructure-signal-references','infrastructure-entrance-points','infrastructure-entrance-references'];
-  for(const id of ids)assert.equal(map.options.style.layers.find(l=>l.id===id).layout.visibility,'none',id);
-  map.handlers['style.load']();window.document.querySelector('[data-mode="infrastructure"]').click();
-  for(const id of ids)assert.equal(map.visibility[id],'visible',id);
-  window.document.getElementById('labels').click();
-  for(const id of ['platform-numbers','platform-lengths','infrastructure-signal-references','infrastructure-entrance-references'])assert.equal(map.visibility[id],'none',id);
-  for(const id of ['platform-edges','infrastructure-signal-points','infrastructure-entrance-points'])assert.equal(map.visibility[id],'visible',id);
-  window.document.querySelector('[data-background="satellite"]').click();for(const id of ids)assert.equal(map.visibility[id],'none',id);
-  window.document.querySelector('[data-background="hybrid"]').click();assert.equal(map.visibility['infrastructure-entrance-points'],'visible');
-  window.document.querySelector('[data-mode="control"]').click();for(const id of ids)assert.equal(map.visibility[id],id==='infrastructure-signal-points'?'visible':'none',id);
-  window.document.getElementById('labels').click();
-  for(const id of ids)assert.equal(map.visibility[id],id.startsWith('infrastructure-signal-')?'visible':'none',id);
- }finally{dom.window.close();}
-});
-
-test('signals and entrances inspect their mapped node and avoid track/timetable fields',async()=>{
- const {dom,window,maps,errors}=await start();
- try{
-  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=19;
-  for(const feature of [
-   {source:'railwaySignals',sourceLayer:'railway_signals',layer:{id:'infrastructure-signal-points'},properties:{id:123,railway:'signal',ref:'S12',category0:'main',category1:'distant',deactivated1:true,direction_both:true},geometry:{type:'Point',coordinates:[0,0]}},
-   {source:'stationEntrances',sourceLayer:'standard_station_entrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'Exit A8'},geometry:{type:'Point',coordinates:[0,0]}}
-  ]){
-   map.rendered=[feature];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
-   const detail=window.document.getElementById('detail-content');assert.match(detail.textContent,feature.source==='railwaySignals'?/Signal S12/:/Exit A8/);
-   assert.equal(detail.querySelector(`a[href="https://www.openstreetmap.org/node/${feature.properties.id}"]`)?.textContent,'Open this node on OpenStreetMap ↗');
-   assert.doesNotMatch(detail.textContent,/Speed label|Train protection|Departures|Track in shared roadway/);
-   if(feature.source==='railwaySignals'){assert.match(detail.textContent,/main, distant/);assert.match(detail.textContent,/Inactive componentsdistant/);assert.match(detail.textContent,/Both directions/);}
-  }
-  assert.equal(errors.length,0);
- }finally{dom.window.close();}
-});
-
-test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution', async () => {
-  const {dom,window,maps} = await start({search:'?background=carto'});
-  try {
-    const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
-    assert.equal(layer('carto').layout.visibility,'visible');
-    assert.equal(layer('satellite').layout.visibility,'none');
-    assert.equal(layer('water').layout.visibility,'none');
-    assert.ok(map.controls.some(c=>c.options?.compact===true),'Carto keeps the same compact info control');
-    map.handlers['style.load']();
-    assert.equal(map.visibility['infrastructure-tracks'],'visible');
-    assert.equal(map.visibility['terrain-relief'],'visible');
-    assert.equal(map.visibility['water'],'none');
-    assert.equal(window.document.getElementById('legend').hidden,false);
-    window.document.getElementById('relief').click();
-    assert.equal(map.visibility['terrain-relief'],'none');
-    window.document.querySelector('[data-background="map"]').click();
-    assert.equal(map.visibility.carto,'none');
-    assert.equal(map.visibility.water,'visible');
-  } finally {dom.window.close();}
-});
-
-test('desktop brand announces collapse on its first activation',async()=>{
- const {dom,window}=await start();try{const icon=window.document.getElementById('controls-open');assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');icon.click();assert.equal(window.document.getElementById('controls').hidden,true);assert.equal(icon.getAttribute('aria-label'),'Open map controls');}finally{dom.window.close();}
-});
-
-test('compact controls open from the icon and return focus to it on collapse and Escape', async () => {
-  const {dom,window} = await start({compact:true});
-  try {
-    const d=window.document, icon=d.getElementById('controls-open'), collapse=d.getElementById('collapse'), panel=d.querySelector('.panel');
-    assert.equal(d.getElementById('controls').hidden,true);
-    assert.equal(panel.classList.contains('collapsed'),true);
-    icon.click();
-    assert.equal(d.getElementById('controls').hidden,false);
-    assert.equal(icon.getAttribute('aria-expanded'),'true');
-    assert.equal(d.activeElement,collapse);
-    assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');
-    icon.click();
-    assert.equal(d.getElementById('controls').hidden,true);
-    icon.click();
-    collapse.click();
-    assert.equal(d.activeElement,icon);
-    assert.equal(icon.getAttribute('aria-expanded'),'false');
-    icon.click();collapse.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
-    assert.equal(d.getElementById('controls').hidden,true);
-    assert.equal(d.activeElement,icon);
-  } finally { dom.window.close(); }
-});
-
-test('saved hidden overlays are absent in the constructor before any tile request',async()=>{
- const {dom,maps}=await start({search:'?relief=0&inactive=0&stations=0&trackCounts=0&labels=0&transport=0&destinations=0&constraints=0&mode=speed'});
- try {
-  const layers=maps[0].options.style.layers;
-  for(const l of layers.filter(l=>/^terrain-|^inactive-|^station-|^context-/.test(l.id)||l.source==='trackCounts'||l.id==='speed-labels'))assert.equal(l.layout.visibility,'none',l.id);
-  assert.equal(layers.find(l=>l.id==='speed-tracks').layout.visibility,'visible');
- }finally{dom.window.close();}
-});
-test('Causeway Bay search reaches both APIs before a delayed label bundle loads',async()=>{
- const calls=[];
- const places=[{osm_type:'way',osm_id:248971549,lat:'22.2802878',lon:'114.1841633',class:'railway',type:'station',name:'銅鑼灣 Causeway Bay',display_name:'銅鑼灣 Causeway Bay, Hong Kong',namedetails:{name:'銅鑼灣 Causeway Bay','name:en':'Causeway Bay'}}];
- const {dom,window,maps,loadLabels}=await start({delayLabels:true,fetcher:async url=>{
-  calls.push(String(url));return {ok:true,json:async()=>String(url).includes('nominatim')?places:String(url).includes('/facility')?[]:structuredClone(style)};
- }});
- try {
-  assert.equal(maps.length,0,'map waits for labels');
-  window.document.getElementById('search-input').value='Causeway Bay';
-  window.document.getElementById('search-form').dispatchEvent(new window.Event('submit',{cancelable:true}));
-  for(let i=0;i<10;i++)await new Promise(r=>setTimeout(r,0));
-  assert.ok(calls.some(u=>u.startsWith(model.SEARCH_API)));
-  assert.ok(calls.some(u=>u.startsWith(model.PLACE_SEARCH_API)));
-  assert.match(window.document.getElementById('search-results').textContent,/Causeway Bay/);
-  assert.equal(window.document.getElementById('search-results').hidden,false);
- }finally{loadLabels();for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));dom.window.close();}
-});
-
-
-test('map info identifies the executing cached asset and links to its build repository across backgrounds',async()=>{
- const commit='a'.repeat(40),sourceUrl=`https://git.example.test/fork/railway/commit/${commit}`,{dom,window,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-42',commit,sourceUrl}});
- try {
-  const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
-  let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
-  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
- } finally {dom.window.close();}
-});
-test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{
- const {dom,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-41',commit:''}});
- try {const info=maps[0].controls.find(c=>c.options?.customAttribution).options.customAttribution;assert.match(info,/Build cached-42/);assert.match(info,/Label build cached-41/);assert.match(info,/Development build/);}finally{dom.window.close();}
-});
-
-test('every versioned file the page loads asks for the page version', async () => {
-  // The installed app saves the shell under the page's version and answers
-  // a versioned request only from that version: a module asking for another
-  // version cannot load offline.
-  const {readdir} = await import('node:fs/promises');
-  const dir = new URL('../styles/', import.meta.url);
-  const page = (await readFile(new URL('index.html', dir), 'utf8')).match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
-  const found = [];
-  // data-check.html is a page of its own, with its own version.
-  for (const name of (await readdir(dir)).filter(n => /\.(mjs|html)$/.test(n) && !n.startsWith('data-check'))) {
-    for (const [, version] of (await readFile(new URL(name, dir), 'utf8')).matchAll(/\?v=([\w.-]+)/g)) if (version !== page) found.push(`${name}: ${version}`);
-  }
-  const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
-  assert.deepEqual(found, [], `page version ${page}`);
-  assert.equal(fallback, page);
-});
-
-test('watch starts map-only and deliberate controls return to the map after each action',async()=>{
-  const {dom,window,maps,errors}=await start({search:'?ui=watch',cookie:'atlas_settings='+encodeURIComponent(JSON.stringify({attributionOpen:true}))});
-  try {
-    assert.equal(errors.length,0);const doc=window.document,map=maps[0];map.handlers['style.load']();
-    assert.equal(doc.body.dataset.ui,'watch');assert.equal(doc.querySelector('.panel').inert,true);
-    assert.equal(doc.getElementById('watch-menu').hidden,true);
-    map.handlers.click({point:{x:10,y:10}});assert.equal(doc.getElementById('details').hidden,true);
-    const open=()=>doc.getElementById('map').dispatchEvent(new window.Event('contextmenu',{cancelable:true}));
-    open();assert.equal(doc.getElementById('watch-menu').hidden,false);assert.equal(doc.getElementById('map-frame').inert,true);
-    let select=doc.querySelector('#watch-content select');select.value='service';select.dispatchEvent(new window.Event('change'));
-    assert.equal(doc.getElementById('watch-menu').hidden,true);assert.equal(map.visibility['service-routes'],'visible');
-    assert.equal(doc.getElementById('service-width').value,'equal','basic Service remains the default in watch mode');
-    open();doc.getElementById('watch-menu').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(doc.getElementById('watch-menu').hidden,true);
-    open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='standard';select.dispatchEvent(new window.Event('change'));
-    assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);
-    assert.match(decodeURIComponent(doc.cookie),/"attributionOpen":true/);
-    assert.match(decodeURIComponent(doc.cookie),/"ui":"standard"/);
-  } finally {dom.window.close();}
-});
-test('entering watch mode deactivates hidden drawing and measurement input',async()=>{
-  const {dom,window,maps}=await start();
-  try {
-    const doc=window.document,map=maps[0];map.handlers['style.load']();
-    for(const selector of ['[data-draw="line"]','[data-measure="distance"]']){
-      const tool=doc.querySelector(selector);tool.click();assert.equal(map.doubleClickEnabled,false);
-      const watch=doc.getElementById('watch-layout');watch.checked=true;watch.dispatchEvent(new window.Event('change'));
-      assert.equal(map.doubleClickEnabled,true,'watch mode restores direct double-tap zoom');
-      assert.equal(tool.getAttribute('aria-pressed'),'false','the hidden tool is inactive');
-      assert.equal(doc.getElementById('draw-toolbar').hidden,true);assert.equal(doc.getElementById('measure-toolbar').hidden,true);
-      watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
-    }
-  } finally {dom.window.close();}
-});
-
-function recoveryClock() {
-  const timers = new Map(), retries = [];
-  let next = 0;
-  return {timers, retries, active:() => true,
-    setTimer:(fn, delay) => {timers.set(++next, {fn, delay});return next;},
-    clearTimer:id => timers.delete(id)};
-}
-const failedRailTile = (x = 1) => ({state:'errored', tileID:{canonical:{z:7, x, y:2}}});
-async function recoveryApp({early = false} = {}) {
-  const clock = recoveryClock(), app = await start({recoveryClock:clock, search:'?mode=speed'});
-  const map = app.maps[0];
-  if (!early) map.handlers['style.load']();
-  map.zoom = 7;
-  map.sources ||= {};
-  map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high', setUrl:() => clock.retries.push('metadata')};
-  map.refreshTiles = (...args) => clock.retries.push(args);
-  const status = app.window.document.getElementById('map-status');
-  return {...app, map, clock, status,
-    fail:tile => map.handlers.error({sourceId:'railway', tile, error:new Error('Map names returned 520')}),
-    data:event => map.handlers.sourcedata({sourceId:'railway', ...event}),
-    close:() => {map.handlers.remove();app.dom.window.close();}};
-}
-
-test('rail tile recovery updates visible app status without idle, after bookkeeping, including early style events', async () => {
-  for (const early of [false, true]) {
-    const f = await recoveryApp({early});
-    try {
-      if (early) f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
-      const tile = failedRailTile();f.fail(tile);
-      assert.equal(f.status.classList.contains('error'), true);
-      tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
-      assert.equal(f.status.classList.contains('error'), false, 'recovered tile clears status without an idle event');
-      assert.match(f.status.textContent, /Explore the rail network/);
-      f.data({tile, isSourceLoaded:true});
-      assert.equal(f.status.classList.contains('error'), false, 'duplicate success is harmless');
-      assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
-    } finally {f.close();}
-  }
-});
-
-test('partial rail recovery and loaded-but-errored sources retain the outage state without extra retries', async () => {
-  const f = await recoveryApp();
-  try {
-    const a = failedRailTile(), b = failedRailTile(2);f.fail(a);f.fail(b);
-    f.data({isSourceLoaded:true});f.data({tile:a, isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), true);
-    a.state = 'loaded';f.data({tile:a, isSourceLoaded:true});
-    assert.match(f.status.textContent, /Retrying automatically/);
-    assert.equal(f.clock.timers.size, 1);
-    b.state = 'loaded';f.data({tile:b, isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), false);
-    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
-  } finally {f.close();}
-});
-
-test('rail recovery preserves unrelated app errors until actual unrelated success', async () => {
-  const f = await recoveryApp();
-  try {
-    const tile = failedRailTile();f.fail(tile);
-    f.map.handlers.error({sourceId:'openmaptiles', tile:{}, error:new Error('unrelated error')});
-    tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), true);
-    assert.match(f.status.textContent, /Some map data could not load/);
-    f.map.handlers.sourcedata({sourceId:'openmaptiles', isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), true, 'loaded flag alone is not recovery');
-    f.map.handlers.sourcedata({sourceId:'openmaptiles', tile:{state:'loaded'}, isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), false);
-    assert.deepEqual(f.clock.retries, []);
-  } finally {f.close();}
-});
-
-test('metadata recovery clears app bookkeeping without idle and cancellation is not an outage', async () => {
-  const f = await recoveryApp();
-  try {
-    f.fail(undefined);f.data({isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), true);
-    f.data({sourceDataType:'metadata', isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), false);
-    f.map.handlers.error({sourceId:'railway', error:{name:'AbortError', message:'AbortError'}});
-    assert.equal(f.status.classList.contains('error'), false);
-    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
-  } finally {f.close();}
-});
-
-test('source replacement retires old recovery and disposal cancels every scheduled retry', async () => {
-  const f = await recoveryApp();
-  try {
-    f.fail(failedRailTile());
-    f.map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high'};
-    f.data({sourceDataType:'metadata', isSourceLoaded:true});
-    assert.equal(f.status.classList.contains('error'), false);
-    assert.equal(f.clock.timers.size, 0);
-    f.fail(failedRailTile(3));assert.equal(f.clock.timers.size, 1);
-    f.map.handlers.remove();assert.equal(f.clock.timers.size, 0);
-    f.map.handlers.moveend();assert.equal(f.clock.timers.size, 0);
-    assert.deepEqual(f.clock.retries, []);
-  } finally {f.close();}
-});
-
-
-test('platform measurement fetches HTTP templates rather than MapLibre protocol URLs', async () => {
-  let options;
-  const {dom,maps}=await start({platformGeometryOptions:value=>{options=value;}});
-  try {
-    const map=maps[0];map.sources ||= {};
-    assert.ok(options);
-    for(const raw of ['https://openrailwaymap.app/standard_railway_platforms/{z}/{x}/{y}',
-      'http://127.0.0.1:4173/review-station-tiles/standard_railway_platforms/{z}/{x}/{y}.pbf']) {
-      map.sources.platforms={tiles:[`atlasrail://${raw}`]};
-      assert.equal(options.tileURL(),raw,'measurement uses native fetch, not the renderer protocol dispatcher');
-      map.sources.platforms={tiles:[raw]};assert.equal(options.tileURL(),raw,'unwrapped fallback stays valid');
-    }
-    map.sources.platforms={};assert.equal(options.tileURL(),undefined,'metadata not ready stays pending');
-  } finally {maps[0].handlers.remove();dom.window.close();}
-});
-
-test('settings hide and show failed layers without pan or idle resumes exactly one recovery timer',async()=>{
- const f=await recoveryApp();
- try{
-  f.fail(failedRailTile());assert.equal(f.clock.timers.size,1);
-  const doc=f.window.document;
-  for(let i=0;i<2;i++){
-   doc.querySelector('[data-background="satellite"]').click();assert.equal(f.clock.timers.size,0);
-   assert.equal(f.status.classList.contains('error'),true,'hidden failures remain retained');
-   doc.querySelector('[data-background="map"]').click();assert.equal(f.clock.timers.size,1);
-   const id=[...f.clock.timers.keys()][0];doc.querySelector('[data-mode="infrastructure"]').click();assert.deepEqual([...f.clock.timers.keys()],[id],'settings do not postpone an existing timer');
-  }
-  f.map.sources.railwaySignals={url:'atlastext://https://openrailwaymap.app/railway_signals'};f.map.zoom=18;
-  f.map.handlers.error({sourceId:'railwaySignals',tile:failedRailTile(),error:{status:520}});
-  const railway=f.map.sources.railway;f.map.sources.railway={url:railway.url};
-  doc.querySelector('[data-mode="speed"]').click();assert.equal(f.clock.timers.size,0);
-  doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,1);
-  f.map.handlers.remove();doc.querySelector('[data-mode="speed"]').click();doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,0);
- }finally{f.close();}
-});
-
-test('off-screen retirement reconciles owned errors without source success and retains other failures',async()=>{
- const f=await recoveryApp();
- try{
-  const a=failedRailTile(1),b=failedRailTile(2);f.fail(a);f.fail(b);
-  f.map.getBounds=()=>({getWest:()=>-174,getEast:()=>-172,getSouth:()=>80,getNorth:()=>85});
-  f.map.handlers.moveend();assert.match(f.status.textContent,/Retrying automatically/,'one remaining tile retains the warning');
-  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
-  f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);
-  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
-  f.map.handlers.error({sourceId:'openmaptiles',error:new Error('unrelated')});
-  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
-  assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.status.classList.contains('error'),true);assert.equal(f.clock.timers.size,0);
- }finally{f.close();}
-});
-
-test('retirement cannot clear nonretryable or newer same-ID errors',async()=>{
- for(const replace of [false,true]){
-  const f=await recoveryApp();try{
-   f.fail(failedRailTile());if(replace)f.map.sources.railway={url:f.map.sources.railway.url};
-   f.map.handlers.error({sourceId:'railway',tile:failedRailTile(3),error:{status:403,message:'HTTP 403'}});
-   f.fail(failedRailTile(4));
-   f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
-   assert.equal(f.status.classList.contains('error'),true);assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.clock.timers.size,0);
-  }finally{f.close();}
- }
-});
-
-test('timer retirement reconciles status after its transaction and queued notifications are inert after disposal',async()=>{
- const f=await recoveryApp();
- try{
-  f.fail(failedRailTile());
-  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
-  const [id,timer]=f.clock.timers.entries().next().value;f.clock.timers.delete(id);timer.fn();
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);assert.deepEqual(f.clock.retries,[]);
-  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
-  const before=f.status.textContent;f.map.handlers.remove();
-  f.map.queryRenderedFeatures=()=>{throw new Error('disposed map must not be queried');};
-  f.window.dispatchEvent(new f.window.Event('online'));f.window.document.dispatchEvent(new f.window.Event('visibilitychange'));f.map.handlers.moveend();
-  await new Promise(resolve=>setImmediate(resolve));assert.equal(f.status.textContent,before);assert.equal(f.clock.timers.size,0);
- }finally{f.close();}
 });

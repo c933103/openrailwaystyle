@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {resolve,extname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
+import {emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 
 const check=fileURLToPath(new URL('./check-orm-fixture-browser.mjs',import.meta.url));
 const root=fileURLToPath(new URL('../styles/',import.meta.url)),repo=resolve(root,'..');
@@ -16,6 +17,8 @@ const server=createServer(async(req,res)=>{
   try {
     const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/atlas-project\//,'/');
     if(path===missingAsset){res.writeHead(404,{'content-type':'text/plain'}).end('missing required stylesheet');return;}
+    const reference=emptyReferenceFixture(path);
+    if(reference){res.writeHead(200,{'content-type':reference.contentType||'application/json'}).end(reference.json?JSON.stringify(reference.json):reference.body);return;}
     if(path.includes('/data/')){res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({tiles:[],features:[],countries:{}}));return;}
     const file=resolve(root,'.'+path.replace(/\/$/,'/index.html'));
     if(!file.startsWith(root)){res.writeHead(403).end();return;}

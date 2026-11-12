@@ -1,0 +1,197 @@
+# One OSM file from the regions' working copies (#330, B3; step 7c), to
+# measure the assembly on the real files. It reads only our own release
+# osm-extract (scripts/extract-release.mjs): the newest usable index and the
+# region files it names. No OpenStreetMap provider is asked. The report goes
+# to the step summary and an artifact; the assembled file is not kept.
+# From it, the extract builds (#330, step 9) are made and, on main,
+# published to their own branches (branch-lines-extract-data,
+# service-routes-extract-data, station-points-extract-data,
+# crossings-extract-data, traction-extract-data). The site uses
+# one only when the repository variable DATA_SOURCES selects it
+# (scripts/data-source.mjs); the Overpass branches are never written here.
+# Run by hand only.
+name: Assemble Geofabrik region extracts
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: osm-assemble
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Only the publication of the extract builds writes, on main.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install osmium
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          osmium --version | head -1
+      - name: Load the index and its region files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/extract-release.mjs load index.json
+          test -s index.json || { echo "No working copies yet"; exit 1; }
+          mkdir -p regions
+          node -e 'for (const e of Object.values(JSON.parse(require("fs").readFileSync("index.json","utf8")).regions)) console.log(e.asset)' > assets.txt
+          while read -r asset; do gh release download osm-extract --pattern "$asset" --dir regions; done < assets.txt
+          echo "$(wc -l < assets.txt) region files, $(du -sh regions | cut -f1)"
+      - name: Assemble
+        run: |
+          df -h . | tail -1
+          node scripts/assemble-extracts.mjs index.json regions assembled.osm.pbf
+          df -h . | tail -1
+          { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build branch lines from the extract
+        # 6 GB, as the other large builds use. The first world build ran out
+        # of Node's default 4 GB heap (2026-11-10); since then each way is
+        # converted as it is read and kept elements are copies (germany:
+        # 23,881 lines, 17 MB of table, 226 MB peak).
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-branch-lines.mjs assembled.osm.pbf assembled.osm.pbf.json branch-lines-extract | tee branch-lines-extract.json
+          { echo '# Branch lines from the extract'; echo; echo '```json'; cat branch-lines-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish branch-lines-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/extract-publish
+          cd /tmp/extract-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time, as the Overpass branches are.
+          git checkout -q --orphan branch-lines-extract-data
+          cp -r "$GITHUB_WORKSPACE/branch-lines-extract/." .
+          git add .
+          git commit -q -m "Branch lines from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:branch-lines-extract-data; then
+            test "$(git ls-remote origin refs/heads/branch-lines-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build service routes from the extract
+        # Measured on germany from the release (51,419 track ways): 188 MB of
+        # table, 928 MB peak while tiling. The Overpass build tiles a world
+        # table of ~275,000 ways (more history per way) within Node's default
+        # heap; 6 GB, as the branch lines, leaves room.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-service-routes.mjs assembled.osm.pbf assembled.osm.pbf.json service-routes-extract | tee service-routes-extract.json
+          { echo '# Service routes from the extract'; echo; echo '```json'; node -e 'const {geometry, ...m} = JSON.parse(require("fs").readFileSync("service-routes-extract/manifest.json", "utf8")); console.log(JSON.stringify(m, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish service-routes-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/service-publish
+          cd /tmp/service-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan service-routes-extract-data
+          cp -r "$GITHUB_WORKSPACE/service-routes-extract/." .
+          git add .
+          git commit -q -m "Service routes from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:service-routes-extract-data; then
+            test "$(git ls-remote origin refs/heads/service-routes-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build station points from the extract
+        # The world in a local run (2026-11-10 index): 193,416 stations,
+        # about 3 minutes, mostly the one read of every tagged object.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-station-points.mjs assembled.osm.pbf assembled.osm.pbf.json station-points-extract | tee station-points-extract.json
+          { echo '# Station points from the extract'; echo; echo '```json'; cat station-points-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish station-points-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/station-publish
+          cd /tmp/station-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan station-points-extract-data
+          cp -r "$GITHUB_WORKSPACE/station-points-extract/." .
+          git add .
+          git commit -q -m "Station points from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:station-points-extract-data; then
+            test "$(git ls-remote origin refs/heads/station-points-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build level crossings from the extract
+        # The world in a local run (2026-11-10 index): 1,233,077 crossings,
+        # about 3 minutes, one read of the crossings and railway ways.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-crossings.mjs assembled.osm.pbf assembled.osm.pbf.json crossings-extract | tee crossings-extract.json
+          { echo '# Level crossings from the extract'; echo; echo '```json'; cat crossings-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish crossings-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/crossings-publish
+          cd /tmp/crossings-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan crossings-extract-data
+          cp -r "$GITHUB_WORKSPACE/crossings-extract/." .
+          git add .
+          git commit -q -m "Level crossings from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:crossings-extract-data; then
+            test "$(git ls-remote origin refs/heads/crossings-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build railway signals, energy supplies and power methods from the extract
+        # The traction dataset in its layout: both signal supplements, the
+        # energy supplies and the power methods. The world in a local run
+        # (2026-11-10 index): signals 91 s, energy supplies 143 s, power
+        # methods 150 s. source.json is complete only when every
+        # traction-data file is written from a complete assembly.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-traction.mjs assembled.osm.pbf assembled.osm.pbf.json traction-extract | tee traction-extract.json
+          { echo '# Railway signals, energy supplies and power methods from the extract'; echo; echo '```json'; cat traction-extract/source.json traction-extract/signals/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish traction-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/traction-publish
+          cd /tmp/traction-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan traction-extract-data
+          cp -r "$GITHUB_WORKSPACE/traction-extract/." .
+          git add .
+          git commit -q -m "Traction data from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:traction-extract-data; then
+            test "$(git ls-remote origin refs/heads/traction-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: assemble-report
+          path: |
+            assembled.osm.pbf.json
+            branch-lines-extract/manifest.json
+            service-routes-extract/manifest.json
+            station-points-extract/manifest.json
+            crossings-extract/manifest.json
+            traction-extract/signals/manifest.json
+            traction-extract/power/electricity-signals-manifest.json
+            traction-extract/power/manifest.json
+            traction-extract/power/methods-manifest.json
+            traction-extract/source.json
+          if-no-files-found: ignore
+          retention-days: 30

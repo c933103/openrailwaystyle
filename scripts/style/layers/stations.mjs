@@ -91,11 +91,13 @@ export function stationLayers(curatedFilter, curatedMarkerFilter = ['literal',tr
     layout: {'circle-sort-key': bySize(4, 3, 2, 1, 0)},
     paint: {
       'circle-color': '#ffa323', 'circle-stroke-color': '#123e52',
-      'circle-stroke-width': ['interpolate',['linear'],['zoom'],3,0.7,8,1,12,1.5],
+      'circle-stroke-width': ['interpolate',['linear'],['zoom'],3,0.25,7,0.4,10,0.6,12,1.5],
       'circle-radius': sizePaint,
     },
   });
-  const earlyRadius = ['interpolate',['linear'],['zoom'],3,1.4,5,1.9,7,2.5,12,3.2];
+  // Match the restrained worldwide overview even when that optional source
+  // is unavailable. Keep every point and grow to the existing detail sizes.
+  const earlyRadius = ['interpolate',['linear'],['zoom'],3,0.55,5,0.75,7,1,10,1.6,12,3.2];
   const overviewPoints = ['all', current, ['==',['coalesce',['get','feature'],'station'],'station']];
   // Suppress only provider dots whose identities already have a curated dot.
   // At z7 the curated source ends, so the provider marker takes over.
@@ -109,7 +111,7 @@ export function stationLayers(curatedFilter, curatedMarkerFilter = ['literal',tr
     ['all',['==',['get','feature'],'station'],['has','tier']],earlyRadius);
   marker('station-provider-dots','stations','standard_railway_text_stations',8,12,
     ['all',current,['match',['coalesce',['get','feature'],'station'],['station','halt','tram_stop'],true,false]],
-    ['interpolate',['linear'],['zoom'],8,2,12,bySize(5,4,3.2,2.7,2.3)]);
+    ['interpolate',['linear'],['zoom'],8,1.1,10,bySize(2,1.6,1.4,1.2,1),12,bySize(5,4,3.2,2.7,2.3)]);
   // Close-zoom infrastructure details use the worldwide provider sources directly,
   // independently of the original Hack4Rail demo styles. Platform tiles omit ref;
   // the app's shared feature-API queue supplies platformNumbers and full edge lengths.

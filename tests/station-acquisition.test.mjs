@@ -2,9 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stationBaseRegions,stationRegionQuery,stationWorldCoverage,newStationAcquisition,
  checkStationAcquisition,applyStationRegion,postponeStationRegion,splitStationRegion,
- centerInside,nextStationAcquisitionCycle} from '../scripts/station-acquisition.mjs';
+ centerInside,nextStationAcquisitionCycle,stationQueryExceededLimits,stationRecords} from '../scripts/station-acquisition.mjs';
+
+// A cycle started before elements were kept: records only.
+const recordsOnly=()=>{const {elements,query,extraction,...state}=newStationAcquisition();return state;};
 
 const node=(id,lon,lat)=>({type:'node',id,lon,lat,version:1,timestamp:'2026-10-11T00:00:00Z',tags:{railway:'station',name:'Railway'}});
+
+test('station query limits require a bounded explicit executed-query diagnostic',()=>{
+ assert.equal(stationQueryExceededLimits(504,'<p>runtime error: Query timed out in "query" at line 1 after 120 seconds.</p>'),true);
+ assert.equal(stationQueryExceededLimits(200,'runtime error: Query run out of memory using about 64 MB of RAM.'),true);
+ for(const status of [undefined,NaN,Infinity,'504',400,401,403,429,503,600])
+  assert.equal(stationQueryExceededLimits(status,'runtime error: Query run out of memory using about 64 MB of RAM.'),false);
+ for(const message of [null,{},'Gateway timeout','Unknown maxsize setting','Query validation failed: out of memory',
+  '<'.repeat(64*1024),'runtime error: Query '+ 'X'.repeat(64*1024)+' timed out'])
+  assert.equal(stationQueryExceededLimits(504,message),false);
+});
 
 test('world region coverage is a nonoverlapping exhaustive partition',()=>{
  const regions=stationBaseRegions();
@@ -36,7 +49,7 @@ test('station acquisition query targets exactly stations with rail-mode evidence
 });
 
 test('verified regional responses checkpoint only their contained stations',()=>{
- let state=newStationAcquisition(),records=[];
+ let state=recordsOnly(),records=[];
  const box=state.pending[0].box;
  const response={elements:[
   node(5,box[1]+1,box[0]+1),
@@ -60,7 +73,7 @@ test('verified regional responses checkpoint only their contained stations',()=>
 });
 
 test('higher-version OSM station updates reconcile across overlapping region queries',()=>{
- const initial=newStationAcquisition();
+ const initial=recordsOnly();
  const first=initial.pending[0].box;
  const source={type:'way',id:998,version:1,timestamp:'2026-10-10T00:00:00Z',
    center:{lat:0,lon:0},tags:{railway:'station',name:'Station old'}};
@@ -105,4 +118,52 @@ test('next worldwide refresh is fresh and cannot erase an immutable published ge
  assert.equal(checkStationAcquisition(restarted.state,restarted.records),true);
  assert.equal(records.length,1,'last complete generation remains immutable in memory');
  assert.deepEqual(complete.pending,[]);
+});
+
+test('the next cycle asks for the regions the last one fetched, so a split region is not requested whole again',()=>{
+ let state=newStationAcquisition();
+ const first=state.pending[0].box;
+ state=postponeStationRegion(state,first);
+ state=postponeStationRegion(state,state.pending[0].box);
+ const leaves=state.pending.slice(0,7).map(r=>({...r}));
+ // Every pending region completes, in order.
+ while(state.pending.length)state=applyStationRegion(state,[],state.pending[0].box,{elements:[]},[]).state;
+ const next=nextStationAcquisitionCycle(state,[]).state;
+ assert.equal(next.pending.length,32-1+3+4,'two splits: one base region became seven regions');
+ assert.deepEqual(next.pending.slice(0,7),leaves,'split regions keep their boxes and depth');
+ assert.ok(!next.pending.some(r=>JSON.stringify(r.box)===JSON.stringify(first)),'the split base region is not asked again');
+ assert.deepEqual(next.completed,[]);
+ assert.equal(checkStationAcquisition(next,[]),true);
+ // A deeper split still stops at the depth limit.
+ assert.throws(()=>postponeStationRegion(next,next.pending[0].box,{maxDepth:2}),/after 2 splits/);
+ // Regions recorded before depths were stored get theirs from their size.
+ const legacy={...state,completed:state.completed.map(({depth,...r})=>r)};
+ assert.deepEqual(nextStationAcquisitionCycle(legacy,[]).state.pending.slice(0,7),leaves);
+});
+
+test('a cycle keeps every selected element of its regions and converts them into records',()=>{
+ let state=newStationAcquisition();
+ assert.equal(state.elements,true);
+ const box=state.pending[0].box;
+ const disused={type:'node',id:8,lon:box[1]+1,lat:box[0]+3,version:2,timestamp:'2026-10-11T00:00:00Z',
+   user:'someone',changeset:5,tags:{railway:'station',disused:'yes',name:'Closed'}};
+ const way={type:'way',id:99,version:1,timestamp:'2026-10-11T00:00:00Z',center:{lon:0,lat:0},
+   tags:{railway:'station',name:'Multi-region station facility'}};
+ const response={elements:[node(5,box[1]+1,box[0]+1),node(7,box[3],box[2]),disused,way]};
+ assert.throws(()=>applyStationRegion(state,[],box,response),/element store/,'a cycle keeping elements needs them');
+ let {state:next,records,elements}=applyStationRegion(state,[],box,response,[]);
+ assert.deepEqual(elements.map(e=>`${e.type}-${e.id}`),['node-5','node-8','way-99'],'nodes outside the region are not its own');
+ assert.deepEqual(records.map(r=>r.id),['node-5','way-99'],'a disused station is kept as an element, not a record');
+ assert.deepEqual(elements[1],{type:'node',id:8,version:2,timestamp:'2026-10-11T00:00:00Z',
+   tags:{railway:'station',disused:'yes',name:'Closed'},lat:box[0]+3,lon:box[1]+1},'only what a conversion may read');
+ assert.deepEqual(records,stationRecords(elements));
+ // The same way again from another region: the higher version wins, an
+ // equal one with another centre (its nodes moved) keeps the first.
+ const second=next.pending[0].box;
+ ({state:next,records,elements}=applyStationRegion(next,records,second,{elements:[{...way,center:{lon:1,lat:1}}]},elements));
+ assert.deepEqual(elements.find(e=>e.id===99).center,{lon:0,lat:0});
+ ({state:next,records,elements}=applyStationRegion(next,records,next.pending[0].box,{elements:[{...way,version:2,tags:{railway:'halt'}}]},elements));
+ assert.equal(records.find(r=>r.id==='way-99').feature,'halt');
+ assert.throws(()=>applyStationRegion(next,records,next.pending[0].box,{elements:[{...way,version:undefined}]},elements),/lacks version/);
+ assert.throws(()=>applyStationRegion(next,records,next.pending[0].box,{elements:[]},[...elements,elements[0]]),/duplicate/);
 });

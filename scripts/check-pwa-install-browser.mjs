@@ -21,6 +21,44 @@ const profiles=[
   {name:'legacy-dialog',viewport:{width:320,height:568},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3 like Mac OS X) AppleWebKit/605.1.15 Version/15.3 Mobile/15E148 Safari/604.1',platform:'iPhone',touch:5,legacyDialog:true},
 ];
 
+async function checkDataDatesOrdering(page){
+  let cases=0;
+  for(const stage of ['fetch','body'])for(const outcome of ['older success','older failure','newer failure']){
+    await page.evaluate(stage=>{
+      const original=window.fetch,pending=[];
+      window.dateOrder={original,pending,stage};
+      window.fetch=(input,...args)=>{
+        const url=new URL(typeof input==='string'?input:input.url,location.href);
+        if(!url.pathname.endsWith('/data/data-ages.json'))return original.call(window,input,...args);
+        let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});pending.push({resolve,reject});
+        return stage==='fetch'?promise:Promise.resolve({ok:true,json:()=>promise});
+      };
+    },stage);
+    try{
+      await page.locator('#about-open').click();await page.waitForFunction(()=>window.dateOrder.pending.length===1);
+      await page.locator('#about-close').click();await page.locator('#about-open').click();
+      await page.waitForFunction(()=>window.dateOrder.pending.length===2);
+      const finish=async(index,failed)=>page.evaluate(async({index,failed})=>{
+        const {pending,stage}=window.dateOrder;
+        if(failed)pending[index].reject(new Error('Controlled metadata failure'));
+        else{
+          const data={schema:1,staleAfterDays:90,datasets:[{label:index?'newer':'older',date:index?new Date().toISOString():'2000-01-01T00:00:00Z'}]};
+          pending[index].resolve(stage==='fetch'?{ok:true,json:async()=>data}:data);
+        }
+        await new Promise(resolve=>setTimeout(resolve,0));
+      },{index,failed});
+      await finish(1,outcome==='newer failure');
+      const read=()=>page.evaluate(()=>({rows:document.getElementById('data-ages').tBodies[0].innerHTML,
+        notice:document.getElementById('data-ages-notice').textContent,hidden:document.getElementById('data-ages-notice').hidden}));
+      const expected=await read();assert.match(expected.rows,outcome==='newer failure'?/Data dates are not available/:/newer/);
+      await finish(0,outcome==='older failure');
+      assert.deepEqual(await read(),expected,`${stage}/${outcome}: obsolete metadata cannot overwrite the current Help result`);
+      await page.locator('#about-close').click();cases++;
+    }finally{await page.evaluate(()=>{window.fetch=window.dateOrder.original;delete window.dateOrder;});}
+  }
+  return cases;
+}
+
 async function offerNativePrompt(page,scenario){
   // Controlled capability events exercise real DOM and focus rules without
   // performing an OS installation in browser automation.
@@ -263,8 +301,13 @@ try {
         await checkNativePromptFocus(page,opener,dialog);
       }
     }
-    assert.deepEqual(errors,[],'installation guidance survives renderer failure without unhandled errors');
-    report.push({engine,profile:profile.name,rendererBlocked:true,blockedLibraries,blockedCdns:blocked,errors});
+    let dataDatesOrderingCases=0;
+    if(['iphone','browser'].includes(profile.name)){
+      if(await page.locator('#controls-open').getAttribute('aria-expanded')==='false')await page.locator('#controls-open').click();
+      dataDatesOrderingCases=await checkDataDatesOrdering(page);
+    }
+    assert.deepEqual(errors,[],'installation guidance and Help date refresh survive renderer failure without unhandled errors');
+    report.push({engine,profile:profile.name,rendererBlocked:true,blockedLibraries,blockedCdns:blocked,dataDatesOrderingCases,errors});
     await context.close();
   }
   await writeFile(`browser-review/pwa-install-${engine}.json`,JSON.stringify(report,null,2)+'\n');

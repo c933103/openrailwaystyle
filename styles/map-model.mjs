@@ -1,6 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261010-rail-markers-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261112-browser-calendar-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261112-browser-calendar-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261010-rail-markers-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261112-browser-calendar-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261112-browser-calendar-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -34,7 +36,7 @@ const RAIL_PLACES = {railway: ['station', 'halt', 'tram_stop'], building: ['trai
 // object) is a railway station only with rail evidence among its tags
 // (asked for with extratags=1); bus, coach and ferry stations are places.
 const RAIL_MODES = ['train', 'subway', 'light_rail', 'monorail', 'tram'];
-const isRailPlace = place => RAIL_PLACES[place.category]?.includes(place.type) ||
+const isRailPlace = place => (Object.hasOwn(RAIL_PLACES, place.category) && RAIL_PLACES[place.category].includes(place.type)) ||
   (place.category === 'public_transport' && place.type === 'station' &&
     (['station', 'halt', 'tram_stop'].includes(place.extratags?.railway) || RAIL_MODES.some(mode => place.extratags?.[mode] === 'yes')));
 // Two station names are the same when equal, or when one is the other plus
@@ -48,8 +50,18 @@ export function samePlaceName(a, b) {
   [a, b] = [tidy(a), tidy(b)].sort((x, y) => x.length - y.length);
   if (!a || a.length < 2) return false;
   if (a === b) return true;
-  if (!b.includes(a)) return false;
-  const rest = b.replace(a, '');
+  const at = b.indexOf(a);
+  if (at < 0) return false;
+  const sides = [b.slice(0, at), b.slice(at + a.length)];
+  // Do not take just part of a number or a directly joined numeric component
+  // (Terminal 1 / Terminal 10 or Terminal 1-1), even beside a translation.
+  if ((/\p{N}[\p{Pd}−./]?$/u.test(sides[0]) && /^\p{N}/u.test(a)) || (/\p{N}$/u.test(a) && /^[\p{Pd}−./]?\p{N}/u.test(sides[1]))) return false;
+  const otherScript = LATIN.test(a) ? OTHER_LETTER : LATIN;
+  const numbers = value => (value.match(/\p{N}+/gu) || []).map(token => token.normalize('NFKC')).join('\0');
+  // A number belongs to the name, not to a translation by itself. A real
+  // translation may repeat the same numbers (第1航廈 / Terminal 1).
+  if (sides.some(side => /\p{N}/u.test(side) && (!otherScript.test(side) || numbers(side) !== numbers(a)))) return false;
+  const rest = sides.join('');
   return LATIN.test(a) ? !LATIN.test(rest) : !OTHER_LETTER.test(rest);
 }
 // Facility API results and geocoder results → {rail, places}. A geocoded
@@ -69,7 +81,7 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   if (q.length < 2) return [];
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   // Names in a language (name:en, name:zh-Hant, name:ja_kana), not name:etymology and the like.
   const namesOf = p => Object.entries(p).filter(([key, value]) => (/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key) || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
   const [cx, cy] = centre || [0, 0], matches = new Map();
@@ -106,17 +118,55 @@ export function drawnStationQueries(layers, zoom) {
   }
   return [...queries.values()].map(({source, sourceLayer, filters}) => ({source, sourceLayer, filter: ['any', ...filters]}));
 }
+// A successful HTTP array can contain unusable rows. Validate each source row
+// before reconciliation or caching, keeping good siblings and the rejected count.
+// Nominatim uses decimal strings; an absent/blank value is never coordinate zero.
+const searchRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const searchCoordinate = (value, limit, strings = false) => {
+  if (strings && typeof value === 'string' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) value = Number(value);
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
+};
+const searchOptionalText = value => value == null || typeof value === 'string';
+const searchNameFields = new Set(['name','localized_name','atlas_name','int_name','label','ref']);
+const searchFacilityText = row => Object.entries(row).every(([key, value]) =>
+  !(searchNameFields.has(key) || key.startsWith('name:') || ['railway_ref','railway:ref','station','feature','railway'].includes(key)) || searchOptionalText(value)) &&
+  (searchOptionalText(row.operator) || (Array.isArray(row.operator) && row.operator.every(value => typeof value === 'string')));
+export function searchResponse(rows, source) {
+  const items = [];
+  for (const row of rows) {
+    if (!searchRecord(row)) continue;
+    if (source === 'facility') {
+      if (searchCoordinate(row.latitude, 90) === null || searchCoordinate(row.longitude, 180) === null || !searchFacilityText(row)) continue;
+      items.push(row);
+    } else {
+      if (searchCoordinate(row.lat, 90, true) === null || searchCoordinate(row.lon, 180, true) === null) continue;
+      if (['name','display_name','category','type','addresstype'].some(key => row[key] != null && typeof row[key] !== 'string')) continue;
+      if (['namedetails','extratags'].some(key => row[key] != null &&
+        (!searchRecord(row[key]) || !Object.values(row[key]).every(searchOptionalText)))) continue;
+      const {boundingbox, ...item} = row;
+      // A bad optional extent falls back to the valid point when selected.
+      // Keep both longitude orders: MapLibre wraps west > east across the
+      // antimeridian; -180..180 and zero-width longitude are valid extents.
+      if (Array.isArray(boundingbox) && boundingbox.length === 4) {
+        const bounds = boundingbox.map((value, i) => searchCoordinate(value, i < 2 ? 90 : 180, true));
+        if (bounds.every(value => value !== null) && bounds[1] > bounds[0]) item.boundingbox = bounds;
+      }
+      items.push(item);
+    }
+  }
+  return {items, invalid: rows.length - items.length};
+}
 export function searchResults(facilities, places) {
-  const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
-  const rail = facilities.filter(located), others = [];
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  // Remote facility rows are validated at the response boundary. Drawn local
+  // stations may legitimately use a wrapped-world longitude outside ±180.
+  const rail = facilities.filter(item => searchRecord(item) && Number.isFinite(item.longitude) && Number.isFinite(item.latitude)), others = [];
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   const names = item => new Set(Object.entries(item).filter(([key, value]) => (key === 'name' || key.startsWith('name:')) && typeof value === 'string').map(([, value]) => value.toLowerCase()));
-  for (const place of places) {
+  for (const place of searchResponse(places, 'place').items) {
     const details = place.namedetails || {};
     const item = {...details, name: details.name || place.name || String(place.display_name || '').split(',')[0], latitude: Number(place.lat), longitude: Number(place.lon),
       osm_id: place.osm_id, osm_type: place.osm_type, area: String(place.display_name || '').split(',').slice(1).join(',').trim(),
       ...(Array.isArray(place.boundingbox) && {boundingbox: place.boundingbox.map(Number)})};
-    if (!located(item)) continue;
     if (isRailPlace(place)) {
       const own = names(item);
       const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
@@ -143,7 +193,20 @@ export const INFRASTRUCTURE = [
   ['#d7191c', 'High-speed line'], ['#2356b6', 'Railway'],
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
+  // Appended so existing positions stay stable for paint expressions.
+  ['#c2185b', 'Funicular'],
 ];
+// Aerial cableways and lifts come from the basemap's transportation layer
+// (OpenMapTiles class=aerialway). Drawn like OSM Carto: a thin grey cable with
+// dark ticks, sparser ticks for ski and chair lifts. Dashes are in line widths.
+export const AERIALWAY_CABLE = '#808080', AERIALWAY_TICK = '#1f2326';
+// Escalators, moving walkways and elevators (styles/conveying.mjs).
+export const CONVEYING_COLOUR = '#4a4f55';
+export const AERIALWAY_KINDS = Object.freeze([
+  Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),
+  Object.freeze({id:'lift', label:'Ski or chair lift', subclasses:Object.freeze(['chair_lift','drag_lift','t-bar','j-bar','platter']), tickWidth:4, dash:Object.freeze([1/4,30/4])}),
+]);
+export const aerialwayKind = subclass => AERIALWAY_KINDS.find(kind => kind.subclasses.includes(subclass));
 // Colours from hue, saturation and lightness (percent).
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -163,8 +226,10 @@ export const CURRENT_SYSTEMS = [
 ];
 export const NOT_ELECTRIFIED = '#525b62';
 const kv = v => v >= 1000 ? `${Number((v / 1000).toFixed(2))} kV` : `${v} V`;
-export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts.at(-1)[0])}`;
 export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(system.hue, system.sat, l)]);
+// The Power legend's fixed key: each exact value drawn, e.g. "15 kV AC 16.7 Hz",
+// in the colour the track paint gives it. No gradient rows.
+export const currentKey = () => CURRENT_SYSTEMS.flatMap(system => currentStops(system).map(([v, colour]) => [colour, `${kv(v)} ${system.label}`]));
 export function electrificationPaint() {
   const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
   const hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];
@@ -467,6 +532,60 @@ export function ownerColor(name) {
   return `hsl(${hue}, ${sat}%, ${light}%)`;
 }
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
+// Aerialways and escalators are drawn in every view. Infrastructure and Power
+// show their type (thin line, ticks or arrows); every other view colours the
+// line by that view's own value from the way's tags, wide enough to read:
+// Speed by maxspeed, Owner by owner, Service as other track, and the rest
+// (no gauge, loading gauge, axle load or train protection on these) unknown.
+export const OTHER_TRACK = '#b8c0c5';
+export const VIEW_LINE_LAYERS = Object.freeze({
+  'aerialway-cableway-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'aerialway-lift-cable': {colour: AERIALWAY_CABLE, width: 1},
+  'conveying-lines': {colour: CONVEYING_COLOUR, width: ['interpolate', ['linear'], ['zoom'], 14, 0.8, 18, 2]},
+});
+const showsType = mode => mode === 'infrastructure' || mode === 'electrification';
+export function viewLinePaint(id, mode, units = 'metric') {
+  const own = VIEW_LINE_LAYERS[id];
+  if (showsType(mode)) return own.colour;
+  if (mode === 'speed') return speedPaint(units);
+  if (mode === 'owner') return ownerPaint();
+  if (mode === 'service') return OTHER_TRACK;
+  return UNKNOWN_COLOR;
+}
+// Thinner than the view's own thinnest track, so they never read as ordinary
+// railway: tracks are 2.8/4.8 px (main) and 1.1/2 px (sidings) at zoom 11/16;
+// Gauge splits a dual-gauge track into halves of 1 px at zoom 16 (sidings), so
+// it goes thinner still. Service draws other track at the same widths as the
+// default under its coloured routes.
+const VIEW_LINE_WIDTHS = {gauge: [12, 0.8, 16, 0.9, 20, 1.6], default: [12, 0.9, 16, 1.5, 20, 2.4]};
+export function viewLineWidth(id, mode) {
+  if (showsType(mode)) return structuredClone(VIEW_LINE_LAYERS[id].width);
+  return ['interpolate', ['linear'], ['zoom'], ...(VIEW_LINE_WIDTHS[mode] || VIEW_LINE_WIDTHS.default)];
+}
+// Shared by the line builder and station sizing. Keep the overview/detail
+// handoff exact; station data has no per-track siding/gauge/frequency fields.
+const RAIL_OVERVIEW_STOPS = [[0,1],[4,1.15],[7,1.8],[11,2.6],[16,4.5],[20,7]];
+const RAIL_TRACK_STOPS = [[7,1.6],[11,2.8],[16,4.8],[20,7]];
+const interpolateWidth = (stops,zoom) => {
+  const z=Number.isFinite(zoom)?zoom:0;
+  for(let i=1;i<stops.length;i++)if(z<stops[i][0]){
+    const [a,x]=stops[i-1],[b,y]=stops[i];
+    return x+(y-x)*Math.max(0,(z-a)/(b-a));
+  }
+  return stops.at(-1)[1];
+};
+export const railwayOverviewWidth = () => ['interpolate',['linear'],['zoom'],...RAIL_OVERVIEW_STOPS.flat()];
+export const railwayTrackWidth = (scale=1) => {
+  const siding=['!=',['coalesce',['get','service'],''],''];
+  return ['interpolate',['linear'],['zoom'],...RAIL_TRACK_STOPS.flatMap(([zoom,width])=>
+    [zoom,zoom===11?['case',siding,1.1*scale,width*scale]:
+      zoom===16?['case',siding,2*scale,width*scale]:width*scale])];
+};
+export function stationMarkerDiameter(mode,zoom) {
+  const z=Number.isFinite(zoom)?zoom:0;
+  if(mode==='service'&&z>=7)return standardServiceWidth(z);
+  return interpolateWidth(z<7?RAIL_OVERVIEW_STOPS:RAIL_TRACK_STOPS,z);
+}
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
@@ -663,7 +782,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
+export const SETTING_KEYS = ['mode','background','stations','stationImportanceColors','trackCounts','labels','inactive','relief','terrainExaggeration','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -688,7 +807,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines', 'aerialways'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.
@@ -698,6 +817,10 @@ export function osmObject(feature) {
     if (match) return {type: match[1], id: match[2]};
   }
   if (feature.sourceLayer === 'level_crossings') return Number.isInteger(feature.id) ? {type: 'node', id: String(feature.id)} : null;
+  if(feature.source==='electricCatenary') {
+    const match=/^([1-9]\d*)-(mast|portal)$/.exec(String(p.id??feature.id??''));
+    return match?{type:match[2]==='mast'?'node':'way',id:match[1]}:null;
+  }
   // The dedicated signal and entrance tile functions expose bare OSM node IDs.
   if (['railwaySignals','railwaySignalSupplementOverview','railwaySignalSupplement','stationEntrances'].includes(feature.source)) {
     const id=p.id??feature.id;
@@ -722,7 +845,9 @@ export function readSettings(search, remembered = {}) {
     background: pick('background', v => BACKGROUNDS.includes(v), 'map'),
     stations: flag('stations', true), stationImportanceColors: flag('stationImportanceColors', false), trackCounts: flag('trackCounts', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
-    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
+    relief: flag('relief', true),
+    terrainExaggeration: Number(pick('terrainExaggeration', value => ['1','2','3','5'].includes(String(value)), '3')),
+    names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     serviceWidth: pick('serviceWidth', v => ['equal','frequency'].includes(v), 'equal'),
     frequencyPeriod: pick('frequencyPeriod', v => ['peak','offpeak','overnight','hour'].includes(v), 'offpeak'),

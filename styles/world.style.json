@@ -116,6 +116,16 @@
       "maxzoom": 10,
       "attribution": "<a href=\"https://www.naturalearthdata.com/\">Natural Earth (public domain)</a> · <a href=\"https://papers.reearth.land/\">Re:Earth Papers</a>"
     },
+    "railReference": {
+      "type": "vector",
+      "tiles": [
+        "mainlinetiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "trackCounts": {
       "type": "vector",
       "tiles": [
@@ -5043,6 +5053,14 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "electricSignals": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      },
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "electricFacilities": {
       "type": "geojson",
       "data": {
@@ -5050,6 +5068,22 @@
         "features": []
       },
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "electricMethods": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      },
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
+    "electricCatenary": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/electrification_catenary",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
     "stationEntrances": {
       "type": "vector",
@@ -5146,6 +5180,24 @@
       "maxzoom": 12,
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "conveying": {
+      "type": "vector",
+      "tiles": [
+        "conveyingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 14,
+      "maxzoom": 14,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
+    "aerialways": {
+      "type": "vector",
+      "tiles": [
+        "aerialwaytiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 12,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "heritageAreas": {
       "type": "vector",
       "tiles": [
@@ -5214,6 +5266,16 @@
       ],
       "tileSize": 512,
       "maxzoom": 14
+    },
+    "terrain3d": {
+      "type": "raster-dem",
+      "tiles": [
+        "atlas-terrain://{z}/{x}/{y}"
+      ],
+      "tileSize": 256,
+      "encoding": "terrarium",
+      "maxzoom": 14,
+      "attribution": "<a href=\"terrain-credits.html\">Terrain: Mapzen / AWS and data contributors</a>"
     }
   },
   "layers": [
@@ -8578,6 +8640,465 @@
       }
     },
     {
+      "id": "rail-reference-branch",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "branch"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": "#93999c"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-branch",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "branch"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-reference-unknown",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "unknown"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": "#93999c",
+        "line-dasharray": [
+          2,
+          1
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-unknown",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "unknown"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-reference-main",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "main"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": "#70777b"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-reference-main",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "main"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ],
+        "visibility": "none"
+      },
+      "paint": {
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "highspeed_tag"
+            ],
+            "yes"
+          ],
+          "#d7191c",
+          [
+            "==",
+            [
+              "get",
+              "classification"
+            ],
+            "branch"
+          ],
+          "#00865a",
+          "#2356b6"
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
       "id": "infrastructure-branch-overview",
       "type": "line",
       "source": "branchLines",
@@ -8648,6 +9169,15 @@
             "tram"
           ],
           "#df7900",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "funicular"
+          ],
+          "#c2185b",
           [
             "!=",
             [
@@ -9309,6 +9839,15 @@
           ],
           "#df7900",
           [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "funicular"
+          ],
+          "#c2185b",
+          [
             "!=",
             [
               "coalesce",
@@ -9363,6 +9902,124 @@
         ],
         "atlas:settings": [],
         "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-basemap-reference",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "any",
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "rail"
+            ],
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "subclass"
+                ],
+                ""
+              ],
+              [
+                "",
+                "rail",
+                "narrow_gauge",
+                "preserved",
+                "funicular"
+              ],
+              true,
+              false
+            ]
+          ],
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "transit"
+            ],
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "subway",
+                "light_rail",
+                "monorail",
+                "tram"
+              ],
+              true,
+              false
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#70777b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          11,
+          1.3,
+          16,
+          2
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          3,
+          2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "reference",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -9903,6 +10560,15 @@
           ],
           "#df7900",
           [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "funicular"
+          ],
+          "#c2185b",
+          [
             "!=",
             [
               "coalesce",
@@ -10066,6 +10732,15 @@
           ],
           "#df7900",
           [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "funicular"
+          ],
+          "#c2185b",
+          [
             "!=",
             [
               "coalesce",
@@ -10144,6 +10819,132 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "branch_lines",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-rack",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "downcase",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "rack"
+                ],
+                "no"
+              ]
+            ],
+            [
+              "literal",
+              [
+                "no",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
         "atlas:views": [
           "infrastructure"
         ],
@@ -44589,157 +45390,6 @@
       }
     },
     {
-      "id": "service-routes",
-      "type": "line",
-      "source": "serviceRoutes",
-      "source-layer": "service_routes",
-      "minzoom": 7,
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "round",
-        "visibility": "none"
-      },
-      "paint": {
-        "line-color": [
-          "to-color",
-          [
-            "get",
-            "colour"
-          ],
-          "#5d6b73"
-        ],
-        "line-width": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          7,
-          [
-            "*",
-            3.5,
-            0.5714285714285714
-          ],
-          12,
-          3.5,
-          16,
-          [
-            "*",
-            3.5,
-            1.4285714285714286
-          ]
-        ],
-        "line-offset": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          7,
-          [
-            "*",
-            [
-              "*",
-              [
-                "-",
-                [
-                  "get",
-                  "i"
-                ],
-                [
-                  "/",
-                  [
-                    "-",
-                    [
-                      "get",
-                      "n"
-                    ],
-                    1
-                  ],
-                  2
-                ]
-              ],
-              3.5
-            ],
-            0.5714285714285714
-          ],
-          12,
-          [
-            "*",
-            [
-              "-",
-              [
-                "get",
-                "i"
-              ],
-              [
-                "/",
-                [
-                  "-",
-                  [
-                    "get",
-                    "n"
-                  ],
-                  1
-                ],
-                2
-              ]
-            ],
-            3.5
-          ],
-          16,
-          [
-            "*",
-            [
-              "*",
-              [
-                "-",
-                [
-                  "get",
-                  "i"
-                ],
-                [
-                  "/",
-                  [
-                    "-",
-                    [
-                      "get",
-                      "n"
-                    ],
-                    1
-                  ],
-                  2
-                ]
-              ],
-              3.5
-            ],
-            1.4285714285714286
-          ]
-        ],
-        "line-opacity": 1
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "service_routes",
-        "atlas:views": [
-          "service"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      }
-    },
-    {
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
@@ -45267,6 +45917,364 @@
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
+      }
+    },
+    {
+      "type": "line",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "aerialway-cableway-cable",
+      "filter": [
+        "==",
+        [
+          "get",
+          "kind"
+        ],
+        "cableway"
+      ],
+      "paint": {
+        "line-color": "#808080",
+        "line-width": 1
+      }
+    },
+    {
+      "type": "line",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "aerialway-cableway-ticks",
+      "filter": [
+        "==",
+        [
+          "get",
+          "kind"
+        ],
+        "cableway"
+      ],
+      "paint": {
+        "line-color": "#1f2326",
+        "line-width": 3,
+        "line-dasharray": [
+          0.13333333333333333,
+          4.333333333333333
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "aerialway-lift-cable",
+      "filter": [
+        "==",
+        [
+          "get",
+          "kind"
+        ],
+        "lift"
+      ],
+      "paint": {
+        "line-color": "#808080",
+        "line-width": 1
+      }
+    },
+    {
+      "type": "line",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "aerialway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "aerialway-lift-ticks",
+      "filter": [
+        "==",
+        [
+          "get",
+          "kind"
+        ],
+        "lift"
+      ],
+      "paint": {
+        "line-color": "#1f2326",
+        "line-width": 4,
+        "line-dasharray": [
+          0.25,
+          7.5
+        ]
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-lines",
+      "type": "line",
+      "minzoom": 14,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#4a4f55",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.8,
+          18,
+          2
+        ]
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-arrows",
+      "type": "symbol",
+      "minzoom": 16,
+      "filter": [
+        "match",
+        [
+          "get",
+          "arrows"
+        ],
+        [
+          "one_way",
+          "two_way"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "symbol-placement": "line-center",
+        "icon-image": "conveying-arrow",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.7,
+          19,
+          1
+        ],
+        "icon-rotate": 0,
+        "icon-offset": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "arrows"
+            ],
+            "two_way"
+          ],
+          [
+            "literal",
+            [
+              7,
+              0
+            ]
+          ],
+          [
+            "literal",
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-rotation-alignment": "map"
+      },
+      "paint": {
+        "icon-color": "#4a4f55",
+        "icon-halo-color": "rgba(255,255,255,0.85)",
+        "icon-halo-width": 1
+      }
+    },
+    {
+      "source": "conveying",
+      "source-layer": "conveying",
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "conveying",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "conveying-arrows-back",
+      "type": "symbol",
+      "minzoom": 16,
+      "filter": [
+        "==",
+        [
+          "get",
+          "arrows"
+        ],
+        "two_way"
+      ],
+      "layout": {
+        "symbol-placement": "line-center",
+        "icon-image": "conveying-arrow",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.7,
+          19,
+          1
+        ],
+        "icon-rotate": 180,
+        "icon-offset": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "arrows"
+            ],
+            "two_way"
+          ],
+          [
+            "literal",
+            [
+              7,
+              0
+            ]
+          ],
+          [
+            "literal",
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-rotation-alignment": "map"
+      },
+      "paint": {
+        "icon-color": "#4a4f55",
+        "icon-halo-color": "rgba(255,255,255,0.85)",
+        "icon-halo-width": 1
       }
     },
     {
@@ -54231,6 +55239,484 @@
       }
     },
     {
+      "id": "place_label_city-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "city"
+        ]
+      ],
+      "layout": {
+        "text-field": "{name:latin}\n{name:nonlatin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-max-width": 10,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          10,
+          14,
+          12
+        ]
+      },
+      "paint": {
+        "text-color": "#74807d",
+        "text-halo-blur": 0,
+        "text-halo-color": "hsla(0, 0%, 100%, 0.75)",
+        "text-halo-width": 1,
+        "text-opacity": 0,
+        "icon-opacity": 0
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "place_label_other-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "!in",
+          "class",
+          "city",
+          "state",
+          "province",
+          "country",
+          "continent"
+        ]
+      ],
+      "layout": {
+        "text-anchor": "center",
+        "text-field": "{name:latin}\n{name:nonlatin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-max-width": 6,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          10,
+          14,
+          12
+        ],
+        "visibility": "visible",
+        "icon-rotation-alignment": "auto"
+      },
+      "paint": {
+        "text-color": "#74807d",
+        "text-halo-blur": 0,
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": {
+          "stops": [
+            [
+              6,
+              0.5
+            ],
+            [
+              10,
+              1
+            ]
+          ]
+        },
+        "text-opacity": 0,
+        "icon-opacity": 0
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "state_label-placement",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "state",
+            "province"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": "{name:latin}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          9,
+          8,
+          12
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.08,
+        "text-max-width": 8,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#86938f",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.5,
+        "text-opacity": 0,
+        "icon-opacity": 0
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "infrastructure-crossing-overview",
+      "type": "circle",
+      "source": "crossingsOverview",
+      "source-layer": "level_crossings",
+      "minzoom": 5,
+      "maxzoom": 9,
+      "layout": {
+        "visibility": "none"
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "minor"
+        ],
+        true
+      ],
+      "paint": {
+        "circle-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.9,
+          8,
+          1.4,
+          11,
+          2.2
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0,
+          11,
+          0.8
+        ],
+        "circle-opacity": 0.9
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "circle",
+      "source": "crossingsDetail",
+      "source-layer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 11,
+      "layout": {
+        "visibility": "none"
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "minor"
+        ],
+        true
+      ],
+      "paint": {
+        "circle-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.9,
+          8,
+          1.4,
+          11,
+          2.2
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0,
+          11,
+          0.8
+        ],
+        "circle-opacity": 0.9
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-crossing-marks",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "source-layer": "level_crossings",
+      "minzoom": 11,
+      "maxzoom": 15,
+      "layout": {
+        "icon-image": "crossing-x",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.7,
+          13,
+          0.85,
+          14.99,
+          1
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "icon-halo-color": "#fffef8",
+        "icon-halo-width": 1.2,
+        "icon-opacity": 0.95
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-level-crossings",
+      "type": "symbol",
+      "source": "crossings",
+      "source-layer": "points_of_interest",
+      "minzoom": 15,
+      "filter": [
+        "==",
+        [
+          "get",
+          "type"
+        ],
+        "level_crossing"
+      ],
+      "layout": {
+        "text-field": "×",
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 23,
+        "text-allow-overlap": false,
+        "text-padding": 2,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#63332c",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "points_of_interest",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
       "id": "station-stationLow-dots",
       "type": "circle",
       "source": "stationLow",
@@ -54850,9 +56336,11 @@
             "zoom"
           ],
           3,
-          0.7,
-          8,
-          1,
+          0.25,
+          7,
+          0.4,
+          10,
+          0.6,
           12,
           1.5
         ],
@@ -54865,11 +56353,13 @@
             "zoom"
           ],
           3,
-          1.4,
+          0.55,
           5,
-          1.9,
+          0.75,
           7,
-          2.5,
+          1,
+          10,
+          1.6,
           12,
           3.2
         ]
@@ -55521,9 +57011,11 @@
             "zoom"
           ],
           3,
-          0.7,
-          8,
-          1,
+          0.25,
+          7,
+          0.4,
+          10,
+          0.6,
           12,
           1.5
         ],
@@ -55536,11 +57028,13 @@
             "zoom"
           ],
           3,
-          1.4,
+          0.55,
           5,
-          1.9,
+          0.75,
           7,
-          2.5,
+          1,
+          10,
+          1.6,
           12,
           3.2
         ]
@@ -55666,9 +57160,11 @@
             "zoom"
           ],
           3,
-          0.7,
-          8,
-          1,
+          0.25,
+          7,
+          0.4,
+          10,
+          0.6,
           12,
           1.5
         ],
@@ -55681,11 +57177,13 @@
             "zoom"
           ],
           3,
-          1.4,
+          0.55,
           5,
-          1.9,
+          0.75,
           7,
-          2.5,
+          1,
+          10,
+          1.6,
           12,
           3.2
         ]
@@ -55830,9 +57328,11 @@
             "zoom"
           ],
           3,
-          0.7,
-          8,
-          1,
+          0.25,
+          7,
+          0.4,
+          10,
+          0.6,
           12,
           1.5
         ],
@@ -55845,7 +57345,77 @@
             "zoom"
           ],
           8,
-          2,
+          1.1,
+          10,
+          [
+            "match",
+            [
+              "case",
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ],
+              "minor",
+              [
+                "match",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "station"
+                  ],
+                  ""
+                ],
+                [
+                  "monorail",
+                  "funicular",
+                  "miniature",
+                  "tram"
+                ],
+                true,
+                false
+              ],
+              "minor",
+              [
+                "match",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "station"
+                  ],
+                  ""
+                ],
+                [
+                  "light_rail"
+                ],
+                true,
+                false
+              ],
+              "light",
+              "major"
+            ],
+            "minor",
+            1,
+            "light",
+            1.2,
+            [
+              "match",
+              [
+                "get",
+                "station_size"
+              ],
+              "large",
+              2,
+              "normal",
+              1.6,
+              1.4
+            ]
+          ],
           12,
           [
             "match",
@@ -56369,6 +57939,157 @@
       }
     },
     {
+      "id": "service-routes",
+      "type": "line",
+      "source": "serviceRoutes",
+      "source-layer": "service_routes",
+      "minzoom": 7,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "to-color",
+          [
+            "get",
+            "colour"
+          ],
+          "#5d6b73"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          [
+            "*",
+            3.5,
+            0.5714285714285714
+          ],
+          12,
+          3.5,
+          16,
+          [
+            "*",
+            3.5,
+            1.4285714285714286
+          ]
+        ],
+        "line-offset": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          [
+            "*",
+            [
+              "*",
+              [
+                "-",
+                [
+                  "get",
+                  "i"
+                ],
+                [
+                  "/",
+                  [
+                    "-",
+                    [
+                      "get",
+                      "n"
+                    ],
+                    1
+                  ],
+                  2
+                ]
+              ],
+              3.5
+            ],
+            0.5714285714285714
+          ],
+          12,
+          [
+            "*",
+            [
+              "-",
+              [
+                "get",
+                "i"
+              ],
+              [
+                "/",
+                [
+                  "-",
+                  [
+                    "get",
+                    "n"
+                  ],
+                  1
+                ],
+                2
+              ]
+            ],
+            3.5
+          ],
+          16,
+          [
+            "*",
+            [
+              "*",
+              [
+                "-",
+                [
+                  "get",
+                  "i"
+                ],
+                [
+                  "/",
+                  [
+                    "-",
+                    [
+                      "get",
+                      "n"
+                    ],
+                    1
+                  ],
+                  2
+                ]
+              ],
+              3.5
+            ],
+            1.4285714285714286
+          ]
+        ],
+        "line-opacity": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "service_routes",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
       "id": "place_label_city",
       "type": "symbol",
       "source": "openmaptiles",
@@ -56594,266 +58315,6 @@
       }
     },
     {
-      "id": "infrastructure-crossing-overview",
-      "type": "circle",
-      "source": "crossingsOverview",
-      "source-layer": "level_crossings",
-      "minzoom": 5,
-      "maxzoom": 9,
-      "layout": {
-        "visibility": "none"
-      },
-      "filter": [
-        "!=",
-        [
-          "get",
-          "minor"
-        ],
-        true
-      ],
-      "paint": {
-        "circle-color": [
-          "match",
-          [
-            "get",
-            "kind"
-          ],
-          "foot",
-          "#a0704a",
-          "#63332c"
-        ],
-        "circle-radius": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          0.9,
-          8,
-          1.4,
-          11,
-          2.2
-        ],
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0,
-          11,
-          0.8
-        ],
-        "circle-opacity": 0.9
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "level_crossings",
-        "atlas:views": [
-          "infrastructure"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      }
-    },
-    {
-      "id": "infrastructure-crossing-dots",
-      "type": "circle",
-      "source": "crossingsDetail",
-      "source-layer": "level_crossings",
-      "minzoom": 9,
-      "maxzoom": 11,
-      "layout": {
-        "visibility": "none"
-      },
-      "filter": [
-        "!=",
-        [
-          "get",
-          "minor"
-        ],
-        true
-      ],
-      "paint": {
-        "circle-color": [
-          "match",
-          [
-            "get",
-            "kind"
-          ],
-          "foot",
-          "#a0704a",
-          "#63332c"
-        ],
-        "circle-radius": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          0.9,
-          8,
-          1.4,
-          11,
-          2.2
-        ],
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0,
-          11,
-          0.8
-        ],
-        "circle-opacity": 0.9
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "level_crossings",
-        "atlas:views": [
-          "infrastructure"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      }
-    },
-    {
-      "id": "infrastructure-crossing-marks",
-      "type": "symbol",
-      "source": "crossingsDetail",
-      "source-layer": "level_crossings",
-      "minzoom": 11,
-      "maxzoom": 15,
-      "layout": {
-        "icon-image": "crossing-x",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          11,
-          0.7,
-          13,
-          0.85,
-          14.99,
-          1
-        ],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-        "visibility": "none"
-      },
-      "paint": {
-        "icon-color": [
-          "match",
-          [
-            "get",
-            "kind"
-          ],
-          "foot",
-          "#a0704a",
-          "#63332c"
-        ],
-        "icon-halo-color": "#fffef8",
-        "icon-halo-width": 1.2,
-        "icon-opacity": 0.95
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "level_crossings",
-        "atlas:views": [
-          "infrastructure"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      }
-    },
-    {
-      "id": "infrastructure-level-crossings",
-      "type": "symbol",
-      "source": "crossings",
-      "source-layer": "points_of_interest",
-      "minzoom": 15,
-      "filter": [
-        "==",
-        [
-          "get",
-          "type"
-        ],
-        "level_crossing"
-      ],
-      "layout": {
-        "text-field": "×",
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 23,
-        "text-allow-overlap": false,
-        "text-padding": 2,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#63332c",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 2
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "points_of_interest",
-        "atlas:views": [
-          "infrastructure"
-        ],
-        "atlas:settings": [],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
-      }
-    },
-    {
       "source": "electricSubstations",
       "source-layer": "electrification_substation",
       "minzoom": 13,
@@ -56883,8 +58344,8 @@
         "Polygon"
       ],
       "paint": {
-        "fill-color": "#d7ae35",
-        "fill-opacity": 0.25
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
       },
       "layout": {
         "visibility": "none"
@@ -56920,15 +58381,14 @@
         "Polygon"
       ],
       "paint": {
-        "line-color": "#b77d00",
-        "line-width": 1.5
+        "line-color": "#3d4247",
+        "line-width": 1
       },
       "layout": {
         "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
       "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -56965,15 +58425,165 @@
             "get",
             "power_minzoom"
           ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
         ]
       ],
+      "source": "electricFacilities",
+      "id": "electrification-supply-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
+      "id": "electrification-supply-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
       "id": "electrification-supply-points",
       "type": "circle",
       "paint": {
-        "circle-color": [
-          "get",
-          "power_color"
-        ],
+        "circle-color": "#3d4247",
         "circle-radius": [
           "interpolate",
           [
@@ -56983,21 +58593,21 @@
             "zoom"
           ],
           10,
-          3.2,
+          1.6,
           14,
-          5.5,
+          2.6,
           18,
-          6.5
+          3.6
         ],
         "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": 1.5
+        "circle-stroke-width": 0.8,
+        "circle-opacity": 1
       },
       "layout": {
         "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
       "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
@@ -57036,8 +58646,169 @@
             "get",
             "power_minzoom"
           ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
         ]
       ],
+      "source": "electricFacilities",
+      "id": "electrification-former-supply-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
+      "id": "electrification-former-supply-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 0.6,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "power_minzoom"
+          ]
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricFacilities",
       "id": "electrification-former-supply-points",
       "type": "circle",
       "paint": {
@@ -57051,25 +58822,1907 @@
             "zoom"
           ],
           10,
-          3.2,
+          1.6,
           14,
-          5.5,
+          2.6,
           18,
-          6.5
+          3.6
         ],
-        "circle-stroke-color": [
-          "get",
-          "power_color"
-        ],
-        "circle-stroke-width": 2
+        "circle-stroke-color": "#3d4247",
+        "circle-stroke-width": 1,
+        "circle-opacity": 0.8
       },
       "layout": {
         "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
-      "minzoom": 13,
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_rail"
+                ]
+              ],
+              [
+                "in",
+                "rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_fourth_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_fourth_rail"
+                ]
+              ],
+              [
+                "in",
+                "4th_rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-conductor-rails",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_fourth_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_fourth_rail"
+                ]
+              ],
+              [
+                "in",
+                "4th_rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-fourth-rails",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_ground"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_ground"
+                ]
+              ],
+              [
+                "in",
+                "ground-level",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-ground-supply",
+      "type": "line",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": 3,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.1,
+          1.8
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_inductive"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_inductive"
+                ]
+              ],
+              [
+                "in",
+                "inductive",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-inductive-supply",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          4,
+          1.5,
+          1,
+          1.5
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "propulsion_linear_motor"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-linear-motors",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#7b3fa0",
+        "line-width": 1.5,
+        "line-offset": 0,
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "traction_rack"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-rack-traction",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "traction_cable"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-cable-traction",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 1.5,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          5,
+          2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "id": "electrification-provider-rack",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "downcase",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "rack"
+                ],
+                "no"
+              ]
+            ],
+            [
+              "literal",
+              [
+                "no",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "id": "electrification-provider-cable",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "==",
+          [
+            "get",
+            "feature"
+          ],
+          "funicular"
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 1.5,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          5,
+          2
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "minzoom": 12,
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
@@ -57092,43 +60745,198 @@
           "==",
           [
             "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "==",
+          [
+            "get",
             "power_state"
           ],
           "present"
         ],
         [
-          ">=",
+          "match",
           [
-            "zoom"
+            "geometry-type"
           ],
           [
-            "get",
-            "power_minzoom"
-          ]
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
         ]
       ],
-      "id": "electrification-supply-marks",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "get",
-          "power_mark"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
-        "visibility": "none"
-      },
+      "source": "electricMethods",
+      "id": "electrification-charging-areas",
+      "type": "fill",
       "paint": {
-        "text-color": "#fffef8"
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.3
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
-      "source": "electricFacilities",
-      "minzoom": 13,
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-charging-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 1
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-charging-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#3d4247",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.6,
+          14,
+          2.6,
+          18,
+          3.6
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 0.8,
+        "circle-opacity": 1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
@@ -57150,6 +60958,13 @@
       "filter": [
         "all",
         [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
           "!=",
           [
             "get",
@@ -57158,41 +60973,450 @@
           "present"
         ],
         [
-          ">=",
+          "any",
           [
-            "zoom"
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_rail"
+                ]
+              ],
+              [
+                "in",
+                "rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
           ],
           [
-            "get",
-            "power_minzoom"
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_fourth_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_fourth_rail"
+                ]
+              ],
+              [
+                "in",
+                "4th_rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
           ]
         ]
       ],
-      "id": "electrification-former-supply-marks",
-      "type": "symbol",
+      "id": "electrification-former-conductor-rails",
+      "type": "line",
       "layout": {
-        "text-field": [
-          "get",
-          "power_mark"
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 9,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
+        "line-cap": "butt",
+        "line-join": "round",
         "visibility": "none"
       },
       "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ]
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 0.5
       }
     },
     {
-      "source": "electricFacilities",
-      "minzoom": 14,
+      "source": "electricMethods",
+      "minzoom": 10,
       "metadata": {
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
@@ -57201,7 +61425,7 @@
           "electrification"
         ],
         "atlas:settings": [
-          "labels"
+          "inactive"
         ],
         "atlas:initial-hidden": true,
         "atlas:base-map": false,
@@ -57209,7 +61433,1435 @@
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
-        "atlas:localize": true
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_fourth_rail"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_fourth_rail"
+                ]
+              ],
+              [
+                "in",
+                "4th_rail",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-former-fourth-rails",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_ground"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_ground"
+                ]
+              ],
+              [
+                "in",
+                "ground-level",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-former-ground-supply",
+      "type": "line",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": 3,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.1,
+          1.8
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "method_inductive"
+              ],
+              true
+            ],
+            [
+              "all",
+              [
+                "!",
+                [
+                  "has",
+                  "method_inductive"
+                ]
+              ],
+              [
+                "in",
+                "inductive",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "power_method"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "id": "electrification-former-inductive-supply",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "electrification_state"
+            ],
+            [
+              "no",
+              "deelectrified"
+            ],
+            true,
+            false
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "voltage"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#525b62",
+          [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "case",
+              [
+                "<",
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                0
+              ],
+              "#8b39c6",
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "to-number",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "voltage"
+                    ],
+                    -1
+                  ],
+                  -1
+                ],
+                600,
+                "#ba88dd",
+                1500,
+                "#8b39c6",
+                3000,
+                "#59257e"
+              ]
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            20
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#27864f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              11000,
+              "#4dcb82",
+              15000,
+              "#27864f"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            40
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#738f1e",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6600,
+              "#b7da4e",
+              12500,
+              "#738f1e"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            55
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#a3311f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              6250,
+              "#e78c7e",
+              15000,
+              "#d84831",
+              25000,
+              "#a3311f",
+              50000,
+              "#6b2014"
+            ]
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#bd6c0f",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              12500,
+              "#f0a44c",
+              20000,
+              "#e28112",
+              25000,
+              "#bd6c0f",
+              50000,
+              "#844b0b"
+            ]
+          ]
+        ],
+        "line-width": 2,
+        "line-offset": 3.5,
+        "line-dasharray": [
+          4,
+          1.5,
+          1,
+          1.5
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "propulsion_linear_motor"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-former-linear-motors",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#7b3fa0",
+        "line-width": 1.5,
+        "line-offset": 0,
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "traction_rack"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-former-rack-traction",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "source": "electricMethods",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "any",
+          [
+            "==",
+            [
+              "get",
+              "traction_cable"
+            ],
+            true
+          ]
+        ]
+      ],
+      "id": "electrification-former-cable-traction",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 1.5,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          5,
+          2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "id": "electrification-former-provider-rack",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "downcase",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "rack"
+                ],
+                "no"
+              ]
+            ],
+            [
+              "literal",
+              [
+                "no",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 5,
+        "line-offset": 0,
+        "line-dasharray": [
+          0.4,
+          1.2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "id": "electrification-former-provider-cable",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "==",
+          [
+            "get",
+            "feature"
+          ],
+          "funicular"
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#33302c",
+        "line-width": 1.5,
+        "line-offset": -3.5,
+        "line-dasharray": [
+          5,
+          2
+        ],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
       },
       "filter": [
         "all",
@@ -57217,86 +62869,10 @@
           "==",
           [
             "get",
-            "power_state"
+            "power_kind"
           ],
-          "present"
+          "charging_station"
         ],
-        [
-          ">=",
-          [
-            "zoom"
-          ],
-          [
-            "get",
-            "power_minzoom"
-          ]
-        ]
-      ],
-      "id": "electrification-supply-names",
-      "type": "symbol",
-      "layout": {
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.9
-        ],
-        "text-padding": 4,
-        "text-max-width": 14,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
-      }
-    },
-    {
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "energy-supply",
-        "atlas:views": [
-          "electrification"
-        ],
-        "atlas:settings": [
-          "inactive",
-          "labels"
-        ],
-        "atlas:initial-hidden": true,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      },
-      "filter": [
-        "all",
         [
           "!=",
           [
@@ -57306,55 +62882,415 @@
           "present"
         ],
         [
-          ">=",
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-former-charging-areas",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#8c8f92",
+        "fill-opacity": 0.1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString"
+          ],
+          true,
+          false
+        ]
+      ],
+      "source": "electricMethods",
+      "id": "electrification-former-charging-outlines",
+      "type": "line",
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#3d4247",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
+          10,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": 0.6,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "all",
+        [
+          "==",
           [
             "get",
-            "power_minzoom"
-          ]
+            "power_kind"
+          ],
+          "charging_station"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "geometry-type"
+          ],
+          [
+            "Point",
+            "MultiPoint"
+          ],
+          true,
+          false
         ]
       ],
-      "id": "electrification-former-supply-names",
+      "source": "electricMethods",
+      "id": "electrification-former-charging-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.6,
+          14,
+          2.6,
+          18,
+          3.6
+        ],
+        "circle-stroke-color": "#3d4247",
+        "circle-stroke-width": 1,
+        "circle-opacity": 0.8
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 16,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-masts",
+      "type": "circle",
+      "filter": [
+        "==",
+        [
+          "get",
+          "feature"
+        ],
+        "mast"
+      ],
+      "paint": {
+        "circle-color": "#b77d00",
+        "circle-radius": 2.5,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 1
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 16,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-portals",
+      "type": "line",
+      "filter": [
+        "==",
+        [
+          "get",
+          "feature"
+        ],
+        "portal"
+      ],
+      "paint": {
+        "line-color": "#b77d00",
+        "line-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricCatenary",
+      "source-layer": "electrification_catenary",
+      "minzoom": 18,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "electrification-catenary-references",
       "type": "symbol",
       "layout": {
         "text-field": [
-          "coalesce",
-          [
-            "get",
-            "atlas_name"
-          ],
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "ref"
-          ],
-          ""
+          "get",
+          "ref"
         ],
         "text-font": [
           "Noto Sans Regular"
         ],
-        "text-size": 11,
-        "text-anchor": "top",
+        "text-size": 10,
         "text-offset": [
           0,
-          0.9
+          1
         ],
-        "text-padding": 4,
-        "text-max-width": 14,
         "visibility": "none"
       },
       "paint": {
-        "text-color": [
-          "get",
-          "power_color"
-        ],
+        "text-color": "#8c5f00",
         "text-halo-color": "#fffef8",
-        "text-halo-width": 1.5
+        "text-halo-width": 1
+      }
+    },
+    {
+      "source": "electricSignals",
+      "minzoom": 13,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "==",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-signal-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#e0a21a",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          2.5,
+          17,
+          4
+        ],
+        "circle-stroke-color": "#5c3d00",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "electricSignals",
+      "minzoom": 13,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "power_state"
+        ],
+        "present"
+      ],
+      "id": "electrification-former-signal-points",
+      "type": "circle",
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          2.5,
+          17,
+          4
+        ],
+        "circle-stroke-color": "#e0a21a",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -57378,7 +63314,8 @@
           [
             "rail",
             "transit",
-            "ferry"
+            "ferry",
+            "aerialway"
           ],
           true,
           false
@@ -63703,6 +69640,182 @@
           ],
           true
         ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 450,
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          14,
+          13
+        ],
+        "text-offset": [
+          0,
+          -0.85
+        ],
+        "text-padding": 8,
+        "text-max-angle": 35
+      },
+      "paint": {
+        "text-color": "#4a453f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "names",
+        "atlas:views": [],
+        "atlas:settings": [
+          "names"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": true
+      }
+    },
+    {
+      "id": "aerialway-names",
+      "type": "symbol",
+      "source": "aerialways",
+      "source-layer": "aerialways",
+      "minzoom": 12,
+      "filter": [
+        "has",
+        "kind"
       ],
       "layout": {
         "symbol-placement": "line",

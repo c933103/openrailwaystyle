@@ -1,0 +1,63 @@
+{
+  "upstream": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+  "previousHead": "291de12a25150531cf797c2e1b7b02d29dc2cd78",
+  "version": "20261012-departure-instant-2",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "sha256": "5cd09c17c1fdea06f8501d42eeab976e6a0db79cb2ea737ae749a8c73a29e6c5"
+    },
+    {
+      "path": "styles/app.mjs",
+      "sha256": "6858cbe795e0e21c563224727c4ca5fff817a7983fdedec22e9d25559bb43837"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "sha256": "82afa67b4319a824bab405b87b25772a8d83049a01616e0f81e07c751d5b19bf"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "sha256": "5a3c93937136dbb28f33ef0f48865b434d007ca6c204796eb0e9611cbade13f8"
+    },
+    {
+      "path": "styles/departures.mjs",
+      "sha256": "15ae7b38773512932d40a407c6c3168c224f618c11a1c406d872b2afb6e561e0"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "sha256": "4aee8c86880701c5d97ad7f4e4ab5adb476eb607e8739b4160cb8a7d0750131b"
+    },
+    {
+      "path": "styles/index.html",
+      "sha256": "3717f556fece106103448682551e63cc513c84892fc6ad2c060dc575aa3963ef"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "sha256": "84ec5e80b0bb4de09e1ac750aface3eccf32426b3b96964dc121936d204ecd4e"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "sha256": "dc5db455c1bdd51183899e651bfb0fc4e86f17b9a26737fca39c0e7d5db5e8c1"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "sha256": "df77fbd63b9cc9a458cd128fd0d2e706c48321697b33336b4135fc4ab90ae092"
+    },
+    {
+      "path": "tests/train-schedule.test.mjs",
+      "sha256": "b7917335a69c8a6e6b706196c90ab490143ef004307c45d4b5d1e0539858bb6d"
+    },
+    {
+      "path": "tests/departure-instant.test.mjs",
+      "sha256": "425ee3c9ffb498b33cf21397ebfb5bb036f112576b4bb89314fc3d31e5a15475"
+    },
+    {
+      "path": "tests/fixtures/departure-instant-predecessor.json.gz",
+      "sha256": "6217f3947863d75cac3b33e0a4cf830a64326993e1786d3ec8b86b7aa1a55939"
+    },
+    {
+      "path": "tests/fixtures/departure-instant-envelope-predecessor.json.gz",
+      "sha256": "09217927383fa479ffed96615c856b2007bc317de492b5efbb7cd363558f6bdc"
+    }
+  ]
+}

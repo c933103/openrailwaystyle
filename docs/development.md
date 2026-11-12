@@ -4,13 +4,18 @@
 
 ## Prerequisites
 
-Use Node.js 22.22.2 or newer in the 22.x line (the line used in CI), npm, Git,
-Python 3 and pip. Node.js 24.15.0 or newer in 24.x and Node.js 26 or newer are
-also supported by the pinned DOM test dependency. The package engine range and
-`.npmrc` reject unsupported runtimes during installation. Keep lifecycle scripts
-disabled with `npm ci --ignore-scripts`, as in CI. The commands
-below use a POSIX shell. Viewing the map requires an internet connection and a
-WebGL-capable browser; external tiles are not bundled for offline use.
+Use npm, Git, Python 3 and pip with a supported Node.js release. CI tracks the
+latest patched Node.js 26 release and rejects anything below 26.12.1. Use that
+line to reproduce CI. Local development also supports Node.js 22.23.4 or newer
+in 22.x, Node.js 24.22.1 or newer in 24.x, and Node.js 26.12.1 or newer, as
+specified by `package.json`. A newer major accepted by the package engine range
+is not a claim that CI has tested that major.
+
+The package engine range and `engine-strict=true` in `.npmrc` reject unsupported
+runtimes during installation. Keep lifecycle scripts disabled with
+`npm ci --ignore-scripts`, as in CI. The commands below use a POSIX shell.
+Viewing the map requires an internet connection and a WebGL-capable browser;
+external tiles are not bundled for offline use.
 
 ## Build the application
 
@@ -45,7 +50,6 @@ python3 -m venv "$snapshot_dir/venv"
 "$snapshot_dir/venv/bin/pip" install pmtiles==3.8.1
 "$snapshot_dir/venv/bin/python" scripts/unpack-snapshot.py "$snapshot_dir/lifecycle.pmtiles"
 node scripts/build-overview-tiles.mjs
-cat "$snapshot_dir"/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
 
 if [ -f "$snapshot_dir/rail-data/loading-gauge.json" ]; then
   cp "$snapshot_dir/rail-data/loading-gauge.json" styles/data/
@@ -154,15 +158,22 @@ The old external tile cache is not used by the harness or CI:
 ```sh
 npx playwright install --with-deps chromium
 node scripts/check-orm-fixture-browser.mjs
+node scripts/check-rail-reference-browser.mjs
 node scripts/check-platform-browser.mjs
 node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs
 node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
+node scripts/check-polar-browser.mjs
+node scripts/check-polar-parity-browser.mjs
+node scripts/check-terrain-deadlines-browser.mjs
 ```
 
-The fixture test verifies actual railway-line rendering near Wuhan at zoom
-levels 6 and 7 with **synthetic**, provider-shaped vector tiles. Platform,
+The fixture test verifies city-centred Infrastructure railway-line rendering near
+Wuhan at zoom levels 6, 7 and 8 with **synthetic**, provider-shaped vector tiles,
+including a negative control with decoded geometry filtered out of the active layer.
+The same diagnostic runs in the self-hosted geographic audit and distinguishes
+missing provider geometry from loaded lines that fail to render. Platform,
 signal and power tests also use generated geometry. Bathymetry uses a generated
 PMTiles ocean/island mask and a Terrarium shallow-shelf/deep-basin PNG, exercising
 the real archive client, DEM worker and depth worker. Latin labels use a local
@@ -181,7 +192,7 @@ source dates stay unchanged; publication metadata uses the current safe URL and
 lineage projection. These gates do not certify live geographic coverage.
 
 Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
-`tests/startup.test.mjs` execute the actual old/new worker sources with synthetic
+`tests/startup*.test.mjs` execute the actual old/new worker sources with synthetic
 fetch/cache implementations. The browser matrix has always blocked registered
 service workers; its Cache Storage/Web Crypto upgrade checks and PWA guidance
 checks retain that scope. Dedicated map workers run normally under the guarded
@@ -253,6 +264,13 @@ style before publishing `styles/`. In a new fork:
 4. Run **Validate and deploy world railway map** if the initial push occurred
    before Pages was enabled.
 
+Before saving the site, `scripts/check-site-size.mjs` measures `styles/` and
+writes its size, with a row per `data/<dataset>` directory, to the step
+summary. GitHub Pages publishes at most 1 GB, so the check warns above 750 MiB
+and fails above 900 MiB, leaving room for what the deploy job adds. A failure
+means a dataset must move out of the site (for example to a release asset)
+or shrink; the levels are not raised.
+
 Deployment runs from `main` after validation, not from pull requests. URLs are
 relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
@@ -260,36 +278,134 @@ browser checks against the published map.
 
 ### Custom domain
 
-The intended canonical URL is [https://10671435.xyz/](https://10671435.xyz/).
-The Pages artifact contains the contents of `styles/`, so `styles/index.html`
-is served at the domain root. Keep application assets, the manifest and the
-service worker relative; no `/styles/` redirect or repository-path prefix is
-needed. The workflow uses the Pages deployment's reported URL for its published
-tile and browser checks.
+The canonical Railway Atlas URL is [https://10671435.xyz/](https://10671435.xyz/).
+The GitHub Pages custom domain has been configured as `10671435.xyz`
+in this repository's Pages settings (owner-confirmed 2026-11-13).
+The Pages artifact contains the contents of `styles/`, so
+`styles/index.html` is served at the domain root. Keep application
+assets, the manifest and service worker relative; no `/styles/`
+redirect or repository-path prefix is needed.
 
-**Activation status on 2026-10-09: pending.** The domain is still parked at the
-registrar. Repository URL changes do not configure the domain. Complete the
-external setup before merging the canonical-URL change:
+The repository setting alone does not verify public DNS, a valid TLS
+certificate, HTTP-to-HTTPS redirection, or that the deployed HTML belongs
+to Railway Atlas. Check those separately before merging changes that
+publish canonical URLs. See GitHub's
+[custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+and [HTTPS guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).
+The workflow uses the Pages deployment's reported URL for published tile
+and browser checks.
 
-1. Set **Settings → Pages → Custom domain** to `10671435.xyz` in this repository.
-2. Configure the domain's DNS for GitHub Pages using GitHub's
-   [custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
-3. Wait for successful DNS verification and certificate issuance, then enable
-   **Enforce HTTPS** and verify that the domain serves Railway Atlas. See
-   [GitHub Pages HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).
+An Actions deployment uses the repository's Pages custom-domain setting;
+a `CNAME` file in the artifact does not configure it. The station-search
+probe sends the origin of `MAP_BASE_URL` and checks that the search API
+permits it. The default is `https://10671435.xyz/`; override
+`MAP_BASE_URL` for a fork or preview deployment.
 
-This Actions-based deployment uses the repository's Pages settings for the
-custom domain; a `CNAME` file in the artifact does not configure it. The station
-search probe sends the origin of `MAP_BASE_URL` and checks that the API permits
-it; its default is `https://10671435.xyz/`. Set `MAP_BASE_URL` when checking a
-fork or another deployment.
+## Controls painter diagnostic sampling
+
+The fixture-only painter A/B diagnostic retains its single natural transition,
+60-second settlement/capture bound, 12-minute experiment deadline, and seven
+nonempty exact RGBA comparisons. It does not retry a failed transition. Its raw
+natural per-frame trace and final dispatch sequence remain in the artifact.
+
+Terrain textures are cached per tile in the pinned MapLibre renderer. A cached
+tile is composited without calling the layer painter again, so the last natural
+frame's physical layer-call count is not a comparable input across fresh browser
+processes. The offline actual-source regression reproduces 360 versus 144 layer
+calls with the guard disabled in both arms and identical ordered tile composites.
+This establishes a cache-state confound, not the historical cause of any particular
+failure. An existing failed artifact remains a failed measurement.
+
+The independent terrain pixel case now schedules a renderer frame only after
+all source tiles requested by the preceding frame have completed loading and
+worker decoding. Pending callbacks are recorded and deferred until a normal
+source-data event schedules another frame. This isolated fixture barrier changes
+arrival/render interleaving; it does not change the original application controls
+transition, source responses, worker concurrency, cache entries, fingerprints or
+the renderer. No polling timer, redraw, retry or cache invalidation is added.
+
+The [PR232 arrival analysis](investigations/controls-terrain-arrivals-20261016.md)
+replays the actual failed artifact's newly visible DEM IDs through the pinned
+terrain manager and painter. They reproduce the exact 360/234 dispatch and
+zero/seven retained-cache identities with either guard setting. This supplies
+a concrete confound for that artifact; it does not make its failed gate pass.
+The new source-batched experiment is a separately identified measurement.
+
+Every actual terrain frame must receive identical complete source batches in
+both arms. The comparison additionally requires equal per-frame terrain
+preparation inputs, cache populations, ordered layer/coordinate dispatch and
+resulting cache state. Deferred callback counts and partial arrival order are
+retained as diagnostics; they are not renderer invocations. Missing, failed or
+truncated batch evidence fails. A guard-caused cache eviction or equal-count
+coordinate substitution still fails, even if the final image is unchanged.
+
+After natural terrain settlement, the checker records two explicit samples:
+one synchronous public `map.redraw()` with all currently renderable terrain
+texture slots invalidated, then one warm redraw with every slot verified cached.
+It requires one complete frame each, unchanged settled tile/source/layer identity,
+all ordered fixture layers for every cold tile, and no repeated layer work warm.
+The original natural ordered-dispatch equality remains mandatory. The probe also
+records each terrain frame's pre/post preparation and post-render cache population,
+source/tile/layer identities and coordinate-bearing dispatch records. The final
+natural frame's prepared and resulting cache populations, identities and detailed
+dispatch must match across arms; missing/truncated evidence fails. A legitimate
+timing-dependent mismatch remains an explicit failure for investigation, never
+an automatically accepted explanation. Cold/warm redraws cannot waive it.
+
+Natural, cold and warm pixels must be byte-identical within each arm. Both arms
+must also have exactly equal cold and warm identities, dispatch sequences and pixels;
+there is no deduplication, tolerance, skipped case, or relaxed output equality.
+The cache operations occur only in the synthetic pixel diagnostic, never the app.
+
+`tests/controls-painter-terrain.test.mjs` executes the actual pinned painter,
+render-to-texture, pool, terrain-composition and public redraw methods with
+synthetic GPU resources. It covers cache histories, missing/reordered layers,
+missing tiles, visible-mask defects and failed sampling boundaries. This is CPU
+control-flow/coverage evidence, not a WebGL pixel or timing claim. The hosted
+fixture-only diagnostic remains required for the final patch.
 
 ## Served code version
 
-Expand the map's bottom-right information button to see the executing asset build and a link to its source commit. Carto keeps this attribution open. The commit and its repository URL are embedded into the existing cached label-code bundle by `scripts/build-browser.mjs` from CI's `GITHUB_SHA`, `GITHUB_REPOSITORY` and `GITHUB_SERVER_URL`; they are not fetched from the latest branch head. Fork builds link to their own repository. An older cached page therefore reports its own build. A mixed cached bundle reports both asset versions. Local builds without `GITHUB_SHA` say “Development build”; a commit supplied without a repository is shown without a link.
+Expand the map's bottom-right information button to see the executing asset build and a link to its source commit. The compact attribution control preserves the user's open/closed preference, including on Carto; it does not force that background's attribution open. See the [current control implementation](https://github.com/c933103/openrailwaystyle/blob/dbdab03b024c92dd7bd3c2328d562e50e1a7653b/styles/app.mjs#L704-L711) and [unresolved attribution requirements](external-services.md#remaining-issues-not-resolved-by-this-change). The commit and its repository URL are embedded into the existing cached label-code bundle by `scripts/build-browser.mjs` from CI's `GITHUB_SHA`, `GITHUB_REPOSITORY` and `GITHUB_SERVER_URL`; they are not fetched from the latest branch head. Fork builds link to their own repository. An older cached page therefore reports its own build. A mixed cached bundle reports both asset versions. Local builds without `GITHUB_SHA` say “Development build”; a commit supplied without a repository is shown without a link.
 
 ## MapLibre runtime maintenance
 
 The version-5 runtime includes a reproducible upstream attribution fix. See the
 [backport provenance, hashes and offline recovery contract](maplibre-backport.md)
 before changing its dependency or browser asset pins.
+
+## Independent mainline browser-check deadlines
+
+The mainline geometry check retains every profile, projection, zoom, exact chain,
+painted-pixel, camera and live-outage assertion. Browser evaluations have a
+30-second **Node-side** deadline, including the render-event/pixel wait, so a
+stalled renderer cannot prevent its own timeout. Diagnostics and screenshots are
+bounded to five seconds; unavailable diagnostics are recorded, never accepted as
+rendering proof. Failure records include the current profile/view/phase.
+
+Cleanup closes the context (also for shared browsers) and then the browser without
+waiting for map JavaScript. Each close gets five seconds, and a stuck close exits
+nonzero after both have been attempted. A 30-minute whole-check watchdog covers
+setup and transport stalls; the published-geometry workflow step has a 35-minute
+backstop. For scale, the successful [deployed geometry check on November 1](https://github.com/c933103/openrailwaystyle/actions/runs/41361234299/job/125020458123)
+ran from 23:53:16 to 23:58:11 UTC (4m55s); the whole-check limit leaves over six
+times that observed complete-coverage duration. These limits fail closed, do not
+retry or omit cases, and do not turn a
+canceled or skipped acceptance check into a pass. The historical six-hour stall's
+specific blocked statement and cancellation cause have not been established.
+
+
+### Startup fixture process bounds
+
+Run the complete startup suite with
+`node --experimental-vm-modules --test tests/startup*.test.mjs`.
+At the process-boundary refactor, the three files retained all 157 top-level
+registrations and 169 cases including subtests. The normal `npm test` glob runs
+every file. For a targeted name filter,
+apply it to the same `tests/startup*.test.mjs` glob, not only `startup.test.mjs`.
+
+Evaluated VM modules retain closed fixture contexts on the measured Node 24
+runtime. Keep startup cases in bounded sibling test files, with shared fixture
+support in `tests/startup-harness.mjs`, rather than merging them into one growing
+process. No normal test uses forced GC, a reduced heap, skipped cases or a
+name-based shard filter. See [the original case audit and memory evidence](investigations/startup-isolation-20261106/README.md).

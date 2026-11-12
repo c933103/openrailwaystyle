@@ -1,0 +1,138 @@
+✖ search names: numeric differences never become bilingual aliases (1.84099ms)
+✔ search names: bilingual aliases retain matching numeric identities (2.071133ms)
+✖ search reconciliation keeps nearby distinct numbered geocoder stations (1.439147ms)
+✖ tile search keeps nearby distinct numbered stations already found by name (1.770658ms)
+✔ both search reconciliation paths still merge nearby bilingual aliases (29.977595ms)
+✖ stable OSM identities still deduplicate despite differing numbered names (1.358678ms)
+✔ name-based deduplication still requires nearby coordinates (1.437645ms)
+✖ tile search ranks an exact numbered name before a closer numeric extension (1.057354ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 3
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.524386
+
+✖ failing tests:
+
+test at tests/search-numeric-names.test.mjs:44:1
+✖ search names: numeric differences never become bilingual aliases (1.84099ms)
+  AssertionError [ERR_ASSERTION]: Terminal 1 / Terminal 10
+
+  true !== false
+
+      at TestContext.<anonymous> (file://<baseline>/tests/search-numeric-names.test.mjs:46:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/search-numeric-names.test.mjs:60:1
+✖ search reconciliation keeps nearby distinct numbered geocoder stations (1.439147ms)
+  AssertionError [ERR_ASSERTION]: Terminal 1 / Terminal 10
+  + actual - expected
+
+    [
+      1,
+  -   2
+    ]
+
+      at TestContext.<anonymous> (file://<baseline>/tests/search-numeric-names.test.mjs:63:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 1 ],
+    expected: [ 1, 2 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/search-numeric-names.test.mjs:68:1
+✖ tile search keeps nearby distinct numbered stations already found by name (1.770658ms)
+  AssertionError [ERR_ASSERTION]: Terminal 1 / Terminal 10
+  + actual - expected
+
+  + []
+  - [
+  -   2
+  - ]
+
+      at TestContext.<anonymous> (file://<baseline>/tests/search-numeric-names.test.mjs:71:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 2 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/search-numeric-names.test.mjs:85:1
+✖ stable OSM identities still deduplicate despite differing numbered names (1.358678ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+      'node',
+  -   'way'
+    ]
+
+      at TestContext.<anonymous> (file://<baseline>/tests/search-numeric-names.test.mjs:88:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'node' ],
+    expected: [ 'node', 'way' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/search-numeric-names.test.mjs:99:1
+✖ tile search ranks an exact numbered name before a closer numeric extension (1.057354ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+  +   'Terminal 10',
+      'Terminal 1',
+  -   'Terminal 10'
+    ]
+
+      at TestContext.<anonymous> (file://<baseline>/tests/search-numeric-names.test.mjs:101:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Terminal 10', 'Terminal 1' ],
+    expected: [ 'Terminal 1', 'Terminal 10' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

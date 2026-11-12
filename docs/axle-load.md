@@ -26,3 +26,14 @@ Sources checked on 2026-10-01:
 A live Overpass count on 2026-10-01 found **709 railway ways** tagged with `maxaxleload` using the extraction's rail/narrow-gauge/light-rail/subway/monorail/funicular filter. Road limits are excluded. Taginfo reports 65,639 ways carrying `axle_load`; the extraction includes this railway-specific tag too, using the same railway filter. The details retain both explicit tags when present.
 
 `node scripts/build-axle-load-list.mjs` runs in the dedicated `axle-load.yml` maintenance workflow, independently of the larger lifecycle snapshot. It fetches railway IDs and values without geometry, plus a small Finnish classification lookup. Refresh is limited to once per 28 days; the prior validated lookup is reused on service failure. `snapshot/axle-load.json` is published on `axle-data` and copied into the site. The workflow starts on the extraction change and checks weekly, using the published file as its durable 28-day cache. An initial failure is reported rather than publishing an empty lookup; a successful update dispatches the site rebuild. The compact encoding reuses loading-gauge varint ID groups. The browser fetches and decodes this file only when the Axle load sources are visible, never calls Overpass, and shares the result between overview, detailed and branch tiles.
+
+Maintenance carries a provider's `Retry-After` across the five uncached part
+requests, including HTTP 200 responses. Seconds and HTTP-date pauses are measured
+from the headers; body time counts toward the pause, and later wall-clock changes
+do not shorten it. Each request keeps its five-minute timeout and no retry is
+added. Before waiting or starting another request, the builder requires both the
+full pause and request to fit its 24-minute acquisition budget within the existing
+25-minute job. Otherwise it retains validated parts and republishes only the prior
+complete lookup, if available. A pause on the final successful part needs no wait
+because there is no further provider request. The 28-day cache, five queries,
+trailing-count validation and publication format are unchanged.

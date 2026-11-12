@@ -8,6 +8,7 @@ const STATION = [...LABEL, 'feature', 'state', 'station', 'station_size'];
 const CONTOUR = {contours:['ele', 'level']};
 
 export const SOURCE_CONTRACTS = {
+  railReference:{atlas_mainline_overview:['classification','highspeed_tag','rank']},
   openmaptiles: {
     landuse:[...LABEL, 'class'],
     landcover:['class', 'subclass'],
@@ -38,11 +39,13 @@ export const SOURCE_CONTRACTS = {
   axleRail:{railway_line_high:['axle_native', 'axle_tonnes', 'axle_units', 'feature', 'service', 'state', 'tunnel']},
   axleBranch:{branch_lines:['axle_tonnes', 'feature', 'service', 'state', 'tunnel']},
   railBackbone:{railroads:[],railroads_north_america:[]},
-  railway:{railway_line_high:[...LABEL, 'bridge', 'electrification_state', 'feature', 'frequency', 'gauge0', 'gauge1', 'gaugeint0', 'gaugeint1', 'highspeed', 'loading_gauge', 'maxspeed', 'owner', 'service', 'speed_label', 'state', 'train_protection0', 'train_protection1', 'train_protection2', 'tunnel', 'usage', 'voltage']},
+  railway:{railway_line_high:[...LABEL, 'bridge', 'electrification_state', 'feature', 'frequency', 'gauge0', 'gauge1', 'gaugeint0', 'gaugeint1', 'highspeed', 'loading_gauge', 'maxspeed', 'owner', 'rack', 'service', 'speed_label', 'state', 'train_protection0', 'train_protection1', 'train_protection2', 'tunnel', 'usage', 'voltage']},
   branchLines:{branch_lines:['bridge', 'electrification_state', 'feature', 'frequency', 'gaugeint0', 'gaugeint1', 'highspeed', 'loading_gauge', 'maxspeed', 'owner_color', 'service', 'state', 'train_protection0', 'train_protection1', 'train_protection2', 'tunnel', 'usage', 'voltage']},
   inactiveRegional:{lifecycle:[...LABEL, 'bridge', 'feature', 'maxspeed', 'state', 'tunnel']},
   serviceRoutes:{service_routes:[...LABEL, 'colour', 'i', 'n', 'slot']},
   streetRunning:{street_running:[]},
+  conveying:{conveying:['arrows', 'kind', 'maxspeed', 'owner_color']},
+  aerialways:{aerialways:[...LABEL, 'kind', 'maxspeed', 'owner_color']},
   heritageAreas:{heritage:[...LABEL, 'kind']},
   trackCounts:{atlas_track_counts:['station', 'tracks', 'tunnel']},
   platforms:{standard_railway_platforms:[]},
@@ -50,6 +53,7 @@ export const SOURCE_CONTRACTS = {
   railwaySignals:{railway_signals:['railway', 'ref', 'caption']},
   railwaySignalSupplementOverview:{railway_signals:['railway', 'ref', 'caption']},
   railwaySignalSupplement:{railway_signals:['railway', 'ref', 'caption']},
+  electricCatenary:{electrification_catenary:['feature','ref','transition']},
   electricSubstations:{electrification_substation:[]},
   stationEntrances:{standard_station_entrances:['label']},
   stationLow:{standard_railway_text_stations_low:[...STATION, 'id', 'osm_id', 'wikidata']},

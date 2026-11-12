@@ -7,6 +7,8 @@ on:
       - scripts/build-axle-load-list.mjs
       - scripts/axle-load-csv.mjs
       - scripts/axle-load-parts.mjs
+      - scripts/retry-after.mjs
+      - styles/retry-after.mjs
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * 0'
@@ -24,7 +26,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - uses: actions/cache/restore@v4
         with:
           path: .snapshot-cache/axle-load-parts.json

@@ -1,11 +1,8 @@
 name: Refresh mapped street-running tracks
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '27 3 * * 0'
-  push:
-    branches: [main, fix/planning-context]
-    paths: ['scripts/build-street-running.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']
+  # Started on Sunday from 03:23 UTC by osm-updates.yml (one Overpass
+  # dataset at a time).
 permissions:
   contents: write
   actions: write
@@ -15,15 +12,33 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Up to 45 minutes of Overpass requests and pauses (build-street-running.mjs),
+    # then the build and publication.
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the published snapshot
+        # The elements it was made from, with their database time and query:
+        # the change requests start there. Without them the build downloads
+        # everything.
+        run: |
+          if git fetch --depth=1 origin street-data; then
+            mkdir -p /tmp/previous-street
+            if git --work-tree=/tmp/previous-street checkout FETCH_HEAD -- elements.json.gz manifest.json; then
+              echo "PREVIOUS_DATA=/tmp/previous-street" >> "$GITHUB_ENV"
+            else
+              echo "::warning::The published snapshot could not be read; downloading in full"
+            fi
+          fi
       - name: Extract explicitly mapped shared roadway
-        run: node scripts/build-street-running.mjs
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-street-running.mjs
       - name: Publish complete data snapshot
         run: |
           mkdir /tmp/street-publish

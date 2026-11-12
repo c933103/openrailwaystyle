@@ -1,0 +1,38 @@
+{
+  "baseCommit": "79162dff6808b18461e4c8e33e177ca39effb146",
+  "baseTree": "3fbe3aefc4964325c3146cb40e62ac20ccc984a2",
+  "baselineVerifiedBlobs": 443,
+  "node": "v24.19.0",
+  "dependencies": "Reused local node_modules with byte-identical package-lock.json; no install or package change",
+  "build": "pass",
+  "syntax": "pass",
+  "generatedStyleAndMajorStations": "byte-identical to baseline",
+  "focusedAndCache": {
+    "tests": 27,
+    "passed": 27,
+    "failed": 0
+  },
+  "fullSuite": {
+    "tests": 1334,
+    "passed": 1334,
+    "failed": 0,
+    "skipped": 0
+  },
+  "baselineRegressions": {
+    "tests": 8,
+    "passed": 3,
+    "failed": 5
+  },
+  "independentChallenge": {
+    "assertions": 508,
+    "passed": 508,
+    "failed": 0,
+    "baselineFailures": 293
+  },
+  "nonNumericCompatibility": {
+    "comparisons": 119025,
+    "changes": 0
+  },
+  "browserVerification": "not run locally; deterministic source/worker logic tests only; remote CI pending",
+  "assetVersion": "20261011-search-numeric-1"
+}

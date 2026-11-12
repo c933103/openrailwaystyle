@@ -10,6 +10,11 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import * as heritage from '../scripts/heritage-data.mjs';
 import * as bundles from '../styles/tile-bundles.mjs';
+import * as adiff from '../scripts/overpass-adiff.mjs';
+import * as worldRegions from '../scripts/world-regions.mjs';
+import * as zlib from 'node:zlib';
+import * as retryAfter from '../scripts/retry-after.mjs';
+import * as transport from '../scripts/response-chunks.mjs';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
 const parent = [0, 0, 45, 45];
@@ -29,11 +34,11 @@ const html = detail => `<?xml version="1.0" encoding="UTF-8"?>
 <p><strong>Error</strong>: ${detail}</p></body></html>`;
 const oom = html('runtime error: Query run out of memory using about 2048 MB of RAM.');
 const timeout = html('runtime error: Query timed out in "query" at line 1 after 301 seconds.');
-const response = (status, body) => new Response(typeof body === 'string' ? body : JSON.stringify(body), {status});
+const response = (status, body, headers) => new Response(typeof body === 'string' ? body : JSON.stringify(body), {status, headers});
 
 // Evaluate the unchanged executable, linking its real classifier/geometry/tile
 // modules. Only external effects (fetch, time, filesystem root) are controlled.
-async function run(t, reply, {writeError, byteLength} = {}) {
+async function run(t, reply, {writeError, byteLength, env = {}, files = {}, wallShift = 0, bodyMs = 0, earlyWakeAt = -1} = {}) {
   const root = await fs.mkdtemp(join(tmpdir(), 'heritage-builder-'));
   t.after(() => fs.rm(root, {recursive:true, force:true}));
   await fs.mkdir(join(root, '.snapshot-cache'));
@@ -42,10 +47,13 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     if (String(box) === String(parent)) continue;
     await fs.writeFile(join(root, `.snapshot-cache/heritage-v2-${box.join('_')}.json`), JSON.stringify({query:heritage.heritageQuery(box), response:empty}));
   }
+  for (const [path, data] of Object.entries(files)) { await fs.mkdir(join(root, path, '..'), {recursive:true}); await fs.writeFile(join(root, path), data); }
   // A failed acquisition must not remove previously published data.
   await fs.mkdir(join(root, 'heritage-data'));
   await fs.writeFile(join(root, 'heritage-data/sentinel'), 'previous snapshot');
-  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [];
+  const calls = [], sleeps = [], warnings = [], writes = [], decisions = [], times = [], elapsedTimes = [];
+  let now = Date.parse('2026-11-06T00:00:00Z'), elapsed = 0;
+  class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const io = {
     mkdir:(path, options) => fs.mkdir(join(root, path), options),
     readFile:(path, options) => fs.readFile(join(root, path), options),
@@ -57,18 +65,26 @@ async function run(t, reply, {writeError, byteLength} = {}) {
     },
   };
   const context = vm.createContext({
-    process:{env:{}}, URLSearchParams,
+    process:{env}, URLSearchParams, TextDecoder, Date:Clock, performance:{now:()=>elapsed},
     Buffer:byteLength ? {byteLength} : Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 360000); return AbortSignal.timeout(ms); }},
-    setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
+    setTimeout:(callback, ms) => { const step = sleeps.length === earlyWakeAt ? ms / 2 : ms; sleeps.push(ms); now += step; elapsed += step; callback(); },
     console:{log:() => {}, warn:(...args) => warnings.push(args.join(' '))},
     fetch:async (url, options) => {
       assert.equal(url, 'https://overpass-api.de/api/interpreter');
       assert.equal(options.method, 'POST');
       const query = options.body.get('data');
-      calls.push(query);
+      calls.push(query); times.push(now); elapsedTimes.push(elapsed);
       assert.ok(calls.length <= 40, 'unexpected request loop');
-      return reply(query, calls.length);
+      const response = await reply(query, calls.length);
+      if (calls.length === 1 && (wallShift || bodyMs)) {
+        const reader = response.body.getReader(); let shifted = false;
+        Object.defineProperty(response, 'body', {value:{getReader:()=>({
+          read:async()=>{if(!shifted){shifted=true;now+=wallShift+bodyMs;elapsed+=bodyMs;}return reader.read();},
+          cancel:reason=>reader.cancel(reason), releaseLock:()=>reader.releaseLock(),
+        })}});
+      }
+      return response;
     },
   });
   const dependencies = {
@@ -79,6 +95,11 @@ async function run(t, reply, {writeError, byteLength} = {}) {
       return decision;
     }},
     '../styles/tile-bundles.mjs':bundles,
+    './overpass-adiff.mjs':adiff,
+    './world-regions.mjs':worldRegions,
+    'node:zlib':zlib,
+    './response-chunks.mjs':transport,
+    './retry-after.mjs':retryAfter,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {
@@ -90,7 +111,7 @@ async function run(t, reply, {writeError, byteLength} = {}) {
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
-  return {root, calls, sleeps, warnings, writes, decisions, error};
+  return {root, calls, sleeps, warnings, writes, decisions, times, elapsedTimes, error};
 }
 
 async function checkPublished(result) {
@@ -140,12 +161,15 @@ for (const [name, body] of [
   ['server busy', html('runtime error: open64: 0 Success /osm3s_osm_base Dispatcher_Client::request_read_and_idx::timeout. The server is probably too busy to handle your request.')],
   ['Gateway timeout', 'Gateway timeout'],
 ]) {
-  test(`builder retains all backoffs before splitting ${name}`, async t => {
+  // A busy server says nothing about the region's size (#331's rule): after
+  // all its backoffs the run fails, keeps the previous snapshot and asks no
+  // smaller region.
+  test(`builder retains all backoffs, then fails without splitting, on ${name}`, async t => {
     const result = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? body : complete));
-    await checkPublished(result);
-    assert.equal(result.calls.filter(query => query === parentQuery).length, 4);
-    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000, 10000, 10000, 10000, 10000]);
-    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'split']);
+    await checkUnpublished(result, /^HTTP 504:/, 4);
+    assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
   });
 }
 
@@ -155,6 +179,16 @@ async function checkUnpublished(result, pattern, count) {
   assert.equal(await fs.readFile(join(result.root, 'heritage-data/sentinel'), 'utf8'), 'previous snapshot');
   assert.ok(!result.writes.some(path => path.startsWith('heritage-data/')));
 }
+
+// 2026-11-03: overpass-api.de gave no answer at all for hours; the builder
+// split each failing region and retried its quarters. An outage now costs one
+// region's retries, then the run stops.
+test('an outage (no answer to any request) sends one region its retries, splits nothing and publishes nothing', async t => {
+  const result = await run(t, () => { throw new TypeError('fetch failed'); });
+  await checkUnpublished(result, /^Network: fetch failed/, 4);
+  assert.ok(result.calls.every(query => query === parentQuery), 'no child requests');
+  assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
+});
 
 for (const status of [429, 400]) {
   test(`builder preserves HTTP ${status} even when the body mentions executed-query OOM`, async t => {
@@ -191,17 +225,56 @@ test('builder accepts the exact download budget boundary', async t => {
   assert.equal(result.calls.length, 1);
 });
 
-for (const name of ['incomplete remark', 'client timeout']) {
-  test(`builder splits ${name} without caching partial success`, async t => {
-    const result = await run(t, query => {
-      if (query !== parentQuery) return response(200, complete);
-      if (name === 'client timeout') throw new Error('The operation was aborted due to timeout');
-      return response(200, {...complete, elements:[{...complete.elements[0], id:99}], remark:'runtime error: Query timed out after 301 seconds.'});
-    });
-    await checkPublished(result);
-    assert.equal(result.calls.length, 5);
-    assert.equal(result.decisions[0].decision, 'split');
-    assert.match(result.decisions[0].error.message, /^(Network|Incomplete heritage response):/);
+test('builder splits an incomplete query-limit remark without caching partial success', async t => {
+  const result = await run(t, query => query !== parentQuery ? response(200, complete)
+    : response(200, {...complete, elements:[{...complete.elements[0], id:99}], remark:'runtime error: Query timed out after 301 seconds.'}));
+  await checkPublished(result);
+  assert.equal(result.calls.length, 5);
+  assert.equal(result.decisions[0].decision, 'split');
+  assert.match(result.decisions[0].error.message, /^Incomplete heritage response:/);
+});
+
+for (const location of ['fetch', 'body']) for (const native of [false, true]) {
+  const name = `${native ? 'native' : 'generic'} ${location} timeout`;
+  const fail = () => {
+    const error = native ? new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+      : new Error('The operation was aborted due to timeout');
+    if (location === 'fetch') throw error;
+    return streamResponse(200, [], {failure:error}).response;
+  };
+  test(`builder retries the same region after ${name} and caches only its recovery`, async t => {
+    const result = await run(t, (_query, attempt) => attempt === 1 ? fail() : response(200, complete));
+    assert.ifError(result.error);
+    assert.deepEqual(result.calls, [parentQuery, parentQuery], 'a client deadline is not an executed-query limit');
+    assert.deepEqual(result.sleeps, [0, 30000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry']);
+    assert.deepEqual(result.writes.filter(path => path.startsWith('.snapshot-cache/')), [`.snapshot-cache/heritage-v2-${parent.join('_')}.json`]);
+    const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+    assert.equal(manifest.coverage.length, 32, 'the original region remains whole');
+    assert.equal(manifest.downloadedBytes, Buffer.byteLength(JSON.stringify(complete)));
+    assert.equal(manifest.areas, 1);
+  });
+  test(`builder exhausts ${name} without splitting or publishing`, async t => {
+    const result = await run(t, fail);
+    await checkUnpublished(result, /^Network: .*timeout/, 4);
+    assert.deepEqual(result.calls, Array(4).fill(parentQuery));
+    assert.deepEqual(result.sleeps, [0, 30000, 60000, 120000]);
+    assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'retry', 'retry', 'fail']);
+    assert.equal(result.writes.length, 0, 'failed bodies are never cached');
+    assert.equal((await fs.readdir(join(result.root, '.snapshot-cache'))).length, 31, 'other completed regions are retained');
+  });
+  test(`builder retains completed progress when the next region exhausts ${name}`, async t => {
+    const next = [0, 45, 45, 90], nextQuery = heritage.heritageQuery(next);
+    const nextFile = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+    const stale = JSON.stringify({query:'a different query', response:empty});
+    const result = await run(t, query => query === parentQuery ? response(200, complete) : fail(), {files:{[nextFile]:stale}});
+    await checkUnpublished(result, /^Network: .*timeout/, 5);
+    assert.deepEqual(result.calls, [parentQuery, ...Array(4).fill(nextQuery)]);
+    assert.deepEqual(result.sleeps, [0, 10000, 30000, 60000, 120000]);
+    const completed = `.snapshot-cache/heritage-v2-${parent.join('_')}.json`;
+    assert.deepEqual(result.writes, [completed], 'no child or failed region is cached');
+    assert.deepEqual(JSON.parse(await fs.readFile(join(result.root, completed))), {query:parentQuery, response:complete});
+    assert.equal(await fs.readFile(join(result.root, nextFile), 'utf8'), stale, 'failed region cache is not replaced');
   });
 }
 
@@ -217,7 +290,7 @@ for (const name of ['invalid JSON', 'body read failure', 'network failure']) {
     const result = await run(t, (_query, attempt) => {
       if (attempt > 1) return response(200, complete);
       if (name === 'invalid JSON') return response(200, '{');
-      if (name === 'body read failure') return {ok:true, status:200, text:async () => { throw new Error('connection reset'); }};
+      if (name === 'body read failure') return streamResponse(200, [], {failure:new Error('connection reset')}).response;
       throw new TypeError('fetch failed');
     });
     assert.ifError(result.error);
@@ -233,4 +306,277 @@ test('builder accumulates download bytes across failed attempts', async t => {
   const result = await run(t, () => response(504, 'Gateway timeout'), {byteLength:() => 750_000_001});
   await checkUnpublished(result, /download budget exceeded/, 2);
   assert.deepEqual(result.decisions.map(row => row.decision), ['retry', 'fail']);
+});
+
+const quarters = ([s, w, n, e]) => { const a = (s + n) / 2, b = (w + e) / 2; return [[s, w, a, b], [s, b, a, e], [a, w, n, b], [a, b, n, e]]; };
+const grid = heritage.heritageRegions();
+const splitCoverage = grid.flatMap(box => String(box) === String(parent) ? quarters(box) : [box]).map(bbox => ({bbox, timestamp:null, features:0}));
+
+test('regions come from the previous snapshot coverage when it tiles the world, else the 45-degree grid', () => {
+  assert.equal(grid.length, 32);
+  assert.deepEqual(heritage.heritageRegions(splitCoverage), splitCoverage.map(row => row.bbox));
+  assert.deepEqual(heritage.heritageRegions(splitCoverage.slice(1)), grid, 'a gap');
+  assert.deepEqual(heritage.heritageRegions([...splitCoverage, {bbox:parent}]), grid, 'an overlap');
+  assert.deepEqual(heritage.heritageRegions([{bbox:[0, 0, 'x', 1]}]), grid);
+  assert.deepEqual(heritage.heritageRegions(undefined), grid);
+  assert.deepEqual([parent, quarters(parent)[0], quarters(quarters(parent)[0])[3]].map(heritage.heritageDepth), [0, 1, 2]);
+});
+
+test('builder asks for a region split last month in its parts, never the whole region again', async t => {
+  const previous = JSON.stringify({coverage:splitCoverage});
+  const result = await run(t, () => response(200, complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  await checkPublished(result);
+  assert.deepEqual(result.calls, quarters(parent).map(heritage.heritageQuery), 'only the four uncached parts are requested');
+  // The split depth carries over: one more split level is left before the limit of six.
+  const deep = await run(t, query => response(504, timeout), {env:{HERITAGE_PREVIOUS_MANIFEST:'previous-manifest.json'}, files:{'previous-manifest.json':previous}});
+  assert.ok(deep.error);
+  assert.ok(deep.decisions.every(item => item.depth >= 1), 'parts start at their own depth');
+  // An unreadable snapshot falls back to the grid with a warning.
+  const missing = await run(t, query => response(query === parentQuery ? 504 : 200, query === parentQuery ? timeout : complete), {env:{HERITAGE_PREVIOUS_MANIFEST:'absent.json'}});
+  await checkPublished(missing);
+  assert.equal(missing.calls[0], parentQuery);
+  assert.ok(missing.warnings.some(line => /unreadable/.test(line)));
+});
+
+// Synthetic augmented diffs in the documented form; no captured provider data.
+const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-08T00:00:00Z';
+const ring = [[12, 12], [12.002, 12], [12.002, 12.002], [12, 12.002], [12, 12]];
+const wayXml = (id, tags, points) => `<way id="${id}" version="2">${points.map(([lon, lat], i) => `<nd ref="${i % 4 + 1}" lat="${lat}" lon="${lon}"/>`).join('')}${Object.entries(tags).map(([k, v]) => `<tag k="${k}" v="${v}"/>`).join('')}</way>`;
+const adiffXml = actions => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6"><meta osm_base="${BASE}"/>${actions}</osm>\n`;
+const moved = adiffXml(`<action type="modify"><old>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, complete.elements[0].geometry.map(p => [p.lon, p.lat]))}</old><new>${wayXml(42, {historic:'district', name:'Synthetic historic district'}, ring)}</new></action>`);
+const storedParent = (query = parentQuery) => ({[`previous/elements/${parent.join('_')}.json.gz`]: zlib.gzipSync(JSON.stringify({query, osmBase:SINCE, elements:complete.elements}))});
+const previousEnv = {HERITAGE_PREVIOUS_ELEMENTS:'previous'};
+const publishedParent = async root => JSON.parse(gunzipSync(await fs.readFile(join(root, `heritage-data/elements/${parent.join('_')}.json.gz`))));
+
+test('a region with published elements takes only its changes, and the next run starts from their time', async t => {
+  const result = await run(t, query => { assert.ok(query.includes('[adiff:'), 'no full download'); return response(200, moved); }, {env:previousEnv, files:storedParent()});
+  assert.ifError(result.error);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(parentQuery, SINCE)]);
+  const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+  assert.equal(manifest.coverage.find(row => String(row.bbox) === String(parent)).timestamp, BASE);
+  assert.equal(manifest.areas, 1);
+  const stored = await publishedParent(result.root);
+  assert.deepEqual([stored.query, stored.osmBase], [parentQuery, BASE]);
+  assert.deepEqual(stored.elements, [{type:'way', id:42, tags:{historic:'district', name:'Synthetic historic district'}, geometry:ring.map(([lon, lat]) => ({lat, lon}))}], 'the moved way, without meta');
+  const files = await fs.readdir(join(result.root, 'heritage-data/elements'));
+  assert.equal(files.length, 32, 'every region keeps its elements, cached or downloaded');
+  // The updated region is cached like a full response: a retry after a later
+  // failure in the same month asks nothing for it.
+  const cached = JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`), 'utf8'));
+  assert.deepEqual([cached.query, cached.response.osm3s.timestamp_osm_base, cached.response.elements], [parentQuery, BASE, stored.elements]);
+});
+
+test('a region whose query changed takes only the difference, not a full download', async t => {
+  const older = parentQuery.replace(`way[heritage=1](${parent.join(',')});rel[heritage=1][type~"^(multipolygon|boundary)$"](${parent.join(',')});`, '');
+  assert.notEqual(older, parentQuery);
+  const added = {type:'way', id:43, tags:{heritage:'1'}, geometry:ring.map(([lon, lat]) => ({lat:lat + 1, lon}))};
+  const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''))
+    : query.endsWith('out ids;') ? response(200, {elements:[{type:'way', id:42}, {type:'way', id:43}]}) : response(200, {elements:[added]}), {env:previousEnv, files:storedParent(older)});
+  assert.ifError(result.error);
+  const {ids, elements} = adiff.selectionChangeQueries(older, parentQuery, BASE);
+  assert.deepEqual(result.calls, [adiff.adiffQuery(older, SINCE), ids, elements(['way/43'])], 'the new ids, then only the new area');
+  assert.deepEqual((await publishedParent(result.root)).elements.map(e => e.id), [42, 43]);
+  assert.equal((await publishedParent(result.root)).query, parentQuery, 'the next run compares with the new query');
+});
+
+test('a failed change request falls back to the full download of that region; HERITAGE_REFRESH skips the changes', async t => {
+  const failed = await run(t, query => query.includes('[adiff:') ? response(504, 'Gateway timeout') : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.ifError(failed.error);
+  assert.deepEqual(failed.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+  assert.ok(failed.warnings.some(w => /downloading in full/.test(w)));
+  const refresh = await run(t, () => response(200, complete), {env:{...previousEnv, HERITAGE_REFRESH:'1'}, files:storedParent()});
+  assert.ok(refresh.calls.includes(parentQuery) && !refresh.calls.some(query => query.includes('[adiff:')), 'a forced refresh downloads in full');
+  // A changed way without geometry is never dropped silently from the map.
+  const bare = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(`<action type="create"><way id="44" version="1"><tag k="heritage" v="1"/></way></action>`)) : response(200, complete), {env:previousEnv, files:storedParent()});
+  assert.deepEqual(bare.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+});
+
+test('the download budget also counts change requests and stops the run', async t => {
+  const result = await run(t, () => response(200, moved), {env:previousEnv, files:storedParent(), byteLength:() => 1_500_000_001});
+  await checkUnpublished(result, /download budget exceeded/, 1);
+});
+
+// Pause headers govern subsequent requests, including across update fallback
+// and actual query-size subdivision. All responses and clocks are synthetic.
+const pauseHeaders = value => ({'retry-after':value});
+for (const [name, value] of [['seconds', '600'], ['HTTP date', 'Fri, 06 Nov 2026 00:10:00 GMT'], ['boundary', '900']]) {
+  test(`heritage provider pause ${name} extends a full-query retry`, async t => {
+    const result = await run(t, (_, count) => count === 1 ? response(503, 'busy', pauseHeaders(value)) : response(200, complete));
+    assert.ifError(result.error);
+    assert.equal(result.calls.length, 2);
+    assert.equal(result.times[1] - result.times[0], name === 'boundary' ? 900000 : 600000);
+  });
+}
+test('heritage provider pause survives a failed response body', async t => {
+  const result = await run(t, (_, count) => count === 1 ? streamResponse(200, [], {headers:pauseHeaders('600'), failure:new Error('interrupted body')}).response
+    : response(200, complete));
+  assert.ifError(result.error);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+test('heritage provider pause applies before query-limit subdivision', async t => {
+  const result = await run(t, query => query === parentQuery ? response(504, oom, pauseHeaders('600')) : response(200, complete));
+  await checkPublished(result);
+  assert.equal(result.times[1] - result.times[0], 600000);
+  assert.deepEqual(result.sleeps.slice(2), [10000, 10000, 10000]);
+});
+for (const [name, body] of [['failed changes', response(504, 'Gateway timeout', pauseHeaders('600'))],
+  ['invalid successful changes', response(200, 'not an adiff', pauseHeaders('600'))]]) {
+  test(`heritage provider pause survives ${name} and its existing full fallback`, async t => {
+    const result = await run(t, query => query.includes('[adiff:') ? body : response(200, complete), {env:previousEnv, files:storedParent()});
+    assert.ifError(result.error);
+    assert.deepEqual(result.calls, [adiff.adiffQuery(parentQuery, SINCE), parentQuery]);
+    assert.equal(result.times[1] - result.times[0], 600000);
+  });
+}
+test('heritage successful full response retains its pause before the next region', async t => {
+  const next = [0,45,45,90], file = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+  const result = await run(t, (_, count) => response(200, complete, count === 1 ? pauseHeaders('600') : undefined), {files:{[file]:'{}'}});
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 2);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+test('heritage successful changes retain their pause before query-selection requests', async t => {
+  const older = parentQuery.replace(`way[heritage=1](${parent.join(',')});rel[heritage=1][type~"^(multipolygon|boundary)$"](${parent.join(',')});`, '');
+  const result = await run(t, query => query.includes('[adiff:') ? response(200, adiffXml(''), pauseHeaders('600'))
+    : response(200, {elements:[{type:'way', id:42}]}), {env:previousEnv, files:storedParent(older)});
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 2);
+  assert.equal(result.times[1] - result.times[0], 600000);
+});
+for (const value of ['901', '9'.repeat(400)]) {
+  test(`heritage excessive provider pause (${value.length} digits) stops before retry`, async t => {
+    const result = await run(t, () => response(503, 'busy', pauseHeaders(value)));
+    await checkUnpublished(result, /Retry-After exceeds/, 1);
+  });
+}
+test('heritage excessive pause blocks change fallback and retains previous publication', async t => {
+  const result = await run(t, query => query.includes('[adiff:') ? response(504, 'Gateway timeout', pauseHeaders('3600')) : response(200, complete), {env:previousEnv, files:storedParent()});
+  await checkUnpublished(result, /Retry-After exceeds/, 1);
+});
+test('heritage excessive success pause caches completed work but sends no later region', async t => {
+  const next = [0,45,45,90], file = `.snapshot-cache/heritage-v2-${next.join('_')}.json`;
+  const result = await run(t, () => response(200, complete, pauseHeaders('3600')), {files:{[file]:'{}'}});
+  await checkUnpublished(result, /Retry-After exceeds/, 1);
+  assert.ok(result.writes.includes(`.snapshot-cache/heritage-v2-${parent.join('_')}.json`));
+});
+test('heritage success needs no extra request merely to finish a completed acquisition', async t => {
+  const result = await run(t, () => response(200, complete, pauseHeaders('3600')));
+  assert.ifError(result.error);
+  assert.equal(result.calls.length, 1);
+});
+for (const value of ['not a date', 'Thu, 05 Nov 2026 23:59:00 GMT']) {
+  test(`heritage invalid or elapsed pause keeps the existing retry baseline: ${value}`, async t => {
+    const result = await run(t, (_, count) => count === 1 ? response(503, 'busy', pauseHeaders(value)) : response(200, complete));
+    assert.ifError(result.error);
+    assert.deepEqual(result.sleeps, [0, 30000]);
+  });
+}
+
+// Real streams, with tiny synthetic chunks and a virtual byte scale only for
+// boundary checks: no gigabyte allocation or provider traffic is required.
+function streamResponse(status, chunks, {failure, headers, cancellation = 'resolved'} = {}) {
+  const state = {reads:0, cancelled:0};
+  const body = new ReadableStream({
+    pull(controller) {
+      const index = state.reads++;
+      if (index < chunks.length) controller.enqueue(Buffer.from(chunks[index]));
+      else if (failure) controller.error(failure);
+      else controller.close();
+    },
+    cancel() {
+      state.cancelled++;
+      if (cancellation === 'pending') return new Promise(() => {});
+      if (cancellation === 'rejects') return Promise.reject(new Error('cleanup failed'));
+      if (cancellation === 'throws') throw new Error('cleanup threw');
+    },
+  }, {highWaterMark:0});
+  return {response:new Response(body, {status, headers}), state, body};
+}
+const virtualBytes = value => Buffer.byteLength(value) * 100_000_000;
+const bounded = async promise => {
+  let timer;
+  const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('cleanup held the budget error open')), 2000); });
+  try { return await Promise.race([promise, deadline]); } finally { clearTimeout(timer); }
+};
+for (const phase of ['full', 'changes']) for (const status of [200, 504]) for (const cancellation of ['resolved', 'pending', 'rejects', 'throws']) {
+  test(`heritage ${phase} HTTP ${status} cap stops consumption when cancellation ${cancellation}`, async t => {
+    const stream = streamResponse(status, Array(5).fill('xxxx'), {cancellation});
+    const result = await bounded(run(t, () => stream.response, {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})}));
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.equal(result.error.budget, true, 'budget identity survives transport and changes fallback');
+    assert.equal(stream.state.reads, 4, 'stop on the crossing chunk, do not read the remaining body');
+    assert.equal(stream.state.cancelled, 1);
+    assert.equal(stream.body.locked, false, 'the reader lock is released even when cancellation never settles');
+    assert.equal(result.writes.length, 0);
+  });
+}
+for (const phase of ['full', 'changes']) {
+  test(`heritage ${phase} interrupted body counts its consumed bytes before recovery`, async t => {
+    const partial = Buffer.from('unfinished héritage');
+    const stream = streamResponse(200, [partial], {failure:new TypeError('connection reset')});
+    const result = await run(t, (_query, attempt) => attempt === 1 ? stream.response : response(200, complete),
+      phase === 'changes' ? {env:previousEnv, files:storedParent()} : {});
+    assert.ifError(result.error);
+    assert.equal(result.calls.length, 2);
+    const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+    assert.equal(manifest.downloadedBytes, partial.byteLength + Buffer.byteLength(JSON.stringify(complete)));
+    assert.equal(manifest.areas, 1);
+    assert.equal(stream.body.locked, false);
+  });
+  test(`heritage ${phase} exhausted HTTP-error budget stops before another delay or request`, async t => {
+    const result = await run(t, () => response(504, 'Gateway timeout'), {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})});
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.deepEqual(result.sleeps, [0]);
+    assert.equal(result.writes.length, 0);
+  });
+  test(`heritage ${phase} interrupted exact-budget body stops before another delay or request`, async t => {
+    const stream = streamResponse(200, ['xxxxxxxxxxxxxxx'], {failure:new Error('connection reset')});
+    const result = await run(t, () => stream.response, {byteLength:virtualBytes,
+      ...(phase === 'changes' ? {env:previousEnv, files:storedParent()} : {})});
+    await checkUnpublished(result, /download budget exceeded/, 1);
+    assert.deepEqual(result.sleeps, [0]);
+    assert.equal(result.writes.length, 0);
+  });
+}
+test('heritage streamed JSON preserves UTF-8 split across chunks and exact byte accounting', async t => {
+  const data = {...complete, elements:[{...complete.elements[0], tags:{historic:'district', name:'Synthetic Héritage 港'}}]};
+  const bytes = Buffer.from(JSON.stringify(data)), offset = bytes.indexOf(Buffer.from('港')) + 1;
+  const stream = streamResponse(200, [bytes.subarray(0, offset), bytes.subarray(offset, offset + 1), bytes.subarray(offset + 1)]);
+  const result = await run(t, () => stream.response);
+  assert.ifError(result.error);
+  const manifest = JSON.parse(await fs.readFile(join(result.root, 'heritage-data/manifest.json')));
+  assert.equal(manifest.downloadedBytes, bytes.byteLength);
+  assert.deepEqual(JSON.parse(await fs.readFile(join(result.root, `.snapshot-cache/heritage-v2-${parent.join('_')}.json`))).response, data);
+  assert.equal(stream.state.cancelled, 0, 'completed streams are not cancelled');
+  assert.equal(stream.body.locked, false);
+});
+
+for(const value of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const path of ['retry','changes'])test(`heritage rejects malformed calendar pause ${value} (${path})`,async t=>{
+ const result=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders(value)):response(200,complete),path==='changes'?{env:previousEnv,files:storedParent()}:{});
+ assert.ifError(result.error);assert.equal(result.calls.length,2);assert.equal(result.times[1]-result.times[0],path==='changes'?10000:30000);
+});
+for(const value of ['Fri, 06 Nov 2026 00:10:00 GMT','Friday, 06-Nov-26 00:10:00 GMT','Fri Nov  6 00:10:00 2026'])test(`heritage retains valid calendar pause ${value}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const result=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders(value)):response(200,complete));
+ assert.ifError(result.error);assert.equal(result.calls.length,2);assert.equal(result.times[1]-result.times[0],600000);
+});
+
+for(const path of ['retry','changes','split','success'])for(const wallShift of [3600000,-3600000])test(`heritage ${path} provider minimum survives ${wallShift}ms wall correction`,async t=>{
+ const nextFile='.snapshot-cache/heritage-v2-0_45_45_90.json';
+ const options={wallShift,...(path==='changes'?{env:previousEnv,files:storedParent()}:path==='success'?{files:{[nextFile]:'{}'}}:{})};
+ const header=path==='retry'||path==='changes'?'Fri, 06 Nov 2026 00:10:00 GMT':'600';
+ const r=await run(t,(query,count)=>count===1?response(path==='split'?504:path==='success'?200:503,path==='split'?oom:path==='success'?complete:'busy',pauseHeaders(header)):response(200,complete),options);
+ assert.ifError(r.error);assert.equal(r.calls.length,path==='split'?5:2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],600000);
+ if(path==='split')await checkPublished(r);
+});
+for(const bodyMs of [300000,700000])test(`heritage retry consumes ${bodyMs}ms body time without resetting the observed pause`,async t=>{
+ const r=await run(t,(_,count)=>count===1?response(503,'busy',pauseHeaders('600')):response(200,complete),{bodyMs});
+ assert.ifError(r.error);assert.equal(r.calls.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],Math.max(600000,bodyMs+30000));
+});
+for(const mode of ['provider','retry','spacing'])test(`heritage rechecks early ${mode} timer wakes`,async t=>{
+ const options={earlyWakeAt:1,...(mode==='spacing'?{files:{'.snapshot-cache/heritage-v2-0_45_45_90.json':'{}'}}:{})};
+ const r=await run(t,(_,count)=>count===1?response(mode==='spacing'?200:503,mode==='spacing'?complete:'busy',mode==='provider'?pauseHeaders('600'):undefined):response(200,complete),options);
+ assert.ifError(r.error);assert.equal(r.calls.length,2);assert.equal(r.elapsedTimes[1]-r.elapsedTimes[0],mode==='provider'?600000:mode==='retry'?30000:10000);
 });

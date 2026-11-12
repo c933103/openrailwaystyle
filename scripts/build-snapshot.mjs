@@ -1,5 +1,5 @@
 // Maintenance build only. Visitors never query Overpass.
-import {readFile, writeFile, mkdir} from 'node:fs/promises';
+import {readFile, writeFile, mkdir, unlink, rename} from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
 import {once} from 'node:events';
 import {gzipSync} from 'node:zlib';
@@ -7,8 +7,50 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES, toGeoJSON} from './lifecycle.mjs';
-import {DELTA_FILE, deltaQueries, mergeDelta, applyDelta} from './snapshot-delta.mjs';
+import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
+import {updateElements} from './overpass-adiff.mjs';
+import {quarters, worldRegions} from './world-regions.mjs';
+import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
+// A timer may wake before the requested interval. Keep each existing quiet
+// or retry floor on elapsed time and recheck before the next provider call.
+async function pause(ms) {
+  const notBefore = performance.now() + ms;
+  for (let remaining; (remaining = notBefore - performance.now()) > 0;)
+    await new Promise(resolve => setTimeout(resolve, remaining));
+}
+// Do not log messages, stacks, URLs, headers or arbitrary error properties.
+// Node's fetch hides the useful transport code in its cause; retain only
+// bounded, known classifications and the measured time of the failed fetch.
+const errorNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError', 'TimeoutError', 'AggregateError']);
+const errorCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID',
+  'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'ERR_SSL_WRONG_VERSION_NUMBER']);
+async function fetchOverpass(query, timeout, phase) {
+  const started = performance.now();
+  let stage = 'fetch';
+  try {
+    const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
+      headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(timeout)});
+    stage = 'body';
+    const text = phase === 'full' || response.ok ? await response.text() : '';
+    return {response, text};
+  } catch (error) {
+    const causes = [];
+    try {
+      for (let current = error; current && causes.length < 3; current = current.cause) {
+        const name = current.name, code = current.code;
+        const item = {name:errorNames.has(name) ? name : 'UnknownError'};
+        if (errorCodes.has(code)) item.code = code;
+        causes.push(item);
+      }
+    } catch { /* A diagnostic getter must not expose arbitrary error data. */ }
+    console.warn('OVERPASS_FETCH_FAILURE', JSON.stringify({phase, stage, elapsedMs:Math.max(0, Math.round(performance.now() - started)), causes}));
+    // Existing callers print their error messages. Do not pass transport
+    // messages or a raw cause through to those logs or the final stack.
+    throw new Error('Overpass transport request failed');
+  }
+}
 const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 await mkdir('.snapshot-cache', {recursive:true});
 await mkdir('snapshot', {recursive:true});
@@ -18,121 +60,222 @@ let downloaded=0;
 try {downloaded=JSON.parse(await readFile(budgetFile,'utf8')).bytes;} catch {}
 // Disjoint world regions, serial requests with a quiet interval.
 // Full way geometry is retained across quadrant boundaries and deduplicated.
-const boxes = [
-  ...[-180,-90,0,90].map(w=>[-90,w,0,w+90]),
-  ...[0,45].flatMap(s=>[-180,-135,-90,-45,0,45,90,135].map(w=>[s,w,s+45,w+45])),
-];
+// Whole quadrants in the south, 45-degree quarters in the denser north.
+const boxes = worldRegions(([south]) => south < 0 ? 90 : 45);
 // Start East Asia first among remaining regions, so the reported line is
 // diagnosed early. Cached completed quadrants are reused without re-querying.
 boxes.sort((a,b)=>(b[0]===0 && b[1]===90 ? 1:0)-(a[0]===0 && a[1]===90 ? 1:0));
-async function collect(box, depth=0) {
-  const key=box[0]===-90 && box[2]===0 && box[3]-box[1]===90 ? `${box[0]}_${box[1]}` : box.join('_');
-  const file = `.snapshot-cache/${key}.json`;
+const regionFile=box=>`.snapshot-cache/${box[0]===-90 && box[2]===0 && box[3]-box[1]===90 ? `${box[0]}_${box[1]}` : box.join('_')}.json`;
+// A failed full replacement leaves .previous in the Actions cache. The
+// release-cache merge can restore an older file at the now-missing ordinary
+// name. It is not the replacement and must not retire the newer .previous.
+function databaseTime(json) {
+  const value = json?.osm3s?.timestamp_osm_base, time = Date.parse(value);
+  // The change log compares these strings. Accept the provider's canonical
+  // UTC form only, so offsets or invalid dates cannot reorder observations.
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)
+      || !Number.isFinite(time) || new Date(time).toISOString() !== value.replace('Z', '.000Z'))
+    throw new Error('Region replacement is older than preserved data or has no valid database time');
+  return time;
+}
+async function preservedTime(file, minimum = -Infinity) {
+  let previous;
+  try { previous = JSON.parse(await readFile(file + '.previous', 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return minimum; throw error; }
+  toGeoJSON(previous);
+  return Math.max(minimum, databaseTime(previous));
+}
+function requireNotOlder(json, minimum) {
+  if (databaseTime(json) < minimum)
+    throw new Error('Region replacement is older than preserved data or has no valid database time');
+  toGeoJSON(json); // Validate conversion before writing or retiring any source.
+}
+async function readRegion(file, minimum) {
+  const json = JSON.parse(await readFile(file, 'utf8'));
+  requireNotOlder(json, minimum);
+  return json;
+}
+// The planned, construction and former ways of one region.
+function regionQuery(box) {
+  const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
+  return `[out:json][timeout:90][maxsize:134217728];(${selectors.join('')});out tags geom qt;`;
+}
+// A region downloaded again in full keeps its earlier data (`.previous`)
+// until the differences are in the change log, as a region update logs
+// them, so a stale neighbouring region cannot bring back what the download
+// removed or changed. Removed only after the log is saved: a run stopped in
+// between logs them again next time.
+// `parts`: what the download gave, each with its box and database time (one
+// part, or the parts of a region that split). Each part is compared with the
+// earlier elements it would have selected (a node in its box) or still has,
+// and logged at its own time, oldest first, so a newer part's observation is
+// never dated earlier. An element with no node in a part is not that part's
+// to remove: its bounding rectangle may cover a part it never entered.
+const reaches=(element,[s,w,n,e])=>{
+  if(!Array.isArray(element.geometry) || !element.geometry.length) return true;
+  return element.geometry.some(p=>p && p.lat>=s && p.lat<=n && p.lon>=w && p.lon<=e);
+};
+async function reconcile(box, parts, log) {
+  const previous=regionFile(box)+'.previous';
+  let saved;
+  try {saved=JSON.parse(await readFile(previous,'utf8'));}
+  catch(error) {if(error.code==='ENOENT') return log; throw error;}
+  const minimum=databaseTime(saved), before=saved.elements;
+  toGeoJSON(saved);
+  if(!parts.length) throw new Error('Region replacement has no complete parts');
+  // Validate every leaf before recording any changes or retiring the parent.
+  for(const part of parts) requireNotOlder({osm3s:{timestamp_osm_base:part.time},elements:part.elements},minimum);
+  const usable=[...parts].sort((a,b)=>a.time<b.time ? -1 : a.time>b.time ? 1 : 0);
+  if(usable.length) {
+    if(log===undefined) try {log=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
+    for(const part of usable) {
+      const ids=new Set(part.elements.map(e=>e.id));
+      log=recordChanges(log,part.time,before.filter(e=>ids.has(e.id) || reaches(e,part.box)),part.elements,part.box);
+    }
+    await writeFile(DELTA_FILE,JSON.stringify(log));
+  }
+  await unlink(previous);
+  return log;
+}
+async function collect(box, depth=0, minimum=-Infinity) {
+  const file = regionFile(box);
+  minimum = await preservedTime(file, minimum);
   let json;
-  try {json = JSON.parse(await readFile(file,'utf8'));}
+  try {json = await readRegion(file, minimum);}
   catch {
     // Respect a saved split decision on later restarts.
     let split=false;
     try {await readFile(file+'.split');split=true;} catch {}
     if(!split) {
-      const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
-      const query = `[out:json][timeout:90][maxsize:134217728];(${selectors.join('')});out tags geom qt;`;
+      const query = regionQuery(box);
       for(let attempt=0;attempt<3;attempt++) {
-        await new Promise(r=>setTimeout(r,attempt ? 60000 : 15000));
+        await pause(attempt ? 60000 : 15000);
         console.log('Fetching world region', box, 'attempt',attempt+1);
         try {
-          const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(130000)});
-          if(!response.ok) throw new Error(`HTTP ${response.status}`);
-          const text=await response.text();downloaded+=Buffer.byteLength(text);
+          const {response,text}=await fetchOverpass(query,130000,'full');
+          // Only an executed-query limit, in a JSON remark or an HTTP 5xx
+          // body, means the region is too large and splits it; a busy or
+          // unreachable server (a network error, 429, 503, a gateway error)
+          // says nothing about its size.
+          if(!response.ok) {
+            const detail=text.slice(0,65536);
+            throw Object.assign(new Error(`HTTP ${response.status}`),{oversized:queryExceededLimits(response.status,detail)});
+          }
+          downloaded+=Buffer.byteLength(text);
           await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
           console.log('Downloaded bytes this run',downloaded);
           if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
           json=JSON.parse(text);
-          if(json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
-          await writeFile(file,text);break;
+          if(json.remark || !Array.isArray(json.elements))
+            throw Object.assign(new Error(json.remark || 'Incomplete response'),{oversized:typeof json.remark==='string'&&queryExceededLimits(200,json.remark)});
+          // With its query, which the next change update compares with, and
+          // when it was downloaded in full (first, so the refresh step reads
+          // it without parsing the file; refresh-snapshot-cache.mjs).
+          requireNotOlder(json,minimum);
+          await writeFile(file,JSON.stringify({fetched:new Date().toISOString(),...json,query}));break;
         } catch(error) {
           console.warn(error.message);json=undefined;
           if(downloaded>500_000_000) throw error;
-          // A timeout in extraction/output calls for a smaller area immediately.
-          if(/timed out|memory|timeout/i.test(error.message) || attempt===2) {split=true;break;}
+          // A query limit calls for a smaller area immediately. Anything else
+          // keeps the region whole: it is asked again next run, and no split
+          // is recorded, so an outage never leaves the world in more pieces.
+          if(error.oversized) {split=true;break;}
+          if(attempt===2) throw new Error(`Overpass stayed unavailable for region ${box}: ${error.message}`);
         }
       }
     }
     if(split) {
       if(depth>=5) throw new Error(`Could not complete region ${box}`);
       await writeFile(file+'.split','Oversized region; use complete child regions.');
-      const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await collect(child,depth+1);
-      return;
+      const leaves=[];
+      for(const child of quarters(box)) leaves.push(...await collect(child,depth+1,minimum));
+      await reconcile(box,leaves);
+      return leaves;
     }
   }
+  await reconcile(box,[{box,elements:json.elements,time:json.osm3s?.timestamp_osm_base}]);
   const data=toGeoJSON(json);
   for(const f of data.features) { features.set(f.id,f); base.set(f.id,json.osm3s?.timestamp_osm_base); }
   const part={bbox:box,timestamp:json.osm3s?.timestamp_osm_base,features:data.features.length};
   parts.push(part);console.log(JSON.stringify(part));
+  // The parts this region's data came from, for a parent that split.
+  return [{box,elements:json.elements,time:part.timestamp}];
 }
 // Split the already-observed eastern-US bottleneck before querying it again.
 await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
 await writeFile('.snapshot-cache/45_0_67.5_22.5.json.split','Dense European region; avoid repeating timed-out query.');
 const region=process.env.SNAPSHOT_REGION;
-// Weekly incremental update: only ways changed since the previous run.
-async function overpassQuery(query, label) {
-  for(let attempt=0;attempt<3;attempt++) {
-    await new Promise(r=>setTimeout(r,attempt ? 60000 : 5000));
-    try {
-      const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(330000)});
-      if(!response.ok) throw new Error(`HTTP ${response.status}`);
-      const text=await response.text();downloaded+=Buffer.byteLength(text);
+// Each run brings every cached region up to date with only its changes
+// since its own database time (an Overpass augmented diff of its query,
+// and the difference when the query changed: updateElements). Unlike the
+// earlier `changed` filter, this also removes ways deleted from OSM or no
+// longer tagged as planned, construction or former, so no region needs to
+// be downloaded again on a timer.
+const pick=({type,id,tags,geometry})=>({type,id,tags,geometry});
+// The changes of a dense region over weeks take longer than its full query.
+const CHANGE_TIMEOUT='[timeout:300]';
+async function updateRegion(box, minimum=-Infinity) {
+  const file=regionFile(box);
+  minimum=await preservedTime(file,minimum);
+  let json;
+  try {json=await readRegion(file,minimum);}
+  catch {
+    // Not cached: a split region is updated in its parts; otherwise the
+    // region step downloads it in full.
+    try {await readFile(file+'.split');} catch {return;}
+    for(const child of quarters(box)) await updateRegion(child,minimum);
+    return;
+  }
+  // Earlier data left by a full download stopped before it was logged.
+  changeLog=await reconcile(box,[{box,elements:json.elements,time:json.osm3s?.timestamp_osm_base}],changeLog);
+  const query=regionQuery(box);
+  let failure;
+  const update=await updateElements({elements:json.elements,since:json.osm3s?.timestamp_osm_base,
+    // Responses cached before the query was recorded were all made by this
+    // query: it has not changed since the cache began (2026-09-22).
+    previousQuery:json.query||query,query,pick,warn:(...args)=>console.warn(String(box),...args),
+    fetchText:async request=>{
+      await pause(5000);
+      // A request that fails before its whole answer arrived (connection,
+      // HTTP status, or the body cut off or timed out) says nothing about the
+      // region: it keeps its data and is asked again next run.
+      let response, text;
+      try {
+        ({response,text}=await fetchOverpass(request.replace('[timeout:90]',CHANGE_TIMEOUT),330000,'changes'));
+      } catch(error) {throw Object.assign(new Error(`Network: ${error.message}`),{unanswered:true});}
+      if(!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`),{unanswered:true});
+      downloaded+=Buffer.byteLength(text);
       await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
-      console.log(label,'bytes',Buffer.byteLength(text),'downloaded this run',downloaded);
-      if(downloaded>500_000_000) throw new Error('Download budget exceeded');
-      const json=JSON.parse(text);
-      if(json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
-      return json;
-    } catch(error) { console.warn(label,error.message); if(attempt===2) throw error; }
+      if(downloaded>500_000_000) throw Object.assign(new Error('Download budget exceeded'),{budget:true});
+      return text;
+    },failed:error=>{failure=error;}});
+  if(failure?.budget) throw failure;
+  if(update) {
+    requireNotOlder({osm3s:{timestamp_osm_base:update.osmBase},elements:update.elements},Math.max(minimum,databaseTime(json)));
+    // For ways this region shares with one whose update failed (see
+    // snapshot-delta.mjs). Saved before the region advances, so a run stopped
+    // in between never leaves a region past changes the log lacks.
+    changeLog=recordChanges(changeLog,update.osmBase,json.elements,update.elements,box,
+      update.deleted.filter(key=>key.startsWith('way/')).map(key=>key.slice(4)));
+    await writeFile(DELTA_FILE,JSON.stringify(changeLog));
+    await writeFile(file,JSON.stringify({...(json.fetched ? {fetched:json.fetched} : {}),osm3s:{timestamp_osm_base:update.osmBase},query,elements:update.elements}));
+    updates.updated++; updates.changed+=update.upserts+update.deletes+update.added+update.dropped;
+    return;
   }
+  // A server that did not answer is asked again next run. Changes that
+  // cannot be used (too large for the time limit, unreadable, removing over
+  // 5% of the ways, or no database time) mean the region is downloaded in
+  // full by the region step of this run; its data is kept to log the
+  // differences (reconcile).
+  if(failure?.unanswered) { updates.unanswered++; console.warn(String(box),'kept as cached; asked again next run'); return; }
+  await rename(file,file+'.previous'); updates.redownload++;
 }
+const updates={updated:0,changed:0,unanswered:0,redownload:0};
+let changeLog;
 if(region==='delta') {
-  let delta;
-  try {delta=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
-  let since=delta?.since;
-  if(!since) {
-    // First run: start from the oldest cached region response.
-    const {readdir}=await import('node:fs/promises');
-    const times=[];
-    for(const name of await readdir('.snapshot-cache')) {
-      if(!name.endsWith('.json') || name.startsWith('budget-') || name==='delta.json') continue;
-      try {const t=JSON.parse(await readFile(`.snapshot-cache/${name}`,'utf8')).osm3s?.timestamp_osm_base; if(t) times.push(t);} catch {}
-    }
-    since=times.sort()[0];
-  }
-  if(!since) { console.log('No cached regions; nothing to update incrementally'); process.exit(0); }
-  console.log('Changes since',since);
-  // Region by region (a worldwide change query can exceed the server's time
-  // limit); a region that fails is split into quarters.
-  let next=delta, earliest, counts={lifecycle:0,opened:0};
-  async function changes(box, depth=0) {
-    const queries=deltaQueries(since, box.join(','));
-    try {
-      const lifecycle=await overpassQuery(queries.lifecycle,`Changed lifecycle ways ${box}`);
-      const opened=await overpassQuery(queries.opened,`Changed operating ways ${box}`);
-      next=mergeDelta(next,lifecycle,opened);
-      counts.lifecycle+=lifecycle.elements.length; counts.opened+=opened.elements.length;
-      if(!earliest || next.since<earliest) earliest=next.since;
-    } catch(error) {
-      // Split only when the query itself was too big; a busy server (HTTP
-      // 429/503/504) is not helped by sending more queries.
-      if(depth>=3 || !/timed out|out of memory|memory/i.test(error.message)) throw error;
-      const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
-      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await changes(child,depth+1);
-    }
-  }
-  for(const box of boxes) await changes(box);
-  // The next run starts from the earliest response time, so nothing between
-  // region queries is missed (overlap is harmless).
-  next={...next, since:earliest};
-  await writeFile(DELTA_FILE,JSON.stringify(next));
-  console.log('DELTA COMPLETE',JSON.stringify({since:next.since,changes:Object.keys(next.changes).length,...counts,downloaded}));
+  try {changeLog=JSON.parse(await readFile(DELTA_FILE,'utf8'));} catch {}
+  for(const box of boxes) await updateRegion(box);
+  console.log('REGIONS UPDATED',JSON.stringify({...updates,downloaded}));
   process.exit(0);
 }
 if(region!==undefined && region!=='assemble') {

@@ -2,11 +2,12 @@
 // generated OpenRailwayMap-shaped tiles. NEVER download provider tiles in CI.
 import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
-import {RAIL_TILE_RANGES} from '../styles/rail-source-catalog.mjs';
+import {RAIL_TILE_RANGES,RAIL_COMPOSITE_PATHS} from '../styles/rail-source-catalog.mjs';
 import {checkRailRecoveryWithoutIdle} from './rail-recovery-browser-fixture.mjs';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
+import {WUHAN_ZOOMS,checkWuhanRailZoom,readWuhanRail,assertWuhanRail} from './wuhan-rail-browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {observeRequiredBrowserLibraries} from './required-browser-libraries.mjs';
 
@@ -20,6 +21,37 @@ const context=await browser.newContext({viewport:{width:1280,height:800},service
 const outage={enabled:false,allowSuccess:false,path:null,otherPath:null,recoveredPaths:new Set()},ledger=[];
 const errors=[],requests={metadata:0,tiles:0,trackDependencies:[],localizedStationTiles:[],missingReferer:[],missingUserAgent:[]};
 await mkdir('browser-review',{recursive:true});
+// #254: a provider tile whose requested layer is present but has no features is
+// a valid empty tile. Serve every empty layer that way on a fresh page and
+// require no repeated tile request, no outage status and no page error.
+async function checkNamedEmptyTiles(){
+  const page=await context.newPage(),counts=new Map(),emptyPaths=new Set(),pageErrors=[];
+  page.on('pageerror',error=>pageErrors.push(error.message));
+  try{
+    await page.route('https://openrailwaymap.app/**',route=>{
+      const path=new URL(route.request().url()).pathname;
+      const tile=/^\/([a-z_,]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
+      if(!tile)return route.fulfill({status:404,body:''});
+      counts.set(path,(counts.get(path)||0)+1);
+      const [,group,z,x,y]=tile;
+      if(group.split(',').every(layer=>!indexes[layer]?.getTile(Number(z),Number(x),Number(y))?.features.length))emptyPaths.add(path);
+      return route.fulfill(ormVectorFixture(path,indexes,undefined,{emptyLayers:true}));
+    });
+    await page.goto(base+'?mode=infrastructure&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#7/30.55/114.4',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
+    await page.evaluate(async()=>{const map=(await import(document.querySelector('script[type="module"]').src)).map;
+      await Promise.race([new Promise(resolve=>map.loaded()?resolve():map.once('idle',resolve)),new Promise(resolve=>setTimeout(resolve,30000))]);});
+    // Longer than the first provider retry delay: a rejected tile would repeat.
+    await page.waitForTimeout(7000);
+    const status=await page.evaluate(()=>{const element=document.getElementById('map-status');return {error:element.classList.contains('error'),text:element.textContent};});
+    const repeated=[...counts].filter(([,count])=>count>1);
+    assert.ok(emptyPaths.size>0,'the fixture must serve named empty provider tiles');
+    assert.deepEqual(repeated,[],'named empty tiles must not be retried');
+    assert.equal(status.error,false,`named empty tiles must not raise an outage status: ${status.text}`);
+    assert.deepEqual(pageErrors,[]);
+    return {tiles:counts.size,namedEmpty:emptyPaths.size,status:status.text};
+  }finally{await page.close();}
+}
 try {
   // This also fixtures fonts, imagery and the basemap, avoiding unrelated
   // external services during the browser integration check.
@@ -50,15 +82,18 @@ try {
     if(!headers['user-agent'])requests.missingUserAgent.push(url.pathname);
     const path=url.pathname;
     if(path.startsWith('/api/'))return route.fulfill({status:404,body:''});
-    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
+    const tileMatch=/^\/(?:__orm-fixture\/)?([a-z_,]+)\/(\d+)\/(\d+)\/(\d+)(?:\.pbf)?$/.exec(path);
     if(tileMatch){
       requests.tiles++;
-      const [,endpoint,z,x,y]=tileMatch,tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
+      const [,group,z,x,y]=tileMatch,endpoint=group.split(',')[0],tile=indexes[endpoint]?.getTile(Number(z),Number(x),Number(y));
+      if(!path.startsWith('/__orm-fixture/')&&Object.hasOwn(RAIL_COMPOSITE_PATHS,endpoint))
+        assert.equal(group,RAIL_COMPOSITE_PATHS[endpoint],'known public datasets must use their physical composite endpoint');
       // The local catalogue now gives visible rail geometry the SAME direct
       // URLs as track-count inputs. Count their union after pool sharing.
       // Localized station display requests (?lang=...) were excluded by the
       // old /__orm-fixture split and remain separately recorded, not mistaken
-      // for duplicate raw station inputs. Preserve the 65/+13 ceilings.
+      // for duplicate raw station inputs. Physical ceilings are 45/+9 after
+      // station-area and station-point aliases share the same endpoint.
       if(z==='14'&&endpoint==='standard_railway_text_stations'&&url.search)requests.localizedStationTiles.push(path+url.search);
       if(z==='14'&&!url.search&&['railway_line_high','standard_railway_grouped_station_areas','standard_railway_text_stations'].includes(endpoint))requests.trackDependencies.push(path);
       if(outage.enabled&&endpoint==='railway_line_high'&&z==='7'){
@@ -71,8 +106,9 @@ try {
         }
       }
       ledger.push({url:request.url(),path,status:200,at:Date.now()});
-      return route.fulfill({contentType:'application/x-protobuf',
-        body:tile?.features.length?Buffer.from(vtpbf.fromGeojsonVt({[endpoint]:tile},{version:2})):Buffer.alloc(0)});
+      const response=ormVectorFixture(path.startsWith('/__orm-fixture/') ? path.slice('/__orm-fixture'.length) : path,indexes);
+      assert.ok(response,'Composite ORM tiles must have a synthetic MVT fixture');
+      return route.fulfill(response);
     }
     requests.metadata++;
     const endpoint=path.split('/').filter(Boolean)[0];
@@ -104,6 +140,25 @@ try {
   await visible('speed-overview');
   await page.evaluate(()=>window.fixtureMap.jumpTo({center:[114.4,30.55],zoom:7}));
   await visible('speed-tracks');
+  // Exercise the same city-centred active-Infrastructure diagnostic as the
+  // self-hosted audit, using only this generated provider-shaped geometry.
+  await page.locator('[data-mode="infrastructure"]').click();
+  const wuhan=[];
+  for(const zoom of WUHAN_ZOOMS) {
+    wuhan.push(await checkWuhanRailZoom(page,zoom));
+    await page.screenshot({path:`browser-review/orm-fixture-wuhan-infrastructure-z${zoom}.png`});
+  }
+  // Negative control: decoded data must not pass when the active style filters
+  // every line out. Another thematic layer cannot mask that failure.
+  await checkWuhanRailZoom(page,7);
+  const infrastructureFilter=await page.evaluate(()=>window.fixtureMap.getFilter('infrastructure-tracks'));
+  await page.evaluate(()=>window.fixtureMap.setFilter('infrastructure-tracks',['==',['get','id'],'absent-fixture-id']));
+  await page.waitForFunction(()=>window.fixtureMap.loaded());
+  const filtered=await readWuhanRail(page,7);
+  assert.ok(filtered.providerPresentRail>0,'Negative control retains decoded railway geometry');
+  assert.throws(()=>assertWuhanRail(filtered,7),/WUHAN_TRACKS_NOT_RENDERED/);
+  await page.evaluate(filter=>window.fixtureMap.setFilter('infrastructure-tracks',filter),infrastructureFilter);
+  await checkWuhanRailZoom(page,7);
   assert.equal(requests.metadata,0,'Known catalogue sources require zero metadata requests');
   assert.ok(requests.tiles>0,'Synthetic railway tiles must be requested');
   assert.deepEqual(requests.missingReferer,[], 'Chromium must send a genuine site-origin Referer for provider requests');
@@ -136,7 +191,9 @@ try {
 
   assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
   assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
-  assert.ok(initial.requests<=65,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
+  for(const endpoint of ['railway_line_high','standard_railway_text_stations'])
+    assert.ok(initial.byDataset[RAIL_COMPOSITE_PATHS[endpoint]]>0,'must exercise rail and station physical dependencies');
+  assert.ok(initial.requests<=45,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
   try {
     await page.evaluate(()=>new Promise((resolve,reject)=>{
       const map=window.fixtureMap,mapErrors=[];
@@ -161,7 +218,7 @@ try {
   }
   const afterPan=dependencySnapshot(),panAdded=afterPan.requests-initial.requests;
   assert.equal(afterPan.requests,afterPan.unique,'one-tile pan must retain exact-URL request deduplication');
-  assert.ok(panAdded<=13,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
+  assert.ok(panAdded<=9,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
   await page.screenshot({path:'browser-review/orm-fixture-wuhan-z14-track-count.png'});
   assert.deepEqual(requests.missingReferer,[], 'z14 dependency requests must keep genuine site-origin Referer');
   assert.deepEqual(requests.missingUserAgent,[], 'z14 dependency requests must keep genuine User-Agent');
@@ -171,8 +228,9 @@ try {
   assert.equal(requests.metadata,1,'Only the explicit unknown endpoint fetched metadata');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests.missingReferer,[]);assert.deepEqual(requests.missingUserAgent,[]);
-  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
-  console.log('PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only',
+  const namedEmpty=await checkNamedEmptyTiles();
+  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,wuhan,filtered,initial,afterPan,panAdded,recovery,namedEmpty,requests,ledger},null,2)+'\n');
+  console.log('PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only',
     JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{
   await writeFile('browser-review/orm-network-ledger.json',JSON.stringify(ledger,null,2)+'\n');

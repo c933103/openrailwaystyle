@@ -13,6 +13,9 @@ published map data and validation. Explain the problem, resulting behaviour and
 relevant checks in your pull request. Include generated style changes when editing
 the style builder.
 
+The [repository working guidance](AGENTS.md) covers bounded changes, proportional
+acceptance and keeping compact regression fixtures separate from bulky run archives.
+
 ## Documentation
 
 Use the [documentation index](docs/README.md) to find the right home for new

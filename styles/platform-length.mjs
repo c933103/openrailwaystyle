@@ -339,7 +339,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
   for(const [key,entry] of desired){const wanted=entry.url&&!cache.get(key)?.fetched;if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
   if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
-  if(measuring&&!desired.has(measuring))measureController?.abort(OBSOLETE_REQUEST);
+  if(measuring&&(map.getZoom()<19||!desired.has(measuring)))measureController?.abort(OBSOLETE_REQUEST);
   draw();schedule();measureNext();
  }
  // Lengths are shown from zoom 19; measure the visible platforms that still

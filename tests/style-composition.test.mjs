@@ -24,6 +24,11 @@ function canonical(value) {
   return result;
 }
 
+// New independently tested overlays retain every historical source/layer byte
+// and their relative order; their own schema and paint are in power-methods.test
+// and electricity-signals.test.
+const addedSources=new Set(['railReference','electricMethods','electricSignals','electricCatenary','conveying','aerialways','terrain3d']);
+const addedLayers=new Set(['aerialway-names','conveying-lines','conveying-arrows','conveying-arrows-back','infrastructure-rack',...['cableway','lift'].flatMap(id=>[`aerialway-${id}-cable`,`aerialway-${id}-ticks`]),'electrification-conductor-rails','electrification-charging-points','electrification-charging-names','electrification-former-conductor-rails','electrification-former-charging-points','electrification-former-charging-names',...['supply-areas','supply-outlines','charging-areas','charging-outlines'].flatMap(id=>[`electrification-${id}`,`electrification-former-${id}`]),'electrification-catenary-masts','electrification-catenary-portals','electrification-catenary-references','electrification-signal-points','electrification-former-signal-points',...['fourth-rails','ground-supply','inductive-supply','linear-motors','rack-traction','cable-traction','provider-rack','provider-cable'].flatMap(id=>[`electrification-${id}`,`electrification-former-${id}`])]);
 const digest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 
 function rootContract(value) {
@@ -39,16 +44,16 @@ test('composition preserves root rendering settings and non-atlas metadata', () 
 });
 
 test('composition preserves every source contract, including embedded station data', () => {
-  assert.deepEqual(Object.keys(style.sources), baseline.sources.map(source => source.id), 'source IDs and their order');
+  assert.deepEqual(Object.keys(style.sources).filter(id=>!addedSources.has(id)), baseline.sources.map(source => source.id), 'source IDs and their order');
   for (const expected of baseline.sources) {
     assert.equal(digest(style.sources[expected.id]), expected.sha256, `source ${expected.id} differs from the reviewed migration baseline`);
   }
 });
 
 test('composition preserves every layer definition and its rendering order', () => {
-  assert.deepEqual(style.layers.map(layer => layer.id), baseline.layers.map(layer => layer.id), 'layer order controls drawing and symbol priority');
+  assert.deepEqual(style.layers.filter(layer=>layer.source!=='railReference'&&!addedLayers.has(layer.id)).map(layer => layer.id), baseline.layers.map(layer => layer.id), 'layer order controls drawing and symbol priority');
   for (const [index, expected] of baseline.layers.entries()) {
-    assert.equal(digest(style.layers[index]), expected.sha256, `layer ${expected.id} differs from the reviewed migration baseline`);
+    assert.equal(digest(style.layers.find(layer=>layer.id===expected.id)), expected.sha256, `layer ${expected.id} differs from the reviewed migration baseline`);
   }
 });
 

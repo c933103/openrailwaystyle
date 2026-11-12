@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261010-rail-markers-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261112-browser-calendar-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

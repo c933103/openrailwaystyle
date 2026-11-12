@@ -110,8 +110,45 @@ def local_boundary(date, value, timezone):
     return candidates.pop()
 
 
-def compile_feed(path, config, date, geometry=False):
+def compile_feed(path, config, date, geometry=False, matching_evidence=False):
     date = dt.date.fromisoformat(date)
+    # Explicit offline opt-in, never enabled by provider/catalogue metadata.
+    evidence_module = None
+    identity_audit_reason = None
+    if matching_evidence:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("timetable_evidence", Path(__file__).with_name("timetable_evidence.py"))
+        evidence_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(evidence_module)
+
+    def keyed(rows, key, keep=lambda row: True):
+        nonlocal identity_audit_reason
+        out, seen, retained_bytes = {}, set(), 0
+        for row in rows:
+            # Audit feed-wide identity before filtering, with independent bounds.
+            # Once incomplete, drop audit state and preserve the legacy compile.
+            if evidence_module and identity_audit_reason is None:
+                ident = key(row) if callable(key) else row.get(key)
+                limits = evidence_module.LIMITS
+                if not isinstance(ident, str) or not ident or len(ident) > limits['string_bytes']:
+                    identity_audit_reason = 'invalid_source_id'
+                elif ident in seen:
+                    identity_audit_reason = 'duplicate_source_id'
+                else:
+                    size = len(ident.encode('utf-8'))
+                    if size > limits['string_bytes'] or len(seen) >= limits['source_ids'] or retained_bytes + size > limits['source_id_bytes']:
+                        identity_audit_reason = 'source_id_audit_limit'
+                    else:
+                        seen.add(ident)
+                        retained_bytes += size
+                if identity_audit_reason:
+                    seen.clear()
+            # Keep the pre-existing filter-before-key behavior, including for
+            # irrelevant malformed rows, regardless of evidence availability.
+            if keep(row):
+                ident = key(row) if callable(key) else row[key]
+                out[ident] = row
+        return out
     z = zipfile.ZipFile(path)
     if sum(info.file_size for info in z.infolist()) > MAX_EXPANDED_BYTES:
         z.close()
@@ -123,13 +160,13 @@ def compile_feed(path, config, date, geometry=False):
         lo, hi = feed[0].get("feed_start_date"), feed[0].get("feed_end_date")
         if lo and date.strftime("%Y%m%d") < lo:
             raise ValueError("Selected date is outside the feed's validity")
-    agencies = {r.get("agency_id") or "single-agency": r for r in read(z, "agency.txt")}
+    agencies = keyed(read(z, "agency.txt"), lambda r: r.get("agency_id") or "single-agency")
     if not agencies:
         raise ValueError("Missing agency metadata")
-    routes = {r["route_id"]: r for r in read(z, "routes.txt") if rail_type(r["route_type"])}
-    trips = {r["trip_id"]: r for r in read(z, "trips.txt") if r["route_id"] in routes}
-    stops = {r["stop_id"]: r for r in read(z, "stops.txt")}
-    calendar = {r["service_id"]: r for r in read(z, "calendar.txt")}
+    routes = keyed(read(z, "routes.txt"), "route_id", lambda r: rail_type(r["route_type"]))
+    trips = keyed(read(z, "trips.txt"), "trip_id", lambda r: r["route_id"] in routes)
+    stops = keyed(read(z, "stops.txt"), "stop_id")
+    calendar = keyed(read(z, "calendar.txt"), "service_id")
     exceptions = list(read(z, "calendar_dates.txt"))
     if not calendar and not exceptions:
         raise ValueError("No service calendar")
@@ -212,6 +249,7 @@ def compile_feed(path, config, date, geometry=False):
         raise ValueError('Selected date is before every retained rail service calendar start')
     if all(trip['_calendar_expired'] or trip['_calendar_future'] for trip in trips.values()):
         raise ValueError('Selected date is outside every retained rail service calendar')
+    matching_identity = evidence_module.capture_identity(routes, trips) if evidence_module and identity_audit_reason is None else None
     if config.get('canonical_routes'):
         routes = canonical_routes(routes, trips, times, stops)
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
@@ -231,44 +269,7 @@ def compile_feed(path, config, date, geometry=False):
                 else:
                     raise ValueError('Invalid calendar exception')
         active[day] = ids
-    paths = None
-    if geometry:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("gtfs_shapes", Path(__file__).with_name("gtfs-shapes.py"))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops,
-                                  {**config, 'rail_route_types': {key: value['route_type'] for key, value in routes.items()}})
-    segments, inactive_segments = {}, {}
-    boundaries = {}
-    invalid_sequences, invalid_active = 0, set()
-
-    def station(stop_id):
-        if stop_id not in stops:
-            raise ValueError("Trip references an absent stop")
-        # HSL uses a space in otherwise empty parent_station fields.
-        parent = stops[stop_id].get("parent_station", "").strip()
-        if parent and parent not in stops:
-            raise ValueError("Stop references an absent parent station")
-        return parent or stop_id
-
-    for trip_id, trip in sorted(trips.items()):
-        route_id = trip["route_id"]
-        route = routes[route_id]
-        agency_id = route.get("agency_id") or (next(iter(agencies)) if len(agencies) == 1 else None)
-        if agency_id not in agencies:
-            raise ValueError("Ambiguous route agency")
-        timezone = ZoneInfo(agencies[agency_id]["agency_timezone"])
-        windows = boundaries.setdefault(agency_id, {key: (local_boundary(date, p["start"], timezone), local_boundary(date, p["end"], timezone)) for key, p in config["profiles"].items()})
-        if any(end <= start for start, end in windows.values()):
-            raise ValueError("Reference windows must have positive duration")
-        sequence = sorted(times.get(trip_id, []), key=lambda row: int(row["stop_sequence"]))
-        known_times=[seconds(row.get('departure_time')) for row in sequence if row.get('departure_time')]
-        if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence) or any(b<a for a,b in zip(known_times,known_times[1:])):
-            invalid_sequences += 1
-            if any(trip['service_id'] in ids for ids in active.values()):
-                invalid_active.add(route_id)
-            continue
+    def contributor(trip_id, trip, sequence, timezone, windows):
         first = seconds(sequence[0].get("departure_time"))
         contributions = {}
 
@@ -316,6 +317,70 @@ def compile_feed(path, config, date, geometry=False):
             contributions[departure] = counts, unknown, estimated
             return contributions[departure]
 
+        return contribution
+
+    # Reconciliation uses only workings which can contribute to the selected
+    # windows, including extended-hour departures from prior service days.
+    # Reuse the counting function rather than a second calendar approximation.
+    boundaries, eligible = {}, set()
+    if geometry:
+        for trip_id, trip in trips.items():
+            if trip['_calendar_expired'] or trip['_calendar_future']:
+                continue
+            route = routes[trip['route_id']]
+            agency_id = route.get('agency_id') or (next(iter(agencies)) if len(agencies) == 1 else None)
+            timezone = ZoneInfo(agencies[agency_id]['agency_timezone'])
+            windows = boundaries.setdefault(agency_id, {key: (local_boundary(date, p['start'], timezone), local_boundary(date, p['end'], timezone)) for key, p in config['profiles'].items()})
+            sequence = sorted(times.get(trip_id, []), key=lambda row: int(row['stop_sequence']))
+            known_times = [seconds(row.get('departure_time')) for row in sequence if row.get('departure_time')]
+            if len(sequence) < 2 or len({r['stop_sequence'] for r in sequence}) != len(sequence) or any(b < a for a, b in zip(known_times, known_times[1:])):
+                continue
+            contribution = contributor(trip_id, trip, sequence, timezone, windows)
+            for row in sequence[:-1]:
+                counts, unknown, _ = contribution(seconds(row.get('departure_time')))
+                if unknown or any(counts.values()):
+                    eligible.add(trip_id)
+                    break
+
+    paths = None
+    if geometry:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gtfs_shapes", Path(__file__).with_name("gtfs-shapes.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops,
+                                  {**config, 'eligible_trip_ids': eligible, 'rail_route_types': {key: value['route_type'] for key, value in routes.items()}})
+    segments, inactive_segments = {}, {}
+    invalid_sequences, invalid_active = 0, set()
+
+    def station(stop_id):
+        if stop_id not in stops:
+            raise ValueError("Trip references an absent stop")
+        # HSL uses a space in otherwise empty parent_station fields.
+        parent = stops[stop_id].get("parent_station", "").strip()
+        if parent and parent not in stops:
+            raise ValueError("Stop references an absent parent station")
+        return parent or stop_id
+
+    for trip_id, trip in sorted(trips.items()):
+        route_id = trip["route_id"]
+        route = routes[route_id]
+        agency_id = route.get("agency_id") or (next(iter(agencies)) if len(agencies) == 1 else None)
+        if agency_id not in agencies:
+            raise ValueError("Ambiguous route agency")
+        timezone = ZoneInfo(agencies[agency_id]["agency_timezone"])
+        windows = boundaries.setdefault(agency_id, {key: (local_boundary(date, p["start"], timezone), local_boundary(date, p["end"], timezone)) for key, p in config["profiles"].items()})
+        if any(end <= start for start, end in windows.values()):
+            raise ValueError("Reference windows must have positive duration")
+        sequence = sorted(times.get(trip_id, []), key=lambda row: int(row["stop_sequence"]))
+        known_times=[seconds(row.get('departure_time')) for row in sequence if row.get('departure_time')]
+        if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence) or any(b<a for a,b in zip(known_times,known_times[1:])):
+            invalid_sequences += 1
+            if any(trip['service_id'] in ids for ids in active.values()):
+                invalid_active.add(route_id)
+            continue
+        contribution = contributor(trip_id, trip, sequence, timezone, windows)
+
         mapped = []
         if paths:
             mapped = paths.segments(trip, sequence)
@@ -346,11 +411,17 @@ def compile_feed(path, config, date, geometry=False):
 
     segments.update({key: value for key, value in inactive_segments.items() if key not in segments})
     incomplete = set(invalid_active)
+    ambiguous_active = 0
     if paths:
         for trip_id,trip in trips.items():
             sequence = sorted(times[trip_id],key=lambda r:int(r['stop_sequence']))
-            if paths.patterns.get(paths.pattern_key(trip,sequence)) is None and any(trip['service_id'] in ids for ids in active.values()):
+            key = paths.pattern_key(trip,sequence)
+            ambiguous = trip_id in eligible and key in paths.ambiguous_patterns
+            if any(trip['service_id'] in ids for ids in active.values()) and (paths.patterns.get(key) is None or ambiguous):
                 incomplete.add(trip['route_id'])
+                ambiguous_active += int(ambiguous)
+        if ambiguous_active:
+            paths.rejected['ambiguous_shared_geometry'] = ambiguous_active
     output = []
     for key, segment in sorted(segments.items()):
         profiles = {}
@@ -382,6 +453,8 @@ def compile_feed(path, config, date, geometry=False):
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
+    if evidence_module:
+        result['matching_evidence'] = evidence_module.build_evidence(source, matching_identity, trips, times, stops, frequencies, active, agencies, seconds, identity_audit_reason)
     if geometry and getattr(paths, 'rail_patterns', {}):
         source['geometry_license'] = 'ODbL-1.0'
         source['geometry_attribution'] = '© OpenStreetMap contributors; matched against an already published branch/metro railway snapshot'
@@ -403,8 +476,9 @@ def main():
     parser.add_argument("--date", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--geometry", action="store_true", help="Map profiles along supplied rail shapes")
+    parser.add_argument("--matching-evidence", action="store_true", help="Retain bounded identity evidence for offline matching review; does not apply profiles")
     args = parser.parse_args()
-    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date, geometry=args.geometry)
+    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date, geometry=args.geometry, matching_evidence=args.matching_evidence)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"Compiled {len(result['routes'])} rail routes and {len(result['segments'])} profiles for {args.date}; geometry: {result['source']['geometry']}.")

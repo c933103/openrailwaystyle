@@ -27,7 +27,8 @@ const DOMINATED = 60;       // metres: a smaller group's label this near a large
 const REPEAT = 200;         // metres: a label repeating a count this near is left out
 
 const read = data => data?.byteLength ? new VectorTile(new Pbf(new Uint8Array(data))) : null;
-const layersOf = tile => tile ? Object.values(tile.layers) : [];
+// Composite bytes are shared, but each input retains its logical layer identity.
+const layersOf = (tile, name) => tile?.layers[name] ? [tile.layers[name]] : [];
 
 // Station areas (rings, and whether they hold a surface station) and the
 // station points outside every area, in the tile's units (extent). areas,
@@ -48,7 +49,7 @@ const around = tiles => Array.isArray(tiles) ? tiles : tiles ? [{dx: 0, dy: 0, d
 const groupBy = (list, keyOf) => list.reduce((groups, item) => { const key = keyOf(item); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(item); return groups; }, new Map());
 function stationZones(areas, stations, extent) {
   const points = [], zones = [], seen = new Set();
-  for (const {dx, dy, data} of around(stations)) for (const layer of layersOf(read(data))) {
+  for (const {dx, dy, data} of around(stations)) for (const layer of layersOf(read(data), 'standard_railway_text_stations')) {
     const scale = extent / layer.extent;
     for (let i = 0; i < layer.length; i++) {
       const f = layer.feature(i), p = f.properties;
@@ -66,7 +67,7 @@ function stationZones(areas, stations, extent) {
   // An area's pieces from the tiles read, joined by its id; a point is in
   // the area when it is in any piece (pieces overlap at the tiles' margins).
   const pieces = new Map();
-  for (const {dx, dy, data} of around(areas)) for (const layer of layersOf(read(data))) {
+  for (const {dx, dy, data} of around(areas)) for (const layer of layersOf(read(data), 'standard_railway_grouped_station_areas')) {
     const scale = extent / layer.extent;
     for (let i = 0; i < layer.length; i++) {
       const f = layer.feature(i), id = f.properties.id ?? f.id ?? `${dx}/${dy}/${i}`;
@@ -111,9 +112,9 @@ function stationZones(areas, stations, extent) {
 // units.
 export function countTile({tiles, areas = null, stations = null}, y) {
   const centre = tiles.find(t => !t.dx && !t.dy);
-  const extent = layersOf(read(centre?.data))[0]?.extent || 4096;
+  const extent = layersOf(read(centre?.data), 'railway_line_high')[0]?.extent || 4096;
   const byId = new Map(), lines = [];
-  for (const {dx, dy, data} of tiles) for (const layer of layersOf(read(data))) {
+  for (const {dx, dy, data} of tiles) for (const layer of layersOf(read(data), 'railway_line_high')) {
     const features = Array.from({length: layer.length}, (_, i) => layer.feature(i)), scale = extent / layer.extent;
     trackLines(features).forEach((line, i) => {
       if (!line) return;

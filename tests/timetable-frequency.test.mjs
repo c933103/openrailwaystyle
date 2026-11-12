@@ -1,14 +1,80 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTimetableMatcher,bindTimetableSections} from '../scripts/timetable-frequency.mjs';
+import {readFileSync} from 'node:fs';
+import {createTimetableMatcher,bindTimetableSections,summarizeBoundTimetableSections} from '../scripts/timetable-frequency.mjs';
 import {addResult,commitStage,toTable,buildTiles as osmTiles,LAYER} from '../scripts/service-routes.mjs';
-import {frequencyDetails,frequencyWidth} from '../styles/service-frequency.mjs';
+import {frequencyDetails,frequencyWidth,frequencyAvailability} from '../styles/service-frequency.mjs';
+import {operatorBindingIndex} from '../scripts/timetable-operator-bindings.mjs';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {now,table,feed} from './fixtures/service-frequency/matching-fixture.mjs';
+import {now,table,feed,operatorBindingsFor} from './fixtures/service-frequency/matching-fixture.mjs';
 const apply=(t,feeds)=>{const m=createTimetableMatcher(t,{now});for(const f of feeds)m.addFeed(f);return m.finish();};
 const buildTiles=(t,options={})=>osmTiles(t,{...options,now});
 const features=tiles=>[...tiles].filter(([k])=>k.startsWith('12/')).flatMap(([,bytes])=>{const layer=new VectorTile(new Pbf(bytes)).layers[LAYER];return Array.from({length:layer.length},(_,i)=>layer.feature(i).properties);});
+const operatorFixture=()=>{
+ const f=feed();f.agencies[0].agency_name='Metro brand';f.agencies[0].agency_url='https://operator.example.test/';
+ return {f,operatorBindings:operatorBindingsFor(f)};
+};
+
+test('reviewed operator binding applies actual counts, retains its proof and expires with the assertion',()=>{
+ const {f,operatorBindings}=operatorFixture(),before=structuredClone(f),m=createTimetableMatcher(table(),{now,operatorBindings});
+ m.addFeed(f);const a=m.finish();assert.equal(a.sections.length,3);assert.equal(a.records[0].profiles.am.rate,10);
+ assert.equal(a.records[0].properties.frequency_operator_binding,'fixture-operator');
+ assert.deepEqual(JSON.parse(a.records[0].properties.frequency_operator_evidence),['https://operator.example.test/about/']);
+ assert.equal(a.records[0].properties.frequency_until,Date.parse('2026-10-13T00:00:00Z')/1000-.001);
+ assert.deepEqual(f,before);assert.equal(apply(table(),[f]).sections.length,0,'a brand alone is not an operator assertion');
+});
+
+test('operator assertions are feed/revision/agency/declaration scoped, including the original URL fingerprint',()=>{
+ const changes=[f=>f.source.id='other-feed',f=>f.source.sha256='b'.repeat(64),f=>{f.agencies[0].agency_id='other';f.routes[0].agency_id='other';},
+  f=>f.agencies[0].agency_name='Other brand',f=>f.agencies[0].agency_url='https://other.example.test/',f=>f.agencies[0].agency_url_sha256='0'.repeat(64)];
+ for(const change of changes){const {f,operatorBindings}=operatorFixture();change(f);const m=createTimetableMatcher(table(),{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);}
+});
+test('operator assertions never bypass mode, reference, path, ambiguity, or duplicate-service checks',()=>{
+ for(const change of [f=>f.routes[0].route_type='0',f=>f.routes[0].route_short_name='H',f=>f.segments[2].geometry=[[140,35],[140.01,35]]]){
+  const {f,operatorBindings}=operatorFixture();change(f);const m=createTimetableMatcher(table(),{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);
+ }
+ const {f,operatorBindings}=operatorFixture(),t=table(),other=structuredClone(t.routes.get('r10'));
+ other.key='r20';other.evidence.view.ref='G';other.evidence.view.relation=20;other.evidence.view.key='r20';other.evidence.view.group='another-service';
+ t.routes.set('r20',other);for(const w of t.ways.values())w.routes.japan.push('r20');
+ const ambiguous=createTimetableMatcher(t,{now,operatorBindings});ambiguous.addFeed(f);const unresolved=ambiguous.finish();assert.equal(unresolved.sections.length,0);assert.equal(unresolved.matching.feeds[0].ambiguousRoutes,1);
+ const duplicate=structuredClone(f);duplicate.source.id='other-feed';const duplicateBinding=structuredClone(operatorBindings.bindings[0]);duplicateBinding.id='second-binding';duplicateBinding.feed='other-feed';
+ duplicate.source.sha256='b'.repeat(64);duplicateBinding.source_sha256=duplicate.source.sha256;
+ const conflict=createTimetableMatcher(table(),{now,operatorBindings:{schema:1,bindings:[operatorBindings.bindings[0],duplicateBinding]}});
+ conflict.addFeed(f);conflict.addFeed(duplicate);const rejected=conflict.finish();assert.equal(rejected.sections.length,0);assert.ok(rejected.matching.conflictingSections>0);
+});
+test('verified duplicate archives count once and retain both operator assertion receipts',()=>{
+ const {f,operatorBindings}=operatorFixture(),duplicate=structuredClone(f),second=structuredClone(operatorBindings.bindings[0]);
+ duplicate.source.id='other-feed';second.feed=duplicate.source.id;second.id='second-binding';second.evidence=['https://operator.example.test/about;brand/'];
+ f.source.input_signature=duplicate.source.input_signature='c'.repeat(64);
+ const m=createTimetableMatcher(table(),{now,operatorBindings:{schema:1,bindings:[operatorBindings.bindings[0],second]}});
+ m.addFeed(f);m.addFeed(duplicate);const a=m.finish();assert.equal(a.sections.length,3);assert.equal(a.records[0].profiles.am.rate,10);
+ assert.equal(a.records[0].properties.frequency_operator_binding,'fixture-operator;second-binding');
+ assert.deepEqual(JSON.parse(a.records[0].properties.frequency_operator_evidence),['https://operator.example.test/about/','https://operator.example.test/about;brand/']);
+});
+test('operator review validity is enforced at both boundaries without restricting independently declared identities',()=>{
+ for(const at of ['2026-10-08T23:59:59.999Z','2026-10-13T00:00:00Z']){
+  const {f,operatorBindings}=operatorFixture(),m=createTimetableMatcher(table(),{now:Date.parse(at),operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,0);
+ }
+ const {f,operatorBindings}=operatorFixture();f.agencies[0].agency_name='東京メトロ';operatorBindings.bindings[0].agency_name='東京メトロ';
+ const direct=createTimetableMatcher(table(),{now,operatorBindings});direct.addFeed(f);const a=direct.finish();
+ assert.equal(a.sections.length,3);assert.ok(a.records[0].properties.frequency_until>Date.parse('2026-10-13T00:00:00Z')/1000);assert.equal(a.records[0].properties.frequency_operator_binding,undefined);
+});
+test('operator context works across scripts and does not infer translations or substrings',()=>{
+ for(const operator of ['Transit Authority','Городской транспорт','هيئة النقل']){
+  const {f,operatorBindings}=operatorFixture(),t=table();t.routes.get('r10').evidence.view.network=operator;operatorBindings.bindings[0].osm_operators=[operator];
+  const m=createTimetableMatcher(t,{now,operatorBindings});m.addFeed(f);assert.equal(m.finish().sections.length,3);
+  operatorBindings.bindings[0].osm_operators=['Transit'];const negative=createTimetableMatcher(t,{now,operatorBindings});negative.addFeed(f);assert.equal(negative.finish().sections.length,0);
+ }
+});
+test('malformed, duplicate, oversized or unbounded operator assertions fail before matching',()=>{
+ const changes=[d=>d.schema=2,d=>d.extra=true,d=>d.bindings[0].extra=true,d=>d.bindings[0].source_sha256='bad',d=>d.bindings[0].expires='2026-02-30',
+  d=>d.bindings[0].checked='2026-13-01',d=>d.bindings[0].expires='2026-10-08',d=>d.bindings[0].expires='2030-10-01',
+  d=>d.bindings[0].agency_url='https://user:password@example.test/',d=>d.bindings[0].evidence=['https://example.test/?token=private'],
+  d=>d.bindings[0].osm_operators=[''],d=>d.bindings[0].osm_operators=new Array(1),d=>d.bindings[0].agency_name='a'.repeat(513),
+  d=>d.bindings.push(structuredClone(d.bindings[0])),d=>{const b=structuredClone(d.bindings[0]);b.id='other';d.bindings.push(b);},d=>d.bindings=new Array(1001)];
+ for(const change of changes){const {operatorBindings}=operatorFixture();change(operatorBindings);assert.throws(()=>operatorBindingIndex(operatorBindings),/Invalid reviewed timetable operator bindings/);}
+});
 
 test('Ginza-style OSM service gets actual per-section timetable counts, hourly widths and original OSM identity',()=>{
  const t=table(),artifact=apply(t,[feed()]),bound=bindTimetableSections(t,artifact);
@@ -27,6 +93,22 @@ test('matching requires operator context, service identity, rail kind and comple
 test('metadata normalization preserves script, permits typography, and never matches an empty operator',()=>{
  const f=feed();f.agencies[0].agency_name=' 東京 メトロ ';f.routes[0].route_short_name='Ｇ';assert.equal(apply(table(),[f]).sections.length,3);
  f.agencies[0].agency_name='';assert.equal(apply(table(),[f]).sections.length,0);
+});
+test('bilingual agency declarations match either complete language name without changing the source',()=>{
+ for(const [name,operator] of [['東京メトロ Tokyo Metro','東京メトロ'],['東京メトロ Tokyo Metro','Tokyo Metro'],['Метро Metro Transit','Метро'],['مترو المدينة City Metro','City Metro']]){
+  const t=table(),f=feed();t.routes.get('r10').evidence.view.operator=operator;t.routes.get('r10').evidence.view.network='';
+  f.agencies[0].agency_name=name;const before=structuredClone(f);const a=apply(t,[f]);
+  assert.equal(a.sections.length,3,name+' / '+operator);assert.equal(a.records[0].profiles.am.rate,10);assert.deepEqual(f,before);
+ }
+});
+test('agency language normalization preserves operator, route, mode and spatial boundaries',()=>{
+ for(const [name,operator] of [['Other Tokyo Metro','Tokyo Metro'],['東京メトロ Tokyo Metro','Metro'],['東京メトロ Tokyo Metro','Other Metro'],['東京メトロTokyoMetro','東京メトロ']]){
+  const t=table(),f=feed();t.routes.get('r10').evidence.view.operator=operator;t.routes.get('r10').evidence.view.network='';f.agencies[0].agency_name=name;
+  assert.equal(apply(t,[f]).sections.length,0,name+' / '+operator);
+ }
+ for(const change of [f=>f.routes[0].route_short_name='H',f=>f.routes[0].route_type='0',f=>f.segments[2].geometry=[[140,35],[140.01,35]]]){
+  const f=feed();f.agencies[0].agency_name='東京メトロ Tokyo Metro';change(f);assert.equal(apply(table(),[f]).sections.length,0);
+ }
 });
 test('duplicate feeds agree without doubling trains; conflicting observations are withheld',()=>{
  const a=feed(),b=feed();b.source.id='second';a.source.input_signature=b.source.input_signature='c'.repeat(64);
@@ -87,25 +169,54 @@ test('curved timetable sections keep the whole OSM line orientation and their or
 });
 
 
-test('full GTFS calendar-to-publication-to-OSM tile pipeline counts short workings only on their section',async()=>{
+for(const variant of ['declared','operator-binding','mixed-paths','mixed-equal','mixed-near','mixed-ambiguous','mixed-window','mixed-window-am'])test(`full GTFS ${variant} calendar-to-publication-to-OSM tile pipeline counts short workings only on their section`,async()=>{
  const {mkdtemp,mkdir,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
  const {spawnSync}=await import('node:child_process'),{gzipSync,gunzipSync}=await import('node:zlib');
  const {assemble}=await import('../scripts/assemble-global-frequency.mjs'),{writeTable}=await import('../scripts/service-routes.mjs');
  const root=await mkdtemp(join(tmpdir(),'atlas-matched-frequency-'));
  try{
-  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output],{encoding:'utf8'});
+  const output=join(root,'compiled.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output,...(variant==='declared'?[]:[`--${variant}`])],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   const f=JSON.parse(await readFile(output,'utf8')),t=table();
   await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds','jp-metro.json.gz'),gzipSync(JSON.stringify(f)));
   await writeFile(join(root,'osm.ndjson.gz'),gzipSync(writeTable(t)));
   await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_entries:1,catalogue_sha256:'fixture',service_date:f.source.service_date,entries:[{id:f.source.id,status:'compiled',output:'feeds/jp-metro.json.gz',sha256:f.source.sha256,country:'JP'}]}));
-  const manifest=await assemble(root,{osmTable:join(root,'osm.ndjson.gz'),now});
+  const manifest=await assemble(root,{osmTable:join(root,'osm.ndjson.gz'),now,...(variant==='operator-binding'?{operatorBindings:operatorBindingsFor(f)}:{})});
   assert.equal(manifest.applied_profiles.sections,3);assert.equal(manifest.tiles,0,'no standalone GTFS tiles');
   const artifact=JSON.parse(gunzipSync(await readFile(join(root,'profiles.json.gz'))));
   const rendered=features(buildTiles(t,{timetables:bindTimetableSections(t,artifact).sections}));
-  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,6]);
+  if(variant.startsWith('mixed-window')){
+   assert.deepEqual([...new Set(rendered.map(p=>p.frequency_h08))].sort((a,b)=>a-b),[0,8]);
+   const bound=bindTimetableSections(t,artifact).sections;
+   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.h08.rate===(way===1?8:0)));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(features(buildTiles(t)).map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+   assert.deepEqual(f.source.geometry_audit.routes_with_incomplete_active_geometry,[]);
+   if(variant==='mixed-window')assert.ok(rendered.every(p=>p.frequency_am===undefined));
+   return;
+  }
+  if(variant==='mixed-ambiguous'){
+   assert.deepEqual(f.source.geometry_audit.routes_with_incomplete_active_geometry,['ginza']);
+   assert.ok(f.segments.every(s=>s.profiles.am.display_tph===null));
+   assert.ok(artifact.records.every(r=>Object.keys(r.profiles).length===0));
+   assert.equal(artifact.matching.feeds[0].routesWithProfiles,0);
+   assert.ok(rendered.every(p=>p.frequency_am===undefined&&p.frequency_overnight===undefined));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(features(buildTiles(t)).map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+   return;
+  }
+  assert.deepEqual([...new Set(rendered.map(p=>p.frequency_am))].sort(),[4,variant==='mixed-equal'||variant==='mixed-near'?8:6]);
+  if(variant.startsWith('mixed-')){
+   const bound=bindTimetableSections(t,artifact).sections;
+   for(const [way,rows] of bound)assert.ok(rows.every(r=>r.record.profiles.am.rate===(way===1?(variant==='mixed-paths'?6:8):4)));
+   assert.equal(f.source.geometry_audit.matched_railway_patterns,2);
+   const baseline=features(buildTiles(t));
+   assert.deepEqual([...new Set(rendered.map(p=>p.id))],[...new Set(baseline.map(p=>p.id))]);
+   for(const row of rendered)assert.equal(frequencyWidth(row,'equal',now),frequencyWidth({},'equal',now));
+  }
   assert.ok(rendered.every(p=>p.frequency_overnight===0));
   assert.ok(rendered.every(p=>p.frequency_source==='Offline Metro fixture'));
+  if(variant==='operator-binding')assert.ok(rendered.every(p=>p.frequency_operator_binding==='fixture-operator'));
   assert.match(JSON.stringify(artifact.feeds),new RegExp(f.source.sha256));
  }finally{await rm(root,{recursive:true,force:true});}
 });
@@ -189,4 +300,94 @@ test('secondary grouped relations retain localized operators and feed-scoped rou
  add(bound,11,{'gtfs:feed':'jp-metro','gtfs:route_id':'ginza'});add(bound,12,{'gtfs:feed':'other-feed','gtfs:route_id':'unrelated'});
  assert.equal(apply(bound,[f]).sections.length,3);
  f.source.id='other-feed';assert.equal(apply(bound,[f]).sections.length,0,'route IDs never cross their feed namespace');
+});
+
+test('actual OSM frequency coverage excludes unavailable and expired section evidence but counts verified zero',()=>{
+  const valid={properties:{frequency_until:now/1000+86400},profiles:{am:{rate:0}}};
+  const unavailable={properties:{frequency_until:now/1000+86400},profiles:{}};
+  const expired={properties:{frequency_until:now/1000-1},profiles:{am:{rate:8}}};
+  const hourly={properties:{frequency_until:now/1000+86400},profiles:{h13:{rate:12}}};
+  const bound={sections:new Map([
+    [1,[{relation:100,record:valid},{relation:101,record:unavailable}]],
+    [2,[{relation:102,record:expired}]],
+    [3,[{relation:103,record:hourly}]],
+  ])};
+  assert.deepEqual(summarizeBoundTimetableSections(bound,now),
+    {boundWays:3,boundSections:4,appliedWays:2,appliedSections:2,appliedRelations:2});
+  assert.equal(summarizeBoundTimetableSections(bound,now+86401*1000).appliedWays,0);
+  assert.throws(()=>summarizeBoundTimetableSections({sections:[]},now),/Invalid bound timetable/);
+});
+
+test('bound counts agree with the original OSM section identities from a real fixture',()=>{
+  const t=table(),artifact=apply(t,[feed()]),bound=bindTimetableSections(t,artifact);
+  const before=summarizeBoundTimetableSections(bound,now);
+  assert.deepEqual(before,{boundWays:3,boundSections:3,appliedWays:3,appliedSections:3,appliedRelations:1});
+  // One section still exists in OSM but has no validated timetable profile.
+  const first=bound.sections.values().next().value[0];
+  first.record.profiles={};
+  const after=summarizeBoundTimetableSections(bound,now);
+  assert.equal(after.boundWays,3);
+  assert.equal(after.boundSections,3);
+  assert.equal(after.appliedWays,2);
+  assert.equal(after.appliedSections,2);
+});
+
+test('unmatched railway routes retain bounded route-specific identity and path diagnostics',()=>{
+  const scenarios=[
+    [f=>{f.agencies[0].agency_name='Wrong operator';},'no_osm_service_identity_candidate'],
+    [f=>{f.segments[2].geometry=[[140,35],[140.01,35]];},'candidate_path_not_corroborated'],
+    [f=>{f.segments=[];},'no_usable_path_segments'],
+  ];
+  for(const [change,reason] of scenarios){
+    const f=feed();change(f);
+    const result=apply(table(),[f]),summary=result.matching.feeds[0];
+    assert.equal(summary.unmatchedRoutes,1);
+    assert.equal(summary.matchingReasons[reason],1);
+    assert.equal(summary.unmatchedExamples.length,1);
+    assert.equal(summary.unmatchedExamples[0].route_id,f.routes[0].route_id);
+    assert.equal(summary.unmatchedExamples[0].reason,reason);
+    assert.equal(result.sections.length,0,'diagnostics never authorize a timetable-to-OSM association');
+  }
+});
+
+test('single-agency unmatched samples use the resolved agency even when the route omits agency_id',()=>{
+  for(const missingAgencyRecordId of [false,true]){
+    const f=feed(),expected=missingAgencyRecordId?'single-agency':f.agencies[0].agency_id;
+    delete f.routes[0].agency_id;
+    if(missingAgencyRecordId)delete f.agencies[0].agency_id;
+    f.agencies[0].agency_name='Wrong operator';
+    const summary=apply(table(),[f]).matching.feeds[0];
+    assert.equal(summary.unmatchedRoutes,1);
+    assert.equal(summary.unmatchedExamples[0].reason,'no_osm_service_identity_candidate');
+    assert.equal(summary.unmatchedExamples[0].agency_id,expected);
+  }
+});
+
+test('conflicting matches and stale bindings remain unknown in published service tiles',()=>{
+ const catalog=JSON.parse(readFileSync(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
+ const assertUnknown=(t,bound)=>{
+  const rows=features(buildTiles(t,{headways:catalog,timetables:bound.sections}));
+  assert.ok(rows.length>0);
+  for(const p of rows){
+   assert.equal(p.frequency_am,undefined);
+   assert.equal(p.frequency_status,'unknown');
+   assert.equal(frequencyAvailability(p,'am',now).status,'unknown');
+  }
+ };
+ const t=table(),original=apply(t,[feed()]);
+ assert.equal(original.sections.length,3,'positive control has matched sections');
+ assert.ok(features(buildTiles(t,{headways:catalog,timetables:bindTimetableSections(t,original).sections})).every(p=>Number.isFinite(p.frequency_am)));
+ const f=feed();
+ f.routes.push({...f.routes[0],route_id:'other'});
+ f.segments.push(...structuredClone(f.segments).map(s=>({...s,route_id:'other'})));
+ const conflict=apply(t,[f]);
+ assert.equal(conflict.matching.feeds[0].mappedRoutes,2,'both routes matched before conflict withholding');
+ assert.equal(conflict.matching.conflictingSections,3);
+ assert.equal(conflict.sections.length,0);
+ assertUnknown(t,bindTimetableSections(t,conflict));
+ const changed=table();changed.routes.get('r10').evidence.view.ref='H';
+ const stale=bindTimetableSections(changed,original);
+ assert.equal(stale.staleSections,3);
+ assert.equal(stale.sections.size,0);
+ assertUnknown(changed,stale);
 });

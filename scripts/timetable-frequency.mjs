@@ -4,17 +4,33 @@ import {createHash} from 'node:crypto';
 import {geometryLines} from './service-geometry.mjs';
 import {drawnGeometry, serviceRoutes, wayRoutes} from './service-routes.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
+import {TIMETABLE_MATCHER_REVISION} from './timetable-frequency-version.mjs';
+import {operatorBindingIndex,operatorBindingForAgency} from './timetable-operator-bindings.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const text=value=>String(value||'').normalize('NFKC').toLocaleLowerCase('und').replace(/[\s\p{P}]/gu,'');
 const reference=value=>String(value||'').normalize('NFKC').toLocaleLowerCase('und').replace(/\s/gu,'');
 const osmKind=value=>value==='light_rail'?'tram':value;
-const agencyNames=agency=>{
+// Some feeds declare complete native and Latin names in one agency_name.
+// Keep the complete declaration and its whitespace-separated script runs.
+// Never extract individual words, remove corporate suffixes or use arbitrary
+// agency IDs: each alias must still pass route identity and full-path checks.
+const declaredNames=value=>{
+  const name=String(value||''),runs=[];let script,words=[];
+  for(const word of name.trim().split(/\s+/u)){
+    const next=/\p{L}/u.test(word)?(/[\p{L}&&\P{Script_Extensions=Latin}]/v.test(word)?'native':'latin'):script;
+    if(script&&next&&script!==next){runs.push(words.join(' '));words=[];}
+    words.push(word);script=next;
+  }
+  if(words.length)runs.push(words.join(' '));
+  return [...new Set([name,...runs].map(text).filter(Boolean))];
+};
+const agencyNames=(agency,binding=null)=>{
   const name=String(agency.agency_name||''),words=name.match(/[\p{L}\p{N}]+/gu)||[];
   const initials=words.map(w=>Array.from(w)[0]).join('');
   // An ID is not an operator name. Accept a spelled-out agency's acronym
   // only when the feed itself uses exactly that acronym as its agency ID.
-  return [name,...(initials.length>=3&&text(initials)===text(agency.agency_id)?[agency.agency_id]:[])].map(text).filter(Boolean);
+  return [...new Set([...declaredNames(name),...(initials.length>=3&&text(initials)===text(agency.agency_id)?[text(agency.agency_id)]:[]),...(binding?.osm_operators||[]).map(text)])];
 };
 const kind=type=>{const n=Number(type);return n===0||n===5||n>=900&&n<1000?'tram':n===12||n===405?'monorail':n===7||n===1400?'funicular':n===1||n>=400&&n<500?'subway':'commuter';};
 const coord=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=85;
@@ -57,21 +73,23 @@ const identity=r=>({relation:r.relation,kind:r.kind,ref:r.ref,label:r.label,name
 export function sectionBinding(way,route,service,routes){
   return hash({way:way.id,lines:geometryLines(drawnGeometry(way)),route:identity(route),relations:wayRoutes(way,routes).filter(k=>service.get(k)===route).sort()});
 }
-function metadataMatch(osm,route,agency,source){
+function metadataMatch(osm,route,agency,source,binding=null){
   if(osmKind(osm.kind)!==kind(route.route_type))return false;
   const ids=new Set([route.route_id,...(route.source_route_ids||[])]);
   // OSM GTFS IDs are meaningful only with an explicit feed namespace.
-  if((osm.timetable?.bindings||[osm.timetable]).some(b=>b?.feed===source.id&&b.routeIds?.some(id=>ids.has(id))))return true;
+  if((osm.timetable?.bindings||[osm.timetable]).some(b=>b?.feed===source.id&&b.routeIds?.some(id=>ids.has(id))))return {operatorBinding:null};
   const operators=new Set([osm.operator,osm.network,...(osm.timetable?.operators||[])].map(text).filter(Boolean));
-  if(!agencyNames(agency).some(n=>operators.has(n)))return false;
+  const declared=agencyNames(agency).some(n=>operators.has(n));
+  if(!declared&&!agencyNames(agency,binding).some(n=>operators.has(n)))return false;
+  const decision={operatorBinding:declared?null:binding};
   const refs=String(osm.ref||'').split(';').map(reference).filter(Boolean);
-  if(reference(route.route_short_name)&&refs.length)return refs.includes(reference(route.route_short_name));
+  if(reference(route.route_short_name)&&refs.length)return refs.includes(reference(route.route_short_name))?decision:false;
   const names=new Set([osm.label,...Object.values(osm.names||{})].map(text).filter(Boolean));
-  return !!text(route.route_long_name)&&names.has(text(route.route_long_name));
+  return text(route.route_long_name)&&names.has(text(route.route_long_name))?decision:false;
 }
-function record(feed,route,agency,segment){
+function record(feed,route,agency,segment,binding=null){
   const s=feed.source,checked=s.checked||s.retrieved;
-  const until=Math.min(Date.parse(checked+'T00:00:00Z')/1000+(s.review_after_days??30)*86400,s.valid_until??Infinity,route.valid_until??Infinity,segment.valid_until??Infinity);
+  const until=Math.min(Date.parse(checked+'T00:00:00Z')/1000+(s.review_after_days??30)*86400,s.valid_until??Infinity,route.valid_until??Infinity,segment.valid_until??Infinity,binding?binding.untilMillis/1000-.001:Infinity);
   const profiles={};
   for(const p of FREQUENCY_PROFILES){
     const v=segment.profiles?.[p];if(!v)continue;
@@ -87,7 +105,8 @@ function record(feed,route,agency,segment){
   return {properties:{frequency_id:`${s.id}:${route.route_id}`,frequency_source:s.name,frequency_url:s.terms_url,
     frequency_checked:checked,frequency_credit:s.attribution,frequency_license:s.license,frequency_date:s.service_date,
     frequency_timezone:agency.agency_timezone,frequency_until:Number.isFinite(until)?until:0,
-    frequency_definition:`Agency-local reference windows (${agency.agency_timezone}): ${windows}. ${s.count_anchor||'Departure at the preceding served stop; no inferred pass times'}.`,frequency_note:s.note||''},profiles};
+    frequency_definition:`Agency-local reference windows (${agency.agency_timezone}): ${windows}. ${s.count_anchor||'Departure at the preceding served stop; no inferred pass times'}.`,frequency_note:s.note||'',
+    ...(binding?{frequency_operator_binding:binding.id,frequency_operator_evidence:JSON.stringify(binding.evidence)}: {})},profiles};
 }
 // Compare counts and their entire time context, not a route name or just AM.
 const measurements=new WeakMap();
@@ -130,7 +149,8 @@ function select(edge,lookup){
   return selected;
 }
 
-export function createTimetableMatcher(table,{now=Date.now()}={}){
+export function createTimetableMatcher(table,{now=Date.now(),operatorBindings}={}){
+  const operatorIndex=operatorBindingIndex(operatorBindings);
   const service=serviceRoutes(table),groups=new Map(),metadata=new Map(),observations=new Map(),summaries=[];
   for(const route of new Set(service.values()))groups.set(route,{route,ways:[],lines:[]});
   for(const way of table.ways.values())for(const r of new Set(wayRoutes(way,table.routes).map(k=>service.get(k)).filter(Boolean))){const g=groups.get(r);g.ways.push(way);g.lines.push(...geometryLines(drawnGeometry(way)));}
@@ -147,22 +167,38 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
     if(feed.schema!==1||!Array.isArray(feed.routes)||!Array.isArray(feed.agencies)||!Array.isArray(feed.segments))throw new Error('Invalid compiled timetable');
     const agencies=new Map(feed.agencies.map(a=>[a.agency_id||'single-agency',a]));
     const segments=Map.groupBy(feed.segments,s=>s.route_id),matched=new Set(),applied=new Set();
-    const summary={id:feed.source.id,name:feed.source.name,source:feed.source,feedRoutes:feed.routes.length,mappedRoutes:0,routesWithProfiles:0,pathSegments:feed.segments.length,availableSegments:0,unmatchedRoutes:0,ambiguousRoutes:0};
+    const summary={id:feed.source.id,name:feed.source.name,source:feed.source,feedRoutes:feed.routes.length,mappedRoutes:0,routesWithProfiles:0,pathSegments:feed.segments.length,availableSegments:0,unmatchedRoutes:0,ambiguousRoutes:0,matchingReasons:{},unmatchedExamples:[]};
     for(const route of feed.routes){
-      const agency=agencies.get(route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'));if(!agency)throw new Error('Broken timetable agency');
+      const agencyId=route.agency_id||(agencies.size===1?agencies.keys().next().value:'single-agency'),agency=agencies.get(agencyId);if(!agency)throw new Error('Broken timetable agency');
+      const operatorBinding=operatorBindingForAgency(operatorIndex,feed.source,agency,now);
       const sourceSegments=(segments.get(route.route_id)||[]).filter(s=>s.geometry?.length>=2&&s.geometry.every(coord));
-      const keys=[...agencyNames(agency).flatMap(n=>{const prefix=`${kind(route.route_type)}|${n}|`;return [prefix+'ref:'+reference(route.route_short_name),prefix+'name:'+text(route.route_long_name)];}),...[route.route_id,...(route.source_route_ids||[])].map(id=>`gtfs|${feed.source.id}|${id}`)];
-      const candidates=[...new Set(keys.flatMap(key=>[...(metadata.get(key)||[])]))].filter(g=>metadataMatch(g.route,route,agency,feed.source));
+      const keys=[...agencyNames(agency,operatorBinding).flatMap(n=>{const prefix=`${kind(route.route_type)}|${n}|`;return [prefix+'ref:'+reference(route.route_short_name),prefix+'name:'+text(route.route_long_name)];}),...[route.route_id,...(route.source_route_ids||[])].map(id=>`gtfs|${feed.source.id}|${id}`)];
+      const candidates=[...new Set(keys.flatMap(key=>[...(metadata.get(key)||[])]))].filter(g=>metadataMatch(g.route,route,agency,feed.source,operatorBinding));
       for(const g of candidates)g.lookup ||= spatial(edges(g.lines));
       // Full supplied path coverage prevents a short common corridor from
       // certifying an unrelated service or a same-ref branch in another place.
       const pathEdges=sourceSegments.flatMap(s=>edges([s.geometry]));
-      const candidatesCovered=candidates.filter(g=>pathEdges.length&&pathEdges.reduce((n,e)=>n+metres(...e.geometry),0)>=500&&pathEdges.every(e=>covered(e,g.lookup)));
-      if(candidatesCovered.length!==1){summary[candidatesCovered.length?'ambiguousRoutes':'unmatchedRoutes']++;continue;}
+      const pathMetres=pathEdges.reduce((n,e)=>n+metres(...e.geometry),0);
+      const candidatesCovered=candidates.filter(g=>pathEdges.length&&pathMetres>=500&&pathEdges.every(e=>covered(e,g.lookup)));
+      if(candidatesCovered.length!==1){
+        summary[candidatesCovered.length?'ambiguousRoutes':'unmatchedRoutes']++;
+        const reason=!pathEdges.length?'no_usable_path_segments':pathMetres<500?'path_below_spatial_threshold':
+          !candidates.length?'no_osm_service_identity_candidate':!candidatesCovered.length?'candidate_path_not_corroborated':'multiple_corroborated_osm_services';
+        summary.matchingReasons[reason]=(summary.matchingReasons[reason]||0)+1;
+        // Bounded, feed-scoped GTFS samples for diagnosing missing identities.
+        // Candidate counts do not prove that a service has been matched.
+        if(summary.unmatchedExamples.length<12){
+          const short=value=>Array.from(String(value??'')).slice(0,128).join('');
+          summary.unmatchedExamples.push({route_id:short(route.route_id),agency_id:short(agencyId),ref:short(route.route_short_name),
+            name:short(route.route_long_name),reason,identity_candidates:candidates.length,corroborated_candidates:candidatesCovered.length});
+        }
+        continue;
+      }
       const group=candidatesCovered[0];matched.add(route.route_id);
+      const decision=metadataMatch(group.route,route,agency,feed.source,operatorBinding);
       const intern=new Map();
       const indexed=sourceSegments.flatMap(s=>{
-        const value=record(feed,route,agency,s),key=hash(value);if(!intern.has(key))intern.set(key,value);
+        const value=record(feed,route,agency,s,decision.operatorBinding),key=hash(value);if(!intern.has(key))intern.set(key,value);
         return edges([s.geometry]).map(e=>({...e,record:intern.get(key)}));
       }),lookup=spatial(indexed);
       for(const way of group.ways){
@@ -190,6 +226,10 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       const conflict=[...perSource.values()].some(v=>new Set(v.map(x=>x.route)).size>1)||perSource.size>1&&!duplicateEvidence||new Set(values.map(v=>measurement(v.result))).size>1;
       if(conflict){conflicts++;continue;}
       const result=structuredClone(values.reduce((a,b)=>a.result.properties.frequency_until<=b.result.properties.frequency_until?a:b).result);
+      const bindings=[...new Set(values.flatMap(v=>String(v.result.properties.frequency_operator_binding||'').split(';').filter(Boolean)))].sort();
+      const evidence=[...new Set(values.flatMap(v=>JSON.parse(v.result.properties.frequency_operator_evidence||'[]')))].sort();
+      if(bindings.length)result.properties.frequency_operator_binding=bindings.join(';');
+      if(evidence.length)result.properties.frequency_operator_evidence=JSON.stringify(evidence);
       const sources=[...new Set(values.map(v=>v.source))].sort();
       result.properties.frequency_sources=sources.join(';');
       const key=hash(result);if(!byRecord.has(key)){byRecord.set(key,records.length);records.push(result);}
@@ -201,7 +241,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       }
     }
     rows.sort((a,b)=>a.way-b.way||a.relation-b.relation||a.line-b.line||a.edge-b.edge);
-    return {schema:1,osm_sha256:hash([...table.routes.values()].concat([...table.ways.values()])),records,sections:rows,
+    return {schema:1,matcher_revision:TIMETABLE_MATCHER_REVISION,osm_sha256:hash([...table.routes.values()].concat([...table.ways.values()])),records,sections:rows,
       feeds:summaries.filter(s=>usedSources.has(s.id)).map(s=>({...s,routesWithProfiles:appliedBySource.get(s.id).routes.size,availableSegments:appliedBySource.get(s.id).sections})),matching:{feeds:summaries.map(({source,...s})=>({...s,routesWithProfiles:appliedBySource.get(s.id)?.routes.size||0,availableSegments:appliedBySource.get(s.id)?.sections||0})),sections:rows.length,conflictingSections:conflicts}};
   }
   return {addFeed,finish};
@@ -237,4 +277,26 @@ export function bindTimetableSections(table,artifact){
     if(valid.length)bound.set(id,valid);
   }
   return {sections:bound,staleSections};
+}
+
+/**
+ * Report current OSM frequency coverage rather than just the ways containing
+ * timetable section evidence. Zero trains is a usable observed rate; a missing
+ * profile or expired record is not. No new timetable-to-OSM associations occur.
+ */
+export function summarizeBoundTimetableSections(bound,now=Date.now()){
+  if(!(bound?.sections instanceof Map)||!Number.isFinite(now))throw new TypeError('Invalid bound timetable summary input');
+  const appliedWays=new Set(),appliedRelations=new Set();
+  let boundSections=0,appliedSections=0;
+  for(const [way,rows] of bound.sections){
+    if(!Array.isArray(rows))throw new TypeError('Invalid bound timetable section rows');
+    for(const row of rows){
+      boundSections++;
+      const record=row.record;
+      if(!record?.properties||!record.profiles||!Number.isFinite(record.properties.frequency_until)||!(record.properties.frequency_until*1000>=now))continue;
+      if(!FREQUENCY_PROFILES.some(profile=>Number.isFinite(record.profiles[profile]?.rate)&&record.profiles[profile].rate>=0))continue;
+      appliedWays.add(way);appliedRelations.add(row.relation);appliedSections++;
+    }
+  }
+  return {boundWays:bound.sections.size,boundSections,appliedWays:appliedWays.size,appliedSections,appliedRelations:appliedRelations.size};
 }

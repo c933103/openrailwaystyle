@@ -131,13 +131,17 @@ export function drawingStyle(properties = {}) {
 export function readDrawing(json) {
   const features = json?.type === 'FeatureCollection' ? json.features : json?.type === 'Feature' ? [json] : [];
   const out = [];
-  for (const f of features || []) {
+  const list = value => Array.isArray(value) ? value : [];
+  // A line or ring is connected geometry. Dropping a bad vertex would draw
+  // a new segment across its gap; reject that component instead. Independent
+  // points and components can still survive beside it.
+  const line = c => Array.isArray(c) && c.every(finite) ? c.map(p => p.slice(0, 2)) : [];
+  for (const f of list(features)) {
     const g = f?.geometry, name = typeof f?.properties?.name === 'string' ? f.properties.name : undefined;
     const properties = {...(name ? {name} : {}), ...drawingStyle(f?.properties || {})};
     const add = geometry => out.push({type:'Feature', properties:{...properties}, geometry});
-    const line = c => (c || []).filter(finite).map(p => p.slice(0, 2));
     if (g?.type === 'Point' && finite(g.coordinates)) add({type:'Point', coordinates:g.coordinates.slice(0, 2)});
-    else if (g?.type === 'MultiPoint') { for (const p of line(g.coordinates)) add({type:'Point', coordinates:p}); }
+    else if (g?.type === 'MultiPoint') { for (const p of list(g.coordinates)) if (finite(p)) add({type:'Point', coordinates:p.slice(0, 2)}); }
     else if (g?.type === 'LineString') {
       // Lines drawn here keep their points and which of them are curve
       // points (line_points, curved); curve_points is the older form, all
@@ -150,9 +154,9 @@ export function readDrawing(json) {
         if (nodes.length >= 2 && Array.isArray(curved) && curved.length === nodes.length) Object.assign(out.at(-1).properties, {line_points: nodes, curved: curved.map(v => v ? 1 : 0)});
       }
     }
-    else if (g?.type === 'MultiLineString') { for (const l of g.coordinates || []) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
-    else if (g?.type === 'Polygon') { const c = line(g.coordinates?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
-    else if (g?.type === 'MultiPolygon') { for (const poly of g.coordinates || []) { const c = line(poly?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); } }
+    else if (g?.type === 'MultiLineString') { for (const l of list(g.coordinates)) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
+    else if (g?.type === 'Polygon') { const c = line(list(g.coordinates)[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
+    else if (g?.type === 'MultiPolygon') { for (const poly of list(g.coordinates)) { const c = line(list(poly)[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); } }
   }
   return out;
 }
@@ -211,22 +215,23 @@ export const withPoints = (feature, points) => withNodes(feature, points);
 // not also act.
 export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
   paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
-function dragPoints(map, layer, {enabled, move, done}) {
+function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
   let drag = null, quietUntil = 0;
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
-    if (!feature) return;
+    if (!feature || !valid(feature.properties)) return;
     e.preventDefault(); // no map panning for this gesture
     drag = {properties: feature.properties, from: e.point, moved: false, slop: touch ? 10 : 4};
   };
   const moving = e => {
     if (!drag) return;
+    if (!valid(drag.properties)) { drag = null; return; }
     if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < drag.slop) return;
     drag.moved = true;
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { if (drag?.moved) { quietUntil = Date.now() + 700; done(); } drag = null; };
+  const end = () => { if (drag?.moved && valid(drag.properties)) { quietUntil = Date.now() + 700; done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
@@ -550,7 +555,7 @@ export class Drawing {
 const INK = '#16414d';
 // Height difference and gradient between the ends of a route of `km`.
 export function climb(start, end, km) {
-  if (start === null || end === null || !(km > 0)) return null;
+  if (![start, end, km].every(Number.isFinite) || !(km > 0)) return null;
   const rise = end - start;
   return {rise, gradient: rise / (km * 1000)};
 }
@@ -560,20 +565,50 @@ export function formatClimb({rise, gradient}, units = 'metric') {
   const sign = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
   return `${sign(Math.round(value))} ${unit} · ${sign(Number((gradient * 100).toFixed(2)))}% (${Math.abs(gradient * 1000).toFixed(1)}‰)`;
 }
+// A tap reads actual ground/seabed elevation, not the visual 3D scale.
+export function formatLocation(point) {
+  const [lng, lat] = point;
+  const wrapped = ((lng + 180) % 360 + 360) % 360 - 180;
+  return `Lat ${lat.toFixed(6)}, Lon ${wrapped.toFixed(6)}`;
+}
+export function formatElevation(height, units = 'metric') {
+  if (!Number.isFinite(height)) return 'unavailable';
+  const size = Math.abs(height) * (units === 'imperial' ? 3.28084 : 1);
+  const amount = size < 1 && size > 0 ? size.toFixed(1) : Math.round(size).toLocaleString('en');
+  const unit = units === 'imperial' ? 'ft' : 'm';
+  return `${amount} ${unit} ${height > 0 ? 'above sea level' : height < 0 ? 'below sea level' : '(sea level)'}`;
+}
 export class Measure {
   // heights(points): a promise of the height at each point, for the rise
   // and gradient between a distance's ends (none when not given).
-  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, heights = null} = {}) {
-    Object.assign(this, {map, units, status, changed, heights});
-    this.climb = null;
+  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, geometryChanged = () => {}, heights = null} = {}) {
+    Object.assign(this, {map, units, status, changed, geometryChanged, heights});
+    this.climb = null; this.spot = null;
+    this.handleGeneration = 0;
     this.mode = null; this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.lastAdd = 0;
     this.dragging = dragPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
-      move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.refresh(); } },
+      valid: properties => this.currentHandle(properties),
+      move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.geometryChanged(); this.refresh(); this.changed(); } },
       done: () => {},
     });
   }
   get active() { return this.mode !== null; }
+  // GeoJSON updates reach rendered hit targets asynchronously. An index from
+  // the previous measurement must not select (or drag) a new point at that index.
+  currentHandle({index, generation} = {}) {
+    return generation === this.handleGeneration && Number.isInteger(index) && index >= 0 && index < this.points.length;
+  }
+  // Use the actual measured polyline or the fitted, visible curve arc.
+  // A radius is not a straight chord through the three control points.
+  profileCoordinates() {
+    if (this.mode === 'distance' && this.points.length >= 2) return this.points.map(p => [...p]);
+    if (this.mode === 'radius' && this.points.length >= 3) {
+      const fit = fitCircle(this.points);
+      return fit ? circleArc(fit, this.points) : null;
+    }
+    return null;
+  }
   install() {
     const map = this.map;
     if (!map.getSource('atlas-measure')) map.addSource('atlas-measure', {type:'geojson', data:this.collection()});
@@ -585,6 +620,7 @@ export class Measure {
       {id:'measure-arc', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'arc'], layout:{'line-cap':'round'}, paint:{'line-color':'#e0701b','line-width':3}},
       pointTarget('measure-point-targets', 'atlas-measure', ['has','index']),
       {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':['case', selected, INK, '#fffef8'],'circle-radius':['case', selected, 6.5, 4.5],'circle-stroke-color':['case', selected, '#fffef8', INK],'circle-stroke-width':2}},
+      {id:'measure-spot', type:'circle', source:'atlas-measure', filter:['==',['get','kind'],'spot'], paint:{'circle-color':'#fffef8','circle-radius':5,'circle-stroke-color':INK,'circle-stroke-width':2}},
       {id:'measure-segment-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['get','kind'],'segment'],['has','label']], layout:{...text,'text-field':['get','label'],'symbol-placement':'line-center','text-size':11}, paint:halo},
       {id:'measure-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['geometry-type'],'Point'],['has','label']], layout:{...text,'text-field':['get','label'],'text-offset':[0,-1.3]}, paint:halo},
     ];
@@ -593,11 +629,15 @@ export class Measure {
   collection() {
     const units = this.units(), live = this.cursor && !this.ended && this.mode === 'distance' ? [...this.points, this.cursor] : this.points;
     const feature = (geometry, properties = {}) => ({type:'Feature', properties, geometry});
-    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, selected: this.selected === index}));
+    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, generation:this.handleGeneration, selected: this.selected === index}));
     if (this.mode === 'distance') {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
       const climbed = this.ended && this.climbFor() && this.climb?.key === this.climbFor() ? this.climb.value : null;
       if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units) + (climbed ? `\n${formatClimb(climbed, units)}` : '')}));
+    } else if (this.mode === 'elevation' && this.spot) {
+      const result = this.spot.pending ? 'Finding elevation…' :
+        Number.isFinite(this.spot.value) ? formatElevation(this.spot.value, units) : 'Elevation unavailable';
+      features.push(feature({type:'Point', coordinates:this.spot.point}, {kind:'spot', label:`${formatLocation(this.spot.point)}\n${result}`}));
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       if (fit) {
@@ -610,17 +650,37 @@ export class Measure {
   }
   // The finished distance's ends, as a key for its heights.
   climbFor() { return this.mode === 'distance' && this.points.length >= 2 ? JSON.stringify([this.points[0], this.points.at(-1), lengthKm(this.points)]) : null; }
-  // Heights of a finished distance's ends, fetched once per pair of ends.
+  get canRetryHeights() {
+    if (this.mode === 'elevation') return Boolean(this.heights && this.spot && !this.spot.pending && this.spot.value === null);
+    return Boolean(this.ended && this.heights && this.climb?.key === this.climbFor() && !this.climb.pending && this.climb.value === null);
+  }
+  // Retrying the finished endpoints is explicit: clicking their handles
+  // must remain an edit selection rather than silently starting over.
+  retryHeights() {
+    if (!this.canRetryHeights) return;
+    if (this.mode === 'elevation') { this.tap([...this.spot.point]); return; }
+    this.climb = null; this.refresh();
+  }
+  // Heights for this finished distance, shared until explicitly retried.
   updateClimb() {
     const key = this.ended ? this.climbFor() : null;
-    if (!key || !this.heights || this.climb?.key === key) return;
-    this.climb = {key, value: null};
+    // A new/edited measurement owns its own request, even if it returns to
+    // the same endpoints. Redraws of one finished measurement never retry.
+    if (!key || !this.heights) { if (this.climb) { this.climb.controller?.abort(); this.climb = null; this.changed(); } return; }
+    if (this.climb?.key === key) return;
+    this.climb?.controller?.abort();
+    const request = this.climb = {key, pending: true, value: null, controller: new AbortController()};
+    this.changed();
     const km = lengthKm(this.points);
-    this.heights([this.points[0], this.points.at(-1)]).then(([a, b]) => {
-      if (this.climb?.key !== key) return;
-      this.climb.value = climb(a, b, km);
-      this.refresh();
-    }).catch(() => {});
+    const points = [this.points[0], this.points.at(-1)].map(p => [...p]);
+    const complete = value => {
+      if (this.climb !== request) return;
+      request.pending = false; request.value = value;
+      this.refresh(); this.changed();
+    };
+    Promise.resolve().then(() => this.climb === request ? this.heights(points, {signal: request.controller.signal}) : null).then(values => {
+      complete(Array.isArray(values) ? climb(values[0], values[1], km) : null);
+    }, () => complete(null));
   }
   refresh() {
     this.updateClimb();
@@ -629,8 +689,14 @@ export class Measure {
     if (this.mode === 'distance') {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
       const climbed = this.ended && this.climb?.key === this.climbFor() ? this.climb.value : null;
-      const heights = !this.ended || !this.heights ? '' : climbed ? ` End to end: ${formatClimb(climbed, units)}.` : this.climb?.key === this.climbFor() && this.climb.value === null ? ' Finding heights…' : '';
+      const heights = !this.ended || !this.heights ? '' : climbed ? ` End to end: ${formatClimb(climbed, units)}.`
+        : this.climb?.pending ? ' Finding heights…' : ' End-to-end heights unavailable. Use Retry heights to try again.';
       this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${heights}${hint}` : `Click points to measure; double-click to end.${hint}`);
+    } else if (this.mode === 'elevation') {
+      const location = this.spot ? `Location: ${formatLocation(this.spot.point)}. Elevation: ${this.spot.pending ? 'finding height…' :
+        Number.isFinite(this.spot.value) ? formatElevation(this.spot.value, units) : 'unavailable (missing or conflicting terrain data)'}.` :
+        'Tap any map location to read its coordinates and elevation, including below sea level.';
+      this.status(location);
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       this.status(fit ? `Curve radius ≈ ${formatRadius(fit.radiusKm, units)}, fitted to ${this.points.length} points. Add more points along the curve to refine it.${hint}`
@@ -638,8 +704,12 @@ export class Measure {
     } else this.status('');
   }
   setMode(mode) {
+    if (!['distance', 'radius', 'elevation'].includes(mode)) throw new RangeError('Invalid measurement mode');
+    this.spot?.controller?.abort(); this.spot = null;
     this.mode = this.mode === mode ? null : mode;
+    this.handleGeneration++;
     this.points = []; this.cursor = null; this.ended = false; this.selected = null;
+    this.geometryChanged();
     if (this.mode === 'distance') this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode ? 'crosshair' : '';
     this.refresh(); this.changed();
@@ -648,28 +718,61 @@ export class Measure {
   deleteSelected() {
     if (this.selected === null || !this.points[this.selected]) return;
     this.points.splice(this.selected, 1); this.selected = null;
+    this.handleGeneration++;
     if (this.points.length < 2) this.ended = false;
-    this.refresh(); this.changed();
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
+  // Only the latest tap owns its result. Repeating a failed tap retries;
+  // closing/swapping modes aborts its tile subscriptions.
+  tap(point) {
+    this.spot?.controller?.abort();
+    const request = this.spot = {point, pending:Boolean(this.heights), value:null, controller:new AbortController()};
+    this.geometryChanged(); this.refresh(); this.changed();
+    if (!this.heights) return;
+    Promise.resolve().then(() => this.spot === request ? this.heights([point], {signal:request.controller.signal}) : null)
+      .then(values => {
+        if (this.spot !== request) return;
+        request.pending = false;
+        request.value = Array.isArray(values) && Number.isFinite(values[0]) ? values[0] : null;
+        this.refresh(); this.changed();
+      }, () => {
+        if (this.spot !== request) return;
+        request.pending = false; request.value = null;
+        this.refresh(); this.changed();
+      });
   }
   click(lngLat, point) {
     if (!this.mode || this.dragging?.()) return;
+    if (this.mode === 'elevation') {
+      this.tap([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
+      return;
+    }
     // A click on a point selects it; the click after a selection clears it.
     const handle = point && this.map.getLayer?.('measure-point-targets') && this.map.queryRenderedFeatures(point, {layers:['measure-point-targets']})[0];
-    if (handle) {
+    if (handle && this.currentHandle(handle.properties)) {
       const {index} = handle.properties;
       if (index === this.points.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
       this.select(index); return;
     }
     if (this.selected !== null) { this.select(null); return; }
     // After a finished distance, the next click starts a new one.
-    if (this.ended) { this.points = []; this.ended = false; }
+    if (this.ended) { this.points = []; this.ended = false; this.handleGeneration++; }
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     const last = this.points.at(-1);
     if (!last || last[0] !== p[0] || last[1] !== p[1]) { this.points.push(p); this.lastAdd = Date.now(); }
-    this.refresh();
+    this.geometryChanged(); this.refresh(); this.changed();
   }
   move(lngLat) { if (this.mode === 'distance' && !this.ended) { this.cursor = [lngLat.lng, lngLat.lat]; this.refresh(); } }
-  end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.refresh(); } }
-  undo() { this.ended = false; this.selected = null; this.points.pop(); this.refresh(); this.changed(); }
-  clear() { this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.refresh(); this.changed(); }
+  end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.geometryChanged(); this.refresh(); this.changed(); } }
+  undo() {
+    if (this.mode === 'elevation') { this.spot?.controller?.abort(); this.spot = null; }
+    else { this.ended = false; this.selected = null; this.points.pop(); this.handleGeneration++; }
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
+  clear() {
+    this.spot?.controller?.abort(); this.spot = null;
+    this.handleGeneration++;
+    this.points = []; this.cursor = null; this.ended = false; this.selected = null;
+    this.geometryChanged(); this.refresh(); this.changed();
+  }
 }

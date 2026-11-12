@@ -1,8 +1,13 @@
 // Maintenance only. Build the worldwide historic-area tiles (heritage-data.mjs)
 // from Overpass, region by region. Run: node scripts/build-heritage.mjs
+import {retryAfterMs} from './retry-after.mjs';
 import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
-import {heritageQuery, heritageFeatures, heritageFailure, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageFailure, heritageRegions, heritageDepth, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
+import {updateElements, requireGeometry} from './overpass-adiff.mjs';
+import {quarters} from './world-regions.mjs';
+import {gzipSync, gunzipSync} from 'node:zlib';
+import {responseChunks} from './response-chunks.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output = process.env.HERITAGE_OUTPUT || 'heritage-data';
@@ -10,12 +15,58 @@ const cache = '.snapshot-cache';
 // Version 2: tiles published in bundles (tile-bundles.mjs) instead of one
 // file per tile.
 const VERSION = 2;
-const regions = [];
-for (let south = -90; south < 90; south += 45) for (let west = -180; west < 180; west += 45) regions.push([south, west, south + 45, west + 45]);
+// Start from the regions of the published snapshot (HERITAGE_PREVIOUS_MANIFEST,
+// its manifest.json), so a region split last time is not requested whole.
+let previousCoverage;
+if (process.env.HERITAGE_PREVIOUS_MANIFEST) {
+  try { previousCoverage = JSON.parse(await readFile(process.env.HERITAGE_PREVIOUS_MANIFEST, 'utf8')).coverage; }
+  catch (error) { console.warn('Previous historic area regions unreadable; using the 45-degree grid:', error.message); }
+}
+const regions = heritageRegions(previousCoverage);
+// Each region's elements as published last time (HERITAGE_PREVIOUS_ELEMENTS,
+// the snapshot's elements/ folder: query, database time and elements). A
+// region is brought up to date from them by its changes, and by the
+// difference when its query changed (overpass-adiff.mjs updateElements);
+// only a region without them, or whose update fails, is downloaded in full.
+const previousElements = process.env.HERITAGE_PREVIOUS_ELEMENTS;
+const regionFile = box => `elements/${box.join('_')}.json.gz`;
+// What heritageFeatures reads of an element: tags, a way's geometry, a
+// relation's members with theirs. A change without geometry throws, so it
+// is never silently dropped from the map.
+const slim = ({type, id, tags, geometry, members}) => type === 'way' ? {type, id, tags, geometry} : {type, id, tags, members};
+const pick = element => slim(requireGeometry([element])[0]);
 await mkdir(cache, {recursive:true});
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-let requests = 0, downloaded = 0;
-const features = new Map(), coverage = [];
+let requests = 0, downloaded = 0, providerNotBefore = 0, providerStopped = false;
+const DOWNLOAD_LIMIT = 1_500_000_000;
+const budgetError = () => Object.assign(new Error('Historic area download budget exceeded'), {budget:true});
+async function responseText(response) {
+  if (!response.body) return '';
+  const decoder = new TextDecoder(), parts = [];
+  for await (const chunk of responseChunks(response)) {
+    // Count successful, HTTP-error and interrupted response bytes as consumed.
+    // The crossing transport chunk counts in full; never read the remaining body.
+    downloaded += Buffer.byteLength(chunk);
+    if (downloaded > DOWNLOAD_LIMIT) throw budgetError();
+    parts.push(decoder.decode(chunk, {stream:true}));
+  }
+  parts.push(decoder.decode());
+  return parts.join('');
+}
+const pauseError = () => Object.assign(new Error('Historic area provider Retry-After exceeds the 15-minute wait limit; previous publication retained'), {providerPause:true});
+async function waitForProvider(delay) {
+  if (providerStopped) throw pauseError();
+  if (downloaded >= DOWNLOAD_LIMIT) throw budgetError();
+  const earliest = Math.max(performance.now() + delay, providerNotBefore);
+  do { await sleep(Math.max(0, earliest - performance.now())); } while (performance.now() < earliest);
+  providerNotBefore = 0;
+}
+function retainProviderPause(response) {
+  const received = performance.now(), pause = retryAfterMs(response.headers.get('retry-after'), Date.now());
+  if (pause > 15 * 60_000) providerStopped = true;
+  if (pause > 0) providerNotBefore = Math.max(providerNotBefore, received + pause);
+}
+const features = new Map(), coverage = [], regionElements = new Map();
 
 async function collect(box, depth = 0) {
   const query = heritageQuery(box), file = `${cache}/heritage-v${VERSION}-${box.join('_')}.json`;
@@ -24,9 +75,35 @@ async function collect(box, depth = 0) {
     const saved = JSON.parse(await readFile(file, 'utf8'));
     if (saved.query === query && process.env.HERITAGE_REFRESH !== '1') json = saved.response;
   } catch {}
+  if (!json && previousElements && process.env.HERITAGE_REFRESH !== '1') {
+    let stored;
+    try { stored = JSON.parse(gunzipSync(await readFile(`${previousElements}/${regionFile(box)}`))); } catch {}
+    if (stored) {
+      const update = await updateElements({elements:stored.elements, since:stored.osmBase, previousQuery:stored.query, query, pick,
+        warn:(...args) => console.warn(box.join(','), ...args),
+        fetchText:async request => {
+          await waitForProvider(requests ? 10000 : 0);
+          requests++;
+          console.log('Fetching historic area changes', box.join(','));
+          const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:request}),
+            headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
+          retainProviderPause(response);
+          const text = await responseText(response);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return text;
+        },
+        failed:error => { if (error.budget || error.providerPause) throw error; if (providerStopped) throw pauseError(); }});
+      if (update) {
+        json = {osm3s:{timestamp_osm_base:update.osmBase}, elements:update.elements};
+        // Kept like a full response, so a run that fails later in the world
+        // does not ask for this region's changes again (heritage.yml).
+        await writeFile(file, JSON.stringify({query, response:json}));
+      }
+    }
+  }
   let split = false;
   if (!json) for (let attempt = 0; ; attempt++) {
-    await sleep(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
+    await waitForProvider(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
     requests++;
     let failure;
     try {
@@ -35,10 +112,9 @@ async function collect(box, depth = 0) {
       try {
         response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
           headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
-        text = await response.text();
-      } catch (error) { throw new Error(`Network: ${error.message}`); }
-      downloaded += Buffer.byteLength(text);
-      if (downloaded > 1_500_000_000) throw new Error('Historic area download budget exceeded');
+        retainProviderPause(response);
+        text = await responseText(response);
+      } catch (error) { if (error.budget) throw error; throw new Error(`Network: ${error.message}`); }
       if (!response.ok) {
         const error = new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160)}`);
         // Keep the budget-checked body for classification, non-enumerable so
@@ -56,23 +132,24 @@ async function collect(box, depth = 0) {
     }
     json = undefined;
     console.warn(box.join(','), failure.message);
+    if (providerStopped) throw pauseError();
     const next = heritageFailure(failure, attempt, depth);
     if (next === 'fail') throw failure;
     if (next === 'split') { split = true; break; }
   }
   if (split) {
     console.log('Splitting historic area region', box.join(','));
-    const [s, w, n, e] = box, lat = (s + n) / 2, lon = (w + e) / 2;
-    for (const child of [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]]) await collect(child, depth + 1);
+    for (const child of quarters(box)) await collect(child, depth + 1);
     return;
   }
   const found = heritageFeatures(json);
   // An area crossing a region edge comes back from both regions.
   for (const feature of found) features.set(feature.properties.id, feature);
   coverage.push({bbox:box, timestamp:json.osm3s?.timestamp_osm_base || null, features:found.length});
+  regionElements.set(box, {query, osmBase:json.osm3s?.timestamp_osm_base || null, elements:json.elements.map(slim)});
   console.log('Historic area region', box.join(','), found.length, 'areas');
 }
-for (const box of regions) await collect(box);
+for (const box of regions) await collect(box, heritageDepth(box));
 if (!features.size) throw new Error('Refusing to publish an empty worldwide historic area snapshot');
 
 const tiles = heritageTiles([...features.values()]);
@@ -84,6 +161,10 @@ for (const [path, data] of bundles) {
   await writeFile(`${output}/${path}.bundle.gz`, data);
   bytes += data.length;
 }
+// The elements of each region, for the next run's change updates. The site
+// does not deploy them.
+await mkdir(`${output}/elements`, {recursive:true});
+for (const [box, stored] of regionElements) await writeFile(`${output}/${regionFile(box)}`, gzipSync(JSON.stringify(stored), {level:9}));
 const counts = {};
 for (const feature of features.values()) counts[feature.properties.kind] = (counts[feature.properties.kind] || 0) + 1;
 await writeFile(`${output}/index.json`, JSON.stringify({format:BUNDLE_FORMAT, zoom:HERITAGE_BUNDLE_ZOOM, minzoom:HERITAGE_MIN_ZOOM, maxzoom:HERITAGE_MAX_ZOOM,

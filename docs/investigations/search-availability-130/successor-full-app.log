@@ -1,0 +1,13 @@
+(node:43) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Causeway Bay search reaches both APIs before a delayed label bundle loads (349.594845ms)
+✔ full app search distinguishes partial-empty, healthy rows, complete-empty and outage (510.85074ms)
+✔ every versioned file the page loads asks for the page version (19.866431ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1672.261176

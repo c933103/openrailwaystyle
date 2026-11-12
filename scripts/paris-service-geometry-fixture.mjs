@@ -212,7 +212,7 @@ export async function buildParisAcceptanceVariants({compiledInput, variantClocks
       await cp(join(root, 'scripts'), join(directory, 'scripts'), {recursive: true});
       await mkdir(join(directory, 'styles/data-src'), {recursive: true});
       await symlink(join(root, 'node_modules'), join(directory, 'node_modules'), 'dir');
-      for (const name of ['service-frequency.mjs', 'pbf-utf8.mjs', 'service-headways.json'])
+      for (const name of ['service-frequency.mjs', 'service-status.mjs', 'pbf-utf8.mjs', 'service-headways.json'])
         await cp(join(root, 'styles', name), join(directory, 'styles', name));
       await mkdir(service, {recursive: true});
       await writeFile(join(service, 'service-routes.ndjson.gz'), gzipSync(fixture.text));

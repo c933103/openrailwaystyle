@@ -31,6 +31,33 @@ operator names. A spelled-out agency acronym is accepted only when the feed
 uses that exact acronym as its agency ID. Tram/light-rail modes share a compatible
 family. Different candidates remain ambiguous. These are corroborated source
 declarations, not independent certification of upstream metadata.
+Whitespace-separated native and Latin name runs in a bilingual agency declaration
+are also compared as complete names. This preserves the original source and does
+not extract individual words, guess translations or remove corporate suffixes.
+The same route, mode, complete-path and conflicting-source checks still apply.
+
+Where a feed's agency brand differs from its formal OSM operator name, production
+assembly also accepts the reviewed assertions in
+[`timetable-operator-bindings.json`](../scripts/timetable-operator-bindings.json).
+Each assertion pins the feed ID, exact original GTFS ZIP SHA-256, agency ID,
+unchanged agency name and exact agency URL. A retained original URL fingerprint
+must agree too. Dated official evidence supplies explicit operator names; these
+are not guessed translations, substrings or automatically stripped suffixes.
+The assertion only supplies operator context. All existing mode, reference/name,
+whole-path, section, ambiguity and duplicate-source checks still run; it does
+not certify stop equivalence or resolve rapid/local variants.
+
+Reviews have an exclusive UTC expiry. Applied records retain the binding ID and
+JSON-encoded evidence URLs, and expire at the earlier of their timetable limits
+or the review boundary. Changed source/declaration pins and future/expired reviews
+cannot establish an alias. Direct declared identities remain independent.
+The bounded local registry makes no visitor/provider requests. Updating it
+requires reviewing the new source pins and incrementing
+`TIMETABLE_MATCHER_REVISION`; revision 3 requests the existing automatic refresh.
+The October 15 Toei assertion adds Arakawa to the held Tokyo input: 15 → 16
+matched services, with 60 additional sections. Its four subway services already
+matched through declared network names. JR rapid/local identity remains unresolved.
+See the [source replay and acceptance receipt](investigations/reviewed-operator-frequency-20261015.md).
 
 Rates attach separately to each original OSM edge. Every sampled interior point,
 including midpoints between supplied interval boundaries, and both ends must
@@ -57,9 +84,10 @@ the OSM snapshot, unresolved operator aliases and conflicting source structures
 remain gaps under #111. The spatial comparison uses 50 m sampling and a 120 m
 maximum lateral tolerance, requires at least 500 m of supplied path, and rejects
 very long edges, polar paths and antimeridian jumps. It does not certify exact
-physical track identity or a complete station crosswalk. A subdued line means
-**no current matched frequency profile** for that section and period; it can
-still have an independently available departure board.
+physical track identity or a complete station crosswalk. Sections without a current matched frequency profile are subdued; an
+independently available departure board does not establish frequency coverage.
+A measured zero remains an available profile and is drawn as a thin, subdued
+line; unknown is not zero.
 
 Each departure expands its complete trip using the opaque Transitous `tripId`
 retained through within-list and cross-feed reconciliation. Its selected stop
@@ -82,6 +110,52 @@ timetable or tile provider is contacted by automation.
 
 API contract: [MOTIS OpenAPI](https://github.com/motis-project/motis/blob/master/openapi.yaml),
 served by [Transitous](https://transitous.org/api/).
+
+## Displayed acquisition and availability status
+
+The build timestamp is labeled **Service snapshot built**, not an OSM acquisition
+date: rebuilding or republishing unchanged tiles does not refresh their sources.
+Each recorded stage completion date is shown separately as **Last completed
+stage**. Missing or malformed dates are not inferred from the build time. These
+dates belong to the assembled snapshot, not a live provider-status check.
+
+The Service legend's **Service data status** expands the recorded acquisition
+stages from the same OSM snapshot assembled into the site's service tiles.
+The frequency rebuild copies only compact stage facts and binds them to the
+SHA-256 of its exact compressed OSM table input. Partial acquisition, deferred
+or failed attempts, completed acquisition with unresolved source eligibility,
+completed checks with an empty stage result, and unknown legacy evidence remain
+separate. An earlier accepted snapshot can coexist with an unfinished refresh.
+
+These are snapshot-wide stage outcomes. Broad labels such as “Rest of the world”
+do not establish viewport/country completeness or explain a particular route.
+An empty acquired stage is not evidence that no trains operate. Missing or
+unreadable status metadata is explicitly unknown; a failed browser metadata
+request is reported. No visitor-side acquisition, status polling or wider
+provider requests are introduced.
+
+Service details distinguish an available profile (including a measured zero),
+expired evidence, an explicitly recorded unmatched reason, and an unknown reason.
+An absent binding alone stays unknown: matching may have been unavailable, or a
+previous match may have been withheld for conflict or stale identity. No negative
+matching conclusion is inferred from the current producer's missing rows. Expiry updates an already-open detail panel. Legacy absent fields
+remain unknown instead of being retroactively labelled unmatched. A missing
+period on an otherwise matched profile also remains unknown. Discarded expired
+evidence is recorded per period; AM-only evidence never certifies PM expiry.
+Recorded expired-only hourly or overnight periods remain visible in route details even when the manifest omits them from usable width selectors. No missing hourly period is invented.
+Legacy route-wide expiry labels without per-period evidence remain unknown. This does not
+complete the relation-identity/stop-pattern work in #111/#112 or the Ōji end-to-end
+regression, and departure-board evidence remains independently scoped.
+
+A separate status-delivery observer runs after successful main-branch service
+builds. For a recorded zero-box run, it reads only the existing GitHub
+service-data manifest and the published Pages frequency manifest, then requests
+a site rebuild if stable displayed stage facts changed. Positive-box runs keep
+the producer's existing dispatch path. Retry timestamps, error text and
+diagnostic counters alone do not dispatch another build. Metadata reads are
+bounded to 8 MiB and 15 seconds each; malformed data fails closed. The observer
+does not change the acquisition trigger or query any provider, and its workflow
+and comparison fixtures are offline-tested.
 
 ## Worldwide discovery and updates
 
@@ -137,8 +211,15 @@ concurrency supersedes stale fixture checks without replacing or cancelling a
 queued/running production refresh. Existing path filters remain precise:
 docs/test-only changes can trigger PR fixtures but not the frequency push
 workflow; ordinary site/unit CI is unchanged. Scheduled and explicitly requested
-refreshes retain the eight-shard pipeline, budgets,
-inventory gates and caches. Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish OSM-bound section-count aggregates, manifest and
+refreshes retain the eight-shard pipeline, budgets and inventory gates.
+
+The main-only Service maintenance job separately requests one production refresh
+when the aggregate's matcher revision predates the deployed matching semantics.
+It retains active-run deduplication and stops requesting refreshes once the new
+revision is published. Invalid or unsupported future revision metadata fails
+before dispatch. The revision is bound to the compressed profile aggregate at
+artifact staging; legacy aggregates remain readable during the refresh.
+Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish OSM-bound section-count aggregates, manifest and
 inventory rather than per-feed derived archives. Further source/station
 reconciliation and coverage remain tracked in #111. Site maps draw only OSM
 routes, and never draw raw GTFS shape copies.
@@ -248,7 +329,10 @@ manifest, inventory and empty standalone tile index, not per-feed archives.
 
 On the existing retryable HTTP statuses (408, 425, 429, 500, 502, 503 and 504),
 a positive numeric or HTTP-date `Retry-After` with a representable finite
-epoch deadline becomes a per-endpoint receipt.
+epoch deadline becomes a per-endpoint receipt. HTTP dates must be a valid IMF,
+RFC850 or asctime calendar date with a consistent weekday. RFC850 two-digit years
+use the rolling 50-year rule; asctime is UTC. Malformed dates use the ordinary
+backoff and do not create a receipt.
 The final attempt records the hint too. An unchanged source is not contacted
 before its retained deadline, including conditional GET, range reads, full ZIP
 downloads and already known redirect targets. Hints up to eight seconds keep
@@ -334,6 +418,23 @@ limits also remain unresolved scalability constraints for valid large feeds.
 
 ## Geometry and service identity
 
+OSM service grouping retains the lowest relation ID as its canonical display
+identity and a sorted, deduplicated `relations` list in the grouped model.
+Service vector tiles serialize `group_relation_ids` and `segment_relation_ids`
+as JSON arrays of numeric OSM relation IDs inside scalar MVT string attributes.
+The first lists the complete display group; the second lists only the eligible
+relation memberships contributing to the feature's OSM way/segment. Adjacent
+segments with different contributor sets are not joined into one tile feature.
+The canonical relation need not contribute to the segment being inspected.
+
+Service details link both sets separately and label the display identity.
+Legacy or malformed provenance falls back to the representative link with an
+explicit unknown-constituents explanation. These identities provide provenance,
+not proof of identical stops, matched timetables, rates or per-relation source
+health. Frequency selection and matching are unchanged. Existing snapshots gain
+these fields when their service tiles are rebuilt; no fresh provider extraction
+is needed to reconstruct them from the retained relation/way table.
+
 The compiled geometry below is kept for matching timetable routes to
 OpenStreetMap routes; it is never drawn as a Service route.
 
@@ -351,6 +452,29 @@ kept separate. Station snap errors, disconnected graphs, excessive detours and
 near-equivalent alternative paths are withheld. The existing snapshot is not a
 complete mainline graph; matching therefore cannot fill every shapeless feed.
 Matched OSM geometry retains its ODbL licence/attribution.
+Supplied-shape and verified graph-fallback paths share the same geometric interval
+partition before counting. A short working therefore adds to its shared section
+without replacing a full working's count or leaking onto the remainder. This
+uses the same 15 cm collinearity rule: nearby endpoints are reconciled first,
+then interior stops are projected onto those intervals before shared keys are
+formed. Each complete coordinate cluster stays within 15 cm. A middle point
+near two mutually incompatible tracks cannot choose either one by source order:
+those coordinates remain separate, and cuts are projected onto their own path,
+never connected laterally at equal progress. If a served active pattern has this
+ambiguous geometry, the existing route-scoped incomplete-geometry gate makes its
+mapped frequency unknown. Reconciliation is scoped to the route and to workings
+which can contribute to the selected windows, using the same calendar/headway
+calculation as counting (including prior-day extended-hour trips). Other routes,
+calendar-removed or out-of-window workings cannot move a current path or create
+its ambiguity. They may supply projected interval boundaries and reuse a unique
+already-established contributor interval for a zero/inactive measurement, without
+moving the contributor. Final coordinates are checked against the original
+served interval and its original supporting edge so clipping and successive
+reconciliation steps cannot compound beyond 15 cm.
+Explicit source edge ownership preserves a polyline's own dense bends; unused shape tails are
+excluded. Each traversal keeps its direction and preceding served-stop time.
+This does not invent intermediate stop times or deduplicate distinct trips with
+equal counts.
 Shape distances and snap searches use local latitude, so unrelated equatorial
 and northern shapes cannot alter each other's 200 m acceptance threshold.
 
@@ -954,6 +1078,10 @@ returns a failed step and never exposes a partially built successful stage. No r
 input directory is used as an upload fallback. Fixed-schema diagnosis retains
 statuses, reason codes, retry instructions and bounded redacted source attempts;
 raw exception strings and rejected metadata values are not diagnostic payloads.
+Worker validation failures identify the affected feed only when its ID belongs
+to the independently verified catalogue. The same fixed reason code and safe ID
+appear in the job log, so a failed stage no longer requires downloading its
+diagnostic artifact merely to discover the validation category.
 Statuses, reasons, actions and attempt categories use explicit producer vocabularies
 (with bounded HTTP status codes); unrecognized values become fixed unknowns.
 Receipt producers and consumers enforce exact field sets, current catalogue/date/
@@ -966,7 +1094,13 @@ Defaults cap compressed and expanded bytes at 3,000,000,000 each, address space
 at 3,000,000,000 bytes and wall time at 600 seconds. Gzip headers are limited to
 64 KiB; one member is required, with no concatenated members or trailing bytes.
 The decoder counts expansion incrementally and the writer creates a new
-deterministic derivative without inherited header metadata. Decoded timetable, geometry, profiles,
+deterministic derivative without inherited header metadata. The expanded JSON
+is parsed and rewritten one top-level array record at a time; a national feed's
+complete geometry/profile object tree is never accumulated. Strict duplicate-key,
+finite-number, UTF-8 and JSON grammar checks apply to every record, including
+unknown fields. Source binding and required array checks still apply to the whole
+document. One exceptionally large record can still exhaust the unchanged memory
+budget. Decoded timetable, geometry, profiles,
 route/trip/agency identifiers and licence/rights content stay unchanged outside
 the declared publication metadata/URL fields. These finite budgets can reject an
 oversized or malformed input and do not certify all production feeds fit.
@@ -975,3 +1109,31 @@ The trusted workflow supplies the producer outcome, and cache restore does not
 include inventory checkpoints. CLI outcomes/receipts are not cryptographic
 invocation proofs. Same-bound historical feeds can be staged without being
 misrepresented as newly acquired. No provider request is part of staging.
+
+Refresh `38126301219` (reference date `2026-10-12`) failed shard 7 staging with
+`feed_memory_limit`; its diagnostic receipt marks the compiler successful and the
+682-entry inventory complete (60 compiled feeds). That receipt predates per-feed
+failure IDs, so it does not establish which feed exhausted memory. A bounded
+offline reproduction with 40,000 geometry/profile records (9.7 MB expanded JSON)
+failed the former whole-document parser under a 96 MB address-space cap and
+passes record streaming under the same cap. This demonstrates the allocation
+defect without claiming a replay of the unavailable failed production feed.
+
+The seven successful shard artifacts and canonical catalogue from that run must
+remain unchanged. Offline validation checked all seven receipts, catalogue
+bindings and current file hashes: 4,807 outcomes including 306 compiled feeds;
+the original partition assigns the remaining 682 entries to shard 7.
+A recovery must use their original catalogue/report/index,
+date and eight-shard partition, obtain and stage only missing shard 7, then pass
+all ordinary receipt/sidecar, complete-inventory, assembly and snapshot checks.
+Rerunning the original failed job uses its original code, so it cannot apply a
+later staging fix. A fresh unrestricted worldwide refresh is unnecessary for
+recovery; publication remains unverified until a complete recovered run succeeds.
+
+## Offline matching prerequisite
+
+The [timetable identity evidence and matching contract](timetable-matching-contract.md)
+provides bounded, opt-in capture and a pure fixture-tested decision contract. It
+is not enabled in production and does not apply timetable frequencies to OSM or
+change route geometry. Compiled or geometry-bearing feed counts are not verified
+OSM-match counts.

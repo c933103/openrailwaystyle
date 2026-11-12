@@ -1,0 +1,6 @@
+{
+  "checks": 14,
+  "passed": 14,
+  "failed": 0,
+  "scope": "Envelope validation and exact-instant preservation compose correctly with retained status, cancellation isolation and bounded requests."
+}

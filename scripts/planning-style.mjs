@@ -17,7 +17,7 @@ export function roadLayers() {
   for(const [id,subclasses,color] of [['cycle',['cycleway'],'#829b9b'],['walk',['pedestrian','path','footway','steps','bridleway','corridor'],'#a89a80']]) roads.push({...base(`road-${id}`,'line','transportation',13,['all',match('class',['path']),match('subclass',subclasses)]),paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],13,0.7,18,1.6],'line-dasharray':id==='cycle'?[3,2]:[1,2],'line-opacity':0.85}});
   // Preserve an unclassified mapped path as context, without guessing permitted uses.
   roads.push({...base('road-other-path','line','transportation',13,['all',match('class',['path']),['!',match('subclass',['cycleway','pedestrian','path','footway','steps','bridleway','corridor','platform'])]]),paint:{'line-color':'#a89a80','line-width':1,'line-dasharray':[1,2]}});
-  names.push({...base('road-labels','symbol','transportation_name',15,['!',match('class',['rail','transit','ferry'])]),layout:{...nameLayout,'symbol-placement':'line','symbol-spacing':350,'text-size':10},paint:{'text-color':'#827e74','text-halo-color':'#f5f3eb','text-halo-width':1.4}});
+  names.push({...base('road-labels','symbol','transportation_name',15,['!',match('class',['rail','transit','ferry','aerialway'])]),layout:{...nameLayout,'symbol-placement':'line','symbol-spacing':350,'text-size':10},paint:{'text-color':'#827e74','text-halo-color':'#f5f3eb','text-halo-width':1.4}});
   return {roads,names};
 }
 export function constraintLayers() {

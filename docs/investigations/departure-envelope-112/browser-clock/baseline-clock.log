@@ -1,0 +1,123 @@
+{
+  "advances": 34,
+  "checks": 35,
+  "rowDeparture": "2026-10-12T00:10:00.000Z",
+  "passed": 11,
+  "failed": 24,
+  "failures": [
+    {
+      "step": 11,
+      "now": "2026-10-12T00:11:00.011Z"
+    },
+    {
+      "step": 12,
+      "now": "2026-10-12T00:12:00.012Z"
+    },
+    {
+      "step": 13,
+      "now": "2026-10-12T00:13:00.013Z"
+    },
+    {
+      "step": 14,
+      "now": "2026-10-12T00:14:00.014Z"
+    },
+    {
+      "step": 15,
+      "now": "2026-10-12T00:15:00.015Z"
+    },
+    {
+      "step": 16,
+      "now": "2026-10-12T00:16:00.016Z"
+    },
+    {
+      "step": 17,
+      "now": "2026-10-12T00:17:00.017Z"
+    },
+    {
+      "step": 18,
+      "now": "2026-10-12T00:18:00.018Z"
+    },
+    {
+      "step": 19,
+      "now": "2026-10-12T00:19:00.019Z"
+    },
+    {
+      "step": 20,
+      "now": "2026-10-12T00:20:00.020Z"
+    },
+    {
+      "step": 21,
+      "now": "2026-10-12T00:21:00.021Z"
+    },
+    {
+      "step": 22,
+      "now": "2026-10-12T00:22:00.022Z"
+    },
+    {
+      "step": 23,
+      "now": "2026-10-12T00:23:00.023Z"
+    },
+    {
+      "step": 24,
+      "now": "2026-10-12T00:24:00.024Z"
+    },
+    {
+      "step": 25,
+      "now": "2026-10-12T00:25:00.025Z"
+    },
+    {
+      "step": 26,
+      "now": "2026-10-12T00:26:00.026Z"
+    },
+    {
+      "step": 27,
+      "now": "2026-10-12T00:27:00.027Z"
+    },
+    {
+      "step": 28,
+      "now": "2026-10-12T00:28:00.028Z"
+    },
+    {
+      "step": 29,
+      "now": "2026-10-12T00:29:00.029Z"
+    },
+    {
+      "step": 30,
+      "now": "2026-10-12T00:30:00.030Z"
+    },
+    {
+      "step": 31,
+      "now": "2026-10-12T00:31:00.031Z"
+    },
+    {
+      "step": 32,
+      "now": "2026-10-12T00:32:00.032Z"
+    },
+    {
+      "step": 33,
+      "now": "2026-10-12T00:33:00.033Z"
+    },
+    {
+      "step": 34,
+      "now": "2026-10-12T00:34:00.034Z"
+    }
+  ]
+}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the reusable healthy row must survive the complete cache-expiry fixture clock
+
+24 !== 0
+
+    at file:///workspace/shared/atlas-malformed-stop-boards-20261011/source/docs/investigations/departure-envelope-112/check-browser-clock.mjs:32:8 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 24,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

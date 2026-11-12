@@ -1,0 +1,47 @@
+# One day's requests and bytes to each upstream host (overpass-api.de,
+# download.geofabrik.de, …), summed from the OVERPASS_USAGE lines of every
+# metered job (#330, B6). Read-only: it reads this repository's runs and job
+# logs through api.github.com and asks no data provider.
+# The day is 05:00 → 05:00 UTC; by default the one that ended at least 24
+# hours ago, so all its jobs (6 hours at most) have finished; a job still
+# running marks the report incomplete. The report goes to the step summary
+# and an artifact. Daily, and by hand for any date.
+name: Upstream usage per day
+on:
+  schedule:
+    - cron: '47 5 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'The day starting 05:00 UTC (YYYY-MM-DD); blank uses the day that ended at least 24 hours ago'
+        required: false
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: upstream-usage
+  cancel-in-progress: false
+jobs:
+  sum:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - name: Sum the day's usage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          USAGE_DATE: ${{ inputs.date }}
+        run: node scripts/upstream-usage.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-usage
+          path: |
+            usage.md
+            usage.json
+          retention-days: 90

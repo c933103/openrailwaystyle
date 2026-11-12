@@ -1,0 +1,283 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index 72da024..910121b 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -18,7 +18,13 @@ update is newest. An explicit live platform is retained when another update
+ supplies only a departure time; scheduled platforms remain a fallback. If live
+ platforms conflict, the platform attached to the later predicted departure is
+ used, with a consistent choice for equal times. This also cannot establish which
+-platform update is newest. Ambiguous matches between different boards remain separate.
++platform update is newest. Matches between different boards require the same
++finite scheduled instant, including seconds; equivalent time-zone representations
++are compared as instants. Different or invalid scheduled times remain separate,
++even within one displayed minute. When a schedule is absent, the existing actual-time
++fallback is used. Precision disagreements are not guessed away; they can leave
++duplicate-looking rows until stronger shared identity evidence is available.
++Ambiguous matches between different boards remain separate.
+ 
+ If a selected stop’s departure board fails while another loads, usable departures
+ remain visible with an incomplete-load warning. The same warning appears when the
+diff --git a/styles/app.mjs b/styles/app.mjs
+index fffa93e..14fe147 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,24 +1,24 @@
+-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-match-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-match-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-match-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-match-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-match-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-match-1';
++import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261012-departure-instant-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261012-departure-instant-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261012-departure-instant-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261012-departure-instant-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261012-departure-instant-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261012-departure-instant-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-match-1';
+-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-match-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-match-1';
+-import {departureItem} from './departures-ui.mjs?v=20261011-departure-match-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-match-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-match-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-match-1';
+-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-match-1';
+-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-departure-match-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-match-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-match-1';
+-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-match-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-match-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-match-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261012-departure-instant-1';
++import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261012-departure-instant-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261012-departure-instant-1';
++import {departureItem} from './departures-ui.mjs?v=20261012-departure-instant-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261012-departure-instant-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261012-departure-instant-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261012-departure-instant-1';
++import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261012-departure-instant-1';
++import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261012-departure-instant-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261012-departure-instant-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261012-departure-instant-1';
++import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261012-departure-instant-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261012-departure-instant-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261012-departure-instant-1';
+ 
+ const $ = id => document.getElementById(id);
+ // The controls work as soon as this small module runs; the map libraries and
+@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
+ let powerFacilities;
+ let railRecovery, wakeRailRecovery = () => {};
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-match-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261012-departure-instant-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 11b06f4..71fb76d 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261011-departure-match-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261012-departure-instant-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index cf66216..013de72 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261011-departure-match-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261012-departure-instant-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/departures.mjs b/styles/departures.mjs
+index a56d65c..03759e0 100644
+--- a/styles/departures.mjs
++++ b/styles/departures.mjs
+@@ -85,8 +85,8 @@ const mergeObservations = group => {
+ // train are combined, not discarded. Two services of one feed can leave together. Across lists,
+ // two feeds can describe one train with different names and destination texts
+ // ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
+-// are compatible when they are of the same mode family, leave in the same
+-// scheduled minute, their
++// are compatible when they are of the same mode family, leave at the same
++// finite scheduled instant (including seconds), their
+ // destinations are non-empty and contain one another, and at least one has no
+ // matching label or both have the same one. Matching retains the original
+ // labels even when the numeric-only presentation guard hides them; this guard
+@@ -128,7 +128,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
+       liveTrack: time.realTime === true && place.track ? {track: place.track, departure} : null,
+       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
+       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
+-      list, to: squash(headsign), minute: Math.floor(scheduled / 60000),
++      list, to: squash(headsign),
+     };
+     if (!exact.has(key)) exact.set(key, []);
+     exact.get(key).push(row);
+@@ -139,7 +139,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
+     // duplicate is old. Merge cancellation/state before filtering that train.
+     if (row.departure >= now - 60_000) rows.push(row);
+   }
+-  const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
++  const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && Number.isFinite(a.scheduled) && a.scheduled === b.scheduled && a.to && b.to &&
+     (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
+   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
+   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+@@ -152,7 +152,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
+     if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
+     out.push(mergeObservations(group));
+   }
+-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, ...row}) => row);
++  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, liveTrack, matchingLine, ...row}) => row);
+ }
+ 
+ // Clock time at the station (its own time zone).
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 0322178..8bff782 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,7 +4,7 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261011-departure-match-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261012-departure-instant-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index d358647..5a17682 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261011-departure-match-1" rel="stylesheet">
++  <link href="app.css?v=20261012-departure-instant-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -219,6 +219,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261011-departure-match-1"></script>
++  <script type="module" src="app.mjs?v=20261012-departure-instant-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 04cef28..0f1c17e 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261011-departure-match-1';
++import { MODES } from './map-model.mjs?v=20261012-departure-instant-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 421faed..8a8c7f4 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,6 +1,6 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-departure-match-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261012-departure-instant-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-departure-match-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261012-departure-instant-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/tests/sw-install.test.mjs b/tests/sw-install.test.mjs
+index 1bc3a8f..a241bdf 100644
+--- a/tests/sw-install.test.mjs
++++ b/tests/sw-install.test.mjs
+@@ -245,6 +245,32 @@ for (const file of ['app.mjs', 'departures.mjs']) test(`unmatched timetable repo
+   assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+ });
+ 
++for (const file of ['app.mjs', 'departures.mjs']) test(`exact departure instants refreshes exact ${file} bytes from the immediate predecessor`, async () => {
++  // Exact files from main f9bd326c before the exact-instant correction. Keeping
++  // these compressed makes this an upgrade regression, not a synthetic version
++  // label test; no GitHub or provider access is needed at test time.
++  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/departure-instant-predecessor.json.gz', import.meta.url))));
++  assert.equal(previous.commit, 'f9bd326c6a2a3738daafd36a58a16f9a2251c5a8');
++  assert.equal(previous.version, '20261011-departure-match-1');
++  const previousBytes = previous.files[file].text;
++  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
++  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
++  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
++  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
++  assert.ok(currentVersion);
++  assert.notEqual(currentVersion, previous.version);
++  const path = new URL(file, scope).pathname;
++  const old = startWorker({version: previous.version, assetBodies: new Map([[path, previousBytes]])});
++  await bounded(old.lifecycle('install'));
++  await old.lifecycle('activate');
++  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]])});
++  await bounded(next.request('./', true));
++  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
++  next.setOffline();
++  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
++  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
++});
++
+ test('first-party libraries install together and remain available offline with every external origin blocked', async () => {
+   const worker = startWorker({rejectExternal: true});
+   await bounded(worker.lifecycle('install'));
+diff --git a/tests/train-schedule.test.mjs b/tests/train-schedule.test.mjs
+index afea715..ca3e6f7 100644
+--- a/tests/train-schedule.test.mjs
++++ b/tests/train-schedule.test.mjs
+@@ -90,16 +90,42 @@ test('schedule shows local dates over midnight, dwell, live scheduled times, can
+   dom.window.close();
+ });
+ 
+-test('merged trip highlight uses its own observation time through both reconciliation stages',()=>{
+- const linked=new Date(Date.parse(at)+30_000).toISOString();
++test('equal-instant merged trip keeps the linked stop context through both reconciliation stages',()=>{
++ const linked='2026-10-10T09:00:00+09:00';
+  const rows=departureRows([[{mode:'SUBWAY',displayName:'G',headsign:'Asakusa',place:place('Suehirocho','preferred',{scheduledDeparture:at})}],
+   [{mode:'SUBWAY',headsign:'Asakusa',tripId:'linked',place:place('Suehirocho','selected',{departure:linked,scheduledDeparture:linked})}]],{now:Date.parse(at)-60000});
+  assert.equal(rows.length,1);assert.equal(rows[0].scheduled,Date.parse(at));assert.equal(rows[0].tripScheduled,Date.parse(linked));
+  const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
+- renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
++ renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)-30_000},
+   {name:'Selected',stopId:'selected',scheduledDeparture:Date.parse(linked)}],rows[0]);
+  assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
+ });
++
++test('different-instant boards keep the linked train separate and highlight its own repeated stop',()=>{
++ const linked=new Date(Date.parse(at)+30_000).toISOString();
++ const named={mode:'SUBWAY',displayName:'G',headsign:'Asakusa',place:place('Suehirocho','preferred',{scheduledDeparture:at})};
++ const observation={mode:'SUBWAY',headsign:'Asakusa',tripId:'linked',place:place('Suehirocho','selected',{departure:linked,scheduledDeparture:linked})};
++ for(const lists of [[[named],[observation]],[[observation],[named]]]) {
++  const rows=departureRows(lists,{now:Date.parse(at)-60000});
++  assert.equal(rows.length,2);
++  const row=rows.find(row=>row.tripId==='linked');
++  assert.equal(row.scheduled,Date.parse(linked));assert.equal(row.tripScheduled,Date.parse(linked));assert.equal(row.stopId,'selected');
++  assert.equal(rows.find(row=>row.line==='G').tripId,'','another train does not borrow this trip link');
++  const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
++  renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
++   {name:'Selected',stopId:'selected',scheduledDeparture:Date.parse(linked)}],row);
++  assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
++ }
++});
++
++test('schedule rendering prefers an explicit linked-trip time over the board presentation time',()=>{
++ const linked=Date.parse(at)+30_000;
++ const row={...boardRow,tripScheduled:linked,tripEvent:'departure'};
++ const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
++ renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
++  {name:'Selected',stopId:'selected',scheduledDeparture:linked}],row);
++ assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
++});
+ test('arrival-only board events highlight the matching arrival rather than a later departure',()=>{
+  const row=departureRows([[{mode:'SUBWAY',displayName:'G',headsign:'Asakusa',tripId:'arrival-trip',place:{stopId:'selected',arrival:at,scheduledArrival:at}}]],{now:Date.parse(at)-60000})[0];
+  assert.equal(row.tripEvent,'arrival');

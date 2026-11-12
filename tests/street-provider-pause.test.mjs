@@ -1,0 +1,125 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
+import {gzipSync} from 'node:zlib';
+const epoch=Date.parse('2026-11-07T00:00:00Z');
+const source=await readFile(new URL('../scripts/build-street-running.mjs',import.meta.url),'utf8');
+const query=/const query='([^']+)'/.exec(source)[1];
+async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0,cleanup=null,early=false}={}){
+ const dir=await mkdtemp(join(tmpdir(),'street-provider-pause-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const retained=gzipSync(JSON.stringify([{type:'way',id:1,tags:{embedded:'yes'},geometry:[{lon:0,lat:0},{lon:.001,lat:.001}]}]));
+ await writeFile(join(dir,'elements.json.gz'),retained);
+ await writeFile(join(dir,'manifest.json'),JSON.stringify({osmBase:'2026-11-01T00:00:00Z',query:query.replace('way[embedded_rails];','')}));
+ const fixture=join(dir,'fake.mjs'),log=join(dir,'requests'),cancelLog=join(dir,'cancellations');
+ await writeFile(cancelLog,'');
+ await writeFile(fixture,`import fs from 'node:fs';
+ let elapsed=0,shift=0,calls=0,oversleep=${oversleep};Date.now=()=>${epoch}+elapsed+shift;
+ Object.defineProperty(performance,'now',{value:()=>elapsed});
+ globalThis.setTimeout=(f,ms,...args)=>{elapsed+=(${early}?Math.max(1,Math.ceil(ms/2)):ms)+oversleep;oversleep=0;f(...args);return 0;};
+ globalThis.fetch=async(url,{body:query})=>{
+  fs.appendFileSync(${JSON.stringify(log)},JSON.stringify({url:String(url),at:elapsed,query:query.get('data')})+'\\n');
+  ${cleanup?`{const response=new Response(${cleanup==='absent'?'null':"'busy'"},{status:503,headers:++calls===1?{'retry-after':${JSON.stringify(header)}}:{}});
+  if(response.body){const cancel=response.body.cancel.bind(response.body);response.body.cancel=()=>{
+   fs.appendFileSync(${JSON.stringify(cancelLog)},JSON.stringify({at:elapsed,query:query.get('data')})+'\\n');
+   ${cleanup==='pending'?`return new Promise(()=>{});`:cleanup==='rejects'?`return Promise.reject(new Error('cleanup rejected'));`:cleanup==='throws'?`throw new Error('cleanup threw');`:`return cancel();`}
+  };}
+  return response;}`:''}
+  if(++calls>1)return new Response('busy',{status:503});
+  const headers={'retry-after':${JSON.stringify(header)}};
+  ${previous?`return new Response('<osm><meta osm_base="2026-11-06T00:00:00Z"/></osm>',{headers});`:
+  body==='http'?`return new Response('busy',{status:503,headers});`:
+  body==='read-error'?`return new Response(new ReadableStream({start(c){c.error(new Error('body interrupted'));}}),{headers});`:
+  `const response=new Response(${JSON.stringify(body==='malformed'?'{':body==='empty'?' {"elements":[]}':JSON.stringify({remark:'runtime error: Query timed out'}))},{headers});
+   const json=response.json.bind(response);response.json=()=>{elapsed+=${bodyMs};shift+=${wallShift};return json();};return response;`}
+ };
+ `);
+ const env={...process.env};delete env.PREVIOUS_DATA;if(previous)env.PREVIOUS_DATA=dir;
+ const result=spawnSync(process.execPath,['--import',fixture,fileURLToPath(new URL('../scripts/build-street-running.mjs',import.meta.url))],{env,encoding:'utf8',timeout:10000});
+ assert.equal(result.error,undefined,result.error?.message);assert.notEqual(result.status,0,'unusable input must not publish');
+ assert.doesNotMatch(result.stderr,/SyntaxError:/,'the fixture and builder must parse');
+ assert.deepEqual(await readFile(join(dir,'elements.json.gz')),retained,'previous source is unchanged');
+ return {result,requests:(await readFile(log,'utf8')).trim().split('\n').map(JSON.parse),cancellations:(await readFile(cancelLog,'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse)};
+}
+for(const body of ['remark','malformed','read-error','http'])test(`street retry respects headers after ${body}`,async t=>{
+ const {requests}=await run(t,{body});assert.equal(requests.length,3);assert.equal(requests[1].at,420000);assert.equal(requests[2].at,540000);
+ assert.ok(requests.every(r=>r.query===query));
+});
+test('street HTTP-date pause includes body time without resetting at failure',async t=>{
+ const {requests}=await run(t,{header:new Date(epoch+420000).toUTCString(),bodyMs:80000});assert.equal(requests[1].at,420000);
+});
+test('street wall-clock correction cannot shorten an observed pause',async t=>{
+ const {requests}=await run(t,{wallShift:3600000});assert.equal(requests[1].at,420000);
+});
+test('street successful change headers pause the next selection within the six-minute change window',async t=>{
+ const {requests}=await run(t,{previous:true,header:'120'});assert.equal(requests.length,5);
+ assert.match(requests[0].query,/^\[out:xml\]/);assert.match(requests[1].query,/out ids;/);
+ assert.equal(requests[1].at,120000);assert.equal(requests[2].at,240000);
+});
+test('street a pause beyond the change window defers selection and is retained by full fallback',async t=>{
+ const {requests}=await run(t,{previous:true});assert.equal(requests.length,4);
+ assert.equal(requests[1].query,query);assert.equal(requests[1].at,420000);
+});
+for(const previous of [false,true])test(`street excessive pause stops all further provider requests (previous=${previous})`,async t=>{
+ const {requests,result}=await run(t,{header:'86400',previous});assert.equal(requests.length,1);assert.match(result.stderr,/budget|time/i);
+});
+test('street a pause and full request must fit the existing 45-minute acquisition envelope',async t=>{
+ const {requests}=await run(t,{header:'2041'});assert.equal(requests.length,1);
+});
+test('street exact 45-minute pause-plus-request boundary permits one next request',async t=>{
+ const {requests}=await run(t,{header:'2040'});assert.equal(requests[1].at,2040000);
+});
+test('street rechecks the envelope after an overslept timer',async t=>{
+ const {requests}=await run(t,{oversleep:2400000});assert.equal(requests.length,1);
+});
+for(const header of ['soon','-1','Fri, 06 Nov 2026 00:00:00 GMT'])test(`street invalid or past pause retains the two-minute backoff: ${header}`,async t=>{
+ const {requests}=await run(t,{header});assert.deepEqual(requests.map(r=>r.at),[0,120000,240000]);
+});
+test('street final complete response requires no future-request wait',async t=>{
+ const {requests,result}=await run(t,{header:'86400',body:'empty'});assert.equal(requests.length,1);assert.match(result.stderr,/Suspiciously small/);
+});
+
+for(const previous of [false,true])for(const cleanup of ['resolved','pending','rejects','throws','absent'])test(`street HTTP errors cancel unread bodies without awaiting ${cleanup} cleanup (previous=${previous})`,async t=>{
+ const {requests,cancellations,result}=await run(t,{previous,cleanup});
+ assert.equal(requests.length,previous?4:3,'unchanged full-attempt allowance and changes fallback');
+ assert.deepEqual(requests.map(r=>r.at),previous?[0,420000,540000,660000]:[0,420000,540000],'provider pause and local backoffs remain intact');
+ assert.deepEqual(cancellations,cleanup==='absent'?[]:requests.map(({at,query})=>({at,query})),'each unread error body is cancelled before the next request');
+ assert.match(result.stderr,/Overpass HTTP 503/,'the original HTTP error remains primary');
+ assert.doesNotMatch(result.stderr,/cleanup (rejected|threw)/);
+ if(previous)assert.match(requests[0].query,/^\[out:xml\]/);else assert.equal(requests[0].query,query);
+ assert.ok(requests.slice(previous?1:0).every(r=>r.query===query),'no changed or subdivided query');
+});
+
+for(const header of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00 GMT", "Foo, 07 Nov 2026 00:10:00 GMT", "Sat, 07 Nov 2026 24:00:00 GMT", "2027-01-01T00:00:00Z", "Sat, 07 Nov 2026 00:10:00 +0000"])for(const previous of [false,true])test(`street rejects malformed calendar pause ${header} (previous=${previous})`,async t=>{
+ const {requests}=await run(t,{header,previous});
+ assert.deepEqual(requests.map(r=>r.at),previous?[0,0,120000,240000,360000]:[0,120000,240000]);
+});
+for(const header of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:00 GMT','Sat Nov  7 00:10:00 2026'])test(`street retains valid calendar pause ${header}`,async t=>{
+ const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
+ const {requests}=await run(t,{header,body:'read-error'});assert.equal(requests[1].at,600000);
+});
+
+for(const header of ['', '60'])for(const body of ['http','read-error','remark'])test(`street early timers retain full retry floors after ${body} with pause ${header || 'absent'}`,async t=>{
+ const {requests}=await run(t,{header,body,early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000]);
+ assert.ok(requests.every(r=>r.query===query));
+});
+for(const header of ['', '60'])test(`street early timers retain HTTP-change fallback floor with pause ${header || 'absent'}`,async t=>{
+ const {requests}=await run(t,{header,previous:true,cleanup:'resolved',early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000,360000]);
+ assert.match(requests[0].query,/^\[out:xml\]/);
+ assert.ok(requests.slice(1).every(r=>r.query===query));
+});
+test('street early timers preserve selection and later full-retry floors',async t=>{
+ const {requests}=await run(t,{header:'120',previous:true,early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000,360000,480000]);
+ assert.match(requests[1].query,/out ids;/);
+ assert.ok(requests.slice(2).every(r=>r.query===query));
+});
+test('street early timers combine a longer provider pause with later local retry floors',async t=>{
+ const {requests}=await run(t,{header:'420',body:'http',early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,420000,540000]);
+});

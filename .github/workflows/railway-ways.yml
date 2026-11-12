@@ -1,0 +1,54 @@
+name: Download railway ways (branch lines, service routes, power methods)
+on:
+  # Every six hours, started by osm-updates.yml (one Overpass dataset at a
+  # time) before branch lines and service routes, which are built from this
+  # store; power methods follow once the stages cover the whole world
+  # (STAGES_COVER_WORLD in scripts/download-stages.mjs).
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: railway-ways-data
+  cancel-in-progress: false
+jobs:
+  stage:
+    # Only main publishes the shared store.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the stored regions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The newest stored generation whose archives are all present
+        # (scripts/railway-ways-release.mjs). No release yet is the first run;
+        # an unreachable or inconsistent store stops the run.
+        run: node scripts/railway-ways-release.mjs load /tmp/previous-railway-ways
+      - name: Fetch the next stage's regions from OpenStreetMap
+        run: node --import ./scripts/overpass-meter.mjs scripts/build-railway-ways.mjs
+      - name: Publish the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GENERATION: ${{ github.run_id }}
+        # New generation-named assets only, never replaced in place; older
+        # generations are deleted after the new state is up.
+        run: GENERATION="$(date -u +%Y%m%dT%H%M%SZ)-$GENERATION" node scripts/railway-ways-release.mjs publish railway-ways-data
+      # A failed publication must not discard the already downloaded stage.
+      # This is recovery evidence, not an automatically accepted generation.
+      - name: Preserve unpublished stage for recovery
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-ways-unpublished-${{ github.run_id }}-${{ github.run_attempt }}
+          path: railway-ways-data/
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0

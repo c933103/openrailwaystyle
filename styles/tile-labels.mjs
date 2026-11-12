@@ -1,5 +1,7 @@
 import {createRequestPool} from './request-pool.mjs';
-import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs} from './rail-source-catalog.mjs';
+import {isRetryableProviderError, providerRetryDelay} from './provider-retry.mjs';
+export {createMetadataRetries} from './provider-retry.mjs';
+import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs, railProviderTileURL} from './rail-source-catalog.mjs';
 import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -72,6 +74,7 @@ export function tileHasFeatures(data) {
   return Boolean(data?.byteLength);
 }
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
+const sourceFeatures = (tile, name) => { const layer=tile.layers[name];return layer?Array.from({length:layer.length},(_,i)=>layer.feature(i)):[]; };
 export const tileCoordinates = url => {
   const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
   return match && {z:+match[1],x:+match[2],y:+match[3]};
@@ -85,10 +88,10 @@ export function locate(lon, lat) {
 }
 // Record the Han-name region at each feature's centre. Every tile URL used
 // by the map ends in z/x/y, so every labelled feature has a location.
-export function locateFeatures(tile, coordinates) {
+export function locateFeatures(tile, coordinates, sourceLayer) {
   if (!coordinates) throw new Error('Label tile has no z/x/y coordinates');
   const {z,x,y} = coordinates, n = 2 ** z;
-  for (const f of features(tile)) {
+  for (const f of sourceLayer ? sourceFeatures(tile,sourceLayer) : features(tile)) {
     const [w,s,e,north] = f.bbox();
     const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
     Object.assign(f.properties, locate(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI));
@@ -96,8 +99,8 @@ export function locateFeatures(tile, coordinates) {
 }
 // `found` (optional) collects the rare-Han blocks of the names written, so
 // their glyph slices can load before the tile is drawn (rare-han.mjs).
-export function writeLabels(tile, lang, found) {
-  for (const f of features(tile)) {
+export function writeLabels(tile, lang, found, sourceLayer) {
+  for (const f of sourceLayer ? sourceFeatures(tile,sourceLayer) : features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
     f.properties.atlas_language = lang;
     if (found) rareHanBlocks(f.properties.atlas_name, found);
@@ -126,10 +129,12 @@ export function timedSource(inner, ms) {
   return {
     getKey: () => inner.getKey(),
     async getBytes(offset, length, signal, etag) {
-      const controller = new AbortController(), stop = () => controller.abort();
+      const controller = new AbortController(), stop = () => controller.abort(signal?.reason);
+      const timeout = () => controller.abort(new DOMException('Basemap request timed out', 'TimeoutError'));
       if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
-      const timer = setTimeout(stop, ms);
+      const timer = setTimeout(timeout, ms);
       try { return await inner.getBytes(offset, length, controller.signal, etag); }
+      catch (error) { throw controller.signal.aborted ? controller.signal.reason : error; }
       finally { clearTimeout(timer); signal?.removeEventListener('abort', stop); }
     },
   };
@@ -153,8 +158,12 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   function get(url, signal, json = false, priority = 0) {
     if (signal?.aborted) return Promise.reject(signal.reason);
     const metadata = json && railTileMetadata(url, ORM);
-    const validate = !json ? (data => validProviderVectorTile(url, 200, data, ORM)) : undefined;
-    return metadata ? Promise.resolve(metadata) : pool.get(url, signal, {json, priority, validate});
+    // The public proxy requires a composite path for several standalone MVT
+    // source layers. Translate at the fetch boundary, before request pooling,
+    // so stations, platform geometry and track counts share the same bytes.
+    const requestURL = json ? url : railProviderTileURL(url, ORM);
+    const validate = !json ? (data => validProviderVectorTile(requestURL, 200, data, ORM)) : undefined;
+    return metadata ? Promise.resolve(metadata) : pool.get(requestURL, signal, {json, priority, validate});
   }
   maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:(await get(glyphRequestURL(params.url),controller.signal,false,1)).slice(0)}));
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
@@ -302,19 +311,23 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!url) throw new Error('Invalid basemap request');
     // PMTiles keeps a failed header or directory request in its cache, so one
     // dropped connection would fail every tile under it until a reload. On a
-    // failure the archive starts afresh (its header is read again) and the
-    // request is tried twice more.
+    // transient failure the archive starts afresh (its header is read again)
+    // and the request is tried twice more. Permanent responses, invalid data
+    // and PMTiles exhausted ETag repair are never amplified by this wrapper.
     // `basemapArchive` makes the archive (with timed requests) for its URL.
     const archive = url.replace(/\/\d+\/\d+\/\d+$/,'');
     let result;
     for (let attempt = 0; ; attempt++) {
+      controller.signal.throwIfAborted();
       if (basemapArchive && !pmtilesProtocol.tiles.has(archive)) pmtilesProtocol.tiles.set(archive, basemapArchive(archive));
+      const requestedArchive = pmtilesProtocol.tiles?.get(archive);
       try { result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller); break; }
       catch (error) {
-        if (controller.signal.aborted || attempt >= basemapRetries.length) throw error;
-        pmtilesProtocol.tiles?.delete(archive);
-        await new Promise(resolve => setTimeout(resolve, basemapRetries[attempt]));
-        if (controller.signal.aborted) throw error;
+        if (controller.signal.aborted) throw controller.signal.reason;
+        if (!isRetryableProviderError(error) || attempt >= basemapRetries.length) throw error;
+        // Another consumer may already have replaced the failed shared archive.
+        if (pmtilesProtocol.tiles?.get(archive) === requestedArchive) pmtilesProtocol.tiles?.delete(archive);
+        await providerRetryDelay(basemapRetries[attempt], controller.signal);
       }
     }
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
@@ -359,11 +372,20 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const coordinates = tileCoordinates(address), target = Number(new URLSearchParams(fragment).get('underzoom'));
     const underzoom = coordinates && Number.isInteger(target) && target > coordinates.z ? target : 0;
     url = address;
+    // The public station XYZ response is now composite. Only the logical
+    // station layer belongs to this atlasstation source; unrelated station
+    // areas/entrances/interlockings may reuse OSM IDs and must not enter the
+    // translation merge or receive synthetic station label attributes.
+    const stationURL=new URL(url), stationPath=/^\/(standard_railway_text_stations(?:_low|_med)?)\/\d+\/\d+\/\d+(?:\.pbf)?$/.exec(stationURL.pathname);
+    const sourceLayer=stationURL.origin===new URL(ORM).origin&&!stationURL.username&&!stationURL.password&&stationPath?stationPath[1]:undefined;
+    // Other providers may use arbitrary paths (e.g. /med) for their station
+    // layer. Preserve the existing adapter instead of inferring their schema.
+    const stationFeatures = tile => sourceLayer?sourceFeatures(tile,sourceLayer):features(tile);
     const candidates = stationLanguages(lang), fetched = new Set();
     let primary, primaryData;
     for (;;) {
       // Fetch the first listed language some station could still use.
-      const wanted = primary && new Set(features(primary).flatMap(f=>stationPending(f.properties,lang,fetched)));
+      const wanted = primary && new Set(stationFeatures(primary).flatMap(f=>stationPending(f.properties,lang,fetched)));
       const candidate = primary ? candidates.find(c=>!fetched.has(c) && wanted.has(c)) : candidates[0];
       if (!candidate) break;
       fetched.add(candidate);
@@ -372,7 +394,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
       let translated, data;
-      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data); }
+      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data,sourceLayer?[sourceLayer]:undefined); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.
@@ -381,13 +403,13 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       }
       if (!primary) {
         primary=translated; primaryData=data;
-        try { locateFeatures(primary,tileCoordinates(url)); }
+        try { locateFeatures(primary,tileCoordinates(url),sourceLayer); }
         catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
       }
-      const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
-      for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
+      const byId=new Map(stationFeatures(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
+      for(const f of stationFeatures(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
     }
-    try { return writeLabels(primary,lang,found); }
+    try { return writeLabels(primary,lang,found,sourceLayer); }
     catch (error) {
       console.error('Station labels unavailable:', error?.message || String(error));
       return primaryData.slice(0);

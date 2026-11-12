@@ -36,6 +36,18 @@ test('a nonempty matched aggregate retains counts and section bindings through t
   const staged=await readFile(profilePath),binding=JSON.parse(await readFile(manifestPath));assert.deepEqual(validateAppliedFrequency(staged,binding),artifact);assert.equal(artifact.sections.length,3);assert.deepEqual(artifact.records.map(r=>r.profiles.am.rate).sort((a,b)=>a-b),[4,7,10]);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+test('matcher revision is bound to the compressed aggregate while legacy aggregates remain readable',()=>{
+ const artifact={schema:1,matcher_revision:2,osm_sha256:'a'.repeat(64),records:[],sections:[],feeds:[],matching:{sections:0,feeds:[]}};
+ const bytes=gzipSync(JSON.stringify(artifact)),manifest={applied_profiles:{schema:1,matcher_revision:2,file:'profiles.json.gz',sha256:createHash('sha256').update(bytes).digest('hex'),osm_sha256:artifact.osm_sha256,sections:0}};
+ assert.deepEqual(validateAppliedFrequency(bytes,manifest),artifact);
+ for(const revision of [null,0,-1,1,'2',2.5,Number.MAX_SAFE_INTEGER+1]){
+  const m=structuredClone(manifest);m.applied_profiles.matcher_revision=revision;assert.throws(()=>validateAppliedFrequency(bytes,m),/Invalid applied matcher revision/);
+ }
+ const old={...artifact};delete old.matcher_revision;const oldBytes=gzipSync(JSON.stringify(old));
+ const m=structuredClone(manifest);m.applied_profiles.sha256=createHash('sha256').update(oldBytes).digest('hex');
+ assert.throws(()=>validateAppliedFrequency(oldBytes,m),/Invalid applied matcher revision/);
+ delete m.applied_profiles.matcher_revision;assert.deepEqual(validateAppliedFrequency(oldBytes,m),old);
+});
 test('legacy lineage in every outcome drops unsupported nested fields',()=>{
   for(const status of ['compiled','excluded','retry_pending','failed','no_rail','non_timetable','source_alias']){
     const value={id:'fixture',status,catalogue:{lineage:[lineage]},source:{catalogue_lineage:[lineage]}};

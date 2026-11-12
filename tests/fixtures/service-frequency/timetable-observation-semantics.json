@@ -1,0 +1,397 @@
+{
+  "schema": 1,
+  "synthetic": true,
+  "cases": [
+    {
+      "id": "increasing",
+      "kind": "departures",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "equal",
+      "kind": "departures",
+      "departures": [
+        0,
+        0
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "unknown-gap",
+      "kind": "departures",
+      "departures": [
+        28800,
+        null,
+        29400
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "equal-across-gap",
+      "kind": "departures",
+      "departures": [
+        28800,
+        null,
+        28800
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "all-unknown",
+      "kind": "departures",
+      "departures": [
+        null,
+        null
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "unknown-ends",
+      "kind": "departures",
+      "departures": [
+        null,
+        0,
+        null
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "cross-midnight",
+      "kind": "departures",
+      "departures": [
+        85800,
+        86400,
+        90000
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "maximum-equal",
+      "kind": "departures",
+      "departures": [
+        31622400,
+        31622400
+      ],
+      "frequencies": [],
+      "collector_reason": null
+    },
+    {
+      "id": "decreasing",
+      "kind": "departures",
+      "departures": [
+        29400,
+        28800
+      ],
+      "frequencies": [],
+      "collector_reason": "nonmonotonic_departures"
+    },
+    {
+      "id": "decreasing-across-gap",
+      "kind": "departures",
+      "departures": [
+        29400,
+        null,
+        28800
+      ],
+      "frequencies": [],
+      "collector_reason": "nonmonotonic_departures"
+    },
+    {
+      "id": "midnight-reset",
+      "kind": "departures",
+      "departures": [
+        90000,
+        3600
+      ],
+      "frequencies": [],
+      "collector_reason": "nonmonotonic_departures"
+    },
+    {
+      "id": "one-window",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "adjacent",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 600,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "adjacent-reverse",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 600,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "separate-reverse",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 1200,
+          "end": 1800,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "three-unordered",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 1800,
+          "end": 2400,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "1"
+        },
+        {
+          "start": 600,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "0"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "maximum-adjacent",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 31622398,
+          "end": 31622399,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 31622399,
+          "end": 31622400,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": null
+    },
+    {
+      "id": "partial-overlap",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 599,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": "overlapping_frequency_intervals"
+    },
+    {
+      "id": "contained",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 600,
+          "end": 900,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": "overlapping_frequency_intervals"
+    },
+    {
+      "id": "identical",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": "overlapping_frequency_intervals"
+    },
+    {
+      "id": "enclosing-reverse",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 600,
+          "end": 900,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 0,
+          "end": 1200,
+          "headway_secs": 60,
+          "exact_times": "1"
+        }
+      ],
+      "collector_reason": "overlapping_frequency_intervals"
+    },
+    {
+      "id": "nonadjacent-overlap",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 0,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        },
+        {
+          "start": 1200,
+          "end": 1800,
+          "headway_secs": 60,
+          "exact_times": "1"
+        },
+        {
+          "start": 300,
+          "end": 900,
+          "headway_secs": 60,
+          "exact_times": "0"
+        }
+      ],
+      "collector_reason": "overlapping_frequency_intervals"
+    },
+    {
+      "id": "empty-interval",
+      "kind": "frequencies",
+      "departures": [
+        0,
+        600
+      ],
+      "frequencies": [
+        {
+          "start": 600,
+          "end": 600,
+          "headway_secs": 60,
+          "exact_times": "0"
+        }
+      ],
+      "collector_reason": "invalid_frequency_interval"
+    }
+  ]
+}

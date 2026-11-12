@@ -10,7 +10,6 @@ import argparse
 from collections import Counter
 import csv
 import datetime as dt
-from email.utils import parsedate_to_datetime
 import gzip
 import hashlib
 import importlib.util
@@ -220,12 +219,39 @@ def retry_after_delay(value, now=None):
             # A decimal beyond Python's parser limit still asks us to wait.
             # This runtime-only sentinel is never serialized or slept on.
             return float('inf')
+    short_days = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+    long_days = ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')
+    months = ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+    match = re.fullmatch(r'([A-Za-z]{3}), ([0-9]{2}) ([A-Za-z]{3}) ([0-9]{4}) ([0-9]{2}):([0-9]{2}):([0-9]{2}) GMT', value)
+    days, obsolete = short_days, False
+    if not match:
+        match = re.fullmatch(r'([A-Za-z]+), ([0-9]{2})-([A-Za-z]{3})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2}) GMT', value)
+        if match:
+            days, obsolete = long_days, True
+    if match:
+        weekday, day, month, year, hour, minute, second = match.groups()
+    else:
+        match = re.fullmatch(r'([A-Za-z]{3}) ([A-Za-z]{3}) {1,2}([0-9]{1,2}) ([0-9]{2}):([0-9]{2}):([0-9]{2}) ([0-9]{4})', value)
+        if not match:
+            return None
+        weekday, month, day, hour, minute, second, year = match.groups()
     try:
-        deadline = parsedate_to_datetime(value)
-        if deadline.tzinfo is None:
-            deadline = deadline.replace(tzinfo=dt.timezone.utc)
-        return max(0.0, deadline.timestamp() - (time.time() if now is None else now))
-    except (TypeError, ValueError, OverflowError):
+        observed = time.time() if now is None else now
+        year = int(year)
+        if obsolete:
+            current = dt.datetime.fromtimestamp(observed, dt.timezone.utc)
+            year += ((current.year + 50) // 100) * 100
+        deadline = dt.datetime(year, months.index(month.lower()) + 1, int(day), int(hour), int(minute), int(second), tzinfo=dt.timezone.utc)
+        if obsolete:
+            # RFC850 uses a rolling 50-year boundary, not email's fixed cutoff.
+            # Starting from day one also handles a leap-day observation.
+            limit = current.replace(year=current.year + 50, day=1) + dt.timedelta(days=current.day - 1)
+            if deadline > limit:
+                deadline = deadline.replace(year=year - 100)
+        if days.index(weekday.lower()) != deadline.weekday():
+            return None
+        return max(0.0, deadline.timestamp() - observed)
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
 
 
@@ -1137,17 +1163,20 @@ class RemoteZip:
         return self.full
 
 
+def public_url_columns(row):
+    """Shared producer/stager projection; matching IDs are never URL columns."""
+    columns = {key: item for key, item in row.items() if key == 'url' or key.endswith('_url')}
+    # Re-staging a display must retain its original URL fingerprint too.
+    for key in list(columns):
+        if key+'_sha256' in row:
+            columns[key+'_sha256'] = row[key+'_sha256']
+    return {**row, **published_metadata(columns)}
+
+
 def write_feed(path, value):
     # Redact provenance and GTFS URL columns, not matching identifiers that
     # happen to resemble URLs. Avoid a second copy or walk of geometry/profiles.
     value = {**value, 'source': published_metadata(value['source'])}
-    def public_url_columns(row):
-        columns = {key: item for key, item in row.items() if key == 'url' or key.endswith('_url')}
-        # Re-staging a display must retain its original URL fingerprint too.
-        for key in list(columns):
-            if key+'_sha256' in row:
-                columns[key+'_sha256'] = row[key+'_sha256']
-        return {**row, **published_metadata(columns)}
     for table in ('agencies', 'routes'):
         if table in value:
             value[table] = [public_url_columns(row) for row in value[table]]

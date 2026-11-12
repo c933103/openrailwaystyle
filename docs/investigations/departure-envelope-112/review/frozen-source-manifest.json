@@ -1,0 +1,85 @@
+{
+  "baseCommit": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "baselineVerifiedBlobs": 479,
+  "version": "20261011-departure-envelope-1",
+  "files": [
+    {
+      "path": "docs/user-guide.md",
+      "size": 12995,
+      "sha256": "2b95512f67aa8bfa359e08bac735332d016c5711a44fe30b22a8fa9710b95601",
+      "gitBlob": "0e0798dbf43cd2b0894c64c476801bb01738af4b"
+    },
+    {
+      "path": "scripts/check-departures-browser.mjs",
+      "size": 24216,
+      "sha256": "67f51839ec4e9c14d0f7a63e6cbe76970a6933d0514c85c0e86a5af71ca69bd8",
+      "gitBlob": "0e14045ae9357180544344c3a48c9eb23af3e94c"
+    },
+    {
+      "path": "styles/app.mjs",
+      "size": 155231,
+      "sha256": "fda6a37f139dc12e8068f3237ad380115dcfa6a93ede086f54e18b0a8a869ca6",
+      "gitBlob": "20aad95cbce73bc8ef8de3e305dfe13b1f0b8c4c"
+    },
+    {
+      "path": "styles/cjk-font.mjs",
+      "size": 4082,
+      "sha256": "0a41dcc332e85d9325d8e8fd1985ff60742aa48cfbd8cbb5285f7dca526e995e",
+      "gitBlob": "8d0aee687f36187b1e308de0627941f88018a17c"
+    },
+    {
+      "path": "styles/departures-ui.mjs",
+      "size": 6978,
+      "sha256": "24b44a463a8937ba53018b78654d57d2ed52d1f9ec29fbd8951639b5de10c492",
+      "gitBlob": "8aabf97a75fc9aace63e707665d1f98b592cbafe"
+    },
+    {
+      "path": "styles/departures.mjs",
+      "size": 16264,
+      "sha256": "30f6c147858bdfbe3b4f2b0579ca7f7c8a7b9aa6d60be7a21cf43b14e4d3c231",
+      "gitBlob": "c50190ccb6e26ab28fd0b85978009845ec61de62"
+    },
+    {
+      "path": "styles/elevation.mjs",
+      "size": 6817,
+      "sha256": "2f1707f3f765926f83411ca9a16e6911c497eac52c6fc163c2d021ecc4bcb3b6",
+      "gitBlob": "b8557d433809476037cea2ff9b8d3a5498c6e302"
+    },
+    {
+      "path": "styles/index.html",
+      "size": 45808,
+      "sha256": "0ce8c6c618a69dc0833fe56692272f1a6767e568fe9cb8e5f2a83a11ee76c053",
+      "gitBlob": "47c8fa0c0d9bb4bfa9bf8c979165e1e0d35eaf89"
+    },
+    {
+      "path": "styles/layer-semantics.mjs",
+      "size": 6076,
+      "sha256": "17c21b06a27377129de4848c9b3c8affcf153e68477ebdd3d1b7f18aea73c2a7",
+      "gitBlob": "9c72aecf7b315e0738ebc2c6980cde35da90a9c2"
+    },
+    {
+      "path": "styles/map-model.mjs",
+      "size": 58897,
+      "sha256": "4f33adbd5688d726669374866fded4045c82d9ced1646ee51efc4f861f491ecd",
+      "gitBlob": "8a5742a849dc30e3c2aad068d89c04a66fdb7284"
+    },
+    {
+      "path": "tests/departure-availability.test.mjs",
+      "size": 26908,
+      "sha256": "dd190cd5d794427c53f2e140a57cc502b5a84cb8f60298a240e76ad6d4b8a270",
+      "gitBlob": "e8881adad307dcfc054d4e47b6ab26f476bc2865"
+    },
+    {
+      "path": "tests/sw-install.test.mjs",
+      "size": 24156,
+      "sha256": "4be360eadab7d3044e5b8aa2fe8ab0aaebd8bc2fd789f311d14eaf695f7e8a8f",
+      "gitBlob": "cb8db1e6d2d2b7a496d9a668baa4cb3e192da0c9"
+    },
+    {
+      "path": "tests/fixtures/departure-envelope-predecessor.json.gz",
+      "size": 56468,
+      "sha256": "33eca11a38d99e412da27461df1dd0ba2927b8ade87bb880638659a3d5cf813e",
+      "gitBlob": "426766f90d008cf51318280613547120d0b3e0ad"
+    }
+  ]
+}

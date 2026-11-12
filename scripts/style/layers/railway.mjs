@@ -1,21 +1,24 @@
-import { INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
-import {present, notFerry, hasService, byKindZoom} from './railway-expressions.mjs';
+import { MODES, INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
+import {present, notFerry, hasService, byKindZoom, hasRack} from './railway-expressions.mjs';
+import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
+import {railwayOverviewWidth,railwayTrackWidth} from '../../../styles/map-model.mjs';
 
 // Each group has a fixed position in the atlas composition. Returning separate
 // groups keeps roads and structural cues ordered without searching layer IDs.
 export function createRailwayLayers() {
-  const groups = {backbone: [], overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
+  const groups = {backbone: [], referenceDetail: [], overviewPrefix: [], overview: [], structures: [], infrastructureTracks: [], thematic: [], details: [], names: [], badges: [], values: []};
   const speedPaint = speedColours('metric');
   const infrastructurePaint = ['case',
     ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
     ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], INFRASTRUCTURE[3][0],
     ['==', ['get', 'feature'], 'tram'], INFRASTRUCTURE[4][0],
+    ['==', ['get', 'feature'], 'funicular'], INFRASTRUCTURE[6][0],
     hasService, INFRASTRUCTURE[5][0],
     ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
   const electricPaint = electrificationPaint();
   // World-scale railways need a full CSS pixel, including negative camera zoom.
-  const width = ['interpolate', ['linear'], ['zoom'], 0, 1, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
+  const width = railwayOverviewWidth();
   const line = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => ({
     id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
     filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' || source === 'axleRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -23,8 +26,7 @@ export function createRailwayLayers() {
   });
   // Track width by zoom; scale multiplies each stop, so halves and offsets
   // follow the same curve (zoom expressions cannot be nested in arithmetic).
-  const trackWidth = (scale = 1) => ['interpolate', ['linear'], ['zoom'],
-    7, 1.6 * scale, 11, ['case', hasService, 1.1 * scale, 2.8 * scale], 16, ['case', hasService, 2 * scale, 4.8 * scale], 20, 7 * scale];
+  const trackWidth = railwayTrackWidth;
   // Concurrent protection systems occupy adjacent longitudinal bands. All
   // bands use the same count and offsets, keeping them centred on the track.
   // A small minimum band width preserves multiple colours at overview zooms.
@@ -61,10 +63,50 @@ export function createRailwayLayers() {
     paint:{'line-color':'#728783','line-width':['interpolate',['linear'],['zoom'],4,1,6,1.2,7,1.5],
       'line-opacity':0.8,'line-dasharray':[2,2]},
   });
+  // Atlas OSM geometry is independent of every live thematic provider.
+  // Hold its z6 tiles through the z7 detail handoff; detail paints above it.
+  // Neutral styles encode only directly mapped usage, never speed/power/etc.
+  // Infrastructure colours come from those same mapped tags (highspeed=yes,
+  // usage=branch), so that view uses the live layer's colours from the first
+  // frame instead of grey; every other view keeps the neutral strokes.
+  const referenceInfrastructure = ['case',
+    ['==', ['get', 'highspeed_tag'], 'yes'], INFRASTRUCTURE[0][0],
+    ['==', ['get', 'classification'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
+  const neutralViews = MODES.filter(mode => mode !== 'infrastructure');
+  for(const [kind,color,dash,minzoom] of [['branch','#93999c',null,3],
+    ['unknown','#93999c',[2,1],undefined],['main','#70777b',null,undefined]]) {
+    const reference = (id, paint, views) => ({
+      id,type:'line',source:'railReference',
+      'source-layer':'atlas_mainline_overview',...(minzoom===undefined?{}:{minzoom}),maxzoom:8,
+      filter:['==',['get','classification'],kind],
+      layout:{'line-cap':'round','line-join':'round','line-sort-key':['-',3,['get','rank']]},
+      paint:{'line-width':['interpolate',['linear'],['zoom'],0,1,6,1.3,8,1.7],...paint},
+      metadata:{'atlas:views':views},
+    });
+    groups.backbone.push(
+      reference(`rail-reference-${kind}`,{'line-color':color,...(dash?{'line-dasharray':dash}:{})},neutralViews),
+      reference(`infrastructure-reference-${kind}`,{'line-color':referenceInfrastructure},['infrastructure']));
+  }
   // Branch lines at zooms 4–7 are split the same way (the overview width).
   const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
   const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
   const SERVICE_TRACK = '#b8c0c5';
+  // Close views otherwise depend entirely on the live detailed rail source:
+  // the Atlas-owned overview ends at z8 and the basemap never drew its rails.
+  // Reuse already-loaded OpenMapTiles geometry beneath every thematic stroke.
+  // Dashed neutral lines carry no operating status or infrastructure attributes.
+  groups.referenceDetail.push({
+    id:'rail-basemap-reference',type:'line',source:'openmaptiles','source-layer':'transportation',minzoom:8,
+    filter:['all',['==',['geometry-type'],'LineString'],
+      ['any',
+        ['all',['==',['get','class'],'rail'],['match',['coalesce',['get','subclass'],''],['','rail','narrow_gauge','preserved','funicular'],true,false]],
+        ['all',['==',['get','class'],'transit'],['match',['get','subclass'],['subway','light_rail','monorail','tram'],true,false]],
+      ]],
+    layout:{'line-cap':'butt','line-join':'round'},
+    paint:{'line-color':'#70777b','line-width':['interpolate',['linear'],['zoom'],8,1,11,1.3,16,2],
+      'line-opacity':0.8,'line-dasharray':[3,2]},
+    metadata:{'atlas:group':'railway','atlas:category':'reference','atlas:base-map':false},
+  });
   for (const [mode, source, sourceLayer, color] of [
     ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
     ['speed', 'speed', 'speed_railway_line_low', speedPaint],
@@ -117,6 +159,11 @@ export function createRailwayLayers() {
       groups.overviewPrefix.push(modeLayers[0]);
       groups.overview.push(modeLayers[1]);
       groups.infrastructureTracks.push(modeLayers[2], modeLayers[3]);
+      // Rack railways (rack=*) as ladder ticks over the track, as in the Power view.
+      const rack = POWER_METHOD_STROKES.find(({id}) => id === 'rack-traction');
+      groups.infrastructureTracks.push({id:'infrastructure-rack', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:10,
+        filter:['all', present, notFerry, byKindZoom, hasRack], layout:{'line-cap':rack.cap || 'butt', 'line-join':'round'},
+        paint:{'line-color':rack.color, 'line-width':rack.width, 'line-offset':rack.offset, 'line-dasharray':rack.dash}});
     } else groups.thematic.push(...modeLayers);
   }
   const gaugeDual = {id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
@@ -167,6 +214,9 @@ export function createRailwayLayers() {
   groups.details.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(tunnelPaint)});
   for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
     ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry,byKindZoom]],
+    // Aerialways are named like railways, in every view (their snapshot
+    // carries the name tags; the road labels leave them out).
+    ['aerialway-names','aerialways','aerialways',12,undefined,['has','kind']],
   ]) groups.names.push({
     id, type:'symbol', source, 'source-layer':sourceLayer, minzoom, ...(maxzoom ? {maxzoom} : {}), filter,
     layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},

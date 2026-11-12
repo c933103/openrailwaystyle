@@ -1,3 +1,4 @@
+import {retryAfterMs} from './retry-after.mjs';
 import {ByteCache} from './byte-cache.mjs';
 
 // One queue for the provider adapters: visible geometry takes precedence over
@@ -59,10 +60,12 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
           error.status = response.status; error.url = entry.url;
           const raw = response.headers?.get?.('retry-after');
           if (raw) {
-            const seconds = /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) * 1000 : Date.parse(raw) - now();
+            const seconds = /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) * 1000 : retryAfterMs(raw, now());
             if (Number.isFinite(seconds)) error.retryAfter = Math.max(0, seconds);
           }
-          await response.body?.cancel?.().catch(() => {});
+          // Cleanup must not replace the HTTP policy or wait until the
+          // transport timeout discards its status and provider cooldown.
+          try { response.body?.cancel?.().catch(() => {}); } catch {}
           throw error;
         }
         return entry.json ? response.json() : response.arrayBuffer();

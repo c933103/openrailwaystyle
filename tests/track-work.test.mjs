@@ -59,25 +59,34 @@ const fixtureRailTile=(()=>{
  return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);
 })();
 async function measureAmplification(views,{empty=false}={}){
- const protocols={},requests=[];let active=0,peak=0;const previous=globalThis.Worker;
- globalThis.Worker=class{terminate(){} postMessage(message){queueMicrotask(()=>this.onmessage?.({data:{id:message.id,result:{extent:4096,points:[]}}}));}};
+ const protocols={},requests=[],inputs=[];let active=0,peak=0,adapters;const previous=globalThis.Worker;
+ globalThis.Worker=class{terminate(){} postMessage(message){inputs.push(message);queueMicrotask(()=>this.onmessage?.({data:{id:message.id,result:{extent:4096,points:[]}}}));}};
  try{
   const data=empty?new ArrayBuffer(0):fixtureRailTile;
-  installLabelProtocols({addProtocol:(n,f)=>protocols[n]=f},{},async(url,{signal}={})=>{
+  adapters=installLabelProtocols({addProtocol:(n,f)=>protocols[n]=f},{},async(url,{signal}={})=>{
    signal?.throwIfAborted?.();requests.push(url);active++;peak=Math.max(peak,active);await tick();active--;
-   return {ok:true,status:200,arrayBuffer:async()=>url.includes('/railway_line_high/')?data.slice(0):new ArrayBuffer(0)};
+   const layers=new URL(url).pathname.split('/')[1].split(',');
+   assert.ok(layers.length>1,'the fixture must exercise physical composite URLs');
+   return {ok:true,status:200,arrayBuffer:async()=>layers.includes('railway_line_high')?data.slice(0):new ArrayBuffer(0)};
   },{tileRetries:[]});
   const req=([x,y])=>protocols.atlastracks({url:`atlastracks://14/${x}/${y}`},{signal:new AbortController().signal});
   const totals=[];for(const view of views){await Promise.all(view.map(req));totals.push(requests.length);}
-  return {totals,peak,unique:new Set(requests).size};
- }finally{globalThis.Worker=previous;}
+  return {totals,peak,unique:new Set(requests).size,inputs};
+ }finally{adapters?.dispose();globalThis.Worker=previous;}
 }
 test('z14 track-count request amplification is measured and deduplicated',async()=>{
  const one=await measureAmplification([[[8192,8192]]]);
- assert.deepEqual(one.totals,[27]);assert.equal(one.unique,27);assert.equal(one.peak,4);
+ assert.deepEqual(one.totals,[18]);assert.equal(one.unique,18);assert.equal(one.peak,4);
+ const halo=Array.from({length:9},(_,i)=>[i%3-1,Math.floor(i/3)-1]);
+ const assertHalo=list=>assert.deepEqual(list.map(({dx,dy})=>[dx,dy]),halo,'retain all nine logical neighbour inputs');
+ for(const list of [one.inputs[0].tiles,one.inputs[0].areas,one.inputs[0].stations])assertHalo(list);
+ assert.ok(one.inputs[0].tiles.every(t=>t.data.byteLength>0),'nonempty tracks must exercise station dependencies');
  const first=[[8192,8192],[8193,8192],[8192,8193],[8193,8193]],east=[[8193,8192],[8194,8192],[8193,8193],[8194,8193]];
  const dense=await measureAmplification([first,east]);
- assert.deepEqual(dense.totals,[48,60],'cold 2x2 deduplicates 108 candidates to 48; east pan adds 12');assert.equal(dense.peak,4);
+ assert.deepEqual(dense.totals,[32,40],'108 logical candidates share 32 physical tiles; east pan adds eight');assert.equal(dense.unique,40);assert.equal(dense.peak,4);
+ assert.equal(dense.inputs.length,6,'overlapping views reuse completed counts');
+ for(const input of dense.inputs)for(const list of [input.tiles,input.areas,input.stations])assertHalo(list);
  const blank=await measureAmplification([first,east],{empty:true});
  assert.deepEqual(blank.totals,[16,20],'blank 2x2 skips station halos; east pan adds four');assert.equal(blank.peak,4);
+ assert.ok(blank.inputs.every(input=>input.areas.length===0&&input.stations.length===0),'only definitely empty track bodies skip station inputs');
 });

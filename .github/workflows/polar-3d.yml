@@ -1,0 +1,70 @@
+name: Polar 3D rendering regression
+on:
+  pull_request:
+    paths:
+      - .github/workflows/polar-3d.yml
+      - scripts/check-polar-depth-browser.mjs
+      - scripts/check-polar-browser.mjs
+      - scripts/check-polar-parity-browser.mjs
+      - styles/app.mjs
+      - styles/globe-drag.mjs
+      - styles/polar-layer.mjs
+      - styles/polar-paint.mjs
+      - tests/polar-projection.test.mjs
+      - tests/polar-paint.test.mjs
+      - scripts/check-terrain-3d-browser.mjs
+      - styles/terrain-3d.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/polar-3d.yml
+      - scripts/check-polar-depth-browser.mjs
+      - scripts/check-polar-browser.mjs
+      - styles/app.mjs
+      - styles/globe-drag.mjs
+      - styles/polar-layer.mjs
+      - styles/polar-paint.mjs
+      - tests/polar-projection.test.mjs
+      - tests/polar-paint.test.mjs
+      - scripts/check-terrain-3d-browser.mjs
+      - styles/terrain-3d.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: polar-3d-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test tests/polar-projection.test.mjs tests/polar-paint.test.mjs
+      - run: npm run build
+      - name: Keep generated style reproducible
+        run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
+      - run: npx playwright install chromium
+      - name: Run synthetic polar 3D WebGL verification
+        run: |
+          set -euo pipefail
+          node scripts/serve.mjs &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          node scripts/check-polar-depth-browser.mjs
+          node scripts/check-polar-browser.mjs
+          node scripts/check-terrain-3d-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: polar-3d-webgl-diagnostics
+          path: browser-review
+          if-no-files-found: ignore
+          retention-days: 7

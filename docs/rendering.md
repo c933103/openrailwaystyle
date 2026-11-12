@@ -23,6 +23,178 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## 3D land and seabed terrain
+
+The map's native MapLibre raster-DEM terrain mesh activates when the camera is
+tilted (including the 3D map button), provided **Terrain, seabed and contours**
+is enabled. An overhead view does not request the additional mesh tiles.
+The map control uses a vector mountain/bathymetry glyph (with a native
+pressed state and accessible label). At continental/globe scales, true 1x
+heights are smaller than the screen can resolve. A deliberate press of that
+control focuses the *current map centre* at zoom 12.3 (plus More detail's zoom
+offset), without jumping to a different location; a closer existing zoom is
+left unchanged. This makes 3D hills and sea-floor slopes distinguishable
+rather than just changing perspective over an effectively flat world.
+The 3D button retains its **60° initial pitch** and touch/keyboard gestures can move
+the camera to **85°** (down toward the horizon), rather than limiting it to
+MapLibre's default 60°. Greater-than-60° pitch is experimental in MapLibre
+5.24 and can reveal renderer defects. The pitch limit is **not** used as a
+network-load throttle: at pitches above 65°, Atlas uses MapLibre's native
+source-tile level-of-detail algorithm to progressively request *coarser* tiles
+toward the horizon. MapLibre's LOD configuration uses a maximum span of 11 on-screen
+zoom levels and a 2.0× high-pitch to overhead tile-count ratio target;
+the terrain source uses a steeper 12-level span and 1.5× ratio. A **larger**
+span tells MapLibre to reduce zoom level faster as distance increases. The original 9.314/3.0 MapLibre LOD parameters are
+restored below this pitch and when returning overhead. MapLibre also bounds
+each source's completed tile cache to 96 entries; this **does not hard-cap
+active tiles**, but prevents indefinite offscreen cache growth. These are LOD
+and memory budgets, not geographic cutoffs: distant data stays available
+at lower resolution, without intentionally creating blank tiles or false
+zero-height elevations. A style/source replacement reinstalls this policy.
+Returning overhead leaves the focused zoom in place. The 3D button can enable terrain after that setting has been turned off;
+returning overhead or disabling terrain removes the mesh. Pitched camera
+settings persist through the existing view/session restore. Map, satellite and
+hybrid textures and the existing signed above/below-sea contours drape over the
+mesh. The settings panel discloses a **3× vertical scale by default** so regional
+views (including Himalayan terrain at zoom 7–8) show meaningful elevation.
+1× restores actual proportions; 2× and 5× provide milder and stronger
+presentation. The selection is validated against those four values, saved
+with display settings, and can be shared in the URL. It changes MapLibre's
+mesh exaggeration, never source DEM bytes, feature positions, contour numbers,
+or independently sampled profile/measurement heights. MapLibre's own
+`queryTerrainElevation` reports *exaggerated* values by definition and must
+not be used for physical measurements when the scale is not 1×. Switching
+scales while the map is tilted updates the existing terrain source without
+changing the camera or the base/rail style layers. An overhead view requests
+no additional 3D mesh tiles.
+
+`terrain3d` is separate from the existing `relief` hillshade DEM and the two
+seabed contour sources. `styles/terrain-3d.mjs` exposes a bounded, abortable,
+cached `atlas-terrain://` tile protocol. `styles/terrain-3d-worker.mjs` performs
+the Terrarium PNG composition off the UI thread, falling back to local canvas
+rendering if the worker fails. Both paths reuse the repaired Mapzen DEM.
+At zoom 10 or below the DEM retains ETOPO1 seabed heights; above that its
+high-resolution ocean cells are zero. The mesh keeps fine land heights but
+replaces sea cells with bilinear z10 samples **only within** independently
+mapped `water.class=ocean` vector polygons, including island holes. Below-sea
+inland locations must never be flooded or treated as ocean. The coarse seabed
+is informative relief, not survey-grade soundings; missing or impossible
+heights fail explicitly instead of becoming artificial sea-level flats.
+
+Source availability and render compatibility have separate checks:
+`tests/terrain-3d.test.mjs` verifies signed-height blending, mask boundaries,
+source selection and pitch/relief activation; `tests/startup*.test.mjs` checks
+lifecycle integration. Rendering beyond Web Mercator at the extreme poles
+remains the separate custom polar renderer, not this raster mesh.
+
+## Hidden-layer tile clipping
+
+The pinned MapLibre 5.24.0 painter prepares clipping masks before its layer
+dispatcher checks visibility. Atlas installs an instance-local guard from
+`styles/map-controls.mjs` immediately after constructing the map. It uses the
+same `layer.isHidden(transform.zoom)` predicate before any stencil mutation;
+visible calls retain their original receiver, arguments and return value.
+Every call rechecks current zoom/layout, including after style replacement.
+MapLibre creates a fresh painter after WebGL context restoration; the same
+guard is reinstalled on its synchronous public `webglcontextrestored` event
+before the next scheduled frame. Normal context recovery is left intact.
+The immutable vendor bytes and shared painter prototype remain unchanged.
+
+This relies on a pinned private renderer boundary. A missing method or transform
+fails explicitly during startup and requires compatibility review when upgrading
+MapLibre. The guard is idempotent on the same painter. Its already-precached
+module and all versioned shell imports advance together; existing workers fetch
+the new complete shell on navigation while older tabs retain their own version.
+
+Decision regressions execute the actual pinned painter with synthetic GPU
+submission and compare visible dispatch and abstract stencil coverage. The
+fixture-only painter check selects the original method or the actual production
+installer for one measured transition and seven exact nonempty pixel comparisons,
+including visibility/zoom, source switches, stencil resets, globe and terrain.
+Both arms prepare with the current app. This is bounded compatibility evidence,
+not a historical schedule replay or a statistical performance claim. The normal
+controls check retains its real-idle predicate and 60-second deadline.
+
+## Completed worldwide OSM station-marker source
+
+The independent station-point acquisition is published in two distinct
+branches. `station-points-work` can contain incomplete data and is never
+imported by the website. Only the `station-points-data` release with a
+verified complete 32-region-or-more topology, a matching z3 bundle index and
+nonzero inventory is eligible for the map.
+
+Before that release exists, all original curated/provider/basemap station
+marker layers remain active. Once verified, `stationWorld` supplies independent
+circle markers for every station in that OSM source from zoom 3 through 11,
+including overzooming the published z7 tiles. Collision-selected station
+**names** remain in the existing provider/curated layers. The new markers
+paint above level crossings, but below accepted place-name paint, as required
+by the station/crossing ordering contract. The old low-zoom dots and
+error-fallback circles are then suppressed to avoid duplicate markers; detailed
+provider dots remain from zoom 12.
+
+Across all nine views, station locations use subdued neutral hollow rings.
+Their outer diameter, including the outline, equals the standard single-line
+width at the current zoom: fill radius is 40% of that width and the outline is
+10%, so `2 × (radius + outline) = line width`. Former stations retain their muted
+brown outline. This applies to curated, provider, worldwide and fallback points.
+No locations are thinned or tied to name collisions; tap tolerance is unchanged.
+
+The line builder and marker sizing share the existing overview and mainline
+width stops. Numeric zoom updates preserve the exact overview/detail handoff
+at zoom 7 without changing the railway widths. For example, ordinary markers
+are 1.71 CSS px across at zoom 6.6, 1.84 at 7.8 and 2.41 at 9.7. Service uses
+the ordinary single-service stroke from zoom 7 (2.24 px at 7.8); parallel route
+bundles do not enlarge its stations. Station records lack per-track siding,
+dual-gauge and timetable-frequency width attributes, so those individual
+variants are not inferred from station names or proximity.
+
+Service route colours additionally paint above the station rings, while
+accepted place names remain above both. Source selection, name placement and
+station settings do not change. The shared marker rule applies before the first
+frame, during zoom and view changes, and after language reload or source recovery.
+
+If the independent tile source fails, the application restores the previous
+markers rather than inventing a completed geographic result. All points in
+this source are mapped features, not verified operating services. Extreme polar
+locations beyond Web Mercator need their own native rendering before an
+exhaustive source can claim completion.
+
+## Station, crossing and place-label priority
+
+Station circles paint above crossing dots and × marks. Accepted city,
+settlement and state labels still paint above those circles, while crossings
+retain their former symbol-collision priority over place labels.
+
+The pinned MapLibre 5.24 renderer separates these requirements through
+identical-layout place-label twins. A zero-opacity placement representative
+comes before crossings; the original visible label comes after station dots.
+[Layout grouping](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/group_by_layout.ts)
+shares one symbol bucket, and
+[placement](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/symbol/placement.ts)
+uses its first layer. Both twins share accepted/rejected placement, so the
+later paint layer does not revive a label rejected by a crossing. Opacity zero
+suppresses drawing, not placement. Source, zoom, filter and every layout field
+must remain identical; localization, font fallback and background visibility
+apply to both twins. Atlas's initial load and existing language reload use full
+style replacement (`diff:false`), preserving family insertion order. This is
+required: the pinned [style differ](https://github.com/maplibre/maplibre-style-spec/blob/v24.10.0/src/diff.ts)
+adds layers backwards, while the [worker layer index](https://github.com/maplibre/maplibre-gl-js/blob/v5.24.0/src/style/style_layer_index.ts)
+groups them in insertion order. A diffed replacement can therefore make the
+visible twin the placement representative despite identical final paint order.
+The unit regression resolves style-spec from MapLibre's own locked dependency
+(currently 24.10.0), not the separate 23.1.0 validator. Atlas ships MapLibre's
+hash-pinned prebuilt distribution rather than rebundling that dependency, so
+the browser also reproduces the default-diff failure in the exact shipped
+renderer and verifies full-replacement recovery and repeated reloads. Any future change to diff-based
+application reloads needs a new placement contract and renderer coverage.
+No collision-overlap override or extra source request is used.
+
+This is a pinned-runtime contract, checked with production layers and local
+MapLibre fixtures: crossing/station pixels at z11–16, crossing/place collision
+reversal, and city/village/state glyphs over station circles with paint-order
+reversal and restoration. Renderer upgrades must retain these checks.
+
 ## Source availability and z7 handoff
 
 Main-line railway geometry comes from OpenRailwayMap's live vector service, not
@@ -48,7 +220,12 @@ converted to empty success. The shared request pool limits transfers to six
 concurrent requests overall and four per origin, shares same-URL work, cancels
 obsolete queued tiles and gives visible geometry priority over derived counts.
 Timeouts apply to the transport, starting only when it gets a network slot;
-late readers cannot keep a stalled transport running indefinitely. Underzoom
+late readers cannot keep a stalled transport running indefinitely. Error-body
+cleanup is best-effort and cannot delay or replace the HTTP status, including
+terminal access errors and shared-origin provider cooldowns. Provider calendar
+dates use the shared maintenance parser: malformed dates cannot invent a
+cooldown, and obsolete HTTP dates use UTC and the rolling 50-year century rule.
+Existing fractional delay-seconds handling is unchanged. Underzoom
 station children load concurrently through the same bounds. See
 [loading investigation](investigations/rail-loading-20261007.md).
 
@@ -60,11 +237,52 @@ and obsolete source/view failures are discarded. Genuine metadata failures
 still reload their source metadata. Access errors such as HTTP 403/404 are
 not treated as transient outages.
 
+An in-flight expired tile can leave the viewport, enter the renderer cache and
+fail there. Returning to that cached tile emits no new error or request. Atlas
+keeps weak evidence tied to the exact tile and source instance, so its scoped
+station fallback, outage status and eligible retries resume when it is active
+again. Offscreen failures do not cause retries or displayed warnings. Successful,
+aborted or unloaded tiles and replaced sources cannot inherit stale evidence;
+healthy neighboring tiles remain unchanged. Idle reconciliation covers cache
+reactivation that happens after the movement event.
+
 Major railway strokes remain a full CSS pixel at the world scale, including
 negative camera zoom. The renderer already clamps negative camera zoom to
 zoom-0 tiles; the regression checks actual geometry at -0.1, 0 and 0.1 in
 both projections and every rail view. These changes neither remove More
 detail nor supply an independent worldwide fallback during a provider outage.
+
+## Independent geometry at detailed zooms
+
+From zoom 8, `rail-basemap-reference` draws neutral dashed railway geometry
+from the existing OpenMapTiles `transportation` source beneath all detailed
+railway strokes. This closes the gap after the Atlas-owned overview ends at
+zoom 8: an empty or failed detailed provider must not erase the basemap's
+already-loaded rail geometry while stations and crossings remain visible.
+Rail and narrow-gauge/funicular/preserved subclasses and the explicitly mapped
+metro/light-rail/monorail/tram subclasses are eligible; roads, ferries, aerialways,
+platforms and explicit inactive subclasses are excluded. Geometry alone carries
+no verified operating status, speed, gauge, power, owner or timetable data.
+
+The reference appears in every rail view on Map, Carto and Hybrid backgrounds;
+Satellite-only still hides overlays. It reuses the existing basemap provider
+and its viewport tile requests; Carto and Hybrid also load that geometry when
+the reference is visible. When the detailed source has settled with no thematic
+tracks in the viewport, the status identifies missing detailed coverage only if
+a visible reference railway type is eligible for the selected track layer at
+the current zoom. The style builder and status share the type thresholds; the
+status also respects that layer's zoom bounds and visibility. Light rail,
+monorail, tram and funicular references at zooms 8–9 therefore keep the normal
+exploration status. At zoom 10 they become eligible for a missing-detail warning.
+Actual tile errors retain priority and the existing warning and recovery behavior.
+Neither source readiness nor visible station symbols certify railway coverage.
+
+`scripts/check-rail-reference-browser.mjs` uses the real renderer and synthetic
+Shanghai rail/metro geometry at zoom 10.9 in a 360×760 viewport. It checks empty,
+healthy and failed detailed-source responses separately, plus urban-only views
+at zooms 8, 9 and 10 across all nine thematic modes. These cases reproduce
+the dependency gap; they do not identify the response served to the reporting
+user or establish live Shanghai provider coverage.
 
 ## Speed and units
 
@@ -78,7 +296,7 @@ The settings switch between metric and imperial units: imperial colours speeds b
 
 ## Station hierarchy
 
-The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have larger markers and first choice of label placement: each importance tier is its own map layer — heavy rail (large, normal, small, then halts), metro, light rail, people movers, monorail, funicular and tram, then former and planned stations from zoom 12 — because MapLibre orders labels by sort key only within a tile, but places layers top-down across all tiles; less complete route mapping can understate station importance.
+The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have first choice of label placement: each importance tier is its own map layer — heavy rail (large, normal, small, then halts), metro, light rail, people movers, monorail, funicular and tram, then former and planned stations from zoom 12 — because MapLibre orders labels by sort key only within a tile, but places layers top-down across all tiles; less complete route mapping can understate station importance. Marker diameter follows the shared line-width rule above rather than station importance.
 
 Zooms 3–6 give reviewed station candidates in `styles/data-src/major-stations.json` priority, with eligibility based on passenger-network role and regional coverage. Zoom 3 preserves its 550 km globe separation and 14-pixel label padding. Regional bands use minimum Mercator separations of 78, 68 and 56 pixels at zooms 4, 5 and 6, and padding of 14, 12 and 10 pixels. Provider stations fill remaining space from zoom 4, so the curated list never caps the worldwide regional inventory. The selection wraps the date line and clamps the poles; globe collision placement still applies. Only one principal station per metro/country enters zooms 3–4. Earlier selections persist, and regional round-robin selection prevents the first region in the file taking all the available space. Additional terminals such as Shinjuku and Grand Central remain deferred when they are too close to Tokyo or New York Penn.
 
@@ -86,7 +304,7 @@ Each generated tier is a separate layer above provider fill at zooms 4–6. Prov
 
 From zoom 7, regional stations use the provider’s spaced selection without discarding stations classified as small; closer views add more stations with collision spacing. Halts appear from zoom 11, tram stops from zoom 10.
 
-By mode, metro stations appear from zoom 8 (the first station tiles that carry them), light rail, monorails, people movers, trams, funiculars and tram stops from 10, so a tram stop never shows before a metro station. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names and markers are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. Where markers meet at street zoom, the higher-capacity station's is drawn on top.
+For provider names, metro stations appear from zoom 8 (the first station tiles that carry them), light rail, monorails, people movers, trams, funiculars and tram stops from 10, so a tram stop's name never shows before a metro station's. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. The independent worldwide location overlay has its own complete point inventory and does not inherit these name thresholds.
 
 Metro tracks are drawn from zoom 7 where data exists (the provider's tiles hold them only from zoom 10); light rail, monorail, tram, funicular and miniature tracks from zoom 10.
 
@@ -98,8 +316,11 @@ zoom 8. Every station *actually present in the loaded source tiles* can retain
 its point even when its name is deferred or collides. Below zoom 8 the provider
 station tiles are selective; rendering every station worldwide at zoom 3 still
 requires a prebuilt nationwide/worldwide station-point dataset, not a burst of
-on-demand detailed tile requests. From zoom 12 the detailed marker hierarchy
-continues unchanged. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
+on-demand detailed tile requests. From zoom 12 the detailed provider's station
+selection and draw priority continue, with the same shared line-width sizing.
+Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
+
+The browser has an additional independent station fallback, inserted after the checked-in style is loaded and before localization. From zoom 8 it uses only already-requested En Liberté `openmaptiles/poi` features explicitly classed as railway stations, halts, tram stops or subway stations. Fallback dots paint above level crossings but beneath the ordinary ORM station dots. Both fallback dots and collision-managed fallback names remain hidden while the relevant ORM station source is healthy; they are enabled only inside that source's failed canonical tile areas, avoiding double-rendering nearby but differently positioned station objects in healthy neighboring tiles. Only a metadata failure enables source-wide fallback. A successful tile clears its own failure mask; unloaded tiles, source replacement and language URL changes retire stale masks. Nonretryable station failures retain the same spatial boundary without initiating retries. Names are enabled only from zoom 8. Vetted major-station GeoJSON dots also remain eligible beyond zoom 7 without causing extra ORM name-tile lookups, but draw only on the corresponding station-source failure. All fallback layers respect the station toggle and remain visible in Carto/Hybrid, but not Satellite-only. The basemap can omit POIs at some zooms and regions; curated hubs are selective. **Neither fallback establishes complete worldwide station coverage or operating status.** Issue #175's independently extracted station-point generation remains incomplete and unintegrated until validated for publication. Fallback POIs have only the basemap-provided identity and may link to coordinates rather than a verified OSM object.
 
 ## Branch lines at overview zooms
 
@@ -175,7 +396,51 @@ Contours are calculated in the browser using the pinned maplibre-contour library
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
-Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
+Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
+
+The polar texture is an optional, format-validated asset (`north-depth.png`/`south-depth.png`) published alongside the existing contour/relief snapshots. Earlier snapshots lack the depth image and keep their flat polar fill without requesting a nonexistent asset; depth image load or shader failure is isolated from the rest of the map. Polar depth uses **ETOPO 2022**, while the ordinary Mercator seabed raster uses a different ETOPO-derived terrain source; the palette is identical but source resolution/depth samples may differ near 85.05° rather than providing artificial continuity. The colour texture is separate from the 3D terrain geometry; full 3D relief remains unavailable within the polar cap.
+
+### Polar rendering and custom style consistency
+
+Web Mercator sources end at 85.05°; the north and south globe caps are
+separate prepared meshes, not ordinary basemap tiles. When using the Atlas
+**Map** background, the cap now reads its colours, fill opacity, contour
+width/opacity, hillshade settings, waterway styling, building footprint
+styling and airport runway paint from the live MapLibre style, including
+subsequent style changes. Prepared ground-zoom contour bands are shared by
+Map and Carto, clamped to the bands present in older static snapshots. Map
+paint, layer ranges, layout visibility and contour filters use the ordinary
+camera zoom.
+Unsupported paint/filter operators retain reviewed fallbacks; an unsupported
+contour filter is distinct from an evaluated false match and does not hide all contours.
+Legacy stop sampling supports numeric exponential camera functions; property,
+interval/categorical/identity and explicit-default variants use reviewed fallbacks.
+Building outlines omit synthetic edges introduced by the prepared tile/cap
+clipping mask. Older assets cannot distinguish original edges exactly coincident
+with that mask; those coincident segments are conservatively omitted.
+
+The already-published polar OSM detail tiles (historically named `carto`
+in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,
+subdued buildings and outlines; airport aprons/taxiways/runways also follow
+the Transport toggle. Removed style layers stay hidden, and overlapping
+seabed layer ranges draw each visible layer in style order. Polar roads and
+paths record their OpenMapTiles transportation class (derived from the OSM
+`highway` tag as the basemap does); each Atlas road layer draws the polar lines
+its own live filter accepts, with its colour, width, opacity, zoom range and
+visibility, in style order. Detail tiles built before this change carry no
+class and draw no Map roads; Carto still draws all roads and paths. Polar line
+strokes are solid, so dashed road styles (cycle and footpaths) appear solid
+beyond 85°. Named facility and peak labels remain Carto-only: the snapshot
+stores no amenity type to match the Map's per-category context labels.
+Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
+Visibility-based requests, byte/count limits, aborts and older-snapshot
+fallback remain in force. No browser request is made to Overpass.
+
+This is **style parity for features in the currently prepared polar dataset**,
+not complete source-data parity: ordinary-world tile classes, detailed
+facility/railway semantics and higher-resolution terrain unavailable in
+the polar snapshot cannot be inferred or rendered by changing paint alone.
+
 
 ## Country and state names
 
@@ -224,7 +489,7 @@ These layers are independent of the original demo styles and remain visible over
 
 ### Carto background
 
-Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Detailed polar data is loaded and drawn only for Carto; other backgrounds retain their coarsest contours, and satellite/hybrid retain black caps. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map and Carto share the visible fine contour bands and prepared detail tiles; roads, paths and detailed facility labels remain Carto-only. Satellite/Hybrid retain black caps and release detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
 
@@ -264,3 +529,14 @@ Label tiers, nearby coordinates, similar names and shared Wikidata alone do not
 remove another station's dot. At zoom 7 the curated layer ends and the provider
 marker resumes; zooming back below 7 restores the curated ownership. Candidates
 not emitted by the curated selection cannot suppress provider points.
+
+The symbol-overlap fixture also tests the production crossing icon at z11–14
+and crossing text at z15–16 against a single co-located station. It first measures
+the station's solid interior and a crossing-only dark-ink mask, requires a
+nonempty intersection, then requires the entire interior in production order,
+visible occlusion of the measured intersection with reversed order, and full
+restoration. Sampling scales with device-pixel ratio; a wider ink bounding box
+is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs/README.md)
+uses fontnik-compatible FreeType-origin bearings rather than Pillow's
+alphabetic-baseline bearings. This is a fixture correction, not production
+typography evidence.

@@ -23,6 +23,18 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 #map.detail.detail-2 .maplibregl-control-container{width:25%;height:25%;transform:scale(4)}
 .maplibregl-ctrl-group button.atlas-ctrl{font-size:17px;line-height:29px;color:#203c44}
 .maplibregl-ctrl-group button.atlas-ctrl[aria-pressed=true]{background:#173e47;color:#fff}
+/* Match the other MapLibre glyph controls and preserve contrast when active. */
+.maplibregl-ctrl-group button.atlas-terrain-toggle{position:relative;display:flex;align-items:center;justify-content:center}
+.maplibregl-ctrl-group button.atlas-terrain-toggle .terrain-scale-indicator{position:absolute;right:1px;bottom:1px;padding:0 2px;font-size:10px;font-weight:750;line-height:12px;border-radius:3px;pointer-events:none;color:#203c44;background:#fffef9f0}
+.maplibregl-ctrl-group button.atlas-terrain-toggle[aria-pressed=true] .terrain-scale-indicator{background:#173e47;color:#fff}
+.maplibregl-ctrl-group button.atlas-terrain-toggle svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Rendered vertical scale is explicit: the source DEM and contours remain exact. */
+.terrain-exaggeration-picker{display:grid;gap:5px;margin:7px 0 2px 22px}
+.terrain-exaggeration-picker>label{font-weight:600}
+.terrain-exaggeration-picker select{width:100%;min-width:0;padding:7px 8px;font-size:12px}
+.terrain-exaggeration-picker .hint{margin:0;font-size:11px}
+
+
 .draw-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:min(560px,calc(100% - 420px));background:var(--paper);border-radius:12px;box-shadow:0 6px 30px #28414a22;padding:8px 38px 8px 8px}
 .draw-group{display:flex;gap:2px;border:1px solid var(--border);border-radius:8px;padding:2px}
 .draw-group button{border:0;font-size:12px;padding:6px 9px}
@@ -71,6 +83,8 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 
 .swatch.pattern-swatch {width:62px;height:12px;background:none;border:0;flex-shrink:0;overflow:visible}
 .pattern-swatch svg {display:block;width:62px;height:12px}
+/* Long lifecycle patterns need a full row beside an unbroken label. */
+.legend-item:has(.pattern-swatch) {grid-column:1 / -1}
 .swatch.street-running {height:9px;background:#b68f55;border-top:3px solid #d1ba94;border-bottom:3px solid #d1ba94}
 .swatch.level-crossing {background:none;height:18px;text-align:center}
 .swatch.level-crossing::after {content:'×';color:#63332c;font-size:22px;line-height:18px;font-weight:bold}
@@ -175,3 +189,13 @@ dialog:not([open]){display:none}
 #pwa-install-status{font-weight:600}
 body[data-ui="watch"] #pwa-install{display:none!important}
 @media(max-width:360px){#pwa-install{padding:24px 18px}#pwa-install h2{font-size:21px}}
+
+/* Power facilities are circular lettered points, separate from track swatches. */
+.point-swatch{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:25px;height:16px;gap:4px}.point-swatch.paired{width:36px}.point-swatch svg{display:block;flex-shrink:0;width:16px;height:16px}
+
+.dot-swatch { width: 8px; height: 8px; flex-shrink: 0; margin: 0 7px; border-radius: 50%; background: var(--swatch); border: 1.5px solid var(--swatch-stroke); box-sizing: content-box; }
+
+/* Help: data dates */
+.data-ages { border-collapse: collapse; margin: 0.25em 0 0.75em; }
+.data-ages th, .data-ages td { text-align: left; padding: 0.15em 0.75em 0.15em 0; vertical-align: top; }
+.data-ages-notice, .data-age-stale { color: #8a4b00; }

@@ -13,20 +13,30 @@ test('raw response cache limits bytes as well as count and respects recent use',
  const large=new ByteCache();for(let i=0;i<120;i++)large.set(i,new ArrayBuffer(1024*1024));assert.equal(large.bytes,24*1024*1024);assert.equal(large.size,24);
 });
 test('track-count worker transfers private copies while keeping downloaded buffers intact',async()=>{
- const protocols={},originals=[],sent=[],previous=globalThis.Worker;
- globalThis.Worker=class {postMessage(message,transfer){sent.push({message,transfer});const own=structuredClone(message,{transfer});queueMicrotask(()=>this.onmessage({data:{id:own.id,result:{extent:4096,points:[]}}}));}};
+ const protocols={},originals=[],sent=[],previous=globalThis.Worker;let adapters;
+ globalThis.Worker=class {postMessage(message,transfer){const own=structuredClone(message,{transfer});sent.push({message,transfer,own});queueMicrotask(()=>this.onmessage({data:{id:own.id,result:{extent:4096,points:[]}}}));}};
  try {
-  installLabelProtocols({addProtocol:(id,f)=>protocols[id]=f},{},async url=>({ok:true,status:200,arrayBuffer:async()=>{
-    const endpoint=new URL(url).pathname.split('/')[1];
-    const tile=encode.fromGeojsonVt({[endpoint]:{features:[{type:2,geometry:[[[1,1],[2,2]]],tags:{id:'way-1'}}]}});
+  adapters=installLabelProtocols({addProtocol:(id,f)=>protocols[id]=f},{},async url=>({ok:true,status:200,arrayBuffer:async()=>{
+    const endpoints=new URL(url).pathname.split('/')[1].split(',');
+    const tile=encode.fromGeojsonVt(Object.fromEntries(endpoints.map(endpoint=>[endpoint,{features:[{type:2,geometry:[[[1,1],[2,2]]],tags:{id:'way-1'}}]}])));
     const b=tile.buffer.slice(tile.byteOffset,tile.byteOffset+tile.byteLength);originals.push(b);return b;
   }}));
   await protocols.atlastracks({url:'atlastracks://14/8192/8192'},{signal:new AbortController().signal});
   // The nine railway tiles around the tile, and its nine station-area and nine station tiles.
   assert.equal(sent[0].transfer.length,27);assert.equal(new Set(sent[0].transfer).size,27);
   assert.ok(sent[0].transfer.every(b=>b.byteLength===0),'worker received ownership');
-  assert.ok(originals.length===27&&originals.every(b=>b.byteLength>0),'cache retains reusable validated originals');
- }finally{globalThis.Worker=previous;}
+  assert.ok(originals.length===18&&originals.every(b=>b.byteLength>0),'18 physical downloads retain intact validated originals for 27 logical inputs');
+  const own=sent[0].own;
+  assert.ok([...own.tiles,...own.areas,...own.stations].every(t=>t.data.byteLength>0),'every private worker copy retains its bytes');
+  assert.deepEqual(own.areas.map(t=>t.data),own.stations.map(t=>t.data),'two logical datasets share equal composite bytes');
+  assert.ok(own.areas.every((t,i)=>t.data!==own.stations[i].data),'each logical worker input owns a distinct copy');
+  // MapLibre may transfer the raw tile again after the counter has run.
+  const request={url:'atlasrail://https://openrailwaymap.app/railway_line_high/14/8192/8192'};
+  const first=await protocols.atlasrail(request,new AbortController());
+  const expected=first.data.slice(0);structuredClone(first.data,{transfer:[first.data]});
+  assert.deepEqual((await protocols.atlasrail(request,new AbortController())).data,expected);
+  assert.equal(originals.length,18,'worker and MapLibre transfers never force a cache refetch');
+ }finally{adapters?.dispose();globalThis.Worker=previous;}
 });
 test('polar meshes evict old views within byte/count budgets and release programs on removal',()=>{
  const deleted=[],programs=[],layer=new PolarLayer({data:'https://example.org/',units:()=> 'metric',maxTileBytes:10,maxTiles:2});

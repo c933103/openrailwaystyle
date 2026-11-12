@@ -9,14 +9,18 @@
 // larger than one run's budget continues in the next run. Once every stage is
 // in, each run refreshes the stage checked longest ago if it is older than
 // REFRESH_DAYS, which also removes deleted and retagged routes.
+import {responseChunks} from './response-chunks.mjs';
+import {createStagedProviderPause} from './staged-provider-pause.mjs';
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
-import {gzipSync, gunzipSync} from 'node:zlib';
+import {join} from 'node:path';
+import {gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable} from './service-routes.mjs';
 import {createHash} from 'node:crypto';
+import {writeServiceFiles} from './service-routes-files.mjs';
 import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
 
-import {selectDownloadStage} from './download-stages.mjs';
+import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -28,11 +32,11 @@ const RUN_BUDGET = Number(process.env.BUDGET_BYTES || 50_000_000);
 // about 1 GB a day (both use it).
 const DAY_BUDGET = Number(process.env.DAY_BUDGET_BYTES || 100_000_000);
 const REFRESH_DAYS = Number(process.env.REFRESH_DAYS || 14);
-// No new request after this long, so a run publishes its progress well
-// before the job's 150-minute limit (one request with its retries can take
-// about 35 minutes).
+// Each pause plus the next five-minute request must fit this acquisition
+// window, leaving the rest of the existing 150-minute job for publication.
 const TIME_BUDGET_MS = Number(process.env.TIME_BUDGET_MINUTES || 100) * 60000;
-const started = Date.now();
+const started = performance.now();
+const providerPause = createStagedProviderPause({budgetMs: TIME_BUDGET_MS});
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 let downloaded = 0, requests = 0;
 
@@ -54,88 +58,9 @@ if (state.version !== VERSION) {
   state.version = VERSION;
 }
 migrateServiceDownloads(state, table);
-state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
-const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
-const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
-if (BUDGET_BYTES < 10_000_000) {
-  console.log(`${lastDay} bytes downloaded in the last 24 hours; waiting for a later run.`);
-  process.exit(0);
-}
-// Resume unfinished stages fairly, retaining each stage's accepted data and queue.
 const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
-const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
-if (!stage) {
-  console.log('Every stage is current; nothing to fetch.');
-  process.exit(0);
-}
-const current = info(stage.name);
-// A new pass starts from nothing of its own in progress.
-if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; discardStage(table, stage.name); }
-console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
-
-const BUDGET = Symbol('budget');
-async function overpass(query) {
-  let lastFailure;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    // A quiet interval between requests, growing after each failure.
-    await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
-    requests++;
-    try {
-      const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
-        headers: {'User-Agent': 'OpenRailwayAtlas-service-routes/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-      // Read within the run's budget: a response that would pass it is cut
-      // off (its bytes still count). Cut off before any region is done this run, the
-      // region is too large for any run and is split; later, the run stops
-      // and the region is fetched first in the next run.
-      // Fresh: no region fetched or split yet this run (bytes of earlier
-      // error responses do not count).
-      const chunks = [], fresh = fetchedBoxes + splitBoxes === 0;
-      let received = 0, over = false;
-      for await (const chunk of response.body) {
-        received += chunk.length; downloaded += chunk.length;
-        if (downloaded > BUDGET_BYTES) { over = true; break; }
-        chunks.push(chunk);
-      }
-      if (over) { await response.body.cancel().catch(() => {}); return fresh ? null : BUDGET; }
-      const text = Buffer.concat(chunks).toString();
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
-      return toTable(JSON.parse(text), {endpoint: api, acquired: new Date().toISOString(), stage: stage.name, pass: current.started, query: createHash('sha256').update(query).digest('hex')});
-    } catch (error) {
-      lastFailure = describeOverpassError(error);
-      console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
-      // A busy server calls for waiting; a query that ran out of time or
-      // memory calls for a smaller area (null); anything else, try again.
-      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
-      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
-    }
-  }
-  throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
-}
-
-let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
-while (current.pending.length) {
-  if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-  if (Date.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((Date.now() - started) / 60000)} minutes)`; break; }
-  const item = current.pending[0], part = stage.parts[item.part];
-  let result;
-  try { result = await overpass(partQuery(part, item.box)); }
-  catch (error) { stopped = error.message; break; }
-  if (result === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
-  current.pending.shift();
-  if (!result) {
-    // Too large for one request: its quarters go first in the queue. At the
-    // finest split the region stays queued and the run stops, still
-    // publishing its progress and the bytes it used.
-    if (item.depth >= 6) { current.pending.unshift(item); stopped = `could not fetch region ${item.box}`; break; }
-    current.pending.unshift(...quarters(item.box).map(box => ({part: item.part, box, depth: (item.depth || 0) + 1})));
-    splitBoxes++;
-    continue;
-  }
-  fetchedBoxes++;
-  addResult(table, result, stage.name);
-  console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
-}
-if (!current.pending.length) {
+// A complete stage: what its pass found replaces its part of the table.
+function completeStage(stage, current) {
   // A complete stage: what it found replaces its part, so routes and
   // memberships it no longer found go (other stages' parts stay). A refresh
   // that would remove over a fifth of the stage's items points to an
@@ -163,9 +88,163 @@ if (!current.pending.length) {
     retry: health.status === 'complete' ? null : 'next-stage-refresh'};
   const declarations = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name));
   const routes = declarations.filter(r => routeView(r).active !== false).length, retainedRelations = declarations.length;
+  finishStagePass(current, stage);
   Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, retainedRelations, kept: suspicious ? stale : 0});
   console.log(`Stage ${stage.name} acquisition complete (${health.status} geometry): ${routes} active routes (${retainedRelations} retained declarations; ${suspicious ? 0 : stale} items removed)`);
-} else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
+}
+
+// Writes the table, its tiles, state and manifest for publication.
+async function publish({run, redeploy, source = api}) {
+  retireServiceEurope(state, table);
+  refreshRelationDependencyHealth(state, table, now);
+  await rm(out, {recursive: true, force: true});
+  await mkdir(out, {recursive: true});
+  const {tiles, tileBytes} = await writeServiceFiles(out, table);
+  await writeFile(new URL('state.json', out), JSON.stringify(state));
+  const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+    stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
+      routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
+      retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
+    run, source,
+    query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
+    description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
+  await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
+  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${redeploy}\n`);
+  console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.routes}`).join(' ')}));
+}
+
+// Built from the stored railway-ways regions (build-railway-ways.mjs), when
+// given, instead of downloading: no Overpass request at all. A stage complete
+// in the store not yet taken goes through the same pass and completion as a
+// downloaded one.
+if (process.env.RAILWAY_WAYS_STORE) {
+  const store = process.env.RAILWAY_WAYS_STORE;
+  // Loaded only here: the download path needs none of it.
+  const [{storedRegions}, {serviceView}] = await Promise.all([import('./build-railway-ways.mjs'), import('./railway-ways.mjs')]);
+  const stored = JSON.parse(await readFile(join(store, 'state.json'), 'utf8')).stages || {};
+  const taken = name => stored[name]?.completed && info(name).storeCompleted !== stored[name].completed;
+  for (const stage of STAGES.filter(stage => taken(stage.name))) {
+    const current = info(stage.name);
+    current.started = stored[stage.name].completed;
+    discardStage(table, stage.name);
+  }
+  const applied = [];
+  for await (const region of storedRegions(store)) {
+    if (!taken(region.stage)) continue;
+    addResult(table, toTable(serviceView(region.response), {endpoint: 'railway-ways-data', acquired: region.generated, stage: region.stage,
+      pass: stored[region.stage].completed, query: createHash('sha256').update(region.query).digest('hex')}), region.stage);
+    if (!applied.includes(region.stage)) applied.push(region.stage);
+  }
+  for (const stage of STAGES.filter(stage => taken(stage.name))) {
+    const current = info(stage.name);
+    current.pending = [];
+    completeStage(stage, current);
+    Object.assign(current, {completed: stored[stage.name].completed, storeCompleted: stored[stage.name].completed, source: 'railway-ways'});
+  }
+  await publish({run: {source: 'railway-ways', stages: applied}, redeploy: applied.length > 0, source: 'railway-ways-data'});
+  process.exit(0);
+}
+
+state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
+const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
+const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
+if (BUDGET_BYTES < 10_000_000) {
+  console.log(`${lastDay} bytes downloaded in the last 24 hours; waiting for a later run.`);
+  process.exit(0);
+}
+// Resume unfinished stages fairly, retaining each stage's accepted data and queue.
+const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
+if (!stage) {
+  console.log('Every stage is current; nothing to fetch.');
+  process.exit(0);
+}
+const current = info(stage.name);
+// A new pass starts from nothing of its own in progress.
+if (dropStalePass(current, stage)) console.log(`Stage ${stage.name}: its layout changed; starting a new pass`);
+if (!current.pending?.length) { startStagePass(current, stage); current.seen = []; current.started = now; discardStage(table, stage.name); }
+console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
+
+const BUDGET = Symbol('budget');
+async function overpass(query) {
+  let lastFailure;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // A complete error body can consume the allowance exactly. Do not wait
+    // for or start another request once its bytes have exhausted this run.
+    if (downloaded >= BUDGET_BYTES) return BUDGET;
+    // A quiet interval between requests, growing after each failure.
+    await providerPause.wait(attempt ? 60000 * attempt : requests ? 15000 : 0);
+    requests++;
+    let failureText;
+    try {
+      const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
+        headers: {'User-Agent': 'OpenRailwayAtlas-service-routes/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
+      providerPause.observe(response);
+      // Stop at the remaining allowance, counting every received byte. A fresh
+      // region is oversized only if this successful response alone exceeds a
+      // full run's allowance. HTTP error bodies, earlier failed-response bytes
+      // and a reduced daily balance cannot establish that; defer the same box.
+      // After any fetched/split region, also defer until the next eligible run.
+      const chunks = [], fresh = fetchedBoxes + splitBoxes === 0;
+      let received = 0, over = false;
+      for await (const chunk of responseChunks(response)) {
+        received += chunk.length; downloaded += chunk.length;
+        if (downloaded > BUDGET_BYTES) { over = true; break; }
+        chunks.push(chunk);
+      }
+      if (over) {
+        return response.ok && fresh && received > RUN_BUDGET ? null : BUDGET;
+      }
+      const text = Buffer.concat(chunks).toString();
+      if (!response.ok) {
+        // Classify the whole diagnostic, while keeping logged errors compact.
+        failureText = `HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')}`;
+        throw new Error(failureText.slice(0, 210));
+      }
+      return toTable(JSON.parse(text), {endpoint: api, acquired: new Date().toISOString(), stage: stage.name, pass: current.started, query: createHash('sha256').update(query).digest('hex')});
+    } catch (error) {
+      lastFailure = describeOverpassError(error);
+      console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
+      // Admission failures can also say "Gateway Timeout". Wait on the same
+      // box before considering smaller areas, even when the capacity wording
+      // follows the shortened log excerpt. Genuine query time/memory limits
+      // and incomplete JSON still call for a smaller area (null).
+      // Our AbortSignal deadline can expire before the provider executes
+      // the query. Its TimeoutError is not evidence for geographic splitting.
+      if (error.name === 'TimeoutError') continue;
+      const message = failureText || error.message;
+      if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503|at capacity|query workers (?:are )?busy|request queue (?:is )?full/i.test(message)) continue;
+      if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(message)) return null;
+    }
+  }
+  throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
+}
+
+let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
+while (current.pending.length) {
+  if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+  if (performance.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((performance.now() - started) / 60000)} minutes)`; break; }
+  const item = current.pending[0], part = stage.parts[item.part];
+  let result;
+  try { result = await overpass(partQuery(part, item.box)); }
+  catch (error) { stopped = error.message; break; }
+  if (result === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+  current.pending.shift();
+  if (!result) {
+    // Too large for one request: its quarters go first in the queue. At the
+    // finest split the region stays queued and the run stops, still
+    // publishing its progress and the bytes it used.
+    if (item.depth >= 6) { current.pending.unshift(item); stopped = `could not fetch region ${item.box}`; break; }
+    current.pending.unshift(...quarters(item.box).map(box => ({part: item.part, box, depth: (item.depth || 0) + 1})));
+    splitBoxes++;
+    continue;
+  }
+  fetchedBoxes++;
+  recordStageRegion(current, item);
+  addResult(table, result, stage.name);
+  console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
+}
+if (!current.pending.length) completeStage(stage, current);
+else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
 // published data as it was; bytes it did download are still recorded (the
 // state is published with the table unchanged, and the site not redeployed).
@@ -184,31 +263,5 @@ if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SU
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
-retireServiceEurope(state, table);
-refreshRelationDependencyHealth(state, table, now);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
-await rm(out, {recursive: true, force: true});
-await mkdir(out, {recursive: true});
-await writeFile(new URL('service-routes.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('state.json', out), JSON.stringify(state));
-const index = [];
-let tileBytes = 0;
-for (const [key, data] of buildTiles(table)) {
-  const [z, x] = key.split('/');
-  await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-  const gz = gzipSync(data, {level: 9});
-  tileBytes += gz.length;
-  await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-  index.push(key);
-}
-await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
-  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
-    routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
-    retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
-  run: {stage: stage.name, ...current.lastAttempt}, source: api,
-  query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
-  description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
-await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
-if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${fetchedBoxes > 0}\n`);
-console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.routes}`).join(' ')}));
+await publish({run: {stage: stage.name, ...current.lastAttempt}, redeploy: fetchedBoxes > 0});

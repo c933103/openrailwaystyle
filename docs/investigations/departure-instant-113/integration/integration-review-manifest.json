@@ -1,0 +1,39 @@
+{
+  "upstreamCommit": "370bcfb1db684d80520ea43430e1cbb5bdb360dd",
+  "localSnapshotCommit": "33825af54f6209aa0e856891d6eb38277f0e138f",
+  "upstreamBlobIdentitiesVerified": 524,
+  "tokenOnlyFilesVerified": [
+    "styles/app.mjs",
+    "styles/cjk-font.mjs",
+    "styles/departures-ui.mjs",
+    "styles/elevation.mjs",
+    "styles/index.html",
+    "styles/layer-semantics.mjs",
+    "styles/map-model.mjs"
+  ],
+  "reviewedParserAndUpstreamAcquisitionUnchanged": true,
+  "historicalEvidenceFilesUnchanged": 33,
+  "immediatePredecessorBytesVerified": [
+    "app.mjs",
+    "departures.mjs"
+  ],
+  "files": {
+    "styles/app.mjs": "6858cbe795e0e21c563224727c4ca5fff817a7983fdedec22e9d25559bb43837",
+    "styles/cjk-font.mjs": "82afa67b4319a824bab405b87b25772a8d83049a01616e0f81e07c751d5b19bf",
+    "styles/departures-ui.mjs": "5a3c93937136dbb28f33ef0f48865b434d007ca6c204796eb0e9611cbade13f8",
+    "styles/elevation.mjs": "4aee8c86880701c5d97ad7f4e4ab5adb476eb607e8739b4160cb8a7d0750131b",
+    "styles/index.html": "3717f556fece106103448682551e63cc513c84892fc6ad2c060dc575aa3963ef",
+    "styles/layer-semantics.mjs": "84ec5e80b0bb4de09e1ac750aface3eccf32426b3b96964dc121936d204ecd4e",
+    "styles/map-model.mjs": "dc5db455c1bdd51183899e651bfb0fc4e86f17b9a26737fca39c0e7d5db5e8c1",
+    "styles/departures.mjs": "15ae7b38773512932d40a407c6c3168c224f618c11a1c406d872b2afb6e561e0",
+    "scripts/check-departures-browser.mjs": "58809e88eb0e62f8501e3f7a9fa314e56417c343f7fe9bd9c523000c3c03bcec",
+    "tests/departure-availability.test.mjs": "dd190cd5d794427c53f2e140a57cc502b5a84cb8f60298a240e76ad6d4b8a270",
+    "tests/departure-instant.test.mjs": "425ee3c9ffb498b33cf21397ebfb5bb036f112576b4bb89314fc3d31e5a15475",
+    "tests/train-schedule.test.mjs": "b7917335a69c8a6e6b706196c90ab490143ef004307c45d4b5d1e0539858bb6d",
+    "tests/sw-install.test.mjs": "df77fbd63b9cc9a458cd128fd0d2e706c48321697b33336b4135fc4ab90ae092",
+    "tests/fixtures/departure-instant-predecessor.json.gz": "6217f3947863d75cac3b33e0a4cf830a64326993e1786d3ec8b86b7aa1a55939",
+    "tests/fixtures/departure-instant-envelope-predecessor.json.gz": "09217927383fa479ffed96615c856b2007bc317de492b5efbb7cd363558f6bdc",
+    "tests/fixtures/departure-envelope-predecessor.json.gz": "33eca11a38d99e412da27461df1dd0ba2927b8ade87bb880638659a3d5cf813e",
+    "docs/user-guide.md": "5cd09c17c1fdea06f8501d42eeab976e6a0db79cb2ea737ae749a8c73a29e6c5"
+  }
+}

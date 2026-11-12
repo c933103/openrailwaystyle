@@ -1,41 +1,48 @@
-// Weekly incremental update of the lifecycle snapshot. Instead of waiting for
-// a region's turn in the monthly rotation, each run asks Overpass only for
-// ways changed since the previous run:
-//   1. lifecycle ways (planned, construction, former) changed since then,
-//      with geometry: added or updated;
-//   2. IDs of operating railways changed since then: any of them still in
-//      the snapshot has opened (or reopened) and is removed.
-// Changes are kept in .snapshot-cache/delta.json, keyed by way ID with the
-// OSM time of the response, and applied over the cached regions whenever
-// they are newer than the region's own data.
+// Change log of the lifecycle snapshot: each change a region update applied,
+// by way ID, with the database time of that update. A way can lie in several
+// cached regions; one whose update failed keeps an older copy, so the
+// assembled snapshot takes the logged state wherever it is newer than the
+// region data a way came from (applyDelta), deletions included. An entry is
+// pruned once every region is newer.
 import {toGeoJSON} from './lifecycle.mjs';
 
 export const DELTA_FILE = '.snapshot-cache/delta.json';
-const LIFECYCLE = 'proposed|construction|disused|abandoned|razed|demolished|removed';
-const TRACKS = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 
-export function deltaQueries(since, bbox = '') {
-  const area = bbox ? `(${bbox})` : '';
-  const changed = `(changed:"${since}")`;
-  return {
-    // One key-regex selector covers every "<state>:railway" tag.
-    lifecycle: `[out:json][timeout:300];(way[railway~"^(${LIFECYCLE})$"]${changed}${area};way[~"^(${LIFECYCLE}):railway$"~"^(${TRACKS})$"]${changed}${area};);out tags geom qt;`,
-    opened: `[out:json][timeout:300];way[railway~"^(${TRACKS})$"]${changed}${area};out ids qt;`,
-  };
-}
-
-// Record one run's responses: lifecycle features replace older entries;
-// opened IDs become removals.
-export function mergeDelta(delta, lifecycleJson, openedJson) {
-  const time = lifecycleJson.osm3s?.timestamp_osm_base;
-  if (!time) throw new Error('Overpass response has no timestamp');
+// Log the differences between a region's elements before and after its
+// update at `time`: a changed or new way with its feature (null when it is
+// no longer a planned, construction or former line), a removed one as null.
+// A way that left the region (`box`) may only have moved into another one:
+// when another region already logged it lying outside this box, that copy
+// stands and no removal is logged. (When that region updates later, its
+// newer entry replaces the removal.) A way deleted from OSM (`deleted`, its
+// way IDs) is removed in any case. An entry is never replaced by an older
+// one, as when a region's earlier data is logged late (build-snapshot.mjs,
+// reconcile); a way this region has unchanged replaces an older entry.
+const touches = (feature, [s, w, n, e]) => {
+  const lines = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+  return lines.some(line => line.some(([lon, lat]) => lat >= s && lat <= n && lon >= w && lon <= e));
+};
+export function recordChanges(delta, time, before, after, box, deleted = []) {
+  const gone = new Set(deleted.map(Number));
   const changes = {...(delta?.changes || {})};
-  for (const f of toGeoJSON(lifecycleJson).features) changes[f.id] = {time, feature: f};
-  const lifecycleIds = new Set(Object.keys(changes).filter(id => changes[id].time === time && changes[id].feature));
-  for (const el of openedJson.elements || []) {
-    if (el.type === 'way' && !lifecycleIds.has(String(el.id))) changes[el.id] = {time, feature: null};
+  const old = new Map(before.filter(e => e.type === 'way').map(e => [e.id, JSON.stringify(e)]));
+  const now = new Set(), newer = id => changes[id] && changes[id].time > time;
+  for (const element of after) {
+    if (element.type !== 'way') continue;
+    now.add(element.id);
+    if (newer(element.id)) continue;
+    // Unchanged here, but logged differently earlier (another region saw it
+    // removed or changed, say): this later observation is the state now.
+    if (old.get(element.id) === JSON.stringify(element) && !changes[element.id]) continue;
+    changes[element.id] = {time, feature: toGeoJSON({elements: [element]}).features[0] || null};
   }
-  return {since: time, changes};
+  for (const id of old.keys()) {
+    if (now.has(id) || newer(id)) continue;
+    const logged = changes[id]?.feature;
+    if (!gone.has(id) && box && logged && !touches(logged, box)) continue;
+    changes[id] = {time, feature: null};
+  }
+  return {...(delta || {}), changes};
 }
 
 // Apply recorded changes over the assembled features. base maps way ID to

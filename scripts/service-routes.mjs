@@ -16,13 +16,15 @@ export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_
 // Light rail, trams and monorails from zoom 10, as in the other views.
 export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail', 'funicular'];
 
-const SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
-const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
+export const SERVICE_SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
+export const serviceSelect = filters => SERVICE_SELECTS.map(s => `${s}${filters};`).join('');
+// The member ways of those routes whose geometry is fetched.
+export const SERVICE_TRACKS = '^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$';
 // Routes with a member in the box (leaving out countries fetched in earlier
 // stages), their tags and members, then the geometry of their track ways.
 export function partQuery(part, box) {
-  const {areas, set} = partSelection(part, box, select);
-  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out meta;way(r.r)[railway~"^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$"];out meta geom qt;`;
+  const {areas, set} = partSelection(part, box, serviceSelect);
+  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out meta;way(r.r)[railway~"${SERVICE_TRACKS}"];out meta geom qt;`;
 }
 
 const colour = value => {
@@ -70,30 +72,38 @@ export function routeOf(rel) {
 // routes running on them.
 export function toTable(json, source = {}) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark ? `Overpass: ${json.remark}` : 'Incomplete Overpass response');
-  const geometry = new Map(), trackWays = new Set();
-  for (const el of json.elements) {
-    if (el.type !== 'way') continue;
-    trackWays.add(el.id);
-    geometry.set(el.id, reconcileGeometry(geometry.get(el.id), observeGeometry(el, json, source)));
-  }
-  const routes = new Map(), wayRoutes = new Map();
-  for (const el of json.elements) {
-    if (el.type !== 'relation') continue;
-    const route = routeOf(el), key = `r${el.id}`;
-    // Retain a current unnamed declaration too: loss of its display tags
-    // must not resurrect an older drawable identity.
-    const view = route ? {...route, group: route.key, key} : {key, relation: el.id, active: false, label: '', ref: '', names: {}};
-    const membership = observeRelation(el, json, source, view, trackWays);
-    routes.set(key, mergeRelationParts(routes.get(key), {...view, membership}));
-    for (const id of membership.eligible) {
-      if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
-      wayRoutes.get(id).add(key);
-    }
-  }
-  // Do not infer track eligibility for unreturned relation members: the
-  // query intentionally omits non-track ways, besides platform/stop roles.
-  const ways = [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometryLines(geometry.get(id)), geometry: geometry.get(id)}));
-  return {routes: [...routes.values()], ways};
+  const builder = tableBuilder(json, source);
+  for (const el of json.elements) if (el.type === 'way') builder.addWay(el);
+  for (const el of json.elements) if (el.type === 'relation') builder.addRelation(el);
+  return builder.table();
+}
+// toTable one element at a time, for a source too large to hold as one
+// response (build-extract-service-routes.mjs): every track way first, then
+// the relations. `json` gives the answer's metadata (osm3s), not elements.
+export function tableBuilder(json, source = {}) {
+  const geometry = new Map(), trackWays = new Set(), routes = new Map(), wayRoutes = new Map();
+  return {
+    addWay(el) {
+      trackWays.add(el.id);
+      geometry.set(el.id, reconcileGeometry(geometry.get(el.id), observeGeometry(el, json, source)));
+    },
+    addRelation(el) {
+      const route = routeOf(el), key = `r${el.id}`;
+      // Retain a current unnamed declaration too: loss of its display tags
+      // must not resurrect an older drawable identity.
+      const view = route ? {...route, group: route.key, key} : {key, relation: el.id, active: false, label: '', ref: '', names: {}};
+      const membership = observeRelation(el, json, source, view, trackWays);
+      routes.set(key, mergeRelationParts(routes.get(key), {...view, membership}));
+      for (const id of membership.eligible) {
+        if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
+        wayRoutes.get(id).add(key);
+      }
+    },
+    // Do not infer track eligibility for unreturned relation members: the
+    // query intentionally omits non-track ways, besides platform/stop roles.
+    table: () => ({routes: [...routes.values()],
+      ways: [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometryLines(geometry.get(id)), geometry: geometry.get(id)}))}),
+  };
 }
 
 // The table keeps, for each way and route (one relation), what each stage
@@ -350,8 +360,9 @@ export function geometrySummary({routes, ways}) {
 // each other (the directions and variants of a line); apart, they are the
 // like-named routes of different places. Made from the whole table, which
 // holds every relation found, in whichever box or stage. Returns relation
-// key → the route as drawn: its lowest relation, which gives its link and
-// details.
+// key → the route as drawn: its lowest relation remains the display identity;
+// relations retains all constituent source identities, without implying matching
+// success or an identical stop pattern.
 const NEAR = 0.1; // degrees: relations of one service this close are one route
 export function serviceRoutes({routes, ways}) {
   const views = new Map([...routes.values()].map(route => [route.key, routeView(route)]).filter(([, view]) => view.active !== false));
@@ -397,7 +408,7 @@ export function serviceRoutes({routes, ways}) {
     // The lowest relation gives the link and the name; translations and
     // tags it lacks come from the others (lowest first).
     const [first, ...rest] = members.map(key => views.get(key)).sort((a, b) => a.relation - b.relation);
-    const view = {...first, names: {...first.names}};
+    const view = {...first, names: {...first.names}, relations: [...new Set([first, ...rest].map(route => route.relation))].sort((a, b) => a - b)};
     for (const other of rest) {
       for (const [k, v] of Object.entries(other.names || {})) if (!view.names[k]) view.names[k] = v;
       for (const field of ['network', 'operator', 'colour']) if (!view[field] && other[field]) view[field] = other[field];
@@ -431,7 +442,18 @@ const ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 
 // Joins lines where one ends at the point the next starts (never reversing
 // one, which would put its route on the other side).
 export function joinLines(lines) {
-  const key = ([x, y]) => `${x},${y}`, chains = lines.map(line => [...line]), byStart = new Map();
+  // Order complete directed paths numerically, including interior vertices and
+  // prefix ties. Both branch choices and cycle starts must be independent of
+  // way arrival order, or identical source edges produce different label paths.
+  // Equal paths remain separate so duplicate directed edges are not discarded.
+  const compare = (a, b) => {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      const order = a[i][0] - b[i][0] || a[i][1] - b[i][1];
+      if (order) return order;
+    }
+    return a.length - b.length;
+  };
+  const key = ([x, y]) => `${x},${y}`, chains = lines.map(line => [...line]).sort(compare), byStart = new Map();
   chains.forEach((chain, i) => { const k = key(chain[0]); if (!byStart.has(k)) byStart.set(k, []); byStart.get(k).push(i); });
   const used = new Set(), starts = new Set(chains.map(c => key(c.at(-1))));
   const out = [];
@@ -460,10 +482,21 @@ export function joinLines(lines) {
 // these routes (headways).
 export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
-  const service = serviceRoutes({routes, ways});
+  const service = serviceRoutes({routes, ways}), relationIds = new Map();
   for (const way of ways.values()) {
+    // Keep the actual eligible contributors separate from the whole service
+    // group. The display identity need not itself contribute to this way.
+    const contributors = new Map();
+    for (const key of wayRoutes(way, routes)) {
+      const group = service.get(key);
+      if (!group) continue;
+      if (!contributors.has(group)) contributors.set(group, new Set());
+      // Resolve each source frontier only once, not for every way it uses.
+      if (!relationIds.has(key)) relationIds.set(key, routeView(routes.get(key)).relation);
+      contributors.get(group).add(relationIds.get(key));
+    }
     // A route once, whichever of its relations run here.
-    const all = [...new Set(wayRoutes(way, routes).map(key => service.get(key)).filter(Boolean))]
+    const all = [...contributors.keys()]
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
     const original = drawnLines(way), sections = timetables?.get(way.id);
     // Only split at existing OSM vertices. Timetable shapes never supply a
@@ -483,6 +516,11 @@ export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()
       // the label language.
       list.forEach((route, i) => {
         const properties = {id: `relation-${route.relation}`, name: route.label, ...route.names,
+          // MVT attributes are scalar: encode sorted numeric IDs as JSON text.
+          // Including both in the grouping key prevents joining segments whose
+          // contributing relations differ, even if their display identity agrees.
+          group_relation_ids: JSON.stringify(route.relations),
+          segment_relation_ids: JSON.stringify([...contributors.get(route)].sort((a, b) => a - b)),
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
           slot: Math.max(-63, Math.min(63, 2 * i - (list.length - 1)))};

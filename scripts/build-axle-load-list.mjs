@@ -1,4 +1,5 @@
 // Maintenance only: a compact way-ID lookup; no Overpass calls from viewers.
+import {retryAfterMs} from './retry-after.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createAxlePartCache} from './axle-load-parts.mjs';
 import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
@@ -10,8 +11,25 @@ try {parts=JSON.parse(await readFile(partsFile,'utf8'));}catch{}
 if(previous && Date.now()-Date.parse(previous.updated)<age) {
   await writeFile('snapshot/axle-load.json',JSON.stringify(previous));console.log('Using axle-load snapshot within its 28-day refresh interval');process.exit(0);
 }
+// Leave one minute of the existing 25-minute job for finalization. A provider
+// pause is a minimum; defer rather than shorten it or start a request that no
+// longer fits. Validated parts remain resumable and the old lookup is retained.
+const REQUEST_MS=300000,acquisitionUntil=performance.now()+24*60000;
+let providerNotBefore=0;
 async function query(text) {
- const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:text}),headers:{'User-Agent':'RailwayAtlas-axle-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(300000)});
+ while(true){
+  const now=performance.now(),remaining=Math.max(0,providerNotBefore-now);
+  if(!Number.isFinite(remaining)||now+remaining+REQUEST_MS>acquisitionUntil)
+   throw new Error('Axle-load acquisition deferred: provider pause and full request do not fit the maintenance time budget');
+  if(!remaining)break;
+  await new Promise(resolve=>setTimeout(resolve,remaining));
+ }
+
+ const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:text}),headers:{'User-Agent':'RailwayAtlas-axle-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(REQUEST_MS)});
+ // Capture header time before a possibly slow or interrupted body, and carry
+ // the pause across all uncached parts without using wall time for elapsed time.
+ const receivedAt=performance.now(),pause=retryAfterMs(response.headers.get('retry-after'),Date.now());
+ providerNotBefore=Math.max(providerNotBefore,receivedAt+pause);
  if(!response.ok) throw new Error(`Overpass HTTP ${response.status}: ${(await response.text()).slice(0,1800)}`);
  const body=await response.text();
  return body;

@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "seed": "0xc933103",
+  "comparisonAssertions": 60000,
+  "boundaryAssertions": 100,
+  "invalidFilterAssertions": 15,
+  "immutableInput": true,
+  "partialResultRequestCap": true,
+  "realProviderFetches": 0
+}

@@ -55,6 +55,7 @@ export function railwaySources() {
     platforms: railwayVector('standard_railway_platforms', 17, 22),
     platformEdges: railwayVector('standard_railway_platform_edges', 17, 22),
     railwaySignals: railwayVector('railway_signals', 13, 22),
+    electricCatenary: railwayVector('electrification_catenary', 16, 22),
     electricSubstations: railwayVector('electrification_substation', 13, 22),
     stationEntrances: railwayVector('standard_station_entrances', 16, 22),
     stationLow: railwayVector('standard_railway_text_stations_low', 4, 6),

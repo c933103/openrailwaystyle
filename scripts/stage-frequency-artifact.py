@@ -8,6 +8,7 @@ import argparse
 import gzip
 import hashlib
 import importlib.util
+import io
 import json
 import math
 import os
@@ -64,7 +65,9 @@ STAGE_ERRORS = FEED_ERRORS | frozenset(('aggregate_binding_mismatch aggregate_in
 
 
 class StageError(ValueError):
-    pass
+    def __init__(self, code, feed_id=None):
+        super().__init__(code)
+        self.feed_id = feed_id
 
 
 def require(condition, code):
@@ -93,6 +96,11 @@ def read_json(path, maximum=MAX_METADATA):
     require(size <= maximum, 'metadata_byte_limit')
     with path.open('rb') as source: data = source.read(size + 1)
     require(len(data) == size, 'metadata_input_changed')
+    return parse_json(data)
+
+
+def parse_json(data):
+    """Apply the same strict JSON checks to metadata and individual feed records."""
     def pairs(items):
         result={}
         for key,value in items:
@@ -106,6 +114,118 @@ def read_json(path, maximum=MAX_METADATA):
     def invalid_constant(_):raise ValueError('nonfinite_number')
     try:return json.loads(data,object_pairs_hook=pairs,parse_float=finite,parse_constant=invalid_constant)
     except (ValueError, UnicodeError, RecursionError): raise StageError('invalid_json') from None
+
+
+class FeedJSON:
+    """Frame one JSON value at a time; the strict decoder validates every frame.
+
+    Top-level arrays are consumed by the caller, so geometry/profile records do
+    not accumulate. A single oversized record still obeys the worker memory cap.
+    Only JSON whitespace is accepted, including across UTF-8 chunk boundaries.
+    """
+    def __init__(self, source, chunk_size=64*1024):
+        self.source, self.chunk_size = source, chunk_size
+        self.buffer, self.position = '', 0
+
+    def peek(self):
+        if self.position == len(self.buffer):
+            try: self.buffer, self.position = self.source.read(self.chunk_size), 0
+            except UnicodeError: raise StageError('invalid_json') from None
+        return self.buffer[self.position:self.position+1]
+
+    def whitespace(self):
+        while (char := self.peek()) and char in ' \t\r\n': self.position += 1
+        return char
+
+    def take(self, expected):
+        require(self.whitespace() == expected, 'invalid_json')
+        self.position += 1
+
+    def value(self):
+        first = self.whitespace()
+        require(bool(first), 'invalid_json')
+        parts, depth, quoted, escaped = [], 0, False, False
+        structured, string = first in '[{', first == '"'
+        while self.peek():
+            start = self.position
+            while self.position < len(self.buffer):
+                char = self.buffer[self.position]
+                if not structured and not string and char in ' \t\r\n,:]}':
+                    parts.append(self.buffer[start:self.position])
+                    return parse_json(''.join(parts))
+                self.position += 1
+                if quoted:
+                    if escaped: escaped = False
+                    elif char == '\\': escaped = True
+                    elif char == '"':
+                        quoted = False
+                        if string:
+                            parts.append(self.buffer[start:self.position])
+                            return parse_json(''.join(parts))
+                elif char == '"': quoted = True
+                elif char in '[{': depth += 1
+                elif char in ']}':
+                    depth -= 1
+                    if depth == 0 and structured:
+                        parts.append(self.buffer[start:self.position])
+                        return parse_json(''.join(parts))
+            parts.append(self.buffer[start:self.position])
+        return parse_json(''.join(parts))
+
+
+def rewrite_feed(plain, target, request):
+    """Validate and publish a feed without materializing its complete JSON tree."""
+    required_arrays = {'routes', 'agencies', 'segments'}
+    seen, arrays, failure = set(), set(), None
+    def validate(condition, code):
+        # Finish strict parsing even if an earlier field has invalid semantics.
+        # A later duplicate/nonfinite field must still be diagnosed as bad JSON.
+        nonlocal failure
+        if not condition and failure is None: failure = code
+    def emit(output, value):
+        json.dump(value, output, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+    with plain.open('r', encoding='utf-8') as source, target.open('wb') as raw:
+        reader = FeedJSON(source)
+        with gzip.GzipFile(filename='', mode='wb', fileobj=raw, compresslevel=9, mtime=0) as compressed:
+            with io.TextIOWrapper(compressed, encoding='utf-8') as output:
+                reader.take('{'); output.write('{')
+                if reader.whitespace() != '}':
+                    while True:
+                        key = reader.value()
+                        require(isinstance(key, str) and key not in seen, 'invalid_json')
+                        if seen: output.write(',')
+                        seen.add(key); emit(output, key); output.write(':'); reader.take(':')
+                        if reader.whitespace() == '[':
+                            validate(key != 'source', 'invalid_feed_shape')
+                            arrays.add(key); reader.take('['); output.write('[')
+                            if reader.whitespace() != ']':
+                                count = 0
+                                while True:
+                                    item = reader.value()
+                                    if key in {'agencies', 'routes'}:
+                                        validate(isinstance(item, dict), 'invalid_feed_shape')
+                                        if isinstance(item, dict): item = pipeline.public_url_columns(item)
+                                    if count: output.write(',')
+                                    emit(output, item); count += 1
+                                    if reader.whitespace() == ']': break
+                                    reader.take(',')
+                            reader.take(']'); output.write(']')
+                        else:
+                            item = reader.value()
+                            validate(key not in required_arrays, 'invalid_feed_shape')
+                            if key == 'source':
+                                validate(isinstance(item, dict), 'invalid_feed_shape')
+                                if isinstance(item, dict):
+                                    validate(all(item.get(name) == request[name] for name in ('id', 'sha256', 'service_date')), 'feed_identity_mismatch')
+                                    item = pipeline.published_metadata(item)
+                            emit(output, item)
+                        if reader.whitespace() == '}': break
+                        reader.take(',')
+                reader.take('}')
+                require(not reader.whitespace(), 'invalid_json')
+                validate('source' in seen and required_arrays <= arrays, 'invalid_feed_shape')
+                if failure: raise StageError(failure)
+                output.write('}\n')
 
 
 def write_json(path, value):
@@ -168,13 +288,7 @@ def feed_worker(request_path):
         with tempfile.TemporaryDirectory(prefix='.feed-json-', dir=target.parent) as work:
             plain = Path(work)/'feed.json'
             expanded = expand_feed(source, plain, request['bytes'])
-            # One bounded national feed at a time, never a second geometry copy.
-            feed = read_json(plain, request['bytes'])
-            require(isinstance(feed, dict) and isinstance(feed.get('source'), dict), 'invalid_feed_shape')
-            actual = feed['source']
-            require(all(actual.get(key) == request[key] for key in ('id', 'sha256', 'service_date')), 'feed_identity_mismatch')
-            require(all(isinstance(feed.get(key), list) for key in ('routes', 'agencies', 'segments')), 'invalid_feed_shape')
-            pipeline.write_feed(target, feed)
+            rewrite_feed(plain, target, request)
             write_json(Path(request['response']), {'schema':1, 'expanded_bytes':expanded, 'sha256':digest(target)})
         return 0
     except StageError as error: code = str(error)
@@ -196,13 +310,13 @@ def stage_feed(source, target, entry, args, work):
     try:
         run = subprocess.run([sys.executable, str(Path(__file__).resolve()), '--feed-request', str(request)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=args.max_feed_seconds)
-    except subprocess.TimeoutExpired: raise StageError('feed_time_limit') from None
+    except subprocess.TimeoutExpired: raise StageError('feed_time_limit', entry['id']) from None
     result = read_json(response, 4096) if response.exists() else {}
     if run.returncode:
         code = result.get('error') if isinstance(result,dict) else None
         valid = (isinstance(result,dict) and set(result)=={'schema','error'} and type(result['schema']) is int
             and result['schema']==1 and isinstance(code,str) and code in FEED_ERRORS)
-        raise StageError(code if valid else 'feed_worker_failed')
+        raise StageError(code if valid else 'feed_worker_failed', entry['id'])
     require(isinstance(result,dict) and set(result)=={'schema','expanded_bytes','sha256'}
         and type(result['schema']) is int and result['schema']==1 and type(result['expanded_bytes']) is int
         and 0<result['expanded_bytes']<=args.max_feed_bytes
@@ -423,12 +537,14 @@ def stage_snapshot(args, ctx, target, work):
         'catalogue_sha256':ctx['hash'],'service_date':args.date,'files':file_hashes(target)})
 
 
-def diagnose(args, code, ctx=None):
+def diagnose(args, code, ctx=None, feed_id=None):
     result={'schema':1,'status':'diagnostic_only','mode':args.mode if args.mode in {'shard','assembly-input','snapshot'} else 'unknown',
             'producer_outcome':args.producer_outcome if args.producer_outcome in {'success','failure','cancelled','skipped'} else 'unknown',
             'reason_code':code if isinstance(code,str) and code in STAGE_ERRORS else 'stage_validation_failed',
             'inventory_state':'missing','entries':[]}
     trusted_ids={entry['id'] for entry in ctx['entries']} if ctx else set()
+    if isinstance(feed_id, str) and feed_id in trusted_ids and IDENT.fullmatch(feed_id):
+        result['feed_id'] = feed_id
     path=args.input/f'inventory-{args.shard}.json'
     if path.exists():
         try:
@@ -466,6 +582,7 @@ def diagnose(args, code, ctx=None):
                     result['entries'].append(record)
         except (OSError,ValueError,TypeError,RecursionError):result['inventory_state']='unreadable'
     write_json(args.diagnostics/'receipt.json',result)
+    return result
 
 
 def run(args):
@@ -476,7 +593,7 @@ def run(args):
     require(all(a != b and a not in b.parents and b not in a.parents
                 for i,a in enumerate(resolved) for b in resolved[i+1:]),'overlapping_stage_paths')
     require(not args.output.exists() and not args.diagnostics.exists(),'stage_destination_exists')
-    ctx=None
+    ctx=None; feed_id=None
     try:
         require(args.input.is_dir(),'input_directory_missing')
         ctx=context(args)
@@ -493,11 +610,13 @@ def run(args):
             require(not args.output.exists(),'stage_destination_exists')
             target.rename(args.output)
         return 0
-    except StageError as error:code=str(error)
+    except StageError as error:code=str(error);feed_id=error.feed_id
     except (ValueError,TypeError,KeyError,UnicodeError,RecursionError):code='stage_metadata_invalid'
     except MemoryError:code='stage_memory_limit'
     except OSError:code='stage_io_failure'
-    diagnose(args,code,ctx)
+    diagnostic=diagnose(args,code,ctx,feed_id)
+    print('frequency_stage_failed: '+diagnostic['reason_code']+
+          (' feed='+diagnostic['feed_id'] if 'feed_id' in diagnostic else ''), file=sys.stderr)
     return 1
 
 

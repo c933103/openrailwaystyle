@@ -969,7 +969,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "d09e12d44433ca13aac143d7bdc725a90bf63b82ec532fcb5c7ec0121bb8c06e"
+      "sha256": "9f3f46ae4a1f6592eb9e37a63fb5042e4bd32156894d2ccb7541c4980959b263"
     },
     {
       "id": "road-major",
@@ -1034,7 +1034,11 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "124bddccabea17b60867fbf2a06b6f3a52fcc3d4b91a22a0c26ffea2cc3789b4"
+      "sha256": "6812301d90ac0f9b3a88d69199f1f4abc22a0263a6954aa9d38203567b11a19c"
+    },
+    {
+      "id": "rail-basemap-reference",
+      "sha256": "6445d1bcfe1cf3157f3552a8af888c714d3043c012688167ade6907f59bfc0cf"
     },
     {
       "id": "structure-bridge-edge",
@@ -1084,7 +1088,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "58081acd90fb3831b70b5d3906f780b6d232885bfe69b225d02ff7235b218ad3"
+      "sha256": "e4ab28eb056489d32d53c605009e56a81ed19ec5084bd9c923a6d85d5c2a6f0d"
     },
     {
       "id": "infrastructure-metro-overview",
@@ -1093,7 +1097,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "15ef19c177d600ba8f8bf0e7ba48488535bd07e01c4ddff83f591411a54fca69"
+      "sha256": "de17abc447f25cdf4d29baf00f61e46cf368685677358cffe55ecbc81e6cc054"
     },
     {
       "id": "speed-branch-overview",
@@ -1463,14 +1467,6 @@
       "sha256": "d5768714c8e53d256ceb34597747d8c41432f05dd02ba13239cf5235741dcfe9"
     },
     {
-      "id": "service-routes",
-      "type": "line",
-      "source": "serviceRoutes",
-      "sourceLayer": "service_routes",
-      "minzoom": 7,
-      "sha256": "b72fc4ff135db346eb7586f263e5a2c816c4930548deb95c9dd618a0e962e6ea"
-    },
-    {
       "id": "structure-tunnel",
       "type": "line",
       "source": "railway",
@@ -1758,81 +1754,30 @@
       "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
-      "id": "station-stationLow-dots",
-      "type": "circle",
-      "source": "stationLow",
-      "sourceLayer": "standard_railway_text_stations_low",
-      "minzoom": 4,
-      "maxzoom": 6,
-      "sha256": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3"
-    },
-    {
-      "id": "station-stationMed-dots",
-      "type": "circle",
-      "source": "stationMed",
-      "sourceLayer": "standard_railway_text_stations_med",
-      "minzoom": 6,
-      "maxzoom": 8,
-      "sha256": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d"
-    },
-    {
-      "id": "station-major-dots",
-      "type": "circle",
-      "source": "stationMajor",
-      "minzoom": 3,
-      "maxzoom": 7,
-      "sha256": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66"
-    },
-    {
-      "id": "station-provider-dots",
-      "type": "circle",
-      "source": "stations",
-      "sourceLayer": "standard_railway_text_stations",
-      "minzoom": 8,
-      "maxzoom": 12,
-      "sha256": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
-    },
-    {
-      "id": "station-former-dots",
-      "type": "circle",
-      "source": "stations",
-      "sourceLayer": "standard_railway_text_stations",
-      "minzoom": 12,
-      "sha256": "147476ddd0da6273665a698f2709e1a2fc78f7d538a80789646e18a0e4a641ff"
-    },
-    {
-      "id": "station-stations-dots",
-      "type": "circle",
-      "source": "stations",
-      "sourceLayer": "standard_railway_text_stations",
-      "minzoom": 12,
-      "sha256": "7724bec24aa4403aae5c4ca647c081192175999a034765f37071f410ee872e83"
-    },
-    {
-      "id": "place_label_city",
+      "id": "place_label_city-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 5,
       "maxzoom": 16,
-      "sha256": "ff5b0e85ce3c8b8bb48f24a72db7bd53dce55c2428bf3a519ff0b606fe35b999"
+      "sha256": "6d5e0d6e9ab49f4369328bc74789b2c2e8cd16aa41bf0bf8834cb37be26aea3b"
     },
     {
-      "id": "place_label_other",
+      "id": "place_label_other-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 8,
-      "sha256": "0d5e8baa42f40c919998f4f5c4458c6cf3a179691f0fede59c489dc7a3fa8201"
+      "sha256": "6f7337d56a022a6b5929efae4406f38f17eec1b33d4009540a7be51f8d27ecf9"
     },
     {
-      "id": "state_label",
+      "id": "state_label-placement",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 4,
       "maxzoom": 10,
-      "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
+      "sha256": "667351e24dac2623041d90a9a5b7d0e5c87e7d88343ceab037a924f52a521b9f"
     },
     {
       "id": "infrastructure-crossing-overview",
@@ -1870,12 +1815,97 @@
       "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
     },
     {
+      "id": "station-stationLow-dots",
+      "type": "circle",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 6,
+      "sha256": "abeb4f56091927c29438011eff8e530e915187640b28ee717d80dd9eccfe3027"
+    },
+    {
+      "id": "station-stationMed-dots",
+      "type": "circle",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "29bc6e6bafe415279b30c79b005d1ab762c44cdf919cf71f92e0d0fdb019040a"
+    },
+    {
+      "id": "station-major-dots",
+      "type": "circle",
+      "source": "stationMajor",
+      "minzoom": 3,
+      "maxzoom": 7,
+      "sha256": "0fa6c1f4f0d00362ee10b3c5fa4c8ae285a26d29d01a0dd54e83bb74a01b8df8"
+    },
+    {
+      "id": "station-provider-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "eb663b51d1af16d4262637f639202a61134e1219b243d4ad26c19725e691404a"
+    },
+    {
+      "id": "station-former-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "147476ddd0da6273665a698f2709e1a2fc78f7d538a80789646e18a0e4a641ff"
+    },
+    {
+      "id": "station-stations-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "7724bec24aa4403aae5c4ca647c081192175999a034765f37071f410ee872e83"
+    },
+    {
+      "id": "service-routes",
+      "type": "line",
+      "source": "serviceRoutes",
+      "sourceLayer": "service_routes",
+      "minzoom": 7,
+      "sha256": "b72fc4ff135db346eb7586f263e5a2c816c4930548deb95c9dd618a0e962e6ea"
+    },
+    {
+      "id": "place_label_city",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "sha256": "ff5b0e85ce3c8b8bb48f24a72db7bd53dce55c2428bf3a519ff0b606fe35b999"
+    },
+    {
+      "id": "place_label_other",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 8,
+      "sha256": "0d5e8baa42f40c919998f4f5c4458c6cf3a179691f0fede59c489dc7a3fa8201"
+    },
+    {
+      "id": "state_label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
+    },
+    {
       "id": "electrification-substation-areas",
       "type": "fill",
       "source": "electricSubstations",
       "sourceLayer": "electrification_substation",
       "minzoom": 13,
-      "sha256": "1927237bcefefe9df4f4b8cf4f4a92a83546853da2cf23655d14149f255e76e1"
+      "sha256": "dd97ff8418367a5c22adcd107dfedd5c0855fdba53254640eed0dfeda345a1d3"
     },
     {
       "id": "electrification-substation-edges",
@@ -1883,49 +1913,21 @@
       "source": "electricSubstations",
       "sourceLayer": "electrification_substation",
       "minzoom": 13,
-      "sha256": "08b240b479f649f2f76e47ef4ed190b7323b0a2c9cfb0d23fc3c994c44a7d876"
+      "sha256": "96a474ff4f1067f8fd3159a58010233c387c70d87b0fdca700f95a81a1dc13b7"
     },
     {
       "id": "electrification-supply-points",
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "28e3d0910c3a8a9a1bb7c4a454c3bd4b97567dacd0d48b78fc25695dfa1e66f1"
+      "sha256": "0d361996d6ff3c5fdb80308a3c20118a44c881aa56567e0a3dc767a17fda8a46"
     },
     {
       "id": "electrification-former-supply-points",
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "b77ba1596c8a1e01bd6212e46e0504c8c584e69b2649dd48e0fe9804887d009e"
-    },
-    {
-      "id": "electrification-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "6ee5ca2db3e3611b1e0f5651a058de69adf8f7f3670ff02fd61055aa80ee11e4"
-    },
-    {
-      "id": "electrification-former-supply-marks",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 13,
-      "sha256": "13362cc70f70518d32decc15e2cdc33ce8fe562f2c802b8bd38797318d7e8ffa"
-    },
-    {
-      "id": "electrification-supply-names",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "sha256": "f9905fb2243348317d130dca7fa302cfea18e5787a1bfaa530b005e441985695"
-    },
-    {
-      "id": "electrification-former-supply-names",
-      "type": "symbol",
-      "source": "electricFacilities",
-      "minzoom": 14,
-      "sha256": "c4c49e4c8dcac59ab7508852a2ec99562e8c99188eb400561a2f0b0e7324fa70"
+      "sha256": "9b01879c26ff6c43d91b06b3a276c11f940a8a77b052bd8dead72a2e81a6b9f2"
     },
     {
       "id": "road-labels",
@@ -1933,7 +1935,7 @@
       "source": "openmaptiles",
       "sourceLayer": "transportation_name",
       "minzoom": 15,
-      "sha256": "fe83e9cba80e337ae57cb14ae6b91762c723c1b3b9d22f3fb1b8fc06c755845a"
+      "sha256": "ae2bbc3cf0138cfa7cac61081362b69c8629641a06491e29d4a117efa630752e"
     },
     {
       "id": "context-constraints-protected-area-label",
@@ -2496,6 +2498,84 @@
       "sources": [
         "heritageAreas"
       ]
+    },
+    {
+      "reviewed": "2026-10-15",
+      "reason": "Separate place-label collision placement from paint using identical-layout symbol twins in the pinned MapLibre runtime. Crossings retain collision priority; station circles cover crossing ink; accepted place glyphs retain paint priority over station circles. Actual renderer controls exercise all three constraints.",
+      "addedLayers": [
+        "place_label_city-placement",
+        "place_label_other-placement",
+        "state_label-placement"
+      ]
+    },
+    {
+      "reviewed": "2026-10-26",
+      "reason": "Power view points show what each object is: a pictogram per kind (symbol layer, icon drawn by the app) replaces the category circle and letter; names move below the larger tile. The letter layers are removed.",
+      "layers": [
+        "electrification-supply-points",
+        "electrification-former-supply-points",
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ],
+      "removedLayers": [
+        "electrification-supply-marks",
+        "electrification-former-supply-marks"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Power facilities are drawn as mapped: neutral outlined areas, lines and plain dots, no pictograms, kind or name text, and no colour by supply group. Names layers and points layers change form; substation areas take the same neutral style.",
+      "layers": [
+        "electrification-substation-areas",
+        "electrification-substation-edges",
+        "electrification-supply-points",
+        "electrification-former-supply-points"
+      ],
+      "removedLayers": [
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Infrastructure view gives funiculars (feature=funicular) their own colour, appended to INFRASTRUCTURE so existing class colours keep their positions. Rack ticks are a separate added layer.",
+      "layers": [
+        "infrastructure-branch-overview",
+        "infrastructure-overview",
+        "infrastructure-tracks",
+        "infrastructure-metro-overview"
+      ]
+    },
+    {
+      "reviewed": "2026-10-30",
+      "reason": "Road labels leave out aerialways (class=aerialway): owner decision that aerialways are named like railways, by the aerialway-names layer in the railway name group.",
+      "layers": [
+        "road-labels"
+      ]
+    },
+    {
+      "date": "2026-11-08",
+      "baseCommit": "541ad251f25f474648e4d07f94470dcfda9d4b1a",
+      "reason": "User-requested smaller station dots and thinner outlines at regional/city zooms; preserve all point selections and existing detailed sizes from zoom 12. Only circle-radius and circle-stroke-width change on these four generated layers. Current-head rendering review remains required before merge.",
+      "layers": [
+        "station-stationLow-dots",
+        "station-stationMed-dots",
+        "station-major-dots",
+        "station-provider-dots"
+      ],
+      "previousLayerSha256": {
+        "station-stationLow-dots": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3",
+        "station-stationMed-dots": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d",
+        "station-major-dots": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66",
+        "station-provider-dots": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
+      }
+    },
+    {
+      "date": "2026-11-10",
+      "reason": "Service route colours must remain continuous through dense station fields. Move the Service-only route layer above station circles and below accepted place-name paint. Every layer definition and all other relative order remain unchanged. Current-head rendering review remains required before merge.",
+      "movedLayer": "service-routes",
+      "previousIndex": 119,
+      "beforeLayer": "place_label_city"
     }
   ]
 }
