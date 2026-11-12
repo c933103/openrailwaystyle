@@ -1,0 +1,734 @@
+{
+  "recordedAt": "2026-11-12T07:16:31.231Z",
+  "repository": "c933103/openrailwaystyle",
+  "pr": 442,
+  "head": "f7fab9485ad4c4306ab2835450bde6c403b13412",
+  "tree": "a3a2df3e1736eb5a2ec28fa9ceb58c46507d6bbe",
+  "base": "25aab4995b21ddc6d2dadcb21ba242639b03e147",
+  "cause": {
+    "run": 43169516681,
+    "job": 131025574439,
+    "error": "ENOENT copying scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc.139887103680208 during parallel fixture setup"
+  },
+  "ci": {
+    "jobs": [
+      {
+        "id": 131030822883,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run node scripts/ci-plan.mjs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      },
+      {
+        "id": 131030823107,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Wait for the first complete worldwide facility snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          }
+        ]
+      },
+      {
+        "id": 131030823137,
+        "name": "reference",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Identify required reference inputs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Require worldwide railway reference 8790e91c2d38c6c4285a0f83f2098103066ec7a649854f7728b727c20a0882ae",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          }
+        ]
+      },
+      {
+        "id": 131030951428,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Verify Node 26 security baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Install style validator",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Choose each dataset's source",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Rebuild world style",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Check committed style is reproducible",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Validate speed semantics and MapLibre style",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Check JavaScript syntax",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Check public station search and CORS",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 11
+          },
+          {
+            "name": "Check station search and CORS with offline PR fixtures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Wait for initial snapshot build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Assemble site data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Load and verify the complete independently acquired railway reference",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16
+          },
+          {
+            "name": "Load a fork's verified reference artifact with read-only permissions",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 17
+          },
+          {
+            "name": "Verify source completeness and current provenance before assembling either reference path",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          },
+          {
+            "name": "Build rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 20
+          },
+          {
+            "name": "Load the published axle-load lookup",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 21
+          },
+          {
+            "name": "Wait for first street-running snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 22
+          },
+          {
+            "name": "Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 23
+          },
+          {
+            "name": "Assemble street-running tiles",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 24
+          },
+          {
+            "name": "Stage independently verified station-point overview",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 25
+          },
+          {
+            "name": "Load level crossings",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 26
+          },
+          {
+            "name": "Load escalators, moving walkways and elevators",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27
+          },
+          {
+            "name": "Load aerial cableways and lifts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 28
+          },
+          {
+            "name": "Load historic areas",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29
+          },
+          {
+            "name": "Load branch lines",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30
+          },
+          {
+            "name": "Load urban rail services",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31
+          },
+          {
+            "name": "Apply matched timetable counts and headways to the OSM service tiles",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 32
+          },
+          {
+            "name": "Keep the ODbL download tables out of the site",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 33
+          },
+          {
+            "name": "Load worldwide railway signals and energy supplies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 34
+          },
+          {
+            "name": "Identify code and data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 35
+          },
+          {
+            "name": "Look for a passed result for this code and data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 36
+          },
+          {
+            "name": "Record the data dates",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 37
+          },
+          {
+            "name": "Check the site size",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 38
+          },
+          {
+            "name": "Save reviewable site",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39
+          },
+          {
+            "name": "Post Load mapped street-running data",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 74
+          },
+          {
+            "name": "Post Restore rare Han glyph slices",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 75
+          },
+          {
+            "name": "Post Load published worldwide snapshot",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 76
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 77
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 78
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 79
+          }
+        ]
+      },
+      {
+        "id": 131033162163,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run echo \"plan: $PLAN, browser checks needed: $NEEDED, earlier result reused: $REUSED, browser jobs: $BROWSER\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          }
+        ]
+      },
+      {
+        "id": 131033163672,
+        "name": "browser (${{ matrix.group }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": null
+      },
+      {
+        "id": 131033189190,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run curl -fsS -X POST -H \"Authorization: ***\" -H 'Accept: application/vnd.github+json' \"$URL\" \\",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          }
+        ]
+      },
+      {
+        "id": 131033190908,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 43173101837,
+        "logs_url": null,
+        "steps": null
+      }
+    ]
+  },
+  "gates": {
+    "pr": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "url": "https://github.com/c933103/openrailwaystyle/pull/442",
+        "number": 442,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Cause\nPost-merge site run [43169516681](https://github.com/c933103/openrailwaystyle/actions/runs/43169516681), validation job 131025574439, failed while preparing a staged-provider-pause fixture: recursive scripts copying tried to copy a disappearing Python __pycache__ temporary. Other parallel tests import those Python modules and atomically rename bytecode files. The malformed-calendar assertion and lifecycle acquisition were not the cause.\n\n## Fix\n- Use one source-copy filter at all seven whole source-tree copy sites across six test files. Exclude __pycache__ before recursion, not real source inputs.\n- Keep generated-data copies unchanged; no production behavior, source/provider configuration, retry, test selection, or CI gating changes.\n- Add deterministic coverage showing the old disappearing-bytecode ENOENT, safe filtered copying, nested-cache exclusion and exact preservation of real source, and continued failure for missing real source.\n\n## Validation\n- Regression before the filter: two failures and one pass, including deterministic ENOENT.\n- Focused seven suites: 218 pass, one existing skip, zero failures.\n- npm run build passed; styles/world.style.json unchanged.\n- Two consecutive full npm test runs: 4,114 pass, 13 existing conditional skips, zero failures each (Node 24.22.1; 100.8s and 100.4s).\n- git diff --check passed.\n\nNo provider requests or acquisition dispatches were performed. Fresh exact-head Codex reviews and required CI remain merge gates. This repairs the underlying fixture race rather than blindly rerunning failed production validation.",
+        "title": "Exclude transient Python caches from source-copy fixtures",
+        "base": "main",
+        "base_sha": "25aab4995b21ddc6d2dadcb21ba242639b03e147",
+        "head": "fix/fixture-python-cache-race-20261112",
+        "head_sha": "f7fab9485ad4c4306ab2835450bde6c403b13412",
+        "head_repo_id": 1379787229,
+        "head_repo_full_name": "c933103/openrailwaystyle",
+        "merge_commit_sha": "97459d93e3854d7a100cf14865118ede4d053b99",
+        "user": {
+          "login": "c933103",
+          "name": "c933103",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/1525293?v=4",
+          "id": 1525293
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T07:08:43Z",
+        "updated_at": "2026-11-12T07:12:58Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 8,
+        "additions": 89,
+        "deletions": 7,
+        "display_url": "https://github.com/c933103/openrailwaystyle/pull/442",
+        "display_title": "Exclude transient Python caches from source-copy fixtures"
+      },
+      "isError": false
+    },
+    "reviews": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "comments": [
+          {
+            "url": "https://github.com/c933103/openrailwaystyle/pull/442#issuecomment-6817212018",
+            "body": "@codex security review",
+            "user": {
+              "login": "c933103",
+              "name": "c933103",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/u/1525293?v=4",
+              "id": 1525293
+            },
+            "id": 6817212018,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T07:09:26Z",
+            "updated_at": "2026-11-12T07:09:26Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null,
+            "body_html": "<p dir=\"auto\"><a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> security review</p>"
+          },
+          {
+            "url": "https://github.com/c933103/openrailwaystyle/pull/442#issuecomment-6817216844",
+            "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"f7fab9485ad4c4306ab2835450bde6c403b13412\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"f7fab9485ad4c4306ab2835450bde6c403b13412\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"f7fab9485ad4c4306ab2835450bde6c403b13412\",\"mergeGateEnabled\":false,\"pullRequestNumber\":442,\"repository\":\"c933103/openrailwaystyle\",\"status\":\"completed\"} -->\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T07:10:52.460445Z\">2026-11-12T07:10:52.460445Z</relative-time> | `f7fab94` | Draft marked ready |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T07:11:47.266523Z\">2026-11-12T07:11:47.266523Z</relative-time> | `f7fab94` | Manual request |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6817216844,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T07:09:44Z",
+            "updated_at": "2026-11-12T07:11:49Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null,
+            "body_html": "\n\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n<p dir=\"auto\">This comment shows the latest Codex review activity on this pull request.</p>\n<markdown-accessiblity-table><table role=\"table\">\n<thead>\n<tr>\n<th>Review</th>\n<th>Status</th>\n<th>Commit</th>\n<th>Review trigger</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>📝 <strong>Code Review</strong></td>\n<td>✅ <strong>Completed</strong> <relative-time datetime=\"2026-11-12T07:10:52.460445Z\">2026-11-12T07:10:52.460445Z</relative-time></td>\n<td><code class=\"notranslate\">f7fab94</code></td>\n<td>Draft marked ready</td>\n</tr>\n<tr>\n<td>🔒 <strong>Security Review</strong></td>\n<td>✅ <strong>Completed</strong> <relative-time datetime=\"2026-11-12T07:11:47.266523Z\">2026-11-12T07:11:47.266523Z</relative-time></td>\n<td><code class=\"notranslate\">f7fab94</code></td>\n<td>Manual request</td>\n</tr>\n</tbody>\n</table></markdown-accessiblity-table>\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/settings/general\" rel=\"nofollow\">Your team has set up Codex to review pull requests in this repo</a>. Reviews are triggered when you</p>\n<ul dir=\"auto\">\n<li>Open a pull request for review</li>\n<li>Mark a draft as ready</li>\n<li>Comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\" or \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> security review\".</li>\n</ul>\n<p dir=\"auto\">Codex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.</p>\n</details>\n</details>"
+          },
+          {
+            "url": "https://github.com/c933103/openrailwaystyle/pull/442#issuecomment-6817250934",
+            "body": "<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** `f7fab9485a`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_e_6af566306ad88320bd8c6bc8c9a3c785)\n\n_Only the user who started this review can view the report in Codex._\n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6817250934,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T07:11:46Z",
+            "updated_at": "2026-11-12T07:11:46Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null,
+            "body_html": "\n<h3 dir=\"auto\">🛡️ Codex Security Review</h3>\n<p dir=\"auto\">Security review completed. No security issues were found in this pull request.</p>\n<p dir=\"auto\"><strong>Reviewed commit:</strong> <code class=\"notranslate\">f7fab9485a</code></p>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/tasks/task_e_6af566306ad88320bd8c6bc8c9a3c785\" rel=\"nofollow\">View security finding report</a></p>\n<p dir=\"auto\"><em>Only the user who started this review can view the report in Codex.</em></p>\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br>\n<p dir=\"auto\">This is an experimental Codex feature. Security reviews are triggered when:</p>\n<ul dir=\"auto\">\n<li>You comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> security review\"</li>\n<li>A regular code review gets triggered (for example, \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\" or when a PR is opened), and you’re opted in so security review runs alongside code review</li>\n</ul>\n<p dir=\"auto\">Once complete, Codex will leave suggestions, or a comment if no findings are found.</p>\n</details>"
+          },
+          {
+            "url": "https://github.com/c933103/openrailwaystyle/pull/442#issuecomment-6817270907",
+            "body": "Durable local evidence: [fixture-race-evidence.zip](https://github.com/c933103/openrailwaystyle/blob/b444eb6855e7c378bf19ecf8c5334e6648d35b75/verification/atlas-fixture-cache-race-20261112/evidence.zip), SHA-256 `7355504b594ce5af609d6e59a36614d937940a5d6fe61c4140f74c9d3603b8ec`. Contains the deterministic pre-fix failure, 218-pass focused run, build, and both 4,114-pass full parallel runs with per-file hashes. Evidence is on a separate evidence branch, not the app branch. Exact-head code review completed with no findings and explicit security receipt reports no issues. Required CI 43173101837 is still assembling/verifying the published data; no merge before its applicable jobs pass.",
+            "user": {
+              "login": "c933103",
+              "name": "c933103",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/u/1525293?v=4",
+              "id": 1525293
+            },
+            "id": 6817270907,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T07:12:58Z",
+            "updated_at": "2026-11-12T07:12:58Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null,
+            "body_html": "<p dir=\"auto\">Durable local evidence: <a href=\"https://github.com/c933103/openrailwaystyle/blob/b444eb6855e7c378bf19ecf8c5334e6648d35b75/verification/atlas-fixture-cache-race-20261112/evidence.zip\">fixture-race-evidence.zip</a>, SHA-256 <code class=\"notranslate\">7355504b594ce5af609d6e59a36614d937940a5d6fe61c4140f74c9d3603b8ec</code>. Contains the deterministic pre-fix failure, 218-pass focused run, build, and both 4,114-pass full parallel runs with per-file hashes. Evidence is on a separate evidence branch, not the app branch. Exact-head code review completed with no findings and explicit security receipt reports no issues. Required CI 43173101837 is still assembling/verifying the published data; no merge before its applicable jobs pass.</p>"
+          }
+        ],
+        "url": "https://github.com/c933103/openrailwaystyle/pull/442",
+        "title": "c933103/openrailwaystyle PR #442 comments",
+        "display_url": "https://github.com/c933103/openrailwaystyle/pull/442",
+        "display_title": "c933103/openrailwaystyle PR #442 comments"
+      },
+      "isError": false
+    },
+    "threads": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "review_threads": []
+      },
+      "isError": false
+    },
+    "runs": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "workflow_runs": [
+          {
+            "id": 43173101837,
+            "name": "Validate and deploy world railway map",
+            "status": "completed",
+            "conclusion": "success",
+            "run_number": 2470,
+            "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43173101837/jobs",
+            "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43173101837/logs",
+            "workflow_id": 363405424
+          }
+        ]
+      },
+      "isError": false
+    },
+    "checkedAt": "2026-11-12T07:15:23.207Z"
+  },
+  "merge": {
+    "sha": "0023b7d1dde64d60cc59a2eac37efbe3f44a4466",
+    "merged": true,
+    "message": "Pull Request successfully merged"
+  },
+  "evidence": {
+    "commit": "b444eb6855e7c378bf19ecf8c5334e6648d35b75",
+    "path": "verification/atlas-fixture-cache-race-20261112/evidence.zip",
+    "sha256": "7355504b594ce5af609d6e59a36614d937940a5d6fe61c4140f74c9d3603b8ec"
+  },
+  "postmerge": "Natural deployment verification pending. No provider acquisition dispatched or failed run retried."
+}
