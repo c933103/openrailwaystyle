@@ -155,19 +155,26 @@ How the choice is made:
   - Every differing row but 16 has a node, or a railway way through it, edited after that time. In those 16 the extract has no railway way through the crossing. In 2 of them the ways lost their `railway` tag after that time; for the other 14, no way through the crossing is left in the extract at all.
 - **Completeness, dates and use** are as above. It is not used until `DATA_SOURCES` selects `crossings`.
 
-**Railway signals and energy supplies (traction).** Then `scripts/build-extract-traction.mjs` builds the traction dataset and, on `main`, publishes it to `traction-extract-data`, in the `traction-data` layout.
+**Railway signals, energy supplies and power methods (traction).** Then `scripts/build-extract-traction.mjs` builds the traction dataset and, on `main`, publishes it to `traction-extract-data`, in the `traction-data` layout.
 - **Signals** (`scripts/build-extract-signals.mjs`). The selection is `combinedSignalQuery`'s: `railway=signal` nodes without `railway:signal:direction`, and those with one that have `railway:signal:electricity` other than `no`.
   - `signals/` holds the features of `signalFeatures`, written with `signalFiles` (`scripts/signals-data.mjs`), which `build-signals.mjs` uses too.
   - `power/electricity-signals.*` holds the features of `electricitySignalsGeoJSON`, published by the same validated writer (`publishElectricitySignals`), with the source named. Its coverage is the world's 32 start regions, counted with their edges as an Overpass bounding box counts them.
 - **Energy supplies** (`scripts/build-extract-power-facilities.mjs`). The selection is `powerFacilityQuery`'s, element by element: hinted power facilities and tanks, and railway supplies, each value matched as a whole semicolon-separated value, in any case, with POSIX space around it.
   - The elements are shaped as its `out body geom` answer gives them: a way with its geometry and bounds; a relation with its node members' positions, its way members' geometry, and the bounds of both. The relations' members are cut out with `osmium getid --add-referenced` and read in a second pass, as for station points.
   - `power/power-facilities.*` holds the features of `powerFacilitiesGeoJSON`, with `power/manifest.json` as `build-power-facilities.mjs` writes it (coverage: the eight 90° regions).
-- **Only from a complete assembly.** The electricity-signal and energy-supply manifests certify a whole world, so they are written only when the assembly covers every region and gap tile.
-- **`source.json` from what is there.** It lists every file of `traction-data` that the output lacks, and is complete only when none is missing and the assembly is complete. The power methods are not built from the extracts yet, so it stays incomplete, and the site keeps `traction-data`.
-- **Checked against `traction-data` of 2026-11-06.** The world assembled from the 2026-11-10 index was compared feature by feature. Signals took 91 s and 0.6 GB locally, energy supplies 143 s and 0.3 GB.
+- **Power methods** (`scripts/build-extract-power-methods.mjs`). The selection is `powerMethodSelection`'s, element by element:
+  - ways with an `electrified`, `propulsion` or `traction` means, under any lifecycle prefix;
+  - anything tagged `railway=charging_station`;
+  - chargers (`amenity=charging_station`, `man_made=charge_point`) that carry a railway hint: a rail mode, a railway track or supply value, or `usage` or `landuse` for railways.
+  - Values are matched as for the energy supplies. Charging relations are shaped the same way (`shapeRelations`, shared).
+  - `power/power-methods.*` and `power/methods-manifest.json` hold the features of `powerMethodsGeoJSON`, published by the same validated writer as the Overpass build (`publishPowerMethods`), with the source named. Its coverage is the 32 start regions.
+- **Only from a complete assembly.** The electricity-signal, energy-supply and power-method manifests certify a whole world, so they are written only when the assembly covers every region and gap tile.
+- **`source.json` from what is there.** It lists every file of `traction-data` that the output lacks, and is complete only when none is missing and the assembly is complete. With the power methods, a complete assembly gives every file, so `traction-extract-data` can be selected like the other extract branches.
+- **Checked against `traction-data` of 2026-11-06.** The world assembled from the 2026-11-10 index was compared feature by feature. Signals took 91 s and 0.6 GB locally, power methods 150 s and 0.9 GB, energy supplies 143 s and 0.3 GB.
   - Signals: 23,929 identical; 6 differ, 101 only in the extract, 17 only in Overpass.
   - Electrification signals: 17,846 identical; 17 differ, 68 only in the extract.
   - Energy supplies: 17,044 of 17,108 identical; 63 differ, 26 only in the extract, 1 only in Overpass.
+  - Power methods: 84,150 of 84,825 identical; 664 differ, 86 only in the extract, 11 only in Overpass. For 70 of the differences only a node of the way was edited after the box's time, the way itself earlier.
   - Every difference has the element, or one of its nodes, edited after the time of the Overpass box holding it, or (only in Overpass) an element the extract no longer holds.
 
 **Fallback drill.**

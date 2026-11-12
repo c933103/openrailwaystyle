@@ -14,6 +14,9 @@ const snapshot=createStagedSnapshot({noun:'power-method',label:'conductor rails 
   emptyMessage:'Refusing to publish empty worldwide conductor-rail and charging data',completeMessage:'Complete worldwide conductor rails and railway chargers:'});
 export const validatePowerMethodsSnapshot=snapshot.validate;
 export const buildPowerMethods=snapshot.build;
+// The validated writer, for a builder with its own source of the same features
+// (build-extract-power-methods.mjs).
+export const publishPowerMethods=snapshot.publish;
 
 // Built from the stored railway-ways regions (build-railway-ways.mjs) once
 // every stage is complete there: no Overpass request. Returns undefined, and
