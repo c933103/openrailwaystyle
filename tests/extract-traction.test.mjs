@@ -37,6 +37,7 @@ const ELEMENTS = [
   node(10, 47.95, 8.95, {railway: 'substation;signal_box'}),
   node(11, 46.0, 7.0, {railway: 'signal', 'railway:signal:main': 'CH-FDV:hp'}),
   node(12, 46.1, 7.1, {railway: 'signal', 'railway:signal:direction': 'forward', 'railway:signal:electricity': 'CH-FDV:fl'}),
+  way(110, [[2.3, 48.8], [2.31, 48.81]], {railway: 'subway', electrified: 'rail', voltage: '750'}),
   way(100, [[9, 48], [9.01, 48], [9.01, 48.01], [9, 48.01], [9, 48]], {power: 'substation', usage: 'traction', name: 'Area'}),
   way(101, [[9.1, 48.1], [9.2, 48.2]], {power: 'plant', landuse: 'railway'}),
   OUTER_A, OUTER_B, INNER,
@@ -115,24 +116,24 @@ test('no energy supply snapshot from a partial assembly; none from an empty one'
 test('source.json is complete only with every traction-data file and a complete assembly', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'extract-traction-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
-  // A complete assembly, without the power methods.
+  // A complete assembly: every file, so the switch takes it.
   const full = await buildExtractTraction('assembled.osm.pbf', report(), join(dir, 'full'), {read: fakeRead, subset: fakeSubset});
-  assert.deepEqual(full.marker.missing, ['power/methods-manifest.json', 'power/power-methods.geojson.gz']);
-  assert.equal(full.marker.complete, false);
-  assert.match(checkMarker(await readFile(join(dir, 'full', 'source.json'), 'utf8'), 'traction'), /not complete/);
-  assert.ok(full.facilities && full.electricity && full.signals.complete);
-  // With them, it is complete and the switch takes it.
-  await writeFile(join(dir, 'full', 'power', 'methods-manifest.json'), '{}');
-  await writeFile(join(dir, 'full', 'power', 'power-methods.geojson.gz'), '');
-  const marker = await writeTractionMarker(join(dir, 'full'), report());
-  assert.deepEqual(marker.missing, []);
+  assert.deepEqual(full.marker.missing, []);
+  assert.equal(full.marker.complete, true);
   assert.equal(checkMarker(await readFile(join(dir, 'full', 'source.json'), 'utf8'), 'traction'), null);
+  assert.ok(full.facilities && full.methods && full.electricity && full.signals.complete);
   // Every file present, but a partial assembly: not complete.
   assert.equal((await writeTractionMarker(join(dir, 'full'), report({missingRegions: ['x']}))).complete, false);
+  // A file missing: not complete, and named.
+  await rm(join(dir, 'full', 'power', 'power-methods.geojson.gz'));
+  const marker = await writeTractionMarker(join(dir, 'full'), report());
+  assert.deepEqual(marker.missing, ['power/power-methods.geojson.gz']);
+  assert.match(checkMarker(await readFile(join(dir, 'full', 'source.json'), 'utf8'), 'traction'), /not complete/);
   // A partial assembly: the signals only.
   const partial = await buildExtractTraction('x', report({missingRegions: ['gap/0_0_45_45']}), join(dir, 'partial'), {read: fakeRead, subset: fakeSubset});
   assert.deepEqual(partial.marker.missing, TRACTION_FILES.filter(f => f.startsWith('power/')));
   assert.equal(partial.facilities, null);
+  assert.equal(partial.methods, null);
   await mkdir(join(dir, 'empty'));
   assert.deepEqual((await writeTractionMarker(join(dir, 'empty'), report())).missing, [...TRACTION_FILES]);
 });

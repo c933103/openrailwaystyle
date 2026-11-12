@@ -41,14 +41,13 @@ export const isFacilityElement = ({tags = {}}) => PREFIXES.some(prefix => matche
 const boundsOf = points => points.length ? {minlat: Math.min(...points.map(p => p.lat)), minlon: Math.min(...points.map(p => p.lon)),
   maxlat: Math.max(...points.map(p => p.lat)), maxlon: Math.max(...points.map(p => p.lon))} : undefined;
 
-// The selected elements, shaped as `out body geom` gives them.
-export async function facilityElements(pbf, {read = readElements, subset = osmiumSubset} = {}) {
-  const elements = [], relations = [], memberNodes = new Set(), memberWays = new Set();
-  const first = await read(pbf, {keep: isFacilityElement, onElement: element => {
-    if (element.type !== 'relation') { elements.push(element); return; }
-    relations.push(element);
-    for (const m of element.members || []) (m.type === 'node' ? memberNodes : m.type === 'way' ? memberWays : new Set()).add(m.ref);
-  }});
+// Relations shaped as `out body geom` gives them: node members with their
+// position, way members with their geometry (member relations and members
+// the extract lacks carry none), and the bounds of both. The members are cut
+// out of the extract by osmium and read in a second pass.
+export async function shapeRelations(pbf, relations, {read = readElements, subset = osmiumSubset} = {}) {
+  const memberNodes = new Set(), memberWays = new Set();
+  for (const relation of relations) for (const m of relation.members || []) (m.type === 'node' ? memberNodes : m.type === 'way' ? memberWays : new Set()).add(m.ref);
   const points = new Map();
   let second = {kept: 0, withoutGeometry: 0};
   if (relations.length) {
@@ -59,18 +58,25 @@ export async function facilityElements(pbf, {read = readElements, subset = osmiu
         onElement: e => points.set(`${e.type}${e.id}`, e.type === 'node' ? {lat: e.lat, lon: e.lon} : e.geometry)});
     } finally { await members.remove(); }
   }
-  for (const relation of relations) {
-    // Member nodes with their position, member ways with their geometry;
-    // member relations and members the extract lacks carry none.
+  const shaped = relations.map(relation => {
     const members = (relation.members || []).map(m => {
       const found = points.get(`${m.type}${m.ref}`);
       return m.type === 'node' && found ? {...m, ...found} : m.type === 'way' && found ? {...m, geometry: found} : m;
     });
     const bounds = boundsOf(members.flatMap(m => m.geometry || (Number.isFinite(m.lat) ? [m] : [])));
-    elements.push({...relation, members, ...(bounds ? {bounds} : {})});
-  }
-  return {elements, counts: {read: first.kept, relations: relations.length, memberNodes: memberNodes.size, memberWays: memberWays.size,
-    membersRead: second.kept, waysWithoutGeometry: first.withoutGeometry + second.withoutGeometry}};
+    return {...relation, members, ...(bounds ? {bounds} : {})};
+  });
+  return {relations: shaped, counts: {relations: relations.length, memberNodes: memberNodes.size, memberWays: memberWays.size, membersRead: second.kept, memberWaysWithoutGeometry: second.withoutGeometry}};
+}
+
+// The selected elements, shaped as `out body geom` gives them.
+export async function facilityElements(pbf, {read = readElements, subset = osmiumSubset} = {}) {
+  const elements = [], relations = [];
+  const first = await read(pbf, {keep: isFacilityElement, onElement: element => { (element.type === 'relation' ? relations : elements).push(element); }});
+  const shaped = await shapeRelations(pbf, relations, {read, subset});
+  elements.push(...shaped.relations);
+  const {memberWaysWithoutGeometry, ...counts} = shaped.counts;
+  return {elements, counts: {read: first.kept, ...counts, waysWithoutGeometry: first.withoutGeometry + memberWaysWithoutGeometry}};
 }
 
 // Writes out/power-facilities.geojson(.gz) and out/manifest.json; returns the
