@@ -1,0 +1,429 @@
+{
+  "schema": 1,
+  "repository": "c933103/openrailwaystyle",
+  "changes": [
+    {
+      "pr": 409,
+      "head": "224c1dac5b6ac380ed57c9d2e525417de42021fd",
+      "merge": "7a75f9ad8d8230f4705364ddf596fa4280ab1e05",
+      "tree": "bd7a2445d6f118b75a219b2079f900c666d2da98",
+      "parents": [
+        "e8118650a9342a50ec26bd3d5f06518bfabec8fc",
+        "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+      ],
+      "workflows": [
+        {
+          "id": 43151075574,
+          "name": "Polar 3D rendering regression",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 101,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075574/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075574/logs",
+          "workflow_id": 398414544
+        },
+        {
+          "id": 43151075549,
+          "name": "Controls painter diagnostic",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 261,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075549/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075549/logs",
+          "workflow_id": 385900944
+        },
+        {
+          "id": 43151075621,
+          "name": "Build worldwide OSM railway reference",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 878,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075621/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075621/logs",
+          "workflow_id": 381249576
+        },
+        {
+          "id": 43151075590,
+          "name": "Validate and deploy world railway map",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 2457,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075590/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151075590/logs",
+          "workflow_id": 363405424
+        }
+      ],
+      "checks": [
+        {
+          "id": 130971285199,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130971283180,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130971249334,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238755,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238495,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238457,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238420,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238404,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130965238390,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130963147655,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960175637,
+          "name": "extract",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960174850,
+          "name": "assemble",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086795,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086734,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086606,
+          "name": "compare",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086581,
+          "name": "reproduce",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086572,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        },
+        {
+          "id": 130960086512,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "224c1dac5b6ac380ed57c9d2e525417de42021fd"
+        }
+      ],
+      "hosted": {
+        "runtime": "Node26.13.1",
+        "validationJob": 130963147655,
+        "passes": 4097,
+        "auxiliaryPasses": 4,
+        "failures": 0,
+        "conditionalSkips": 13
+      },
+      "reviews": [
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/409#issuecomment-6704116928",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"224c1dac5b6ac380ed57c9d2e525417de42021fd\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"224c1dac5b6ac380ed57c9d2e525417de42021fd\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"224c1dac5b6ac380ed57c9d2e525417de42021fd\",\"mergeGateEnabled\":false,\"pullRequestNumber\":409,\"repository\":\"c933103/openrailwaystyle\",\"status\":\"completed\"} -->\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T03:54:34.607165Z\">2026-11-12T03:54:34.607165Z</relative-time> | `224c1da` | Manual request |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T03:56:45.108844Z\">2026-11-12T03:56:45.108844Z</relative-time> | `224c1da` | Manual request |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>"
+        },
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/409#issuecomment-6813937355",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Chef's kiss.\n\n**Reviewed commit:** `224c1dac5b`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>"
+        },
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/409#issuecomment-6813982111",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** `224c1dac5b`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_e_6af538295da08320a6b17af7e01a63f0)\n\n_Only the user who started this review can view the report in Codex._\n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>"
+        }
+      ]
+    },
+    {
+      "pr": 410,
+      "head": "ca1688ede4ff270ecdbd609120e0710dd952aed8",
+      "sha": "ac440ed4352b1ec6cfe648c517e681627de9c9c0",
+      "tree": "73f33b84fe6d80544e66c39f0fc61b7628bb534c",
+      "parents": [
+        "7a75f9ad8d8230f4705364ddf596fa4280ab1e05",
+        "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+      ],
+      "dependency": "7a75f9ad8d8230f4705364ddf596fa4280ab1e05",
+      "actualBase": "main",
+      "workflows": [
+        {
+          "id": 43151712900,
+          "name": "Build worldwide OSM railway reference",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 879,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151712900/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151712900/logs",
+          "workflow_id": 381249576
+        },
+        {
+          "id": 43151713004,
+          "name": "Polar 3D rendering regression",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 102,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151713004/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151713004/logs",
+          "workflow_id": 398414544
+        },
+        {
+          "id": 43151712967,
+          "name": "Controls painter diagnostic",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 262,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151712967/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151712967/logs",
+          "workflow_id": 385900944
+        },
+        {
+          "id": 43151713082,
+          "name": "Validate and deploy world railway map",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 2458,
+          "jobs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151713082/jobs",
+          "logs_url": "https://api.github.com/repos/c933103/openrailwaystyle/actions/runs/43151713082/logs",
+          "workflow_id": 363405424
+        }
+      ],
+      "checks": [
+        {
+          "id": 130974007959,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130974006611,
+          "name": "record",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130973982571,
+          "name": "browser-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735634,
+          "name": "browser (controls)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735609,
+          "name": "browser (platforms)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735592,
+          "name": "browser (rail-fixture)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735584,
+          "name": "browser (frequency)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735575,
+          "name": "browser (infrastructure)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130967735556,
+          "name": "browser (context)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130965650031,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962277207,
+          "name": "extract",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962276419,
+          "name": "assemble",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962207125,
+          "name": "facilities",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962207026,
+          "name": "reference",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962206793,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962206283,
+          "name": "reproduce",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962206244,
+          "name": "plan",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        },
+        {
+          "id": 130962206074,
+          "name": "compare",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ca1688ede4ff270ecdbd609120e0710dd952aed8"
+        }
+      ],
+      "hosted": {
+        "runtime": "Node26.13.1",
+        "validationJob": 130965650031,
+        "passes": 4105,
+        "auxiliaryPasses": 4,
+        "failures": 0,
+        "conditionalSkips": 13
+      },
+      "reviews": [
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/410#issuecomment-6704344099",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"ca1688ede4ff270ecdbd609120e0710dd952aed8\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"ca1688ede4ff270ecdbd609120e0710dd952aed8\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"ca1688ede4ff270ecdbd609120e0710dd952aed8\",\"mergeGateEnabled\":false,\"pullRequestNumber\":410,\"repository\":\"c933103/openrailwaystyle\",\"status\":\"completed\"} -->\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T04:03:33.108161Z\">2026-11-12T04:03:33.108161Z</relative-time> | `ca1688e` | Manual request |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T04:01:39.329367Z\">2026-11-12T04:01:39.329367Z</relative-time> | `ca1688e` | Manual request |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>"
+        },
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/410#issuecomment-6814086938",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** `ca1688ede4`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_e_6af539a106f48320bbe01d2b0af31174)\n\n_Only the user who started this review can view the report in Codex._\n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>"
+        },
+        {
+          "url": "https://github.com/c933103/openrailwaystyle/pull/410#issuecomment-6814122997",
+          "login": "chatgpt-codex-connector[bot]",
+          "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Can't wait for the next one!\n\n**Reviewed commit:** `ca1688ede4`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>"
+        }
+      ]
+    }
+  ],
+  "localEvidence": {
+    "commit": "4315f45478ab20208f4d8ab95068cf280f070b5f",
+    "path": "verification/atlas-request-recovery-20261112/evidence.zip",
+    "sha256": "aa3ab10fa008232ef3214d082a469721fae9adecb0ba642d33023b62afda7675"
+  },
+  "postmerge": {
+    "source": "ac440ed4352b1ec6cfe648c517e681627de9c9c0",
+    "run": 43155662368,
+    "status": "pending",
+    "acceptance": "Not yet claimed. PR deploy/extract skips are not deployment/acquisition acceptance."
+  }
+}
