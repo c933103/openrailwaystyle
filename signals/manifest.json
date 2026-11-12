@@ -1,0 +1,17 @@
+{
+  "complete": true,
+  "generated": "2026-11-12T11:46:25.137Z",
+  "signals": 24036,
+  "tiles": 18994,
+  "oldestSource": "2026-11-03T21:24:23Z",
+  "newestSource": "2026-11-11T10:58:20Z",
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "license": "ODbL-1.0",
+  "description": "Worldwide OSM railway=signal nodes without railway:signal:direction, supplementing the direction-dependent OpenRailwayMap signal source.",
+  "extract": {
+    "index": "20261111T121854Z-42996345331",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 41696
+  }
+}
