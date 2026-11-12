@@ -62,15 +62,20 @@ export async function buildExtractSignals(pbf, report, out, {read = readElements
     description: 'Worldwide OSM railway=signal nodes without railway:signal:direction, supplementing the direction-dependent OpenRailwayMap signal source.',
     extract: {index: report.index, regions: report.regions, missingRegions: report.missingRegions, read: counts.kept}};
   await writeFile(join(signalsOut, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  const power = await publishElectricitySignals(electric, coverage, {output: join(out, 'power'), requests: 0, downloadedBytes: 0, now: () => now().getTime(), log: () => {}, source: SOURCE});
+  // The electricity snapshot's writer certifies a complete world (complete:
+  // true, a full coverage partition), so it is published only from an
+  // assembly that covers every region and gap tile; otherwise it is missing.
+  const power = complete
+    ? await publishElectricitySignals(electric, coverage, {output: join(out, 'power'), requests: 0, downloadedBytes: 0, now: () => now().getTime(), log: () => {}, source: SOURCE})
+    : null;
   await writeFile(join(out, 'source.json'), `${JSON.stringify({schema: 1, dataset: 'traction', source: 'extract', complete: false, osmTimestamp: report.oldestTimestamp,
-    assemblyComplete: complete, missing: MISSING_TRACTION_PARTS})}\n`);
-  return {signals: manifest, electricity: power.manifest};
+    assemblyComplete: complete, missing: [...(power ? [] : ['power/electricity-signals']), ...MISSING_TRACTION_PARTS]})}\n`);
+  return {signals: manifest, electricity: power?.manifest ?? null};
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const [pbf, reportFile, out] = process.argv.slice(2);
   if (!pbf || !reportFile || !out) throw new Error('Usage: build-extract-signals.mjs <assembled.osm.pbf> <assembled.osm.pbf.json> <output directory>');
   const {signals, electricity} = await buildExtractSignals(pbf, JSON.parse(await readFile(reportFile, 'utf8')), out);
-  console.log(JSON.stringify({signals, electricity: {...electricity, coverage: electricity.coverage.length}}));
+  console.log(JSON.stringify({signals, electricity: electricity && {...electricity, coverage: electricity.coverage.length}}));
 }

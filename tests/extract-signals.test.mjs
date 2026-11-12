@@ -90,9 +90,14 @@ test('the same features and files as from Overpass, and a valid electricity snap
 test('a partial assembly is not complete; an incomplete one is refused; no signal at all is refused', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'extract-signals-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
-  const {signals} = await buildExtractSignals('x', report({missingRegions: ['gap/0_0_45_45']}), join(dir, 'partial'), {read: fakeRead});
+  const {signals, electricity} = await buildExtractSignals('x', report({missingRegions: ['gap/0_0_45_45']}), join(dir, 'partial'), {read: fakeRead});
   assert.equal(signals.complete, false);
-  assert.equal(JSON.parse(await readFile(join(dir, 'partial', 'source.json'), 'utf8')).assemblyComplete, false);
+  // The electricity writer certifies a whole world: nothing is published from a partial assembly.
+  assert.equal(electricity, null);
+  assert.deepEqual(await readdir(join(dir, 'partial')), ['signals', 'source.json']);
+  const marker = JSON.parse(await readFile(join(dir, 'partial', 'source.json'), 'utf8'));
+  assert.equal(marker.assemblyComplete, false);
+  assert.deepEqual(marker.missing, ['power/electricity-signals', ...MISSING_TRACTION_PARTS]);
   await assert.rejects(buildExtractSignals('x', report({missingNodeRefs: 1}), join(dir, 'never'), {read: () => assert.fail('nothing read')}), /missing 1/);
   await assert.rejects(buildExtractSignals('x', report(), join(dir, 'empty'), {read: async () => ({kept: 0})}), /Empty worldwide railway signal supplement/);
 });
