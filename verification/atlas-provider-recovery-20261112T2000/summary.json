@@ -1,0 +1,149 @@
+{
+  "recordedAt": "2026-11-12T20:10:41Z",
+  "repository": "c933103/openrailwaystyle",
+  "main": "fd1b52ce80ada782a5551eaeb052d94b892483b1",
+  "scope": "Read-only recovery verification, no new source or production configuration; no OSM query or workflow dispatch",
+  "runs": {
+    "coordinator": {
+      "id": 43263354077,
+      "conclusion": "failure",
+      "failures": [
+        "lifecycle",
+        "crossings",
+        "traction"
+      ]
+    },
+    "site": {
+      "id": 43264871694,
+      "conclusion": "success",
+      "completedAt": "2026-11-12T17:39:10Z"
+    },
+    "lifecycle": {
+      "id": 43263442910,
+      "updatedRegions": 12,
+      "changedElements": 30,
+      "unanswered": 42,
+      "redownload": 2,
+      "savedReleaseSha256": "790260f7b05e4989424f57b32827aa3e2faba0569f33a62a418fd14fdc7626fd",
+      "savedReleaseBytes": 124156673,
+      "archiveVerified": true,
+      "all12CurrentQueryConversionChecksPassed": true,
+      "previousBackups": 5,
+      "deltaEntries": 83
+    },
+    "crossings": {
+      "id": 43275931710,
+      "checkpointCommit": "cda084d1c8ba40db0eee69269f3767250c6c37f2",
+      "checkpointValidated": true,
+      "nodes": 470,
+      "requests": 5,
+      "bytes": 1068
+    },
+    "railwayWays": {
+      "id": 43281145583,
+      "selectedStage": "russia",
+      "requests": 2,
+      "bytes": 959,
+      "newRegions": 0,
+      "russiaPending": 20,
+      "russiaQueueUnchanged": true,
+      "chinaStateUnchanged": true,
+      "chinaArchiveUnchanged": true,
+      "chinaFetched": 36,
+      "chinaPending": 16,
+      "newStateSha256": "6d5444bf65036fc078846c70a85119edf7269c988ab27328450b260f2d7a7b20"
+    },
+    "signals": {
+      "id": 43282876370,
+      "requests": 3,
+      "bytes": 0,
+      "failure": "UND_ERR_CONNECT_TIMEOUT; IPv4 ETIMEDOUT and IPv6 ENETUNREACH"
+    }
+  },
+  "probe": {
+    "url": "https://overpass-api.de/api/status",
+    "startedAt": "2026-11-12T20:03:17Z",
+    "status": 502,
+    "elapsedSeconds": 5.317,
+    "requests": 1,
+    "osmQueries": 0
+  },
+  "candidateExtracts": {
+    "productionSwitchAttempted": false,
+    "authorization": "not verified; held, not a tool denial",
+    "scope": "offline integrity preflight, not production browser acceptance or a new source acquisition",
+    "crossings": {
+      "commit": "54487539a2230c1dbe38c46a7100261657ce4ed2",
+      "tilesDecoded": 13116,
+      "uniqueValidTableRows": 1233077
+    },
+    "traction": {
+      "commit": "23363c7993d11fb5cb9af112f32b9de541453320",
+      "tilesDecoded": 18994,
+      "signals": 24036,
+      "facilities": 17133,
+      "electricitySignals": 17931,
+      "powerMethods": 84900
+    },
+    "manifests": {
+      "complete": true,
+      "regions": 175,
+      "missingRegions": [],
+      "oldestSource": "2026-11-03T21:24:23Z",
+      "newestSource": "2026-11-11T10:58:20Z"
+    }
+  },
+  "tests": {
+    "environment": "Node 24.22.1",
+    "sourceSelectionStageTests": {
+      "pass": 19,
+      "fail": 0,
+      "skip": 0
+    },
+    "recoveryTests": {
+      "command": "node --experimental-vm-modules --test tests/snapshot-region-updates.test.mjs tests/snapshot-workflow.test.mjs tests/crossing-checkpoint.test.mjs tests/data-source.test.mjs tests/extract-traction.test.mjs",
+      "pass": 78,
+      "fail": 0,
+      "skip": 1,
+      "skipReason": "osmium unavailable"
+    },
+    "harnessCorrections": [
+      "Initial recovery-test invocation omitted --experimental-vm-modules; corrected and rerun.",
+      "Audit initially treated readTable's row tuple as an object; corrected to exported parser contract and rerun completely. Neither was a production data defect."
+    ]
+  },
+  "activeWorkflowCounts": [
+    {
+      "status": "in_progress",
+      "total": 0
+    },
+    {
+      "status": "queued",
+      "total": 0
+    },
+    {
+      "status": "waiting",
+      "total": 0
+    },
+    {
+      "status": "requested",
+      "total": 0
+    },
+    {
+      "status": "pending",
+      "total": 0
+    }
+  ],
+  "evidence": {
+    "path": "recovery-verification.zip",
+    "bytes": 17053,
+    "sha256": "282ee021539b8aef63c1d427bf803cc5a3cff1b3190fb0d8d37eb2c57b9f7cbc"
+  },
+  "limits": [
+    "Primary provider has not recovered in the latest bounded metadata probe. A manual retry is not justified by this evidence.",
+    "Russia's depth-six executed-query-limit leaf remains unresolved; limits and selection are not relaxed to manufacture completeness.",
+    "Existing extract artifact integrity passed; no configuration switch, URL change, scheduler change or extra source acquisition was performed.",
+    "Activation of crossings/traction extracts requires source-switch authorization and exact candidate deployment acceptance. Changing data source alone does not stop the existing Overpass coordinator.",
+    "Current checkpoint and raw-cache recovery inputs are valid; partial results were not relabelled as a new complete publication."
+  ]
+}
