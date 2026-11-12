@@ -52,8 +52,14 @@ async function fixture(t, {download = true, corrupt = false} = {}) {
   await writeFile(join(root, '.snapshot-cache/partial.json.previous'), 'preserved-before-redownload');
   await writeFile(join(root, '.snapshot-cache/delta.json'), '{"changes":[37]}');
   await writeFile(join(root, '.snapshot-cache/budget-123.json'), '{"bytes":142935}');
+  // Exercise the real tar/shell paths without requiring a system zstd binary.
+  // Production still uses zstd; fixture archives use gzip through this shim,
+  // consistently for creation, workflow execution and readback.
+  await writeFile(join(root, 'bin/zstd'), '#!/bin/sh\nexec gzip "$@"\n', {mode: 0o755});
+  const env = {...process.env, PATH: `${root}/bin:${process.env.PATH}`};
   const archive = join(root, 'prior.tar.zst');
-  assert.equal(spawnSync('tar', ['--zstd', '-cf', archive, '-C', join(root, 'prior'), '.snapshot-cache']).status, 0);
+  assert.equal(spawnSync('tar', ['--zstd', '-cf', archive, '-C', join(root, 'prior'), '.snapshot-cache'], {env}).status, 0);
+  assert.deepEqual([...(await readFile(archive)).subarray(0, 2)], [0x1f, 0x8b], 'fixture compressor was used');
   if (corrupt) await writeFile(archive, 'not an archive');
   const output = join(root, 'output');
   await writeFile(output, '');
@@ -61,19 +67,19 @@ async function fixture(t, {download = true, corrupt = false} = {}) {
   const run = block => {
     const command = block.split('        run: |\n')[1].split('\n').map(line => line.replace(/^          /, '')).join('\n')
       .replaceAll('/tmp/', `${root}/tmp/`).replaceAll('--dir /tmp', `--dir ${root}/tmp`);
-    return spawnSync('bash', ['-e', '-c', command], {cwd: root, env: {...process.env,
-      PATH: `${root}/bin:${process.env.PATH}`, GITHUB_OUTPUT: output, GITHUB_SHA: 'fixture',
+    return spawnSync('bash', ['-e', '-c', command], {cwd: root, env: {...env,
+      GITHUB_OUTPUT: output, GITHUB_SHA: 'fixture',
       FIXTURE_ROOT: root, FIXTURE_DOWNLOAD: String(download)}, encoding: 'utf8'});
   };
-  return {root, run, output};
+  return {root, run, output, env};
 }
 
 test('real restore and save shells retain newer, previous, delta and unrelated regions after failure', async t => {
-  const {root, run, output} = await fixture(t);
+  const {root, run, output, env} = await fixture(t);
   assert.equal(run(restore).status, 0);
   assert.equal(await readFile(output, 'utf8'), 'merged=true\n');
   assert.equal(run(save).status, 0);
-  assert.equal(spawnSync('tar', ['--zstd', '-xf', join(root, 'upload.tar.zst'), '-C', join(root, 'unpacked')]).status, 0);
+  assert.equal(spawnSync('tar', ['--zstd', '-xf', join(root, 'upload.tar.zst'), '-C', join(root, 'unpacked')], {env}).status, 0);
   for (const [file, value] of Object.entries({'older.json': 'prior-region', 'shared.json': 'newer-shared',
     'partial.json.previous': 'preserved-before-redownload', 'delta.json': '{"changes":[37]}'})) {
     assert.equal(await readFile(join(root, 'unpacked/.snapshot-cache', file), 'utf8'), value);
