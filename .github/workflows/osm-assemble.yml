@@ -152,13 +152,15 @@ jobs:
           if ! git push --force origin HEAD:crossings-extract-data; then
             test "$(git ls-remote origin refs/heads/crossings-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
-      - name: Build railway signals from the extract
-        # Both signal supplements of the traction dataset, in its layout. The
-        # power facilities and methods are not built from the extract yet,
-        # so source.json stays incomplete and the site keeps traction-data.
+      - name: Build railway signals and energy supplies from the extract
+        # The traction dataset in its layout: both signal supplements and the
+        # energy supplies. The world in a local run (2026-11-10 index):
+        # signals 91 s, energy supplies 143 s. The power methods are not built
+        # from the extract yet, so source.json stays incomplete and lists
+        # them, and the site keeps traction-data.
         run: |
-          node --max-old-space-size=6144 scripts/build-extract-signals.mjs assembled.osm.pbf assembled.osm.pbf.json traction-extract | tee traction-extract.json
-          { echo '# Railway signals from the extract'; echo; echo '```json'; cat traction-extract/signals/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          node --max-old-space-size=6144 scripts/build-extract-traction.mjs assembled.osm.pbf assembled.osm.pbf.json traction-extract | tee traction-extract.json
+          { echo '# Railway signals and energy supplies from the extract'; echo; echo '```json'; cat traction-extract/source.json traction-extract/signals/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish traction-extract-data
         if: github.ref == 'refs/heads/main'
         run: |
@@ -172,7 +174,7 @@ jobs:
           git checkout -q --orphan traction-extract-data
           cp -r "$GITHUB_WORKSPACE/traction-extract/." .
           git add .
-          git commit -q -m "Railway signals from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          git commit -q -m "Railway signals and energy supplies from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:traction-extract-data; then
             test "$(git ls-remote origin refs/heads/traction-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
@@ -188,5 +190,7 @@ jobs:
             crossings-extract/manifest.json
             traction-extract/signals/manifest.json
             traction-extract/power/electricity-signals-manifest.json
+            traction-extract/power/manifest.json
+            traction-extract/source.json
           if-no-files-found: ignore
           retention-days: 30

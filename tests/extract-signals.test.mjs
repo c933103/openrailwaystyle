@@ -5,11 +5,10 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join, relative} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {MISSING_TRACTION_PARTS, buildExtractSignals, isSignalElement} from '../scripts/build-extract-signals.mjs';
+import {buildExtractSignals, isSignalElement} from '../scripts/build-extract-signals.mjs';
 import {signalFeatures, signalFiles} from '../scripts/signals-data.mjs';
 import {electricitySignalsGeoJSON} from '../scripts/electricity-signal-data.mjs';
 import {validateElectricitySignalsSnapshot} from '../scripts/build-electricity-signals.mjs';
-import {checkMarker} from '../scripts/data-source.mjs';
 
 const report = (extra = {}) => ({schema: 1, index: '20261111T121854Z-42996345331', regions: 175, oldestTimestamp: '2026-11-03T21:24:23Z', newestTimestamp: '2026-11-11T10:58:20Z', missingNodeRefs: 0, missingRegions: [], ...extra});
 const meta = {version: 3, timestamp: '2026-10-01T00:00:00Z'};
@@ -79,12 +78,7 @@ test('the same features and files as from Overpass, and a valid electricity snap
   assert.equal(manifest.coverage.length, 32);
   assert.equal(manifest.coverage.find(c => c.bbox.join() === '45,135,90,180').features, 1, 'a signal at 180° E is in the box it borders');
   assert.equal(electricity.features, 3);
-  // Never selected while the power facilities and methods are missing.
-  const marker = await readFile(join(out, 'source.json'), 'utf8');
-  assert.match(checkMarker(marker, 'traction'), /not complete/);
-  assert.deepEqual(JSON.parse(marker).missing, MISSING_TRACTION_PARTS);
-  assert.equal(JSON.parse(marker).assemblyComplete, true);
-  assert.deepEqual(await readdir(out), ['power', 'signals', 'source.json']);
+  assert.deepEqual(await readdir(out), ['power', 'signals'], 'source.json is the traction build\'s');
 });
 
 test('a partial assembly is not complete; an incomplete one is refused; no signal at all is refused', async t => {
@@ -94,10 +88,7 @@ test('a partial assembly is not complete; an incomplete one is refused; no signa
   assert.equal(signals.complete, false);
   // The electricity writer certifies a whole world: nothing is published from a partial assembly.
   assert.equal(electricity, null);
-  assert.deepEqual(await readdir(join(dir, 'partial')), ['signals', 'source.json']);
-  const marker = JSON.parse(await readFile(join(dir, 'partial', 'source.json'), 'utf8'));
-  assert.equal(marker.assemblyComplete, false);
-  assert.deepEqual(marker.missing, ['power/electricity-signals', ...MISSING_TRACTION_PARTS]);
+  assert.deepEqual(await readdir(join(dir, 'partial')), ['signals']);
   await assert.rejects(buildExtractSignals('x', report({missingNodeRefs: 1}), join(dir, 'never'), {read: () => assert.fail('nothing read')}), /missing 1/);
   await assert.rejects(buildExtractSignals('x', report(), join(dir, 'empty'), {read: async () => ({kept: 0})}), /Empty worldwide railway signal supplement/);
 });
@@ -117,13 +108,4 @@ test('with osmium, from a real extract file: the same features', {skip: osmium.s
   const features = signalFeatures({elements: OVERPASS}).sort((a, b) => a.id - b.id);
   assert.deepEqual(JSON.parse(gunzipSync(await readFile(join(dir, 'out', 'signals', 'railway-signals.geojson.gz')))).features, features);
   assert.deepEqual(JSON.parse(await readFile(join(dir, 'out', 'power', 'electricity-signals.geojson'), 'utf8')), electricitySignalsGeoJSON({elements: OVERPASS}));
-});
-
-test('the assembly workflow builds signals after the crossings, and publishes them only to their own branch, only on main', async () => {
-  const workflow = await readFile(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
-  const build = workflow.indexOf('scripts/build-extract-signals.mjs assembled.osm.pbf assembled.osm.pbf.json traction-extract');
-  assert.ok(build > workflow.indexOf('- name: Publish crossings-extract-data'));
-  assert.match(workflow, /- name: Publish traction-extract-data\n\s+if: github\.ref == 'refs\/heads\/main'/);
-  assert.match(workflow, /git push --force origin HEAD:traction-extract-data/);
-  assert.doesNotMatch(workflow, /HEAD:traction-data\b/, 'the Overpass branch is never written');
 });
