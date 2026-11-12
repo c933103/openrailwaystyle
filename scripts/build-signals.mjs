@@ -8,11 +8,10 @@
 // the electrification signals that do have a direction.
 import {retryAfterMs} from './retry-after.mjs';
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
-import {gzipSync} from 'node:zlib';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {startRegions, quarters} from './crossing-data.mjs';
-import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery, parseSignalChanges, applySignalChanges, signalFeatures, buildSignalTiles, SIGNAL_ZOOM, SIGNAL_OVERVIEW_ZOOM} from './signals-data.mjs';
+import {signalQuery, combinedSignalQuery, electricWithDirectionQuery, signalChangesQuery, parseSignalChanges, applySignalChanges, signalFeatures, signalFiles} from './signals-data.mjs';
 import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
 import {publishElectricitySignals} from './build-electricity-signals.mjs';
 
@@ -256,16 +255,12 @@ export async function buildSignals({
 
   await rm(output, {recursive: true, force: true});
   await mkdir(output, {recursive: true});
-  await writeFile(new URL('railway-signals.geojson.gz', output), gzipSync(JSON.stringify({type: 'FeatureCollection', features}), {level: 9}));
-  const tiles = new Map([SIGNAL_OVERVIEW_ZOOM, SIGNAL_ZOOM].flatMap(z => [...buildSignalTiles(features, z)])), index = [];
-  for (const [key, data] of tiles) {
-    const [z, x] = key.split('/');
-    await mkdir(new URL(`${z}/${x}/`, output), {recursive: true});
-    await writeFile(new URL(`${key}.pbf.gz`, output), gzipSync(data, {level: 9}));
-    index.push(key);
+  const {files, tiles} = signalFiles(features);
+  for (const [path, data] of files) {
+    await mkdir(new URL('./', new URL(path, output)), {recursive: true});
+    await writeFile(new URL(path, output), data);
   }
-  await writeFile(new URL('index.json', output), JSON.stringify({tiles: index.sort()}));
-  const manifest = {complete: true, generated: new Date(now()).toISOString(), signals: features.length, tiles: tiles.size, requests, downloadedBytes: downloaded,
+  const manifest = {complete: true, generated: new Date(now()).toISOString(), signals: features.length, tiles, requests, downloadedBytes: downloaded,
     regions: leaves.map(({box}) => ({box})), source: api, license: 'ODbL-1.0',
     description: 'Worldwide OSM railway=signal nodes without railway:signal:direction, supplementing the direction-dependent OpenRailwayMap signal source.'};
   await writeFile(new URL('manifest.json', output), JSON.stringify(manifest, null, 2));

@@ -6,7 +6,7 @@
 # From it, the extract builds (#330, step 9) are made and, on main,
 # published to their own branches (branch-lines-extract-data,
 # service-routes-extract-data, station-points-extract-data,
-# crossings-extract-data). The site uses
+# crossings-extract-data, traction-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -152,6 +152,30 @@ jobs:
           if ! git push --force origin HEAD:crossings-extract-data; then
             test "$(git ls-remote origin refs/heads/crossings-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build railway signals from the extract
+        # Both signal supplements of the traction dataset, in its layout. The
+        # power facilities and methods are not built from the extract yet,
+        # so source.json stays incomplete and the site keeps traction-data.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-signals.mjs assembled.osm.pbf assembled.osm.pbf.json traction-extract | tee traction-extract.json
+          { echo '# Railway signals from the extract'; echo; echo '```json'; cat traction-extract/signals/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish traction-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/traction-publish
+          cd /tmp/traction-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan traction-extract-data
+          cp -r "$GITHUB_WORKSPACE/traction-extract/." .
+          git add .
+          git commit -q -m "Railway signals from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:traction-extract-data; then
+            test "$(git ls-remote origin refs/heads/traction-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -162,5 +186,7 @@ jobs:
             service-routes-extract/manifest.json
             station-points-extract/manifest.json
             crossings-extract/manifest.json
+            traction-extract/signals/manifest.json
+            traction-extract/power/electricity-signals-manifest.json
           if-no-files-found: ignore
           retention-days: 30

@@ -2,6 +2,7 @@
 // mapped signals without railway:signal:direction. Neutral Atlas location
 // markers do not require a direction: this published supplement fills that
 // specific gap without visitors querying an editing API.
+import {gzipSync} from 'node:zlib';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 
@@ -132,4 +133,20 @@ export function buildSignalTiles(features, z = SIGNAL_ZOOM) {
     }
   }
   return new Map([...tiles].map(([key, features]) => [key, vtpbf.fromGeojsonVt({railway_signals:{features}}, {version:2, extent:SIGNAL_EXTENT})]));
+}
+
+// The files of the signal supplement, as the site loads them: the GeoJSON
+// (railway-signals.geojson.gz), the tiles ('z/x/y.pbf.gz') and their index,
+// by path. Both builders write these (build-signals.mjs from Overpass,
+// build-extract-signals.mjs from the Geofabrik extracts), so the same
+// features give the same files.
+export function signalFiles(features) {
+  const files = new Map([['railway-signals.geojson.gz', gzipSync(JSON.stringify({type: 'FeatureCollection', features}), {level: 9})]]);
+  const tiles = new Map([SIGNAL_OVERVIEW_ZOOM, SIGNAL_ZOOM].flatMap(z => [...buildSignalTiles(features, z)])), index = [];
+  for (const [key, data] of tiles) {
+    files.set(`${key}.pbf.gz`, gzipSync(data, {level: 9}));
+    index.push(key);
+  }
+  files.set('index.json', JSON.stringify({tiles: index.sort()}));
+  return {files, tiles: tiles.size};
 }

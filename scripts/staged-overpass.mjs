@@ -271,10 +271,11 @@ export function createStagedSnapshot(config) {
     return manifest;
   }
   // Validate and publish a complete worldwide snapshot. Also used by a builder
-  // that acquires the same features as part of a combined download.
-  async function publish(data,coverage,{output,requests,downloadedBytes,now=Date.now,log=console.log,partition}) {
+  // that acquires the same features as part of a combined download, or from
+  // the Geofabrik extracts (`source`).
+  async function publish(data,coverage,{output,requests,downloadedBytes,now=Date.now,log=console.log,partition,source='OpenStreetMap via Overpass'}) {
     const body=JSON.stringify(data);
-    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:data.features.length,coverage,requests,downloadedBytes,sha256:digest(body),source:'OpenStreetMap via Overpass',license:'ODbL-1.0',...(partition?{partition}:{})};
+    const manifest={version:1,complete:true,built:new Date(now()).toISOString(),features:data.features.length,coverage,requests,downloadedBytes,sha256:digest(body),source,license:'ODbL-1.0',...(partition?{partition}:{})};
     validate(data,manifest);
     // Stage only after complete acquisition. Publish the digest-bearing manifest
     // last; interrupted file replacement cannot pass the workflow validation.

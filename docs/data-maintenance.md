@@ -155,6 +155,16 @@ How the choice is made:
   - Every differing row but 16 has a node, or a railway way through it, edited after that time. In those 16 the extract has no railway way through the crossing. In 2 of them the ways lost their `railway` tag after that time; for the other 14, no way through the crossing is left in the extract at all.
 - **Completeness, dates and use** are as above. It is not used until `DATA_SOURCES` selects `crossings`.
 
+**Railway signals.** Then `scripts/build-extract-signals.mjs` builds both signal supplements of the traction dataset and, on `main`, publishes them to `traction-extract-data`, in the `traction-data` layout.
+- **Same selection and files.** The selection is `combinedSignalQuery`'s: `railway=signal` nodes without `railway:signal:direction`, and those with one that have `railway:signal:electricity` other than `no`.
+  - `signals/` holds the features of `signalFeatures`, written with `signalFiles` (`scripts/signals-data.mjs`), which `build-signals.mjs` now uses too.
+  - `power/electricity-signals.*` holds the features of `electricitySignalsGeoJSON`, published by the same validated writer (`publishElectricitySignals`), with the source named. Its coverage is the world's 32 start regions, counted with their edges as an Overpass bounding box counts them.
+- **Never complete yet.** `traction-data` also holds the power facilities and methods, which are not built from the extracts. So `source.json` says `complete: false` and lists the missing parts, and the site keeps `traction-data` until those builders exist.
+- **Checked against `traction-data` of 2026-11-06**, whose electrification coverage dates from 2026-10-31 to 11-01. The world assembled from the 2026-11-10 index gave 24,036 signals without a direction and 17,931 electrification signals, in 91 s and 0.6 GB locally.
+  - Signals: 23,929 identical; 6 differ, 101 only in the extract, 17 only in Overpass.
+  - Electrification signals: 17,846 identical; 17 differ, 68 only in the extract.
+  - Every difference has a node edited after the Overpass data's time, or a node that is no signal now.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
