@@ -43,6 +43,7 @@ jobs:
       # The raw Overpass responses are also kept in a release, which unlike
       # the Actions cache never expires and is reachable from any branch.
       - name: Restore raw Overpass responses from the release
+        id: restore_raw
         env:
           GH_TOKEN: ${{ github.token }}
         # The Actions cache may be partial (saved by a failed run) or older, so
@@ -52,6 +53,7 @@ jobs:
           if gh release download overpass-cache --pattern 'overpass-cache.tar.zst' --dir /tmp; then
             tar --zstd -xf /tmp/overpass-cache.tar.zst -C /tmp/release-cache
             cp -a -u /tmp/release-cache/.snapshot-cache/. .snapshot-cache/
+            echo "merged=true" >> "$GITHUB_OUTPUT"
             echo "Merged $(ls /tmp/release-cache/.snapshot-cache | wc -l) files from the release; $(ls .snapshot-cache | wc -l) cached files now"
           else
             echo "No stored Overpass responses in the release"
@@ -179,6 +181,7 @@ jobs:
           SNAPSHOT_REGION: '19'
         run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Assemble complete worldwide archive
+        id: assemble
         env:
           SNAPSHOT_REGION: assemble
         run: node --import ./scripts/overpass-meter.mjs --max-old-space-size=6144 scripts/build-snapshot.mjs
@@ -186,8 +189,14 @@ jobs:
         if: always()
         with:
           path: .snapshot-cache
-          key: lifecycle-initial-20260922-${{ github.run_id }}
+          key: lifecycle-initial-20260922-${{ github.run_id }}-${{ github.run_attempt }}
+      # Failed region builds still retain useful updates and .previous files.
+      # Only replace the durable archive after its prior contents were merged,
+      # or after a complete assembly bootstraps the first archive. A failed
+      # download/restore must not turn a partial cache into the only copy.
+      # Cancellation may interrupt a writer; keep the durable archive unchanged.
       - name: Store raw Overpass responses in the release
+        if: always() && !cancelled() && (steps.restore_raw.outputs.merged == 'true' || steps.assemble.outcome == 'success')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
