@@ -82,7 +82,18 @@ export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.
   }));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
-const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
+const SERVICE_STROKE_STOPS = [[7,2],[12,3.5],[16,5]];
+const zoomScale=value=>['interpolate',['linear'],['zoom'],...SERVICE_STROKE_STOPS.flatMap(([zoom,width])=>
+  [zoom,width===3.5?value:['*',value,width/3.5]])];
+// One ordinary service stroke, never the combined width of parallel routes.
+export function standardServiceWidth(zoom) {
+  const z=Number.isFinite(zoom)?zoom:7;
+  for(let i=1;i<SERVICE_STROKE_STOPS.length;i++)if(z<SERVICE_STROKE_STOPS[i][0]){
+    const [a,x]=SERVICE_STROKE_STOPS[i-1],[b,y]=SERVICE_STROKE_STOPS[i];
+    return x+(y-x)*Math.max(0,(z-a)/(b-a));
+  }
+  return SERVICE_STROKE_STOPS.at(-1)[1];
+}
 const valid=now=>['>=',['coalesce',['get','frequency_until'],0],now/1000];
 const legacyLabels=()=>['match',['get','slot'],...Array.from({length:127},(_,k)=>k-63).filter(k=>k).flatMap(k=>[k,['literal',[0,k*.65]]]),['literal',[0,0]]];
 export function serviceFrequencyPaint(settings={},now=Date.now()) {

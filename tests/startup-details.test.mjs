@@ -2,6 +2,40 @@
 // retain their contexts on Node 24 even after JSDOM closes and GC runs.
 import {test,encodeTile,assert,gzipSync,model,powerFacilities,stationFallbackModule,featureFilter,code,style,start,tick,providerHubTile,deferredHubHarness} from './startup-harness.mjs';
 
+test('all views keep hollow stations sized to line width before the first frame and throughout zoom changes',async()=>{
+ const {dom,window,maps,errors}=await start({search:'?mode=service&stations=1&language=en'});
+ try{
+  const map=maps[0],layers=map.options.style.layers;
+  const stations=layers.filter(layer=>layer.id.startsWith('station-')&&layer.type==='circle');
+  assert.ok(stations.length>=7,'provider and both fallback sources are covered');
+  for(const layer of stations){
+   assert.equal(layer.paint['circle-opacity'],0,`${layer.id}: hollow before the first frame`);
+   assert.equal(layer.paint['circle-stroke-color'],layer.id==='station-former-dots'?'#8a8076':'#657571');
+   const outer=2*(layer.paint['circle-radius']+layer.paint['circle-stroke-width']);
+   assert.ok(Math.abs(outer-model.stationMarkerDiameter('service',map.options.zoom))<1e-12);
+  }
+  const route=layers.findIndex(layer=>layer.id==='service-routes');
+  assert.ok(stations.every(layer=>layers.indexOf(layer)<route),'routes paint above every ordinary station source');
+  assert.ok(route<layers.findIndex(layer=>layer.id==='place_label_city'),'accepted place text remains above routes');
+  map.handlers['style.load']();
+  for(const mode of model.MODES){
+   window.document.querySelector(`[data-mode="${mode}"]`).click();
+   for(const zoom of [6.999999,7,7.8,9.7,16]){
+    map.zoom=zoom;map.handlers.zoom();
+    for(const layer of stations){
+     const paint=map.paintProperties[layer.id],outer=2*(paint['circle-radius']+paint['circle-stroke-width']);
+     assert.ok(Math.abs(outer-model.stationMarkerDiameter(mode,zoom))<1e-12,`${layer.id} ${mode} z${zoom}`);
+     assert.equal(paint['circle-opacity'],0,'mode changes do not restore an opaque fill');
+    }
+   }
+  }
+  window.document.querySelector('[data-mode="service"]').click();
+  assert.equal(map.paintProperties['station-provider-dots']['circle-opacity'],0);
+  assert.equal(map.visibility['service-routes'],'visible');
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
 
 test('curated hub names with rare Han wait for their slices before reaching the map',async()=>{
  const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');

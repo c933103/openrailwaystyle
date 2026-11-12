@@ -9,7 +9,7 @@ import {gzipSync} from 'node:zlib';
 const epoch=Date.parse('2026-11-07T00:00:00Z');
 const source=await readFile(new URL('../scripts/build-street-running.mjs',import.meta.url),'utf8');
 const query=/const query='([^']+)'/.exec(source)[1];
-async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0,cleanup=null}={}){
+async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0,cleanup=null,early=false}={}){
  const dir=await mkdtemp(join(tmpdir(),'street-provider-pause-'));t.after(()=>rm(dir,{recursive:true,force:true}));
  const retained=gzipSync(JSON.stringify([{type:'way',id:1,tags:{embedded:'yes'},geometry:[{lon:0,lat:0},{lon:.001,lat:.001}]}]));
  await writeFile(join(dir,'elements.json.gz'),retained);
@@ -19,7 +19,7 @@ async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShi
  await writeFile(fixture,`import fs from 'node:fs';
  let elapsed=0,shift=0,calls=0,oversleep=${oversleep};Date.now=()=>${epoch}+elapsed+shift;
  Object.defineProperty(performance,'now',{value:()=>elapsed});
- globalThis.setTimeout=(f,ms,...args)=>{elapsed+=ms+oversleep;oversleep=0;f(...args);return 0;};
+ globalThis.setTimeout=(f,ms,...args)=>{elapsed+=(${early}?Math.max(1,Math.ceil(ms/2)):ms)+oversleep;oversleep=0;f(...args);return 0;};
  globalThis.fetch=async(url,{body:query})=>{
   fs.appendFileSync(${JSON.stringify(log)},JSON.stringify({url:String(url),at:elapsed,query:query.get('data')})+'\\n');
   ${cleanup?`{const response=new Response(${cleanup==='absent'?'null':"'busy'"},{status:503,headers:++calls===1?{'retry-after':${JSON.stringify(header)}}:{}});
@@ -100,4 +100,26 @@ for(const header of ["Wed, 31 Feb 2027 00:10:00 GMT", "Mon, 07 Nov 2026 00:10:00
 for(const header of ['Sat, 07 Nov 2026 00:10:00 GMT','Saturday, 07-Nov-26 00:10:00 GMT','Sat Nov  7 00:10:00 2026'])test(`street retains valid calendar pause ${header}`,async t=>{
  const timezone=process.env.TZ;process.env.TZ='Asia/Tokyo';t.after(()=>{if(timezone===undefined)delete process.env.TZ;else process.env.TZ=timezone;});
  const {requests}=await run(t,{header,body:'read-error'});assert.equal(requests[1].at,600000);
+});
+
+for(const header of ['', '60'])for(const body of ['http','read-error','remark'])test(`street early timers retain full retry floors after ${body} with pause ${header || 'absent'}`,async t=>{
+ const {requests}=await run(t,{header,body,early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000]);
+ assert.ok(requests.every(r=>r.query===query));
+});
+for(const header of ['', '60'])test(`street early timers retain HTTP-change fallback floor with pause ${header || 'absent'}`,async t=>{
+ const {requests}=await run(t,{header,previous:true,cleanup:'resolved',early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000,360000]);
+ assert.match(requests[0].query,/^\[out:xml\]/);
+ assert.ok(requests.slice(1).every(r=>r.query===query));
+});
+test('street early timers preserve selection and later full-retry floors',async t=>{
+ const {requests}=await run(t,{header:'120',previous:true,early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,120000,240000,360000,480000]);
+ assert.match(requests[1].query,/out ids;/);
+ assert.ok(requests.slice(2).every(r=>r.query===query));
+});
+test('street early timers combine a longer provider pause with later local retry floors',async t=>{
+ const {requests}=await run(t,{header:'420',body:'http',early:true});
+ assert.deepEqual(requests.map(r=>r.at),[0,420000,540000]);
 });

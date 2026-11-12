@@ -26,33 +26,40 @@ const html = detail => `<html><head><title>OSM3S Response</title></head><body><p
 // Fetch has no network implementation; time is recorded rather than waited.
 // Small complete fixtures intentionally stop at the existing 900,000-row guard,
 // so these acquisition tests cannot replace or publish a snapshot.
-async function run(reply, {byteLimit} = {}) {
-  const calls = [], sleeps = [], warnings = [], filesystem = [];
+async function run(reply, {byteLimit, dynamicClock = false, earlyWake = 0} = {}) {
+  const calls = [], callsAt = [], sleeps = [], warnings = [], filesystem = [];
+  let elapsed = 0, wallShift = 0;
+  class MovingDate extends Date { constructor(...args) { super(...(args.length ? args : [NOW + elapsed + wallShift])); } static now() { return NOW + elapsed + wallShift; } }
+  const ClockDate = dynamicClock ? MovingDate : FixedDate;
+  const clock = {advance(bodyMs, shift) { elapsed += bodyMs; wallShift += shift; }};
   const forbid = name => async (...args) => {
     filesystem.push({name, args});
     throw new Error(`Unexpected fixture filesystem call: ${name}`);
   };
   const context = vm.createContext({
     process:{env:{OVERPASS_URL:'https://overpass.fixture.invalid/api/interpreter'}},
-    URL, URLSearchParams, Date:FixedDate,
+    URL, URLSearchParams, Date:ClockDate, performance:{now:()=>elapsed},
     Buffer,
     AbortSignal:{timeout:ms => { assert.equal(ms, 240000); return undefined; }},
-    setTimeout:(callback, ms) => { sleeps.push(ms); callback(); },
+    setTimeout:(callback, ms) => {
+      sleeps.push(ms); const early = ms ? Math.min(ms, earlyWake) : 0;
+      if (ms) earlyWake = 0; elapsed += ms - early; callback();
+    },
     console:{log:() => {}, warn:(...args) => warnings.push(args.join(' '))},
     fetch:async (url, options) => {
       assert.equal(url, 'https://overpass.fixture.invalid/api/interpreter');
       assert.equal(options.method, 'POST');
       assert.equal(options.headers['User-Agent'], 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)');
       const query = options.body.get('data');
-      calls.push(query);
+      calls.push(query); callsAt.push(elapsed);
       assert.ok(calls.length <= 50, 'unexpected fixture request loop');
-      return reply(query, calls.length);
+      return reply(query, calls.length, clock);
     },
   });
   const dependencies = {
     'node:fs/promises':Object.fromEntries(['mkdir', 'readFile', 'writeFile', 'rm'].map(name => [name, forbid(name)])),
     'node:zlib':{gzipSync:() => assert.fail('unexpected compression'), gunzipSync:() => assert.fail('unexpected decompression')},
-    './crossing-request.mjs': {...crossingRequest, crossingResponseText: (response, usage) => crossingRequest.crossingResponseText(response, usage, byteLimit), crossingRetryDelay: (attempt, header) => crossingRequest.crossingRetryDelay(attempt, header, NOW)}, './crossing-data.mjs':crossings,
+    './crossing-request.mjs': {...crossingRequest, crossingResponseText: (response, usage) => crossingRequest.crossingResponseText(response, usage, byteLimit), crossingRetryDelay: (attempt, header, at) => crossingRequest.crossingRetryDelay(attempt, header, at ?? ClockDate.now())}, './crossing-data.mjs':crossings,
     './crossing-checkpoint.mjs':checkpoint,
   };
   const module = new vm.SourceTextModule(source, {
@@ -68,7 +75,7 @@ async function run(reply, {byteLimit} = {}) {
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
   assert.deepEqual(filesystem, [], 'failed or undersized acquisition cannot touch the saved snapshot');
-  return {calls, sleeps, warnings, error};
+  return {calls, callsAt, sleeps, warnings, error};
 }
 
 function checkAcquired(result, firstQueries, firstSleeps) {
@@ -237,3 +244,30 @@ for(const header of ['Tue, 31 Nov 2026 06:00:00 GMT','Foo, 01 Nov 2026 06:10:00 
   checkAcquired(result,status===200?[parentQuery]:[parentQuery,parentQuery],status===200?[0]:[0,60000]);
  });
 }
+
+
+for (const [name,mode,header,bodyMs,wallShift,earlyWake,expected] of [
+  ['forward wall correction','success','120',0,3600000,0,120000],
+  ['backward wall correction','success','120',0,-3600000,0,120000],
+  ['HTTP-date error with forward correction','error','Sun, 01 Nov 2026 06:02:00 GMT',0,3600000,0,120000],
+  ['HTTP-date error with backward correction','error','Sun, 01 Nov 2026 06:02:00 GMT',0,-3600000,0,120000],
+  ['body failure keeps deadline and normal backoff','body','Sun, 01 Nov 2026 06:02:00 GMT',80000,3600000,0,140000],
+  ['subdivision retains header deadline','split','Sun, 01 Nov 2026 06:02:00 GMT',80000,3600000,0,120000],
+  ['body time consumes the provider pause','success','120',80000,0,0,120000],
+  ['early timer wake is checked again','success','120',0,0,10000,120000],
+]) test(`crossing provider pause uses elapsed time: ${name}`,async()=>{
+  const result=await run((_query,count,clock)=>{
+    if(count!==1)return response(200,empty);
+    const first=new Response(mode==='error'?'busy':mode==='split'?'runtime error: Query timed out':empty,
+      {status:mode==='error'?429:mode==='split'?504:200,headers:{'Retry-After':header}});
+    const original=first.body.getReader.bind(first.body);
+    first.body.getReader=()=>{const reader=original();let began=false;return {
+      read:async()=>{if(!began){began=true;clock.advance(bodyMs,wallShift);if(mode==='body')throw new Error('body reset');}return reader.read();},
+      cancel:()=>reader.cancel(),releaseLock:()=>reader.releaseLock(),
+    };};
+    return first;
+  },{dynamicClock:true,earlyWake});
+  assert.match(result.error?.message||'',/^Suspiciously few crossings worldwide: 0$/);
+  assert.equal(result.callsAt[1],expected,'next request respects the original header deadline and normal backoff');
+  assert.equal(result.calls[1],mode==='split'?crossings.regionQuery(crossings.quarters(parent)[0],AT):mode==='success'?otherQueries[0]:parentQuery);
+});

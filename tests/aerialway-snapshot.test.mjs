@@ -52,10 +52,17 @@ test('actual deployment step stops before archive/validation on missing branch o
     const f=await fixture(t),bin=join(f.root,'bin');await mkdir(bin);
     await writeFile(join(bin,'git'),`#!/bin/sh\n[ "$1" = fetch ] && exit ${code}\necho unexpected-archive >&2\nexit 90\n`,{mode:0o755});
     await writeFile(join(bin,'node'),'#!/bin/sh\necho unexpected-validation >&2\nexit 91\n',{mode:0o755});
-    const run=spawnSync('bash',['-c',step],{cwd:f.root,env:{...process.env,PATH:`${bin}:${process.env.PATH}`},encoding:'utf8'});
+    // The branch comes from the source step (scripts/data-source.mjs).
+    const run=spawnSync('bash',['-c',step],{cwd:f.root,env:{...process.env,PATH:`${bin}:${process.env.PATH}`,DATA_BRANCH_AERIALWAYS:'aerialway-data'},encoding:'utf8'});
     assert.equal(run.status,code);assert.doesNotMatch(run.stderr,/unexpected/);
     await assert.rejects(readFile(join(f.root,'styles/data/aerialways/index.json')));
   }
+  // Without the chosen branch the step stops before asking git at all.
+  const f=await fixture(t),bin=join(f.root,'bin');await mkdir(bin);
+  await writeFile(join(bin,'git'),'#!/bin/sh\necho unexpected-git >&2\nexit 90\n',{mode:0o755});
+  const env={...process.env,PATH:`${bin}:${process.env.PATH}`};delete env.DATA_BRANCH_AERIALWAYS;
+  const run=spawnSync('bash',['-c',step],{cwd:f.root,env,encoding:'utf8'});
+  assert.notEqual(run.status,0);assert.doesNotMatch(run.stderr,/unexpected/);assert.match(run.stderr,/DATA_BRANCH_AERIALWAYS/);
 });
 
 // Structurally valid layer/gzip with a counted but unusable feature message.

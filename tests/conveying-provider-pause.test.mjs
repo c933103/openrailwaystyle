@@ -9,7 +9,7 @@ import {gzipSync} from 'node:zlib';
 import {CONVEYING_QUERY,AERIALWAY_QUERY} from '../scripts/conveying-data.mjs';
 
 const epoch=Date.parse('2026-11-06T12:00:00Z');
-async function run(t,builder,{header='420',body='remark',previous=false,bodyMs=0}={}) {
+async function run(t,builder,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,earlyWake=false}={}) {
  const dir=await mkdtemp(join(tmpdir(),'conveying-provider-pause-'));
  t.after(()=>rm(dir,{recursive:true,force:true}));
  const query=builder==='conveying'?CONVEYING_QUERY:AERIALWAY_QUERY;
@@ -19,19 +19,23 @@ async function run(t,builder,{header='420',body='remark',previous=false,bodyMs=0
  await writeFile(join(dir,'manifest.json'),JSON.stringify({osmBase:'2026-11-01T00:00:00Z',query:builder==='conveying'?query.replace('way[highway=elevator];',''):query.replace('|platter','')}));
  const fixture=join(dir,'fake.mjs'),requests=join(dir,'requests');
  await writeFile(fixture,`import fs from 'node:fs';
- let elapsed=0,calls=0;
- Date.now=()=>${epoch}+elapsed;
+ let elapsed=0,shift=0,calls=0,woke=false;
+ Date.now=()=>${epoch}+elapsed+shift;
  Object.defineProperty(globalThis,'performance',{value:{now:()=>elapsed}});
- globalThis.setTimeout=(f,ms,...args)=>{elapsed+=ms;f(...args);return 0;};
+ globalThis.setTimeout=(f,ms,...args)=>{elapsed+=${earlyWake}&&!woke&&ms?(woke=true,ms/2):ms;f(...args);return 0;};
  globalThis.fetch=async(url,{body:query})=>{
   fs.appendFileSync(${JSON.stringify(requests)},JSON.stringify({at:elapsed,query:query.get('data')})+'\\n');
   if(++calls>1)return new Response('busy',{status:503});
   const headers={'retry-after':${JSON.stringify(header)}};
-  ${previous?`return new Response('<osm><meta osm_base="2026-11-06T00:00:00Z"/></osm>',{headers});`:
-  body==='http'?`return new Response('busy',{status:503,headers});`:
-  body==='read-error'?`return new Response(new ReadableStream({start(c){c.error(new Error('body interrupted'));}}),{headers});`:
-  `const response=new Response(${JSON.stringify(body==='malformed'?'{':body==='empty'?' {"elements":[]}':JSON.stringify({remark:'runtime error: Query timed out'}))},{headers});
-   const json=response.json.bind(response);response.json=()=>{elapsed+=${bodyMs};return json();};return response;`}
+  const response=${body==='http'?`new Response('busy',{status:503,headers})`:
+   previous?`new Response('<osm><meta osm_base="2026-11-06T00:00:00Z"/></osm>',{headers})`:
+   body==='read-error'?`new Response(new ReadableStream({start(c){c.error(new Error('body interrupted'));}}),{headers})`:
+   `new Response(${JSON.stringify(body==='malformed'?'{':body==='empty'?' {"elements":[]}':JSON.stringify({remark:'runtime error: Query timed out'}))},{headers})`};
+  let consumed=false;const consume=()=>{if(!consumed){consumed=true;elapsed+=${bodyMs};shift+=${wallShift};}};
+  for(const method of ['text','json']){const original=response[method].bind(response);response[method]=()=>{consume();return original();};}
+  const getReader=response.body.getReader.bind(response.body);response.body.getReader=()=>{const reader=getReader();return{
+   read:()=>{consume();return reader.read();},cancel:()=>reader.cancel(),releaseLock:()=>reader.releaseLock(),
+  };};return response;
  };
  `);
  const env={...process.env};delete env.PREVIOUS_DATA;if(previous)env.PREVIOUS_DATA=dir;
@@ -84,4 +88,22 @@ for(const builder of ['conveying','aerialway']) {
    assert.equal(requests[2].at,360000,'existing second admission backoff remains in place');
   });
  }
+}
+
+for(const builder of ['conveying','aerialway']) {
+ for(const previous of [false,true]) {
+  for(const bodyMs of [80000,500000])test(`${builder}: HTTP seconds pause is consumed, not restarted, after ${bodyMs}ms body (${previous?'change fallback':'full retry'})`,async t=>{
+   const {requests}=await run(t,builder,{body:'http',previous,bodyMs});
+   assert.equal(requests.length,3);assert.equal(requests[1].at,Math.max(420000,bodyMs+120000));
+   assert.equal(requests[2].at,requests[1].at+(previous?120000:240000),'existing admission schedule is unchanged');
+  });
+  for(const wallShift of [-3600000,3600000])test(`${builder}: HTTP-date retry keeps its header deadline through ${wallShift}ms clock correction (${previous?'change fallback':'full retry'})`,async t=>{
+   const {requests}=await run(t,builder,{body:'http',previous,header:new Date(epoch+420000).toUTCString(),bodyMs:80000,wallShift});
+   assert.equal(requests.length,3);assert.equal(requests[1].at,420000);
+  });
+ }
+ for(const path of ['HTTP retry','parse retry','change fallback'])test(`${builder}: early ${path} timer preserves local backoff without provider pause`,async t=>{
+  const {requests}=await run(t,builder,{body:path==='parse retry'?'malformed':'http',previous:path==='change fallback',header:'soon',earlyWake:true});
+  assert.equal(requests.length,3);assert.equal(requests[1].at,120000);
+ });
 }

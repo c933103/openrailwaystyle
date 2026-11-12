@@ -34,7 +34,8 @@ function fakeOverpass(answer) {
   };
   return {queries, fetcher};
 }
-const quiet = {sleep: async () => {}, log() {}, warn() {}, now: () => Date.parse('2026-10-31T12:00:00Z')};
+let quietElapsed=0;
+const quiet = {clock:()=>quietElapsed,sleep: async ms => {quietElapsed+=ms;}, log() {}, warn() {}, now: () => Date.parse('2026-10-31T12:00:00Z')};
 
 test('one combined request per region yields both the undirected supplement and the electrification snapshot', async t => {
   const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
@@ -653,3 +654,20 @@ for (const kind of ['full', 'remainder']) {
     });
   }
 }
+
+for(const path of ['spacing','HTTP backoff','transport backoff'])
+ test(`signals recheck early ${path} timers without provider headers`,async t=>{
+  const d=await dirs();t.after(()=>rm(d.root,{recursive:true,force:true}));
+  let elapsed=0,waits=0;
+  const times=[],queries=[];
+  await buildSignals({...d,...quiet,clock:()=>elapsed,
+   sleep:async ms=>{elapsed+=++waits===1?ms/2:ms;},fetcher:async(url,{body})=>{
+    times.push(elapsed);queries.push(body.get('data'));
+    if(times.length===1&&path==='HTTP backoff')return new Response('busy',{status:503});
+    if(times.length===1&&path==='transport backoff')throw new TypeError('fetch failed');
+    return new Response(JSON.stringify({osm3s:{timestamp_osm_base:'2026-10-31T00:00:00Z'},elements:[UNDIRECTED,ELECTRIC,DIRECTED_ELECTRIC]}));
+   }});
+  assert.equal(times[1],path==='spacing'?10000:30000);
+  assert.equal(times.length,path==='spacing'?32:33);
+  if(path!=='spacing')assert.equal(queries[0],queries[1],'retry stays on the same region');
+ });

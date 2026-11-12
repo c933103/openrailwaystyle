@@ -40,11 +40,13 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...contourLayers, ...baseLines, ...contourLabels,
     ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
-    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details, ...aerialwayLayers(), ...conveyingLayers(),
+    ...rail.infrastructureTracks, ...rail.thematic, ...rail.details.filter(layer=>layer.id!=='service-routes'), ...aerialwayLayers(), ...conveyingLayers(),
     ...lifecycle.lines, ...rail.values,
     ...stations.platforms, ...placePlacement, ...infrastructure.crossings,
     // Separate symbol placement priority from the visible paint stack.
-    ...stations.dots, ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(), ...electricitySignalLayers(),
+    // Service route colours stay continuous through even dense station fields.
+    // This layer is Service-only; other views retain their station paint order.
+    ...stations.dots, ...rail.details.filter(layer=>layer.id==='service-routes'), ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(), ...electricitySignalLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

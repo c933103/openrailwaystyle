@@ -70,7 +70,8 @@ test('conveying lines and arrows show in every view and with every setting off, 
 
 test('the site deploys without a conveying snapshot, and only main publishes one',()=>{
   const site=readFileSync(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
-  assert.match(site,/conveying-data[\s\S]*echo '\{"tiles":\[\]\}' > styles\/data\/conveying\/index\.json/);
+  // The branch is the one the source step chose (scripts/data-source.mjs): conveying-data unless an extract build is selected.
+  assert.match(site,/git ls-remote --exit-code --heads origin "\$DATA_BRANCH_CONVEYING"[\s\S]*echo '\{"tiles":\[\]\}' > styles\/data\/conveying\/index\.json/);
   const workflow=readFileSync(new URL('../.github/workflows/conveying.yml',import.meta.url),'utf8');
   assert.match(workflow,/Publish complete data snapshot\n\s+# Only main publishes the shared snapshot\.\n\s+if: github\.ref == 'refs\/heads\/main'/);
   const app=readFileSync(new URL('../styles/app.mjs',import.meta.url),'utf8');

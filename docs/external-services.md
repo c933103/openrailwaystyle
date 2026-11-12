@@ -27,6 +27,7 @@ These are the services the data workflows download from, with their published te
 | --- | --- | --- | --- | --- | --- |
 | [Geofabrik download server](https://download.geofabrik.de/technical.html) | Geofabrik GmbH, Karlsruhe | No download rate, quota or bulk limit stated; extracts are "available for free download". Diff files "are kept for 100 days and then deleted" | none stated | "Open Database License 1.0 … acknowledge OpenStreetMap as the data source" | **Today:** `mainline-reference.yml`, monthly: the eight continents (85.7 GB on 2026-10-23), checked by size and MD5. `osm-extract.yml`, by hand only: the planned regions (77.6 GiB on 2026-11-01), at most 100 GiB a run, 2 jobs in parallel, no redirects, checked by size, MD5 and replication timestamp; 3 requests per region, or 2 (HEAD, MD5) when the file is the one its working copy was made from, which is not downloaded again. **Planned:** one world download per refresh shared by all datasets; ask Geofabrik before going weekly |
 | [overpass-api.de](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) | FOSSGIS | Under 10,000 queries **and** 1 GB a day, processed in no more than 10 minutes in sum; "If you set something up that uses the Overpass API regularly, then divide those numbers by 100". "No parallel running of multiple scripts." On 429 or 406, "pause for 30 seconds". "Use extracts if you need a lot of data." The [manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) names "Stiching bounding boxes to scrape the full data of the complete world" as problematic | a `User-Agent` or `Referer` "that uniquely identify your app" (every builder sends one) | data ODbL (OpenStreetMap) | **Today:** one dataset at a time (`osm-updates.yml`); per-run and 24-hour caps in the builders (for example 900 MB a day for branch lines, 100 MB for service routes). These caps are set against the one-off figure of 1 GB a day, not the regular-use figure of 10 MB; the `OVERPASS_USAGE` meter in every builder's log. `osm-extract.yml`, by hand only: the gap tiles (the plan's remainder, almost all sea), one request per tile, 10 s apart, at most 400 requests and 1 GB a run. **Planned:** full downloads replaced by extracts; only change updates and gap tiles on Overpass, within the regular-use figures |
+| [overpass.private.coffee](https://overpass.private.coffee/) (read 2026-11-11) | Private.coffee – Verein zur Förderung von Privatsphäre und digitaler Souveränität, a non-profit association under Austrian law (ZVR 1758485319, Graz; [legal notice](https://private.coffee/legal.html)) | "free and unlimited access … without any rate limits"; the terms ask to optimise queries, "limit simultaneous requests", and to notify them in advance of operations over ten requests per second or ten at a time; no warfare or military use; provided as is, may end at any time | "Use a meaningful User-Agent header. It should include your project name and a means to contact you" (the gap acquirer's names the project and #330) | data ODbL (OpenStreetMap) | **Second instance for gap tiles only** (`scripts/acquire-gap-tiles.mjs`): asked only after overpass-api.de did not answer 2 tiles in a row, one request at a time, 10 s apart, within the same run budget (at most 400 requests and 1 GB a run; a run needs about 30). Far under the notification threshold. Not used by any other builder |
 | [OSMF planet and mirrors](https://wiki.openstreetmap.org/wiki/Planet.osm) | OpenStreetMap Foundation; mirrors listed on the wiki | No quota stated. "Use command-line tools to download"; check the size first; prefer HTTPS on mirrors; mirrors are "no longer necessary" to conserve OSM bandwidth | none stated | ODbL 1.0 (files after 12 September 2012) | **Not used today.** Documented secondary extract source only, drill-tested at small scale |
 | [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/), via `raw.githubusercontent.com/nvkelso/natural-earth-vector` | Natural Earth authors and contributors | No limit stated | none stated | "public domain" | `osm-gaps.yml`, manual: 2 files (11.5 MB) per run; `build-han-region.mjs` when its data is rebuilt |
 | [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) (where the site is published) | GitHub | "Published GitHub Pages sites may be no larger than 1 GB"; "soft bandwidth limit of 100 GB per month"; deployments time out after 10 minutes; not "a free web-hosting service to run your online business" | — | — | `check-site-size.mjs` fails above 900 MiB. Bandwidth is not measured: GitHub does not report Pages traffic in bytes |
@@ -44,7 +45,10 @@ limit from failing promptly. The reader is released and no PBF is requested.
 The manual gap-tile extractor preserves a received `Retry-After` across
 interrupted bodies, exhausted retries, later tiles and query-limit subdivisions.
 It waits for the provider's minimum as well as its existing retry/spacing
-schedule. A requested pause longer than 15 minutes stops further requests in
+schedule. Header dates use wall time only at receipt; elapsed time carries the
+observed deadline through body reads and clock corrections. Early timer wakes
+are rechecked, and HTTP retries consume rather than restart that pause while
+retaining the existing extra ten-second spacing. A requested pause longer than 15 minutes stops further requests in
 that run rather than shortening the pause; remaining tiles retain their working
 copies or stay explicitly missing. This does not add retries, change queries,
 expand budgets or establish a provider-wide daily budget. Its byte-limit or
@@ -53,7 +57,9 @@ the complete consumed chunk still counts, and no over-budget retry is started.
 
 The energy-supply facility builder likewise keeps the provider pause across
 change requests, query-change fallback, interrupted bodies, full-download
-retries and subdivisions. It records the deadline before reading the body and
+retries and subdivisions. It records the deadline before reading the body,
+then carries it on elapsed time independent of wall-clock corrections. Body
+time consumes the pause; early timer wakes recheck provider and local floors. It
 stops the run if the pause exceeds its 15-minute wait limit, preserving the
 published snapshot and completed region caches. The existing retry count,
 query identity, weekly cache refresh and acquisition schedule are unchanged.
@@ -62,10 +68,39 @@ transport errors, including timeout or memory wording, retry the same full query
 with the existing four-attempt backoff; they never create a spatial split
 checkpoint. Previously recorded splits are not reclassified without evidence.
 
+The shared conductor-rail/charging and manual electricity-signal acquisition
+engine also measures run duration, provider pauses and local retry/quiet
+intervals with elapsed time. Wall time remains only for interpreting HTTP dates,
+cache age and publication timestamps. It captures the provider deadline before
+body consumption and rechecks early timer wakes. Existing three-attempt,
+five-minute provider-pause, request, byte and one-hour run limits remain binding;
+complete-only publication and resumable checkpoints are unchanged. This does
+not change queries, schedules, stored-way builds or the combined signal builder.
+
+Lifecycle acquisition rechecks its existing 15-second initial region wait,
+one-minute full-retry wait and five-second change-request spacing after early
+timer wakes. These local floors use elapsed time. The three-attempt limit,
+query-limit-only subdivision, region/delta caches, byte accounting, publication
+and schedule remain unchanged. This is a local timing safeguard, not a new
+provider-header policy or shared cross-process/provider-wide budget.
+
+Street-running acquisition rechecks its existing two-minute full-retry and
+HTTP-change fallback floor after early timer wakes, combining it with the
+header-time provider deadline. Its three full attempts, six-minute change
+window and 45-minute acquisition envelope are unchanged. No query, byte
+accounting, snapshot publication or schedule changes are introduced.
+
+The combined signal builder rechecks its existing ten-second request spacing
+and thirty-second retry floor after early timer wakes, even when no provider
+header extends the pause. Its monotonic provider deadline, five-minute pause
+cap, three-attempt ceiling, query/cache identity and publication are unchanged.
+
 The loading-gauge maintenance list keeps its existing three-attempt ceiling,
 initial five-second pause and one-minute retry baseline. It also honors a
 longer `Retry-After` captured at response headers, even if reading the body
-then fails. A requested pause over 15 minutes stops further attempts and
+then fails. The observed deadline uses elapsed time, so wall-clock corrections
+cannot shorten or extend it; body time consumes the pause and early timer wakes
+are rechecked before sending. A requested pause over 15 minutes stops further attempts and
 uses the previous cached list, rather than shortening that pause. Permanent
 4xx responses are not retried (406, 408 and 429 remain transient). A complete
 successful response needs no further request and may still replace the cache.
@@ -75,7 +110,8 @@ Polar maintenance shares a provider-pause clock across its existing cap/sector
 queries, separately for the Overpass and elevation origins. It retains the
 four-attempt ceiling, 30/60/90-second retry waits and five-minute request timeout.
 A longer `Retry-After` applies from response headers through body failure and
-later calls. Pauses over 15 minutes stop that origin for the run; valid cached
+later calls. The observed deadline and normal retry baseline use elapsed time,
+not the wall clock; body time consumes a pause and early timer wakes are rechecked. Pauses over 15 minutes stop that origin for the run; valid cached
 copies remain available through the existing fallback and atomic publication.
 Permanent 4xx responses are not retried (406, 408 and 429 remain transient).
 A successful body can still update its validated cache, but cannot permit an
@@ -83,7 +119,9 @@ early later request. No query, cache lifetime, source, schedule or budget change
 
 Level-crossing acquisition also keeps a `Retry-After` from a successful full
 region, change response or affected-ID response for the next query. It captures
-the deadline at headers and consumes it only before a later request. A pause
+the deadline at headers and consumes it only before a later request. Elapsed
+time carries that deadline across body reads, wall-clock corrections and early
+timer wakeups; a failed body never reparses the header against a later clock. A pause
 above 15 minutes stops further requests even after successful data; completed
 checkpoint work and the existing last-good publication are retained. Query,
 checkpoint identity, the five-attempt ceiling, byte budget, subdivision rules
@@ -93,7 +131,9 @@ Historic-area acquisition shares a provider-pause deadline across change
 queries, the existing full-download fallback, later regions and query-limit
 subdivisions. It captures `Retry-After` before reading a body, so interrupted
 or successfully parsed responses cannot erase the pause. Requests wait for
-both the provider minimum and existing spacing/backoff. A pause over 15 minutes
+both the provider minimum and existing spacing/backoff using elapsed time after
+header receipt. Body time consumes the pause; wall-clock corrections cannot
+shorten or extend it and early timer wakes are rechecked. A pause over 15 minutes
 stops further requests for the run, retaining previous publication and completed
 region caches. A complete acquisition with no requests left may still publish.
 The four-attempt ceiling, change-first/fallback behavior, query/cache identity,
@@ -119,7 +159,10 @@ rules are unchanged. This does not add a request deadline or a shared daily cap.
 Conveying and aerialway acquisitions retain a provider pause from every response,
 including HTTP 200, before reading its body. A later change/selection request or
 full retry waits for the remaining pause even if parsing, validation or body
-reading failed. A pause that cannot fit with the existing full request timeout
+reading failed. HTTP retries and change-to-full fallback consume the header-time
+deadline rather than restarting a seconds value or reparsing a date after body
+consumption. Local retry floors share the elapsed-time wait loop, so early timer
+wakes cannot shorten them; wall-clock changes cannot extend an observed pause. A pause that cannot fit with the existing full request timeout
 inside the 52-minute run budget defers the run without a further request. The
 three-request ceiling, existing retry backoff, source/query, validation and
 publication rules are unchanged. A final successful response does not sleep

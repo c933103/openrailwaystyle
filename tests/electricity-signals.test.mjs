@@ -62,7 +62,7 @@ test('details show the recorded electricity function; the help explains the dots
 test('the staged builder publishes a complete, validated world snapshot',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'atlas-electricity-signals-'));
   try {
-    const options={cache:join(dir,'cache'),output:join(dir,'out'),sleep:async()=>{},log:()=>{}};
+    let elapsed=0;const options={cache:join(dir,'cache'),output:join(dir,'out'),clock:()=>elapsed,sleep:async ms=>{elapsed+=ms;},log:()=>{}};
     const {manifest}=await buildElectricitySignals({...options,fetcher:async()=>new Response(JSON.stringify({osm3s:{},elements:[node(1,{'railway:signal:electricity':'yes'})]}))});
     const data=JSON.parse(await readFile(join(options.output,'electricity-signals.geojson'),'utf8'));
     assert.equal(data.features.length,1);validateElectricitySignalsSnapshot(data,manifest);
