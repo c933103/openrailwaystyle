@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "complete": true,
+  "minzoom": 3,
+  "maxzoom": 7,
+  "stations": 193416,
+  "tiles": 2496,
+  "bundles": 26,
+  "polar": 0,
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "license": "ODbL-1.0",
+  "pendingRegions": 0,
+  "completedRegions": 175,
+  "generated": "2026-11-12T11:43:53.385Z",
+  "updated": "2026-11-03T21:24:23Z",
+  "oldestSource": "2026-11-03T21:24:23Z",
+  "newestSource": "2026-11-11T10:58:20Z",
+  "elements": 196339,
+  "extract": {
+    "index": "20261111T121854Z-42996345331",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 196342,
+    "relations": 560,
+    "memberNodes": 1730,
+    "memberWays": 3286,
+    "membersRead": 5016,
+    "waysWithoutGeometry": 0,
+    "relationsWithoutCentre": [
+      3097337,
+      8725165,
+      19980664
+    ]
+  }
+}
