@@ -80,7 +80,7 @@ test('maintenance builder publishes all eight regions, reuses exact caches and r
     const dir=await mkdtemp(join(tmpdir(),'atlas-power-methods-'));
     try {
       const bootstrap=join(dir,'fixture.mjs');
-      await writeFile(bootstrap,`globalThis.setTimeout=fn=>{queueMicrotask(fn);return 0;};\nglobalThis.fetch=async()=>{\nif(process.env.FIXTURE_CACHE_ONLY==='1')throw new Error('Unexpected network request');\nconst json=${JSON.stringify(outcome==='partial'?{remark:'timed out',elements:[]}:outcome==='empty'?{elements:[]}:{elements:[way({railway:'subway',electrified:'rail'})]})};\nreturn {ok:true,body:new ReadableStream({start(controller){controller.enqueue(${outcome==='budget'?'{length:100000001}':'Buffer.from(JSON.stringify(json))'});controller.close();}})};\n};`);
+      await writeFile(bootstrap,`let elapsed=0;Object.defineProperty(performance,'now',{value:()=>elapsed});globalThis.setTimeout=(fn,ms)=>{elapsed+=ms;queueMicrotask(fn);return 0;};\nglobalThis.fetch=async()=>{\nif(process.env.FIXTURE_CACHE_ONLY==='1')throw new Error('Unexpected network request');\nconst json=${JSON.stringify(outcome==='partial'?{remark:'timed out',elements:[]}:outcome==='empty'?{elements:[]}:{elements:[way({railway:'subway',electrified:'rail'})]})};\nreturn {ok:true,body:new ReadableStream({start(controller){controller.enqueue(${outcome==='budget'?'{length:100000001}':'Buffer.from(JSON.stringify(json))'});controller.close();}})};\n};`);
       const env={...process.env,POWER_OUTPUT:join(dir,'power'),OVERPASS_URL:'http://127.0.0.1:1/fixture'};
       const run=spawnSync(process.execPath,['--import',bootstrap,script],{cwd:dir,env,encoding:'utf8',timeout:15000});
       assert.equal(run.error,undefined,run.stderr);

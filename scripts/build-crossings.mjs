@@ -7,8 +7,8 @@
 // ways through them, deletions included; the crossings that may have changed
 // are read again by id.
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
-import {gzipSync, gunzipSync} from 'node:zlib';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, inBox, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges, writeTable} from './crossing-data.mjs';
+import {gunzipSync} from 'node:zlib';
+import {inBox, applyChanges, crossingFiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges} from './crossing-data.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 import {crossingResponseText, crossingFailureAction, crossingRetryDelay} from './crossing-request.mjs';
 
@@ -26,7 +26,11 @@ async function request(query, parse, describe, box) {
   let delay = requests ? 10000 : 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-    await new Promise(r => setTimeout(r, Math.max(delay, retryNotBefore - Date.now())));
+    // Wall time interprets HTTP dates only. Once observed, elapsed time
+    // carries the provider minimum through body reads and clock corrections.
+    const earliest = Math.max(performance.now() + delay, retryNotBefore);
+    do { await new Promise(r => setTimeout(r, Math.max(0, earliest - performance.now()))); }
+    while (performance.now() < earliest);
     // The awaited pause is consumed; a new response may establish another.
     retryNotBefore = 0;
     requests++;
@@ -38,9 +42,9 @@ async function request(query, parse, describe, box) {
       status = response.status;
       retryAfter = response.headers.get('retry-after');
       // A successful body does not cancel a provider's pause for later queries.
-      const providerWait = crossingRetryDelay(-1, retryAfter, Date.now());
+      const receivedAt = performance.now(), providerWait = crossingRetryDelay(-1, retryAfter, Date.now());
       if (providerWait === null) providerWaitExceeded = true;
-      else retryNotBefore = Date.now() + providerWait;
+      else retryNotBefore = Math.max(retryNotBefore, receivedAt + providerWait);
       const text = await crossingResponseText(response, usage);
       // Use the full diagnostic for classification, but never log it whole.
       detail = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -54,15 +58,12 @@ async function request(query, parse, describe, box) {
       if (error.message === 'Download budget exceeded') throw error;
       const action = crossingFailureAction({status, detail, error});
       if (action === 'stop') throw error;
-      if (action === 'split') {
-        const wait = crossingRetryDelay(-1, retryAfter);
-        if (wait === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-        retryNotBefore = Math.max(retryNotBefore, Date.now() + wait);
-        return null;
-      }
-      delay = crossingRetryDelay(attempt, retryAfter);
-      if (delay === null) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
-      retryNotBefore = Date.now() + delay;
+      if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
+      if (action === 'split') return null;
+      // Interpret the provider header once, at receipt. Do not rebase its
+      // deadline after a body failure or turn a wall-clock jump into a pause.
+      delay = crossingRetryDelay(attempt, null);
+      retryNotBefore = Math.max(retryNotBefore, performance.now() + delay);
     }
   }
   throw new Error(`Overpass stayed unavailable for region ${box}`);
@@ -198,28 +199,17 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
+const {files, tiles, tileBytes: bytes, counts} = crossingFiles(table);
+for (const [path, data] of files) {
+  await mkdir(new URL('./', new URL(path, out)), {recursive: true});
+  await writeFile(new URL(path, out), data);
+}
 await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, extraction, since: changes ? since : startedAt, ...(changes ? {changes} : {}), regions,
   ...(checkpoint ? {acquisition: checkpoint.summary()} : {})}));
-const index = [];
-let bytes = 0;
-for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
-  for (const [key, data] of buildTiles(table, z, {detail})) {
-    const [, x] = key.split('/');
-    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-    const gz = gzipSync(data, {level: 9});
-    bytes += gz.length;
-    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-    index.push(key);
-  }
-}
-await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const counts = {road: 0, foot: 0, minor: 0};
-for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
 // tags: the detail tiles carry the crossing tags (tables from version 3).
 const manifest = {generated: new Date().toISOString(), changesSince: changesFrom || null, deferredRegions: deferred, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   ...(checkpoint ? {tableVersion: VERSION, acquisition: checkpoint.summary()} : {}),
-  tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: usage.bytes, source: api,
+  tiles, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: usage.bytes, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));

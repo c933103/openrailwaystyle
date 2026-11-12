@@ -15,17 +15,20 @@ const BASE = '2026-11-01T06:00:00Z', SINCE = '2026-10-01T00:00:00Z';
 const way = (id, tags) => ({type:'way', id, tags, geometry:[{lat:10, lon:100}, {lat:10.1, lon:100.1}]});
 const region = elements => JSON.stringify({osm3s:{timestamp_osm_base:SINCE}, elements});
 
-async function run(t, files, replies, mode = 'delta', previousRoot) {
+async function run(t, files, replies, mode = 'delta', previousRoot, {early = false} = {}) {
   const root = previousRoot || await mkdtemp(join(tmpdir(), 'lifecycle-updates-'));
   if (!previousRoot) t.after(() => rm(root, {recursive:true, force:true}));
   await mkdir(join(root, '.snapshot-cache'), {recursive:true});
   for (const [name, data] of Object.entries(files)) await writeFile(join(root, '.snapshot-cache', name), data);
   await writeFile(join(root, 'fake.mjs'), `
-    const replies = ${JSON.stringify(replies)}, log = [];
-    globalThis.setTimeout = f => { f(); return 0; };
+    const replies = ${JSON.stringify(replies)}, log = [], times = [];
+    let elapsed = 0;
+    Object.defineProperty(performance, 'now', {value:() => elapsed});
+    globalThis.setTimeout = (f, ms) => { elapsed += ${early} ? Math.max(1, Math.ceil(ms / 2)) : ms; f(); return 0; };
     globalThis.fetch = async (url, {body}) => {
       const query = body.get('data'); log.push(query);
       (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
+      times.push(elapsed); (await import('node:fs')).writeFileSync('request-times.json', JSON.stringify(times));
       const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
       if (reply.fail || reply.cut) {
         const cause = Object.assign(new Error(reply.secret || 'synthetic connection failure'), {name:reply.causeName || 'Error', code:reply.code});
@@ -43,11 +46,14 @@ async function run(t, files, replies, mode = 'delta', previousRoot) {
       }
       return new Response(reply.text, {status:reply.status || 200});
     };`);
-  const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8'});
+  const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8', timeout:15000});
+  assert.equal(result.error, undefined, result.error?.message);
   let requests = [];
   try { requests = JSON.parse(await readFile(join(root, 'requests.json'), 'utf8')); } catch {}
+  let times = [];
+  try { times = JSON.parse(await readFile(join(root, 'request-times.json'), 'utf8')); } catch {}
   const read = async name => { try { return JSON.parse(await readFile(join(root, '.snapshot-cache', name), 'utf8')); } catch { return null; } };
-  return {root, result, requests, read, names:await readdir(join(root, '.snapshot-cache'))};
+  return {root, result, requests, times, read, names:await readdir(join(root, '.snapshot-cache'))};
 }
 
 const reopened = `<osm><meta osm_base="${BASE}"/>`
@@ -168,6 +174,40 @@ test('the change log is saved before each region advances', () => {
 // The region step (SNAPSHOT_REGION=0 is 0,90,45,135) after a full download.
 const full = (elements, time = BASE) => ({text:JSON.stringify({osm3s:{timestamp_osm_base:time}, elements})});
 const logged = log => Object.fromEntries(Object.entries(log.changes).map(([id, c]) => [id, [c.time, c.feature && c.feature.properties.name]]));
+
+for (const [name, reply] of Object.entries({connection:{fail:true}, body:{cut:true}, busy:{status:503, text:'busy'}, limited:{status:429, text:'busy'}})) {
+  test(`lifecycle early timers preserve initial quiet interval and retries after ${name}`, async t => {
+    const {result, requests, times, names} = await run(t, {}, {'0,90,45,135':reply}, '0', undefined, {early:true});
+    assert.notEqual(result.status, 0);
+    assert.deepEqual(times, [15000, 75000, 135000]);
+    assert.equal(requests.length, 3);
+    assert.ok(requests.every(query => query.includes('(0,90,45,135)')));
+    assert.ok(!names.includes('0_90_45_135.json.split'), 'outage still cannot subdivide a region');
+    assert.doesNotMatch(result.stdout, /REGION COMPLETE/);
+  });
+}
+test('lifecycle early timers preserve quiet intervals between query-limit children', async t => {
+  const children = ['0,90,22.5,112.5', '0,112.5,22.5,135', '22.5,90,45,112.5', '22.5,112.5,45,135'];
+  const replies = Object.fromEntries(children.map(box => [box, full([])]));
+  replies['0,90,45,135'] = {text:JSON.stringify({remark:'runtime error: Query timed out in "query" at line 1 after 91 seconds.'})};
+  const {result, requests, times} = await run(t, {}, replies, '0', undefined, {early:true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(times, [15000, 30000, 45000, 60000, 75000]);
+  assert.equal(requests.length, 5);
+  assert.match(result.stdout, /REGION COMPLETE/);
+});
+test('lifecycle early timers retain five seconds before every cached-region change request', async t => {
+  const {result, requests, times, read} = await run(t, {
+    '0_90_45_135.json':region([way(1, {railway:'proposed'})]),
+    '-90_-180.json':region([]),
+  }, {}, 'delta', undefined, {early:true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(times, [5000, 10000]);
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(query => query.startsWith('[out:xml]')));
+  assert.equal((await read('0_90_45_135.json')).osm3s.timestamp_osm_base, BASE);
+  assert.equal((await read('-90_-180.json')).osm3s.timestamp_osm_base, BASE);
+});
 
 // Restore a saved Actions cache and perform the workflow's exact local-only
 // release merge. These are tiny synthetic files, never an upstream download.

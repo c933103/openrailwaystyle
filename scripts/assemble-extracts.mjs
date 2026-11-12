@@ -158,6 +158,10 @@ export async function assemble(index, dir, output, {work} = {}) {
     deletions: Object.fromEntries([...removed].map(([region, ids]) => [region, ids.size]).sort()),
     pairsCompared: pairs.length, pairsSkipped: skipped,
     missingNodeRefs: missing ? Number(missing[1]) : null,
+    // Planned regions and gap tiles with no file at all (the index's own
+    // list): a build from this assembly covers the world only when it is
+    // empty. null when the index does not say.
+    missingRegions: Array.isArray(index.missing) ? [...index.missing] : null,
     seconds: (performance.now() - started) / 1000};
   await writeFile(`${output}.json`, `${JSON.stringify(report, null, 2)}\n`);
   if (!work) await rm(temp, {recursive: true, force: true});

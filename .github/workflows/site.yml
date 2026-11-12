@@ -150,6 +150,13 @@ jobs:
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - name: Install style validator
         run: npm ci --ignore-scripts --no-audit --no-fund
+      # Each dataset's branch: its Overpass build, or its extract build when
+      # the repository variable DATA_SOURCES selects it and it is complete
+      # (scripts/data-source.mjs). Overpass is the default and the fallback.
+      - name: Choose each dataset's source
+        env:
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+        run: node scripts/data-source.mjs resolve
       - name: Rebuild world style
         run: npm run build
       - name: Check committed style is reproducible
@@ -168,7 +175,7 @@ jobs:
       - name: Wait for initial snapshot build
         run: |
           for attempt in $(seq 1 40); do
-            if git ls-remote --exit-code --heads origin rail-data; then exit 0; fi
+            if git ls-remote --exit-code --heads origin "$DATA_BRANCH_LIFECYCLE"; then exit 0; fi
             sleep 45
           done
           echo "No complete railway snapshot has been published."
@@ -176,7 +183,7 @@ jobs:
       - name: Load published worldwide snapshot
         uses: actions/checkout@v4
         with:
-          ref: rail-data
+          ref: ${{ env.DATA_BRANCH_LIFECYCLE }}
           path: lifecycle-data
       - name: Assemble site data
         run: |
@@ -235,14 +242,14 @@ jobs:
           python scripts/build-rare-han.py
       - name: Load the published axle-load lookup
         run: |
-          if git ls-remote --exit-code --heads origin axle-data; then
-            git fetch --depth=1 origin axle-data:refs/remotes/origin/axle-data
-            git show origin/axle-data:axle-load.json > styles/data/axle-load.json
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH_AXLE_LOAD"; then
+            git fetch --depth=1 origin "$DATA_BRANCH_AXLE_LOAD"
+            git show FETCH_HEAD:axle-load.json > styles/data/axle-load.json
           fi
       - name: Wait for first street-running snapshot
         run: |
           for attempt in $(seq 1 40); do
-            if git ls-remote --exit-code --heads origin street-data; then exit 0; fi
+            if git ls-remote --exit-code --heads origin "$DATA_BRANCH_STREET_RUNNING"; then exit 0; fi
             sleep 30
           done
           echo 'No complete street-running snapshot has been published.'
@@ -250,7 +257,7 @@ jobs:
       - name: Load mapped street-running data
         uses: actions/checkout@v4
         with:
-          ref: street-data
+          ref: ${{ env.DATA_BRANCH_STREET_RUNNING }}
           path: street-snapshot
       - name: Assemble street-running tiles
         run: |
@@ -264,9 +271,9 @@ jobs:
           set -eu
           mkdir -p styles/data/station-points
           status=0
-          git ls-remote --exit-code --heads origin station-points-data >/dev/null || status=$?
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH_STATION_POINTS" >/dev/null || status=$?
           if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin station-points-data
+            git fetch --depth=1 origin "$DATA_BRANCH_STATION_POINTS"
             git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz --exclude=elements.json.gz
             node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
@@ -310,8 +317,8 @@ jobs:
       - name: Load level crossings
         run: |
           mkdir -p styles/data/level-crossings
-          if git ls-remote --exit-code --heads origin crossing-data; then
-            git fetch --depth=1 origin crossing-data
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH_CROSSINGS"; then
+            git fetch --depth=1 origin "$DATA_BRANCH_CROSSINGS"
             # Tiles, index, manifest and the ODbL table (crossings.tsv.gz).
             git archive FETCH_HEAD | tar -x -C styles/data/level-crossings --exclude=regions.json
           else
@@ -324,14 +331,14 @@ jobs:
           mkdir -p styles/data/conveying
           # Exit status 2: no snapshot yet. Any other failure stops the deploy.
           status=0
-          git ls-remote --exit-code --heads origin conveying-data || status=$?
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH_CONVEYING" || status=$?
           if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin conveying-data
+            git fetch --depth=1 origin "$DATA_BRANCH_CONVEYING"
             git archive FETCH_HEAD | tar -x -C styles/data/conveying --exclude=elements.json.gz
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/conveying/index.json
           else
-            echo "Could not look up the conveying-data snapshot (git exit $status)"
+            echo "Could not look up the $DATA_BRANCH_CONVEYING snapshot (git exit $status)"
             exit 1
           fi
       # Aerialways have no alternate geometry source. Failure leaves the last
@@ -340,7 +347,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p styles/data/aerialways
-          git fetch --depth=1 origin refs/heads/aerialway-data
+          git fetch --depth=1 origin "refs/heads/$DATA_BRANCH_AERIALWAYS"
           git archive FETCH_HEAD | tar -x -C styles/data/aerialways --exclude=elements.json.gz
           node scripts/validate-aerialway-snapshot.mjs styles/data/aerialways
       # Historic areas (heritage.yml); without them the planning context
@@ -351,14 +358,14 @@ jobs:
           # Exit status 2: no snapshot yet. Any other failure stops the
           # deploy rather than publishing the site without historic areas.
           status=0
-          git ls-remote --exit-code --heads origin heritage-data || status=$?
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH_HERITAGE" || status=$?
           if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin heritage-data
+            git fetch --depth=1 origin "$DATA_BRANCH_HERITAGE"
             git archive FETCH_HEAD | tar -x -C styles/data/heritage --exclude=elements
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/heritage/index.json
           else
-            echo "Could not look up the heritage-data snapshot (git exit $status)"
+            echo "Could not look up the $DATA_BRANCH_HERITAGE snapshot (git exit $status)"
             exit 1
           fi
       # Operating branch lines for zooms 4–6 and metro lines for 7–9 (branch-lines.yml), filled in
@@ -369,14 +376,14 @@ jobs:
           # Exit status 2: no snapshot yet. Any other failure stops the
           # deploy rather than publishing the site without branch lines.
           status=0
-          git ls-remote --exit-code --heads origin branch-data || status=$?
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH_BRANCH_LINES" || status=$?
           if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin branch-data
+            git fetch --depth=1 origin "$DATA_BRANCH_BRANCH_LINES"
             git archive FETCH_HEAD | tar -x -C styles/data/branch-lines --exclude=state.json
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/branch-lines/index.json
           else
-            echo "Could not look up the branch-data snapshot (git exit $status)"
+            echo "Could not look up the $DATA_BRANCH_BRANCH_LINES snapshot (git exit $status)"
             exit 1
           fi
       # Urban rail services for the Service view (service-routes.yml), filled
@@ -385,14 +392,14 @@ jobs:
         run: |
           mkdir -p styles/data/service-routes
           status=0
-          git ls-remote --exit-code --heads origin service-data || status=$?
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH_SERVICE_ROUTES" || status=$?
           if [ "$status" = 0 ]; then
-            git fetch --depth=1 origin service-data
+            git fetch --depth=1 origin "$DATA_BRANCH_SERVICE_ROUTES"
             git archive FETCH_HEAD | tar -x -C styles/data/service-routes --exclude=state.json
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/service-routes/index.json
           else
-            echo "Could not look up the service-data snapshot (git exit $status)"
+            echo "Could not look up the $DATA_BRANCH_SERVICE_ROUTES snapshot (git exit $status)"
             exit 1
           fi
       - name: Apply matched timetable counts and headways to the OSM service tiles
@@ -413,7 +420,7 @@ jobs:
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction
-          git fetch --depth=1 origin traction-data
+          git fetch --depth=1 origin "$DATA_BRANCH_TRACTION"
           git archive FETCH_HEAD | tar -x -C styles/data/traction
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';

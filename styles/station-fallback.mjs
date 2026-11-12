@@ -239,8 +239,9 @@ export function stationFallbackLayers(labelExpression) {
       minzoom: 8, filter: STATION_BASEMAP_POI_FILTER,
       layout: {'circle-sort-key': ['-', 4, priority]},
       paint: {
-        'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1,
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 1.6, 12, 2.5, 17, 3.4],
+        'circle-color': '#ffa323', 'circle-stroke-color': '#123e52',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 10, 0.6, 12, 1],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 1.1, 10, 1.6, 12, 2.5, 17, 3.4],
       },
       metadata: {'atlas:base-map': false},
     },
@@ -251,8 +252,8 @@ export function stationFallbackLayers(labelExpression) {
       minzoom: 7, filter: CURATED_STATION_FILTER,
       paint: {
         'circle-color': '#ffa323', 'circle-stroke-color': '#123e52',
-        'circle-stroke-width': 1.2,
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.4, 12, 3.5, 18, 4],
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 0.4, 10, 0.6, 12, 1.2],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 1, 10, 1.6, 12, 3.5, 18, 4],
       },
       metadata: {'atlas:base-map': false},
     },

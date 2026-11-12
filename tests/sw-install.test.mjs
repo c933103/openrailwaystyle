@@ -911,7 +911,7 @@ test('search row-isolation release updates cached app/model together and retains
   const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.notEqual(version,previous,'the changed search parser requires a fresh release token');
-  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs'];
+  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs','service-frequency.mjs'];
   const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
   // Compact preceding-cache payloads exercise version isolation, not historical
   // source reconstruction. New module bytes are exact current build inputs.
@@ -1040,8 +1040,8 @@ test('source recovery release caches the existing recovery module and preserves 
 
 for (const [release,previous,paths] of [
  ['Help date refresh','20261106-geojson-parse-1',['app.mjs','data-ages.mjs']],
- ['request-pool HTTP cleanup','20261107-help-dates-order-1',['app.mjs','vendor/tile-labels.js']],
- ['request-pool calendar','20261107-request-cleanup-1',['app.mjs','vendor/tile-labels.js']],
+ ['request-pool HTTP cleanup','20261110-station-line-width-1',['app.mjs','vendor/tile-labels.js']],
+ ['request-pool calendar','20261112-request-cleanup-1',['app.mjs','vendor/tile-labels.js']],
 ]) test(`${release} release upgrades exact app bytes offline while preserving previous tabs`,async()=>{
  const page=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
  const version=page.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];assert.notEqual(version,previous,'request-ordering changes need a fresh cache-first token');

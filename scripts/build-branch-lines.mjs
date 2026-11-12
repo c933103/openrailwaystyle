@@ -10,10 +10,11 @@
 // REFRESH_DAYS, which also removes deleted and retagged lines.
 import {responseChunks} from './response-chunks.mjs';
 import {createStagedProviderPause} from './staged-provider-pause.mjs';
-import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
-import {gzipSync, gunzipSync} from 'node:zlib';
-import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
+import {readFile, writeFile, rm, appendFile} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
+import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
+import {writeBranchFiles} from './branch-lines-files.mjs';
 import {selectDownloadStage, startStagePass, recordStageRegion, finishStagePass, dropStalePass} from './download-stages.mjs';
 import {resolve} from 'node:path';
 import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
@@ -50,21 +51,9 @@ const info = name => (state.stages[name] ||= {completed: null, pending: null, se
 async function publish({run, redeploy, source = api}) {
   retireBranchEurope(state, table);
   await rm(out, {recursive: true, force: true});
-  await mkdir(out, {recursive: true});
-  await writeFile(new URL('branch-lines.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
+  const {tiles, tileBytes} = await writeBranchFiles(out, table);
   await writeFile(new URL('state.json', out), JSON.stringify(state));
-  const index = [];
-  let tileBytes = 0;
-  for (const [key, data] of buildTiles(table)) {
-    const [z, x] = key.split('/');
-    await mkdir(new URL(`${z}/${x}/`, out), {recursive: true});
-    const gz = gzipSync(data, {level: 9});
-    tileBytes += gz.length;
-    await writeFile(new URL(`${key}.pbf.gz`, out), gz);
-    index.push(key);
-  }
-  await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-  const manifest = {generated: new Date().toISOString(), lines: table.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+  const manifest = {generated: new Date().toISOString(), lines: table.size, tiles, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
     stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null,
       lines: [...table.values()].filter(f => f.stage === s.name).length})),
     run, source,

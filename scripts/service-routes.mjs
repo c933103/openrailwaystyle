@@ -72,30 +72,38 @@ export function routeOf(rel) {
 // routes running on them.
 export function toTable(json, source = {}) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark ? `Overpass: ${json.remark}` : 'Incomplete Overpass response');
-  const geometry = new Map(), trackWays = new Set();
-  for (const el of json.elements) {
-    if (el.type !== 'way') continue;
-    trackWays.add(el.id);
-    geometry.set(el.id, reconcileGeometry(geometry.get(el.id), observeGeometry(el, json, source)));
-  }
-  const routes = new Map(), wayRoutes = new Map();
-  for (const el of json.elements) {
-    if (el.type !== 'relation') continue;
-    const route = routeOf(el), key = `r${el.id}`;
-    // Retain a current unnamed declaration too: loss of its display tags
-    // must not resurrect an older drawable identity.
-    const view = route ? {...route, group: route.key, key} : {key, relation: el.id, active: false, label: '', ref: '', names: {}};
-    const membership = observeRelation(el, json, source, view, trackWays);
-    routes.set(key, mergeRelationParts(routes.get(key), {...view, membership}));
-    for (const id of membership.eligible) {
-      if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
-      wayRoutes.get(id).add(key);
-    }
-  }
-  // Do not infer track eligibility for unreturned relation members: the
-  // query intentionally omits non-track ways, besides platform/stop roles.
-  const ways = [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometryLines(geometry.get(id)), geometry: geometry.get(id)}));
-  return {routes: [...routes.values()], ways};
+  const builder = tableBuilder(json, source);
+  for (const el of json.elements) if (el.type === 'way') builder.addWay(el);
+  for (const el of json.elements) if (el.type === 'relation') builder.addRelation(el);
+  return builder.table();
+}
+// toTable one element at a time, for a source too large to hold as one
+// response (build-extract-service-routes.mjs): every track way first, then
+// the relations. `json` gives the answer's metadata (osm3s), not elements.
+export function tableBuilder(json, source = {}) {
+  const geometry = new Map(), trackWays = new Set(), routes = new Map(), wayRoutes = new Map();
+  return {
+    addWay(el) {
+      trackWays.add(el.id);
+      geometry.set(el.id, reconcileGeometry(geometry.get(el.id), observeGeometry(el, json, source)));
+    },
+    addRelation(el) {
+      const route = routeOf(el), key = `r${el.id}`;
+      // Retain a current unnamed declaration too: loss of its display tags
+      // must not resurrect an older drawable identity.
+      const view = route ? {...route, group: route.key, key} : {key, relation: el.id, active: false, label: '', ref: '', names: {}};
+      const membership = observeRelation(el, json, source, view, trackWays);
+      routes.set(key, mergeRelationParts(routes.get(key), {...view, membership}));
+      for (const id of membership.eligible) {
+        if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
+        wayRoutes.get(id).add(key);
+      }
+    },
+    // Do not infer track eligibility for unreturned relation members: the
+    // query intentionally omits non-track ways, besides platform/stop roles.
+    table: () => ({routes: [...routes.values()],
+      ways: [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometryLines(geometry.get(id)), geometry: geometry.get(id)}))}),
+  };
 }
 
 // The table keeps, for each way and route (one relation), what each stage

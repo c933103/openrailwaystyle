@@ -13,9 +13,13 @@
 # size or MD5 differs from the working copy's source; two regions at a time.
 # A plan that is not valid, or over 100 GiB, stops the run before any
 # download. The parts no planned region covers (the plan's remainder, almost
-# all sea) come from overpass-api.de as gap tiles (scripts/gap-tiles.mjs,
+# all sea) come from Overpass as gap tiles: overpass-api.de, then
+# overpass.private.coffee when it stops answering (scripts/gap-tiles.mjs,
 # scripts/acquire-gap-tiles.mjs): one request per tile, 10 s apart, never in
 # parallel, at most 400 requests and 1 GB a run.
+# With gaps_only, no region is downloaded: the run plans (one HEAD per region
+# looked at), fetches the gap tiles and publishes them; every region keeps
+# its working copy.
 name: Geofabrik region extracts
 on:
   workflow_dispatch:
@@ -23,6 +27,10 @@ on:
       source_date:
         description: 'Dated Geofabrik files (YYYY-MM-DD); blank uses two days ago'
         required: false
+      gaps_only:
+        description: 'Only the gap tiles from Overpass: no region is downloaded'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -72,8 +80,11 @@ jobs:
           path: plan
   extract:
     needs: plan
+    if: ${{ !inputs.gaps_only }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # GitHub-hosted jobs run at most 6 hours. The largest region (8 GiB) at
+    # the slowest speed measured, 0.53 MB/s, needs about 270 minutes.
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -101,6 +112,9 @@ jobs:
       - name: Download, check and filter the region
         env:
           REGION: ${{ toJSON(matrix.region) }}
+          # 20 minutes of the job left for set-up and the upload; the script
+          # keeps 20 more of its own for checking and filtering.
+          REGION_TIME_BUDGET_MINUTES: 340
         run: |
           printf '%s' "$REGION" > region.json
           df -h . | tail -1
@@ -143,6 +157,11 @@ jobs:
           name: extract-plan
           path: plan
       - name: Fetch the gap tiles from Overpass
+        # The run stops asking 10 minutes before the job limit, so its
+        # outputs and meter line are written; no request starts unless its
+        # whole 6-minute timeout fits in this budget.
+        env:
+          GAP_TIME_BUDGET_MINUTES: 170
         run: node --import ./scripts/overpass-meter.mjs scripts/acquire-gap-tiles.mjs plan/gaps.json gaps plan/index.json
       # Not named extract-*: the publish job downloads it into the same
       # directory as the regions.
