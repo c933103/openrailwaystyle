@@ -276,6 +276,31 @@ relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
 browser checks against the published map.
 
+### Custom domain
+
+The canonical Railway Atlas URL is [https://10671435.xyz/](https://10671435.xyz/).
+The GitHub Pages custom domain has been configured as `10671435.xyz`
+in this repository's Pages settings (owner-confirmed 2026-11-13).
+The Pages artifact contains the contents of `styles/`, so
+`styles/index.html` is served at the domain root. Keep application
+assets, the manifest and service worker relative; no `/styles/`
+redirect or repository-path prefix is needed.
+
+The repository setting alone does not verify public DNS, a valid TLS
+certificate, HTTP-to-HTTPS redirection, or that the deployed HTML belongs
+to Railway Atlas. Check those separately before merging changes that
+publish canonical URLs. See GitHub's
+[custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+and [HTTPS guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).
+The workflow uses the Pages deployment's reported URL for published tile
+and browser checks.
+
+An Actions deployment uses the repository's Pages custom-domain setting;
+a `CNAME` file in the artifact does not configure it. The station-search
+probe sends the origin of `MAP_BASE_URL` and checks that the search API
+permits it. The default is `https://10671435.xyz/`; override
+`MAP_BASE_URL` for a fork or preview deployment.
+
 ## Controls painter diagnostic sampling
 
 The fixture-only painter A/B diagnostic retains its single natural transition,

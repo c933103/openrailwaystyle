@@ -39,6 +39,19 @@ test('sharing metadata uses the current name and versioned PNG artwork', () => {
   assert.equal(meta(html, 'twitter:image:alt'), meta(html, 'og:image:alt'));
 });
 
+test('canonical, sharing metadata and map documentation use the custom-domain root', () => {
+  const canonical='https://10671435.xyz/';
+  assert.equal(links(html).find(tag => tag.rel === 'canonical')?.href,canonical);
+  assert.equal(meta(html,'og:url'),canonical);
+  for(const property of ['og:image','twitter:image']){
+    assert.equal(new URL(meta(html,property)).origin,new URL(canonical).origin);
+    assert.equal(new URL(meta(html,property)).pathname,'/atlas-icon-512.png');
+  }
+  for(const file of ['README.md','docs/README.md']){
+    assert.ok(read(file).includes(`[Open the map](${canonical})`),file);
+  }
+});
+
 test('main and auxiliary pages have matching favicon and Apple touch icon links', () => {
   for (const file of ['index.html', 'data-check.html', 'terrain-credits.html']) {
     const page = read(`styles/${file}`), all = links(page);

@@ -5,7 +5,7 @@
 A worldwide railway map built with MapLibre and OpenStreetMap data, with railway
 stations and infrastructure at the centre of the map.
 
-**[Open the map](https://c933103.github.io/openrailwaystyle/)** ·
+**[Open the map](https://10671435.xyz/)** ·
 [User guide](docs/user-guide.md) · [Documentation](docs/README.md)
 
 ## Features

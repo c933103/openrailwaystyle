@@ -19,10 +19,11 @@ test('the separate live station-search probe rejects redirects before following 
   const source=(await readFile(new URL('../scripts/check-search-api.mjs',import.meta.url),'utf8')).replace(/^import .*;$/m,'');
   const calls=[];
   const run=new vm.Script('(async()=>{'+source+'})()');
-  await run.runInNewContext({URL,AbortSignal,SEARCH_API:'https://search.invalid/v2/facility',console:{log(){}},
+  await run.runInNewContext({URL,AbortSignal,SEARCH_API:'https://search.invalid/v2/facility',process:{env:{}},console:{log(){}},
     fetch:async(url,options)=>{
       calls.push({url:new URL(url),options});
       assert.equal(options.redirect,'error');
+      assert.equal(options.headers.Origin,'https://10671435.xyz');
       return {ok:true,headers:new Map([['access-control-allow-origin','*']]),json:async()=>[{latitude:51,longitude:0,name:'Synthetic station'}]};
     },
   });
