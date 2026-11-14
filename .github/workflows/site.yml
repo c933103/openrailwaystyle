@@ -162,7 +162,8 @@ jobs:
       - name: Check committed style is reproducible
         run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
       - name: Install pinned Python timezone test data
-        run: python3 -m pip install --only-binary=:all: --no-deps --target "$RUNNER_TEMP/atlas-test-python" tzdata==2026.4
+        run: |
+          python3 -m pip install --only-binary=:all: --no-deps --target "$RUNNER_TEMP/atlas-test-python" tzdata==2026.4
       - name: Validate speed semantics and MapLibre style
         env:
           # Match the checked-in IANA catalogue, including backward links.
