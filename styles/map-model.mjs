@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261112-browser-calendar-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261112-browser-calendar-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261114-startup-overlap-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261114-startup-overlap-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261112-browser-calendar-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261112-browser-calendar-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261114-startup-overlap-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261114-startup-overlap-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
