@@ -35,6 +35,15 @@ export function usageRecords(log) {
 // Totals per host, and per workflow and host.
 export function summarize(jobs) {
   const hosts = new Map(), workflows = new Map();
+  // These counters belong to a complete meter record, not to each host.
+  const measurement = {unreadBodies: 0, unmeasuredBodies: 0, unknownRecords: 0};
+  for (const job of jobs) for (const record of job.records) {
+    if (Number.isSafeInteger(record.unread) && record.unread >= 0 &&
+        Number.isSafeInteger(record.unmeasured) && record.unmeasured >= 0 && record.unmeasured <= record.unread) {
+      measurement.unreadBodies += record.unread;
+      measurement.unmeasuredBodies += record.unmeasured;
+    } else measurement.unknownRecords++;
+  }
   const add = (map, key, usage) => {
     const total = map.get(key) || {requests: 0, bytes: 0, skipped: 0, jobs: 0};
     total.requests += usage.requests || 0; total.bytes += usage.bytes || 0; total.skipped += usage.skipped || 0;
@@ -50,6 +59,7 @@ export function summarize(jobs) {
     for (const host of seen) { hosts.get(host).jobs++; workflows.get(`${job.workflow}\u0000${host}`).jobs++; }
   }
   return {
+    measurement,
     hosts: Object.fromEntries([...hosts].sort(([a], [b]) => a.localeCompare(b))),
     workflows: [...workflows].map(([key, total]) => { const [workflow, host] = key.split('\u0000'); return {workflow, host, ...total}; })
       .sort((a, b) => a.host.localeCompare(b.host) || b.bytes - a.bytes || a.workflow.localeCompare(b.workflow)),
@@ -57,9 +67,18 @@ export function summarize(jobs) {
 }
 
 const MB = 1e6;
+// Completeness concerns available meter evidence, not all network traffic.
+export function evidenceComplete({unread = [], unfinished = []}, summary) {
+  return !unread.length && !unfinished.length && !!summary.measurement &&
+    !summary.measurement.unmeasuredBodies && !summary.measurement.unknownRecords;
+}
+
 export function usageReport({start, end, runs, jobs, unread, unfinished = []}, summary) {
   const lines = [`# Upstream usage ${start.slice(0, 16)} → ${end.slice(0, 16)} UTC`, '',
     ...(unfinished.length ? [`**Incomplete:** ${unfinished.length} jobs of this day were still running and are not counted (${unfinished.slice(0, 20).join(', ')}). Run this date again once they finish.`, ''] : []),
+    ...(unread.length ? [`**Incomplete:** ${unread.length} job logs were unavailable; their usage is unknown.`, ''] : []),
+    ...(!summary.measurement || summary.measurement.unknownRecords ? ['**Incomplete:** some meter records lack valid body-measurement metadata; byte completeness is unknown.', ''] : []),
+    ...(summary.measurement?.unmeasuredBodies ? [`**Incomplete:** ${summary.measurement.unmeasuredBodies} unread responses lacked a declared length; recorded bytes are a lower bound.`, ''] : []),
     `- ${runs} workflow runs; ${jobs} jobs with usage lines${unread.length ? `; ${unread.length} job logs could not be read: ${unread.slice(0, 20).join(', ')}` : ''}`, '',
     '| Host | Requests | MB | Held back (meter pause) | Jobs | Against the guidance |', '| --- | ---: | ---: | ---: | ---: | --- |'];
   for (const [host, t] of Object.entries(summary.hosts)) {
@@ -70,6 +89,8 @@ export function usageReport({start, end, runs, jobs, unread, unfinished = []}, s
   lines.push('', '| Workflow | Host | Requests | MB | Held back | Jobs |', '| --- | --- | ---: | ---: | ---: | ---: |');
   for (const w of summary.workflows) lines.push(`| ${w.workflow} | ${w.host} | ${w.requests} | ${(w.bytes / MB).toFixed(1)} | ${w.skipped} | ${w.jobs} |`);
   lines.push('', 'The meter cannot tell one-off downloads from routine change updates; the workflow rows show which runs the bytes came from.');
+  if (summary.measurement) lines.push('', `Body measurement: ${summary.measurement.unreadBodies} unread responses; ${summary.measurement.unmeasuredBodies} without a declared length; ${summary.measurement.unknownRecords} records with unknown metadata. These record-level counts cannot be assigned to individual hosts. Unread responses with declared lengths retain the meter\'s existing byte estimate.`);
+  lines.push('', 'Completeness covers readable, finished jobs and their available meter records; it is not proof that all provider traffic was instrumented. The window selects workflow creation times, not individual request times.');
   return `${lines.join('\n')}\n`;
 }
 
@@ -144,7 +165,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const summary = summarize(collected.jobs);
   const markdown = usageReport({start, end, runs: collected.runs, jobs: collected.jobs.length, unread: collected.unread, unfinished: collected.unfinished}, summary);
   await writeFile('usage.md', markdown);
-  await writeFile('usage.json', `${JSON.stringify({start, end, complete: !collected.unfinished.length, runs: collected.runs, unread: collected.unread, unfinished: collected.unfinished, ...summary}, null, 2)}\n`);
+  await writeFile('usage.json', `${JSON.stringify({start, end, complete: evidenceComplete(collected, summary), completenessScope: 'available-meter-evidence', runs: collected.runs, unread: collected.unread, unfinished: collected.unfinished, ...summary}, null, 2)}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, markdown);
   process.stdout.write(markdown);
 }
