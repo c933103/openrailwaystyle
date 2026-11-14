@@ -1,10 +1,72 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
 import {collect, dayWindow, GUIDANCE, JOBS_PER_PAGE, RETRY_MS, summarize, usageRecords, usageReport} from '../scripts/upstream-usage.mjs';
 
 const line = (usage, time = '2026-11-05T06:00:00.1234567Z') => `${time} OVERPASS_USAGE ${JSON.stringify(usage)}`;
 const usage = (hosts, extra = {}) => ({script: 's.mjs', bytes: 0, requests: 0, unread: 0, unmeasured: 0, hosts, ...extra});
+
+test('actual CLI JSON and Markdown retain incomplete evidence with fixture-only fetch', () => {
+  for (const kind of ['measured', 'unread-log', 'unmeasured-body', 'unknown-record', 'unfinished']) {
+    const directory = mkdtempSync(join(tmpdir(), 'usage-evidence-'));
+    try {
+      const record = usage({a: {requests: 1, bytes: 123}}, kind === 'unmeasured-body' ? {unread: 1, unmeasured: 1} : {});
+      if (kind === 'unknown-record') delete record.unmeasured;
+      const fixture = `globalThis.fetch = async url => {
+        if (url.includes('/actions/runs?')) return Response.json({workflow_runs:[{id:1,name:'fixture',status:'in_progress'}]});
+        if (url.includes('/runs/1/jobs?')) return Response.json({jobs:[{id:2,status:${JSON.stringify(kind === 'unfinished' ? 'in_progress' : 'completed')},steps:[{name:'setup'}]}]});
+        if (url.endsWith('/jobs/2/logs')) return new Response(${JSON.stringify(line(record))},{status:${kind === 'unread-log' ? 410 : 200}});
+        throw new Error('Unexpected fixture request: '+url);
+      };`;
+      const result = spawnSync(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(fixture)}`,
+        fileURLToPath(new URL('../scripts/upstream-usage.mjs', import.meta.url)), '2026-11-05'],
+      {cwd: directory, env: {...process.env, GITHUB_STEP_SUMMARY: '', GH_TOKEN: '', GITHUB_TOKEN: ''}, encoding: 'utf8', timeout: 10000});
+      assert.equal(result.status, 0, `${kind}: ${result.stderr}`);
+      const json = JSON.parse(readFileSync(join(directory, 'usage.json'), 'utf8'));
+      const markdown = readFileSync(join(directory, 'usage.md'), 'utf8');
+      assert.equal(json.complete, kind === 'measured', kind);
+      assert.equal(json.completenessScope, 'available-meter-evidence');
+      assert.equal(markdown.includes('**Incomplete:**'), kind !== 'measured', kind);
+      if (kind === 'unmeasured-body') assert.equal(json.measurement.unmeasuredBodies, 1);
+      if (kind === 'unknown-record') assert.equal(json.measurement.unknownRecords, 1);
+      if (kind === 'unread-log') assert.deepEqual(json.unread, [2]);
+    } finally { rmSync(directory, {recursive: true, force: true}); }
+  }
+});
+
+test('measurement uncertainty is retained once per record, not multiplied by hosts', () => {
+  const summary = summarize([{workflow: 'Mixed', records: [
+    usage({a: {bytes: 10, requests: 1}, b: {bytes: 20, requests: 2}}, {unread: 3, unmeasured: 2}),
+    usage({a: {bytes: 5, requests: 1}}, {unread: 1}),
+  ]}]);
+  assert.deepEqual(summary.measurement, {unreadBodies: 4, unmeasuredBodies: 2, unknownRecords: 0});
+  assert.equal(summary.hosts.a.bytes, 15);
+  const report = usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary);
+  assert.match(report, /Incomplete/);
+  assert.match(report, /lower bound/);
+  assert.match(report, /cannot be assigned to individual hosts/);
+});
+
+test('missing or invalid measurement metadata is unknown, not exact zero', () => {
+  const summary = summarize([{workflow: 'Old', records: [
+    {hosts: {a: {bytes: 10, requests: 1}}},
+    usage({}, {unread: 0, unmeasured: 1}),
+    usage({}, {unread: -1}),
+  ]}]);
+  assert.equal(summary.measurement.unknownRecords, 3);
+  assert.match(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary), /Incomplete/);
+});
+
+test('unread logs independently prevent complete reporting; declared body lengths alone do not', () => {
+  const summary = summarize([{workflow: 'Known', records: [usage({a: {bytes: 100, requests: 1}}, {unread: 1})]}]);
+  assert.match(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: [9]}, summary), /Incomplete/);
+  assert.doesNotMatch(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary), /Incomplete/);
+  assert.match(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary), /not proof that all provider traffic was instrumented/);
+});
 
 test('only the meter lines of a job log are records', () => {
   const log = [
