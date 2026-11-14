@@ -2,8 +2,8 @@
 // snapshot. Incomplete or missing acquisition never changes live station layers.
 // Source: station-points-data, built by station-overview.mjs and published only
 // after an exhaustive geographic checkpoint. No public Overpass/ORM tile fanout.
-import {createBundleReader} from './tile-bundles.mjs?v=20261112-browser-calendar-1';
-import {stationMarkerDiameter} from './map-model.mjs?v=20261112-browser-calendar-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261114-startup-overlap-1';
+import {stationMarkerDiameter} from './map-model.mjs?v=20261114-startup-overlap-1';
 
 export const WORLD_STATION_SOURCE = 'stationWorld';
 export const WORLD_STATION_DOTS = 'station-world-dots';
