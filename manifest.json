@@ -1,15 +1,9 @@
 {
-  "generated": "2026-11-12T06:24:12.150Z",
-  "osmBase": "2026-11-12T06:20:25Z",
-  "update": {
-    "changesSince": "2026-11-08T12:03:21Z",
-    "upserts": 193,
-    "deletes": 4,
-    "added": 0,
-    "dropped": 0
-  },
-  "features": 16005,
-  "tiles": 556,
+  "generated": "2026-11-15T13:19:06.145Z",
+  "osmBase": "2026-11-15T13:17:29Z",
+  "update": "full",
+  "features": 16004,
+  "tiles": 557,
   "source": "https://overpass-api.de/api/interpreter",
   "query": "[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;",
   "license": "ODbL-1.0",
