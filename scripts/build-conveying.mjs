@@ -1,9 +1,11 @@
 // Build-time OSM extract of every escalator, moving walkway and elevator way.
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
-import {gzipSync,gunzipSync} from 'node:zlib';
+import {readFile} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {writeLineSnapshot} from './conveying-files.mjs';
 import {updateElements} from './overpass-adiff.mjs';
-import {CONVEYING_QUERY as query,conveyingGeoJSON,conveyingTiles,CONVEYING_ZOOM,conveyingHttpError,createConveyingProviderPause,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
+import {CONVEYING_QUERY as query,conveyingGeoJSON,CONVEYING_ZOOM,conveyingHttpError,createConveyingProviderPause,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
 const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
 const providerPause = createConveyingProviderPause(deadline);
 // What the conversion reads of an element; the stored elements keep only this.
@@ -74,18 +76,8 @@ const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id
 const {features}=conveyingGeoJSON({elements});
 // Taginfo counted about 44,000 such ways in October 2026.
 if(features.length<10000) throw new Error(`Suspiciously small worldwide extract: ${features.length}`);
-const root=new URL('../conveying-data/',import.meta.url);await mkdir(root,{recursive:true});
-await writeFile(new URL('elements.json.gz',root),gzipSync(JSON.stringify(elements),{level:9}));
-await writeFile(new URL('conveying.geojson.gz',root),gzipSync(JSON.stringify({type:'FeatureCollection',features}),{level:9}));
-const tiles=[];
-for(const [key,bytes] of conveyingTiles(features)) {
- const [z,x]=key.split('/');
- await mkdir(new URL(`${z}/${x}/`,root),{recursive:true});
- await writeFile(new URL(key+'.pbf.gz',root),gzipSync(bytes,{level:9}));tiles.push(key);
-}
-const kinds=Object.fromEntries(['escalator','travelator','elevator'].map(kind=>[kind,features.filter(f=>f.properties.kind===kind).length]));
-const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes,added:update.added,dropped:update.dropped}:'full',features:features.length,kinds,zoom:CONVEYING_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line.'};
-await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
-await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
+const manifest=await writeLineSnapshot(fileURLToPath(new URL('../conveying-data/',import.meta.url)),{elements,features,file:'conveying',layer:'conveying',zoom:CONVEYING_ZOOM,kindIds:['escalator','travelator','elevator'],
+ head:{generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes,added:update.added,dropped:update.dropped}:'full'},
+ tail:{source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line.'}});
 console.log(JSON.stringify(manifest));
 
