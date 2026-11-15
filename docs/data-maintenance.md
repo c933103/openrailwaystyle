@@ -177,6 +177,19 @@ How the choice is made:
   - Power methods: 84,150 of 84,825 identical; 664 differ, 86 only in the extract, 11 only in Overpass. For 70 of the differences only a node of the way was edited after the box's time, the way itself earlier.
   - Every difference has the element, or one of its nodes, edited after the time of the Overpass box holding it, or (only in Overpass) an element the extract no longer holds.
 
+**Escalators, moving walkways, elevators and aerialways.** Then `scripts/build-extract-conveying.mjs` builds both datasets and, on `main`, publishes them to `conveying-extract-data` and `aerialways-extract-data`, in the `conveying-data` and `aerialway-data` layouts.
+- **One read of the ways.** The selections are `CONVEYING_QUERY`'s and `AERIALWAY_QUERY`'s, element by element:
+  - ways with a `conveying` tag other than exactly `no`, or `highway=elevator`;
+  - ways whose `aerialway` is exactly one of the subclasses of `AERIALWAY_KINDS`, case-sensitive, as Overpass matches the regular expression.
+  - The elements are kept as `out tags geom` gives them (type, id, tags, geometry) and converted by `conveyingGeoJSON` and `aerialwaysGeoJSON`.
+- **Same files.** Both Overpass builds and this one write with `writeLineSnapshot` (`scripts/conveying-files.mjs`): `elements.json.gz`, the ODbL GeoJSON, the tiles, `index.json` and `manifest.json`. `osmBase` in the manifest is the assembly's oldest region time, the date Help shows.
+- **Floors and completeness.** From a complete assembly, fewer than 10,000 conveying features or 5,000 aerialways stop the run, as in the Overpass builds. Each `source.json` is complete only when the assembly is.
+- **Checked against `conveying-data` of 2026-11-12 and `aerialway-data` of 2026-11-15.** The world assembled from the 2026-11-10 index took 82 s and 1.0 GB locally.
+  - Conveying: 44,496 identical; 39 differ, 5 only in the extract, 69 only in Overpass.
+  - Aerialways: 23,915 identical; 217 differ, 19 only in the extract, 14 only in Overpass.
+  - Each difference was traced through the Overpass branch's own history. In all but one, the extract's feature, or its absence, is the one an earlier Overpass snapshot held, and the Overpass snapshot that changed it came after the region's time (2026-11-07 21:21 UTC; 2026-11-03 for the africa file).
+  - The one exception is an aerialway way whose version in the extract (edited 2026-11-07 19:58) existed only between two Overpass snapshots.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.

@@ -1,11 +1,13 @@
 // Build-time OSM extract of every aerial cableway and lift way, with the same
 // bounded acquisition as the escalator build (build-conveying.mjs): at most
 // three requests and their waits inside one 52-minute budget.
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
-import {gzipSync,gunzipSync} from 'node:zlib';
+import {readFile} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {writeLineSnapshot} from './conveying-files.mjs';
 import {updateElements} from './overpass-adiff.mjs';
-import {AERIALWAY_QUERY as query,AERIALWAY_ZOOM,aerialwaysGeoJSON,conveyingTiles,conveyingHttpError,createConveyingProviderPause,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
+import {AERIALWAY_QUERY as query,AERIALWAY_ZOOM,aerialwaysGeoJSON,conveyingHttpError,createConveyingProviderPause,conveyingFailureKind,conveyingRetryDelay,conveyingRequestFits,CONVEYING_REQUEST_MS,CONVEYING_ACQUISITION_MS} from './conveying-data.mjs';
 const deadline = performance.now() + CONVEYING_ACQUISITION_MS;
 const providerPause = createConveyingProviderPause(deadline);
 // What the conversion reads of an element; the stored elements keep only this.
@@ -76,17 +78,7 @@ const elements=(update?update.elements:data.elements.map(pick)).sort((a,b)=>a.id
 const {features}=aerialwaysGeoJSON({elements});
 // Taginfo counted about 3,200 cable car and gondola ways alone in October 2026.
 if(features.length<5000) throw new Error(`Suspiciously small worldwide aerialway extract: ${features.length}`);
-const root=new URL('../aerialway-data/',import.meta.url);await mkdir(root,{recursive:true});
-await writeFile(new URL('elements.json.gz',root),gzipSync(JSON.stringify(elements),{level:9}));
-await writeFile(new URL('aerialways.geojson.gz',root),gzipSync(JSON.stringify({type:'FeatureCollection',features}),{level:9}));
-const tiles=[];
-for(const [key,bytes] of conveyingTiles(features,{z:AERIALWAY_ZOOM,layer:'aerialways'})) {
- const [z,x]=key.split('/');
- await mkdir(new URL(`${z}/${x}/`,root),{recursive:true});
- await writeFile(new URL(key+'.pbf.gz',root),gzipSync(bytes,{level:9}));tiles.push(key);
-}
-const kinds=Object.fromEntries(['cableway','lift'].map(kind=>[kind,features.filter(f=>f.properties.kind===kind).length]));
-const manifest={generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes,added:update.added,dropped:update.dropped}:'full',features:features.length,kinds,zoom:AERIALWAY_ZOOM,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed.'};
-await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
-await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
+const manifest=await writeLineSnapshot(fileURLToPath(new URL('../aerialway-data/',import.meta.url)),{elements,features,file:'aerialways',layer:'aerialways',zoom:AERIALWAY_ZOOM,kindIds:['cableway','lift'],
+ head:{generated:new Date().toISOString(),osmBase:update?update.osmBase:data.osm3s?.timestamp_osm_base,update:update?{changesSince:update.since,upserts:update.upserts,deletes:update.deletes,added:update.added,dropped:update.dropped}:'full'},
+ tail:{source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed.'}});
 console.log(JSON.stringify(manifest));

@@ -6,7 +6,8 @@
 # From it, the extract builds (#330, step 9) are made and, on main,
 # published to their own branches (branch-lines-extract-data,
 # service-routes-extract-data, station-points-extract-data,
-# crossings-extract-data, traction-extract-data). The site uses
+# crossings-extract-data, traction-extract-data, conveying-extract-data,
+# aerialways-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -178,6 +179,31 @@ jobs:
           if ! git push --force origin HEAD:traction-extract-data; then
             test "$(git ls-remote origin refs/heads/traction-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build escalators, moving walkways, elevators and aerialways from the extract
+        # One read of the ways for both datasets. The world in a local run
+        # (2026-11-10 index): 82 s, 970 MB peak.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-conveying.mjs assembled.osm.pbf assembled.osm.pbf.json conveying-extract | tee conveying-extract.json
+          { echo '# Escalators, moving walkways, elevators and aerialways from the extract'; echo; echo '```json'; cat conveying-extract/conveying/manifest.json conveying-extract/aerialways/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish conveying-extract-data and aerialways-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          for dataset in conveying aerialways; do
+            mkdir "/tmp/$dataset-publish"
+            cd "/tmp/$dataset-publish"
+            git init -q
+            git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+            git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git checkout -q --orphan "$dataset-extract-data"
+            cp -r "$GITHUB_WORKSPACE/conveying-extract/$dataset/." .
+            git add .
+            git commit -q -m "$dataset from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+            if ! git push --force origin "HEAD:$dataset-extract-data"; then
+              test "$(git ls-remote origin "refs/heads/$dataset-extract-data" | cut -f1)" = "$(git rev-parse HEAD)"
+            fi
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -193,5 +219,7 @@ jobs:
             traction-extract/power/manifest.json
             traction-extract/power/methods-manifest.json
             traction-extract/source.json
+            conveying-extract/conveying/manifest.json
+            conveying-extract/aerialways/manifest.json
           if-no-files-found: ignore
           retention-days: 30

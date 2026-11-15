@@ -142,7 +142,8 @@ test('the aerialway build keeps its elements and converts all of them on every r
   assert.match(source, /updateElements\(\{\.\.\.previous,query,pick,validate:elements=>aerialwaysGeoJSON\(\{elements\}\),maxRequests:3,/);
   assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)/);
   assert.match(source, /const \{features\}=aerialwaysGeoJSON\(\{elements\}\);/);
-  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  // writeLineSnapshot writes the elements as elements.json.gz (tests/extract-conveying.test.mjs).
+  assert.match(source, /writeLineSnapshot\([^;]*\{elements,features,/);
   assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
   const wait = source.indexOf('const wait = conveyingRetryDelay({kind:changeError.kind}, 0);');
   assert.ok(wait > 0 && wait < source.indexOf('else for(let attempt=0,attempts=3-requests;;attempt++)'), 'a refused change request\'s wait comes first');
@@ -341,7 +342,8 @@ test('the conveying build keeps its elements and converts all of them on every r
   assert.match(source, /elements:JSON\.parse\(gunzipSync\(await readFile\(join\(process\.env\.PREVIOUS_DATA,'elements\.json\.gz'\)\)\)\),\n\s*since:manifest\.osmBase,previousQuery:manifest\.query/);
   assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)/);
   assert.match(source, /const \{features\}=conveyingGeoJSON\(\{elements\}\);/);
-  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  // writeLineSnapshot writes the elements as elements.json.gz (tests/extract-conveying.test.mjs).
+  assert.match(source, /writeLineSnapshot\([^;]*\{elements,features,/);
   assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
   const workflow = readFileSync(new URL('../.github/workflows/conveying.yml', import.meta.url), 'utf8');
   assert.match(workflow, /checkout FETCH_HEAD -- elements\.json\.gz manifest\.json/);
