@@ -112,6 +112,7 @@ Byte-range responses for archive assets remain supported.
 | --- | --- |
 | `styles/index.html`, `styles/app.mjs`, `styles/app.css` | Application page, controls and presentation |
 | `styles/map-model.mjs` | Map semantics and shared display rules |
+| `styles/legend-ui.mjs`, `styles/status-ui.mjs`, `styles/feature-inspector.mjs` | Legend rendering, source-status diagnostics and feature-category inspector rendering; application state is supplied explicitly |
 | `scripts/build-style.mjs`, `scripts/style/compose-style.mjs` | Generates station data and composes the atlas-owned rendering stack |
 | `scripts/style/sources/`, `scripts/style/layers/` | Provider definitions and cartographic modules |
 | `scripts/style/source-contract.mjs`, `styles/layer-semantics.mjs` | Consumed source schema and semantic visibility/localization controls |
