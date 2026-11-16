@@ -1,5 +1,6 @@
 // Extract-only energy context. Tags establish the supply domain; geometry
 // establishes a separate rail relationship, never actual supply availability.
+import {HYDROGEN_FUEL_KEYS} from './energy-fuel-tags.mjs';
 import {areaPolygons, lineMeetsPolygon, inside, validPoint, bounds} from './osm-geometry.mjs';
 const states=['construction','proposed','disused','abandoned','razed','demolished','removed'];
 const prefixes=['',...states.map(s=>s+':')];
@@ -10,10 +11,11 @@ const supplies={fuel:['fuel',11],coaling_facility:['coal',11],water_crane:['wate
 export function energyNetworkKind(tags={}) {
   for(const prefix of prefixes) {
     const t=Object.fromEntries(Object.entries(tags).filter(([key])=>key.startsWith(prefix)).map(([key,value])=>[key.slice(prefix.length),value]));
-    if(prefix)for(const key of ['voltage','frequency','substation','generator:source','substance','content','usage','resource','fuel','fuel:hydrogen'])if(t[key]===undefined&&tags[key]!==undefined)t[key]=tags[key];
+    if(prefix)for(const key of ['voltage','frequency','substation','generator:source','substance','content','usage','resource','fuel',...HYDROGEN_FUEL_KEYS])if(t[key]===undefined&&tags[key]!==undefined)t[key]=tags[key];
     const state=prefix.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
+    const hasHydrogen=HYDROGEN_FUEL_KEYS.some(key=>values(t[key]).length===1&&values(t[key])[0]==='yes');
     const rail=first(t,'railway',Object.keys(supplies));
-    if(rail){const [domain,minzoom]=supplies[rail];const hydrogen=rail==='fuel'&&(first(t,'fuel',['hydrogen'])||t['fuel:hydrogen']==='yes');return {kind:rail,domain:hydrogen?'hydrogen':domain,minzoom,state,trackside:rail!=='loading_rack'};}
+    if(rail){const [domain,minzoom]=supplies[rail];const hydrogen=rail==='fuel'&&(first(t,'fuel',['hydrogen'])||hasHydrogen);return {kind:rail,domain:hydrogen?'hydrogen':domain,minzoom,state,trackside:rail!=='loading_rack'};}
     if(t.railway==='signal'&&values(t['railway:signal:electricity']).some(v=>v!=='no'&&v!=='none'))return {kind:'electricity_signal',domain:'electricity',minzoom:14,state,trackside:true};
     const power=first(t,'power',['line','minor_line','cable','plant','generator','substation','converter','frequency_converter','transformer']);
     if(power) {
