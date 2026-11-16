@@ -299,6 +299,9 @@ export function polarStylePaint(map, zoom) {
       taxiway: colour('context-transport-airport-runways', 'line-color', DEFAULTS.taxiway, {class:'taxiway'}),
       apron: colour('context-transport-airport-area', 'fill-color', DEFAULTS.apron, {class:'apron'}),
     },
+    contourLabelVisible: properties => ['terrain-contour-labels', 'terrain-seabed-contour-labels', 'terrain-seabed-contour-labels-close']
+      .some(id => visible(id, 8) && matches(id, properties)),
+    placesVisible: visible('place_label_city') || visible('place_label_other'),
     backgroundVisible: visible('background'),
     backgroundOpacity: number('background', 'background-opacity', 1),
     waterVisible: visible('water'),

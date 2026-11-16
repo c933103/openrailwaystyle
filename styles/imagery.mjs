@@ -8,8 +8,53 @@
 // re-requesting every tile from Esri.
 export const EOX_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg';
 export const EOX_MAX_ZOOM = 14;
+// NASA's WMTS capabilities advertise Blue Marble on a 256px z0–8 grid.
+// This is a historical composite, not current or high-resolution imagery.
+export const GIBS_MAX_ZOOM = 8;
+export const GIBS_TILES = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg';
+export const GIBS_ATTRIBUTION = '<a href="https://nasa-gibs.github.io/gibs-api-docs/">NASA EOSDIS GIBS</a> / NASA Earth Observatory Blue Marble';
 export const ESRI_TILES = 'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 export const ESRI_MAX_ZOOM = 18;
+export const IMAGERY_MAX_ZOOM = 19;
+export const REGIONAL_ATTRIBUTION = 'USDA, <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>; © <a href="https://www.swisstopo.admin.ch/">swisstopo</a>; © <a href="https://www.ign.fr/">IGN</a>';
+const REGIONAL = [
+  {id:'CHE', bounds:[5.95,45.81,10.5,47.81], url:'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg'},
+  {id:'FRA', bounds:[-5.5,41.3,9.6,51.1], url:'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM_0_19&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'},
+  {id:'USA', bounds:[-125,24,-66,50], url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}'},
+];
+function insideRing([x,y],ring) {
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
+    const a=ring[i],b=ring[j];
+    if((a[1]>y)!==(b[1]>y) && x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;
+  }
+  return inside;
+}
+function interior(point,polygons) {
+  return polygons.some(rings=>{
+    if(!insideRing(point,rings[0]) || rings.slice(1).some(r=>insideRing(point,r)))return false;
+    for(const ring of rings)for(let i=1;i<ring.length;i++) {
+      const a=ring[i-1],b=ring[i],dx=b[0]-a[0],dy=b[1]-a[1];
+      const t=dx||dy?Math.max(0,Math.min(1,((point[0]-a[0])*dx+(point[1]-a[1])*dy)/(dx*dx+dy*dy))):0;
+      if(Math.hypot(point[0]-a[0]-t*dx,point[1]-a[1]-t*dy)<0.03)return false;
+    }
+    return true;
+  });
+}
+// Conservative country interiors prevent rectangular bounds selecting neighboring
+// countries. This is a request guard, not proof of tile-level imagery completeness.
+let regionData;
+export async function regionalImagery(z,x,y) {
+  if(z<15 || z>IMAGERY_MAX_ZOOM)return null;
+  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261116-polar-palette-1'));
+  const w=x/2**z*360-180,e=(x+1)/2**z*360-180,n=tileLatitude(z,y),s=tileLatitude(z,y+1);
+  for(const provider of REGIONAL) {
+    const [west,south,east,north]=provider.bounds;
+    if(w<west || e>east || s<south || n>north)continue;
+    if([[w,n],[e,n],[e,s],[w,s]].every(p=>interior(p,IMAGERY_REGIONS[provider.id])))return provider;
+  }
+  return null;
+}
 // Sentinel-2 systematically acquires land between 56° S and 84° N (ESA mission
 // requirements); EOX documents no coverage of the poles.
 export const EOX_SOUTH = -56, EOX_NORTH = 84;
@@ -44,17 +89,27 @@ export async function loadImageryConfig(url, {fetcher = fetch, timeout = 3000} =
   } catch { return {}; }
 }
 
-// Applies an Esri key to the composed style before the map starts. Without a
-// key the style's direct EOX source is left exactly as published.
+// Keyless GIBS fills the southern acquisition gap; a configured key also
+// enables Esri's higher-resolution imagery.
 export function applyImageryConfig(source, {esriKey} = {}) {
-  if (!esriKey) return source;
   source.tiles = ['atlasimagery://{z}/{x}/{y}'];
-  source.maxzoom = ESRI_MAX_ZOOM;
-  source.attribution = `${ESRI_ATTRIBUTION}; ${source.attribution}`;
+  source.maxzoom = IMAGERY_MAX_ZOOM;
+  source.attribution = `${esriKey ? ESRI_ATTRIBUTION + '; ' : ''}${GIBS_ATTRIBUTION}; ${REGIONAL_ATTRIBUTION}; ${source.attribution}`;
   return source;
 }
 
-export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, now = Date.now, resample = resampleTile} = {}) {
+// Cancel one tile's wait without aborting an ancestor used by other tiles.
+function waitForSignal(promise, signal) {
+  if(!signal)return promise;
+  if(signal.aborted)return Promise.reject(signal.reason || new DOMException('Aborted','AbortError'));
+  return new Promise((resolve,reject)=>{
+    const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason || new DOMException('Aborted','AbortError'));};
+    signal.addEventListener('abort',abort,{once:true});
+    Promise.resolve(promise).then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
+  });
+}
+
+export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, now = Date.now, monotonic = () => performance.now(), timeoutSignal = () => AbortSignal.timeout(15000), resample = resampleTile} = {}) {
   // Reading localStorage itself throws when the browser denies storage.
   if (storage === undefined) { try { storage = globalThis.localStorage; } catch { storage = null; } }
   const read = () => { try { return Number(storage?.getItem(ESRI_OFF_KEY)) || 0; } catch { return 0; } };
@@ -76,18 +131,44 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
     if (z <= EOX_MAX_ZOOM) return bytes(fill(EOX_TILES, z, x, y), signal);
     const depth = z - EOX_MAX_ZOOM, ax = x >> depth, ay = y >> depth, key = `${ax}/${ay}`;
     if (!ancestors.has(key)) {
-      const pending = bytes(fill(EOX_TILES, EOX_MAX_ZOOM, ax, ay));
+      const timeout=timeoutSignal();
+      const pending = waitForSignal(bytes(fill(EOX_TILES, EOX_MAX_ZOOM, ax, ay),timeout),timeout);
       pending.catch(() => { if (ancestors.get(key) === pending) ancestors.delete(key); });
       ancestors.set(key, pending);
       while (ancestors.size > 8) ancestors.delete(ancestors.keys().next().value);
     }
     signal?.throwIfAborted();
-    return resample(await ancestors.get(key), depth, x - (ax << depth), y - (ay << depth));
+    const data=await waitForSignal(ancestors.get(key),signal);
+    signal?.throwIfAborted();
+    return waitForSignal(resample(data, depth, x - (ax << depth), y - (ay << depth)),signal);
+  };
+  const regionalPauses = new Map();
+  const polarAncestors = new Map();
+  const southern = async (z, x, y, signal) => {
+    const depth=Math.max(0,z-GIBS_MAX_ZOOM), factor=2**depth;
+    const az=z-depth, ax=Math.floor(x/factor), ay=Math.floor(y/factor), key=`${az}/${ax}/${ay}`;
+    signal?.throwIfAborted();
+    if (!polarAncestors.has(key)) {
+      const timeout=timeoutSignal();
+      const pending=waitForSignal((async()=>{
+        const response=await fetcher(fill(GIBS_TILES,az,ax,ay),{signal:timeout});
+        if (!response.ok || !imageType(response)) throw new Error(`GIBS imagery unavailable: HTTP ${response.status}`);
+        return response.arrayBuffer();
+      })(),timeout);
+      pending.catch(()=>{if(polarAncestors.get(key)===pending)polarAncestors.delete(key);});
+      polarAncestors.set(key,pending);
+      while(polarAncestors.size>8)polarAncestors.delete(polarAncestors.keys().next().value);
+    }
+    const data=await waitForSignal(polarAncestors.get(key),signal);
+    signal?.throwIfAborted();
+    return depth ? waitForSignal(resample(data,depth,x-ax*factor,y-ay*factor),signal) : data.slice(0);
   };
   const tile = async (params, controller) => {
     const match = /^atlasimagery:\/\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url);
     if (!match) throw new Error('Invalid imagery tile');
     const [z, x, y] = match.slice(1).map(Number), signal = controller?.signal;
+    signal?.throwIfAborted();
+    if (!Number.isSafeInteger(z) || z > IMAGERY_MAX_ZOOM || x >= 2**z || y >= 2**z) throw new Error('Invalid imagery tile');
     if (esriActive() && z <= ESRI_MAX_ZOOM && !eoxCovers(z, y)) {
       try {
         const response = await fetcher(`${fill(ESRI_TILES, z, x, y)}?token=${encodeURIComponent(esriKey)}`, {signal});
@@ -95,6 +176,24 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
         // ArcGIS may report token/quota errors as JSON with HTTP 200.
         if (AUTH_STATUS.has(response.status) || (response.ok && !imageType(response))) disableEsri();
       } catch (error) { if (signal?.aborted) throw error; } // Network or body failure: this tile uses EOX.
+    }
+    let regional;
+    try {regional=await waitForSignal(regionalImagery(z,x,y),signal);}catch{/* Optional region metadata unavailable: retain global imagery. */}
+    signal?.throwIfAborted();
+    if(regional && monotonic()>=(regionalPauses.get(regional.id)||0)) {
+      try {
+        const response=await fetcher(fill(regional.url,z,x,y),{signal});
+        const header=response.headers?.get?.('retry-after'), seconds=/^\d+(?:\.\d+)?$/.test(header||'')?Number(header):NaN;
+        const pause=!Number.isNaN(seconds)?seconds*1000:Math.max(0,Date.parse(header)-now());
+        if(pause>0)regionalPauses.set(regional.id,monotonic()+pause);
+        if(response.status===429)regionalPauses.set(regional.id,Math.max(regionalPauses.get(regional.id)||0,monotonic()+60000));
+        if(response.status===401 || response.status===403)regionalPauses.set(regional.id,Infinity);
+        if(response.ok && imageType(response))return {data:await response.arrayBuffer()};
+      }catch(error){if(signal?.aborted)throw error;}
+    }
+    if (tileLatitude(z,y) < EOX_SOUTH) {
+      try { return {data: await southern(z,x,y,signal)}; }
+      catch(error) { if(signal?.aborted)throw error; }
     }
     return {data: await eox(z, x, y, signal)};
   };

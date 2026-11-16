@@ -1,8 +1,7 @@
 // Satellite provider selection in the real app and MapLibre: Sentinel-2 (EOX)
 // where it has native detail, Esri World Imagery only beyond it when a key is
-// configured, EOX when Esri refuses it, and the published direct EOX source
-// when no key exists. Provider tiles are local
-// solid-colour fixtures; no request reaches Esri or EOX.
+// configured, regional orthophotos or global fallbacks after refusal and
+// without a key. Every provider response is a solid-colour local fixture.
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
@@ -16,7 +15,7 @@ const browser = await launchBrowser({args: ['--use-angle=swiftshader', '--enable
 async function open({config, esri}) {
   const context = await browser.newContext({viewport: {width: 800, height: 600}, serviceWorkers: 'block'});
   await installEmptyMapProviders(context, base);
-  const requests = {esri: [], eox: 0}, errors = [];
+  const requests = {esri: [], eox: 0, gibs: 0, regional: []}, errors = [];
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   await page.route(`${base}imagery-config.json`, route => route.fulfill({json: config}));
@@ -25,6 +24,8 @@ async function open({config, esri}) {
     return esri === 'ok' ? route.fulfill({contentType: 'image/png', body: RED}) : route.fulfill({status: 403, contentType: 'application/json', body: '{"error":{"code":403}}'});
   });
   await page.route('https://tiles.maps.eox.at/**', route => { requests.eox++; return route.fulfill({contentType: 'image/png', body: BLUE}); });
+  for(const pattern of ['https://wmts.geo.admin.ch/**','https://data.geopf.fr/**','https://basemap.nationalmap.gov/**'])await page.route(pattern,route=>{requests.regional.push(route.request().url());return route.fulfill({contentType:'image/png',body:RED});});
+  await page.route('https://gibs.earthdata.nasa.gov/**', route=>{requests.gibs++;return route.fulfill({contentType:'image/png',body:RED});});
   return {context, page, requests, errors};
 }
 async function centre(page) {
@@ -60,7 +61,7 @@ try {
   near(await centre(healthy.page), [255, 0, 0], 'Esri imagery beyond Sentinel-2 detail');
   assert.ok(healthy.requests.esri.length > 0 && healthy.requests.esri.every(url => url.endsWith(`?token=${KEY}`)), 'keyed Esri requests');
   assert.ok(healthy.requests.esri.every(url => +/\/tile\/(\d+)\//.exec(url)[1] >= 14), 'Esri is requested only at zooms EOX cannot cover here');
-  assert.equal(await healthy.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.maxzoom), 18);
+  assert.equal(await healthy.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.maxzoom), 19);
   assert.match(await healthy.page.locator('.maplibregl-ctrl-attrib').textContent(), /Powered by Esri.*Vantor/s, 'Esri attribution');
   assert.deepEqual(healthy.errors, []);
   await healthy.context.close();
@@ -74,7 +75,8 @@ try {
   assert.ok(afterRefusal > 0, 'Esri was tried before the device switched');
   await refused.page.evaluate(() => window.imageryMap.jumpTo({center: [2.35, 48.85], zoom: 15}));
   await refused.page.evaluate(() => new Promise(resolve => { window.imageryMap.once('idle', resolve); setTimeout(resolve, 20000); }));
-  near(await centre(refused.page), [0, 0, 255], 'Sentinel-2 after panning');
+  near(await centre(refused.page), [255, 0, 0], 'French orthophotos after panning during Esri cooldown');
+  assert.ok(refused.requests.regional.some(url=>url.includes('data.geopf.fr')));
   assert.equal(refused.requests.esri.length, afterRefusal, 'no Esri request after the refusal');
   assert.deepEqual(refused.errors, []);
   await refused.context.close();
@@ -82,10 +84,20 @@ try {
   const unconfigured = await open({config: {}, esri: 'ok'});
   await load(unconfigured.page, 12);
   near(await centre(unconfigured.page), [0, 0, 255], 'Sentinel-2 without a key');
-  assert.match(await unconfigured.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.tiles[0]), /^https:\/\/tiles\.maps\.eox\.at\//, 'published EOX source unchanged');
+  assert.equal(await unconfigured.page.evaluate(() => window.imageryMap.getStyle().sources.satellite.tiles[0]), 'atlasimagery://{z}/{x}/{y}', 'keyless imagery protocol enabled');
   assert.equal(unconfigured.requests.esri.length, 0);
+  for(const [center,host] of [[[8.54,47.37],'wmts.geo.admin.ch'],[[-97.74,30.27],'basemap.nationalmap.gov']]) {
+    await unconfigured.page.evaluate(center=>window.imageryMap.jumpTo({center,zoom:16}),center);
+    await unconfigured.page.waitForFunction(()=>window.imageryMap.areTilesLoaded());
+    near(await centre(unconfigured.page),[255,0,0],'keyless regional orthophoto');
+    assert.ok(unconfigured.requests.regional.some(url=>url.includes(host)));
+  }
+  await unconfigured.page.evaluate(()=>window.imageryMap.jumpTo({center:[166.67,-77.85],zoom:12}));
+  await unconfigured.page.waitForFunction(()=>window.imageryMap.areTilesLoaded());
+  near(await centre(unconfigured.page),[255,0,0],'keyless NASA Antarctic fallback');
+  assert.ok(unconfigured.requests.gibs>0);assert.equal(unconfigured.requests.esri.length,0);
   await unconfigured.context.close();
-  console.log('PASS: Sentinel-2 where it has native detail, Esri only beyond it with a key, Sentinel-2 after refusal (including z15 crop), direct EOX without key');
+  console.log('PASS: Sentinel-2 where it has native detail, Esri only beyond it with a key, Sentinel-2 after refusal (including z15 crop), keyless EOX and NASA Antarctic fallback');
 } finally {
   await browser.close();
 }

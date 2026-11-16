@@ -4,6 +4,8 @@
 import assert from 'node:assert/strict';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
+import {png} from './polar-depth.mjs';
+import {POLAR_SATELLITE} from './polar-satellite.mjs';
 import {detailTiles} from './polar-features.mjs';
 import {CAP_RADIUS, MERCATOR_LIMIT, encodeLine, toPolar} from '../styles/polar.mjs';
 
@@ -47,7 +49,10 @@ try {
     const page=await browser.newPage({viewport:{width:1000,height:800}}), errors=[], warnings=[];
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='warning')warnings.push(message.text());});
+    const satellitePixels=new Uint8Array(1024*1024*3);for(let i=0;i<satellitePixels.length;i+=3)satellitePixels[i]=255;
+    const satellitePng=png(1024,1024,satellitePixels);
     await page.route('**/parity-fixture/**',route=>{
+      if(route.request().url().endsWith('-satellite.jpg'))return route.fulfill({contentType:'image/png',body:satellitePng});
       const value=data.get(new URL(route.request().url()).pathname.split('/').at(-1));
       return route.fulfill({status:value?200:404,contentType:'application/json',body:JSON.stringify(value||{})});
     });
@@ -174,9 +179,14 @@ try {
     for(const mode of ['satellite','hybrid']){
       await page.evaluate(mode=>{window.background=mode;},mode);await page.evaluate(()=>window.frame());
       const pixel=await page.evaluate(({sign,edge})=>window.pixel([0,sign*(edge+0.004)]),{sign,edge});
-      assert.deepEqual(pixel,[0,0,0,255],`${cap} ${mode} no-imagery cap`);
-      assert.equal(await page.evaluate(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed)),false);
+      assert.deepEqual(pixel,cap==='north'?[5,22,43,255]:[230,238,245,255],`${cap} ${mode} terrain fallback`);
+      if(mode==='hybrid')await page.waitForFunction(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed&&!tile.loading&&!tile.failed));
+      assert.equal(await page.evaluate(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed)),mode==='hybrid');
     }
+    await page.evaluate(({cap,info})=>{window.layer.caps[cap].index.satellite=info;window.background='satellite';window.map.triggerRepaint();},{cap,info:{...POLAR_SATELLITE,projection:cap==='north'?'EPSG:3413':'EPSG:3031'}});
+    await page.waitForFunction(cap=>Boolean(window.layer.caps[cap].satellite),cap);
+    await page.evaluate(()=>window.frame());
+    assert.deepEqual(await page.evaluate(({sign,edge})=>window.pixel([0,sign*(edge+0.004)]),{sign,edge}),[255,0,0,255],`${cap} optional satellite texture renders`);
     await page.evaluate(({sign,edge})=>{window.background='map';window.map.jumpTo({center:[0,sign*edge],zoom:4+Math.log2(Math.cos(edge*Math.PI/180))});},{sign,edge});
     await page.evaluate(()=>window.frame());
     assert.equal(await page.evaluate(()=>window.layer.broken||false),false);

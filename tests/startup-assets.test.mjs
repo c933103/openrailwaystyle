@@ -63,7 +63,7 @@ for(const failure of ['http','json'])test(`early style ${failure} failure reache
   }finally{await close(state);}
 });
 
-test('early imagery failure preserves the existing EOX-only fallback',async()=>{
+test('early imagery configuration failure retains keyless imagery',async()=>{
   const state=await start({delayLibraries:true,fetcher:async input=>{
     if(String(input).includes('imagery-config'))throw new Error('Synthetic config outage');
     return {ok:true,json:async()=>structuredClone(style)};
@@ -71,7 +71,7 @@ test('early imagery failure preserves the existing EOX-only fallback',async()=>{
   try{
     assert.equal(state.maps.length,0);state.loadLibraries();await wait();
     assert.equal(state.maps.length,1);
-    assert.equal(state.maps.protocols.atlasimagery,undefined);
+    assert.equal(typeof state.maps.protocols.atlasimagery,'function');
     assert.deepEqual(state.errors,[]);
   }finally{await close(state);}
 });

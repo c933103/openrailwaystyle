@@ -10,7 +10,7 @@ import {detailTiles} from './polar-features.mjs';
 import {depthFixturePng} from './bathymetry-browser-fixture.mjs';
 
 const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
-const contourLayers=world.layers.filter(layer=>['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))
+const contourLayers=world.layers.filter(layer=>['terrain-contours','terrain-seabed-contours','terrain-seabed-contours-close','terrain-contour-labels','terrain-seabed-contour-labels','terrain-seabed-contour-labels-close'].includes(layer.id))
   .map(({id,type,paint,minzoom,maxzoom,layout,filter})=>({id,type,source:'empty',paint,minzoom,maxzoom,layout,filter}));
 
 const demPng=depthFixturePng(10,0).toString('base64');
@@ -131,13 +131,17 @@ try {
     await page.evaluate(()=>{window.units='imperial';window.map.triggerRepaint();});
     await page.waitForFunction(()=>[...window.layer.tiles.entries()].some(([k,t])=>k.includes('-imperial-2-')&&!t.loading&&!t.failed));
     await page.evaluate(()=>{window.background='map';window.map.triggerRepaint();});
-    await page.waitForFunction(()=>window.layer.detailPending&&window.labels.length===0);
-    for(const background of ['satellite','hybrid']) {
+    await page.waitForFunction(()=>window.layer.detailPending&&window.labels.some(p=>p.contour&&p.name.endsWith(' ft')));
+    assert.ok(await page.evaluate(()=>window.labels.filter(p=>p.contour).every(p=>p.name.endsWith(' ft'))),'polar contour labels use selected units');
+    for(const background of ['satellite']) {
       const before=requests.length;
       await page.evaluate(background=>{window.background=background;window.map.triggerRepaint();},background);
       await page.waitForFunction(()=>!window.layer.detailPending&&![...window.layer.tiles.values()].some(t=>t.detailed)&&window.labels.length===0);
       assert.ok(!requests.slice(before).some(n=>n.includes('carto')||/-(metric|imperial)-[12]-/.test(n)),`${background} must not fetch detail`);
     }
+    await page.evaluate(()=>{window.background='hybrid';window.map.triggerRepaint();});
+    await page.waitForFunction(()=>window.layer.detailPending&&[...window.layer.tiles.values()].some(t=>t.detailed&&!t.loading&&!t.failed));
+    assert.equal(await page.evaluate(()=>Boolean(window.layer.broken)),false,'Hybrid draws its vector overlays');
     // Existing deployed snapshots may predate Carto/Map detail.
     await page.evaluate(()=>{const cap=window.map.getCenter().lat>0?'north':'south',state=window.layer.caps[cap];delete state.index.carto;for(const units of ['metric','imperial'])state.index.units[units]=state.index.units[units].slice(0,1);window.background='map';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));

@@ -173,3 +173,16 @@ test('polar views survive the address: readout zoom and enough decimals',async()
   assert.deepEqual(parseViewHash('#5/60/10/30/40'),{center:[10,60],zoom:5,bearing:30,pitch:40});
   for(const bad of ['','#','#5/60','#a/b/c','#5/95/10','#5x/60/10'])assert.equal(parseViewHash(bad),null,bad);
 });
+
+ test('polar contour labels keep signed units and use physical half-length', async () => {
+  const {polarContourLabel, fromPolar}=await import('../styles/polar.mjs');
+  for (const cap of ['north','south']) {
+    const points=[[0,10],[1,10],[10,10]];
+    const label=polarContourLabel(cap,points,-100,'metric');
+    assert.equal(label.name,'-100 m');assert.deepEqual(label.lngLat,fromPolar(cap,[5,10]));
+    assert.equal(polarContourLabel(cap,points,-250,'imperial').name,'-250 ft');
+    assert.equal(polarContourLabel(cap,points,250,'metric').name,'250 m');
+    assert.equal(polarContourLabel(cap,[[1,1],[1,1]],10,'metric'),null);
+    assert.equal(polarContourLabel(cap,points,0,'metric'),null);
+  }
+});
