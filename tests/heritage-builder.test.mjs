@@ -15,6 +15,7 @@ import * as worldRegions from '../scripts/world-regions.mjs';
 import * as zlib from 'node:zlib';
 import * as retryAfter from '../scripts/retry-after.mjs';
 import * as transport from '../scripts/response-chunks.mjs';
+import * as heritageFiles from '../scripts/heritage-files.mjs';
 
 const source = await fs.readFile(new URL('../scripts/build-heritage.mjs', import.meta.url), 'utf8');
 const parent = [0, 0, 45, 45];
@@ -100,6 +101,7 @@ async function run(t, reply, {writeError, byteLength, env = {}, files = {}, wall
     'node:zlib':zlib,
     './response-chunks.mjs':transport,
     './retry-after.mjs':retryAfter,
+    './heritage-files.mjs':heritageFiles,
   };
   const module = new vm.SourceTextModule(source, {context});
   await module.link(specifier => {

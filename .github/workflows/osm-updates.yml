@@ -43,6 +43,7 @@ on:
       - scripts/download-stages.mjs
       - scripts/electricity-signal-data.mjs
       - scripts/heritage-data.mjs
+      - scripts/heritage-files.mjs
       - scripts/lifecycle.mjs
       - scripts/maintain-data-workflows.mjs
       - scripts/osm-geometry.mjs

@@ -140,6 +140,7 @@ test('a change to a shared snapshot writer rebuilds the datasets it writes', () 
   const users = path => OSM_UPDATES.filter(entry => entry.paths.includes(path)).map(entry => entry.id);
   assert.deepEqual(users('scripts/conveying-files.mjs'), ['conveying', 'aerialways']);
   assert.deepEqual(users('scripts/street-running-files.mjs'), ['street-running']);
+  assert.deepEqual(users('scripts/heritage-files.mjs'), ['heritage']);
 });
 
 test('axle-load push trigger includes its shared calendar parser without changing its schedule', async () => {
