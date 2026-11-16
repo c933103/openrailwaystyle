@@ -4,9 +4,9 @@
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
 // zoom included.
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261114-startup-overlap-1';
-import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261114-startup-overlap-1';
-import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261114-startup-overlap-1';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261116-native-dem-1';
+import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs?v=20261116-native-dem-1';
+import {DEPTH_ZOOM, WATER_ZOOM, oceanPolygons} from './bathymetry.mjs?v=20261116-native-dem-1';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -30,7 +30,7 @@ export function sampleHeight(data, size, px, py) {
   return (h(x0, y0) * (1 - fx) + h(x1, y0) * fx) * (1 - fy) + (h(x0, y1) * (1 - fx) + h(x1, y1) * fx) * fy;
 }
 
-// Decode a PNG tile in the browser into RGBA pixels.
+// Decode a browser-supported Terrarium image into its native RGBA grid.
 async function loadPixels(url, signal) {
   const {blob} = await terrainBlob(url, signal);
   const {pixels} = await decodeTerrain(blob, signal);
@@ -80,7 +80,10 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels,
         const {x, y, px, py} = tilePixel(lng, lat, zoom), key = `${x}/${y}`;
         if (!tiles.has(key)) tiles.set(key, tile(key, signal));
         const pixels = await tiles.get(key);
-        return pixels ? sampleHeight(pixels.data, pixels.size, px, py) : null;
+        // tilePixel uses a normalized 256-pixel grid; decoded DEMs may
+        // have a different native resolution (for example 512-pixel WebP).
+        const scale = pixels?.size / TILE;
+        return pixels ? sampleHeight(pixels.data, pixels.size, px * scale, py * scale) : null;
       }));
     },
   };

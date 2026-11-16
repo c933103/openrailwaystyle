@@ -190,3 +190,15 @@ test('a non-cooperative worker decoder cannot retain a fine tile in pending repa
   const pending = getTile('fixture/14/1/1.png', new AbortController()); await flush(); await advance(REPAIR_TIMEOUT_MS);
   assert.equal((await pending).data, fine); assert.ok(signals.every(signal => signal.aborted));
 });
+
+
+for (const format of ['png', 'webp']) test(`worker repair preserves ${format} URLs and query parameters for references`, async t => {
+  const calls = [], main = new Blob(['fine']);
+  const load = workerFixture(t, url => {calls.push(url);return Promise.resolve(workerResponse(main));});
+  const result = await load(`https://terrain.fixture/14/8192/8192.${format}?generation=7`, new AbortController());
+  assert.equal(result.data, main);
+  assert.deepEqual(calls, [
+    `https://terrain.fixture/14/8192/8192.${format}?generation=7`,
+    `https://terrain.fixture/12/2048/2048.${format}?generation=7`,
+  ]);
+});
