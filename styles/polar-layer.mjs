@@ -225,8 +225,8 @@ export function transportationGroups(data) {
 // background is satellite imagery. Existing polar terrain supplies a shaded
 // cartographic fallback until a photographed cap is available.
 export class PolarLayer {
-  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map'}) {
-    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette});
+  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map', overlayVisibility}) {
+    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette, overlayVisibility});
     this.maxTileBytes=maxTileBytes;this.maxTiles=maxTiles;this.visibleKeys=new Set();this.generation=0;
     this.programs = new Map(); this.caps = {north: {}, south: {}}; this.tiles = new Map();
   }
@@ -557,7 +557,7 @@ export class PolarLayer {
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
     const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', hybrid = background === 'hybrid', custom = background === 'map' || hybrid;
-    const mapPaint = custom ? polarStylePaint(this.map, cameraZoom) : null;
+    const mapPaint = custom ? polarStylePaint(this.map, cameraZoom, hybrid ? this.overlayVisibility : undefined) : null;
     const colours = carto ? CARTO_COLOURS : {...COLOURS, ...mapPaint?.colours};
     this.syncDetail((carto || custom) && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
@@ -581,7 +581,7 @@ export class PolarLayer {
         this.fill(state.iceShelves, options.shaderData, projection, rgba('#cad8e6', fade));
         if (state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade,
           cap === 'south' ? {...RELIEF, shadow:'#dce6f0',highlight:'#f7fbff',accent:'#cad8e6'} : RELIEF);
-        if (!hybrid) continue;
+
       }
       if (!imagery && custom) {
         if (mapPaint.backgroundVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.land, mapPaint.backgroundOpacity * fade));
@@ -624,11 +624,17 @@ export class PolarLayer {
                 const styles = [mapPaint.landContour(range.properties), ...mapPaint.seabedContours(range.properties)];
                 for (const style of styles) if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
               }
+            } else if (imagery) {
+              // Coarse ETOPO surface contours complement the imagery without
+              // suggesting ice thickness or subglacial bedrock measurements.
+              if(kind==='seabed' || cap==='south')this.line(mesh, options.shaderData, projection,
+                rgba(kind==='seabed'?'#6e9db8':'#7892a5',0.25*fade),major?0.8:0.4);
             } else this.line(mesh, options.shaderData, projection,
               rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
           }
         }
       }
+      if (imagery && !hybrid) continue;
       if (zoom >= MIN_ZOOM.runway && carto) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
       const detail = state.index?.carto;
       const detailTiles = [];

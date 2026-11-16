@@ -202,7 +202,7 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
   return expression;
 }
 
-export function polarStylePaint(map, zoom) {
+export function polarStylePaint(map, zoom, overlayVisibility) {
   // Cache lookups only for this frame. null means a successful missing
   // lookup; undefined means the API/style is unavailable and allows fallback.
   const layers = new Map();
@@ -223,8 +223,9 @@ export function polarStylePaint(map, zoom) {
       const layer = layerFor(id);
       if (layer === null) return false;
       min = layer?.minzoom ?? min; max = layer?.maxzoom ?? max;
-      return inRange(min,max) &&
-        map?.getLayoutProperty?.(id, 'visibility') !== 'none';
+      const overlay=layer && overlayVisibility?.(layer);
+      return inRange(min,max) && (typeof overlay==='boolean' ? overlay :
+        map?.getLayoutProperty?.(id, 'visibility') !== 'none');
     } catch { return inRange(min,max); }
   };
   const matches = (id, properties) => {

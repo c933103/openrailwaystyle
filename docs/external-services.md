@@ -574,3 +574,22 @@ that entire rectangle as modern Swiss aerial photography. IGN acquisition
 dates vary by location. None of these is a live image or proof of current
 rail infrastructure. An image-shaped no-data tile cannot be identified from
 HTTP status alone; that remaining limitation is not treated as verified coverage.
+
+### Imagery attribution lifecycle
+
+Satellite attribution follows the successfully returned provider for each
+rendered raster texture. Mixed regional/global views, fallback parent tiles and
+cross-fades credit every represented provider. Panning back to a cached texture
+restores its original credit; a failed request contributes none. NASA credit is
+also included while a published polar composite is drawn. The integration uses
+the pinned MapLibre 5.24 tile manager's renderable IDs and tile/load/texture identities;
+its fixture checks must accompany renderer upgrades. A bounded 4096-entry
+provider ledger holds no image bytes, and tile records use a WeakMap.
+Unknown provenance retains the full provider credit union. These bookkeeping
+updates add no provider requests, reloads, persisted data or cache invalidation.
+
+At source zoom 19, native regional imagery takes precedence. Outside a usable
+regional tile, configured Esri imagery crops the corresponding zoom-18 ancestor,
+retaining its detail before global fallback. The crop has the same cancellation
+and authentication backoff behavior as native Esri requests and adds no stored
+Esri cache. Provider attribution continues to identify Esri for these crops.

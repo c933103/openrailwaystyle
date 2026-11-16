@@ -32,6 +32,7 @@ try {
       .map(([kind,points,type])=>({type:'Feature',properties:{kind,class:kind==='waterway'?'stream':kind==='road'?'service':kind},geometry:{type,coordinates:type==='Polygon'?[clip(points)]:clip(points)}}));
     const data=new Map([
       [`${cap}-index.json`,{cap,radius:CAP_RADIUS,units:{metric:[]},carto:{from:10,n:4,tiles:[...details.keys()]}}],
+      [`${cap}-metric-0-0-0.json`,{lines:[[-100,1,...encodeLine(strip(0).map(point=>toPolar(cap,point)))],[100,1,...encodeLine(strip(0.04).map(point=>toPolar(cap,point)))]]}],
       [`${cap}-features.json`,{water:[],iceShelves:[],places:[],runways:[encodeLine(strip(0).map(point=>toPolar(cap,point)).map(([x,y])=>[x,sign===1?Math.max(y,-CAP_RADIUS):Math.min(y,CAP_RADIUS)]))]}],
       ...[...details].map(([key,value])=>[`${cap}-carto-${key}.json`,value]),
     ]);
@@ -187,6 +188,23 @@ try {
     await page.waitForFunction(cap=>Boolean(window.layer.caps[cap].satellite),cap);
     await page.evaluate(()=>window.frame());
     assert.deepEqual(await page.evaluate(({sign,edge})=>window.pixel([0,sign*(edge+0.004)]),{sign,edge}),[255,0,0,255],`${cap} optional satellite texture renders`);
+    // Real framebuffer deltas must show faint coarse seabed contours and
+    // Antarctic surface contours; the north land pass remains absent.
+    const samples=()=>page.evaluate(({sign,edge})=>[0,0.04].map(lon=>{
+      const point=window.map.project([lon,sign*(edge+0.004)]),gl=window.map.getCanvas().getContext('webgl2'),pixels=new Uint8Array(5*5*4);
+      gl.readPixels(Math.round(point.x)-2,gl.drawingBufferHeight-1-Math.round(point.y)-2,5,5,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return [...pixels];
+    }),{sign,edge});
+    await page.evaluate(()=>{window.terrain=false;});await page.evaluate(()=>window.frame());const plain=await samples();
+    await page.evaluate(cap=>{window.layer.caps[cap].index.units.metric=[{n:1,tiles:['0-0']}];window.terrain=true;window.map.triggerRepaint();},cap);
+    await page.waitForFunction(cap=>{const t=window.layer.tiles.get(cap+'-metric-0-0-0');return t&&!t.loading&&!t.failed;},cap);
+    await page.evaluate(()=>window.frame());const outlined=await samples();
+    for(let i=0;i<2;i++){
+      const delta=outlined[i].map((v,j)=>Math.abs(v-plain[i][j]));
+      if(i===0||cap==='south'){
+        assert.ok(delta.some(v=>v>1),`${cap}: ${i?'surface':'seabed'} contour changes visible pixels`);
+        assert.ok(Math.max(...delta)<=64,`${cap}: contour opacity stays at most 0.25`);
+      }else assert.deepEqual(outlined[i],plain[i],'north land contour is absent in Satellite');
+    }
     await page.evaluate(({sign,edge})=>{window.background='map';window.map.jumpTo({center:[0,sign*edge],zoom:4+Math.log2(Math.cos(edge*Math.PI/180))});},{sign,edge});
     await page.evaluate(()=>window.frame());
     assert.equal(await page.evaluate(()=>window.layer.broken||false),false);

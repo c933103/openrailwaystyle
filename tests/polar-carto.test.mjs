@@ -184,3 +184,13 @@ test('viewer groups classified lines and leaves older or misaligned tiles unclas
     visible=true;r.terrain(false);r.render();assert.deepEqual(r.labels.at(-1),[]);
   }
 });
+
+ test('Satellite draws faint coarse seabed and Antarctic surface contours without OSM detail or labels',()=>{
+  const r=renderingLayer(),lines=[];r.background('satellite');
+  r.layer.loadTile=key=>{r.calls.push(key);return {seabedMinor:'sea-minor',seabedMajor:'sea-major',landMinor:'surface-minor',landMajor:'surface-major'};};
+  r.layer.line=(mesh,_shader,_projection,colour,width)=>lines.push({mesh,colour,width});
+  r.render();assert.deepEqual(r.calls,['south-metric-0-0-0']);
+  assert.deepEqual(lines.map(l=>l.mesh),['sea-minor','sea-major','surface-minor','surface-major']);
+  assert.ok(lines.every(l=>l.colour[3]===0.25));assert.deepEqual(r.labels.at(-1),[]);assert.equal(r.layer.detailPending,null);
+  r.terrain(false);r.calls.length=0;lines.length=0;r.render();assert.deepEqual(r.calls,[]);assert.deepEqual(lines,[]);
+});

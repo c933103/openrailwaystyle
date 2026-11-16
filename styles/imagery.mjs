@@ -46,7 +46,7 @@ function interior(point,polygons) {
 let regionData;
 export async function regionalImagery(z,x,y) {
   if(z<15 || z>IMAGERY_MAX_ZOOM)return null;
-  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261116-polar-palette-1'));
+  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261116-imagery-credits-1'));
   const w=x/2**z*360-180,e=(x+1)/2**z*360-180,n=tileLatitude(z,y),s=tileLatitude(z,y+1);
   for(const provider of REGIONAL) {
     const [west,south,east,north]=provider.bounds;
@@ -59,6 +59,10 @@ export async function regionalImagery(z,x,y) {
 // requirements); EOX documents no coverage of the poles.
 export const EOX_SOUTH = -56, EOX_NORTH = 84;
 export const ESRI_ATTRIBUTION = 'Powered by <a href="https://www.esri.com/">Esri</a> | Esri, Vantor, Earthstar Geographics, and the GIS User Community';
+export const PROVIDER_ATTRIBUTION = {ESRI:ESRI_ATTRIBUTION,GIBS:GIBS_ATTRIBUTION,
+  CHE:'© <a href="https://www.swisstopo.admin.ch/">swisstopo</a>',
+  FRA:'© <a href="https://www.ign.fr/">IGN</a>',
+  USA:'USDA, <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>'};
 export const ESRI_OFF_KEY = 'atlas-imagery-esri-off-until';
 export const ESRI_OFF_MS = 6 * 60 * 60 * 1000;
 const AUTH_STATUS = new Set([401, 403, 498, 499]);
@@ -119,6 +123,12 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
     offUntil = now() + ESRI_OFF_MS;
     try { storage?.setItem(ESRI_OFF_KEY, String(offUntil)); } catch { /* private mode: this session only */ }
   };
+  const providers = new Map();
+  const delivered = (url,provider,data,signal) => {
+    signal?.throwIfAborted();providers.delete(url);providers.set(url,provider);
+    while(providers.size>4096)providers.delete(providers.keys().next().value);
+    return {data};
+  };
   const ancestors = new Map();
   const bytes = async (url, signal) => {
     const response = await fetcher(url, {signal});
@@ -169,14 +179,20 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
     const [z, x, y] = match.slice(1).map(Number), signal = controller?.signal;
     signal?.throwIfAborted();
     if (!Number.isSafeInteger(z) || z > IMAGERY_MAX_ZOOM || x >= 2**z || y >= 2**z) throw new Error('Invalid imagery tile');
-    if (esriActive() && z <= ESRI_MAX_ZOOM && !eoxCovers(z, y)) {
+    const esri=async()=>{
+      if(!esriActive() || eoxCovers(z,y))return null;
+      const depth=Math.max(0,z-ESRI_MAX_ZOOM),factor=2**depth,ax=Math.floor(x/factor),ay=Math.floor(y/factor);
       try {
-        const response = await fetcher(`${fill(ESRI_TILES, z, x, y)}?token=${encodeURIComponent(esriKey)}`, {signal});
-        if (response.ok && imageType(response)) return {data: await response.arrayBuffer()};
-        // ArcGIS may report token/quota errors as JSON with HTTP 200.
-        if (AUTH_STATUS.has(response.status) || (response.ok && !imageType(response))) disableEsri();
-      } catch (error) { if (signal?.aborted) throw error; } // Network or body failure: this tile uses EOX.
-    }
+        const response=await fetcher(`${fill(ESRI_TILES,z-depth,ax,ay)}?token=${encodeURIComponent(esriKey)}`,{signal});
+        if(response.ok && imageType(response)) {
+          const data=await response.arrayBuffer();
+          return delivered(params.url,'ESRI',depth?await waitForSignal(resample(data,depth,x-ax*factor,y-ay*factor),signal):data,signal);
+        }
+        if(AUTH_STATUS.has(response.status) || (response.ok&&!imageType(response)))disableEsri();
+      }catch(error){if(signal?.aborted)throw error;}
+      return null;
+    };
+    if(z<=ESRI_MAX_ZOOM){const result=await esri();if(result)return result;}
     let regional;
     try {regional=await waitForSignal(regionalImagery(z,x,y),signal);}catch{/* Optional region metadata unavailable: retain global imagery. */}
     signal?.throwIfAborted();
@@ -188,16 +204,18 @@ export function createImageryProtocol({esriKey = '', fetcher = fetch, storage, n
         if(pause>0)regionalPauses.set(regional.id,monotonic()+pause);
         if(response.status===429)regionalPauses.set(regional.id,Math.max(regionalPauses.get(regional.id)||0,monotonic()+60000));
         if(response.status===401 || response.status===403)regionalPauses.set(regional.id,Infinity);
-        if(response.ok && imageType(response))return {data:await response.arrayBuffer()};
+        if(response.ok && imageType(response))return delivered(params.url,regional.id,await response.arrayBuffer(),signal);
       }catch(error){if(signal?.aborted)throw error;}
     }
+    // Native regional z19 wins; elsewhere retain Esri's z18 detail by cropping.
+    if(z>ESRI_MAX_ZOOM){const result=await esri();if(result)return result;}
     if (tileLatitude(z,y) < EOX_SOUTH) {
-      try { return {data: await southern(z,x,y,signal)}; }
+      try { return delivered(params.url,'GIBS',await southern(z,x,y,signal),signal); }
       catch(error) { if(signal?.aborted)throw error; }
     }
-    return {data: await eox(z, x, y, signal)};
+    return delivered(params.url,'EOX',await eox(z,x,y,signal),signal);
   };
-  return {tile, esriActive};
+  return {tile, esriActive, providerFor:({z,x,y})=>providers.get(`atlasimagery://${z}/${x}/${y}`)};
 }
 
 // Crop the (dx, dy) child at `depth` levels below a 256 px tile and scale it
@@ -211,4 +229,43 @@ export async function resampleTile(data, depth, dx, dy) {
   context.drawImage(image, dx * width, dy * height, width, height, 0, 0, 256, 256);
   image.close?.();
   return (await canvas.convertToBlob({type: 'image/jpeg', quality: 0.9})).arrayBuffer();
+}
+
+// MapLibre 5.24's renderable tile manager includes fallback parents and fading
+// tiles. Tile/load/texture identity keeps credits stable through cached panning
+// and safe when the renderer recycles GPU textures for a different provider.
+// Unknown/evicted provenance retains the conservative full credit union.
+export function installImageryAttribution(map,protocol,{eoxAttribution='',polarImagery=()=>false}={}) {
+  const records=new WeakMap(),credits={...PROVIDER_ATTRIBUTION,EOX:eoxAttribution};
+  const all=Object.values(credits).filter(Boolean).join('; ');
+  const update=()=>{
+    const source=map.getSource('satellite');if(!source)return;
+    const manager=map.style?.tileManagers?.satellite;
+    const publish=attribution=>{
+      if(source.attribution===attribution)return;
+      source.attribution=attribution;
+      map.fire('sourcedata',{sourceId:'satellite',dataType:'source',sourceDataType:'metadata'});
+    };
+    if(typeof manager?.getRenderableIds!=='function' || typeof manager?.getTileByID!=='function'){publish(all);return;}
+    const providers=new Set();let unknown=false;
+    if(manager.used)for(const id of manager.getRenderableIds()) {
+      const tile=manager.getTileByID(id);if(!tile?.texture)continue;
+      if(!tile.tileID?.canonical){unknown=true;continue;}
+      const cached=records.get(tile);
+      let provider=cached?.texture===tile.texture && cached.timeAdded===tile.timeAdded ? cached.provider : undefined;
+      if(!provider) {
+        provider=protocol.providerFor(tile.tileID.canonical);
+        if(provider)records.set(tile,{texture:tile.texture,timeAdded:tile.timeAdded,provider});
+      }
+      if(provider)providers.add(provider);else unknown=true;
+    }
+    if(polarImagery())providers.add('GIBS');
+    const attribution=unknown?all:[...providers].sort().map(id=>credits[id]).filter(Boolean).join('; ');
+    publish(attribution);
+  };
+  // Completed raster loads carry the Tile, also when a pooled texture is
+  // reused and a coarse browser clock gives consecutive loads the same time.
+  const loaded=event=>{if(event.sourceId==='satellite' && event.tile?.state==='loaded')records.delete(event.tile);};
+  const destroy=()=>{map.off('render',update);map.off('sourcedata',loaded);map.off('remove',destroy);};
+  map.on('render',update);map.on('sourcedata',loaded);map.on('remove',destroy);return destroy;
 }
