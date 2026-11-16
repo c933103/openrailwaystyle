@@ -369,3 +369,10 @@ Expanded propulsion data preserves overhead trolley/rigid subtypes and aligned v
 Detailed geometry is encoded through zoom 14, with sub-metre quantization at the equator, and bundled at zoom 12. Schema 2 prevents older coarse-only snapshots from passing the client gate. The 350 KB limit is per compressed bundle, not a measured viewport total. Global snapshot acquisition, viewport measurement, and fixture-browser rendering remain required before declaring the worldwide rollout complete.
 
 The manual assembly workflow also builds a complete energy candidate, validates it and retains a seven-day artifact with cold viewport accounting. It does not publish this candidate. `measure-energy-network.mjs` sums compressed bundles plus metadata over conservative north-up flat desktop windows, including dateline wrapping. Its report distinguishes failures of the 350 KB viewport budget from individual-file limits; rotated, pitched and globe browser requests still require measurement before publication.
+
+The [camera budget acceptance](energy-viewport-acceptance.md) adds actual renderer
+request sampling for rotated, 60°/80° pitched and globe views, tier boundaries,
+and overscaling. Its default CI inputs are synthetic; an explicit local-candidate
+mode reads only existing candidate files. Every response counts toward the same
+350,000-byte threshold, including metadata and repeat reads. These sampled results
+do not certify a worldwide viewport bound or replace the complete-source gates.

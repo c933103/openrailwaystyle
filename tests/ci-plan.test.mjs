@@ -41,7 +41,7 @@ test('tests, docs, other pipelines and style sources (checked through the commit
 
 test('a check, its helpers and its fixtures run only the checks that use them', () => {
   assert.deepEqual(groupsFor(['scripts/check-polar-browser.mjs']), ['context:1']);
-  for(const file of ['scripts/heritage-data.mjs','scripts/build-extract-energy-network.mjs'])assert.deepEqual(groupsFor([file]),['infrastructure:1'],'the Power fixture uses the real energy tile and bundle builders');
+  for(const file of ['scripts/heritage-data.mjs','scripts/build-extract-energy-network.mjs'])assert.deepEqual(groupsFor([file]),['infrastructure:2'],'the Power fixtures use the real energy tile and bundle builders');
   assert.deepEqual(groupsFor(['tests/fixtures/stations-before-density.json']), [],'local-only station density check is not dispatched in public CI');
   for(const check of LOCAL_ORM_CHECKS)assert.deepEqual(groupsFor([`scripts/${check}`]),[],check+' stays local-only');
   const helper = plan(['scripts/click-visible-control.mjs'], read).groups.flatMap(g => g.checks);
