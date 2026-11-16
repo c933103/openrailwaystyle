@@ -8,6 +8,9 @@ const STATION = [...LABEL, 'feature', 'state', 'station', 'station_size'];
 const CONTOUR = {contours:['ele', 'level']};
 
 export const SOURCE_CONTRACTS = {
+  energyNetworkOverview:{atlas_energy_network:['energy_domain','power_state','energy_minzoom','supply_tier','energy_voltage','energy_line_style']},
+  energyNetworkContext:{atlas_energy_network:['energy_domain','power_state','energy_minzoom','supply_tier','energy_voltage','energy_line_style']},
+  energyNetworkDetail:{atlas_energy_network:['energy_domain','power_state','energy_minzoom','supply_tier','energy_voltage','energy_line_style']},
   railReference:{atlas_mainline_overview:['classification','highspeed_tag','rank']},
   openmaptiles: {
     landuse:[...LABEL, 'class'],

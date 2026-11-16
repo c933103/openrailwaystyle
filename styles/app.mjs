@@ -1,30 +1,31 @@
-import {serviceCoverageMessages} from './service-status.mjs?v=20261114-startup-overlap-1';
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261114-startup-overlap-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261114-startup-overlap-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261114-startup-overlap-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261114-startup-overlap-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261114-startup-overlap-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261114-startup-overlap-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261114-startup-overlap-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261116-power-network-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261116-power-network-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261116-power-network-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261116-power-network-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261116-power-network-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261116-power-network-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261116-power-network-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, currentKey, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, aerialwayKind, CONVEYING_COLOUR, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, referenceDetailEligible } from './map-model.mjs?v=20261116-power-network-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261114-startup-overlap-1';
-import { createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261114-startup-overlap-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261114-startup-overlap-1';
-import {departureItem} from './departures-ui.mjs?v=20261114-startup-overlap-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261114-startup-overlap-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261114-startup-overlap-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261114-startup-overlap-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261114-startup-overlap-1';
-import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261114-startup-overlap-1';
-import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261114-startup-overlap-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261114-startup-overlap-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261114-startup-overlap-1';
-import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261114-startup-overlap-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261114-startup-overlap-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261114-startup-overlap-1';
-import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261114-startup-overlap-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261114-startup-overlap-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261114-startup-overlap-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261116-power-network-1';
+import { createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments } from './elevation.mjs?v=20261116-power-network-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261116-power-network-1';
+import {departureItem} from './departures-ui.mjs?v=20261116-power-network-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261116-power-network-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261116-power-network-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261116-power-network-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261116-power-network-1';
+import { annotateLayers, layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261116-power-network-1';
+import {createPowerFacilityLoader, powerFacilityName, powerFacilityEnergyRows, electricitySignalRows, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL, POWER_FACILITY_EXPLANATION, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261116-power-network-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyAvailability,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261116-power-network-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261116-power-network-1';
+import { createRailProviderRecovery, createSourceFailures } from './rail-provider-recovery.mjs?v=20261116-power-network-1';
+import {createEnergyNetworkProtocol,ENERGY_DOMAINS,ENERGY_NETWORK_LINES} from './energy-network.mjs?v=20261116-power-network-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261116-power-network-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261116-power-network-1';
+import { addStationFallbackLayers, createStationFallbackState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource } from './station-fallback.mjs?v=20261116-power-network-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261116-power-network-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261116-power-network-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -81,7 +82,7 @@ let railRecovery, stationFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261114-startup-overlap-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261116-power-network-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -469,11 +470,11 @@ function powerFacilitySwatch({geometry}, includeFormer) {
 // fourth-rail track shows the conductor-rail stroke as well as its own.
 function powerMethodSwatch(stroke) {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),system='#3f6fa8';
-  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
+  svg.setAttribute('viewBox','0 -3 25 20');svg.setAttribute('width','25');svg.setAttribute('height','20');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
   const line=(attrs)=>{const el=document.createElementNS(ns,'line');for(const [k,v] of Object.entries({x1:0,x2:25,...attrs}))el.setAttribute(k,v);svg.append(el);};
   line({y1:7,y2:7,stroke:system,'stroke-width':2.5});
   const strokes=stroke?POWER_METHOD_STROKES.filter(s=>s.when.includes(stroke.when[0])):[];
-  for(const s of strokes){const y=7+s.offset;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
+  for(const s of strokes)for(const side of s.gap?[-1,1]:[0]){const y=7+s.offset+side*((s.gap||0)+s.width)/2;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
   return svg;
 }
 // Cable line with ticks, matching the aerialway layers' dash lengths.
@@ -495,6 +496,12 @@ function conveyingSwatch() {
   for(const [k,v] of Object.entries({x1:1,x2:24,y1:7,y2:7,stroke:CONVEYING_COLOUR,'stroke-width':1.5,'stroke-linecap':'round'}))line.setAttribute(k,v);
   for(const [k,v] of Object.entries({d:'M10 3 L15 7 L10 11',fill:'none',stroke:CONVEYING_COLOUR,'stroke-width':1.6,'stroke-linejoin':'round','stroke-linecap':'round'}))arrow.setAttribute(k,v);
   svg.append(line,arrow);return svg;
+}
+function networkLineSwatch(stroke) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),line=document.createElementNS(ns,'line');
+  for(const [key,value] of Object.entries({viewBox:'0 0 25 14',width:25,height:14,'aria-hidden':'true'}))svg.setAttribute(key,value);
+  for(const [key,value] of Object.entries({x1:0,x2:25,y1:7,y2:7,stroke:stroke.color,'stroke-width':2,...(stroke.dash?{'stroke-dasharray':stroke.dash.map(x=>x*2).join(' ')}:{})}))line.setAttribute(key,value);
+  svg.append(line);return svg;
 }
 function renderLegend() {
   const box = $('legend');
@@ -528,7 +535,7 @@ function renderLegend() {
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
-  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
+  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,...ENERGY_NETWORK_LINES.map(stroke=>({symbol:'network-line',stroke,label:stroke.label})),...Object.values(ENERGY_DOMAINS).map(({color,label})=>({symbol:'dot',color,stroke:'#fffef8',label})),{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
   if (settings.mode === 'infrastructure') rows.push({symbol:'method',stroke:POWER_METHOD_STROKES.find(({id})=>id==='rack-traction'),label:'Rack railway (ladder ticks)'});
   if (['infrastructure','electrification'].includes(settings.mode)) rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})),{symbol:'conveying',label:'Escalator, moving walkway or elevator (arrow: direction)'});
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
@@ -537,8 +544,8 @@ function renderLegend() {
   // their geometry metadata instead of losing it in a colour/label tuple.
   for (const {symbol,color,label,extra,geometry,stroke,kind} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : symbol === 'conveying' ? conveyingSwatch() : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
-    if (symbol === 'dot') {swatch.setAttribute('aria-hidden','true');swatch.style.setProperty('--swatch', color);swatch.style.setProperty('--swatch-stroke', ELECTRICITY_SIGNAL_STYLE.stroke);}
+    const swatch = symbol==='network-line'?networkLineSwatch(stroke):symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : symbol === 'conveying' ? conveyingSwatch() : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
+    if (symbol === 'dot') {swatch.setAttribute('aria-hidden','true');swatch.style.setProperty('--swatch', color);swatch.style.setProperty('--swatch-stroke', typeof stroke==='string'?stroke:ELECTRICITY_SIGNAL_STYLE.stroke);}
     if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
       const pattern=LIFECYCLE_PATTERNS[extra.slice(9)];
@@ -917,7 +924,7 @@ function showDetails(feature) {
     row(dl,'Propulsion',own('propulsion'));row(dl,'Traction',own('traction'));
     row(dl,'Current',describeCurrent(typeof p.voltage==='number'?p.voltage:undefined,typeof p.frequency==='number'?p.frequency:undefined));
     row(dl,'Voltage',p.voltage);row(dl,'Frequency',p.frequency===undefined?undefined:`${p.frequency} Hz`);
-    row(dl,'Conductor contact',p['electrified:rail']);panel.append(dl);osmLink(panel,feature);$('details').hidden=false;return;
+    row(dl,'Secondary voltages',p.voltages_secondary);row(dl,'Contact line',p.contact_line_type);row(dl,'Conductor contact',p.rail_contact||p['electrified:rail']);panel.append(dl);osmLink(panel,feature);$('details').hidden=false;return;
   }
   if (feature.source==='electricSignals') {
     const p=feature.properties,panel=$('detail-content');
@@ -925,7 +932,7 @@ function showDetails(feature) {
     const dl=document.createElement('dl');for(const [label,value] of electricitySignalRows(p))row(dl,label,value);
     panel.append(dl,textNode('p','A mapped signal location and its recorded electricity function. The marker does not show a live signal aspect.','small'));osmLink(panel,feature);$('details').hidden=false;return;
   }
-  if (['electricFacilities','electricMethods','electricCatenary','electricSubstations'].includes(feature.source)) { showPowerFacilityDetails(feature); return; }
+  if (['electricFacilities','electricMethods','electricCatenary','electricSubstations','energyNetworkOverview','energyNetworkContext','energyNetworkDetail'].includes(feature.source)) { showPowerFacilityDetails(feature); return; }
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
@@ -1179,7 +1186,7 @@ function showRailwayPointDetails(feature) {
   osmLink(panel,feature);$('details').hidden=false;
 }
 function showPowerFacilityDetails(feature) {
-  const p=feature.properties, panel=$('detail-content'), label=feature.source==='electricSubstations'?'Traction substation':feature.source==='electricCatenary'?(p.feature==='portal'?'Catenary portal':'Catenary mast'):powerFacilityName(p);
+  const p=feature.properties, panel=$('detail-content'), label=feature.source?.startsWith('energyNetwork')?String(p.energy_kind||'Energy supply').replaceAll('_',' '):feature.source==='electricSubstations'?'Traction substation':feature.source==='electricCatenary'?(p.feature==='portal'?'Catenary portal':'Catenary mast'):powerFacilityName(p);
   panel.replaceChildren(textNode('div','RAILWAY ENERGY SUPPLY','eyebrow'),textNode('h2',displayName(p,settings.language)||p.ref||label));
   const dl=document.createElement('dl');
   row(dl,'Type',label); row(dl,'Status',p.power_state||(feature.source==='electricSubstations'?'Not recorded':'present')); row(dl,'Reference',p.ref);
@@ -1800,6 +1807,7 @@ async function initialize() {
   }
   // Historic areas come in bundles of tiles (tile-bundles.mjs); a snapshot in
   // the earlier one-file-per-tile layout, or none yet, still reads.
+  maplibregl.addProtocol('energynetwork',createEnergyNetworkProtocol({root:new URL('./data/energy-network/',import.meta.url),active:()=>settings.mode==='electrification'}));
   const heritage = createBundleReader({root:new URL('./data/heritage/', import.meta.url)});
   maplibregl.addProtocol('heritagetiles', async (params, controller) => {
     const [key,query] = params.url.slice('heritagetiles://'.length).split('?');

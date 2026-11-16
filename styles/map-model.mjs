@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261114-startup-overlap-1';
-export {referenceDetailEligible} from './railway-visibility.mjs?v=20261114-startup-overlap-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261116-power-network-1';
+export {referenceDetailEligible} from './railway-visibility.mjs?v=20261116-power-network-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261114-startup-overlap-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261114-startup-overlap-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261116-power-network-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261116-power-network-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -230,9 +230,9 @@ export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(syste
 // The Power legend's fixed key: each exact value drawn, e.g. "15 kV AC 16.7 Hz",
 // in the colour the track paint gives it. No gradient rows.
 export const currentKey = () => CURRENT_SYSTEMS.flatMap(system => currentStops(system).map(([v, colour]) => [colour, `${kv(v)} ${system.label}`]));
-export function electrificationPaint() {
-  const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
-  const hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];
+export function electrificationPaint(voltageProperty='voltage',frequencyProperty='frequency') {
+  const volts = ['to-number', ['coalesce', ['get', voltageProperty], -1], -1];
+  const hz = ['to-number', ['coalesce', ['get', frequencyProperty], -1], -1];
   const shade = system => {
     const stops = currentStops(system);
     // Unknown voltage: the system's middle shade.

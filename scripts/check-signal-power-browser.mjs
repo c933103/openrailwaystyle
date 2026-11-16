@@ -9,6 +9,10 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {waitUntil, setDefaultTimeout} from './wait-until.mjs';
 import {controlColor, trainProtection} from '../styles/map-model.mjs';
+import {ENERGY_TIERS} from '../styles/energy-network.mjs';
+import {energyNetworkGeoJSON} from './energy-network-data.mjs';
+import {networkTiles} from './build-extract-energy-network.mjs';
+import {encodeBundle,BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 import {powerMethodsGeoJSON} from './power-method-data.mjs';
 import {powerFacilitiesGeoJSON} from './power-facility-data.mjs';
 import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
@@ -60,11 +64,11 @@ const methods=powerMethodsGeoJSON({elements:[
   {type:'way',id:9422,tags:{railway:'subway',electrified:'4th_rail',voltage:'630',frequency:'0'},geometry:[{lon:-.0002,lat:0},{lon:.0016,lat:0}]},
   // Each other means of delivery or traction on its own track.
   {type:'way',id:9423,tags:{railway:'tram',electrified:'inductive'},geometry:[{lon:-.0002,lat:.0004},{lon:.0016,lat:.0004}]},
-  {type:'way',id:9424,tags:{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line'},geometry:[{lon:-.0002,lat:.0006},{lon:.0016,lat:.0006}]},
+  {type:'way',id:9424,tags:{railway:'monorail',propulsion:'linear_motor',electrified:'contact_line',voltage:'750;25000',frequency:'0;50','electrified:contact_line':'trolley-type'},geometry:[{lon:-.0002,lat:.0006},{lon:.0016,lat:.0006}]},
   {type:'way',id:9425,tags:{railway:'narrow_gauge',traction:'rack',electrified:'no'},geometry:[{lon:-.0002,lat:-.001},{lon:.0016,lat:-.001}]},
   {type:'way',id:9426,tags:{railway:'funicular',traction:'cable'},geometry:[{lon:-.0002,lat:-.0011},{lon:.0016,lat:-.0011}]},
   {type:'way',id:9427,tags:{railway:'tram',electrified:'ground-level_power_supply'},geometry:[{lon:-.0002,lat:.00112},{lon:.0016,lat:.00112}]},
-]});
+]},{expanded:true});
 // Electrification signals by tag, whatever the national value: a French end of
 // catenary sign the provider catalogue lacks, a German El 2, and a deactivated
 // one that follows the planned/former setting.
@@ -73,6 +77,21 @@ const electricitySignals=electricitySignalsGeoJSON({elements:[
   {type:'node',id:9461,lon:.0011,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el2','railway:signal:electricity:type':'power_on',ref:'E7'}},
   {type:'node',id:9462,lon:.0007,lat:-.001,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el1','railway:signal:electricity:deactivated':'yes'}},
 ]});
+const energy=energyNetworkGeoJSON([
+ {type:'way',id:9600,tags:{power:'line',voltage:'220000'},geometry:[{lon:-.0002,lat:-.00045},{lon:.0016,lat:-.00045}]},
+ {type:'node',id:9601,lon:.00145,lat:.0008,tags:{power:'generator','generator:source':'battery'}},
+ {type:'way',id:9602,tags:{man_made:'storage_tank',content:'hydrogen'},geometry:[[-.0001,.0009],[.00005,.0009],[.00005,.0011],[-.0001,.0011],[-.0001,.0009]].map(([lon,lat])=>({lon,lat}))},
+]);
+const energyFixtures=new Map([['manifest.json',{json:{schema:2,dataset:'energy-network',complete:true,format:BUNDLE_FORMAT,minzoom:5,maxzoom:14}}]]);
+for(const [tier,{minzoom,maxzoom,bundleZoom}] of Object.entries(ENERGY_TIERS)){
+ const bundles=new Map();
+ for(const [key,bytes] of networkTiles({...energy,features:energy.features.filter(f=>f.properties.energy_minzoom<=maxzoom)},{minZoom:minzoom,maxZoom:maxzoom})){
+  const [z,x,y]=key.split('/').map(Number),bundle=`${x>>(z-bundleZoom)}/${y>>(z-bundleZoom)}`;
+  if(!bundles.has(bundle))bundles.set(bundle,new Map());bundles.get(bundle).set(key,bytes);
+ }
+ energyFixtures.set(`${tier}/index.json`,{json:{format:BUNDLE_FORMAT,zoom:bundleZoom,bundles:[...bundles.keys()]}});
+ for(const [key,tiles]of bundles)energyFixtures.set(`${tier}/${bundleZoom}/${key}.bundle.gz`,{body:gzipSync(encodeBundle(tiles)),contentType:'application/gzip'});
+}
 const index = features => geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const indexes = Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,index(features)]));
 const branchIndex = index([branchOverview,metroOverview]);
@@ -136,7 +155,7 @@ await mkdir('browser-review',{recursive:true});
 try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:2,serviceWorkers:'block'});setDefaultTimeout(page,60000);
   await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
-  const errors=[];let supplyRequests=0,signalRequests=0;page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];let supplyRequests=0,signalRequests=0,energyRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
@@ -145,6 +164,8 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   });
   if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
   await page.route('**/data/**',async route=>{
+    const energyPath=new URL(route.request().url()).pathname.split('/data/energy-network/')[1];
+    if(energyPath!==undefined){energyRequests++;return route.fulfill(energyFixtures.get(energyPath)||{status:404,body:''});}
     const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-methods.geojson.gz')){await route.fulfill({body:gzipSync(JSON.stringify(methods)),contentType:'application/gzip'});return;}
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson.gz')){supplyRequests++;await route.fulfill({body:gzipSync(JSON.stringify(supplies)),contentType:'application/gzip'});return;}
@@ -239,7 +260,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     });
     assert.deepEqual(track,{line:true,width:25,height:4,text:''},'ordinary track sample retains its line geometry');
     const accessible=await page.locator('#legend').ariaSnapshot();
-    assert.ok(accessible.includes('Railway power or servicing facility (mapped outline)'));
+    assert.ok(accessible.includes('Railway power or servicing facility (mapped outline; colour by supply)'));
     const layouts=[];
     for(const constrained of [false,true]){
       // The observed desktop panel had a 257px content box after its classic
@@ -353,7 +374,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     assert.ok(await page.evaluate(()=>['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
     assert.equal(signalRequests,0,'electrification signals are deferred until Power view');
+    assert.equal(energyRequests,0,'civil energy requests are deferred until Power');
     await mode('electrification');await closeControls();
+    for(const layer of ['energy-detail-grid-lines','energy-detail-civil-outlines','energy-detail-points','electrification-dual-voltage-primary','electrification-dual-voltage-secondary','electrification-trolley-contact'])await visible(layer);
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
     await powerLegend(false);
     await aerialwaysDrawn();await conveyingDrawn();
@@ -369,8 +392,10 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await clickCoordinates([.00125,-.001]);assert.match(await page.locator('#detail-content').innerText(),/Rack railway/);assert.match(await page.locator('#detail-content').innerText(),/Traction\s+rack/);await page.locator('#details-close').click();
     await openControls();
     const methodSamples=await page.evaluate(()=>[...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>row.lastElementChild.textContent));
-    assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
+    assert.deepEqual(methodSamples,['Overhead contact line (track colour alone)','Trolley-type overhead contact (outer dots)','Rigid overhead contact rail (outer solid)','Explicit steam propulsion (brown casing)','Magnetic levitation (pink casing)','Explicit battery propulsion (teal outer dashes)','Explicit hydrogen propulsion (blue outer dash-dot)','Third rail (dashed, one side)','Fourth rail (dashed, both sides)','Ground-level supply (dotted centre)','Inductive supply (dash-dot, one side)','Linear motor (purple centre line)','Rack railway (ladder ticks)','Cable traction (long dashes, one side)'],'each means has a legend sample drawn from its map stroke');
     const sampleLines=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#legend .legend-item')].filter(row=>row.firstElementChild.classList.contains('method-swatch')).map(row=>[row.lastElementChild.textContent,row.firstElementChild.querySelectorAll('line').length])));
+    assert.equal(sampleLines['Explicit steam propulsion (brown casing)'],3,'steam casing surrounds the system-coloured track');
+    assert.equal(sampleLines['Magnetic levitation (pink casing)'],3,'maglev casing surrounds the system-coloured track');
     assert.equal(sampleLines['Third rail (dashed, one side)'],2,'third-rail sample is the track and one conductor stroke');
     assert.equal(sampleLines['Fourth rail (dashed, both sides)'],3,'fourth-rail sample shows both conductor strokes as on the map');
     await page.locator('#legend').screenshot({path:`browser-review/power-method-legend-${kind}.png`});

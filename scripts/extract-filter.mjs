@@ -56,6 +56,10 @@ export const EXTRACT_FILTERS = Object.freeze([
   [`wr/historic=${HERITAGE_HISTORIC.join(',')}`, 'heritage'],
   ['wr/protect_class=22', 'heritage'],
   ['wr/heritage=1', 'heritage'],
+  ['nwr/power,industrial,resource', 'civil energy network and supply sites'],
+  ['nwr/*:power,*:industrial,*:resource', 'energy network lifecycle states'],
+  ['nwr/man_made=pipeline,storage_tank,silo,bunker_silo,water_works,pumping_station,water_tower', 'energy networks'],
+  ...PREFIXES.map(prefix=>[`nwr/${prefix}man_made=pipeline,storage_tank,silo,bunker_silo,water_works,pumping_station,water_tower`, 'energy network lifecycle states']),
   // Power facilities: a power or man_made object counts only with a railway
   // hint; the hints themselves are selected.
   ['nwr/substation,transformer', 'power facilities (traction hints)'],

@@ -73,8 +73,8 @@ test('the same features as from the Overpass answer, and a snapshot the site acc
   assert.deepEqual(reads, [{pbf: 'assembled.osm.pbf', untaggedNodes: false}, {pbf: 'assembled.osm.pbf#members', untaggedNodes: true}]);
   assert.deepEqual(subsets, [['w200']]);
   assert.equal(counts.relations, 1);
-  const expected = powerMethodsGeoJSON({elements: OVERPASS});
-  assert.deepEqual(powerMethodsGeoJSON({elements}), expected);
+  const expected = powerMethodsGeoJSON({elements: OVERPASS}, {expanded: true});
+  assert.deepEqual(powerMethodsGeoJSON({elements}, {expanded: true}), expected);
   const ids = expected.features.map(f => f.id);
   assert.ok(ids.includes('way-1') && ids.includes('way-2') && ids.includes('way-4') && ids.includes('relation-300'));
   assert.ok(!ids.includes('way-12'), 'selected, but no track: the conversion leaves it out, as from Overpass');
@@ -114,5 +114,46 @@ test('with osmium, from a real extract file: the same features', {skip: osmium.s
     + ELEMENTS.filter(e => e.type === 'relation').map(r => `<relation id="${r.id}" ${at}>${r.members.map(m => `<member type="${m.type}" ref="${m.ref}" role="${m.role}"/>`).join('')}${tags(r.tags)}</relation>`).join('') + '</osm>');
   assert.equal(spawnSync('osmium', ['sort', join(dir, 'in.osm'), '-o', join(dir, 'in.osm.pbf')]).status, 0);
   const {elements} = await methodElements(join(dir, 'in.osm.pbf'));
-  assert.deepEqual(powerMethodsGeoJSON({elements}), powerMethodsGeoJSON({elements: OVERPASS}));
+  assert.deepEqual(powerMethodsGeoJSON({elements}, {expanded: true}), powerMethodsGeoJSON({elements: OVERPASS}, {expanded: true}));
+});
+
+// The public Overpass query retains its previous selection; these additions
+// are read from the already acquired Geofabrik ways only.
+test('extract-only propulsion and multiple voltages retain evidence and lifecycle', () => {
+  for (const propulsion of ['maglev', 'battery', 'hydrogen', 'steam']) {
+    const element = way(401, [[12, 52], [12.01, 52.01]], {railway: 'rail', 'proposed:propulsion': propulsion});
+    assert.equal(isMethodElement(element), true);
+    assert.equal(powerMethodsGeoJSON({elements: [element]}).features.length, 0, 'legacy acquisition scope unchanged');
+    const [feature] = powerMethodsGeoJSON({elements: [element]}, {expanded: true}).features;
+    assert.equal(feature.properties[`propulsion_${propulsion}`], true);
+    assert.equal(feature.properties.power_state, 'proposed');
+    assert.equal(feature.properties.power_propulsion, propulsion);
+  }
+  const element = way(402, [[12, 52], [12.01, 52.01]], {railway: 'rail', electrified: 'contact_line', voltage: '25000;1500;25000'});
+  const [feature] = powerMethodsGeoJSON({elements: [element]}, {expanded: true}).features;
+  assert.equal(feature.properties.voltage, 25000);
+  assert.equal(feature.properties.voltages, '25000;1500');
+  assert.equal(feature.properties.voltages_secondary, '1500');
+  assert.equal(feature.properties.power_method_label, 'Overhead contact line');
+  assert.equal(feature.properties.propulsion_battery, false);
+  const no = way(403, [[12, 52], [12.01, 52.01]], {railway: 'rail', electrified: 'no'});
+  assert.equal(powerMethodsGeoJSON({elements: [no]}, {expanded: true}).features.length, 0, 'no inference of diesel or other propulsion');
+});
+
+test('ordinary overhead geometry stays out; recorded subtypes and multiple voltages stay in',()=>{
+ for(const tags of [{electrified:'contact_line'},{electrified:'contact_line',voltage:'25000'},{electrified:'contact_line',voltage:'25000;unknown'},{electrified:'contact_line',voltage:'25000;25000'}]){
+  const element=way(500,[[12,52],[12.01,52.01]],{railway:'rail',...tags});
+  assert.equal(isMethodElement(element),false);
+  assert.equal(powerMethodsGeoJSON({elements:[element]},{expanded:true}).features.length,0);
+ }
+ for(const [type,flag] of [['rail','catenary_rigid'],['trolley-type','catenary_trolley'],['catenary',null]])for(const prefix of ['', 'proposed:']){
+  const element=way(501,[[12,52],[12.01,52.01]],{railway:'rail',[prefix+'electrified']:'contact_line',[prefix+'electrified:contact_line']:type});
+  assert.equal(isMethodElement(element),true);
+  const [feature]=powerMethodsGeoJSON({elements:[element]},{expanded:true}).features;
+  assert.equal(feature.properties.contact_line_type,type);
+  if(flag)assert.equal(feature.properties[flag],true);
+  assert.equal(feature.properties.power_state,prefix?'proposed':'present');
+ }
+ const [feature]=powerMethodsGeoJSON({elements:[way(502,[[12,52],[12.01,52.01]],{railway:'subway',electrified:'rail','electrified:rail':'bottom'})]},{expanded:true}).features;
+ assert.equal(feature.properties.rail_contact,'bottom');
 });

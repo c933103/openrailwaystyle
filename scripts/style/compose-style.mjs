@@ -11,6 +11,7 @@ import {createRailwayLayers} from './layers/railway.mjs';
 import {lifecycleLayers} from './layers/lifecycle.mjs';
 import {stationLayers} from './layers/stations.mjs';
 import {infrastructureContextLayers} from './layers/infrastructure.mjs';
+import {energyNetworkLayers} from './layers/energy-network.mjs';
 import {powerMethodLayers} from './layers/power-methods.mjs';
 import {powerFacilityLayers} from './layers/power-facilities.mjs';
 import {electricitySignalLayers} from './layers/electricity-signals.mjs';
@@ -24,6 +25,7 @@ import {assertSourceContracts} from './source-contract.mjs';
 // station names and track badges have explicitly ordered priority here.
 // Each call owns its layer objects: runtime localization/units may mutate them.
 export function composeStyle({majorStationData, curatedFilter}) {
+  const energy=energyNetworkLayers();
   const rail = createRailwayLayers(), lifecycle = lifecycleLayers();
   const stations = stationLayers(curatedFilter,curatedStationMarkerFilter(majorStationData)), infrastructure = infrastructureContextLayers();
   const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
@@ -35,10 +37,10 @@ export function composeStyle({majorStationData, curatedFilter}) {
   const layers = structuredClone([
     background, ...backgroundLayers, ...fills,
     ...reliefLayers,
-    ...context.areas, ...constraints.areas, ...buildingLayers,
+    ...context.areas, ...constraints.areas, ...buildingLayers, ...energy.areas,
     ...context.lines, ...constraints.lines,
     ...contourLayers, ...baseLines, ...contourLabels,
-    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
+    ...energy.lines, ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview, ...rail.referenceDetail,
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details.filter(layer=>layer.id!=='service-routes'), ...aerialwayLayers(), ...conveyingLayers(),
     ...lifecycle.lines, ...rail.values,
@@ -46,7 +48,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
     // Separate symbol placement priority from the visible paint stack.
     // Service route colours stay continuous through even dense station fields.
     // This layer is Service-only; other views retain their station paint order.
-    ...stations.dots, ...rail.details.filter(layer=>layer.id==='service-routes'), ...placeLayers, ...powerFacilityLayers(), ...powerMethodLayers(), ...electricitySignalLayers(),
+    ...stations.dots, ...rail.details.filter(layer=>layer.id==='service-routes'), ...placeLayers, ...energy.points, ...powerFacilityLayers(), ...powerMethodLayers(), ...electricitySignalLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

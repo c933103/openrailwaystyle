@@ -11,6 +11,9 @@ const snapshot = (protocol, minzoom, maxzoom, extra = {}) => ({
 export function atlasSources(majorStationData) {
   return {
     railReference: snapshot('mainlinetiles', 0, 6, {promoteId:'id'}),
+    energyNetworkOverview: {type:'vector',tiles:['energynetwork://overview/{z}/{x}/{y}'],minzoom:5,maxzoom:7,attribution:ATTRIBUTION},
+    energyNetworkContext: {type:'vector',tiles:['energynetwork://context/{z}/{x}/{y}'],minzoom:8,maxzoom:11,attribution:ATTRIBUTION},
+    energyNetworkDetail: {type:'vector',tiles:['energynetwork://detail/{z}/{x}/{y}'],minzoom:12,maxzoom:14,attribution:ATTRIBUTION},
     electricMethods: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:ATTRIBUTION},
     electricSignals: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:ATTRIBUTION},
     electricFacilities: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},

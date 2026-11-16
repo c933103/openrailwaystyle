@@ -317,3 +317,55 @@ validates both datasets before publishing. Rendering code alone does not supply
 new geometry: the supplementary snapshot must finish and be deployed too.
 Same-language style replacement restores cached facility and method data into the
 new MapLibre sources without downloading again.
+
+## Extract propulsion attributes
+
+The Geofabrik power-method builder retains explicitly tagged `propulsion=maglev`,
+`battery`, `hydrogen` and `steam`, including lifecycle-prefixed forms. It also
+retains overhead `electrified=contact_line` geometry only when an explicit contact-
+line subtype or multiple distinct valid voltages are recorded, and ordered semicolon-separated
+voltages as `voltages` and `voltages_secondary`. The numeric `voltage` remains
+the first recorded value; a malformed list is not partially normalized.
+These are recorded tags, not deductions from rolling stock, nearby supplies,
+or `electrified=no`. The existing Overpass selection stays unchanged.
+
+These schema additions become available when a complete extract snapshot is
+published. Existing clients continue to use their current strokes; additional
+propulsion display is a separate presentation change.
+
+## Power display domains
+
+Facility colours now follow the same kind definitions as the colour key: amber
+for electricity, teal for charging, brown for recorded fuel supplies, dark grey
+for coal and blue for water. Area outlines and point geometry remain intact;
+planned/former shapes retain the existing faint and dashed treatment. The
+composition baseline deliberately changes only the existing active/former supply
+point colour contracts.
+
+Explicit propulsion flags from extract snapshots add steam and maglev casings
+and battery/hydrogen outer strokes. The legend samples use those same stroke
+definitions. A missing flag or `electrified=no` produces no propulsion stroke.
+Civil-network snapshot loading and expanded circuit/cartographic overlays remain
+a separate rollout; this display change does not claim their coverage.
+
+The [approved contact-line key](https://wiki.openstreetmap.org/wiki/Key:electrified:contact_line)
+records `trolley-type`, `rail` (rigid overhead conductor) or `catenary`.
+The extract supplement exposes `contact_line_type`, `catenary_trolley` and
+`catenary_rigid` from those explicit tags, scoped to the same lifecycle.
+[Conductor-rail contact](https://wiki.openstreetmap.org/wiki/Key:electrified:rail)
+records top, side or bottom in `rail_contact`. No three-phase classification
+is inferred from wire count or frequency; its source representation still needs
+verification. Ordinary single-voltage overhead geometry stays with the existing
+provider instead of enlarging the global supplement.
+
+### Optional energy context client
+
+The Power view alone requests the optional `energy-network-data` snapshot. Deployment validates its manifest, bundle indexes, compressed sizes, and tile coordinates before including it. An absent branch creates an unavailable manifest; transport failures remain deployment failures. Until a complete refreshed extract snapshot passes publication checks, the client returns empty tiles.
+
+Overview bundles serve zooms 5–7, context bundles serve zooms 8–11, and detail bundles serve zooms 12–14 and retain feature-specific visibility thresholds, including zoom-13 storage and service detail. Domain colours, circuit patterns and point badges distinguish electricity, fuels, coal, water/steam, battery, hydrogen and servicing. Civil site outlines are dashed; rail-served outlines require the builder's explicit intersection or proximity evidence, which remains visible in the inspector. Traction circuit styling requires an explicit railway/traction usage tag. It does not assert that a nearby grid circuit supplies a railway.
+
+Expanded propulsion data preserves overhead trolley/rigid subtypes and aligned voltage/frequency pairs. Two voltage colours occupy opposite halves of the track; all original voltage strings remain available in the inspector. Additional voltage values remain text evidence. Plain single-voltage overhead tracks stay in the existing provider source.
+
+Detailed geometry is encoded through zoom 14, with sub-metre quantization at the equator, and bundled at zoom 12. Schema 2 prevents older coarse-only snapshots from passing the client gate. The 350 KB limit is per compressed bundle, not a measured viewport total. Global snapshot acquisition, viewport measurement, and fixture-browser rendering remain required before declaring the worldwide rollout complete.
+
+The manual assembly workflow also builds a complete energy candidate, validates it and retains a seven-day artifact with cold viewport accounting. It does not publish this candidate. `measure-energy-network.mjs` sums compressed bundles plus metadata over conservative north-up flat desktop windows, including dateline wrapping. Its report distinguishes failures of the 350 KB viewport budget from individual-file limits; rotated, pitched and globe browser requests still require measurement before publication.

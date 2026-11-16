@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261114-startup-overlap-1';
+import { MODES } from './map-model.mjs?v=20261116-power-network-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

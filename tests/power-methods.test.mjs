@@ -193,3 +193,31 @@ test('rack railways come from the provider rack=* field, any rack system, with l
   assert.equal(draws(former,{state:'disused',rack:'abt'}),true);
   assert.equal(draws(present,{state:'present',rack:'abt',feature:'ferry'}),false);
 });
+
+test('explicit new propulsion strokes do not infer a means from absent or false flags',()=>{
+ const layers=powerMethodLayers();
+ for(const kind of ['steam','maglev','battery','hydrogen']){
+  const layer=layers.find(l=>l.id===`electrification-${kind}-propulsion`);
+  const draws=properties=>featureFilter(layer.filter).filter({zoom:14},{type:2,properties:{power_state:'present',...properties}});
+  assert.equal(draws({[`propulsion_${kind}`]:true}),true);
+  assert.equal(draws({[`propulsion_${kind}`]:false}),false);
+  assert.equal(draws({electrified:'no'}),false);
+  assert.equal(draws({}),false);
+ }
+});
+
+test('steam and maglev casings leave the system-coloured track centre visible',()=>{
+ const layers=powerMethodLayers();
+ for(const kind of ['steam','maglev'])for(const former of ['', 'former-']){
+  const paint=layers.find(l=>l.id===`electrification-${former}${kind}-propulsion`).paint;
+  assert.ok(paint['line-gap-width']>=3);
+  assert.equal(paint['line-width'],1);
+ }
+});
+
+test('dual voltage frequency pairs retain source positions and unknown values',()=>{
+ const get=(voltage,frequency)=>powerMethodsGeoJSON({elements:[way({railway:'rail',electrified:'contact_line',voltage,frequency})]},{expanded:true}).features[0].properties;
+ const paired=get('750;25000','0;50');assert.equal(paired.voltage,750);assert.equal(paired.voltage_secondary,25000);assert.equal(paired.frequency,0);assert.equal(paired.frequency_secondary,50);
+ const duplicate=get('750;750;25000','0;0;50');assert.equal(duplicate.frequency_secondary,50);
+ const unknown=get('750;25000','0;50;60');assert.equal(unknown.frequency_secondary,undefined);
+});

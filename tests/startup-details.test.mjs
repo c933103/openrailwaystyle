@@ -727,3 +727,13 @@ test('Carto shows railway overlays, honours terrain, hides duplicate basemap lab
 test('desktop brand announces collapse on its first activation',async()=>{
  const {dom,window}=await start();try{const icon=window.document.getElementById('controls-open');assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');icon.click();assert.equal(window.document.getElementById('controls').hidden,true);assert.equal(icon.getAttribute('aria-label'),'Open map controls');}finally{dom.window.close();}
 });
+
+test('Power method legend keeps every stroke finite and inside its viewbox',async()=>{
+ const {dom,window}=await start({search:'?mode=electrification'});
+ try{
+  const samples=[...window.document.querySelectorAll('.method-swatch')];assert.ok(samples.length>5);
+  for(const svg of samples){const [,minY,,height]=svg.getAttribute('viewBox').split(' ').map(Number);
+   for(const line of svg.querySelectorAll('line')){const y=Number(line.getAttribute('y1')),width=Number(line.getAttribute('stroke-width'));assert.ok(Number.isFinite(y));assert.ok(y-width/2>=minY&&y+width/2<=minY+height);}
+  }
+ }finally{dom.window.close();}
+});
