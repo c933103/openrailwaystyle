@@ -520,11 +520,19 @@ ownership. `scripts/check-provider-retries-browser.mjs` checks real MapLibre
 permanent failure's retained status under the fail-closed fixture guard.
 
 This is a bounded retry-classification correction, not a provider-policy or
-availability verdict. PMTiles 4.2.1 does not expose response `Retry-After`
-headers to this wrapper; its existing fixed transient backoff remains a
-separate limitation. The glyph/request pool's existing `Retry-After` handling,
-rail demand-driven recovery, terrain deadlines and source/data holds are
-unchanged.
+availability verdict. The basemap range-source adapter now retains readable
+`Retry-After` headers before consuming response bodies. Its origin pause survives
+body failures, internal 416 correction and archive replacement; successful
+responses also constrain later requests. Elapsed time consumes the pause,
+early timer wakes are rechecked, and cancellation stops waiting without another
+range request. The 20-second per-range deadline and existing retry counts remain
+binding; long provider pauses can exhaust a request's budget while remaining
+binding for a later attempt. Cross-origin headers must be exposed by the server
+to be readable by browsers. The adapter preserves the pinned PMTiles ETag,
+small-archive 416 and response-length contracts; it adds no retries. Fixture
+coverage is in `tests/basemap-range-source.test.mjs` and the actual PMTiles
+protocol regression. The glyph/request pool's pause handling, rail recovery,
+terrain deadlines and source/data holds are unchanged.
 
 ### Partial map-source recovery
 

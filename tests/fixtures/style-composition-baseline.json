@@ -951,7 +951,7 @@
       "sourceLayer": "railroads",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "ec90a3fc290c01a09d976035646fdf649a167f110c8413fce6d00bb692b8310c"
+      "sha256": "e1cc6ebfb720f3443233717bf5bea69fb6a2b8ad9fff189b996f82e73c9cdfaf"
     },
     {
       "id": "rail-backbone-railroads_north_america",
@@ -960,7 +960,7 @@
       "sourceLayer": "railroads_north_america",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "6b290b5f4bdd6e730ca27b2288a5cc7cf2558d914bbb9874648f25006d66353e"
+      "sha256": "f436829a322afcb8c9e19f44dad20a02e0bbc0a17990b258f44aabe4e5e67280"
     },
     {
       "id": "infrastructure-branch-overview",
@@ -969,7 +969,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "9f3f46ae4a1f6592eb9e37a63fb5042e4bd32156894d2ccb7541c4980959b263"
+      "sha256": "6cf69484370eb522a750e97104c35a016f9e0974a4814fce1b26418a318dfefb"
     },
     {
       "id": "road-major",
@@ -1034,11 +1034,11 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "6812301d90ac0f9b3a88d69199f1f4abc22a0263a6954aa9d38203567b11a19c"
+      "sha256": "82f55204b77405c02c003e0041b34c0ec1977bdd7a4dfdaa808fce95bee75e3f"
     },
     {
       "id": "rail-basemap-reference",
-      "sha256": "6445d1bcfe1cf3157f3552a8af888c714d3043c012688167ade6907f59bfc0cf"
+      "sha256": "271208fafc707bc8d42ddaadccb9857b29b048c8fe548e19830166d8c93edb32"
     },
     {
       "id": "structure-bridge-edge",
@@ -1080,7 +1080,7 @@
       "source": "streetRunning",
       "sourceLayer": "street_running",
       "minzoom": 13,
-      "sha256": "844d6f97fe8c5f956971f1c579837cac2b2961feb3e6b43dcde64e478a0048c5"
+      "sha256": "f3a53e821e98065b0f0dfd1c0e7df53afdd4a1e5e5459ce2d0d442d711228f34"
     },
     {
       "id": "infrastructure-tracks",
@@ -1088,7 +1088,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "e4ab28eb056489d32d53c605009e56a81ed19ec5084bd9c923a6d85d5c2a6f0d"
+      "sha256": "7fb0e1a855b7ba2a0e7731c1041f60e41969917c9d5ed1908d535d80cf7e0a6f"
     },
     {
       "id": "infrastructure-metro-overview",
@@ -1097,7 +1097,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "de17abc447f25cdf4d29baf00f61e46cf368685677358cffe55ecbc81e6cc054"
+      "sha256": "ba4b70e6b321cc79fed1189f4a537e977bcf961f641bf9ba660ae3bdc9e158f0"
     },
     {
       "id": "speed-branch-overview",
@@ -1106,7 +1106,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "fb757aa8e7433e219007a7d124b22f0a76dc671d2a1502370cc85db38c8d12ce"
+      "sha256": "0e4aca586c652ca87d0fb04578e54c302217d79f1ac604ed23fabec2fb72bb0c"
     },
     {
       "id": "speed-overview",
@@ -1115,7 +1115,7 @@
       "sourceLayer": "speed_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "0e8d3c7bff34b4c7b70dbcecb1bf36b43a1e85f35e8588c79343d80da9a3032e"
+      "sha256": "28d0a5a9bfa9d3e1ab59f1105b30a365b7e36057eb34fa3faf7d764a1f1f9ea1"
     },
     {
       "id": "speed-tracks",
@@ -1123,7 +1123,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "98662c829bf035de1b970c05ac399d9dd4e860471572a35f203e40dc573798c0"
+      "sha256": "b83835c1878e97e8b4e17edaa0ce65243408c002a22bee71d6876b87b73b226e"
     },
     {
       "id": "speed-metro-overview",
@@ -1132,7 +1132,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "a4096e8cfaaca71861c148d5c034c0a75b9ad76adfe5038fd4be972b639bc3ef"
+      "sha256": "0cb41d12e16dafdde7fca339fd5d26ae51cdf26480e54034a4cfb1dc31bd9de5"
     },
     {
       "id": "electrification-branch-overview",
@@ -1600,7 +1600,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 10,
-      "sha256": "f1dd038e93fa23be1147349e2ad3fb03738a0274eae2a20d694b410ee1affc64"
+      "sha256": "f4a0a65dd9e2e849fee34bbdac37aa2ca31a4baeca61fbdc30e67d8d3892a29c"
     },
     {
       "id": "electrification-labels",
@@ -1702,7 +1702,7 @@
       "source": "railwaySignals",
       "sourceLayer": "railway_signals",
       "minzoom": 13,
-      "sha256": "fabd21125fcd6512c517109ea70ef50ebb3c79458cc9bd0eff740728847083e0"
+      "sha256": "963cf69f72d4b50fbb29b9029e2c66967c287034cc5924eb68d9e52fb5238e7f"
     },
     {
       "id": "infrastructure-signal-references",
@@ -1710,7 +1710,7 @@
       "source": "railwaySignals",
       "sourceLayer": "railway_signals",
       "minzoom": 16,
-      "sha256": "3125da6f4b97f9b53e9f01272e731bb766c0370944d02c2da4b36ff591b14254"
+      "sha256": "2de9e8e485d9989c3de779614e45b3e1c2a3ebabba0d948c44a283977e5a488d"
     },
     {
       "id": "infrastructure-entrance-points",
@@ -1718,7 +1718,7 @@
       "source": "stationEntrances",
       "sourceLayer": "standard_station_entrances",
       "minzoom": 16,
-      "sha256": "03d5f5f5089598a31a8b2cb8c216ddedf93c3e4a61fd811ab7ad01ca122ceafd"
+      "sha256": "4fc961ba8e20cc7625938271ab1176ad7fb5d90870259005b66e7b040bf25df1"
     },
     {
       "id": "infrastructure-entrance-references",
@@ -1726,7 +1726,7 @@
       "source": "stationEntrances",
       "sourceLayer": "standard_station_entrances",
       "minzoom": 17,
-      "sha256": "ec3a346f39da64da389fc83d94671c577f0f183d68077d0ca9f54a5ba1a378c3"
+      "sha256": "b108bd6f51ee6d7bf9bac3f477303115a4147fb4f34b506359b9c74f7a4d1fd5"
     },
     {
       "id": "infrastructure-signal-supplement-overview",
@@ -1735,7 +1735,7 @@
       "sourceLayer": "railway_signals",
       "minzoom": 13,
       "maxzoom": 16,
-      "sha256": "d05ad7e9c5664e4043da112b572958074c501a13f1e34855778cdd38d40c4d5a"
+      "sha256": "449ab08e8c74857769f089196891dd0ab10fc28ef9b913689218c5678d520ad1"
     },
     {
       "id": "infrastructure-signal-supplement-points",
@@ -1743,7 +1743,7 @@
       "source": "railwaySignalSupplement",
       "sourceLayer": "railway_signals",
       "minzoom": 16,
-      "sha256": "2452c39772513405c4c82d0a19e4fe4470f60e058f754cea70ad65cb26086bf4"
+      "sha256": "b5f40cb9bb25729d4546c2f65bd2164a5adc1610405d43a9eb542250a8dca9e4"
     },
     {
       "id": "infrastructure-signal-supplement-references",
@@ -1751,7 +1751,7 @@
       "source": "railwaySignalSupplement",
       "sourceLayer": "railway_signals",
       "minzoom": 16,
-      "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
+      "sha256": "132370f66ac8974593f34caf40f6cc8fa8cb9663912c7575b8feda5d16fb1dd1"
     },
     {
       "id": "place_label_city-placement",
@@ -1786,7 +1786,7 @@
       "sourceLayer": "level_crossings",
       "minzoom": 5,
       "maxzoom": 9,
-      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
+      "sha256": "d14cba2a41e21d7b11a68bd34aac95108f68a9911ffbc94fbb4d072aae710c03"
     },
     {
       "id": "infrastructure-crossing-dots",
@@ -1795,7 +1795,7 @@
       "sourceLayer": "level_crossings",
       "minzoom": 9,
       "maxzoom": 11,
-      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
+      "sha256": "a03e4b2713a7ad8f0ffb8f2bbc762d63089ee9f5f700098ad34cd468d45a812b"
     },
     {
       "id": "infrastructure-crossing-marks",
@@ -1804,7 +1804,7 @@
       "sourceLayer": "level_crossings",
       "minzoom": 11,
       "maxzoom": 15,
-      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
+      "sha256": "406c5460f05b4de77e70fbced3290557a860da3e299203745920bdac2b9d8f16"
     },
     {
       "id": "infrastructure-level-crossings",
@@ -1812,7 +1812,7 @@
       "source": "crossings",
       "sourceLayer": "points_of_interest",
       "minzoom": 15,
-      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
+      "sha256": "8e6d76e944bd9e858af7be1f2a0cb373985b6ad70703270c15b2816b2932f496"
     },
     {
       "id": "station-stationLow-dots",
@@ -2160,7 +2160,7 @@
       "source": "trackCounts",
       "sourceLayer": "atlas_track_counts",
       "minzoom": 14,
-      "sha256": "206f2ff30fb2ca63cf60325fe417c76e0e4df8f1dabdc26cd2134aadadbbec8f"
+      "sha256": "019d7b46b22d3a9c08520b25e36c53fbb0030a0e7e8a6aa21f4631ce33c8a81a"
     },
     {
       "id": "infrastructure-station-tracks",
@@ -2168,7 +2168,7 @@
       "source": "trackCounts",
       "sourceLayer": "atlas_track_counts",
       "minzoom": 14,
-      "sha256": "77d3eb8028a8e748eeb15d11e71d7334eab5a22cc35834720e7b72119310274e"
+      "sha256": "64bf9350539614ae1d172e89733f95a4ca1104b6eb6f1c8c358c6f446a8b3422"
     },
     {
       "id": "station-stationLow-mover-names",

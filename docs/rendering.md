@@ -392,7 +392,38 @@ land/sea elevation samples are clamped to sea level inside the ocean mask.
 Missing or impossible depths stay transparent. Beyond the Web Mercator limit,
 the separately prepared polar caps retain their existing relief and contours.
 
+The DEM repair's opposing-shoulder test measures its search reach at the tile's
+centre latitude, accounting for the smaller ground width of Mercator pixels
+near the poles. A cosine floor of 0.18 and a radius of 2–64 pixels in the
+256-pixel tile grid bound the search; these limits mean it does not maintain
+constant ground reach at every zoom and latitude. The existing height thresholds
+remain in force. A depression corroborated by the coarse source is protected
+from detections introduced by the enlarged radius; the original narrower-radius
+checks retain their shared-source fault handling. New wider-radius detections
+require finite contradictory coarse evidence; a failed or missing reference
+leaves those ambiguous features unchanged.
+A negative height alone is not an error, and coastlines are not smoothed or
+sign-clamped. Synthetic tests at Nuuk and McMurdo latitudes cover this scale
+correction; they are not surveys or proof that those places' source data is
+correct. Existing tests retain real-basin, cliff and seabed cases.
+
+Witness repair already requests at most four neighboring tiles: four children
+at the next finer zoom, or a parent plus its edge neighbors at the finest zoom.
+A missing witness leaves the affected height unchanged; the four-tile bound
+never truncates the evidence used to decide a repair.
+
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
+
+At overview zooms 7–8, coarse negative contours remain visible below the shelf
+range. In metric mode the overview starts at −200 m while shelf contours are
+strictly above −200 m; in imperial mode the first overview level is −500 ft
+while the shelf filter is strictly above −200 ft. Their generated negative
+levels are therefore disjoint, even though the overview filter alone accepts
+other negative numbers. The negative overview also preserves depressions on
+land; these signed sources do not classify an elevation's sign as ocean.
+
+The [terrain source assessment](terrain-source-assessment.md) records provider
+coverage, licence evidence, repair limits and the remaining source-switch checks.
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
@@ -545,3 +576,21 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+### Neutral railway outage references
+
+The Infrastructure view draws its own mapped-class reference colors from the
+initial style. Other views keep neutral mainline, Natural Earth and close-zoom
+basemap references hidden until the selected live track source has a recorded
+failure in the viewport. Station or unrelated-theme failures do not enable them.
+Permanent failures qualify for presentation without granting another retry.
+
+The presentation reuses the station fallback's source-instance, active tile,
+world-copy and offscreen retirement rules. A healthy neighboring tile cannot
+clear the failed tile; actual recovery or changing source/viewport retires the
+fallback. At zoom 7 the selected dependency changes from the theme's overview
+to its detailed track source. Reference visibility applies to the view rather
+than clipping whole railway chains to failed tile rectangles. This preserves
+continuous lines but can also show neutral reference geometry beside healthy
+areas in a partially failed view. It does not assert thematic values or current
+operating status for those reference features.

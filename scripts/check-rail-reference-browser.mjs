@@ -79,8 +79,9 @@ try{
   await page.evaluate(async()=>{window.referenceMap=(await import(document.querySelector('script[type="module"]').src)).map});
   await waitUntil(page,railReferenceSettled,undefined,{timeout:60000});
   const report=await page.evaluate(mode=>{
-   const map=window.referenceMap,hasReference=Boolean(map.getLayer('rail-basemap-reference'));
-   return {mode,zoom:map.getZoom(),hasReference,reference:hasReference?map.queryRenderedFeatures({layers:['rail-basemap-reference']}).map(f=>f.properties.id):[],
+   const map=window.referenceMap,referenceLayer=mode==='infrastructure'?'infrastructure-basemap-reference':'rail-basemap-reference';
+   const hasReference=Boolean(map.getLayer(referenceLayer)),referenceVisible=hasReference&&map.getLayoutProperty(referenceLayer,'visibility')!=='none';
+   return {mode,zoom:map.getZoom(),hasReference,referenceLayer,referenceVisible,reference:referenceVisible?map.queryRenderedFeatures({layers:[referenceLayer]}).map(f=>f.properties.id):[],
     tracks:map.queryRenderedFeatures({layers:[`${mode}-tracks`]}).map(f=>f.properties.id),stations:map.queryRenderedFeatures({layers:['station-provider-dots']}).length,
     status:document.querySelector('#map-status').textContent,error:document.querySelector('#map-status').classList.contains('error')};
   },mode);reports.push({area,provider,background,...report});return report;
@@ -88,24 +89,27 @@ try{
  for(const mode of MODES){
   const report=await open(mode);
   assert.ok(report.hasReference,'Detailed zooms need a railway reference independent of the detailed provider');
-  for(const id of ['fixture-shanghai-mainline','fixture-shanghai-metro'])assert.ok(report.reference.includes(id),`${mode}: missing ${id}`);
+  if(mode==='infrastructure')for(const id of ['fixture-shanghai-mainline','fixture-shanghai-metro'])assert.ok(report.reference.includes(id),`${mode}: missing ${id}`);
+  else assert.equal(report.reference.length,0,`${mode}: verified empty detail does not activate neutral fallback`);
   assert.ok(!report.reference.includes('fixture-road'),'Road geometry must never become rail');
   assert.equal(report.tracks.length,0);assert.ok(report.stations>0,'Station loading alone cannot prove railway loading');
-  assert.match(report.status,/reference.*detailed railway data/i);
+  if(mode==='infrastructure')assert.match(report.status,/reference.*detailed railway data/i);
+  else assert.doesNotMatch(report.status,/Only.*reference/i);
  }
  for(const background of ['carto','hybrid'])assert.ok((await open('infrastructure',background)).reference.length>0,`${background} keeps reference rails`);
  assert.equal((await open('infrastructure','satellite')).reference.length,0,'Satellite-only hides railway overlays');
  provider='healthy';
- for(const mode of MODES){const report=await open(mode);assert.ok(report.tracks.length>0,`${mode}: detailed rails must remain above the reference`);assert.doesNotMatch(report.status,/Only.*reference/i)}
+ for(const mode of MODES){const report=await open(mode);assert.ok(report.tracks.length>0,`${mode}: detailed rails must remain above the reference`);assert.doesNotMatch(report.status,/Only.*reference/i);if(mode!=='infrastructure')assert.equal(report.reference.length,0,'healthy provider keeps neutral reference hidden')}
  provider='error';
- const failed=await open('infrastructure');assert.ok(failed.reference.length>0);assert.equal(failed.tracks.length,0);assert.ok(failed.error,'Reference must not conceal a real provider error');
+ for(const mode of MODES){const failed=await open(mode);assert.ok(failed.reference.length>0,`${mode}:403 activates the selected reference`);assert.equal(failed.tracks.length,0);assert.ok(failed.error,'Reference must not conceal a real provider error');}
  area='urban';
  for(const state of ['healthy','empty']) {
   provider=state;
   for(const mode of MODES) {
    for(const zoom of [8,9]) {
     const report=await open(mode,'map',zoom);
-    for(const kind of ['light_rail','monorail','tram','funicular'])assert.ok(report.reference.includes(`fixture-${kind}`),`${mode} z${zoom}: ${kind} reference remains visible`);
+    if(mode==='infrastructure')for(const kind of ['light_rail','monorail','tram','funicular'])assert.ok(report.reference.includes(`fixture-${kind}`),`${mode} z${zoom}: ${kind} reference remains visible`);
+    else assert.equal(report.reference.length,0,'intentional zoom suppression is not an outage');
     assert.equal(report.tracks.length,0,'Urban detail is intentionally suppressed below z10');
     assert.equal(report.error,false);assert.doesNotMatch(report.status,/unavailable|Only.*reference/i);
    }
@@ -113,7 +117,7 @@ try{
    if(provider==='healthy') {
     for(const kind of ['light_rail','monorail','tram','funicular'])assert.ok(report.tracks.includes(`fixture-${kind}`),`${mode} z10: eligible ${kind} detail`);
     assert.doesNotMatch(report.status,/unavailable|Only.*reference/i);
-   }else {assert.equal(report.tracks.length,0);assert.match(report.status,/reference.*detailed railway data/i)}
+   }else {assert.equal(report.tracks.length,0);if(mode==='infrastructure')assert.match(report.status,/reference.*detailed railway data/i);else assert.doesNotMatch(report.status,/Only.*reference/i)}
   }
  }
  provider='error';
