@@ -1,7 +1,0 @@
-{"finding":"R1","station":"JR 東京","expected":["right-a","right-b"],"baseline":["right-a","right-b"],"patched":["right-a","right-b"]}
-{"finding":"R2","station":"Central","expected":["main","platform-a"],"baseline":["main","platform-a"],"patched":["main","platform-a"]}
-{"finding":"R4","station":"東京 1 Tōkyō","expected":["exact","equivalent"],"baseline":["exact","equivalent"],"patched":["exact","equivalent"]}
-{"finding":"R5","station":"Central","expected":["combined","range"],"baseline":["combined","range"],"patched":["combined","range"]}
-{"finding":"R3","station":"東京","expected":["native","bilingual"],"baseline":["native","bilingual"],"patched":["native","bilingual"]}
-{"finding":"R1 integration","boardIds":["right-a","right-b"],"requestIds":["right-a","right-b"],"journeyIds":["right-a","right-a"]}
-{"numericBoundaryChecks":1050,"result":"passed"}

@@ -286,7 +286,7 @@ observations for one service ID retain identical active-date lists, even when
 trip durations produce different current/expired states. Source validity must
 also equal the complete observation maximum with the compiler's zero floor.
 These bounded cross-record checks run before selection and keep array order
-independent. The [field-by-field comparison](investigations/timetable-observation-validation-20261011.md)
+independent. The [field-by-field comparison](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/timetable-observation-validation-20261011.md)
 records the exact scope, regressions and limits of this review.
 
 Repeated source-route IDs must preserve agency, raw reference and compiled-route
@@ -387,7 +387,7 @@ refresh behavior is handled separately in #167.
 
 ### Controlled measurement on 2026-10-09
 
-[Full machine-readable A/B results](investigations/timetable-evidence-benchmark-20261009.json)
+[Full machine-readable A/B results](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/timetable-evidence-benchmark-20261009.json)
 record the exact measured source hashes. With 10,000 trips, 240,000 stop rows and
 28 profiles, median compile times across three fresh-process pairs were 9.281 s
 for the saved parent, 9.154 s with capture disabled, and 10.565 s with capture
