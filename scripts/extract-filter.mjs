@@ -160,4 +160,9 @@ export function overpassFilters() {
 
 // Dependency-free identity shared by gap acquisition and publication. Keep the
 // publication runner independent of polygon-clipping and acquisition modules.
-export const GAP_FILTER_HASH = `overpass:${createHash('sha256').update(JSON.stringify(overpassFilters())).digest('hex')}`;
+// It names the filters and the form of the gap query (gapQuery in
+// acquire-gap-tiles.mjs): a tile asked with an older form is an older filter,
+// not a current copy. Query 2 keeps a relation reaching from a region's
+// island out to sea, with its members there.
+export const GAP_QUERY_VERSION = 2;
+export const GAP_FILTER_HASH = `overpass:${createHash('sha256').update(JSON.stringify({query: GAP_QUERY_VERSION, filters: overpassFilters()})).digest('hex')}`;

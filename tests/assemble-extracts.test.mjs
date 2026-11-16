@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {currentFilter} from '../scripts/extract-release.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -85,9 +86,10 @@ test('with osmium installed, regions of different dates assemble into one file',
 });
 
 test('with osmium installed, regions made with different filters are only merged, and the skip is reported', {skip: osmium.status !== 0 && 'osmium is not installed'}, async t => {
-  const {dir, index, contents} = await regions(t, {bFilter: 'other'});
-  const report = await assemble({...index, missing: ['gap/0_0_45_45']}, dir, join(dir, 'out.osm.pbf'));
+  const {dir, index, contents} = await regions(t, {bFilter: currentFilter('b')});
+  const report = await assemble({...index, missing: ['gap/0_0_45_45'], olderFilter: []}, dir, join(dir, 'out.osm.pbf'));
   assert.deepEqual(report.missingRegions, ['gap/0_0_45_45'], 'the index\'s regions without a file are carried into the report');
+  assert.deepEqual(report.olderFilter, ['a'], 'judged against the current filter, not the index\'s own list');
   assert.deepEqual(await contents(), ['n1 v1', 'n2 v1', 'n3 v1', 'n4 v1', 'n5 v1', 'n6 v1', 'n7 v2', 'n8 v1', 'n9 v1', 'w10 v1', 'w11 v1']);
   assert.deepEqual(report.deletions, {});
   assert.deepEqual(report.pairsSkipped, [{newer: 'b', older: 'a', reason: 'made with different filters'}]);
