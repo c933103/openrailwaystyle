@@ -57,7 +57,7 @@ requires reviewing the new source pins and incrementing
 The October 15 Toei assertion adds Arakawa to the held Tokyo input: 15 → 16
 matched services, with 60 additional sections. Its four subway services already
 matched through declared network names. JR rapid/local identity remains unresolved.
-See the [source replay and acceptance receipt](investigations/reviewed-operator-frequency-20261015.md).
+See the [source replay and acceptance receipt](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/reviewed-operator-frequency-20261015.md).
 
 Rates attach separately to each original OSM edge. Every sampled interior point,
 including midpoints between supplied interval boundaries, and both ends must
@@ -695,7 +695,7 @@ are unchanged.
 
 ### October 9 frozen evidence
 
-The [full before/after ledger](investigations/catalogue-reference-ledger-20261009.json)
+The [full before/after ledger](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/catalogue-reference-ledger-20261009.json)
 compares the exact held 5,489-row catalogue with baseline main
 `741b5e858710fb20fa55533eacd330142ad1c271`, using Transitous
 `afcc88b467259bae36c25964dbb1db165d2afb31` and its Transitland gitlink
@@ -714,7 +714,7 @@ The ledger distinguishes these proposed discovery outcomes from the historical
 runtime results. It also lists all 332 changed candidate lists by original-URL
 hash, all 11 unique owners and the exact spec/role disagreements.
 
-Within the [focused attribution](investigations/catalogue-reference-attribution-20261009.json),
+Within the [focused attribution](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/catalogue-reference-attribution-20261009.json),
 145 declarations correspond to 141 legacy rows: 132 GBFS declarations across 131
 rows, ten static GTFS declarations, and three RT companions. The updated discovery
 produces 131 explicit non-timetable rows, seven existing-source aliases and three

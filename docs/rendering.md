@@ -227,7 +227,7 @@ dates use the shared maintenance parser: malformed dates cannot invent a
 cooldown, and obsolete HTTP dates use UTC and the rolling 50-year century rule.
 Existing fractional delay-seconds handling is unchanged. Underzoom
 station children load concurrently through the same bounds. See
-[loading investigation](investigations/rail-loading-20261007.md).
+[loading investigation](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/rail-loading-20261007.md).
 
 Failed visible tiles are retried at their own coordinates with capped backoff
 (5, 15, 45, 120, then 300 seconds), without discarding healthy tiles or polling
