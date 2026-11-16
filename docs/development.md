@@ -409,3 +409,18 @@ runtime. Keep startup cases in bounded sibling test files, with shared fixture
 support in `tests/startup-harness.mjs`, rather than merging them into one growing
 process. No normal test uses forced GC, a reduced heap, skipped cases or a
 name-based shard filter. See [the original case audit and memory evidence](investigations/startup-isolation-20261106/README.md).
+
+### Optional work while moving the map
+
+Track-count halos, optional worker DEM repair and uncached bathymetry tiles wait while the camera is moving
+or zooming, rechecking at 120 ms intervals. Cancelling an intermediate-view tile
+before settlement starts no dependency download or worker work. Primary map tile
+protocols remain immediate, and completed track/depth caches remain reusable.
+The track counter retains every neighbor needed for cross-tile joins. The depth
+worker is created only for a surviving request. This reduces discarded work;
+it is not a measured frame-rate or live-provider traffic claim.
+
+On a theme change, decoded tile managers are cleared only when every referring
+layer has explicit theme membership excluding the new view and is already hidden.
+Shared basemap and raw protocol caches are preserved. The current renderer calls
+these managers `tileManagers`; a missing or replaced manager is left alone.
