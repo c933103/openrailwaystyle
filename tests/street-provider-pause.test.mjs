@@ -7,8 +7,9 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {gzipSync} from 'node:zlib';
 const epoch=Date.parse('2026-11-07T00:00:00Z');
+import {STREET_QUERY as query} from '../scripts/street-running-files.mjs';
 const source=await readFile(new URL('../scripts/build-street-running.mjs',import.meta.url),'utf8');
-const query=/const query='([^']+)'/.exec(source)[1];
+if(!/import \{STREET_QUERY as query,/.test(source))throw new Error('the build asks the query of street-running-files.mjs');
 async function run(t,{header='420',body='remark',previous=false,bodyMs=0,wallShift=0,oversleep=0,cleanup=null,early=false}={}){
  const dir=await mkdtemp(join(tmpdir(),'street-provider-pause-'));t.after(()=>rm(dir,{recursive:true,force:true}));
  const retained=gzipSync(JSON.stringify([{type:'way',id:1,tags:{embedded:'yes'},geometry:[{lon:0,lat:0},{lon:.001,lat:.001}]}]));

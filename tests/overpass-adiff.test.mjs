@@ -161,7 +161,8 @@ test('street running keeps its elements, updates from changes and the query diff
   assert.match(source, /const elements=\(update\?update\.elements:data\.elements\.map\(pick\)\)[^\n]*\nconst features=toFeatures\(elements\);/, 'every element converted on every run');
   assert.match(source, /elements:JSON\.parse\(gunzipSync\(await readFile\(join\(process\.env\.PREVIOUS_DATA,'elements\.json\.gz'\)\)\)\),\n\s*since:manifest\.osmBase,previousQuery:manifest\.query/);
   assert.match(source, /updateElements\(\{\.\.\.previous,query,pick,validate:toFeatures,/);
-  assert.match(source, /writeFile\(new URL\('elements\.json\.gz',root\)/);
+  // writeStreetSnapshot writes the elements as elements.json.gz (tests/extract-street-running.test.mjs).
+  assert.match(source, /writeStreetSnapshot\([^;]*\{elements,features,/);
   assert.match(source, /query,license:/, 'the manifest records the query the next run compares with');
   assert.ok(source.indexOf("if(!update && changeError?.status)") < source.indexOf('else for(let attempt=0;attempt<3;attempt++)'), 'a refused change request is followed by a pause');
   const workflow = readFileSync(new URL('../.github/workflows/street-running.yml', import.meta.url), 'utf8');
@@ -189,7 +190,8 @@ test('a changed street-running query downloads only the newly selected ways', as
   const {join} = await import('node:path');
   const {gzipSync} = await import('node:zlib');
   const source = readFileSync(new URL('../scripts/build-street-running.mjs', import.meta.url), 'utf8');
-  const query = /const query='([^']+)'/.exec(source)[1];
+  assert.match(source, /import \{STREET_QUERY as query,/);
+  const {STREET_QUERY: query} = await import('../scripts/street-running-files.mjs');
   const dir = await mkdtemp(join(tmpdir(), 'street-requests-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
   await writeFile(join(dir, 'elements.json.gz'), gzipSync(JSON.stringify([sample(1, {railway: 'tram', embedded: 'yes'}, [[46, 7], [46.01, 7]])])));

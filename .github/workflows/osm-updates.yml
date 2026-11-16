@@ -35,6 +35,7 @@ on:
       - scripts/build-station-snapshot.mjs
       - scripts/build-street-running.mjs
       - scripts/conveying-data.mjs
+      - scripts/conveying-files.mjs
       - scripts/crossing-checkpoint.mjs
       - scripts/crossing-data.mjs
       - scripts/crossing-request.mjs
@@ -70,6 +71,7 @@ on:
       - scripts/station-acquisition.mjs
       - scripts/station-overview.mjs
       - scripts/station-point.mjs
+      - scripts/street-running-files.mjs
       - scripts/timetable-frequency-version.mjs
       - scripts/timetable-frequency.mjs
       - scripts/timetable-operator-bindings.json

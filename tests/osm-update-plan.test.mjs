@@ -136,6 +136,12 @@ test('shared provider calendar changes rebuild exactly its current dataset consu
   assert.deepEqual(OSM_UPDATES.filter(entry => entry.paths.includes('scripts/polar-fetch.mjs')).map(entry => entry.id), ['lifecycle']);
 });
 
+test('a change to a shared snapshot writer rebuilds the datasets it writes', () => {
+  const users = path => OSM_UPDATES.filter(entry => entry.paths.includes(path)).map(entry => entry.id);
+  assert.deepEqual(users('scripts/conveying-files.mjs'), ['conveying', 'aerialways']);
+  assert.deepEqual(users('scripts/street-running-files.mjs'), ['street-running']);
+});
+
 test('axle-load push trigger includes its shared calendar parser without changing its schedule', async () => {
   const workflow = await readFile(new URL('axle-load.yml', workflows), 'utf8');
   const push = workflow.split('  push:')[1].split('  workflow_dispatch:')[0];

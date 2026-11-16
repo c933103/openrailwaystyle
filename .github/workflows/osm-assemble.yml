@@ -7,7 +7,7 @@
 # published to their own branches (branch-lines-extract-data,
 # service-routes-extract-data, station-points-extract-data,
 # crossings-extract-data, traction-extract-data, conveying-extract-data,
-# aerialways-extract-data). The site uses
+# aerialways-extract-data, street-running-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -204,6 +204,29 @@ jobs:
               test "$(git ls-remote origin "refs/heads/$dataset-extract-data" | cut -f1)" = "$(git rev-parse HEAD)"
             fi
           done
+      - name: Build street running from the extract
+        # One read of the ways. The world in a local run (2026-11-10 index):
+        # 73 s, 0.3 GB peak.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-street-running.mjs assembled.osm.pbf assembled.osm.pbf.json street-running-extract | tee street-running-extract.json
+          { echo '# Street running from the extract'; echo; echo '```json'; cat street-running-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish street-running-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/street-running-publish
+          cd /tmp/street-running-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan street-running-extract-data
+          cp -r "$GITHUB_WORKSPACE/street-running-extract/." .
+          git add .
+          git commit -q -m "Street running from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:street-running-extract-data; then
+            test "$(git ls-remote origin refs/heads/street-running-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -221,5 +244,6 @@ jobs:
             traction-extract/source.json
             conveying-extract/conveying/manifest.json
             conveying-extract/aerialways/manifest.json
+            street-running-extract/manifest.json
           if-no-files-found: ignore
           retention-days: 30
