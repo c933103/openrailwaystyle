@@ -1,5 +1,5 @@
-import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261116-rail-reference-2';
-import {terrain3DEnabled} from './terrain-3d.mjs?v=20261116-rail-reference-2';
+import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261116-rail-reference-3';
+import {terrain3DEnabled} from './terrain-3d.mjs?v=20261116-rail-reference-3';
 
 // Source-event reconciliation and the visible availability diagnostics.
 export function mapErrorMessage({railRecovery, stationFailures, errors, settings, terrain3DSelected}) {

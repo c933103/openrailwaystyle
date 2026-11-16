@@ -1,33 +1,33 @@
-import {updateMapStatus} from './status-ui.mjs?v=20261116-rail-reference-2';
-import {renderLegendUI} from './legend-ui.mjs?v=20261116-rail-reference-2';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261116-rail-reference-2';
+import {updateMapStatus} from './status-ui.mjs?v=20261116-rail-reference-3';
+import {renderLegendUI} from './legend-ui.mjs?v=20261116-rail-reference-3';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261116-rail-reference-3';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261116-rail-reference-2';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261116-rail-reference-2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261116-rail-reference-2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261116-rail-reference-2';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261116-rail-reference-3';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261116-rail-reference-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261116-rail-reference-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261116-rail-reference-3';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261116-rail-reference-2';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261116-rail-reference-2';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261116-rail-reference-3';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261116-rail-reference-3';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261116-rail-reference-2';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261116-rail-reference-2';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261116-rail-reference-2';
-import {departureItem} from './departures-ui.mjs?v=20261116-rail-reference-2';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261116-rail-reference-2';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261116-rail-reference-2';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261116-rail-reference-2';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261116-rail-reference-2';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261116-rail-reference-2';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261116-rail-reference-2';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261116-rail-reference-2';
-import {installWatchGesture} from './watch-map.mjs?v=20261116-rail-reference-2';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261116-rail-reference-2';
-import {createBundleReader} from './tile-bundles.mjs?v=20261116-rail-reference-2';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261116-rail-reference-2';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261116-rail-reference-2';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261116-rail-reference-2';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261116-rail-reference-2';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261116-rail-reference-3';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261116-rail-reference-3';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261116-rail-reference-3';
+import {departureItem} from './departures-ui.mjs?v=20261116-rail-reference-3';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261116-rail-reference-3';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261116-rail-reference-3';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261116-rail-reference-3';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261116-rail-reference-3';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261116-rail-reference-3';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261116-rail-reference-3';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261116-rail-reference-3';
+import {installWatchGesture} from './watch-map.mjs?v=20261116-rail-reference-3';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261116-rail-reference-3';
+import {createBundleReader} from './tile-bundles.mjs?v=20261116-rail-reference-3';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261116-rail-reference-3';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261116-rail-reference-3';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261116-rail-reference-3';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol} from './imagery.mjs?v=20261116-rail-reference-3';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -84,7 +84,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261116-rail-reference-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261116-rail-reference-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1462,7 +1462,9 @@ async function initialize() {
   // Create it with the timeout wrapper once, before either consumer can ask
   // Protocol.tile() to create an untimed default FetchSource for that URL.
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000));
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure});
+  const requestRefresh=createReferenceRefresh(()=>{if(ready)applyRailReferenceState();});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure,
+    onRequestChange:requestRefresh.notify});
   const reference=createReferenceReader({root:new URL('./data/mainline-reference/',import.meta.url)});
   maplibregl.addProtocol('mainlinetiles',async(params,controller)=>({
     data:await reference.tile(params.url.slice('mainlinetiles://'.length),controller.signal),
@@ -1760,7 +1762,7 @@ async function initialize() {
   const action = pendingDraw; pendingDraw = undefined; action?.();
   let recoveryRemoved = false, recoveryStatusPending = false;
   stationFailures = createStationFallbackState(map);
-  railReferenceFailures = createRailReferenceState(map,settings);
+  railReferenceFailures = createRailReferenceState(map,settings,{sourcePaused:source=>Boolean(source.url && labelProtocols.originPaused(unwrap(source.url)))});
   railRecovery = createRailProviderRecovery(map, {provider: ORM, onChange: () => {
     // Timer-driven retirement also changes status. Defer/coalesce notifications
     // so source handlers finish their error bookkeeping before reconciliation.
@@ -1775,7 +1777,7 @@ async function initialize() {
   document.addEventListener('visibilitychange', wakeRailRecovery);
   window.addEventListener('online', wakeRailRecovery);
   map.on('moveend', wakeRailRecovery);
-  map.on('remove', () => {recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();otherMetadataRetries.dispose();labelProtocols.dispose?.();});
+  map.on('remove', () => {requestRefresh.dispose();recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();otherMetadataRetries.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
     // Any failed complete-snapshot tile returns to the original station dots,
     // rather than making its geographic region blank or misreporting coverage.

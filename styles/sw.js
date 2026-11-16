@@ -11,9 +11,9 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}72`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}73`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 72 installs the extracted UI with Infrastructure and outage references.
+// Shell 73 includes selected-track fallback during provider cooldown.
 // Reuse the prior 3D/high-pitch controls and terrain-source integrity.
 // The complete module graph updates together; older open tabs retain their
 // versioned assets and verified MapLibre attribution backport.
