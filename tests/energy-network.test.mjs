@@ -210,3 +210,27 @@ test('dateline track edges cannot invent global site intersections',()=>{
  const mixed=way(994,[[-.002,0],[.002,0],[179.9,0],[-179.9,0]],{railway:'rail'});
  assert.equal(energyNetworkGeoJSON([site,mixed]).features.find(f=>f.id==='way-1').properties.rail_served,true,'ordinary non-crossing runs retain real intersection evidence');
 });
+test('spatial bins agree with direct metric adjacency across both datelines and high latitudes',()=>{
+ const wrap=x=>((x+180)%360+360)%360-180;
+ for(const lat of [-80,0,80,89.99])for(const west of [-179.9999,0,179.9998])for(const direction of [-1,1])for(const metres of [20,34.9,35.1,40]){
+  const east=west+.0001,north=lat+.0001;
+  const site=way(1,[[west,lat],[east,lat],[east,north],[west,north],[west,lat]],{industrial:'refinery'});
+  const lon=wrap((direction===1?east:west)+direction*metres/(111195*Math.cos(lat*Math.PI/180)));
+  const line=[[lon,lat],[lon,north]],track=way(994,line,{railway:'rail'});
+  const expected=railRelationship(site,[{id:'way-994',line}]);
+  assert.equal(expected.rail_served,metres<=35,'metric threshold stays unchanged');
+  const actual=energyNetworkGeoJSON([site,track]).features.find(f=>f.id==='way-1').properties;
+  assert.equal(actual.rail_served,expected.rail_served,JSON.stringify({lat,west,direction,metres}));
+ }
+ const site=way(1,[[179.9998,0],[179.9999,0],[179.9999,.001],[179.9998,.001],[179.9998,0]],{industrial:'refinery'});
+ assert.equal(energyNetworkGeoJSON([site,way(995,[[180,0],[180,.001]],{railway:'rail'})]).features[0].properties.rail_served,true,'longitude180 shares canonical bin−1800');
+});
+test('wrapped-bin candidates still respect mapped polygon holes',()=>{
+ const ring=points=>points.map(([lon,lat])=>({lon,lat}));
+ const site={type:'relation',id:1,tags:{type:'multipolygon',industrial:'refinery'},members:[
+  {type:'way',role:'outer',geometry:ring([[179.998,0],[179.9998,0],[179.9998,.002],[179.998,.002],[179.998,0]])},
+  {type:'way',role:'inner',geometry:ring([[179.9985,.0005],[179.9995,.0005],[179.9995,.0015],[179.9985,.0015],[179.9985,.0005]])}
+ ]};
+ const track=way(996,[[179.999,.0007],[179.999,.0013]],{railway:'rail'});
+ assert.equal(energyNetworkGeoJSON([site,track]).features[0].properties.rail_served,false);
+});
