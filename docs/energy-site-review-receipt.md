@@ -25,3 +25,16 @@ an explicit current railway type and excludes lifecycle yes flags. Proposed,
 construction, removed, razed, demolished, abandoned and disused cases are covered;
 a current mapped siding still establishes intersection evidence. Extraction
 selection and historical energy-feature visibility are unchanged.
+
+Review r4588203396 extends the explicit non-area rule to standalone features.
+The shared line/non-area predicate now honors area=no before either geometry
+conversion or site relationship indexing. Closed plant/refinery ways keep their
+line geometry, and a track inside their ring establishes no area intersection.
+Present and lifecycle-tagged non-area features have regression coverage.
+
+The same geometry audit found antimeridian track edges falsely intersecting
+Greenwich sites under planar geometry. Relationship checks now split ordinary
+runs at longitude discontinuities and exclude the ambiguous crossing edge.
+Nearby sites in its dateline longitude band retain an explicit unverified
+relationship; ordinary runs can still establish actual mapped intersections.
+No dateline path, site footprint or supply connection is fabricated.

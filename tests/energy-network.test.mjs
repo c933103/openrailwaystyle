@@ -160,3 +160,24 @@ test('planned removed and inactive tracks never establish current site servicing
   }
  }
 });
+test('explicit non-area standalone ways retain lines and never create interior site evidence',()=>{
+ const ring=[[0,0],[.01,0],[.01,.01],[0,.01],[0,0]];
+ for(const tags of [{power:'plant',area:'no'},{'disused:power':'plant',area:'no'},{industrial:'refinery',area:'no'}]){
+  const site=way(1,ring,tags),track=way(992,[[.004,.004],[.005,.005]],{railway:'rail'});
+  const feature=energyNetworkGeoJSON([site,track]).features.find(f=>f.id==='way-1');
+  assert.equal(feature.geometry.type,'LineString');assert.deepEqual(feature.geometry.coordinates,ring);
+  assert.equal(feature.properties.rail_served,false);assert.equal(feature.properties.supply_tier,'civil_network');
+  assert.equal(railRelationship(site,[{id:'way-992',line:[[.004,.004],[.005,.005]]}]).rail_served,false);
+ }
+});
+test('dateline track edges cannot invent global site intersections',()=>{
+ const site=way(1,[[-.001,-.001],[.001,-.001],[.001,.001],[-.001,.001],[-.001,-.001]],{industrial:'refinery'});
+ const track=way(993,[[179.9,0],[-179.9,0]],{railway:'rail'});
+ const feature=energyNetworkGeoJSON([site,track]).features.find(f=>f.id==='way-1');
+ assert.equal(feature.properties.rail_served,false);assert.equal(feature.properties.siding_evidence,'Not recorded');
+ const local=way(2,[[179.94,-.001],[179.96,-.001],[179.96,.001],[179.94,.001],[179.94,-.001]],{industrial:'refinery'});
+ const near=energyNetworkGeoJSON([local,track]).features.find(f=>f.id==='way-2');
+ assert.equal(near.properties.rail_served,false);assert.match(near.properties.siding_evidence,/Dateline.*unverified/);
+ const mixed=way(994,[[-.002,0],[.002,0],[179.9,0],[-179.9,0]],{railway:'rail'});
+ assert.equal(energyNetworkGeoJSON([site,mixed]).features.find(f=>f.id==='way-1').properties.rail_served,true,'ordinary non-crossing runs retain real intersection evidence');
+});

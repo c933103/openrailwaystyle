@@ -48,7 +48,7 @@ export function energyNetworkKind(tags={}) {
 export const isNetworkTrack=({type,tags={}})=>type==='way'&&!states.some(state=>tags[state]==='yes')&&Boolean(first(tags,'railway',['rail','narrow_gauge','light_rail','tram','subway','monorail','funicular']));
 export const isEnergyNetworkElement=e=>Boolean(energyNetworkKind(e.tags))||isNetworkTrack(e);
 const coords=e=>(e.geometry||[]).map(p=>[p.lon,p.lat]);
-const linearNetwork=e=>['line','minor_line','cable','pipeline','coal_conveyor'].includes(energyNetworkKind(e.tags)?.kind);
+const linearNetwork=e=>e.tags?.area==='no'||['line','minor_line','cable','pipeline','coal_conveyor'].includes(energyNetworkKind(e.tags)?.kind);
 const networkPolygons=e=>linearNetwork(e)||e.type==='relation'&&e.tags?.type!=='multipolygon'?[]:areaPolygons(e);
 function siteMemberGeometry(member) {
   const tags=member.tags||{};
@@ -93,6 +93,19 @@ export function railRelationship(element,tracks,{adjacencyMetres=35}={}) {
   const polygons=networkPolygons(element);
   if(polygons.some(p=>p.box[2]-p.box[0]>180))return {supply_tier:'civil_network',rail_served:false,siding_evidence:'Dateline relationship unverified'};
   if(!polygons.length)return {supply_tier:'civil_network',rail_served:false,siding_evidence:'Not recorded'};
+  // Longitude discontinuities are not planar segments across the whole world.
+  // Keep ordinary runs, but record nearby dateline edges as unverified.
+  const crossings=[];
+  tracks=tracks.flatMap(track=>{
+    const runs=[];let run=[];
+    for(const point of track.line){
+      if(run.length&&Math.abs(point[0]-run.at(-1)[0])>180){crossings.push([run.at(-1),point]);if(run.length>1)runs.push({...track,line:run});run=[];}
+      run.push(point);
+    }
+    if(run.length>1)runs.push({...track,line:run});
+    return runs;
+  });
+  const datelineUnverified=crossings.some(([a,b])=>polygons.some(({box:[w,s,e,n]})=>Math.max(a[1],b[1])>=s&&Math.min(a[1],b[1])<=n&&(e>=Math.max(a[0],b[0])||w<=Math.min(a[0],b[0]))));
   for(const track of tracks)for(const polygon of polygons)if(lineMeetsPolygon(track.line,polygon))return {supply_tier:'rail_served',rail_served:true,siding_evidence:'Track intersects mapped site',rail_sidings:track.id};
   for(const track of tracks)for(const polygon of polygons) {
     // A track wholly within a hole is outside the site's mapped area.
@@ -101,7 +114,7 @@ export function railRelationship(element,tracks,{adjacencyMetres=35}={}) {
     for(let i=1;i<line.length;i++)for(let j=1;j<ring.length;j++)if(Math.min(pointSegment(line[i-1],ring[j-1],ring[j]),pointSegment(line[i],ring[j-1],ring[j]),pointSegment(ring[j-1],line[i-1],line[i]),pointSegment(ring[j],line[i-1],line[i]))<=adjacencyMetres)
       return {supply_tier:'rail_served',rail_served:true,siding_evidence:`Track within ${adjacencyMetres} m; connection unverified`,rail_sidings:track.id};
   }
-  return {supply_tier:'civil_network',rail_served:false,siding_evidence:'Not recorded'};
+  return {supply_tier:'civil_network',rail_served:false,siding_evidence:datelineUnverified?'Dateline crossing relationship unverified':'Not recorded'};
 }
 // Small spatial bins avoid comparing every worldwide site with every track.
 function trackIndex(tracks) {
