@@ -607,3 +607,26 @@ test('switching to 2D stops an older ease before arming exit suppression',async(
    assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
+
+test('neutral rail reference starts hidden and follows only the selected track outage through mode changes and recovery',async()=>{
+ const f=await start({search:'?mode=speed'});
+ try{
+  const map=f.maps[0];map.handlers['style.load']();map.zoom=6;
+  const visibility=()=>map.getLayoutProperty('rail-reference-main','visibility');
+  assert.equal(visibility(),'none','loading and healthy providers do not pre-render gray');
+  map.handlers.error({sourceId:'stations',error:{status:403,message:'HTTP 403'}});
+  assert.equal(visibility(),'none','station failure is not track failure');
+  map.handlers.error({sourceId:'speed',error:{status:403,message:'HTTP 403'}});
+  assert.equal(visibility(),'visible','permanent track errors still need reference geometry');
+  f.window.document.querySelector('[data-mode="electrification"]').click();
+  assert.equal(visibility(),'none','a different theme does not inherit the speed outage');
+  f.window.document.querySelector('[data-mode="speed"]').click();
+  assert.equal(visibility(),'visible');
+  map.handlers.sourcedata({sourceId:'speed',sourceDataType:'metadata'});
+  assert.equal(visibility(),'none','actual source recovery retires gray references');
+  map.handlers.error({sourceId:'speed',error:{status:503,message:'HTTP 503'}});
+  f.window.document.querySelector('[data-mode="infrastructure"]').click();
+  assert.equal(visibility(),'none');
+  assert.equal(map.getLayoutProperty('infrastructure-reference-main','visibility'),'visible');
+ }finally{f.dom.window.close();}
+});

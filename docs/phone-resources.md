@@ -62,7 +62,7 @@ Only completed results enter the 64-entry LRU cache; unfinished jobs remain shar
 
 ## Elevation-profile cache follow-up
 
-The [elevation cache investigation](investigations/elevation-pending-cache-20261017.md)
+The [elevation cache investigation](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/elevation-pending-cache-20261017.md)
 reproduces duplicate unfinished tile loads when a profile exceeds the 64-entry
 cache. Pending downloads/repairs now stay shared separately from the bounded
 completed caches. The controlled 201-sample out-and-back fixture needs 101

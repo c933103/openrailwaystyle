@@ -227,7 +227,7 @@ dates use the shared maintenance parser: malformed dates cannot invent a
 cooldown, and obsolete HTTP dates use UTC and the rolling 50-year century rule.
 Existing fractional delay-seconds handling is unchanged. Underzoom
 station children load concurrently through the same bounds. See
-[loading investigation](investigations/rail-loading-20261007.md).
+[loading investigation](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/rail-loading-20261007.md).
 
 Failed visible tiles are retried at their own coordinates with capped backoff
 (5, 15, 45, 120, then 300 seconds), without discarding healthy tiles or polling
@@ -540,3 +540,21 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+### Neutral railway outage references
+
+The Infrastructure view draws its own mapped-class reference colors from the
+initial style. Other views keep neutral mainline, Natural Earth and close-zoom
+basemap references hidden until the selected live track source has a recorded
+failure in the viewport. Station or unrelated-theme failures do not enable them.
+Permanent failures qualify for presentation without granting another retry.
+
+The presentation reuses the station fallback's source-instance, active tile,
+world-copy and offscreen retirement rules. A healthy neighboring tile cannot
+clear the failed tile; actual recovery or changing source/viewport retires the
+fallback. At zoom 7 the selected dependency changes from the theme's overview
+to its detailed track source. Reference visibility applies to the view rather
+than clipping whole railway chains to failed tile rectangles. This preserves
+continuous lines but can also show neutral reference geometry beside healthy
+areas in a partially failed view. It does not assert thematic values or current
+operating status for those reference features.
