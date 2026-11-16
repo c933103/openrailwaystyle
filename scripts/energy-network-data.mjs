@@ -119,23 +119,24 @@ export function railRelationship(element,tracks,{adjacencyMetres=35}={}) {
   return {supply_tier:'civil_network',rail_served:false,siding_evidence:datelineUnverified?'Dateline crossing relationship unverified':'Not recorded'};
 }
 // Small spatial bins avoid comparing every worldwide site with every track.
+const longitudeBin=x=>((x+1800)%3600+3600)%3600-1800;
 function trackIndex(tracks) {
   const bins=new Map(),wide=[];
   for(const track of tracks){
     const [w,s,e,n]=bounds(track.line),box=[Math.floor(w*10),Math.floor(s*10),Math.floor(e*10),Math.floor(n*10)];
     if((box[2]-box[0]+1)*(box[3]-box[1]+1)>1000){wide.push(track);continue;}
-    for(let x=box[0];x<=box[2];x++)for(let y=box[1];y<=box[3];y++){const key=`${x}/${y}`;if(!bins.has(key))bins.set(key,[]);bins.get(key).push(track);}
+    for(let x=box[0];x<=box[2];x++)for(let y=box[1];y<=box[3];y++){const key=`${longitudeBin(x)}/${y}`;if(!bins.has(key))bins.set(key,[]);bins.get(key).push(track);}
   }
   return element=>{
     const polygons=networkPolygons(element);
   if(polygons.some(p=>p.box[2]-p.box[0]>180))return {supply_tier:'civil_network',rail_served:false,siding_evidence:'Dateline relationship unverified'};
   if(!polygons.length)return [];
     const [w,s,e,n]=bounds(polygons.flatMap(p=>p.outer));
-    const dy=35/111195,dx=dy/Math.max(.001,Math.cos(Math.max(Math.abs(s),Math.abs(n))*Math.PI/180));
+    const dy=35/111195,dx=Math.min(180,dy/Math.max(Number.EPSILON,Math.cos(Math.max(Math.abs(s),Math.abs(n))*Math.PI/180)));
     const box=[Math.floor((w-dx)*10),Math.floor((s-dy)*10),Math.floor((e+dx)*10),Math.floor((n+dy)*10)];
     if((box[2]-box[0]+1)*(box[3]-box[1]+1)>1000)return tracks;
     const found=new Set(wide);
-    for(let x=box[0];x<=box[2];x++)for(let y=box[1];y<=box[3];y++)for(const track of bins.get(`${x}/${y}`)||[])found.add(track);
+    for(let x=box[0];x<=box[2];x++)for(let y=box[1];y<=box[3];y++)for(const track of bins.get(`${longitudeBin(x)}/${y}`)||[])found.add(track);
     return [...found];
   };
 }

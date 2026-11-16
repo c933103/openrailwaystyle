@@ -40,3 +40,13 @@ runs at longitude discontinuities and exclude the ambiguous crossing edge.
 Nearby sites in its dateline longitude band retain an explicit unverified
 relationship; ordinary runs can still establish actual mapped intersections.
 No dateline path, site footprint or supply connection is fabricated.
+
+Review r4588373038 identified the converse dateline case: ordinary tracks just
+across ±180° were omitted by spatial bins before metric adjacency could run.
+Longitude bins now wrap canonically on insertion and query. The query's longitude
+width also uses the actual limiting latitude cosine, capped at a half-world,
+rather than under-searching near the poles. The metric relationship calculation
+and its 35 m threshold remain unchanged. Ninety-six indexed-versus-direct cases
+exercise both directions, same-side and dateline coordinates, latitudes through
+89.99°, and 20/34.9/35.1/40 m offsets. Separate cases cover longitude 180,
+polygon holes, ambiguous crossing exclusion and ordinary retained runs.
