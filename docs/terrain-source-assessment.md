@@ -108,3 +108,84 @@ measured geometry/height differences and request/decode costs with explicit
 acceptance criteria. Real-source validation, any justified coastal correction,
 full provider migration and its final attribution remain outstanding work;
 the safe prerequisites and contour regression do not fulfil those proposals.
+
+## Regional and processing contract follow-up
+
+The following inspection pins provider source to
+[`2c4195dd90b91a8dde5cfa3e27a1167f64808a41`](https://github.com/mapterhorn/mapterhorn/tree/2c4195dd90b91a8dde5cfa3e27a1167f64808a41).
+Only public documentation, source code and catalogue metadata were retrieved;
+no terrain tile or source elevation raster was downloaded for this assessment.
+
+The published [archive inventory](https://download.mapterhorn.com/download_urls.json)
+retrieved on 2026-11-16 has SHA-256
+`6824004ca43c0e15f7476fafa8b9bf5b96fe15a954b58f41a6649f4e3d458aff`.
+Bounding-box membership gives these limited, reproducible observations:
+
+| Sample coordinate | Listed archives covering the point | Interpretation |
+| --- | --- | --- |
+| Nuuk, −51.72°, 64.18° | `planet.pmtiles`, `6-22-16.pmtiles` | A regional archive exists; its south boundary is 64.16810689799152°, so this sample says nothing about coverage farther south |
+| McMurdo, 166.67°, −77.85° | `planet.pmtiles` | No regional high-zoom archive is listed at this point |
+
+The [GLO-30 source file inventory](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/source-catalog/glo30/file_list.txt)
+includes `N64_00_W052_00` and `S78_00_E166_00`. This establishes input-list
+membership, not which source won a pixel in a deployed tile, its validity, or
+its native local accuracy. The provider's
+[coverage viewer implementation](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/website/coverage/index.html)
+uses a separate source-coverage vector layer. Inspect that layer and actual app
+views at both points before assigning local provenance. No ArcticDEM or REMA
+credit follows from the geocell names or regional archive bounds.
+
+The pinned Greenland [metadata](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/source-catalog/dkgreenland/metadata.json)
+records 2 m and CC BY 4.0, but supplies no vertical datum. The Danish
+[official surface-model description](https://geodata-info.dk/srv/api/records/f134d900-fb29-482e-b413-6b8ddfdce3ae)
+includes buildings and vegetation. Denmark's
+[GVR2016 definition](https://www.klimadatastyrelsen.dk/Media/638167943246531698/005-GVR2016.pdf)
+uses a geoid realization and a Nuuk mean-water-level origin; that document does
+not prove these particular source rasters use GVR2016. Obtain their CRS and
+vertical-reference metadata before claiming compatibility with GLO-30 EGM2008.
+
+### Missing data, source seams and bathymetry
+
+The provider's pinned
+[reprojection code](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/pipelines/aggregation_reproject.py)
+uses cubic-spline resampling into EPSG:3857 and destination nodata −9999. That
+command does not itself establish a common vertical datum across all sources.
+The [merge implementation](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/pipelines/aggregation_merge.py)
+fills missing samples from subsequent sources. In its source-boundary smoothing
+branch, residual −9999 samples are changed to zero before Gaussian blending
+and output. The [encoder](https://github.com/mapterhorn/mapterhorn/blob/2c4195dd90b91a8dde5cfa3e27a1167f64808a41/pipelines/utils.py)
+writes three-channel, lossless 512-pixel WebP and applies zoom-dependent height
+rounding. These are source-code observations, not a measured defect in a
+particular deployed tile. They establish why neither an alpha mask nor a
+single decoded sentinel can be assumed to identify all missing data, and why
+new shoreline smoothing would compound existing source processing.
+
+Atlas currently derives ordinary seabed from its Mapzen/ETOPO-derived DEM and
+uses separate ETOPO 2022 data in the polar cap. NOAA's
+[ETOPO1 FAQ](https://www.ncei.noaa.gov/sites/default/files/2023-01/Frequently%20Asked%20Questions.pdf)
+states a generic sea-level datum and no general conversion of contributing
+vertical datums. Treating this as exactly identical to EGM2008 is unsupported.
+A land DEM replacement therefore cannot also replace the bathymetry source by
+changing one shared URL. Retain the ocean mask as a separate classifier and
+preserve signed land heights; unknown data and ocean are distinct states.
+
+### Bounded migration sequence
+
+1. Introduce an explicit provider contract in a separate candidate: source URL,
+   native size, source maximum zoom/overzoom policy, encoding, validity policy,
+   attribution and separately identified bathymetry. Keep production selection
+   unchanged while fixtures exercise that contract.
+2. Route readout/profile, hillshade/contours and 3D land through their designated
+   provider, retaining the existing seabed input. `terrain-3d.mjs` currently
+   asserts 256×256 height arrays; normalize a 512-pixel land grid at this boundary
+   or generalize the whole consumer with an explicit sampling contract.
+3. Test affine ramps and signed lowlands at 256/512 sizes, point/area registration,
+   seam continuity, masked ocean recovery, valid zero versus unknown zero,
+   original and wider repair radii, reference/witness dimensions, source failure,
+   cache isolation and worker/page parity. Source zoom changes need an explicit
+   overzoom test at McMurdo, where a regional archive is not listed.
+4. Inspect representative app views with permitted browser access and record
+   tile provenance, shoreline/lowland height comparisons and request/decode costs.
+   Accept the switch only after the regional licence/datum/validity contracts,
+   all consumers and browser measurements are evidenced. Metadata inspection
+   alone is insufficient to activate the replacement.
