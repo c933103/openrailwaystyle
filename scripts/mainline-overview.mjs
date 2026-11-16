@@ -6,13 +6,14 @@ import vtpbf from 'vt-pbf';
 import {gzipSync} from 'node:zlib';
 import '../styles/pbf-utf8.mjs';
 import {railwayThemeProperties} from './branch-lines.mjs';
+import {ownerColor} from '../styles/owner-color.mjs';
 
 // Keep chain grouping and projection aligned: differently attributed segments
-// must not inherit the first way's speed, electrification, gauge or operator.
+// must not inherit the first way's speed, electrification, gauge, owner or operator.
 export const MAINLINE_THEME_FIELDS = ['state','maxspeed','speed_label','speed_unit','preferred_direction',
  'electrified','electrification_state','voltage','frequency','future_voltage','future_frequency',
  'gauge0','gaugeint0','gauge1','gaugeint1','loading_gauge',
- 'train_protection0','train_protection1','train_protection2','train_protection','operator'];
+ 'train_protection0','train_protection1','train_protection2','train_protection','operator','owner','owner_color'];
 
 export const MAINLINE_MIN_ZOOM=0,MAINLINE_MAX_ZOOM=6;
 export const MAINLINE_LAYER='atlas_mainline_overview';
@@ -63,6 +64,9 @@ export function normalizeMainlineWay(element){
  const lines=splitDateline(distinct);
  const version=element.version;
  if(!Number.isSafeInteger(version)||version<1)throw new Error(`OSM mainline ${element.id} missing version`);
+ // Mainline tiles are read directly, without the live atlasowner transform.
+ // Keep infrastructure ownership distinct from the separately mapped operator.
+ const owner=text(tags.owner).trim();
  const rank=tags.highspeed==='yes'?0:tags.usage==='main'?1:tags.usage==='branch'?3:2;
  const bbox=distinct.reduce((b,p)=>[Math.min(b[0],p[0]),Math.min(b[1],p[1]),Math.max(b[2],p[0]),Math.max(b[3],p[1])],
    [180,90,-180,-90]);
@@ -75,7 +79,8 @@ export function normalizeMainlineWay(element){
      end_node:Array.isArray(element.nodes)?String(element.nodes.at(-1)):'',
      rank,name:text(tags.name),ref:text(tags.ref),state:'present',
      ...(tags.electrified && {electrified:text(tags.electrified)}),
-     ...railwayThemeProperties(tags)},
+     ...railwayThemeProperties(tags),
+     ...(owner && {owner,owner_color:ownerColor(owner)})},
    geometry:lines.length===1?{type:'LineString',coordinates:lines[0]}:
      {type:'MultiLineString',coordinates:lines},
  };

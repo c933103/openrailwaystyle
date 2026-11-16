@@ -66,13 +66,13 @@ test('generator identity follows actual transform dependencies and package lock,
   for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
   await mkdir(join(root,'tests/fixtures'),{recursive:true});await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const data=await referenceDataInputDigest(root),renderer=await referenceInputDigest(root);
-  for(const path of ['styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){
+  for(const path of ['styles/map-model.mjs','styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){
    const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n// renderer or acceptance change\n')]));
    assert.equal(await referenceDataInputDigest(root),data,path);
    assert.notEqual(await referenceInputDigest(root),renderer,path);
    await writeFile(file,bytes);
   }
-  for(const path of [...DATA_INPUTS,'styles/pbf-utf8.mjs']){
+  for(const path of [...DATA_INPUTS,'styles/pbf-utf8.mjs','styles/owner-color.mjs']){
    const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n')]));
    assert.notEqual(await referenceDataInputDigest(root),data,path);await writeFile(file,bytes);
   }

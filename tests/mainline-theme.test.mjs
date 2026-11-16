@@ -5,9 +5,10 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {normalizeMainlineWay, mainlineTiles, MAINLINE_LAYER, MAINLINE_THEME_FIELDS} from '../scripts/mainline-overview.mjs';
 import {mainlineChains} from '../scripts/mainline-chains.mjs';
+import {ownerColor} from '../styles/map-model.mjs';
 import {railwayThemeProperties, toFeatures} from '../scripts/branch-lines.mjs';
 const way=(id,tags={})=>({type:'way',id,version:1,nodes:[id,id+1],tags:{railway:'rail',usage:'main',...tags},geometry:[{lon:id,lat:0},{lon:id+1,lat:0}]});
-const thematic={maxspeed:'60 mph',electrified:'contact_line',voltage:'25000',frequency:'50',gauge:'1435;1000',loading_gauge:'GC','railway:etcs':'2','railway:pzb':'yes',operator:'Example operator'};
+const thematic={maxspeed:'60 mph',electrified:'contact_line',voltage:'25000',frequency:'50',gauge:'1435;1000',loading_gauge:'GC','railway:etcs':'2','railway:pzb':'yes',operator:'Example operator',owner:'Infrastructure owner'};
 test('mainline and branch tiles use the same mapped thematic normalization',()=>{
  const element=way(1,thematic),main=normalizeMainlineWay(element),branch=toFeatures({elements:[element]})[0];
  const expected=railwayThemeProperties(element.tags);
@@ -24,7 +25,7 @@ test('missing tags stay unknown and proposed electrification never becomes curre
  assert.equal(future.electrification_state,'proposed');assert.equal(future.voltage,undefined);assert.equal(future.future_voltage,25000);
 });
 test('chain joins retain every thematic boundary and deterministic identities',()=>{
- for(const [field,other] of [['maxspeed','100'],['operator','Other operator'],['gauge','1067'],['voltage','1500'],['frequency','0'],['loading_gauge','GA'],['railway:etcs','1']]){
+ for(const [field,other] of [['maxspeed','100'],['operator','Other operator'],['owner','Other owner'],['gauge','1067'],['voltage','1500'],['frequency','0'],['loading_gauge','GA'],['railway:etcs','1']]){
   const features=[normalizeMainlineWay(way(1,thematic)),normalizeMainlineWay(way(2,{...thematic,[field]:other}))];
   assert.equal(mainlineChains(features).features.length,2,field);
   const stable=result=>Object.fromEntries(Object.entries(result).map(([key,rows])=>[key,rows.sort((a,b)=>String(a.id).localeCompare(String(b.id)))]));
@@ -62,4 +63,19 @@ test('direction-sensitive connected ways retain their original orientation',()=>
    assert.equal(result.features[i].properties.preferred_direction,originals[i].properties.preferred_direction);
   }
  }
+});
+
+test('mainline ownership and its existing color contract remain distinct from operation',()=>{
+ const mapped=normalizeMainlineWay(way(1,{owner:' Infrastructure owner ',operator:'Train operator'})).properties;
+ assert.equal(mapped.owner,'Infrastructure owner');
+ assert.equal(mapped.owner_color,ownerColor('Infrastructure owner'));
+ assert.equal(mapped.operator,'Train operator');
+ for(const tags of [{operator:'Train operator'},{owner:'   ',operator:'Train operator'},{}]){
+  const p=normalizeMainlineWay(way(1,tags)).properties;
+  assert.equal(p.owner,undefined);
+  assert.equal(p.owner_color,undefined,'operator-only or absent ownership retains unknown owner color');
+ }
+ const owned=normalizeMainlineWay(way(1,{owner:'Infrastructure owner',operator:'Train operator'}));
+ const operationOnly=normalizeMainlineWay(way(2,{operator:'Train operator'}));
+ assert.equal(mainlineChains([owned,operationOnly]).features.length,2,'unknown ownership cannot inherit its neighbor owner');
 });

@@ -259,6 +259,10 @@ train-protection and operator normalization as branch lines. Missing values rema
 absent; proposed/construction voltage stays in future fields. Chain assembly
 joins segments only when every retained thematic field agrees, preserving
 attribute boundaries instead of coloring a whole chain from its first way.
+Infrastructure ownership comes from the mapped `owner` tag; `owner_color` uses
+the same `ownerColor` function as the live Owner view. The separately retained
+`operator` identifies operation. Operator-only ways keep ownership unknown.
+Both the owner and its color survive chain projection and tile encoding.
 
 This builder increment adds no thematic rendering layers. It changes the data
 input digest and requires a newly built, validated complete `mainline-data`
