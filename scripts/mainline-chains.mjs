@@ -1,3 +1,4 @@
+import {MAINLINE_THEME_FIELDS} from './mainline-overview.mjs';
 import {sha256} from './mainline-coverage.mjs';
 // Join only degree-two OSM NODE identities with identical mapped categories.
 // Coincident coordinates without shared node identity never imply connectivity.
@@ -5,7 +6,11 @@ import {sha256} from './mainline-coverage.mjs';
 export function mainlineChains(features){
  const groups=new Map(),membership=[],chains=[],ids=new Set();
  for(const f of features){
-  const p=f.properties,key=JSON.stringify([p.feature,p.classification,p.highspeed_tag]);
+  const p=f.properties;
+  // These fields are relative to the original OSM way orientation. Retain the
+  // original geometry instead of reversing or joining direction-sensitive ways.
+  const directional=['forward','backward'].includes(p.preferred_direction)||String(p.speed_label??'').includes(' / ');
+  const key=JSON.stringify([p.feature,p.classification,p.highspeed_tag,...MAINLINE_THEME_FIELDS.map(key=>p[key]??null),directional?p.id:null]);
   if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);
  }
  for(const rows of groups.values()){
@@ -42,7 +47,8 @@ export function mainlineChains(features){
    if(ids.has(id))throw Error('Reference chain numeric ID collision');ids.add(id);
    const p=first.properties;
    chains.push({type:'Feature',id,bbox,properties:{id:reference,feature:p.feature,
-    classification:p.classification,highspeed_tag:p.highspeed_tag,rank:p.rank,osm_way_count:members.length},
+    classification:p.classification,highspeed_tag:p.highspeed_tag,rank:p.rank,osm_way_count:members.length,
+    ...Object.fromEntries(MAINLINE_THEME_FIELDS.filter(key=>p[key]!==undefined).map(key=>[key,p[key]]))},
     geometry:members.length===1?first.geometry:{type:'LineString',coordinates:points}});
    membership.push({id:reference,contentSha256:key.slice(6),ways:members});
   }

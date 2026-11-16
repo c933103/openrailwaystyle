@@ -251,3 +251,17 @@ production concurrency, dispatch a replacement, or cancel an active deployment.
 The controller reads trusted GitHub metadata only and never checks out source or
 downloads artifacts. Its existing Actions write authority is retained; only
 repository-content read access is needed to verify the current main ref.
+
+### Thematic overview schema
+
+Mainline ways retain the same speed, electrification, gauge, loading-gauge,
+train-protection and operator normalization as branch lines. Missing values remain
+absent; proposed/construction voltage stays in future fields. Chain assembly
+joins segments only when every retained thematic field agrees, preserving
+attribute boundaries instead of coloring a whole chain from its first way.
+
+This builder increment adds no thematic rendering layers. It changes the data
+input digest and requires a newly built, validated complete `mainline-data`
+generation before a later rendering change consumes these fields. Existing
+byte budgets, coverage checks, source provenance and complete-only publication
+remain binding; synthetic fixture tests do not measure worldwide output growth.

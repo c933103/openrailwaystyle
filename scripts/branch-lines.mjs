@@ -199,6 +199,25 @@ const round = ([x, y]) => [Math.round(x * 1e5) / 1e5, Math.round(y * 1e5) / 1e5]
 
 // Overpass JSON → features with the fields of OpenRailwayMap's railway
 // tiles, so the style colours them as it colours those tiles.
+// Shared provider-compatible thematic normalization for branch and mainline tiles.
+export function railwayThemeProperties(tags) {
+  const [g0, g1] = gauges(tags.gauge), protection = trainProtections(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
+  const preferred = tags['railway:preferred_direction'];
+  return {
+    ...(maxspeed !== undefined && {maxspeed, speed_unit: speedUnit(tags)}), ...(label && {speed_label: label}),
+    ...(['forward', 'backward', 'both'].includes(preferred) && {preferred_direction: preferred}),
+    ...electrification(tags),
+    ...(g0 && {gauge0: g0.text, ...(g0.mm && {gaugeint0: g0.mm})}),
+    ...(g1 && {gauge1: g1.text, ...(g1.mm && {gaugeint1: g1.mm})}),
+    ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),
+    ...Object.fromEntries(protection.slice(0, 3).map((code, i) => [`train_protection${i}`, code])),
+    // Tiles follow the provider's three slots; keep an exceptional longer
+    // list for the infobox instead of silently discarding its other systems.
+    ...(protection.length > 3 && {train_protection: protection.join(';')}),
+    ...(tags.operator && {operator: tags.operator}),
+  };
+}
+
 export function toFeatures(json) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark ? `Overpass: ${json.remark}` : 'Incomplete Overpass response');
   const features = [];
@@ -214,24 +233,12 @@ export function toFeatures(json) {
     }
     const lines = parts.filter(part => part.length > 1).map(part => simplify(part).map(round));
     if (!lines.length) continue;
-    const [g0, g1] = gauges(tags.gauge), protection = trainProtections(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
-    const preferred = tags['railway:preferred_direction'];
     const properties = {
       osm_id: way.id, feature: tags.railway, usage: tags.railway === 'subway' ? (tags.usage || '') : 'branch', state: 'present',
       name: tags.name || tags['name:en'] || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(key))),
       ...(tags.highspeed === 'yes' && {highspeed: true}),
-      ...(maxspeed !== undefined && {maxspeed, speed_unit: speedUnit(tags)}), ...(label && {speed_label: label}),
-      ...(['forward', 'backward', 'both'].includes(preferred) && {preferred_direction: preferred}),
-      ...electrification(tags),
-      ...(g0 && {gauge0: g0.text, ...(g0.mm && {gaugeint0: g0.mm})}),
-      ...(g1 && {gauge1: g1.text, ...(g1.mm && {gaugeint1: g1.mm})}),
-      ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),
-      ...Object.fromEntries(protection.slice(0, 3).map((code, i) => [`train_protection${i}`, code])),
-      // Tiles follow the provider's three slots; keep an exceptional longer
-      // list for the infobox instead of silently discarding its other systems.
-      ...(protection.length > 3 && {train_protection: protection.join(';')}),
-      ...(tags.operator && {operator: tags.operator}),
+      ...railwayThemeProperties(tags),
       // Structures, as the detailed tiles' booleans (bridge=no and tunnel=no
       // are not structures).
       ...(tags.bridge && tags.bridge !== 'no' && {bridge: true}),
