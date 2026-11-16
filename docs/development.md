@@ -118,7 +118,10 @@ Byte-range responses for archive assets remain supported.
 | `styles/world.style.json`, `styles/major-stations.geojson` | Generated style and curated station labels, committed and checked for reproducibility |
 | `styles/tile-labels.mjs`, `styles/han-region.mjs` | Label selection and geographic name rules |
 | `styles/track-count.mjs`, `styles/track-tiles.mjs` | Track grouping and tile loading |
-| `scripts/` | Build tools, data preparation, preview server and browser checks |
+| `scripts/` | Build tools, data preparation, preview server and browser-check entrypoints |
+| `scripts/diagnostics/`, `scripts/checks/` | Internal diagnostic and acceptance helpers; original top-level paths re-export their public functions |
+| `scripts/extract/` | Extract parsing and selection libraries; stable top-level re-exports preserve builder imports |
+| `scripts/overpass/` | Augmented-diff conversion, error classification and provider-pause libraries; top-level imports stay compatible and scheduler triggers cover both paths |
 | `tests/` | Automated tests |
 | `.github/workflows/` | Validation, Pages deployment and snapshot maintenance |
 
@@ -409,3 +412,28 @@ runtime. Keep startup cases in bounded sibling test files, with shared fixture
 support in `tests/startup-harness.mjs`, rather than merging them into one growing
 process. No normal test uses forced GC, a reduced heap, skipped cases or a
 name-based shard filter. See [the original case audit and memory evidence](investigations/startup-isolation-20261106/README.md).
+
+### Internal script organization
+
+| Directory | Internal helpers | Stable interfaces |
+| --- | --- | --- |
+| `scripts/extract/` | Element parsing, extract filters, and Overpass-compatible centre calculation | Existing top-level named exports |
+| `scripts/overpass/` | Augmented diffs, error classification, provider pauses, and staged acquisition | Existing top-level named exports and scheduled dataset dependency paths |
+| `scripts/checks/` | Browser fixtures, readiness, polling, deadlines, click controls, network policy, response cache, and outage assertions | Existing top-level imports and browser-check entrypoints |
+| `scripts/diagnostics/` | CPU profiles, settlement traces, browser timing, painter probe, fixtures, and offline terrain replay | Existing top-level imports and loopback probe route |
+
+Build, acquire, assemble, plan, check, and diagnose commands retain their public
+paths. `browser.mjs` remains the browser harness; `overpass-meter.mjs` and the
+service geometry clock/framing modules retain their preload paths. The Paris
+service geometry fixture remains a top-level executable because it also exposes
+a command-line assembly entrypoint. `browser-libraries.mjs` is shared with the
+browser build and stays beside that builder. World-grid, response-stream, retry,
+and dataset-specific libraries remain shared acquisition inputs in `scripts/`.
+
+Compatibility re-exports are part of the dependency graph: browser CI follows
+them to the implementation files. The Overpass scheduler explicitly includes
+both paths. Module-relative fixtures resolve to the same repository files after
+relocation. Painter browser routes serve the implementation directly, and
+diagnostic manifests hash both the compatibility modules and actual probe and
+fixture implementations. Acquired-data fingerprints retain their existing
+definitions; checker changes produce new acceptance evidence when required.
