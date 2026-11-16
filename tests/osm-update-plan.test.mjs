@@ -150,3 +150,12 @@ test('axle-load push trigger includes its shared calendar parser without changin
   assert.match(workflow, /cron: '17 2 \* \* 0'/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
+
+test('organized Overpass libraries trigger the same datasets as their compatibility entrypoints', () => {
+  for (const name of ['overpass-adiff.mjs', 'overpass-errors.mjs', 'staged-provider-pause.mjs', 'staged-overpass.mjs']) {
+    const consumers = path => OSM_UPDATES.filter(entry => entry.paths.includes(path)).map(entry => entry.id);
+    const existing = consumers('scripts/' + name);
+    assert.ok(existing.length, name + ' has maintenance consumers');
+    assert.deepEqual(consumers('scripts/overpass/' + name), existing);
+  }
+});
