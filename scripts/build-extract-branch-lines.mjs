@@ -32,7 +32,10 @@ export function checkAssembly(report) {
 }
 
 // Every planned region and gap tile has a file: the world is covered.
-export const coversWorld = report => Array.isArray(report.missingRegions) && report.missingRegions.length === 0;
+// Every entry with the current filter as well (olderFilter empty; a report
+// from before that field has none).
+export const coversWorld = report => Array.isArray(report.missingRegions) && report.missingRegions.length === 0
+  && !(report.olderFilter?.length);
 
 // Each way becomes its line at once (toFeatures converts ways one by one),
 // so only the simplified lines are held, never the ways' full geometry.
