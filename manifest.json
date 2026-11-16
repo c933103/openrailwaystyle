@@ -1,11 +1,11 @@
 {
-  "generated": "2026-11-15T22:33:25.170Z",
-  "osmBase": "2026-11-15T22:30:28Z",
+  "generated": "2026-11-16T02:27:44.664Z",
+  "osmBase": "2026-11-16T02:25:53Z",
   "update": "full",
-  "features": 24146,
+  "features": 24145,
   "kinds": {
     "cableway": 3291,
-    "lift": 20855
+    "lift": 20854
   },
   "zoom": 12,
   "tiles": 8520,
