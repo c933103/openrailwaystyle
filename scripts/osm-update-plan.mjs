@@ -22,34 +22,34 @@ import {execFileSync} from 'node:child_process';
 // workflow's own file and widely shared files such as styles/map-model.mjs
 // (touched by every asset-version bump) are left out on purpose: those
 // rebuilds are started by hand.
-const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs'];
+const STAGES = ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass/overpass-errors.mjs'];
 const PROVIDER_DATES = ['scripts/retry-after.mjs', 'styles/retry-after.mjs'];
-const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs', ...PROVIDER_DATES];
+const STAGED_FALLBACK = ['scripts/staged-provider-pause.mjs', 'scripts/overpass/staged-provider-pause.mjs', ...PROVIDER_DATES];
 // The railway-ways store's reader and views, which the datasets built from it use.
 const RAILWAY_WAYS = ['scripts/build-railway-ways.mjs', 'scripts/railway-ways.mjs'];
 export const OSM_UPDATES = Object.freeze([
   {id:'lifecycle', workflow:'snapshot.yml', due:{weekly:[1,5], hour:3},
-    paths:[...PROVIDER_DATES, 'scripts/build-snapshot.mjs', 'styles/pbf-utf8.mjs', 'scripts/lifecycle.mjs', 'scripts/snapshot-delta.mjs', 'scripts/overpass-adiff.mjs',
+    paths:[...PROVIDER_DATES, 'scripts/build-snapshot.mjs', 'styles/pbf-utf8.mjs', 'scripts/lifecycle.mjs', 'scripts/snapshot-delta.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs',
       'scripts/refresh-snapshot-cache.mjs', 'scripts/build-loading-gauge-list.mjs', 'styles/loading-gauge-list.mjs',
       'scripts/build-polar.mjs', 'scripts/polar-fetch.mjs', 'scripts/polar-depth.mjs', 'styles/bathymetry.mjs', 'scripts/polar-contours.mjs',
       'scripts/polar-features.mjs', 'styles/polar.mjs', 'scripts/pack-snapshot.py']},
   {id:'crossings', workflow:'crossings.yml', due:{weekly:[0], hour:3},
     paths:[...PROVIDER_DATES, 'scripts/crossing-request.mjs', 'scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-rows.mjs', 'scripts/crossing-checkpoint.mjs', 'styles/pbf-utf8.mjs', 'styles/crossing-tags.mjs']},
   {id:'street-running', workflow:'street-running.yml', due:{weekly:[0], hour:3},
-    paths:[...PROVIDER_DATES, 'scripts/build-street-running.mjs', 'scripts/street-running-files.mjs', 'scripts/overpass-adiff.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-street-running.mjs', 'scripts/street-running-files.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/pbf-utf8.mjs', 'styles/street-running.mjs']},
   {id:'conveying', workflow:'conveying.yml', due:{weekly:[0], hour:3},
-    paths:[...PROVIDER_DATES, 'scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/conveying-files.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-conveying.mjs', 'scripts/conveying-data.mjs', 'scripts/conveying-files.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
-    paths:[...PROVIDER_DATES, 'scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/conveying-files.mjs', 'scripts/overpass-adiff.mjs', 'styles/conveying.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/conveying-files.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'heritage', workflow:'heritage.yml', due:{monthly:3, hour:21},
     paths:[...PROVIDER_DATES, 'scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},
-    paths:['scripts/station-overview.mjs', 'scripts/station-point.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'scripts/overpass-adiff.mjs', 'styles/tile-bundles.mjs']},
+    paths:['scripts/station-overview.mjs', 'scripts/station-point.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/tile-bundles.mjs']},
   // One download for branch lines, service routes and power methods
   // (build-railway-ways.mjs), kept as a release; it runs before the datasets
   // built from it, which download on their own only when it cannot be loaded.
   {id:'railway-ways', workflow:'railway-ways.yml', due:{every:true},
-    paths:[...STAGED_FALLBACK, ...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/overpass-adiff.mjs', 'scripts/service-routes.mjs',
+    paths:[...STAGED_FALLBACK, ...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-release.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'scripts/service-routes.mjs',
       'scripts/power-method-data.mjs', 'scripts/station-acquisition.mjs']},
   {id:'branch-lines', workflow:'branch-lines.yml', due:{every:true},
     paths:[...STAGED_FALLBACK, ...STAGES, ...RAILWAY_WAYS, 'scripts/railway-ways-branch.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs']},
@@ -63,7 +63,7 @@ export const OSM_UPDATES = Object.freeze([
   // once a week; the workflow republishes only when the data changed.
   {id:'traction', workflow:'traction-facilities.yml', due:{every:true},
     paths:[...PROVIDER_DATES, 'scripts/build-power-facilities.mjs', 'scripts/power-facility-data.mjs', 'scripts/build-power-methods.mjs',
-      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
+      'scripts/power-method-data.mjs', 'scripts/staged-overpass.mjs', 'scripts/overpass/staged-overpass.mjs', 'scripts/overpass-errors.mjs', 'scripts/overpass/overpass-errors.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'scripts/osm-geometry.mjs',
       'scripts/build-signals.mjs', 'scripts/signals-data.mjs', 'scripts/crossing-data.mjs', 'scripts/crossing-rows.mjs', 'scripts/electricity-signal-data.mjs',
       'scripts/build-electricity-signals.mjs', 'styles/power-facilities.mjs', 'styles/han-region.mjs', 'styles/pbf-utf8.mjs']},
 ].map(entry => Object.freeze({...entry, paths:Object.freeze(entry.paths)})));
