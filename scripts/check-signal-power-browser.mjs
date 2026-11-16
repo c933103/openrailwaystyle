@@ -77,10 +77,12 @@ const electricitySignals=electricitySignalsGeoJSON({elements:[
   {type:'node',id:9461,lon:.0011,lat:.00115,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el2','railway:signal:electricity:type':'power_on',ref:'E7'}},
   {type:'node',id:9462,lon:.0007,lat:-.001,tags:{railway:'signal','railway:signal:electricity':'DE-ESO:el1','railway:signal:electricity:deactivated':'yes'}},
 ]});
+// Keep finite energy fixtures inside the 412px mobile view at zoom 18,
+// centered at longitude .0007 (roughly .000147 to .001253).
 const energy=energyNetworkGeoJSON([
  {type:'way',id:9600,tags:{power:'line',voltage:'220000'},geometry:[{lon:-.0002,lat:-.00045},{lon:.0016,lat:-.00045}]},
- {type:'node',id:9601,lon:.00145,lat:.0008,tags:{power:'generator','generator:source':'battery'}},
- {type:'way',id:9602,tags:{man_made:'storage_tank',content:'hydrogen'},geometry:[[-.0001,.0009],[.00005,.0009],[.00005,.0011],[-.0001,.0011],[-.0001,.0009]].map(([lon,lat])=>({lon,lat}))},
+ {type:'node',id:9601,lon:.00095,lat:.0008,tags:{power:'generator','generator:source':'battery'}},
+ {type:'way',id:9602,tags:{man_made:'storage_tank',content:'hydrogen'},geometry:[[.00035,.0009],[.0005,.0009],[.0005,.0011],[.00035,.0011],[.00035,.0009]].map(([lon,lat])=>({lon,lat}))},
 ]);
 const energyFixtures=new Map([['manifest.json',{json:{schema:2,dataset:'energy-network',complete:true,format:BUNDLE_FORMAT,minzoom:5,maxzoom:14}}]]);
 for(const [tier,{minzoom,maxzoom,bundleZoom}] of Object.entries(ENERGY_TIERS)){
