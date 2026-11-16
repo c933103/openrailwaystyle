@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {stationScFontReady,platformFontState,withFontFailureDiagnostics} from '../scripts/platform-font-ready.mjs';
+import {stationScFontReady,stationTcFontReady,platformFontState,withFontFailureDiagnostics} from '../scripts/platform-font-ready.mjs';
 
 // Exercise the same serialized callback Playwright runs, without Node globals
 // or closure values accidentally making an invalid browser callback pass.
@@ -116,4 +116,28 @@ test('unresponsive diagnostic evaluation is bounded and retains the original fai
   await assert.rejects(withFontFailureDiagnostics({evaluate: () => new Promise(() => {})}, 'mobile',
     async () => { throw failure; }, (...args) => logs.push(args)), error => error === failure);
   assert.equal(JSON.parse(logs[0][2]).unavailable, 'diagnostic deadline');
+});
+
+
+test('TC draw waits for selected station stack and ready style, independently of global family', () => {
+  for (const [fonts, expected] of [
+    [['Noto Sans Bold', 'Atlas Rare Han'], false], [['Noto Sans TC'], true],
+    [['Atlas CJK TC'], true], [['Noto Sans SC'], false], [['Noto Sans TC Extra'], false],
+    [['match', ['get', 'kind'], 'Noto Sans TC'], false], [null, false],
+  ]) {
+    const window = state(fonts);
+    window.reviewMap.style.glyphManager.localIdeographFontFamily = 'Noto Sans TC';
+    assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window}), expected);
+    window.reviewMap.isStyleLoaded = () => false;
+    assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window}), false);
+  }
+  assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window: {}}), false);
+});
+
+test('failure snapshot includes quoted FontFace family names as returned by browsers', () => {
+  const fonts = [{family: '"Noto Sans TC"', status: 'loaded'}, {family: "'Atlas CJK TC'", status: 'unloaded'}];
+  fonts.check = () => true;
+  const snapshot = vm.runInNewContext(`(${platformFontState})()`, {window: state(['Noto Sans TC']), document: {fonts}});
+  assert.equal(snapshot.fonts.length, 2);
+  assert.equal(snapshot.fonts[1].status, 'unloaded');
 });

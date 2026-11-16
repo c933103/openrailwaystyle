@@ -23,7 +23,7 @@ export function platformFontState() {
     glyphFamily: family ?? null,
     tcFontCheck: document.fonts.check('24px "Atlas CJK TC"'),
     tcGlyphFamily: typeof family === 'string' && family.includes('Atlas CJK TC'),
-    fonts: [...document.fonts].filter(font => /^(Atlas CJK|Noto Sans|Noto Sans CJK|Source Han Sans|PingFang|Microsoft|Hiragino Sans)/.test(font.family))
+    fonts: [...document.fonts].filter(font => /^(Atlas CJK|Noto Sans|Noto Sans CJK|Source Han Sans|PingFang|Microsoft|Hiragino Sans)/.test(font.family.replace(/^[\"']|[\"']$/g, '')))
       .map(({family, status, unicodeRange}) => ({family, status, unicodeRange})),
   };
 }
@@ -45,4 +45,13 @@ export async function withFontFailureDiagnostics(page, kind, run, log = console.
     } finally { clearTimeout(timer); }
     throw error;
   }
+}
+
+
+// Initial TC draw has the same selection prerequisite as the later SC draw.
+export function stationTcFontReady() {
+  const map = window.reviewMap;
+  if (!map?.isStyleLoaded()) return false;
+  const fonts = map.getStyle()?.layers?.find(layer => layer.id.startsWith('station-') && layer.type === 'symbol')?.layout?.['text-font'];
+  return Array.isArray(fonts) && fonts.every(font => typeof font === 'string') && (fonts.includes('Noto Sans TC') || fonts.includes('Atlas CJK TC'));
 }
