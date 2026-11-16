@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261116-native-dem-ui-1';
+import {SEARCH_API} from './map-model.mjs?v=20261116-native-dem-stack-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

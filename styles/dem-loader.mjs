@@ -1,10 +1,11 @@
+import {waitForViewport} from './viewport-settle.mjs';
 // Worker terrain transport kept separate from its actor, so the exact loader
 // can be exercised with controlled fetch/decode implementations.
 import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs';
 import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs';
 const TILE = /\/(\d+)\/(\d+)\/(\d+)\.(png|webp)(?=\?|$)/;
 export function createDemTileLoader({fetcher = fetch, decode = decodeTerrain,
-  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS} = {}) {
+  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS, isMoving} = {}) {
   const references = sharedTerrainTiles(async (url, signal) => {
     const {blob} = await terrainBlob(url, signal, fetcher);
     return (await decode(blob, signal)).pixels;
@@ -21,6 +22,8 @@ export function createDemTileLoader({fetcher = fetch, decode = decodeTerrain,
     if (!match || z < REPAIR_FROM || typeof OffscreenCanvas === 'undefined') return tile;
     try {
       return await terrainTask(async repairSignal => {
+        await waitForViewport(repairSignal, isMoving);
+        repairSignal.throwIfAborted();
         const coarser = referenceTile(z, x, y);
         const [{canvas, context, pixels}, ref] = await Promise.all([decode(blob, repairSignal), z >= REFERENCE_FROM ? reference(url.replace(TILE, `/${coarser.z}/${coarser.x}/${coarser.y}.${match[4]}`), repairSignal) : null]);
         let changed = repairPixels(pixels.data, pixels.width, z, x, y, ref?.data, ref?.width);

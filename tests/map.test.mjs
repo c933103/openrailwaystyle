@@ -1254,3 +1254,32 @@ test('place placement twins require the full replacement path used by Atlas',asy
   const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
   assert.match(app,/map\.setStyle\(style,\{diff:false,/,'changing Atlas to diff-based reloads needs a new placement contract');
 });
+
+test('overview negative contours partition generated levels without losing deep lowlands', async () => {
+  const {contourOptions} = await import('../styles/map-model.mjs');
+  const emitted = (units, family, zoom, layerId) => {
+    const layer = style.layers.find(item => item.id === layerId);
+    if (zoom < layer.minzoom || zoom >= (layer.maxzoom ?? 24)) return new Set();
+    const options = contourOptions(units, family);
+    const thresholdZoom = Math.max(...Object.keys(options.thresholds).map(Number).filter(z => z <= zoom));
+    const [minor, major] = options.thresholds[thresholdZoom];
+    const filter = featureFilter(layer.filter);
+    const levels = new Set();
+    for (let ele = -minor; ele >= -10000; ele -= minor) {
+      const level = ele % major === 0 ? 1 : 0;
+      if (filter.filter({zoom}, {type:2, properties:{ele, level}})) levels.add(ele);
+    }
+    return levels;
+  };
+  for (const units of ['metric', 'imperial']) for (const zoom of [7, 7.5, 8, 8.5]) {
+    for (const suffix of ['contours', 'contour-labels']) {
+      const overview = emitted(units, undefined, zoom, `terrain-${suffix}`);
+      const shelf = emitted(units, 'shelf', zoom, `terrain-seabed-${suffix}`);
+      assert.deepEqual([...overview].filter(ele => shelf.has(ele)), [], `${units} z${zoom} ${suffix}`);
+      if (zoom >= (suffix === 'contours' ? 7 : 8)) {
+        assert.ok(overview.size > 0, `deep negative ${suffix} retained`);
+        assert.ok([...overview].every(ele => ele <= -200));
+      }
+    }
+  }
+});

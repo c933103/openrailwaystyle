@@ -48,6 +48,10 @@ on:
       - scripts/osm-geometry.mjs
       - scripts/overpass-adiff.mjs
       - scripts/overpass-errors.mjs
+      - scripts/overpass/overpass-adiff.mjs
+      - scripts/overpass/overpass-errors.mjs
+      - scripts/overpass/staged-overpass.mjs
+      - scripts/overpass/staged-provider-pause.mjs
       - scripts/pack-snapshot.py
       - scripts/polar-contours.mjs
       - scripts/polar-depth.mjs

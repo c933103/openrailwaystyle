@@ -204,3 +204,66 @@ test('terrain repair: at the finest zoom the next coarser one is asked', () => {
   assert.equal(repairFromWitness(faulty, 256, 15, 26777, 14290, () => tile(() => 12)), 1);
   assert.ok(Math.abs(at(faulty, 100, 100) - 12) < 1);
 });
+
+test('terrain repair: narrow high-latitude faults use ground distance; basins and cliffs stay', () => {
+  const zoom = 13;
+  const tileY = latitude => Math.floor((1 - Math.asinh(Math.tan(latitude * Math.PI / 180)) / Math.PI) / 2 * 2 ** zoom);
+  for (const [name, latitude] of [['Nuuk latitude', 64.18], ['McMurdo latitude', -77.85]]) {
+    // Synthetic band, not recorded local elevations: its 21-pixel width is
+    // wider than the old ten-pixel half-reach, but narrower than ~380 m on
+    // the ground here. Both shoulders back the existing >1 km WALL test.
+    const band = tile(x => Math.abs(x - 128) <= 10 ? -1500 : 100);
+    assert.ok(repairPixels(band, 256, zoom, 0, tileY(latitude), tile(() => 100)) > 0, name);
+    assert.ok(at(band, 128, 128) > -500, `${name}: ${at(band, 128, 128)}`);
+    // The same narrow deep feature corroborated by its coarse source is a
+    // possible real valley. Only the enlarged search could flag its centre;
+    // preserve it rather than claiming physical width proves corruption.
+    const valley = tile(x => Math.abs(x - 128) <= 10 ? -1500 : 100);
+    const {k, ox} = referenceTile(zoom, 0, tileY(latitude));
+    const backed = tile(x => Math.abs((x + 0.5) * k - ox - 128) <= 12 ? -1500 : 100);
+    const valleyCopy = valley.slice();
+    assert.equal(repairPixels(valley, 256, zoom, 0, tileY(latitude), backed), 0, `${name}: coarse-backed valley`);
+    assert.deepEqual(valley, valleyCopy, name);
+    const unavailable = valleyCopy.slice();
+    assert.equal(repairPixels(unavailable, 256, zoom, 0, tileY(latitude), null), 0, `${name}: missing reference`);
+    assert.deepEqual(unavailable, valleyCopy, name);
+    // A broad negative basin and an abrupt real cliff have no opposing
+    // high shoulders within the search radius. Neither is sign-clamped.
+    for (const surface of [x => Math.abs(x - 128) < 85 ? -435 : 100, x => x < 128 ? 1100 : -30]) {
+      const data = tile(surface), copy = data.slice();
+      assert.equal(repairPixels(data, 256, zoom, 0, tileY(latitude), null), 0, name);
+      assert.deepEqual(data, copy, name);
+    }
+  }
+  // The same pixel geometry is much wider at the equator and is retained.
+  const equator = tile(x => Math.abs(x - 128) <= 10 ? -1500 : 100), copy = equator.slice();
+  assert.equal(repairPixels(equator, 256, zoom, 0, tileY(0), null), 0);
+  assert.deepEqual(equator, copy);
+});
+
+test('terrain repair: wider polar search preserves original-radius faults near tile edges', () => {
+  const z = 13, y = Math.floor((1 - Math.asinh(Math.tan(64.18 * Math.PI / 180)) / Math.PI) / 2 * 2 ** z);
+  for (const start of [14, 239]) {
+    const data = tile(x => x >= start && x <= start + 2 ? -1500 : 100);
+    // The original ten-pixel shoulders fit; the wider polar shoulders fall
+    // outside this tile. Missing coarse evidence must not erase the original
+    // detection merely because the additional search cannot find shoulders.
+    assert.equal(repairPixels(data, 256, z, 0, y, null), 3 * 256);
+    assert.deepEqual(data, tile(() => 100));
+  }
+});
+
+test('terrain witnesses stay within four tiles at edges, parent quadrants and world wrap', () => {
+  // Separated pits near every corner and child boundary maximize the union
+  // of requested witnesses without changing the real outlier detector.
+  const points = new Set([1, 3, 126, 129, 252, 254].flatMap(x => [1, 3, 126, 129, 252, 254].map(y => `${x},${y}`)));
+  const data = tile((x, y) => points.has(`${x},${y}`) ? -561 : 10);
+  for (const z of [10, 12, 14, 15]) for (const x of [0, 1, 2 ** z - 2, 2 ** z - 1]) for (const y of [0, 1, 2 ** z - 2, 2 ** z - 1]) {
+    const need = witnessTiles(data, 256, z, x, y);
+    assert.ok(need.tiles.length > 0 && need.tiles.length <= 4, `${z}/${x}/${y}: ${JSON.stringify(need)}`);
+    assert.equal(new Set(need.tiles.map(p => p.join('/'))).size, need.tiles.length);
+    for (const [tx, ty] of need.tiles) assert.ok(tx >= 0 && ty >= 0 && tx < 2 ** need.z && ty < 2 ** need.z);
+    const allowed = new Set(need.tiles.map(p => p.join('/'))), flat = tile(() => 12), fixed = data.slice();
+    assert.ok(repairFromWitness(fixed, 256, z, x, y, (tx, ty) => allowed.has(`${tx}/${ty}`) ? flat : null) > 0);
+  }
+});
