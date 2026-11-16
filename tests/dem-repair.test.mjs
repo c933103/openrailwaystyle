@@ -241,6 +241,18 @@ test('terrain repair: narrow high-latitude faults use ground distance; basins an
   assert.deepEqual(equator, copy);
 });
 
+test('terrain repair: wider polar search preserves original-radius faults near tile edges', () => {
+  const z = 13, y = Math.floor((1 - Math.asinh(Math.tan(64.18 * Math.PI / 180)) / Math.PI) / 2 * 2 ** z);
+  for (const start of [14, 239]) {
+    const data = tile(x => x >= start && x <= start + 2 ? -1500 : 100);
+    // The original ten-pixel shoulders fit; the wider polar shoulders fall
+    // outside this tile. Missing coarse evidence must not erase the original
+    // detection merely because the additional search cannot find shoulders.
+    assert.equal(repairPixels(data, 256, z, 0, y, null), 3 * 256);
+    assert.deepEqual(data, tile(() => 100));
+  }
+});
+
 test('terrain witnesses stay within four tiles at edges, parent quadrants and world wrap', () => {
   // Separated pits near every corner and child boundary maximize the union
   // of requested witnesses without changing the real outlier detector.

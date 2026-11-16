@@ -193,9 +193,10 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     // the reference corroborates that depression, keep it: a physical-width
     // heuristic alone cannot establish that a deep valley is corrupt. Missing
     // or failed reference evidence also leaves newly reached features intact.
-    // Preserve the existing narrower-radius handling of shared-source faults.
-    let wall = referenced && depth(px, py, h[i]) > WALL;
-    if (wall && w > oldReach && depth(px, py, h[i], false, oldReach) <= WALL) {
+    // Evaluate the original radius independently: wider shoulders can fall
+    // outside a tile even where the original shoulders establish a fault.
+    let wall = referenced && depth(px, py, h[i], false, oldReach) > WALL;
+    if (!wall && referenced && w > oldReach && depth(px, py, h[i]) > WALL) {
       const coarseBottom = coarserBottom(px, py);
       wall = Number.isFinite(coarseBottom) && coarseBottom > h[i] + limit;
     }
