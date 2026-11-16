@@ -248,6 +248,7 @@ function parseDepartureList(times, list) {
     const matchingLine = names[0] || time.tripShortName || time.routeLongName || '';
     const longName = labelText(time.routeLongName), hasLongName = longName && !numericName(longName);
     const line = [...names, time.tripShortName, time.routeLongName].map(labelText)
+      .filter(name => !opaqueName(name, time.routeId))
       .find(name => name && (hasLongName || !numericName(name))) || '';
     const headsign = time.headsign || time.tripTo?.name || '';
     // JSON tuples preserve field boundaries even when IDs/names contain '|'.

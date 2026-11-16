@@ -5,6 +5,7 @@ import {mkdtemp, readFile, readdir, rm, writeFile, mkdir, cp} from 'node:fs/prom
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import polygonClipping from 'polygon-clipping';
 import {EXTRACT_FILTERS, overpassFilters} from '../scripts/extract-filter.mjs';
 import {gapTiles, polyFilter, MAX_VERTICES} from '../scripts/gap-tiles.mjs';
@@ -81,11 +82,88 @@ test('a poly filter is lat lon, without the closing point', () => {
   assert.match(query, /^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];\(/);
   assert.match(query, /\(\.p0;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
   assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 23);
-  // A hole is taken out of its own part once, never asked for with every filter.
+  // A hole is taken out of its own part with four statements (nodes and ways
+  // of the selection, nodes and ways of its relations' members), never asked
+  // for with every filter.
   const holed = gapQuery([[square(0, 0, 10, 10)[0], square(2, 2, 3, 3)[0]], square(20, 0, 21, 1)]);
-  assert.equal(holed.split('(poly:"2 2 2 3 3 3 3 2")').length - 1, 1);
-  assert.match(holed, /->\.p0;nwr\.p0\(poly:"2 2 2 3 3 3 3 2"\)->\.h0_0;\(\.p0; - \.h0_0;\)->\.p0;/);
+  assert.equal(holed.split('(poly:"2 2 2 3 3 3 3 2")').length - 1, 4);
+  assert.match(holed, /\(node\.p0\(poly:"2 2 2 3 3 3 3 2"\);way\.p0\(poly:"2 2 2 3 3 3 3 2"\);\)->\.h0_0;\(\.p0; - \.h0_0;\)->\.p0;/);
+  assert.doesNotMatch(holed, /nwr\.p0\(poly:"2 2 2 3 3 3 3 2"\)/, 'a relation is never taken out for touching a hole');
+  assert.doesNotMatch(holed, /\.r1\b/, 'a part without holes is selected as before');
   assert.match(holed, /\(\.p0;\.p1;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
+});
+
+// A small model of the Overpass statements gapQuery writes, enough to see
+// what a tile selects. A node is in a polygon when inside it; a way when one
+// of its nodes is; a relation when one of its member nodes or ways is.
+function evaluate(query, {nodes, ways, relations}) {
+  const sets = {}, at = new Map(nodes.map(n => [n.id, n]));
+  const W = new Map(ways.map(w => [w.id, w])), R = new Map(relations.map(r => [r.id, r]));
+  const ring = text => { const v = text.split(' ').map(Number), out = []; for (let i = 0; i < v.length; i += 2) out.push([v[i + 1], v[i]]); return out; };
+  const inside = ([x, y], r) => { let hit = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) hit = !hit; } return hit; };
+  const nodeIn = (id, r) => inside([at.get(id).lon, at.get(id).lat], r);
+  const wayIn = (id, r) => W.get(id).nodes.some(n => nodeIn(n, r));
+  const relIn = (id, r) => R.get(id).members.some(m => m.type === 'node' ? nodeIn(m.ref, r) : m.type === 'way' && wayIn(m.ref, r));
+  const inPoly = (key, r) => key[0] === 'n' ? nodeIn(+key.slice(1), r) : key[0] === 'w' ? wayIn(+key.slice(1), r) : relIn(+key.slice(1), r);
+  const all = {node: nodes.map(n => ['n' + n.id, n.tags]), way: ways.map(w => ['w' + w.id, w.tags]), rel: relations.map(r => ['r' + r.id, r.tags])};
+  const prefix = {node: 'n', way: 'w', rel: 'r'};
+  const statements = []; let depth = 0, start = 0;
+  const body = query.replace(/^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];/, '').replace(/out meta;$/, '');
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === '"') { i = body.indexOf('"', i + 1); continue; }
+    if (body[i] === '(') depth++; else if (body[i] === ')') depth--;
+    else if (body[i] === ';' && depth === 0) { statements.push(body.slice(start, i)); start = i + 1; }
+  }
+  const one = text => {
+    text = text.trim();
+    let m;
+    if ((m = /^\.(\w+) >>$/.exec(text))) {
+      const out = new Set(sets[m[1]]);
+      for (let grew = true; grew;) { grew = false; for (const key of [...out]) {
+        const more = key[0] === 'r' ? R.get(+key.slice(1)).members.map(x => prefix[x.type === 'relation' ? 'rel' : x.type] + x.ref) : key[0] === 'w' ? W.get(+key.slice(1)).nodes.map(n => 'n' + n) : [];
+        for (const k of more) if (!out.has(k)) { out.add(k); grew = true; } } }
+      return out;
+    }
+    if ((m = /^\.(\w+)$/.exec(text))) return new Set(sets[m[1]]);
+    if ((m = /^(node|way|rel)\[(\w+)=(\w+)\]\(poly:"([^"]+)"\)$/.exec(text))) return new Set(all[m[1]].filter(([key, tags]) => tags?.[m[2]] === m[3] && inPoly(key, ring(m[4]))).map(([key]) => key));
+    if ((m = /^(node|way|rel)\.(\w+)(?:\(poly:"([^"]+)"\))?$/.exec(text))) return new Set([...sets[m[2]]].filter(key => key[0] === prefix[m[1]] && (!m[3] || inPoly(key, ring(m[3])))));
+    if ((m = /^(node|way)\(r\.(\w+)\)\(poly:"([^"]+)"\)$/.exec(text))) return new Set([...sets[m[2]]].filter(k => k[0] === 'r').flatMap(k => R.get(+k.slice(1)).members.filter(x => x.type === m[1]).map(x => prefix[m[1]] + x.ref)).filter(k => inPoly(k, ring(m[3]))));
+    if ((m = /^rel\.(\w+)\((bw|bn)\.(\w+)\)$/.exec(text))) return new Set([...sets[m[1]]].filter(k => k[0] === 'r' && R.get(+k.slice(1)).members.some(x => x.type === (m[2] === 'bw' ? 'way' : 'node') && sets[m[3]].has(prefix[x.type] + x.ref))));
+    if ((m = /^\((.*)\)$/.exec(text))) {
+      const items = []; let d = 0, s0 = 0; const inner = m[1];
+      for (let i = 0; i < inner.length; i++) { if (inner[i] === '"') { i = inner.indexOf('"', i + 1); continue; } if (inner[i] === '(') d++; else if (inner[i] === ')') d--; else if (inner[i] === ';' && d === 0) { items.push(inner.slice(s0, i).trim()); s0 = i + 1; } }
+      if (items.length === 2 && items[1].startsWith('- ')) { const out = one(items[0]); for (const k of one(items[1].slice(2))) out.delete(k); return out; }
+      return new Set(items.flatMap(item => [...one(item)]));
+    }
+    throw new Error(`Not modelled: ${text}`);
+  };
+  for (const statement of statements) {
+    const m = /^(.*)->\.(\w+)$/.exec(statement);
+    if (m) sets[m[2]] = one(m[1]); else sets._ = one(statement);
+  }
+  return sets._;
+}
+
+test('a relation reaching from a region out to sea is kept, with its members at sea; one wholly in the region is not asked for again', () => {
+  // A part 0–10° with a hole (an island a region covers) at 2–3°.
+  const polygon = [[square(0, 0, 10, 10)[0], square(2, 2, 3, 3)[0]]];
+  const nodes = [[1, 2.5, 2.5], [2, 2.6, 2.6], [3, 6, 6], [4, 6.1, 6.1], [5, 2.4, 2.4], [6, 2.45, 2.45], [7, 7, 7], [8, 7.1, 7.1], [9, 2.2, 2.2], [10, 2.3, 2.3], [11, 20, 20], [12, 20.1, 20.1], [13, 8, 8]]
+    .map(([id, lon, lat]) => ({id, lon, lat}));
+  const ways = [{id: 10, nodes: [1, 2]}, {id: 11, nodes: [3, 4]}, {id: 20, nodes: [5, 6]},
+    {id: 30, nodes: [7, 8], tags: {heritage: '1'}}, {id: 31, nodes: [9, 10], tags: {heritage: '1'}}, {id: 40, nodes: [11, 12]}];
+  const relations = [
+    {id: 1, members: [{type: 'way', ref: 10}, {type: 'way', ref: 11}], tags: {heritage: '1', type: 'boundary'}},
+    {id: 2, members: [{type: 'way', ref: 20}], tags: {heritage: '1', type: 'boundary'}},
+    {id: 3, members: [{type: 'way', ref: 40}], tags: {heritage: '1', type: 'boundary'}},
+    {id: 4, members: [{type: 'way', ref: 20}, {type: 'node', ref: 13}], tags: {heritage: '1', type: 'boundary'}},
+  ];
+  const filters = [{type: 'way', tag: '[heritage=1]'}, {type: 'rel', tag: '[heritage=1]'}];
+  const got = [...evaluate(gapQuery(polygon, filters), {nodes, ways, relations})].sort();
+  assert.deepEqual(got, ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n13', 'r1', 'r4', 'w10', 'w11', 'w20', 'w30'].sort(),
+    'r1 and its way at sea (w11), and r4 and its node at sea (n13), are kept with all their members; r2 and w31 lie wholly in the hole; r3 lies outside the part');
+  // Without holes, every selected element is kept, as before.
+  assert.deepEqual([...evaluate(gapQuery([square(0, 0, 10, 10)], filters), {nodes, ways, relations})].sort(),
+    ['n1', 'n10', 'n13', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'r1', 'r2', 'r4', 'w10', 'w11', 'w20', 'w30', 'w31'].sort());
 });
 
 const answer = (base = '2026-11-05T06:00:00Z', body = '') => `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6"><meta osm_base="${base}"/>${body}</osm>\n`;
@@ -227,6 +305,9 @@ test('with osmium installed, a tile becomes a file and record that publish takes
   assert.deepEqual(manifest.counts, {nodes: 2, ways: 0, relations: 0});
   assert.equal(manifest.region, `gap/${tile.key}`);
   assert.equal(manifest.filter, GAP_FILTER_HASH);
+  // The query's form is part of the filter's identity: a tile asked with the
+  // first form (filters only) is an older filter.
+  assert.notEqual(GAP_FILTER_HASH, `overpass:${createHash('sha256').update(JSON.stringify(overpassFilters())).digest('hex')}`);
   assert.equal(manifest.sourceTimestamp, '2026-11-05T06:00:00Z');
   assert.deepEqual(JSON.parse(await readFile(join(root, 'gap-empty', 'extract.json'), 'utf8')).counts, {nodes: 0, ways: 0, relations: 0}, 'an empty answer is a valid file');
   assert.deepEqual((await readdir(join(root, `gap-${tile.key}`))).sort(), ['extract.json', 'filtered.osm.pbf']);
@@ -251,7 +332,7 @@ test('publish takes gap tiles as regions of their own, and keeps stored ones whe
   const dir = join(root, 'gap-k1');
   await mkdir(dir, {recursive: true});
   await writeFile(join(dir, 'filtered.osm.pbf'), 'pbf');
-  const {createHash} = await import('node:crypto');
+
   const manifest = {region: 'gap/k1', kind: 'gap', sourceDate: '2026-11-05', sourceTimestamp: '2026-11-05T06:00:00Z', url: 'u', pbfBytes: 0, sourceMd5: null,
     filteredBytes: 3, filteredSha256: createHash('sha256').update('pbf').digest('hex'), counts: {nodes: 0, ways: 0, relations: 0}, filter: GAP_FILTER_HASH};
   const {index, outcomes} = nextIndex(withGaps(plan, gaps), null, [{dir, manifest, failed: null}], '20261105T060000Z-1');
@@ -405,7 +486,7 @@ test('a tile split for size keeps its holes in the quarters', async () => {
   const f = fake(n => new Response(n === 1 ? timeoutRemark : answer()));
   await fetchTile(holed, {fetcher: f.fetcher, budget: budget(), ...fakeClock()});
   // Clipping may reverse the ring, so the hole is matched by its corners.
-  const cutsHole = query => /nwr\.p0\(poly:"(?=[^"]*10 -30)(?=[^"]*11 -29)[^"]*"\)->\.h0_0;\(\.p0; - \.h0_0;\)/.test(query);
+  const cutsHole = query => /way\.p0\(poly:"(?=[^"]*10 -30)(?=[^"]*11 -29)[^"]*"\);\)->\.h0_0;\(\.p0; - \.h0_0;\)/.test(query);
   assert.equal(f.calls.length, 5);
   assert.equal(f.calls.filter(cutsHole).length, 2, 'the whole tile and the quarter holding the hole both take it out');
 });

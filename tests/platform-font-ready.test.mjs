@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {stationScFontReady} from '../scripts/platform-font-ready.mjs';
+import {stationScFontReady,stationTcFontReady,platformFontState,withFontFailureDiagnostics} from '../scripts/platform-font-ready.mjs';
 
 // Exercise the same serialized callback Playwright runs, without Node globals
 // or closure values accidentally making an invalid browser callback pass.
@@ -73,4 +73,71 @@ test('SC readiness requires an exact family element in the station symbol layer'
   }
   assert.equal(evaluate({}), false);
   assert.equal(evaluate({reviewMap: {isStyleLoaded: () => true, getStyle: () => undefined}}), false);
+});
+
+
+test('failure snapshot distinguishes both TC conjuncts without triggering font loads', () => {
+  for (const fontReady of [false, true]) for (const familyReady of [false, true]) {
+    const window = state(['Noto Sans TC']);
+    window.reviewMap.style.glyphManager.localIdeographFontFamily = familyReady ? 'Atlas CJK TC' : 'Noto Sans TC';
+    const fonts = [{family: 'Atlas CJK TC', status: fontReady ? 'loaded' : 'unloaded', unicodeRange: 'U+0-10FFFF'}];
+    fonts.check = value => { assert.equal(value, '24px "Atlas CJK TC"'); return fontReady; };
+    const snapshot = vm.runInNewContext(`(${platformFontState})()`, {window, document: {fonts}});
+    assert.equal(snapshot.tcFontCheck, fontReady);
+    assert.equal(snapshot.tcGlyphFamily, familyReady);
+    assert.equal(snapshot.fonts[0].status, fonts[0].status);
+    assert.equal(snapshot.stationFonts[0], 'Noto Sans TC');
+  }
+});
+
+test('success does not collect or log diagnostics', async () => {
+  assert.equal(await withFontFailureDiagnostics({evaluate: () => assert.fail('no evaluation')}, 'mobile',
+    async () => 42, () => assert.fail('no logging')), 42);
+});
+
+test('failed gate logs once and rethrows the exact original error', async () => {
+  const failure = new Error('original gate'), calls = [];
+  await assert.rejects(withFontFailureDiagnostics({evaluate: async callback => {
+    assert.equal(callback, platformFontState); return {tcFontCheck: false, tcGlyphFamily: true};
+  }}, 'mobile', async () => { throw failure; }, (...args) => calls.push(args)), error => error === failure);
+  assert.deepEqual(calls, [['PLATFORM_FONT_DIAGNOSTIC', 'mobile', '{"tcFontCheck":false,"tcGlyphFamily":true}']]);
+});
+
+test('diagnostic evaluation and logging failures cannot replace the original gate error', async () => {
+  for (const evaluate of [() => { throw Error('closed'); }, async () => { throw Error('closed'); }]) {
+    const failure = new Error('gate');
+    await assert.rejects(withFontFailureDiagnostics({evaluate}, 'mobile', async () => { throw failure; },
+      () => { throw Error('logger'); }), error => error === failure);
+  }
+});
+
+test('unresponsive diagnostic evaluation is bounded and retains the original failure', async () => {
+  const failure = new Error('gate'), logs = [];
+  await assert.rejects(withFontFailureDiagnostics({evaluate: () => new Promise(() => {})}, 'mobile',
+    async () => { throw failure; }, (...args) => logs.push(args)), error => error === failure);
+  assert.equal(JSON.parse(logs[0][2]).unavailable, 'diagnostic deadline');
+});
+
+
+test('TC draw waits for selected station stack and ready style, independently of global family', () => {
+  for (const [fonts, expected] of [
+    [['Noto Sans Bold', 'Atlas Rare Han'], false], [['Noto Sans TC'], true],
+    [['Atlas CJK TC'], true], [['Noto Sans SC'], false], [['Noto Sans TC Extra'], false],
+    [['match', ['get', 'kind'], 'Noto Sans TC'], false], [null, false],
+  ]) {
+    const window = state(fonts);
+    window.reviewMap.style.glyphManager.localIdeographFontFamily = 'Noto Sans TC';
+    assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window}), expected);
+    window.reviewMap.isStyleLoaded = () => false;
+    assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window}), false);
+  }
+  assert.equal(vm.runInNewContext(`(${stationTcFontReady})()`, {window: {}}), false);
+});
+
+test('failure snapshot includes quoted FontFace family names as returned by browsers', () => {
+  const fonts = [{family: '"Noto Sans TC"', status: 'loaded'}, {family: "'Atlas CJK TC'", status: 'unloaded'}];
+  fonts.check = () => true;
+  const snapshot = vm.runInNewContext(`(${platformFontState})()`, {window: state(['Noto Sans TC']), document: {fonts}});
+  assert.equal(snapshot.fonts.length, 2);
+  assert.equal(snapshot.fonts[1].status, 'unloaded');
 });

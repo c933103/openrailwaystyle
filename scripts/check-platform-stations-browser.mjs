@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
-import {stationScFontReady} from './platform-font-ready.mjs';
+import {stationScFontReady,stationTcFontReady,withFontFailureDiagnostics} from './platform-font-ready.mjs';
 import {waitForMapReady} from './browser-map-ready.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
@@ -53,13 +53,25 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  });
  // Nothing per platform may go to OSM; lengths come from the provider's tiles.
  await page.route(/api\.openstreetmap\.org|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});
+ // Hold candidate responses to prove startup does not establish TC selection.
+ const tcFont=new URL('fonts/atlas-cjk-tc-v1.woff2',base).href;
+ let releaseTcFonts;
+ const tcFontsReleased=new Promise(resolve=>{releaseTcFonts=resolve;});
+ const holdTcFont=async route=>{await tcFontsReleased;return route.fallback();};
+ await page.route(tcFont,holdTcFont);
+ const tcRequest=page.waitForRequest(tcFont,{timeout:30000}).then(()=>null,error=>error);
+ try{
  await page.goto(base+'?mode=infrastructure&language=zh-Hant&background=plain&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.1167/129.0440',{waitUntil:'domcontentloaded'});
  await waitForMapReady(page, errors);
  await page.evaluate(async platforms=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;window.platformGeometries=Object.fromEntries(platforms.map(f=>[f.properties.id,f]));window.platformScreenAnchor=(await import('./platform-length.mjs')).platformScreenAnchor;},platforms);
+  const requestError=await tcRequest;if(requestError)throw requestError;
+  assert.equal(await page.evaluate(stationTcFontReady),false,'initial TC draw must wait for candidate selection, not only map startup');
+ }finally{releaseTcFonts();await page.unroute(tcFont,holdTcFont);}
+ await page.waitForFunction(stationTcFontReady,undefined,{timeout:30000});
  const drawHan=async()=>{await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.getStyle()?.layers,undefined,{timeout:30000});await page.evaluate(async()=>{const map=window.reviewMap,stack=map.getStyle().layers.find(l=>l.id.startsWith('station-')&&l.type==='symbol').layout['text-font'].join(',');await map.style.glyphManager.getGlyphs({[stack]:[...'頓顿'].map(c=>c.codePointAt(0))});});};
  // The packaged font is fetched once Han glyphs are drawn with a partial font.
  await drawHan();
- await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000});
+ await withFontFailureDiagnostics(page,kind,()=>page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000}));
  const checkGlyphs=async code=>{
   const result=await waitUntil(page,async code=>{
    // Loading the packaged font replaces the style. Inspect one ready style

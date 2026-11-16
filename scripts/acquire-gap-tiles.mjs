@@ -78,11 +78,20 @@ export const MAX_UNANSWERED_TILES = 2;
 // in its holes (islands a planned region covers), so their data is not sent
 // again. Each part has its own sets, so a hole of one part never removes
 // another part lying inside it. Then complete downward recursion (>>).
-export function gapQuery(polygon) {
+// A node or a way touching a hole is in that region's file in full (its
+// extract keeps complete ways). A relation is not: the region's file holds
+// only its members there. So a relation leaves the part only when none of
+// its members inside the outer ring lies outside every hole; one that also
+// has members out at sea stays, and >> brings those members.
+export function gapQuery(polygon, filters = overpassFilters()) {
   const parts = polygon.map(([outer, ...holes], i) => {
-    const select = `(${overpassFilters().map(({type, tag}) => `${type}${tag}(${polyFilter(outer)});`).join('')})->.p${i};`;
-    const cut = holes.map((hole, j) => `nwr.p${i}(${polyFilter(hole)})->.h${i}_${j};(.p${i}; - .h${i}_${j};)->.p${i};`).join('');
-    return select + cut;
+    const select = `(${filters.map(({type, tag}) => `${type}${tag}(${polyFilter(outer)});`).join('')})->.p${i};`;
+    if (!holes.length) return select;
+    const members = `rel.p${i}->.r${i};(way(r.r${i})(${polyFilter(outer)});node(r.r${i})(${polyFilter(outer)});)->.m${i};`;
+    const cut = holes.map((hole, j) => `(node.p${i}(${polyFilter(hole)});way.p${i}(${polyFilter(hole)});)->.h${i}_${j};(.p${i}; - .h${i}_${j};)->.p${i};`
+      + `(node.m${i}(${polyFilter(hole)});way.m${i}(${polyFilter(hole)});)->.k${i}_${j};(.m${i}; - .k${i}_${j};)->.m${i};`).join('');
+    const kept = `(rel.r${i}(bw.m${i});rel.r${i}(bn.m${i});)->.s${i};(.p${i}; - .r${i};)->.p${i};(.p${i};.s${i};)->.p${i};`;
+    return select + members + cut + kept;
   });
   return `[out:xml][timeout:180][maxsize:536870912];${parts.join('')}(${polygon.map((_, i) => `.p${i};`).join('')})->.g;(.g;.g >>;);out meta;`;
 }

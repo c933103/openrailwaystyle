@@ -56,7 +56,8 @@ test('a build missing part of the world is published for comparison but never ma
   const dir = await mkdtemp(join(tmpdir(), 'extract-branch-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
   assert.equal(coversWorld(report()), true);
-  for (const [extra, name] of [[{missingRegions: ['gap/0_0_45_45', 'africa']}, 'partial'], [{missingRegions: null}, 'unknown'], [{missingRegions: undefined}, 'older report']]) {
+  assert.equal(coversWorld(report({olderFilter: []})), true);
+  for (const [extra, name] of [[{missingRegions: ['gap/0_0_45_45', 'africa']}, 'partial'], [{missingRegions: null}, 'unknown'], [{missingRegions: undefined}, 'older report'], [{olderFilter: ['gap/0_-180_45_-135']}, 'a tile asked with an older query']]) {
     assert.equal(coversWorld(report(extra)), false, name);
     const manifest = await buildExtractBranchLines('x', report(extra), join(dir, name), {read: fakeRead});
     assert.equal(manifest.complete, false);

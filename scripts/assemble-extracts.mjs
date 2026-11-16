@@ -24,6 +24,7 @@ import {createInterface} from 'node:readline';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {currentFilter} from './extract-release.mjs';
 
 // Runs a command; `lines` receives each line of its output. Exit codes in
 // `accept` are not failures (osmium getid exits 1 when some ids are absent;
@@ -162,6 +163,11 @@ export async function assemble(index, dir, output, {work} = {}) {
     // list): a build from this assembly covers the world only when it is
     // empty. null when the index does not say.
     missingRegions: Array.isArray(index.missing) ? [...index.missing] : null,
+    // Entries made with a filter other than the current one (for gap tiles,
+    // also an older form of the query), judged by this code, not by the
+    // index's own list: such a file may lack what the current filter selects,
+    // so a build covers the world only when this is empty too.
+    olderFilter: Object.entries(index.regions).filter(([id, entry]) => entry.filter !== currentFilter(id)).map(([id]) => id).sort(),
     seconds: (performance.now() - started) / 1000};
   await writeFile(`${output}.json`, `${JSON.stringify(report, null, 2)}\n`);
   if (!work) await rm(temp, {recursive: true, force: true});
