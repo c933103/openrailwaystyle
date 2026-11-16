@@ -15,10 +15,10 @@ export function energyNetworkKind(tags={}) {
     const rail=first(t,'railway',Object.keys(supplies));
     if(rail){const [domain,minzoom]=supplies[rail];const hydrogen=rail==='fuel'&&(first(t,'fuel',['hydrogen'])||t['fuel:hydrogen']==='yes');return {kind:rail,domain:hydrogen?'hydrogen':domain,minzoom,state,trackside:rail!=='loading_rack'};}
     if(t.railway==='signal'&&values(t['railway:signal:electricity']).some(v=>v!=='no'&&v!=='none'))return {kind:'electricity_signal',domain:'electricity',minzoom:14,state,trackside:true};
-    const power=first(t,'power',['line','minor_line','cable','plant','generator','substation','converter','transformer']);
+    const power=first(t,'power',['line','minor_line','cable','plant','generator','substation','converter','frequency_converter','transformer']);
     if(power) {
       const voltage=Math.max(0,...values(t.voltage).filter(v=>/^\d+$/.test(v)).map(Number));
-      const minzoom=power==='line'?(voltage>=380000?5:voltage>=220000?6:voltage>=110000?7:9):({minor_line:12,cable:8,plant:6,generator:11,substation:9,converter:8,transformer:13})[power];
+      const minzoom=power==='line'?(voltage>=380000?5:voltage>=220000?6:voltage>=110000?7:9):({minor_line:12,cable:8,plant:6,generator:11,substation:9,converter:8,frequency_converter:8,transformer:13})[power];
       const storage=first(t,'substation',['storage'])||first(t,'generator:source',['battery']);
       return {voltage,usage:t.usage,kind:storage?'battery_storage':power,domain:storage?'battery':'electricity',minzoom:storage?10:minzoom,state};
     }
@@ -47,7 +47,20 @@ export const isEnergyNetworkElement=e=>Boolean(energyNetworkKind(e.tags))||isNet
 const coords=e=>(e.geometry||[]).map(p=>[p.lon,p.lat]);
 const linearNetwork=e=>['line','minor_line','cable','pipeline','coal_conveyor'].includes(energyNetworkKind(e.tags)?.kind);
 const networkPolygons=e=>linearNetwork(e)||e.type==='relation'&&e.tags?.type!=='multipolygon'?[]:areaPolygons(e);
+function siteMemberGeometry(member) {
+  const tags=member.tags||{};
+  const explicitArea=tags.area!=='no'&&(tags.area==='yes'||tags.building&&tags.building!=='no'||['plant','substation'].includes(tags.power));
+  if(member.type==='way'&&!explicitArea){
+    if(!member.geometry||member.geometry.length<2||!member.geometry.every(validPoint))throw new Error(`Incomplete energy site way ${member.ref??member.id}`);
+    return {type:'LineString',coordinates:coords(member)};
+  }
+  return geometry({...member,id:member.ref??member.id});
+}
 function geometry(e) {
+  if(e.type==='relation'&&e.tags?.type==='site'){
+    if(!e.members?.length)throw new Error(`Empty energy site ${e.id}`);
+    return {type:'GeometryCollection',geometries:e.members.map(siteMemberGeometry)};
+  }
   if(e.type==='relation'&&(e.tags?.type!=='multipolygon'||linearNetwork(e))) {
     const lines=(e.members||[]).filter(m=>m.type==='way').map(m=>m.geometry);
     if(!lines.length||lines.some(line=>!line||line.length<2||!line.every(validPoint)))throw new Error(`Incomplete energy relation ${e.id}`);
