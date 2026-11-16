@@ -392,6 +392,26 @@ land/sea elevation samples are clamped to sea level inside the ocean mask.
 Missing or impossible depths stay transparent. Beyond the Web Mercator limit,
 the separately prepared polar caps retain their existing relief and contours.
 
+The DEM repair's opposing-shoulder test measures its search reach at the tile's
+centre latitude, accounting for the smaller ground width of Mercator pixels
+near the poles. A cosine floor of 0.18 and a radius of 2–64 pixels in the
+256-pixel tile grid bound the search; these limits mean it does not maintain
+constant ground reach at every zoom and latitude. The existing height thresholds
+remain in force. A depression corroborated by the coarse source is protected
+from detections introduced by the enlarged radius; the original narrower-radius
+checks retain their shared-source fault handling. New wider-radius detections
+require finite contradictory coarse evidence; a failed or missing reference
+leaves those ambiguous features unchanged.
+A negative height alone is not an error, and coastlines are not smoothed or
+sign-clamped. Synthetic tests at Nuuk and McMurdo latitudes cover this scale
+correction; they are not surveys or proof that those places' source data is
+correct. Existing tests retain real-basin, cliff and seabed cases.
+
+Witness repair already requests at most four neighboring tiles: four children
+at the next finer zoom, or a parent plus its edge neighbors at the finest zoom.
+A missing witness leaves the affected height unchanged; the four-tile bound
+never truncates the evidence used to decide a repair.
+
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
 
 At overview zooms 7–8, coarse negative contours remain visible below the shelf
@@ -551,3 +571,9 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+The original DEM fault-propagation and replacement checks retain their original
+pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
+WALL detector: otherwise shoulders beyond a small elevated plateau could hide
+an already established fault. The compact plateau regression repairs all 25
+faulty pixels and preserves the surrounding plateau and lower terrain.

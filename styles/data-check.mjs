@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261116-performance-ui-1';
+import {SEARCH_API} from './map-model.mjs?v=20261116-terrain-propagation-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
