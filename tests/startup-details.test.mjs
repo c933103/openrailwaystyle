@@ -737,3 +737,20 @@ test('Power method legend keeps every stroke finite and inside its viewbox',asyn
   }
  }finally{dom.window.close();}
 });
+
+
+test('Power map clicks select energy context and each new method stroke',async()=>{
+ const {dom,window,maps}=await start({search:'?mode=electrification&inactive=1&names=1'});
+ try{
+  const map=maps[0];map.handlers['style.load']();map.zoom=18;
+  const click=feature=>{window.document.getElementById('detail-content').replaceChildren();map.rendered=[feature];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});return window.document.getElementById('detail-content').textContent;};
+  for(const layer of style.layers.filter(l=>l.id.startsWith('energy-'))){
+   const text=click({source:layer.source,layer:{id:layer.id},properties:{energy_kind:'pipeline',pipeline_substance:'hydrogen',power_state:'present',osm_type:'way',osm_id:'900'},geometry:{type:'LineString',coordinates:[[0,0],[.001,0]]}});
+   assert.match(text,/Pipeline substancehydrogen/,layer.id);
+  }
+  for(const method of ['trolley-contact','rigid-contact','steam-propulsion','maglev-propulsion','battery-propulsion','hydrogen-propulsion','dual-voltage-primary','dual-voltage-secondary'])for(const state of ['','former-']){
+   const id=`electrification-${state}${method}`,text=click({source:'electricMethods',layer:{id},properties:{power_method_label:method,power_state:state?'disused':'present',osm_type:'way',osm_id:'901'},geometry:{type:'LineString',coordinates:[[0,0],[.001,0]]}});
+   assert.ok(text.includes(method),id);
+  }
+ }finally{dom.window.close();}
+});
