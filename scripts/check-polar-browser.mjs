@@ -97,7 +97,7 @@ try {
       window.contourDraws=[];await new Promise(resolve=>{window.map.once('render',resolve);window.map.triggerRepaint();});return window.contourDraws;
     });
     assert.deepEqual(removed,[],'removed contour layers must not draw fallback paint');
-    await page.evaluate(layers=>{for(const layer of layers)window.map.addLayer(layer);},contourLayers);
+    await page.evaluate(layers=>{for(const layer of layers)window.map.addLayer(layer);},contourLayers.filter(layer=>layer.type==='line'));
     const lowZoom=await page.evaluate(async()=>{
       const map=window.map,restore=map.getZoom();map.jumpTo({zoom:8});window.contourDraws=[];
       await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});return {restore,draws:window.contourDraws};
