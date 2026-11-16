@@ -138,3 +138,14 @@ test('named supply domains preserve explicit material and unknown pumping conten
  assert.equal(energyNetworkKind({man_made:'goods_conveyor',resource:'gravel'}),null);
  const conveyor=energyNetworkGeoJSON([way(400,[[0,0],[.001,0],[.001,.001],[0,0]],{man_made:'goods_conveyor',resource:'coal'})]).features[0];assert.equal(conveyor.geometry.type,'LineString');assert.equal(conveyor.properties.energy_line_style,'coal');
 });
+
+test('material descriptors do not preempt lifecycle feature types',()=>{
+ const conveyor={'disused:man_made':'goods_conveyor',resource:'coal'};
+ assert.deepEqual(energyNetworkKind(conveyor),{kind:'coal_conveyor',domain:'coal',minzoom:12,state:'disused'});
+ assert.equal(energyNetworkGeoJSON([way(912,[[0,0],[.001,0],[.001,.001],[0,0]],conveyor)]).features[0].geometry.type,'LineString');
+ assert.deepEqual(energyNetworkKind({'proposed:man_made':'petroleum_well',resource:'oil'}),{kind:'petroleum_well',domain:'fuel',minzoom:12,state:'proposed'});
+ assert.equal(energyNetworkKind({power:'plant','disused:man_made':'goods_conveyor',resource:'coal'}).kind,'plant');
+ assert.equal(energyNetworkKind({'disused:resource':'coal'}).state,'disused');
+ assert.equal(energyNetworkKind({resource:'coal',disused:'yes'}).state,'disused');
+ assert.equal(energyNetworkKind({resource:'oil',proposed:'yes'}).state,'proposed');
+});

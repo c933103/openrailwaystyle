@@ -33,8 +33,12 @@ export function energyNetworkKind(tags={}) {
     if(['water_works','water_tower','water_tank'].includes(t.man_made))return {kind:t.man_made,domain:'water',minzoom:11,state};
     if(first(t,'industrial',['hydrogen','hydrogen_plant','electrolysis']))return {kind:'hydrogen_plant',domain:'hydrogen',minzoom:9,state};
     if(first(t,'industrial',['refinery','oil','fuel_depot','oil_depot','gas','natural_gas','lng','oil_field','gas_field']))return {kind:t.industrial,domain:'fuel',minzoom:['refinery','oil'].includes(t.industrial)?8:9,state};
-    if(first(t,'resource',['oil','gas','natural_gas','petroleum']))return {kind:'fuel_extraction',domain:'fuel',minzoom:9,state};
-    if(first(t,'industrial',['coal','coal_yard','coking_plant','coal_washery','coal_processing'])||first(t,'resource',['coal','lignite','anthracite']))return {kind:t.industrial||'coal_extraction',domain:'coal',minzoom:t.resource?9:10,state};
+    if(first(t,'industrial',['coal','coal_yard','coking_plant','coal_washery','coal_processing']))return {kind:t.industrial,domain:'coal',minzoom:10,state};
+  }
+  // A material descriptor never outranks an explicit lifecycle feature type.
+  for(const prefix of prefixes){const resource=values(tags[prefix+'resource']);const state=prefix.slice(0,-1)||states.find(s=>tags[s]==='yes')||'present';
+    if(resource.some(v=>['oil','gas','natural_gas','petroleum'].includes(v)))return {kind:'fuel_extraction',domain:'fuel',minzoom:9,state};
+    if(resource.some(v=>['coal','lignite','anthracite'].includes(v)))return {kind:'coal_extraction',domain:'coal',minzoom:9,state};
   }
   return null;
 }
