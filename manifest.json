@@ -1,0 +1,27 @@
+{
+  "generated": "2026-11-16T06:52:50.501Z",
+  "osmBase": "2026-11-03T21:24:23Z",
+  "update": "full",
+  "features": 24151,
+  "kinds": {
+    "cableway": 3302,
+    "lift": 20849
+  },
+  "zoom": 12,
+  "tiles": 8522,
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "query": "[out:json][timeout:900][maxsize:1073741824];way[aerialway~\"^(cable_car|gondola|mixed_lift|chair_lift|drag_lift|t-bar|j-bar|platter)$\"];out tags geom;",
+  "license": "ODbL-1.0",
+  "description": "Every OSM aerial cableway and lift way (cable car, gondola, mixed lift, chair, drag, T-bar, J-bar and platter lifts), with names, owner and maxspeed.",
+  "complete": true,
+  "oldestSource": "2026-11-03T21:24:23Z",
+  "newestSource": "2026-11-11T10:58:20Z",
+  "extract": {
+    "index": "20261111T121854Z-42996345331",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 11148161,
+    "kept": 68690,
+    "waysWithoutGeometry": 0
+  }
+}
