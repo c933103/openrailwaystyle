@@ -83,3 +83,32 @@ test('the board and schedule caption never reintroduce a hidden numeric line lab
     assert.equal('matchingLine' in row, false, 'private matching evidence is not a display field');
   } finally { dom.window.close(); }
 });
+
+test('whitespace cannot expose an opaque route ID when a meaningful long name exists', () => {
+  for (const number of ['8913771', '20022891']) {
+    for (const padded of [` ${number} `, `\t${number}\n`]) {
+      const input = time({routeId: `feed_${number}`, displayName: padded,
+        routeShortName: padded, tripShortName: padded, routeLongName: 'Keihin-Tohoku Line'});
+      const before = structuredClone(input);
+      const row = rows([[input]])[0];
+      assert.equal(row.line, 'Keihin-Tohoku Line');
+      assert.deepEqual(input, before);
+      assert.equal(rows([[{...input, routeId: 'unrelated-route'}]])[0].line, number,
+        'a numeric public label with a meaningful long name is retained without opaque-ID evidence');
+      assert.equal(rows([[{...input, routeLongName: ''}]])[0].line, '');
+    }
+  }
+});
+
+
+test('opaque numeric fallback fields stay hidden after trimming without discarding meaningful train labels', () => {
+  for (const fields of [
+    {tripShortName: ' 8913771 ', routeLongName: 'Keihin-Tohoku Line'},
+    {routeLongName: ' 8913771 '},
+    {tripShortName: '2223A', routeLongName: ' 8913771 '},
+  ]) {
+    const expected = fields.tripShortName === '2223A' ? '2223A' :
+      fields.routeLongName === 'Keihin-Tohoku Line' ? 'Keihin-Tohoku Line' : '';
+    assert.equal(rows([[time({routeId: 'feed_8913771', ...fields})]])[0].line, expected);
+  }
+});
