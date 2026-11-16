@@ -11,9 +11,9 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}70`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}71`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 70 installs the GeoJSON worker parse repair with the complete shell.
+// Shell 71 installs the guarded latitude-aware terrain repair atomically.
 // Reuse the prior 3D/high-pitch controls and terrain-source integrity.
 // The complete module graph updates together; older open tabs retain their
 // versioned assets and verified MapLibre attribution backport.
