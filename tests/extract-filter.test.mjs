@@ -70,7 +70,7 @@ test('the primary key of each dataset is selected, not only listed as a refineme
 test('the inline queries of the snapshot, street-running and loading-gauge builders still read as pinned here', () => {
   const source = name => readFileSync(new URL(`../scripts/${name}`, import.meta.url), 'utf8');
   assert.match(source('build-snapshot.mjs'), /way\[railway~"\^\(\$\{STATES\.join\('\|'\)\}\)\$"\]\(\$\{box\}\);`, \.\.\.STATES\.map\(s => `way\["\$\{s\}:railway"~"\^\(\$\{tracks\}\)\$"\]/);
-  assert.match(source('build-street-running.mjs'), /\(way\[embedded=yes\];way\[embedded_rails\];\)/);
+  assert.match(source('street-running-files.mjs'), /\(way\[embedded=yes\];way\[embedded_rails\];\)/);
   assert.match(source('build-loading-gauge-list.mjs'), /way\[railway~"\^\([a-z_|]+\)\$"\]\[loading_gauge\]/);
 });
 

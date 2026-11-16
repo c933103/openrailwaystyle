@@ -190,6 +190,12 @@ How the choice is made:
   - Each difference was traced through the Overpass branch's own history. In all but one, the extract's feature, or its absence, is the one an earlier Overpass snapshot held, and the Overpass snapshot that changed it came after the region's time (2026-11-07 21:21 UTC; 2026-11-03 for the africa file).
   - The one exception is an aerialway way whose version in the extract (edited 2026-11-07 19:58) existed only between two Overpass snapshots.
 
+**Street running.** Then `scripts/build-extract-street-running.mjs` builds it and, on `main`, publishes it to `street-running-extract-data`, in the `street-data` layout.
+- **One read of the ways.** The selection is `STREET_QUERY`'s, element by element: ways with `embedded=yes` (exactly) or any `embedded_rails` value. The elements are kept as `out tags geom` gives them and converted by `streetFeatures`.
+- **Same files.** The query, the conversion and the writer (`writeStreetSnapshot`) are in `scripts/street-running-files.mjs`, shared with `build-street-running.mjs`. `osmBase` in the manifest is the assembly's oldest region time.
+- **Floor and completeness.** From a complete assembly, fewer than 100 features stop the run, as in the Overpass build. `source.json` is complete only when the assembly is.
+- **Checked against `street-data` of 2026-11-15.** The world assembled from the 2026-11-10 index took 73 s and 0.3 GB locally: 15,707 identical; 274 differ, 32 only in the extract, 23 only in Overpass. Traced through the Overpass branch's history as above, every difference is a feature that an earlier Overpass snapshot held and a snapshot after the region's time changed.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
