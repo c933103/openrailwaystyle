@@ -21,7 +21,7 @@ try{
  for(const viewport of ENERGY_VIEWPORTS)for(const [index,camera] of [...cameras,cameras[0]].entries()){
   // Every sample owns a fresh HTTP cache, protocol cache and renderer.
   const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:viewport.deviceScaleFactor});
-  const requests=[],errors=[];let page;
+  const requests=[],errors=[];let page,observed;
   try{
    await installEmptyMapProviders(context,base);
    await context.route('**/data/energy-network/**',async route=>{
@@ -50,14 +50,14 @@ try{
    page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
    await page.goto(`${base}energy-viewport.html`,{waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>window.energyIdle&&window.energyMap?.loaded()&&energyMap.areTilesLoaded()&&energyPending===0,{},{timeout:60000});
-   const observed=await page.evaluate(()=>({protocolRequests:energyCalls,errors:energyErrors,center:energyMap.getCenter().toArray(),zoom:energyMap.getZoom(),pitch:energyMap.getPitch(),bearing:energyMap.getBearing(),projection:energyMap.getProjection().type,rendered:energyMap.queryRenderedFeatures().length}));
+   observed=await page.evaluate(()=>({protocolRequests:energyCalls,errors:energyErrors,center:energyMap.getCenter().toArray(),zoom:energyMap.getZoom(),pitch:energyMap.getPitch(),bearing:energyMap.getBearing(),projection:energyMap.getProjection().type,rendered:energyMap.queryRenderedFeatures().length}));
    assert.ok(observed.center.every((value,i)=>Math.abs(value-camera.center[i])<1e-6),'camera centre changed');assert.ok(Math.abs(observed.zoom-camera.zoom)<1e-6,'camera zoom changed');assert.ok(Math.abs(observed.pitch-camera.pitch)<1e-6,'camera pitch changed');assert.ok(Math.abs(observed.bearing-camera.bearing)<1e-6,'camera bearing changed');assert.equal(observed.projection,camera.projection);
    if(!candidate&&active)assert.ok(observed.rendered>0,'synthetic energy geometry must render');
    if(camera.expectedBundle&&active)assert.ok(requests.some(r=>r.path===camera.expectedBundle),'candidate hotspot bundle was not fetched');
    const summary=assertEnergyDemand({requests,protocolRequests:observed.protocolRequests,active,errors:[...errors,...observed.errors]});
    samples.push({viewport,camera,active,observed,...summary,responses:requests});
    console.log(`energy viewport ${viewport.width} case ${index}: ${summary.bytes} bytes / ${summary.requests} responses`);
-  }catch(error){samples.push({viewport,camera,requests,errors,failure:error.message});throw error;}
+  }catch(error){samples.push({viewport,camera,requests,errors,observed,failure:error.message});await mkdir('browser-review',{recursive:true});if(page)await page.screenshot({path:`browser-review/energy-viewport-failure-${viewport.width}-${index}.png`}).catch(()=>{});throw error;}
   finally{await context.close();}
  }
 }finally{

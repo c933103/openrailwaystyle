@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
+import {decodeBundle} from '../styles/tile-bundles.mjs';
 import {energyCandidateCameras,ENERGY_CAMERAS,ENERGY_VIEWPORTS,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,summarizeEnergyDemand,assertEnergyDemand} from '../scripts/energy-viewport-acceptance.mjs';
 import {createEnergyNetworkProtocol} from '../styles/energy-network.mjs';
 const call='energynetwork://overview/5/16/15';
@@ -49,4 +53,14 @@ test('candidate hotspots target actual bundles and reject empty metadata-only ca
  for(const camera of cameras.filter(c=>c.expectedBundle)){assert.ok(files.has(camera.expectedBundle));assert.ok(camera.center.every(Number.isFinite));assert.equal(camera.pitch,0);}
  for(const key of files.keys())if(key.endsWith('index.json'))files.set(key,Buffer.from('{"bundles":[]}'));
  await assert.rejects(energyCandidateCameras('',{read,size}),/populated hotspot/);
+});
+
+test('synthetic areas retain interior geometry on both sides of the overview tile corner',()=>{
+ const files=energyFixtureFiles();
+ for(const x of [15,16])for(const y of [15,16]){
+  const tiles=decodeBundle(gunzipSync(files.get(`overview/5/${x}/${y}.bundle.gz`)));
+  const layer=new VectorTile(new Pbf(tiles.get(`5/${x}/${y}`))).layers.atlas_energy_network;
+  const polygons=Array.from({length:layer.length},(_,i)=>layer.feature(i)).filter(f=>f.type===3);
+  assert.ok(polygons.some(f=>f.loadGeometry().flat().some(p=>p.x>0&&p.x<4096&&p.y>0&&p.y<4096)),`interior area in ${x}/${y}`);
+ }
 });

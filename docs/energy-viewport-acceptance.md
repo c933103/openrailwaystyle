@@ -15,7 +15,7 @@ the cached-tile limit also matches the app. Camera centres cycle through the
 Equator, Nuuk latitude and the dateline. Two additional cold non-Power controls
 must issue no energy protocol or HTTP requests.
 
-The default data is a compact synthetic point fixture encoded by the real tile
+The default data is a compact synthetic point-and-area fixture encoded by the real tile
 and bundle builders. Each active fixture sample must render nonempty geometry.
 The renderer's requested protocol coordinates and every delivered energy HTTP
 body are retained in `browser-review/energy-viewport-budget.json`. Metadata is

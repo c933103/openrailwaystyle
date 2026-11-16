@@ -29,7 +29,14 @@ export function energyAcceptanceStyle(world,active=true){
  return {version:8,glyphs:world.glyphs,sources,layers};
 }
 export function energyFixtureFiles(){
- const data={type:'FeatureCollection',features:ENERGY_CENTRES.map((coordinates,id)=>({type:'Feature',id,properties:{power_state:'present',energy_minzoom:5,energy_domain:'electricity',supply_tier:'civil_network'},geometry:{type:'Point',coordinates}}))};
+ const data={type:'FeatureCollection',features:ENERGY_CENTRES.flatMap((coordinates,id)=>{
+  const [x,y]=coordinates,r=.04,properties={power_state:'present',energy_minzoom:5,energy_domain:'electricity',supply_tier:'civil_network'};
+  // A point quantized onto a tile edge can be clipped in an oblique view.
+  // Retain the point and span its neighbouring tiles with an actual area, so
+  // the fixture exercises visible geometry whichever boundary tile is loaded.
+  return [{type:'Feature',id:id*2,properties,geometry:{type:'Point',coordinates}},
+   {type:'Feature',id:id*2+1,properties,geometry:{type:'Polygon',coordinates:[[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r],[x-r,y-r]]]}}];
+ })};
  const files=new Map();let count=0,bytes=0;
  for(const [tier,{minzoom,maxzoom,bundleZoom}] of Object.entries(ENERGY_TIERS)){
   const bundles=heritageBundles(networkTiles(data,{minZoom:minzoom,maxZoom:maxzoom}),bundleZoom);
