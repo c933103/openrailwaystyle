@@ -56,9 +56,11 @@ export function createRailwayLayers() {
   // The two Natural Earth rail layers are distinct geographical coverages.
   // Draw BEHIND thematic OpenRailwayMap lines: data without infrastructure
   // attributes must never inherit a theme colour or masquerade as verified.
+  const neutralViews = MODES.filter(mode => mode !== 'infrastructure');
   for (const sourceLayer of ['railroads','railroads_north_america']) groups.backbone.push({
     id:`rail-backbone-${sourceLayer}`, type:'line', source:'railBackbone',
     'source-layer':sourceLayer, minzoom:4, maxzoom:7,
+    metadata:{'atlas:views':neutralViews,'atlas:initial-hidden':true},
     layout:{'line-cap':'round','line-join':'round'},
     paint:{'line-color':'#728783','line-width':['interpolate',['linear'],['zoom'],4,1,6,1.2,7,1.5],
       'line-opacity':0.8,'line-dasharray':[2,2]},
@@ -72,7 +74,6 @@ export function createRailwayLayers() {
   const referenceInfrastructure = ['case',
     ['==', ['get', 'highspeed_tag'], 'yes'], INFRASTRUCTURE[0][0],
     ['==', ['get', 'classification'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
-  const neutralViews = MODES.filter(mode => mode !== 'infrastructure');
   for(const [kind,color,dash,minzoom] of [['branch','#93999c',null,3],
     ['unknown','#93999c',[2,1],undefined],['main','#70777b',null,undefined]]) {
     const reference = (id, paint, views) => ({
@@ -81,7 +82,7 @@ export function createRailwayLayers() {
       filter:['==',['get','classification'],kind],
       layout:{'line-cap':'round','line-join':'round','line-sort-key':['-',3,['get','rank']]},
       paint:{'line-width':['interpolate',['linear'],['zoom'],0,1,6,1.3,8,1.7],...paint},
-      metadata:{'atlas:views':views},
+      metadata:{'atlas:views':views,'atlas:initial-hidden':!views.includes('infrastructure')},
     });
     groups.backbone.push(
       reference(`rail-reference-${kind}`,{'line-color':color,...(dash?{'line-dasharray':dash}:{})},neutralViews),
@@ -93,8 +94,9 @@ export function createRailwayLayers() {
   const SERVICE_TRACK = '#b8c0c5';
   // Close views otherwise depend entirely on the live detailed rail source:
   // the Atlas-owned overview ends at z8 and the basemap never drew its rails.
-  // Reuse already-loaded OpenMapTiles geometry beneath every thematic stroke.
-  // Dashed neutral lines carry no operating status or infrastructure attributes.
+  // Reuse already-loaded OpenMapTiles geometry beneath detailed tracks.
+  // Infrastructure reads only recorded subclass/service; the other views
+  // retain neutral strokes rather than inventing thematic attributes.
   groups.referenceDetail.push({
     id:'rail-basemap-reference',type:'line',source:'openmaptiles','source-layer':'transportation',minzoom:8,
     filter:['all',['==',['geometry-type'],'LineString'],
@@ -105,8 +107,20 @@ export function createRailwayLayers() {
     layout:{'line-cap':'butt','line-join':'round'},
     paint:{'line-color':'#70777b','line-width':['interpolate',['linear'],['zoom'],8,1,11,1.3,16,2],
       'line-opacity':0.8,'line-dasharray':[3,2]},
-    metadata:{'atlas:group':'railway','atlas:category':'reference','atlas:base-map':false},
+    metadata:{'atlas:group':'railway','atlas:category':'reference','atlas:base-map':false,'atlas:views':neutralViews,'atlas:initial-hidden':true},
   });
+  const infrastructureReference = structuredClone(groups.referenceDetail[0]);
+  infrastructureReference.id = 'infrastructure-basemap-reference';
+  infrastructureReference.metadata['atlas:views'] = ['infrastructure'];
+  infrastructureReference.metadata['atlas:initial-hidden'] = false;
+  infrastructureReference.paint['line-color'] = ['case',
+    ['match',['get','subclass'],['subway','light_rail','monorail'],true,false], INFRASTRUCTURE[3][0],
+    ['==',['get','subclass'],'tram'], INFRASTRUCTURE[4][0],
+    ['==',['get','subclass'],'funicular'], INFRASTRUCTURE[6][0],
+    ['match',['get','service'],['yard','siding','spur','crossover'],true,false], INFRASTRUCTURE[5][0],
+    INFRASTRUCTURE[1][0]];
+  delete infrastructureReference.paint['line-dasharray'];
+  groups.referenceDetail.push(infrastructureReference);
   for (const [mode, source, sourceLayer, color] of [
     ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
     ['speed', 'speed', 'speed_railway_line_low', speedPaint],

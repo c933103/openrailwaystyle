@@ -146,7 +146,7 @@ for (const mode of model.MODES) test(`${mode}: zoom-suppressed urban references 
  try {
   const map=f.maps[0],status=f.window.document.getElementById('map-status');
   map.handlers['style.load']();
-  const reference=subclass=>({source:'openmaptiles',properties:{subclass},layer:{id:'rail-basemap-reference'}});
+  const reference=subclass=>({source:'openmaptiles',properties:{subclass},layer:{id:mode==='infrastructure'?'infrastructure-basemap-reference':'rail-basemap-reference'}});
   for (const subclass of ['light_rail','monorail','tram','funicular']) {
    map.rendered=[reference(subclass)];
    for (const zoom of [8,9,9.99]) {
@@ -174,7 +174,7 @@ test('reference-only rail coverage is reported without mistaking a different vie
  try{
   const map=f.maps[0],status=f.window.document.getElementById('map-status');
   map.handlers['style.load']();map.zoom=10.9;
-  const reference={source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}};
+  const reference={source:'openmaptiles',properties:{},layer:{id:'infrastructure-basemap-reference'}};
   map.rendered=[reference,{source:'railway',properties:{},layer:{id:'speed-tracks'}}];
   map.handlers.idle();assert.match(status.textContent,/Only basemap railway reference.*detailed railway data/);
   for(const id of ['infrastructure-tracks','infrastructure-metro-overview']){
@@ -189,7 +189,7 @@ test('reference coverage waits for the selected detail source and preserves actu
   const f=await start({search:`?mode=${mode}`});
   try{
    const map=f.maps[0],status=f.window.document.getElementById('map-status');
-   map.handlers['style.load']();map.zoom=10.9;map.rendered=[{source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}}];
+   map.handlers['style.load']();map.zoom=10.9;map.rendered=[{source:'openmaptiles',properties:{},layer:{id:mode==='infrastructure'?'infrastructure-basemap-reference':'rail-basemap-reference'}}];
    let loaded=false;map.isSourceLoaded=id=>{assert.equal(id,source);return loaded};
    map.handlers.idle();assert.doesNotMatch(status.textContent,/Only basemap/,'pending geometry is not declared absent');
    loaded=true;map.handlers.idle();assert.match(status.textContent,/Only basemap/);

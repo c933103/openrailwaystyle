@@ -17,10 +17,10 @@ const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'
 const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
 // One neutral and one Infrastructure layer per mapped classification; the
-// compiled style starts with only the neutral strokes visible.
+// compiled style starts with only the Infrastructure strokes visible.
 const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,6);
 assert.deepEqual(layers.filter(l=>l.layout?.visibility!=='none').map(l=>l.id).sort(),
- ['rail-reference-branch','rail-reference-main','rail-reference-unknown']);
+ ['infrastructure-reference-branch','infrastructure-reference-main','infrastructure-reference-unknown']);
 const readerModule=new URL('mainline-reference.mjs',base).href;
 const renderer=published?new Map():await rendererFixture(base);
 const librarySpec=BROWSER_LIBRARIES.find(l=>l.package==='maplibre-gl'&&l.target.endsWith('.js'));
@@ -112,7 +112,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
      sourceLoaded:testMap.isSourceLoaded('railReference'),errorCount:sourceErrors.length,errors:sourceErrors.filter(e=>e.source!=='missingLive').slice(-10),
-     rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))})), 'source failure diagnostics',5000)}
+     rendered:testMap.queryRenderedFeatures({layers:['infrastructure-reference-main','infrastructure-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))})), 'source failure diagnostics',5000)}
     catch(diagnosticError){diagnostic={unavailable:diagnosticError.message}}
     const failure={profile:profile.name,projection,name:c.name,zoom,expected,diagnostic};
     console.error('MAINLINE_RENDER_FAILURE',JSON.stringify(failure));

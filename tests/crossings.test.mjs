@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {layerVisibility} from '../styles/layer-semantics.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import Pbf from 'pbf';
@@ -76,7 +77,11 @@ test('style: crossing dots from zoom 5 in the Infrastructure view (not those on 
     assert.equal(filter.filter({zoom: 8}, {type: 1, properties: {kind: 'road', minor: true}}), false, `${id}: tram, light rail and service-track crossings wait for zoom 11`);
   }
   assert.equal(byId['infrastructure-crossing-marks'].filter, undefined, 'every crossing from zoom 11');
-  for (const id of ['infrastructure-crossing-overview', 'infrastructure-crossing-dots', 'infrastructure-crossing-marks']) assert.equal(byId[id].layout.visibility, 'none', 'shown only in the Infrastructure view');
+  for (const id of ['infrastructure-crossing-overview', 'infrastructure-crossing-dots', 'infrastructure-crossing-marks']) {
+    assert.notEqual(byId[id].layout.visibility, 'none', 'Infrastructure is the static default');
+    assert.equal(layerVisibility(byId[id],{mode:'infrastructure',background:'map'}),true);
+    assert.equal(layerVisibility(byId[id],{mode:'speed',background:'map'}),false,'shown only in the Infrastructure view');
+  }
   assert.deepEqual([style.sources.crossingsOverview.minzoom, style.sources.crossingsOverview.maxzoom, style.sources.crossingsDetail.minzoom], [5, 5, 9]);
 });
 
