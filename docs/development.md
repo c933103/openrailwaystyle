@@ -118,7 +118,8 @@ Byte-range responses for archive assets remain supported.
 | `styles/world.style.json`, `styles/major-stations.geojson` | Generated style and curated station labels, committed and checked for reproducibility |
 | `styles/tile-labels.mjs`, `styles/han-region.mjs` | Label selection and geographic name rules |
 | `styles/track-count.mjs`, `styles/track-tiles.mjs` | Track grouping and tile loading |
-| `scripts/` | Build tools, data preparation, preview server and browser checks |
+| `scripts/` | Build tools, data preparation, preview server and browser-check entrypoints |
+| `scripts/diagnostics/`, `scripts/checks/` | Internal diagnostic and acceptance helpers; original top-level paths re-export their public functions |
 | `tests/` | Automated tests |
 | `.github/workflows/` | Validation, Pages deployment and snapshot maintenance |
 

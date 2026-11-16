@@ -111,3 +111,16 @@ test('the data digest follows every file name and byte of the assembled data', a
   const {['manifest.json']: _, ...without} = base;
   assert.notEqual(await make({...without, 'manifest2.json': '{}'}), digest, 'a renamed file');
 });
+
+// Organization retains existing entrypoints, and closure follows their re-exports.
+test('organized diagnostic and check helpers retain their exact browser CI selection', () => {
+  for (const [oldPath, newPath] of [
+    ['controls-cpu-profile.mjs', 'diagnostics/controls-cpu-profile.mjs'],
+    ['controls-settlement-trace.mjs', 'diagnostics/controls-settlement-trace.mjs'],
+    ['mainline-outage-check.mjs', 'checks/mainline-outage-check.mjs'],
+  ]) {
+    const expected = groupsFor(['scripts/' + oldPath]);
+    assert.ok(expected.length, oldPath + ' is used by a browser check');
+    assert.deepEqual(groupsFor(['scripts/' + newPath]), expected);
+  }
+});
