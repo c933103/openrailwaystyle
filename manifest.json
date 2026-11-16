@@ -1,14 +1,14 @@
 {
-  "generated": "2026-11-16T07:47:05.696Z",
-  "osmBase": "2026-11-16T07:44:05Z",
+  "generated": "2026-11-16T18:07:08.243Z",
+  "osmBase": "2026-11-16T18:03:21Z",
   "update": {
-    "changesSince": "2026-11-15T13:17:29Z",
-    "upserts": 21,
-    "deletes": 0,
+    "changesSince": "2026-11-16T07:44:05Z",
+    "upserts": 28,
+    "deletes": 3,
     "added": 0,
     "dropped": 0
   },
-  "features": 16004,
+  "features": 16002,
   "tiles": 557,
   "source": "https://overpass-api.de/api/interpreter",
   "query": "[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;",
