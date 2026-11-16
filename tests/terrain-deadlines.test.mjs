@@ -208,3 +208,14 @@ test('movement exceeding the optional repair budget returns the original fine ti
   const task=load('https://terrain.fixture/14/8192/8192.png',new AbortController());await flush();
   await advance(REPAIR_TIMEOUT_MS);assert.equal(await (await task).data.text(),'fine');assert.equal(fetches,1);
 });
+
+for (const format of ['png', 'webp']) test(`worker repair preserves ${format} URLs and query parameters for references`, async t => {
+  const calls = [], main = new Blob(['fine']);
+  const load = workerFixture(t, url => {calls.push(url);return Promise.resolve(workerResponse(main));});
+  const result = await load(`https://terrain.fixture/14/8192/8192.${format}?generation=7`, new AbortController());
+  assert.equal(result.data, main);
+  assert.deepEqual(calls, [
+    `https://terrain.fixture/14/8192/8192.${format}?generation=7`,
+    `https://terrain.fixture/12/2048/2048.${format}?generation=7`,
+  ]);
+});
