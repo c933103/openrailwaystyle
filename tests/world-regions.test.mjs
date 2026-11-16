@@ -48,7 +48,7 @@ test('every quadrant-based dataset starts from the shared tree, unchanged', () =
   const facilities = readFileSync(new URL('../scripts/build-power-facilities.mjs', import.meta.url), 'utf8');
   assert.match(facilities, /const regions=worldRegions\(90\);/);
   // No dataset builds its own grid or quarters any more.
-  for (const file of ['build-snapshot.mjs', 'build-power-facilities.mjs', 'build-heritage.mjs', 'crossing-data.mjs', 'heritage-data.mjs', 'station-acquisition.mjs', 'staged-overpass.mjs', 'branch-lines.mjs'])
+  for (const file of ['build-snapshot.mjs', 'build-power-facilities.mjs', 'build-heritage.mjs', 'crossing-data.mjs', 'heritage-data.mjs', 'station-acquisition.mjs', 'overpass/staged-overpass.mjs', 'branch-lines.mjs'])
     assert.doesNotMatch(readFileSync(new URL(`../scripts/${file}`, import.meta.url), 'utf8'), /lat ?= ?\(s ?\+ ?n\) ?\/ ?2|[sw] ?\+= ?(45|90)\b/, file);
 });
 

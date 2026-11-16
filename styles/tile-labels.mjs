@@ -1,3 +1,5 @@
+export {createBasemapSourceFactory} from './basemap-range-source.mjs';
+import {waitForViewport} from './viewport-settle.mjs';
 import {createRequestPool} from './request-pool.mjs';
 import {isRetryableProviderError, providerRetryDelay} from './provider-retry.mjs';
 export {createMetadataRetries} from './provider-retry.mjs';
@@ -149,7 +151,7 @@ export function tileTextBlocks(data, found = new Set()) {
   } catch {}
   return found;
 }
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000], rareGlyphs, onRequestChange} = {}) {
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000], rareGlyphs, onRequestChange, isMoving} = {}) {
   // Rare-Han glyph slices for a tile's labels load before the tile is drawn.
   const withGlyphs = async (data, found) => { if (found.size && rareGlyphs) await rareGlyphs(found); return data; };
   // A tile drawn as stored: the rare Han of its text values.
@@ -175,6 +177,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   const orm = path => `${ORM}/${path}`;
   const optional = promise => promise.catch(error => { if (error?.name === 'AbortError') throw error; return null; });
   const countZoom14=createTrackCounter(async(x,y,signal)=>{
+      await waitForViewport(signal, isMoving);
+      signal.throwIfAborted();
       // This tile and the eight around it, of each source: tracks near the
       // edges are counted with those beside them, and a station area
       // reaching into a neighbour is seen whole, with all its stations.

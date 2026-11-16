@@ -1,4 +1,5 @@
 import {withinDeadline,closeBrowser,armWatchdog} from './mainline-browser-deadlines.mjs';
+import {mainlineAtlasSample} from './mainline-atlas-sample.mjs';
 import {mainlineAtlasDiagnostics} from './mainline-atlas-diagnostics.mjs';
 import {mainlineOutageVisible} from './mainline-outage-check.mjs';
 import assert from 'node:assert/strict';
@@ -184,14 +185,11 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
    // colours; every other view draws the neutral strokes. Never both.
    const prefix=mode==='infrastructure'?'infrastructure-reference-':'rail-reference-';
    const shown=[`${prefix}main`,`${prefix}unknown`],hidden=[prefix==='rail-reference-'?'infrastructure-reference-main':'rail-reference-main'];
-   await page.waitForFunction(({ids,shown})=>atlasMap.queryRenderedFeatures({layers:shown})
-    .some(f=>ids.includes(f.properties.id)),{ids:c.chainIdsByZoom[6],shown},{timeout:30000});
-   const sample=await evaluate(page,({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
-    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
-     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
-    // queryRenderedFeatures ignores visibility, and layers that differ only in
-    // paint share one bucket, so read the other style's visibility directly.
-    hidden:hidden.map(id=>atlasMap.getLayoutProperty(id,'visibility'))}),{ids:c.chainIdsByZoom[6],shown,hidden});
+   const handle=await page.waitForFunction(mainlineAtlasSample,
+    {ids:c.chainIdsByZoom[6],shown,hidden,zoom,settleMs:3000,token:`${mode}:${zoom}`},{timeout:30000});
+   const sample=await handle.jsonValue();await handle.dispose();
+   checkpoint.sample=sample;
+   assert.deepEqual(sample.unstableDrops,[],`${mode} z${zoom}: reference disappeared after initial settling`);
    assert.deepEqual(sample.hidden,['none'],`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
    appSamples.push({mode,zoom,...sample});
   }

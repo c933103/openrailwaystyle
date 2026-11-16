@@ -55,8 +55,13 @@
 export const REPAIR_FROM = 4, REFERENCE_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000, RINGS = 12, CLIFF = 6, JUMP = 500, CLUSTER = 64;
 export const drop = z => 60 * 2 ** Math.max(0, 14 - z);
 // How far to each side the WALL test looks, in pixels: about 190 m at the
-// equator, wider than the 120° E band.
-const reach = z => Math.max(2, Math.round(10 * 2 ** (z - 13)));
+// equator, wider than the 120° E band. Mercator pixels shrink on the ground
+// towards the poles. A cosine floor of 0.18 and a 64-pixel ceiling bound
+// the correction; the existing two-pixel minimum still applies. These are
+// search limits, not constant metres at every latitude/zoom. Tile-centre
+// latitude matches the cliff-width test.
+const latitudeScale = (z, y) => Math.cos(Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / 2 ** z))));
+const reach = (z, y) => Math.min(64, Math.max(2, Math.round(10 * 2 ** (z - 13) / Math.max(0.18, latitudeScale(z, y)))));
 
 // How many contour lines lie between heights low and high in a terrain
 // tile of zoom z, in whichever units and family (land or seabed) draw
@@ -115,12 +120,12 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   const h = heightsOf(data, size), r = ref ? heightsOf(ref, refSize) : null;
   const {k, ox, oy} = referenceTile(z, x, y), scale = 256 / size;
   const clamp = v => Math.max(0, Math.min(refSize - 1, v));
-  const bad = new Uint8Array(size * size), out = Float64Array.from(h), limit = drop(z), w = Math.max(1, Math.round(reach(z) / scale));
+  const bad = new Uint8Array(size * size), out = Float64Array.from(h), limit = drop(z), w = Math.max(1, Math.round(reach(z, y) / scale));
   const sound = (qx, qy) => qx >= 0 && qy >= 0 && qx < size && qy < size && !bad[qy * size + qx] ? h[qy * size + qx] : NaN;
   // How far below the sound ground w pixels to both sides (across or
   // along) a height lies; one side will do where the other is off the tile
   // or bad, if `oneSide`.
-  const depth = (px, py, value, oneSide = false) => Math.max(...[[w, 0], [0, w]].map(([dx, dy]) => {
+  const depth = (px, py, value, oneSide = false, radius = w) => Math.max(...[[radius, 0], [0, radius]].map(([dx, dy]) => {
     const sides = [sound(px - dx, py - dy), sound(px + dx, py + dy)].filter(v => !Number.isNaN(v));
     return sides.length === 2 || (oneSide && sides.length) ? Math.min(...sides) - value : -Infinity;
   }));
@@ -130,6 +135,17 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   const queue = [];
   const mark = (i, value) => { bad[i] = 1; out[i] = value; queue.push(i); };
   const referenced = z >= REFERENCE_FROM;
+  // The lowest of the coarser tile's pixels round this pixel's centre.
+  const coarserBottom = (px, py) => {
+    if (!r || !referenced) return NaN;
+    const rx = (ox + (px + 0.5) * scale) / k * refSize / 256 - 0.5, ry = (oy + (py + 0.5) * scale) / k * refSize / 256 - 0.5;
+    let bottom = Infinity;
+    for (let qy = Math.floor(ry) - 1; qy <= Math.floor(ry) + 2; qy++) for (let qx = Math.floor(rx) - 1; qx <= Math.floor(rx) + 2; qx++) {
+      const v = r[clamp(qy) * refSize + clamp(qx)];
+      if (!Number.isNaN(v)) bottom = Math.min(bottom, v);
+    }
+    return bottom === Infinity ? NaN : bottom;
+  };
   // A single pixel far below level ground round it, in contour lines.
   const on = (qx, qy) => qx >= 0 && qy >= 0 && qx < size && qy < size;
   // The ring of eight pixels round a pixel, clockwise from the north-west;
@@ -168,11 +184,23 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
       return sunk(Math.min(...side), Math.max(...side));
     });
   };
+  const oldReach = Math.max(1, Math.round(Math.max(2, Math.round(10 * 2 ** (z - 13))) / scale));
   // Missing data and faults the coarser tile shares: filled from the
   // neighbours.
   for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
     const i = py * size + px;
-    if (Number.isNaN(h[i]) || (referenced && (depth(px, py, h[i]) > WALL || spike(px, py, h[i])))) mark(i, NaN);
+    // The latitude correction newly reaches wider pixel features. Where
+    // the reference corroborates that depression, keep it: a physical-width
+    // heuristic alone cannot establish that a deep valley is corrupt. Missing
+    // or failed reference evidence also leaves newly reached features intact.
+    // Evaluate the original radius independently: wider shoulders can fall
+    // outside a tile even where the original shoulders establish a fault.
+    let wall = referenced && depth(px, py, h[i], false, oldReach) > WALL;
+    if (!wall && referenced && w > oldReach && depth(px, py, h[i]) > WALL) {
+      const coarseBottom = coarserBottom(px, py);
+      wall = Number.isFinite(coarseBottom) && coarseBottom > h[i] + limit;
+    }
+    if (Number.isNaN(h[i]) || (referenced && (wall || spike(px, py, h[i])))) mark(i, NaN);
   }
   // Contour storms, all judged before any is marked.
   const storms = [];
@@ -184,7 +212,7 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   // Faults a few pixels across: from a jump no cliff makes, the pixels near
   // it that stand out from the ground round them. A pixel's width in metres
   // at the tile's middle.
-  const metres = 40075016.686 * Math.cos(Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / 2 ** z)))) / (2 ** z * size);
+  const metres = 40075016.686 * latitudeScale(z, y) / (2 ** z * size);
   const jump = Math.max(JUMP, CLIFF * metres);
   // Judged on the tile's own heights, faults already set aside included.
   const raw = (qx, qy) => on(qx, qy) ? h[qy * size + qx] : NaN;
@@ -235,17 +263,6 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
       if (!Number.isNaN(v)) top = Math.max(top, v);
     }
     return top === -Infinity ? NaN : top;
-  };
-  // The lowest of the coarser tile's pixels round this pixel's centre.
-  const coarserBottom = (px, py) => {
-    if (!r || !referenced) return NaN;
-    const rx = (ox + (px + 0.5) * scale) / k * refSize / 256 - 0.5, ry = (oy + (py + 0.5) * scale) / k * refSize / 256 - 0.5;
-    let bottom = Infinity;
-    for (let qy = Math.floor(ry) - 1; qy <= Math.floor(ry) + 2; qy++) for (let qx = Math.floor(rx) - 1; qx <= Math.floor(rx) + 2; qx++) {
-      const v = r[clamp(qy) * refSize + clamp(qx)];
-      if (!Number.isNaN(v)) bottom = Math.min(bottom, v);
-    }
-    return bottom === Infinity ? NaN : bottom;
   };
   // A pixel sunk that the coarser tile is too: it has something within half
   // the depth below the ground round it (and half of drop(z)) as low.
