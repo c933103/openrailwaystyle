@@ -100,7 +100,7 @@ test('hosted check keeps the natural gate and records the complete-input batch s
  assert.match(script,/terrainCapture=await boundedRead/);
  assert.ok(script.indexOf('controlsTerrainSettlement=controlsMapIdle(controlsMap)')<script.indexOf("if(entry.terrain)controlsMap.setTerrain"));
  assert.match(script,/waitUntil\(page,\(\)=>controlsTerrainSettlement,undefined,\{timeout:60000\}\)/);
- const barrier=(await readFile(new URL('../scripts/controls-painter-probe.mjs',import.meta.url),'utf8')).split('export function installControlsTerrainBatchBarrier')[1].split('export function controlsTerrainBatchesEquivalent')[0];
+ const barrier=(await readFile(new URL('../scripts/diagnostics/controls-painter-probe.mjs',import.meta.url),'utf8')).split('export function installControlsTerrainBatchBarrier')[1].split('export function controlsTerrainBatchesEquivalent')[0];
  assert.doesNotMatch(barrier,/\.rtt\s*=|freeRtt\(|redraw\(|setTimeout\(|triggerRepaint\(/);
 });
 

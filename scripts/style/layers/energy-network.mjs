@@ -1,4 +1,5 @@
-import {ENERGY_TIERS,ENERGY_DOMAIN_PAINT,ENERGY_DOMAIN_BADGE,ENERGY_NETWORK_LINES} from '../../../styles/energy-network.mjs';
+import {ENERGY_TIERS} from '../../energy-network-schema.mjs';
+import {ENERGY_DOMAIN_PAINT,ENERGY_DOMAIN_BADGE,ENERGY_NETWORK_LINES} from '../../../styles/energy-network.mjs';
 export function energyNetworkLayers() {
  const areas=[],lines=[],points=[];
  for(const [tier,limits] of Object.entries(ENERGY_TIERS))for(const former of [false,true]){

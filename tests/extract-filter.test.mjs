@@ -171,3 +171,7 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
     rmSync(dir, {recursive: true, force: true});
   }
 });
+
+test('energy selection retains named wells conveyors and legacy water tanks across lifecycle',()=>{
+ for(const value of ['petroleum_well','goods_conveyor','gasometer','water_tank'])for(const prefix of ['','disused:','construction:'])assert.equal(selectsTag(prefix+'man_made',value),true, prefix+value);
+});

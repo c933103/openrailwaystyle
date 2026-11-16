@@ -1,5 +1,6 @@
-import {createBundleReader} from './tile-bundles.mjs?v=20261116-energy-select-1';
-export const ENERGY_TIERS=Object.freeze({overview:{minzoom:5,maxzoom:7,bundleZoom:5},context:{minzoom:8,maxzoom:11,bundleZoom:8},detail:{minzoom:12,maxzoom:14,bundleZoom:12}});
+import {createBundleReader} from './tile-bundles.mjs?v=20261116-energy-stack-1';
+import {ENERGY_TIERS} from './energy-network-schema.mjs?v=20261116-energy-stack-1';
+export {ENERGY_TIERS};
 export const ENERGY_DOMAINS=Object.freeze({electricity:{color:'#99000d',mark:'E',label:'Civil electricity'},fuel:{color:'#b35806',mark:'F',label:'Fuel supply chain'},coal:{color:'#8c510a',mark:'C',label:'Coal supply chain'},water:{color:'#41b6c4',mark:'W',label:'Water and steam supply'},battery:{color:'#008a83',mark:'B',label:'Battery storage'},hydrogen:{color:'#00acc1',mark:'H',label:'Hydrogen supply'},servicing:{color:'#6f7b82',mark:'S',label:'Rail servicing'}});
 export const ENERGY_NETWORK_LINES=Object.freeze([
  {id:'grid',label:'Civil electricity line',color:'#99000d'},
@@ -8,6 +9,7 @@ export const ENERGY_NETWORK_LINES=Object.freeze([
  {id:'fuel',label:'Fuel or gas pipeline',color:'#b35806',dash:[5,2]},
  {id:'hydrogen',label:'Hydrogen pipeline',color:'#00acc1',dash:[4,1,1,1]},
  {id:'water',label:'Water or steam pipeline',color:'#41b6c4',dash:[2,2]},
+ {id:'coal',label:'Coal conveyor',color:'#8c510a',dash:[.5,2]},
  {id:'other',label:'Other supply connection',color:'#6f7b82'},
 ].map(Object.freeze));
 export const ENERGY_DOMAIN_PAINT=['match',['get','energy_domain'],...Object.entries(ENERGY_DOMAINS).flatMap(([key,{color}])=>[key,color]),'#6f7b82'];

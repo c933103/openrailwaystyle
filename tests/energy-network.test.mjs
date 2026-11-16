@@ -124,7 +124,89 @@ test('extra-high-voltage grid begins at the plan zoom five',async()=>{
  const {networkTiles}=await import('../scripts/build-extract-energy-network.mjs');
  const data=energyNetworkGeoJSON([way(300,[[0,0],[1,1]],{power:'line',voltage:'400000'})]);
  assert.equal(data.features[0].properties.energy_minzoom,5);
- const {ENERGY_TIERS}=await import('../styles/energy-network.mjs');
+ const {ENERGY_TIERS}=await import('../scripts/energy-network-schema.mjs');
  assert.equal(ENERGY_TIERS.overview.minzoom,5);
  assert.ok([...networkTiles(data,{minZoom:5,maxZoom:7}).keys()].some(k=>k.startsWith('5/')));
+});
+
+test('named supply domains preserve explicit material and unknown pumping contents',()=>{
+ for(const [tags,kind,domain,zoom] of [
+ [{man_made:'goods_conveyor',resource:'coal'},'coal_conveyor','coal',12],
+ [{man_made:'petroleum_well',substance:'gas'},'petroleum_well','fuel',12],
+ [{man_made:'storage_tank',content:'coal'},'storage','coal',10],
+ [{man_made:'pumping_station',substance:'gas'},'pumping_station','fuel',11],
+ [{man_made:'pumping_station'},'pumping_station','unknown',11],
+ [{man_made:'water_tank'},'water_tank','water',11],
+ [{railway:'fuel','fuel:hydrogen':'yes'},'fuel','hydrogen',11],
+ [{railway:'insulator'},'insulator','electricity',14],
+ [{industrial:'oil_field'},'oil_field','fuel',9],
+ [{industrial:'coal_washery'},'coal_washery','coal',10],
+ ]){const actual=energyNetworkKind(tags);assert.equal(actual.kind,kind);assert.equal(actual.domain,domain);assert.equal(actual.minzoom,zoom);}
+ assert.equal(energyNetworkKind({man_made:'goods_conveyor',resource:'gravel'}),null);
+ const conveyor=energyNetworkGeoJSON([way(400,[[0,0],[.001,0],[.001,.001],[0,0]],{man_made:'goods_conveyor',resource:'coal'})]).features[0];assert.equal(conveyor.geometry.type,'LineString');assert.equal(conveyor.properties.energy_line_style,'coal');
+});
+
+test('material descriptors do not preempt lifecycle feature types',()=>{
+ const conveyor={'disused:man_made':'goods_conveyor',resource:'coal'};
+ assert.deepEqual(energyNetworkKind(conveyor),{kind:'coal_conveyor',domain:'coal',minzoom:12,state:'disused'});
+ assert.equal(energyNetworkGeoJSON([way(912,[[0,0],[.001,0],[.001,.001],[0,0]],conveyor)]).features[0].geometry.type,'LineString');
+ assert.deepEqual(energyNetworkKind({'proposed:man_made':'petroleum_well',resource:'oil'}),{kind:'petroleum_well',domain:'fuel',minzoom:12,state:'proposed'});
+ assert.equal(energyNetworkKind({power:'plant','disused:man_made':'goods_conveyor',resource:'coal'}).kind,'plant');
+ assert.equal(energyNetworkKind({'disused:resource':'coal'}).state,'disused');
+ assert.equal(energyNetworkKind({resource:'coal',disused:'yes'}).state,'disused');
+ assert.equal(energyNetworkKind({resource:'oil',proposed:'yes'}).state,'proposed');
+});
+
+test('shared railway loading rack is geometry evidence, without proximity or hole inference',()=>{
+ const rack=(lon,lat)=>({type:'node',id:90,lon,lat,tags:{railway:'loading_rack'}});
+ const feature=(site,r)=>energyNetworkGeoJSON([site,r]).features.find(f=>f.id===`${site.type}-${site.id}`);
+ assert.match(feature(area,rack(.0005,.0005)).properties.siding_evidence,/loading rack intersects site/);
+ assert.equal(feature(area,rack(.00101,.0005)).properties.rail_served,false);
+ assert.equal(feature(area,{...rack(.0005,.0005),tags:{'disused:railway':'loading_rack'}}).properties.rail_served,false);
+ assert.equal(feature(area,{...rack(.0005,.0005),tags:{railway:'loading_rack',proposed:'yes'}}).properties.rail_served,false);
+ const hole=way(9,[[.0002,.0002],[.0008,.0002],[.0008,.0008],[.0002,.0008],[.0002,.0002]],{});
+ const site={type:'relation',id:3,tags:{type:'multipolygon',industrial:'refinery'},members:[{type:'way',role:'outer',geometry:area.geometry},{type:'way',role:'inner',geometry:hole.geometry}]};
+ assert.equal(feature(site,rack(.0005,.0005)).properties.rail_served,false);
+});
+test('traction frequency and mapped circuit evidence control line visibility while civil plants remain contextual',()=>{
+ for(const frequency of ['16.7','25']){const line=energyNetworkGeoJSON([way(1,[[0,0],[.001,0]],{power:'line',frequency})]).features[0];assert.equal(line.properties.energy_minzoom,5);assert.equal(line.properties.energy_line_style,'traction');}
+ const facility={type:'node',id:90,lon:0,lat:0,tags:{power:'substation',usage:'traction',voltage:'15000',frequency:'50'}};
+ const line={...way(1,[[0,0],[.001,0]],{power:'line',voltage:'15000',frequency:'50'}),nodes:[90,91]};
+ const props=energyNetworkGeoJSON([facility,line]).features.find(f=>f.id==='way-1').properties;
+ assert.match(props.circuit_connection_basis,/Shared node/);assert.equal(props.energy_minzoom,9);assert.equal(props.energy_line_style,'grid');assert.equal(props.traction_basis,undefined);
+ assert.equal(energyNetworkGeoJSON([{...area,tags:{power:'plant'}}]).features[0].properties.energy_minzoom,9);
+ const plant=energyNetworkGeoJSON([{...area,tags:{power:'plant'}},way(9,[[0,.0005],[.001,.0005]],{railway:'rail'})]).features.find(f=>f.id==='way-1');
+ assert.equal(plant.properties.energy_minzoom,6);
+});
+test('planned removed and inactive tracks never establish current site servicing evidence',()=>{
+ const track=tags=>way(992,[[-.001,.0005],[.002,.0005]],tags);
+ const props=tags=>energyNetworkGeoJSON([area,track(tags)]).features.find(f=>f.id==='way-1').properties;
+ assert.equal(props({railway:'rail',service:'siding'}).rail_served,true);
+ for(const state of ['proposed','construction','removed','razed','demolished','abandoned','disused']){
+  for(const tags of [{[state+':railway']:'rail'},{railway:'rail',[state]:'yes'}]){
+   assert.equal(props(tags).rail_served,false,JSON.stringify(tags));
+   assert.equal(props(tags).supply_tier,'civil_network');
+  }
+ }
+});
+test('explicit non-area standalone ways retain lines and never create interior site evidence',()=>{
+ const ring=[[0,0],[.01,0],[.01,.01],[0,.01],[0,0]];
+ for(const tags of [{power:'plant',area:'no'},{'disused:power':'plant',area:'no'},{industrial:'refinery',area:'no'}]){
+  const site=way(1,ring,tags),track=way(992,[[.004,.004],[.005,.005]],{railway:'rail'});
+  const feature=energyNetworkGeoJSON([site,track]).features.find(f=>f.id==='way-1');
+  assert.equal(feature.geometry.type,'LineString');assert.deepEqual(feature.geometry.coordinates,ring);
+  assert.equal(feature.properties.rail_served,false);assert.equal(feature.properties.supply_tier,'civil_network');
+  assert.equal(railRelationship(site,[{id:'way-992',line:[[.004,.004],[.005,.005]]}]).rail_served,false);
+ }
+});
+test('dateline track edges cannot invent global site intersections',()=>{
+ const site=way(1,[[-.001,-.001],[.001,-.001],[.001,.001],[-.001,.001],[-.001,-.001]],{industrial:'refinery'});
+ const track=way(993,[[179.9,0],[-179.9,0]],{railway:'rail'});
+ const feature=energyNetworkGeoJSON([site,track]).features.find(f=>f.id==='way-1');
+ assert.equal(feature.properties.rail_served,false);assert.equal(feature.properties.siding_evidence,'Not recorded');
+ const local=way(2,[[179.94,-.001],[179.96,-.001],[179.96,.001],[179.94,.001],[179.94,-.001]],{industrial:'refinery'});
+ const near=energyNetworkGeoJSON([local,track]).features.find(f=>f.id==='way-2');
+ assert.equal(near.properties.rail_served,false);assert.match(near.properties.siding_evidence,/Dateline.*unverified/);
+ const mixed=way(994,[[-.002,0],[.002,0],[179.9,0],[-179.9,0]],{railway:'rail'});
+ assert.equal(energyNetworkGeoJSON([site,mixed]).features.find(f=>f.id==='way-1').properties.rail_served,true,'ordinary non-crossing runs retain real intersection evidence');
 });

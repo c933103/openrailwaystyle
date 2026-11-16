@@ -9,8 +9,11 @@ import WorkerDispatch from '../node_modules/maplibre-contour/src/worker-dispatch
 import {LocalDemManager} from '../node_modules/maplibre-contour/src/local-dem-manager.ts';
 import {createDemTileLoader} from './dem-loader.mjs';
 
-const getTile = createDemTileLoader();
+const movement = new Map();
+self.addEventListener('message', ({data}) => {
+  if (data?.type === 'atlas-viewport' && movement.has(data.managerId) && typeof data.moving === 'boolean') movement.set(data.managerId, data.moving);
+});
 class RepairingDispatch extends WorkerDispatch {
-  init = message => { this.managers[message.managerId] = new LocalDemManager({...message, getTile}); return Promise.resolve(); };
+  init = message => { movement.set(message.managerId, false); this.managers[message.managerId] = new LocalDemManager({...message, getTile:createDemTileLoader({isMoving:() => movement.get(message.managerId) === true})}); return Promise.resolve(); };
 }
 self.actor = new Actor(self, new RepairingDispatch());

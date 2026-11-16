@@ -159,6 +159,8 @@ export function powerFacilityEnergyRows(properties = {}) {
     ['Supply role',({trackside:'Trackside servicing',rail_served:'Rail-related site',civil_network:'Civil network'})[p.supply_tier]],
     ['Siding evidence',p.siding_evidence],
     ['Traction circuit evidence',p.traction_basis],
+    ['Mapped circuit connectivity',p.circuit_connection_basis],
+    ['Matching voltage/frequency pairs',p.circuit_electrical_pairs],
     ['Generation source',p.generation_source],
     ['Pipeline substance',p.pipeline_substance],
   ].filter(([,value])=>value!=null&&String(value).trim()!=='');

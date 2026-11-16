@@ -3,7 +3,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {gunzipSync} from 'node:zlib';
-import {ENERGY_TIERS} from '../styles/energy-network.mjs';
+import {ENERGY_TIERS} from './energy-network-schema.mjs';
 import {decodeBundle,BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 export async function validateEnergyNetwork(root) {
  const manifest=JSON.parse(await readFile(join(root,'manifest.json')));

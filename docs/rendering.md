@@ -392,11 +392,42 @@ land/sea elevation samples are clamped to sea level inside the ocean mask.
 Missing or impossible depths stay transparent. Beyond the Web Mercator limit,
 the separately prepared polar caps retain their existing relief and contours.
 
+The DEM repair's opposing-shoulder test measures its search reach at the tile's
+centre latitude, accounting for the smaller ground width of Mercator pixels
+near the poles. A cosine floor of 0.18 and a radius of 2–64 pixels in the
+256-pixel tile grid bound the search; these limits mean it does not maintain
+constant ground reach at every zoom and latitude. The existing height thresholds
+remain in force. A depression corroborated by the coarse source is protected
+from detections introduced by the enlarged radius; the original narrower-radius
+checks retain their shared-source fault handling. New wider-radius detections
+require finite contradictory coarse evidence; a failed or missing reference
+leaves those ambiguous features unchanged.
+A negative height alone is not an error, and coastlines are not smoothed or
+sign-clamped. Synthetic tests at Nuuk and McMurdo latitudes cover this scale
+correction; they are not surveys or proof that those places' source data is
+correct. Existing tests retain real-basin, cliff and seabed cases.
+
+Witness repair already requests at most four neighboring tiles: four children
+at the next finer zoom, or a parent plus its edge neighbors at the finest zoom.
+A missing witness leaves the affected height unchanged; the four-tile bound
+never truncates the evidence used to decide a repair.
+
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
+
+At overview zooms 7–8, coarse negative contours remain visible below the shelf
+range. In metric mode the overview starts at −200 m while shelf contours are
+strictly above −200 m; in imperial mode the first overview level is −500 ft
+while the shelf filter is strictly above −200 ft. Their generated negative
+levels are therefore disjoint, even though the overview filter alone accepts
+other negative numbers. The negative overview also preserves depressions on
+land; these signed sources do not classify an elevation's sign as ocean.
+
+The [terrain source assessment](terrain-source-assessment.md) records provider
+coverage, licence evidence, repair limits and the remaining source-switch checks.
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
-Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
+Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Satellite and Hybrid also use these prepared depths in their cartographic polar fallback.
 
 The polar texture is an optional, format-validated asset (`north-depth.png`/`south-depth.png`) published alongside the existing contour/relief snapshots. Earlier snapshots lack the depth image and keep their flat polar fill without requesting a nonexistent asset; depth image load or shader failure is isolated from the rest of the map. Polar depth uses **ETOPO 2022**, while the ordinary Mercator seabed raster uses a different ETOPO-derived terrain source; the palette is identical but source resolution/depth samples may differ near 85.05° rather than providing artificial continuity. The colour texture is separate from the 3D terrain geometry; full 3D relief remains unavailable within the polar cap.
 
@@ -420,7 +451,7 @@ clipping mask. Older assets cannot distinguish original edges exactly coincident
 with that mask; those coincident segments are conservatively omitted.
 
 The already-published polar OSM detail tiles (historically named `carto`
-in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,
+in their index/filenames) are shared by Map, Carto and Hybrid. In Map, camera-zoom ranges and layout visibility control mapped waterways,
 subdued buildings and outlines; airport aprons/taxiways/runways also follow
 the Transport toggle. Removed style layers stay hidden, and overlapping
 seabed layer ranges draw each visible layer in style order. Polar roads and
@@ -430,9 +461,14 @@ its own live filter accepts, with its colour, width, opacity, zoom range and
 visibility, in style order. Detail tiles built before this change carry no
 class and draw no Map roads; Carto still draws all roads and paths. Polar line
 strokes are solid, so dashed road styles (cycle and footpaths) appear solid
-beyond 85°. Named facility and peak labels remain Carto-only: the snapshot
-stores no amenity type to match the Map's per-category context labels.
-Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
+beyond 85°. Named facility and peak labels appear from ground zoom 12 in Map and Hybrid
+when place labels are visible. The snapshot stores no amenity type for finer
+per-category label control. Major contours receive signed metre/foot labels
+from ground zoom 8 when their live contour-label layer is visible; one
+half-length candidate per isoline is collision-filtered with place labels.
+Each tile retains at most 128 contour candidates. Satellite and Hybrid show a shaded terrain fallback
+from existing polar depth, relief, water and ice data, rather than satellite
+photography. Hybrid retains vector overlays; Satellite cancels fine meshes.
 Visibility-based requests, byte/count limits, aborts and older-snapshot
 fallback remain in force. No browser request is made to Overpass.
 
@@ -489,7 +525,7 @@ These layers are independent of the original demo styles and remain visible over
 
 ### Carto background
 
-Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map and Carto share the visible fine contour bands and prepared detail tiles; roads, paths and detailed facility labels remain Carto-only. Satellite/Hybrid retain black caps and release detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map, Carto and Hybrid share the visible fine contour bands and prepared detail tiles. Satellite and Hybrid use shaded terrain as a polar fallback; Satellite releases detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
 
@@ -540,3 +576,27 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+### Neutral railway outage references
+
+The Infrastructure view draws its own mapped-class reference colors from the
+initial style. Other views keep neutral mainline, Natural Earth and close-zoom
+basemap references hidden until the selected live track source has a recorded
+failure in the viewport. Station or unrelated-theme failures do not enable them.
+Permanent failures qualify for presentation without granting another retry.
+
+The presentation reuses the station fallback's source-instance, active tile,
+world-copy and offscreen retirement rules. A healthy neighboring tile cannot
+clear the failed tile; actual recovery or changing source/viewport retires the
+fallback. At zoom 7 the selected dependency changes from the theme's overview
+to its detailed track source. Reference visibility applies to the view rather
+than clipping whole railway chains to failed tile rectangles. This preserves
+continuous lines but can also show neutral reference geometry beside healthy
+areas in a partially failed view. It does not assert thematic values or current
+operating status for those reference features.
+
+The original DEM fault-propagation and replacement checks retain their original
+pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
+WALL detector: otherwise shoulders beyond a small elevated plateau could hide
+an already established fault. The compact plateau regression repairs all 25
+faulty pixels and preserves the surrounding plateau and lower terrain.

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {matchesGlob} from 'node:path';
+import {createHash} from 'node:crypto';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {runInNewContext} from 'node:vm';
@@ -89,6 +91,10 @@ test('pixel comparator rejects missing/truncated buffers and detects even one ch
 });
 test('source/runtime hashes are fixed and a complete diagnostic manifest is available',async()=>{
  const manifest=await controlsPainterManifest();assert.equal(manifest.settlementDeadlineMs,60000);assert.equal(manifest.repetitionsPerArm,1);assert.equal(manifest.productionChanges,true);assert.equal(Object.keys(manifest.sources).length,14);assert.ok(manifest.inputs['styles/map-controls.mjs']);
+ for(const name of ['controls-painter-probe.mjs','controls-painter-fixture.mjs']){
+  const path='scripts/diagnostics/'+name;
+  assert.equal(manifest.inputs[path],createHash('sha256').update(await readFile(path)).digest('hex'));
+ }
 });
 test('workflow checkout, declaration and artifact select the PR head or push SHA consistently',async()=>{
  const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
@@ -110,7 +116,7 @@ test('hosted experiment is isolated, fixture guarded, single-pair, and retains f
  const script=await readFile(new URL('../scripts/check-controls-painter-browser.mjs',import.meta.url),'utf8'),workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
  assert.match(script,/for\(const guard of \[false,true\]\)/);assert.match(script,/timeout:60000/);assert.match(script,/installControlsPainterFixtures/);assert.match(script,/changedBytes===0&&c.dispatchEqual/);assert.match(script,/a.transition.settled/);assert.match(script,/finally\{clearTimeout\(deadline\);await save\(\);\}/);
  assert.match(workflow,/if: always\(\)/);assert.doesNotMatch(workflow,/rerun|retry|workflow_dispatch/);assert.match(workflow,/contents: read/);
- const fixture=await readFile(new URL('../scripts/controls-painter-fixture.mjs',import.meta.url),'utf8');assert.doesNotMatch(fixture,/route\.fetch\(/);assert.match(script,/This experiment is loopback-only/);
+ const fixture=await readFile(new URL('../scripts/diagnostics/controls-painter-fixture.mjs',import.meta.url),'utf8');assert.doesNotMatch(fixture,/route\.fetch\(/);assert.match(script,/This experiment is loopback-only/);
  const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');assert.doesNotMatch(app,/controls-painter/);
  assert.match(script,/if\(guard\)installHiddenTileMaskGuard\(controlsMap\)/);
  assert.match(script,/painter\._renderTileClippingMasks=original/);
@@ -140,4 +146,13 @@ test('diagnostic build uses fork source repository for PRs and event repository 
  for(const [event,head,base,expected] of [['pull_request','contributor/atlas','c933103/openrailwaystyle','contributor/atlas'],['pull_request','c933103/openrailwaystyle','c933103/openrailwaystyle','c933103/openrailwaystyle'],['push',null,'c933103/openrailwaystyle','c933103/openrailwaystyle']]){
   const actual=runInNewContext(expression,{github:{event_name:event,event:head?{pull_request:{head:{repo:{full_name:head}}}}:{},repository:base}});assert.equal(actual,expected);
  }
+});
+
+// GitHub workflow path filters run before the dynamic browser dependency planner.
+test('painter workflow runs for implementation-only and compatibility-path changes',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+ const filters=[...workflow.split('permissions:')[0].matchAll(/^      - '([^']+)'$/gm)].map(match=>match[1]);
+ for(const name of ['controls-painter-probe.mjs','controls-painter-fixture.mjs','controls-painter-terrain-replay.mjs'])
+  for(const directory of ['scripts/','scripts/diagnostics/'])
+   assert.ok(filters.some(pattern=>matchesGlob(directory+name,pattern)),directory+name+' alone must trigger the painter comparison');
 });

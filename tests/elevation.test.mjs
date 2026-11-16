@@ -72,3 +72,25 @@ test('measure: rise and gradient between the ends of a finished distance', async
   m.refresh();
   assert.equal(asked.length, 1, 'not asked again for the same ends');
 });
+
+
+test('elevation samples native image dimensions across both axes and world wrap', async () => {
+  // A geographic plane sampled at native pixel centres gives the same
+  // result at 256 and 512 pixels; reading the north-west quadrant cannot.
+  const zoom = 2;
+  for (const size of [256, 512]) {
+    const data = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++)
+      data.set([...encode((x + 0.5) / size * 256 + (y + 0.5) / size * 512), 255], (y * size + x) * 4);
+    const calls = [];
+    const elevation = createElevation('fixture/{z}/{x}/{y}.webp', {zoom, load:async url => {calls.push(url);return {data,size};}});
+    const positions = [[0.25,0.25], [0.75,0.25], [0.25,0.75], [0.75,0.75]];
+    const points = positions.map(([x,y]) => [(2+x)/4*360-180, Math.atan(Math.sinh(Math.PI*(1-2*(1+y)/4)))*180/Math.PI]);
+    const expected = positions.map(([x,y]) => x*256+y*512);
+    const actual = await elevation.heights(points);
+    actual.forEach((height,i) => assert.ok(Math.abs(height-expected[i])<1e-6, `${size}: ${i}: ${height}`));
+    const wrapped = await elevation.heights(points.map(([x,y]) => [x+360,y]));
+    wrapped.forEach((height,i) => assert.ok(Math.abs(height-expected[i])<1e-6));
+    assert.deepEqual(calls, ['fixture/2/2/1.webp']);
+  }
+});

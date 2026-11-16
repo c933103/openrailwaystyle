@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261116-energy-select-1';
+import { MODES } from './map-model.mjs?v=20261116-energy-stack-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -57,7 +57,7 @@ function legacySemantics(layer) {
     'atlas:settings': settings,
     // Preserve the catalog's default layout separately from runtime policy:
     // platform layers acquire Infrastructure gating before the map starts.
-    'atlas:initial-hidden': Boolean(mode && mode !== 'speed'),
+    'atlas:initial-hidden': Boolean(mode && mode !== 'infrastructure'),
     // Context currently uses basemap geometry and follows its background
     // suppression. Preserve that independently from its semantic group.
     'atlas:base-map': layer.source === 'openmaptiles' || id === 'background' || terrain,

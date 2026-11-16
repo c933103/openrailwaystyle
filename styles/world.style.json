@@ -10778,6 +10778,90 @@
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
+      "id": "energy-overview-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.85,
+        "line-dasharray": [
+          0.5,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkOverview",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 5,
+      "maxzoom": 8,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "id": "energy-overview-other-lines",
       "type": "line",
       "filter": [
@@ -11393,6 +11477,92 @@
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
+      "id": "energy-overview-former-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.5,
+        "line-dasharray": [
+          0.5,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkOverview",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 5,
+      "maxzoom": 8,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "id": "energy-overview-former-other-lines",
       "type": "line",
       "filter": [
@@ -11966,6 +12136,90 @@
         "line-opacity": 0.85,
         "line-dasharray": [
           2,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkContext",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "energy-context-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.85,
+        "line-dasharray": [
+          0.5,
           2
         ]
       },
@@ -12609,6 +12863,92 @@
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
+      "id": "energy-context-former-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.5,
+        "line-dasharray": [
+          0.5,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkContext",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "id": "energy-context-former-other-lines",
       "type": "line",
       "filter": [
@@ -13176,6 +13516,89 @@
         "line-opacity": 0.85,
         "line-dasharray": [
           2,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkDetail",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
+      "id": "energy-detail-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.85,
+        "line-dasharray": [
+          0.5,
           2
         ]
       },
@@ -13811,6 +14234,91 @@
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
+      "id": "energy-detail-former-coal-lines",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "power_state"
+          ],
+          "present"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          [
+            "get",
+            "energy_minzoom"
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "energy_line_style"
+          ],
+          "coal"
+        ]
+      ],
+      "paint": {
+        "line-color": "#8c510a",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          14,
+          2
+        ],
+        "line-opacity": 0.5,
+        "line-dasharray": [
+          0.5,
+          2
+        ]
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "energyNetworkDetail",
+      "source-layer": "atlas_energy_network",
+      "minzoom": 12,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "energy-supply",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "id": "energy-detail-former-other-lines",
       "type": "line",
       "filter": [
@@ -13877,9 +14385,33 @@
       "source-layer": "railroads",
       "minzoom": 4,
       "maxzoom": 7,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railroads",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": "#728783",
@@ -13903,20 +14435,6 @@
           2,
           2
         ]
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "railroads",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
       }
     },
     {
@@ -13926,9 +14444,33 @@
       "source-layer": "railroads_north_america",
       "minzoom": 4,
       "maxzoom": 7,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railroads_north_america",
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      },
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": "#728783",
@@ -13952,20 +14494,6 @@
           2,
           2
         ]
-      },
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "railway",
-        "atlas:category": "railroads_north_america",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": false,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": false
       }
     },
     {
@@ -13993,7 +14521,8 @@
             "get",
             "rank"
           ]
-        ]
+        ],
+        "visibility": "none"
       },
       "paint": {
         "line-width": [
@@ -14028,7 +14557,7 @@
           "axle"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14062,8 +14591,7 @@
             "get",
             "rank"
           ]
-        ],
-        "visibility": "none"
+        ]
       },
       "paint": {
         "line-width": [
@@ -14112,7 +14640,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14145,7 +14673,8 @@
             "get",
             "rank"
           ]
-        ]
+        ],
+        "visibility": "none"
       },
       "paint": {
         "line-width": [
@@ -14184,7 +14713,7 @@
           "axle"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14217,8 +14746,7 @@
             "get",
             "rank"
           ]
-        ],
-        "visibility": "none"
+        ]
       },
       "paint": {
         "line-width": [
@@ -14267,7 +14795,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14300,7 +14828,8 @@
             "get",
             "rank"
           ]
-        ]
+        ],
+        "visibility": "none"
       },
       "paint": {
         "line-width": [
@@ -14335,7 +14864,7 @@
           "axle"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14368,8 +14897,7 @@
             "get",
             "rank"
           ]
-        ],
-        "visibility": "none"
+        ]
       },
       "paint": {
         "line-width": [
@@ -14418,7 +14946,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -14459,8 +14987,7 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": [
@@ -14561,7 +15088,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -15128,8 +15655,7 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": [
@@ -15230,7 +15756,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -15317,7 +15843,8 @@
       ],
       "layout": {
         "line-cap": "butt",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": "#70777b",
@@ -15346,7 +15873,184 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "reference",
-        "atlas:views": [],
+        "atlas:views": [
+          "speed",
+          "electrification",
+          "control",
+          "gauge",
+          "loading",
+          "service",
+          "owner",
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "infrastructure-basemap-reference",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "LineString"
+        ],
+        [
+          "any",
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "rail"
+            ],
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "subclass"
+                ],
+                ""
+              ],
+              [
+                "",
+                "rail",
+                "narrow_gauge",
+                "preserved",
+                "funicular"
+              ],
+              true,
+              false
+            ]
+          ],
+          [
+            "all",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "transit"
+            ],
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "subway",
+                "light_rail",
+                "monorail",
+                "tram"
+              ],
+              true,
+              false
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "subway",
+              "light_rail",
+              "monorail"
+            ],
+            true,
+            false
+          ],
+          "#8226b0",
+          [
+            "==",
+            [
+              "get",
+              "subclass"
+            ],
+            "tram"
+          ],
+          "#df7900",
+          [
+            "==",
+            [
+              "get",
+              "subclass"
+            ],
+            "funicular"
+          ],
+          "#c2185b",
+          [
+            "match",
+            [
+              "get",
+              "service"
+            ],
+            [
+              "yard",
+              "siding",
+              "spur",
+              "crossover"
+            ],
+            true,
+            false
+          ],
+          "#747d86",
+          "#2356b6"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          11,
+          1.3,
+          16,
+          2
+        ],
+        "line-opacity": 0.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "reference",
+        "atlas:views": [
+          "infrastructure"
+        ],
         "atlas:settings": [],
         "atlas:initial-hidden": false,
         "atlas:base-map": false,
@@ -15739,8 +16443,7 @@
       "minzoom": 13,
       "layout": {
         "line-cap": "round",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": "#b68f55",
@@ -15767,7 +16470,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -15849,8 +16552,7 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": [
@@ -15980,7 +16682,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16021,8 +16723,7 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": [
@@ -16152,7 +16853,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16258,8 +16959,7 @@
       ],
       "layout": {
         "line-cap": "butt",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "paint": {
         "line-color": "#33302c",
@@ -16278,7 +16978,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16319,7 +17019,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": [
@@ -16402,7 +17103,7 @@
           "speed"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16443,7 +17144,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": [
@@ -16526,7 +17228,7 @@
           "speed"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16608,7 +17310,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": [
@@ -16732,7 +17435,7 @@
           "speed"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -16773,7 +17476,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "none"
       },
       "paint": {
         "line-color": [
@@ -16897,7 +17601,7 @@
           "speed"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -53792,7 +54496,8 @@
           "Noto Sans Bold"
         ],
         "text-size": 11,
-        "text-padding": 5
+        "text-padding": 5,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#26363d",
@@ -53809,7 +54514,7 @@
         "atlas:settings": [
           "labels"
         ],
-        "atlas:initial-hidden": false,
+        "atlas:initial-hidden": true,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60180,16 +60885,13 @@
           "control"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
-      },
-      "layout": {
-        "visibility": "none"
       }
     },
     {
@@ -60239,8 +60941,7 @@
         ],
         "text-anchor": "top",
         "text-padding": 5,
-        "text-allow-overlap": false,
-        "visibility": "none"
+        "text-allow-overlap": false
       },
       "paint": {
         "text-color": "#765484",
@@ -60258,7 +60959,7 @@
         "atlas:settings": [
           "labels"
         ],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60294,16 +60995,13 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
-      },
-      "layout": {
-        "visibility": "none"
       }
     },
     {
@@ -60338,8 +61036,7 @@
         ],
         "text-anchor": "top",
         "text-padding": 5,
-        "text-allow-overlap": false,
-        "visibility": "none"
+        "text-allow-overlap": false
       },
       "paint": {
         "text-color": "#167a78",
@@ -60356,7 +61053,7 @@
         "atlas:settings": [
           "labels"
         ],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60417,16 +61114,13 @@
           "control"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
-      },
-      "layout": {
-        "visibility": "none"
       }
     },
     {
@@ -60480,16 +61174,13 @@
           "control"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
         "atlas:localize": false
-      },
-      "layout": {
-        "visibility": "none"
       }
     },
     {
@@ -60539,8 +61230,7 @@
         ],
         "text-anchor": "top",
         "text-padding": 5,
-        "text-allow-overlap": false,
-        "visibility": "none"
+        "text-allow-overlap": false
       },
       "paint": {
         "text-color": "#765484",
@@ -60558,7 +61248,7 @@
         "atlas:settings": [
           "labels"
         ],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60792,9 +61482,7 @@
       "source-layer": "level_crossings",
       "minzoom": 5,
       "maxzoom": 9,
-      "layout": {
-        "visibility": "none"
-      },
+      "layout": {},
       "filter": [
         "!=",
         [
@@ -60853,7 +61541,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60869,9 +61557,7 @@
       "source-layer": "level_crossings",
       "minzoom": 9,
       "maxzoom": 11,
-      "layout": {
-        "visibility": "none"
-      },
+      "layout": {},
       "filter": [
         "!=",
         [
@@ -60930,7 +61616,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -60964,8 +61650,7 @@
           1
         ],
         "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-        "visibility": "none"
+        "icon-ignore-placement": true
       },
       "paint": {
         "icon-color": [
@@ -60990,7 +61675,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -61020,8 +61705,7 @@
         ],
         "text-size": 23,
         "text-allow-overlap": false,
-        "text-padding": 2,
-        "visibility": "none"
+        "text-padding": 2
       },
       "paint": {
         "text-color": "#63332c",
@@ -61036,7 +61720,7 @@
           "infrastructure"
         ],
         "atlas:settings": [],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -81305,8 +81989,7 @@
           ]
         ],
         "text-padding": 24,
-        "icon-padding": 24,
-        "visibility": "none"
+        "icon-padding": 24
       },
       "paint": {
         "text-color": [
@@ -81333,7 +82016,7 @@
         "atlas:settings": [
           "trackCounts"
         ],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,
@@ -81394,8 +82077,7 @@
         "icon-allow-overlap": true,
         "text-allow-overlap": true,
         "icon-ignore-placement": true,
-        "text-ignore-placement": true,
-        "visibility": "none"
+        "text-ignore-placement": true
       },
       "paint": {
         "text-color": "#7a4a08"
@@ -81410,7 +82092,7 @@
         "atlas:settings": [
           "trackCounts"
         ],
-        "atlas:initial-hidden": true,
+        "atlas:initial-hidden": false,
         "atlas:base-map": false,
         "atlas:terrain": false,
         "atlas:runtime": false,

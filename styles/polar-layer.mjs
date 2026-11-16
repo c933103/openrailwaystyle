@@ -8,12 +8,12 @@ import earcut from 'earcut';
 import {DEPTH_COLOURS} from './bathymetry.mjs';
 import {globeGroundZoom} from './globe-drag.mjs';
 import {cssRgba, polarStylePaint} from './polar-paint.mjs';
-import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX_SIDE, polarBandFor, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
+import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, POLAR_DEPTH_FORMAT, POLAR_DEPTH_MAX_SIDE, polarBandFor, polarSatelliteScale, polarContourLabel, decodeLine, detailOutlineLines, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
 // satellite imagery.
-const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
+const COLOURS = { land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
 const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec', building:'#d9d0c9',apron:'#e9dce5',road:'#ffffff',path:'#b29b7d',waterway:'#aad3df',taxiway:'#bbc0c4'};
 const rgba = (css, alpha = 1) => cssRgba(css, alpha) || [0, 0, 0, 0];
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
@@ -146,6 +146,8 @@ void main() {
 // texture contains depth high/low bytes and an independent validity byte;
 // texelFetch avoids interpolating the integer bytes before decoding them.
 const DEPTH_LEVELS = new Float32Array(DEPTH_COLOURS.map(([depth]) => depth));
+const SATELLITE_DEPTH_LEVELS = new Float32Array([0,200,1500,4500,6000,8000,11000]);
+const SATELLITE_DEPTH_RGB = new Float32Array(['#194a7a','#194a7a','#0d2d52','#05162b','#05162b','#05162b','#05162b'].flatMap(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255)));
 const DEPTH_RGB = new Float32Array(DEPTH_COLOURS.flatMap(([,hex]) => [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255)));
 const DEPTH_FRAGMENT = `precision highp float;
 in vec2 v_polar; out vec4 fragColor;
@@ -181,6 +183,21 @@ void main() {
   float alpha = coverage * u_opacity;
   fragColor = vec4(colour * alpha, alpha);
 }`;
+// Project the existing azimuthal-equidistant cap grid into the WGS84
+// stereographic image. Latitude conversion is per fragment, including the pole.
+const SATELLITE_FRAGMENT = `precision highp float;
+in vec2 v_polar; out vec4 fragColor;
+uniform sampler2D u_image; uniform vec3 u_grid; uniform float u_south; uniform float u_opacity;
+void main() {
+  float r=length(v_polar), phi=1.5707963267948966-r/6371.0088;
+  float e=0.08181919084262149, s=sin(phi);
+  float t=tan(0.7853981633974483-phi/2.0)/pow((1.0-e*s)/(1.0+e*s),e/2.0);
+  vec2 direction=r>0.0?v_polar/r:vec2(0.0);
+  if(u_south<0.5)direction=vec2(direction.x-direction.y,direction.x+direction.y)*0.7071067811865476;
+  vec2 projected=direction*t*u_grid.x/u_grid.y;
+  vec2 uv=vec2(0.5+projected.x*0.5,0.5-projected.y*0.5);
+  fragColor=vec4(texture(u_image,uv).rgb*u_opacity,u_opacity);
+}`;
 const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragColor; void main() { fragColor = vec4(u_color.rgb * u_color.a, u_color.a); }`;
 
 // Split a detail tile's roads/paths by their recorded transportation class.
@@ -205,11 +222,11 @@ export function transportationGroups(data) {
 // data: where the prepared files are; units(): 'metric' or 'imperial';
 // relief(): whether relief and contours are shown; places(features):
 // called with the named places in view, for labels; imagery(): whether the
-// background is satellite imagery, which has no picture beyond 85.05°: the
-// caps are then plain black rather than a drawn map beside a photograph.
+// background is satellite imagery. Existing polar terrain supplies a shaded
+// cartographic fallback until a photographed cap is available.
 export class PolarLayer {
-  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map'}) {
-    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette});
+  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map', overlayVisibility}) {
+    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette, overlayVisibility});
     this.maxTileBytes=maxTileBytes;this.maxTiles=maxTiles;this.visibleKeys=new Set();this.generation=0;
     this.programs = new Map(); this.caps = {north: {}, south: {}}; this.tiles = new Map();
   }
@@ -221,6 +238,7 @@ export class PolarLayer {
       for (const mesh of Object.values(cap)) if (mesh?.buffers) this.freeMesh(mesh);
       if (cap.relief) this.gl.deleteTexture(cap.relief);
       if (cap.depth) this.gl.deleteTexture(cap.depth);
+      if (cap.satellite) this.gl.deleteTexture(cap.satellite);
     }
     for(const {program} of this.programs.values())this.gl.deleteProgram(program);
     this.tiles.clear(); this.caps = {north: {}, south: {}}; this.programs.clear();
@@ -233,11 +251,11 @@ export class PolarLayer {
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){const error=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw new Error(error);}
       return shader;
     };
-    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX, depth: RELIEF_VERTEX}[kind];
+    const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX, depth: RELIEF_VERTEX, satellite: RELIEF_VERTEX}[kind];
     let vertexShader,fragmentShader;
     try {
       vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${POLAR_PROJECTION}\n${vertex}`);
-      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT, depth: DEPTH_FRAGMENT}[kind] || FRAGMENT}`);
+      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT, depth: DEPTH_FRAGMENT, satellite: SATELLITE_FRAGMENT}[kind] || FRAGMENT}`);
       gl.attachShader(program,vertexShader);gl.attachShader(program,fragmentShader);gl.linkProgram(program);
       if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
     }catch(error){gl.deleteProgram(program);throw error;}
@@ -277,7 +295,7 @@ export class PolarLayer {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 20, 0);
       gl.enableVertexAttribArray(attributes.other); gl.vertexAttribPointer(attributes.other, 2, gl.FLOAT, false, 20, 8);
       gl.enableVertexAttribArray(attributes.side); gl.vertexAttribPointer(attributes.side, 1, gl.FLOAT, false, 20, 16);
-    } else if (mesh.kind === 'relief' || mesh.kind === 'depth') {
+    } else if (mesh.kind === 'relief' || mesh.kind === 'depth' || mesh.kind === 'satellite') {
       gl.enableVertexAttribArray(attributes.pos); gl.vertexAttribPointer(attributes.pos, 2, gl.FLOAT, false, 16, 0);
       gl.enableVertexAttribArray(attributes.polar); gl.vertexAttribPointer(attributes.polar, 2, gl.FLOAT, false, 16, 8);
     } else {
@@ -372,15 +390,33 @@ export class PolarLayer {
   // The colour bands and interpolation are taken from bathymetry.mjs, exactly
   // as the ordinary atlas-depth water tiles. Only actual sampled valid ocean
   // depths receive paint; land and no-data remain transparent.
-  drawDepth(state, shaderData, projection, fade) {
+  drawDepth(state, shaderData, projection, fade, satellite = false) {
     const {x0, step, size} = state.index.depth;
     this.draw({...state.reliefMesh, kind:'depth'}, shaderData, projection, (gl, u) => {
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D, state.depth);
       gl.uniform1i(u.u_image, 0);
       gl.uniform3f(u.u_grid, x0, step, size);
-      gl.uniform1fv(u['u_depth_stops[0]'], DEPTH_LEVELS);
-      gl.uniform3fv(u['u_depth_colours[0]'], DEPTH_RGB);
+      gl.uniform1fv(u['u_depth_stops[0]'], satellite ? SATELLITE_DEPTH_LEVELS : DEPTH_LEVELS);
+      gl.uniform3fv(u['u_depth_colours[0]'], satellite ? SATELLITE_DEPTH_RGB : DEPTH_RGB);
       gl.uniform1f(u.u_opacity, fade);
+    });
+  }
+  ensureSatellite(cap, state) {
+    const info=state.index?.satellite;
+    if(!info || state.satellite || state.satelliteLoading || state.satelliteFailed)return;
+    if(info.format!=='gibs-blue-marble-polar-v1' || info.size!==1024 || info.extent!==1048576 ||
+      info.projection!==(cap==='north'?'EPSG:3413':'EPSG:3031')) {state.satelliteFailed=true;return;}
+    const generation=this.generation;state.satelliteLoading=true;
+    this.image(`${cap}-satellite.jpg`,{expectedSize:1024}).then(texture=>{
+      if(generation!==this.generation || this.caps[cap]!==state){if(texture)this.gl.deleteTexture(texture);return;}
+      state.satelliteLoading=false;if(texture)state.satellite=texture;this.map.triggerRepaint();
+    }).catch(()=>{if(generation===this.generation){state.satelliteLoading=false;state.satelliteFailed=true;}});
+  }
+  drawSatellite(cap,state,shaderData,projection,fade) {
+    this.draw({...state.reliefMesh,kind:'satellite'},shaderData,projection,(gl,u)=>{
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,state.satellite);gl.uniform1i(u.u_image,0);
+      gl.uniform3f(u.u_grid,polarSatelliteScale(cap),state.index.satellite.extent,0);
+      gl.uniform1f(u.u_south,cap==='south'?1:0);gl.uniform1f(u.u_opacity,fade);
     });
   }
   // Contour tile: four meshes (land/seabed, fine/emphasised).
@@ -393,10 +429,16 @@ export class PolarLayer {
     this.json(`${key}.json`, detailed ? this.detailPending?.signal : this.pending?.signal).then(({lines}) => {
       if(generation!==this.generation||this.tiles.get(key)!==tile)return;
       const groups = {landMinor: new Map(), landMajor: new Map(), seabedMinor: new Map(), seabedMajor: new Map()};
+      tile.labels = [];
       for (const [ele, major, ...values] of lines) {
         const group = groups[`${ele > 0 ? 'land' : 'seabed'}${major ? 'Major' : 'Minor'}`];
         if (!group.has(ele)) group.set(ele, {properties: {ele, level: major ? 1 : 0}, lines: []});
-        group.get(ele).lines.push(decodeLine(values));
+        const points = decodeLine(values);
+        group.get(ele).lines.push(points);
+        if (major && tile.labels.length < 128) {
+          const label = polarContourLabel(cap, points, ele, key.split('-')[1]);
+          if (label) tile.labels.push(label);
+        }
       }
       Object.assign(tile, Object.fromEntries(Object.entries(groups).map(([key, group]) => {
         const lines = [], ranges = []; let offset = 0;
@@ -417,7 +459,7 @@ export class PolarLayer {
     return tile;
   }
   // Detailed meshes and in-flight requests exist only in a visible drawn
-  // map or Carto cap. Satellite/hybrid release them; coarse data stays.
+  // Map, Carto or Hybrid cap. Satellite releases them; coarse data stays.
   syncDetail(active) {
     if (active) { this.detailPending ||= new AbortController(); return; }
     this.detailPending?.abort();this.detailPending=null;
@@ -514,23 +556,41 @@ export class PolarLayer {
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
-    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', custom = background === 'map';
-    const mapPaint = custom ? polarStylePaint(this.map, cameraZoom) : null;
+    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', hybrid = background === 'hybrid', custom = background === 'map' || hybrid;
+    const mapPaint = custom ? polarStylePaint(this.map, cameraZoom, hybrid ? this.overlayVisibility : undefined) : null;
     const colours = carto ? CARTO_COLOURS : {...COLOURS, ...mapPaint?.colours};
-    this.syncDetail((carto || custom) && !imagery && Boolean(view.north || view.south));
+    this.syncDetail((carto || custom) && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
       const state = this.caps[cap];
-      if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(colours.noImagery, fade)); continue; }
-      if (custom) {
+      if (imagery) {
+        // This is derived terrain, not a satellite observation. Preserve the
+        // actual depth/relief data and give older snapshots a flat fallback.
+        this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? '#05162b' : '#e6eef5', fade));
+        this.ensureSatellite(cap,state);
+        if(state.satellite && !state.satelliteFailed)try {this.drawSatellite(cap,state,options.shaderData,projection,fade);}
+        catch(error){state.satelliteFailed=true;console.warn('Polar satellite shader unavailable:',error.message);}
+        this.fill(state.water, options.shaderData, projection, rgba('#05162b', fade));
+        this.ensureDepth(cap, state);
+        if (state.depth && !state.depthFailed) try {
+          this.drawDepth(state, options.shaderData, projection, fade, true);
+        } catch (error) {
+          state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining terrain fallback:', error.message);
+        }
+        this.fill(state.iceShelves, options.shaderData, projection, rgba('#cad8e6', fade));
+        if (state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade,
+          cap === 'south' ? {...RELIEF, shadow:'#dce6f0',highlight:'#f7fbff',accent:'#cad8e6'} : RELIEF);
+
+      }
+      if (!imagery && custom) {
         if (mapPaint.backgroundVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.land, mapPaint.backgroundOpacity * fade));
         if (cap === 'north' && mapPaint.waterVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.water, mapPaint.waterOpacity * fade));
-      } else this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
-      if (!custom || mapPaint.waterVisible) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
+      } else if (!imagery) this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
+      if (!imagery && (!custom || mapPaint.waterVisible)) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
       // Ordinary layer order: water -> terrain-bathymetry -> ice shelves ->
       // hillshade and contours. The custom cap uses the same order.
-      if (custom && mapPaint.depthVisible) {
+      if (!imagery && custom && mapPaint.depthVisible) {
         this.ensureDepth(cap, state);
         if (state.depth && !state.depthFailed) try {
           this.drawDepth(state, options.shaderData, projection, mapPaint.depthOpacity * fade);
@@ -538,10 +598,10 @@ export class PolarLayer {
           state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining flat water fill:', error.message);
         }
       }
-      if (!custom || mapPaint.iceShelfVisible) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
+      if (!imagery && (!custom || mapPaint.iceShelfVisible)) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
       const contours = [];
-      if (terrain && (!custom || mapPaint.reliefVisible) && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
+      if (!imagery && terrain && (!custom || mapPaint.reliefVisible) && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
       // The finest band prepared for this zoom (only the coarsest may exist).
       const bands = state.index?.units?.[units] || [], bandIndex = polarBandFor(zoom, background, bands.length), band = bands[bandIndex];
       if (band && terrain) {
@@ -552,6 +612,8 @@ export class PolarLayer {
           const tileKey=`${cap}-${units}-${bandIndex}-${key}`;this.visibleKeys.add(tileKey);
           const tile = this.loadTile(tileKey);
           if (tile.loading || tile.failed) continue;
+          if (zoom >= 8 && custom) for (const label of tile.labels || [])
+            if (mapPaint.contourLabelVisible(label)) labels.push(label);
           for (const [part, kind, major] of [['seabedMinor', 'seabed', 0], ['seabedMajor', 'seabed', 1], ['landMinor', 'land', 0], ['landMajor', 'land', 1]]) {
             if (!custom && zoom < MIN_ZOOM[kind]) continue;
             const mesh = tile[part];
@@ -562,15 +624,21 @@ export class PolarLayer {
                 const styles = [mapPaint.landContour(range.properties), ...mapPaint.seabedContours(range.properties)];
                 for (const style of styles) if (style.visible) contours.push({id: style.id, mesh: {...mesh, ...range}, style});
               }
+            } else if (imagery) {
+              // Coarse ETOPO surface contours complement the imagery without
+              // suggesting ice thickness or subglacial bedrock measurements.
+              if(kind==='seabed' || cap==='south')this.line(mesh, options.shaderData, projection,
+                rgba(kind==='seabed'?'#6e9db8':'#7892a5',0.25*fade),major?0.8:0.4);
             } else this.line(mesh, options.shaderData, projection,
               rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
           }
         }
       }
+      if (imagery && !hybrid) continue;
       if (zoom >= MIN_ZOOM.runway && carto) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
       const detail = state.index?.carto;
       const detailTiles = [];
-      if ((carto || custom) && !imagery && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
+      if ((carto || custom) && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
         const size = 2 * CAP_RADIUS / detail.n, [x0, y0, x1, y1] = view[cap];
         for (const key of detail.tiles) {
           const [tx, ty] = key.split('-').map(Number), x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
@@ -586,8 +654,8 @@ export class PolarLayer {
             for (const group of tile.lineGroups) this.line(group.mesh, options.shaderData, projection,
               rgba(colours[group.kind === 'roads' ? 'road' : 'path'], fade), group.kind === 'roads' ? 2 : 1);
             this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, fade), 2);
-            if (zoom >= 12) labels.push(...tile.places);
           }
+          if (zoom >= 12 && (carto || mapPaint.placesVisible)) labels.push(...tile.places);
         }
       }
       if (custom) {
@@ -632,7 +700,7 @@ export class PolarLayer {
         }
         for (const [, draw] of passes) draw();
       }
-      if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
+      if (zoom >= MIN_ZOOM.places && state.places && (!custom || mapPaint.placesVisible)) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
     }
     this.pruneTiles();
     const {clientWidth: width, clientHeight: height} = this.map.getContainer();

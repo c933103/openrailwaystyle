@@ -4,7 +4,7 @@
 import {readFile,stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {ENERGY_TIERS} from '../styles/energy-network.mjs';
+import {ENERGY_TIERS} from './energy-network-schema.mjs';
 export function largestWindow(weights,zoom,columns,rows){
  const n=2**zoom,cols=Math.min(n,columns),height=Math.min(n,rows),wrap=x=>(x%n+n)%n;
  const candidates=new Set();

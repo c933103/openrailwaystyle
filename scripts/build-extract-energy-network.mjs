@@ -10,10 +10,10 @@ import {checkAssembly,coversWorld} from './build-extract-branch-lines.mjs';
 import {currentFilter} from './extract-release.mjs';
 import {readElements} from './extract-elements.mjs';
 import {osmiumSubset} from './build-extract-station-points.mjs';
-import {shapeRelations} from './build-extract-power-facilities.mjs';
+import {shapeEnergyRelations} from './energy-site-relations.mjs';
 import {isEnergyNetworkElement,energyNetworkGeoJSON} from './energy-network-data.mjs';
 import {heritageBundles} from './heritage-data.mjs';
-import {ENERGY_TIERS} from '../styles/energy-network.mjs';
+import {ENERGY_TIERS} from './energy-network-schema.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 export function networkTiles(data,{minZoom=6,maxZoom=8}={}) {
   const index=geojsonvt(data,{maxZoom,indexMaxZoom:maxZoom,indexMaxPoints:0,tolerance:2,extent:4096,buffer:64});
@@ -31,7 +31,7 @@ export async function buildExtractEnergyNetwork(pbf,report,out,{read=readElement
   if(report.selectionFilters?.region!==currentFilter('region')||report.selectionFilters?.gap!==currentFilter('gap/0'))throw new Error('Energy network needs an assembly with current selection filters');
   const elements=[],relations=[];
   const counts=await read(pbf,{keep:isEnergyNetworkElement,onElement:e=>(e.type==='relation'?relations:elements).push(e)});
-  const shaped=await shapeRelations(pbf,relations,{read,subset});
+  const shaped=await shapeEnergyRelations(pbf,relations,{read,subset});
   if(counts.withoutGeometry||shaped.counts.memberWaysWithoutGeometry)throw new Error('Energy network has missing geometry');
   elements.push(...shaped.relations);
   const data=energyNetworkGeoJSON(elements);
