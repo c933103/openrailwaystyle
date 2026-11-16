@@ -394,6 +394,17 @@ the separately prepared polar caps retain their existing relief and contours.
 
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
 
+At overview zooms 7–8, coarse negative contours remain visible below the shelf
+range. In metric mode the overview starts at −200 m while shelf contours are
+strictly above −200 m; in imperial mode the first overview level is −500 ft
+while the shelf filter is strictly above −200 ft. Their generated negative
+levels are therefore disjoint, even though the overview filter alone accepts
+other negative numbers. The negative overview also preserves depressions on
+land; these signed sources do not classify an elevation's sign as ocean.
+
+The [terrain source assessment](terrain-source-assessment.md) records provider
+coverage, licence evidence, repair limits and the remaining source-switch checks.
+
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
 Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
