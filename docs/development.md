@@ -324,7 +324,7 @@ arrival/render interleaving; it does not change the original application control
 transition, source responses, worker concurrency, cache entries, fingerprints or
 the renderer. No polling timer, redraw, retry or cache invalidation is added.
 
-The [PR232 arrival analysis](investigations/controls-terrain-arrivals-20261016.md)
+The [PR232 arrival analysis](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/controls-terrain-arrivals-20261016.md)
 replays the actual failed artifact's newly visible DEM IDs through the pinned
 terrain manager and painter. They reproduce the exact 360/234 dispatch and
 zero/seven retained-cache identities with either guard setting. This supplies
@@ -408,4 +408,4 @@ Evaluated VM modules retain closed fixture contexts on the measured Node 24
 runtime. Keep startup cases in bounded sibling test files, with shared fixture
 support in `tests/startup-harness.mjs`, rather than merging them into one growing
 process. No normal test uses forced GC, a reduced heap, skipped cases or a
-name-based shard filter. See [the original case audit and memory evidence](investigations/startup-isolation-20261106/README.md).
+name-based shard filter. See [the original case audit and memory evidence](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/startup-isolation-20261106/README.md).
