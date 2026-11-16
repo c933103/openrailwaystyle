@@ -1,4 +1,5 @@
 import {withinDeadline,closeBrowser,armWatchdog} from './mainline-browser-deadlines.mjs';
+import {mainlineAtlasDiagnostics} from './mainline-atlas-diagnostics.mjs';
 import {mainlineOutageVisible} from './mainline-outage-check.mjs';
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -163,6 +164,9 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
  const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1000,height:700}});
  await installEmptyMapProviders(context,base,{firstParty:'network'});
  const page=await context.newPage(),c=controls.find(c=>c.name==='Japan–Tokyo');
+ const browserErrors=[];
+ page.on('console',message=>{if(message.type()==='error'){browserErrors.push(message.text().slice(0,2000));if(browserErrors.length>50)browserErrors.shift();}});
+ page.on('pageerror',error=>{browserErrors.push(error.message.slice(0,2000));if(browserErrors.length>50)browserErrors.shift();});
  if(!published)await page.route(new URL('data/mainline-reference/**',base).href,route=>{
   const key=route.request().url().split('/data/mainline-reference/')[1],body=paths.get(key);
   return body?route.fulfill({body,contentType:key.endsWith('.gz')?'application/octet-stream':'application/json'}):route.fulfill({status:404,body:''});
@@ -196,7 +200,10 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
  }catch(error){
   primaryError=error;
   console.error('MAINLINE_ATLAS_FAILURE',JSON.stringify(checkpoint),error.stack||error.message);
-  await writeFile('browser-review/mainline-atlas-failure.json',JSON.stringify({...checkpoint,message:error.message,stack:error.stack},null,2)+'\n');
+  const runtime=await withinDeadline(()=>evaluate(page,mainlineAtlasDiagnostics),'Atlas failure diagnostics',5000)
+   .catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
+  console.error('MAINLINE_ATLAS_STATE',JSON.stringify({runtime,browserErrors}));
+  await writeFile('browser-review/mainline-atlas-failure.json',JSON.stringify({...checkpoint,message:error.message,stack:error.stack,runtime,browserErrors},null,2)+'\n');
   await screenshot(page,{path:'browser-review/mainline-atlas-failure.png'}).catch(captureError=>console.error('MAINLINE_CAPTURE_FAILURE',captureError.message));
   throw error;
  }finally{await closeBrowser(context,browser,{primaryError})}
