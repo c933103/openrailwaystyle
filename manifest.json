@@ -1,0 +1,28 @@
+{
+  "generated": "2026-11-16T06:52:47.848Z",
+  "osmBase": "2026-11-03T21:24:23Z",
+  "update": "full",
+  "features": 44540,
+  "kinds": {
+    "escalator": 32365,
+    "travelator": 3828,
+    "elevator": 8347
+  },
+  "zoom": 14,
+  "tiles": 8716,
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "query": "[out:json][timeout:900][maxsize:1073741824];(way[conveying][conveying!=no];way[highway=elevator];);out tags geom qt;",
+  "license": "ODbL-1.0",
+  "description": "Every OSM way with conveying=* (not no) or highway=elevator. Backward escalators are stored reversed so arrows follow the line.",
+  "complete": true,
+  "oldestSource": "2026-11-03T21:24:23Z",
+  "newestSource": "2026-11-11T10:58:20Z",
+  "extract": {
+    "index": "20261111T121854Z-42996345331",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 11148161,
+    "kept": 68690,
+    "waysWithoutGeometry": 0
+  }
+}
