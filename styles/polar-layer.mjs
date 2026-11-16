@@ -13,7 +13,7 @@ import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, POLAR_DEPTH_FORMAT, POLAR
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
 // satellite imagery.
-const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
+const COLOURS = { land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
 const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec', building:'#d9d0c9',apron:'#e9dce5',road:'#ffffff',path:'#b29b7d',waterway:'#aad3df',taxiway:'#bbc0c4'};
 const rgba = (css, alpha = 1) => cssRgba(css, alpha) || [0, 0, 0, 0];
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
@@ -205,8 +205,8 @@ export function transportationGroups(data) {
 // data: where the prepared files are; units(): 'metric' or 'imperial';
 // relief(): whether relief and contours are shown; places(features):
 // called with the named places in view, for labels; imagery(): whether the
-// background is satellite imagery, which has no picture beyond 85.05°: the
-// caps are then plain black rather than a drawn map beside a photograph.
+// background is satellite imagery. Existing polar terrain supplies a shaded
+// cartographic fallback until a photographed cap is available.
 export class PolarLayer {
   constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map'}) {
     Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette});
@@ -514,23 +514,37 @@ export class PolarLayer {
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
-    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', custom = background === 'map';
+    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', hybrid = background === 'hybrid', custom = background === 'map' || hybrid;
     const mapPaint = custom ? polarStylePaint(this.map, cameraZoom) : null;
     const colours = carto ? CARTO_COLOURS : {...COLOURS, ...mapPaint?.colours};
-    this.syncDetail((carto || custom) && !imagery && Boolean(view.north || view.south));
+    this.syncDetail((carto || custom) && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
       const state = this.caps[cap];
-      if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(colours.noImagery, fade)); continue; }
-      if (custom) {
+      if (imagery) {
+        // This is derived terrain, not a satellite observation. Preserve the
+        // actual depth/relief data and give older snapshots a flat fallback.
+        this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? '#05162b' : '#e6eef5', fade));
+        this.fill(state.water, options.shaderData, projection, rgba('#05162b', fade));
+        this.ensureDepth(cap, state);
+        if (state.depth && !state.depthFailed) try {
+          this.drawDepth(state, options.shaderData, projection, fade);
+        } catch (error) {
+          state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining terrain fallback:', error.message);
+        }
+        this.fill(state.iceShelves, options.shaderData, projection, rgba('#cad8e6', fade));
+        if (state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade);
+        if (!hybrid) continue;
+      }
+      if (!imagery && custom) {
         if (mapPaint.backgroundVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.land, mapPaint.backgroundOpacity * fade));
         if (cap === 'north' && mapPaint.waterVisible) this.fill(state.disc, options.shaderData, projection, rgba(colours.water, mapPaint.waterOpacity * fade));
-      } else this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
-      if (!custom || mapPaint.waterVisible) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
+      } else if (!imagery) this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
+      if (!imagery && (!custom || mapPaint.waterVisible)) this.fill(state.water, options.shaderData, projection, rgba(colours.water, (mapPaint?.waterOpacity ?? 1) * fade));
       // Ordinary layer order: water -> terrain-bathymetry -> ice shelves ->
       // hillshade and contours. The custom cap uses the same order.
-      if (custom && mapPaint.depthVisible) {
+      if (!imagery && custom && mapPaint.depthVisible) {
         this.ensureDepth(cap, state);
         if (state.depth && !state.depthFailed) try {
           this.drawDepth(state, options.shaderData, projection, mapPaint.depthOpacity * fade);
@@ -538,10 +552,10 @@ export class PolarLayer {
           state.depthFailed = true;console.warn('Polar depth shader unavailable; retaining flat water fill:', error.message);
         }
       }
-      if (!custom || mapPaint.iceShelfVisible) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
+      if (!imagery && (!custom || mapPaint.iceShelfVisible)) this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, (mapPaint?.iceShelfOpacity ?? 0.8) * fade));
       const terrain = this.relief();
       const contours = [];
-      if (terrain && (!custom || mapPaint.reliefVisible) && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
+      if (!imagery && terrain && (!custom || mapPaint.reliefVisible) && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade, mapPaint?.relief);
       // The finest band prepared for this zoom (only the coarsest may exist).
       const bands = state.index?.units?.[units] || [], bandIndex = polarBandFor(zoom, background, bands.length), band = bands[bandIndex];
       if (band && terrain) {
@@ -570,7 +584,7 @@ export class PolarLayer {
       if (zoom >= MIN_ZOOM.runway && carto) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
       const detail = state.index?.carto;
       const detailTiles = [];
-      if ((carto || custom) && !imagery && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
+      if ((carto || custom) && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
         const size = 2 * CAP_RADIUS / detail.n, [x0, y0, x1, y1] = view[cap];
         for (const key of detail.tiles) {
           const [tx, ty] = key.split('-').map(Number), x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
@@ -586,8 +600,8 @@ export class PolarLayer {
             for (const group of tile.lineGroups) this.line(group.mesh, options.shaderData, projection,
               rgba(colours[group.kind === 'roads' ? 'road' : 'path'], fade), group.kind === 'roads' ? 2 : 1);
             this.line(tile.taxiways, options.shaderData, projection, rgba(colours.taxiway, fade), 2);
-            if (zoom >= 12) labels.push(...tile.places);
           }
+          if (zoom >= 12 && (carto || mapPaint.placesVisible)) labels.push(...tile.places);
         }
       }
       if (custom) {
@@ -632,7 +646,7 @@ export class PolarLayer {
         }
         for (const [, draw] of passes) draw();
       }
-      if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
+      if (zoom >= MIN_ZOOM.places && state.places && (!custom || mapPaint.placesVisible)) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
     }
     this.pruneTiles();
     const {clientWidth: width, clientHeight: height} = this.map.getContainer();

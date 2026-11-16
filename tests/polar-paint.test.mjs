@@ -279,7 +279,8 @@ test('Atlas draws all tiles in ordinary layer order and follows in-session layer
   assert.deepEqual(changed.slice(0,2),['waterways','waterways']);
   f.background('carto');const carto=f.draw().map(call=>call[1]);
   assert.ok(carto.indexOf('runways')<carto.indexOf('aprons'),'Carto keeps its existing sequence');
-  for(const mode of ['satellite','hybrid']){f.background(mode);assert.deepEqual(f.draw().map(call=>call[1]),['disc']);}
+  f.background('satellite');assert.deepEqual(f.draw().map(call=>call[1]),['disc','water','iceShelves']);
+  f.background('hybrid');assert.ok(f.draw().some(call=>call[1]==='buildings'));
 });
 
 test('Atlas uses camera zoom for live style paint/ranges and ground zoom only for asset bands', () => {

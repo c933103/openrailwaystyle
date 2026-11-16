@@ -132,12 +132,15 @@ try {
     await page.waitForFunction(()=>[...window.layer.tiles.entries()].some(([k,t])=>k.includes('-imperial-2-')&&!t.loading&&!t.failed));
     await page.evaluate(()=>{window.background='map';window.map.triggerRepaint();});
     await page.waitForFunction(()=>window.layer.detailPending&&window.labels.length===0);
-    for(const background of ['satellite','hybrid']) {
+    for(const background of ['satellite']) {
       const before=requests.length;
       await page.evaluate(background=>{window.background=background;window.map.triggerRepaint();},background);
       await page.waitForFunction(()=>!window.layer.detailPending&&![...window.layer.tiles.values()].some(t=>t.detailed)&&window.labels.length===0);
       assert.ok(!requests.slice(before).some(n=>n.includes('carto')||/-(metric|imperial)-[12]-/.test(n)),`${background} must not fetch detail`);
     }
+    await page.evaluate(()=>{window.background='hybrid';window.map.triggerRepaint();});
+    await page.waitForFunction(()=>window.layer.detailPending&&[...window.layer.tiles.values()].some(t=>t.detailed&&!t.loading&&!t.failed));
+    assert.equal(await page.evaluate(()=>Boolean(window.layer.broken)),false,'Hybrid draws its vector overlays');
     // Existing deployed snapshots may predate Carto/Map detail.
     await page.evaluate(()=>{const cap=window.map.getCenter().lat>0?'north':'south',state=window.layer.caps[cap];delete state.index.carto;for(const units of ['metric','imperial'])state.index.units[units]=state.index.units[units].slice(0,1);window.background='map';window.map.triggerRepaint();});
     await page.waitForFunction(()=>!window.layer.broken&&[...window.layer.visibleKeys].every(k=>k.includes('-0-')));

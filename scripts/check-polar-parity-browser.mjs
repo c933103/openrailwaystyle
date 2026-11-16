@@ -174,8 +174,9 @@ try {
     for(const mode of ['satellite','hybrid']){
       await page.evaluate(mode=>{window.background=mode;},mode);await page.evaluate(()=>window.frame());
       const pixel=await page.evaluate(({sign,edge})=>window.pixel([0,sign*(edge+0.004)]),{sign,edge});
-      assert.deepEqual(pixel,[0,0,0,255],`${cap} ${mode} no-imagery cap`);
-      assert.equal(await page.evaluate(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed)),false);
+      assert.deepEqual(pixel,cap==='north'?[5,22,43,255]:[230,238,245,255],`${cap} ${mode} terrain fallback`);
+      if(mode==='hybrid')await page.waitForFunction(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed&&!tile.loading&&!tile.failed));
+      assert.equal(await page.evaluate(()=>[...window.layer.tiles.values()].some(tile=>tile.detailed)),mode==='hybrid');
     }
     await page.evaluate(({sign,edge})=>{window.background='map';window.map.jumpTo({center:[0,sign*edge],zoom:4+Math.log2(Math.cos(edge*Math.PI/180))});},{sign,edge});
     await page.evaluate(()=>window.frame());

@@ -40,10 +40,9 @@ export const POLAR_BANDS = {
 };
 export const FEET = 3.28084;
 export const bandFor = zoom => zoom >= 11 ? 2 : zoom >= 9 ? 1 : 0;
-// Both drawn backgrounds follow the map's fine contour bands. Imagery
-// keeps coarse/no-data caps; clamp for older snapshots with fewer bands.
+// Map, Carto and Hybrid use fine contour bands; clamp for older snapshots.
 export const polarBandFor = (zoom, background, count) =>
-  Math.min(background === 'map' || background === 'carto' ? bandFor(zoom) : 0, count - 1);
+  Math.min(['map', 'carto', 'hybrid'].includes(background) ? bandFor(zoom) : 0, count - 1);
 export const POLAR_DETAIL_ZOOM = 10;
 // Published detail polygons are clipped to a 4×4 grid and the 720-sided
 // cap mask. Their closing cut edges are not original building outlines.
