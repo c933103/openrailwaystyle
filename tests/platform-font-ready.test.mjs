@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {stationScFontReady} from '../scripts/platform-font-ready.mjs';
+import {stationScFontReady,platformFontState,withFontFailureDiagnostics} from '../scripts/platform-font-ready.mjs';
 
 // Exercise the same serialized callback Playwright runs, without Node globals
 // or closure values accidentally making an invalid browser callback pass.
@@ -73,4 +73,47 @@ test('SC readiness requires an exact family element in the station symbol layer'
   }
   assert.equal(evaluate({}), false);
   assert.equal(evaluate({reviewMap: {isStyleLoaded: () => true, getStyle: () => undefined}}), false);
+});
+
+
+test('failure snapshot distinguishes both TC conjuncts without triggering font loads', () => {
+  for (const fontReady of [false, true]) for (const familyReady of [false, true]) {
+    const window = state(['Noto Sans TC']);
+    window.reviewMap.style.glyphManager.localIdeographFontFamily = familyReady ? 'Atlas CJK TC' : 'Noto Sans TC';
+    const fonts = [{family: 'Atlas CJK TC', status: fontReady ? 'loaded' : 'unloaded', unicodeRange: 'U+0-10FFFF'}];
+    fonts.check = value => { assert.equal(value, '24px "Atlas CJK TC"'); return fontReady; };
+    const snapshot = vm.runInNewContext(`(${platformFontState})()`, {window, document: {fonts}});
+    assert.equal(snapshot.tcFontCheck, fontReady);
+    assert.equal(snapshot.tcGlyphFamily, familyReady);
+    assert.equal(snapshot.fonts[0].status, fonts[0].status);
+    assert.equal(snapshot.stationFonts[0], 'Noto Sans TC');
+  }
+});
+
+test('success does not collect or log diagnostics', async () => {
+  assert.equal(await withFontFailureDiagnostics({evaluate: () => assert.fail('no evaluation')}, 'mobile',
+    async () => 42, () => assert.fail('no logging')), 42);
+});
+
+test('failed gate logs once and rethrows the exact original error', async () => {
+  const failure = new Error('original gate'), calls = [];
+  await assert.rejects(withFontFailureDiagnostics({evaluate: async callback => {
+    assert.equal(callback, platformFontState); return {tcFontCheck: false, tcGlyphFamily: true};
+  }}, 'mobile', async () => { throw failure; }, (...args) => calls.push(args)), error => error === failure);
+  assert.deepEqual(calls, [['PLATFORM_FONT_DIAGNOSTIC', 'mobile', '{"tcFontCheck":false,"tcGlyphFamily":true}']]);
+});
+
+test('diagnostic evaluation and logging failures cannot replace the original gate error', async () => {
+  for (const evaluate of [() => { throw Error('closed'); }, async () => { throw Error('closed'); }]) {
+    const failure = new Error('gate');
+    await assert.rejects(withFontFailureDiagnostics({evaluate}, 'mobile', async () => { throw failure; },
+      () => { throw Error('logger'); }), error => error === failure);
+  }
+});
+
+test('unresponsive diagnostic evaluation is bounded and retains the original failure', async () => {
+  const failure = new Error('gate'), logs = [];
+  await assert.rejects(withFontFailureDiagnostics({evaluate: () => new Promise(() => {})}, 'mobile',
+    async () => { throw failure; }, (...args) => logs.push(args)), error => error === failure);
+  assert.equal(JSON.parse(logs[0][2]).unavailable, 'diagnostic deadline');
 });

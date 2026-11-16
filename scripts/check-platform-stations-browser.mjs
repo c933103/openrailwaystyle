@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
-import {stationScFontReady} from './platform-font-ready.mjs';
+import {stationScFontReady,withFontFailureDiagnostics} from './platform-font-ready.mjs';
 import {waitForMapReady} from './browser-map-ready.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
@@ -59,7 +59,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const drawHan=async()=>{await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.getStyle()?.layers,undefined,{timeout:30000});await page.evaluate(async()=>{const map=window.reviewMap,stack=map.getStyle().layers.find(l=>l.id.startsWith('station-')&&l.type==='symbol').layout['text-font'].join(',');await map.style.glyphManager.getGlyphs({[stack]:[...'頓顿'].map(c=>c.codePointAt(0))});});};
  // The packaged font is fetched once Han glyphs are drawn with a partial font.
  await drawHan();
- await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000});
+ await withFontFailureDiagnostics(page,kind,()=>page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000}));
  const checkGlyphs=async code=>{
   const result=await waitUntil(page,async code=>{
    // Loading the packaged font replaces the style. Inspect one ready style
