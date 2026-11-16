@@ -122,10 +122,13 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   const clamp = v => Math.max(0, Math.min(refSize - 1, v));
   const bad = new Uint8Array(size * size), out = Float64Array.from(h), limit = drop(z), w = Math.max(1, Math.round(reach(z, y) / scale));
   const sound = (qx, qy) => qx >= 0 && qy >= 0 && qx < size && qy < size && !bad[qy * size + qx] ? h[qy * size + qx] : NaN;
-  // How far below the sound ground w pixels to both sides (across or
+  const oldReach = Math.max(1, Math.round(Math.max(2, Math.round(10 * 2 ** (z - 13))) / scale));
+  // Preserve the original radius for fault propagation and replacement.
+  // Only the guarded WALL detection opts into the wider latitude reach.
+  // How far below the sound ground radius pixels to both sides (across or
   // along) a height lies; one side will do where the other is off the tile
   // or bad, if `oneSide`.
-  const depth = (px, py, value, oneSide = false, radius = w) => Math.max(...[[radius, 0], [0, radius]].map(([dx, dy]) => {
+  const depth = (px, py, value, oneSide = false, radius = oldReach) => Math.max(...[[radius, 0], [0, radius]].map(([dx, dy]) => {
     const sides = [sound(px - dx, py - dy), sound(px + dx, py + dy)].filter(v => !Number.isNaN(v));
     return sides.length === 2 || (oneSide && sides.length) ? Math.min(...sides) - value : -Infinity;
   }));
@@ -184,7 +187,6 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
       return sunk(Math.min(...side), Math.max(...side));
     });
   };
-  const oldReach = Math.max(1, Math.round(Math.max(2, Math.round(10 * 2 ** (z - 13))) / scale));
   // Missing data and faults the coarser tile shares: filled from the
   // neighbours.
   for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
@@ -196,7 +198,7 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     // Evaluate the original radius independently: wider shoulders can fall
     // outside a tile even where the original shoulders establish a fault.
     let wall = referenced && depth(px, py, h[i], false, oldReach) > WALL;
-    if (!wall && referenced && w > oldReach && depth(px, py, h[i]) > WALL) {
+    if (!wall && referenced && w > oldReach && depth(px, py, h[i], false, w) > WALL) {
       const coarseBottom = coarserBottom(px, py);
       wall = Number.isFinite(coarseBottom) && coarseBottom > h[i] + limit;
     }

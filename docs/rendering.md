@@ -571,3 +571,9 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+The original DEM fault-propagation and replacement checks retain their original
+pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
+WALL detector: otherwise shoulders beyond a small elevated plateau could hide
+an already established fault. The compact plateau regression repairs all 25
+faulty pixels and preserves the surrounding plateau and lower terrain.
