@@ -227,7 +227,7 @@ dates use the shared maintenance parser: malformed dates cannot invent a
 cooldown, and obsolete HTTP dates use UTC and the rolling 50-year century rule.
 Existing fractional delay-seconds handling is unchanged. Underzoom
 station children load concurrently through the same bounds. See
-[loading investigation](investigations/rail-loading-20261007.md).
+[loading investigation](https://github.com/c933103/openrailwaystyle/blob/74a135663a96c07397adaaaa9e1eb6b98e2e77c0/docs/investigations/rail-loading-20261007.md).
 
 Failed visible tiles are retried at their own coordinates with capped backoff
 (5, 15, 45, 120, then 300 seconds), without discarding healthy tiles or polling
@@ -392,7 +392,38 @@ land/sea elevation samples are clamped to sea level inside the ocean mask.
 Missing or impossible depths stay transparent. Beyond the Web Mercator limit,
 the separately prepared polar caps retain their existing relief and contours.
 
+The DEM repair's opposing-shoulder test measures its search reach at the tile's
+centre latitude, accounting for the smaller ground width of Mercator pixels
+near the poles. A cosine floor of 0.18 and a radius of 2–64 pixels in the
+256-pixel tile grid bound the search; these limits mean it does not maintain
+constant ground reach at every zoom and latitude. The existing height thresholds
+remain in force. A depression corroborated by the coarse source is protected
+from detections introduced by the enlarged radius; the original narrower-radius
+checks retain their shared-source fault handling. New wider-radius detections
+require finite contradictory coarse evidence; a failed or missing reference
+leaves those ambiguous features unchanged.
+A negative height alone is not an error, and coastlines are not smoothed or
+sign-clamped. Synthetic tests at Nuuk and McMurdo latitudes cover this scale
+correction; they are not surveys or proof that those places' source data is
+correct. Existing tests retain real-basin, cliff and seabed cases.
+
+Witness repair already requests at most four neighboring tiles: four children
+at the next finer zoom, or a parent plus its edge neighbors at the finest zoom.
+A missing witness leaves the affected height unchanged; the four-tile bound
+never truncates the evidence used to decide a repair.
+
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
+
+At overview zooms 7–8, coarse negative contours remain visible below the shelf
+range. In metric mode the overview starts at −200 m while shelf contours are
+strictly above −200 m; in imperial mode the first overview level is −500 ft
+while the shelf filter is strictly above −200 ft. Their generated negative
+levels are therefore disjoint, even though the overview filter alone accepts
+other negative numbers. The negative overview also preserves depressions on
+land; these signed sources do not classify an elevation's sign as ocean.
+
+The [terrain source assessment](terrain-source-assessment.md) records provider
+coverage, licence evidence, repair limits and the remaining source-switch checks.
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
@@ -540,3 +571,9 @@ is diagnostic only. The [offline glyph fixture](../tests/fixtures/browser-glyphs
 uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
+
+The original DEM fault-propagation and replacement checks retain their original
+pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
+WALL detector: otherwise shoulders beyond a small elevated plateau could hide
+an already established fault. The compact plateau regression repairs all 25
+faulty pixels and preserves the surrounding plateau and lower terrain.

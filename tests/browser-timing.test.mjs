@@ -103,7 +103,7 @@ test('controls record diagnostics per settlement without changing the idle gate'
   assert.doesNotMatch(source,/__atlasControlsTiming\?\.begin|settlementPhase/);
   assert.match(source,/map\.once\('idle',\(\)=>resolve\(\)\);map\.triggerRepaint\(\)/);
   assert.match(source,/\},null,\{timeout:60000\}\)/);
-  const helper=await readFile(new URL('../scripts/browser-timing.mjs',import.meta.url),'utf8');
+  const helper=await readFile(new URL('../scripts/diagnostics/browser-timing.mjs',import.meta.url),'utf8');
   assert.doesNotMatch(helper,/resetAfterRead|begin\(/);
   assert.doesNotMatch(helper,/requestAnimationFrame|triggerRepaint|setData|setTiles|fetch\(/);
 });

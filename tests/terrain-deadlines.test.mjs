@@ -190,3 +190,32 @@ test('a non-cooperative worker decoder cannot retain a fine tile in pending repa
   const pending = getTile('fixture/14/1/1.png', new AbortController()); await flush(); await advance(REPAIR_TIMEOUT_MS);
   assert.equal((await pending).data, fine); assert.ok(signals.every(signal => signal.aborted));
 });
+
+test('moving DEM repair keeps the primary fetch immediate and starts no optional reads before cancellation',async t=>{
+  const advance=clocks(t);globals(t,{OffscreenCanvas:class{}});
+  let fetches=0,decodes=0;
+  const load=createDemTileLoader({isMoving:()=>true,fetcher:async()=>{fetches++;return {ok:true,headers:new Headers(),blob:async()=>new Blob(['fine'])};},decode:async()=>{decodes++;throw new Error('unexpected decode');}});
+  const c=new AbortController(),task=load('https://terrain.fixture/14/8192/8192.png',c);
+  const rejected=assert.rejects(task,{name:'AbortError'});await flush();
+  assert.equal(fetches,1);assert.equal(decodes,0);
+  c.abort();await rejected;await advance(1000);
+  assert.equal(fetches,1);assert.equal(decodes,0);
+});
+test('movement exceeding the optional repair budget returns the original fine tile',async t=>{
+  const advance=clocks(t);globals(t,{OffscreenCanvas:class{}});
+  let fetches=0;
+  const load=createDemTileLoader({isMoving:()=>true,fetcher:async()=>{fetches++;return {ok:true,headers:new Headers(),blob:async()=>new Blob(['fine'])};},decode:async()=>{throw new Error('unexpected decode');}});
+  const task=load('https://terrain.fixture/14/8192/8192.png',new AbortController());await flush();
+  await advance(REPAIR_TIMEOUT_MS);assert.equal(await (await task).data.text(),'fine');assert.equal(fetches,1);
+});
+
+for (const format of ['png', 'webp']) test(`worker repair preserves ${format} URLs and query parameters for references`, async t => {
+  const calls = [], main = new Blob(['fine']);
+  const load = workerFixture(t, url => {calls.push(url);return Promise.resolve(workerResponse(main));});
+  const result = await load(`https://terrain.fixture/14/8192/8192.${format}?generation=7`, new AbortController());
+  assert.equal(result.data, main);
+  assert.deepEqual(calls, [
+    `https://terrain.fixture/14/8192/8192.${format}?generation=7`,
+    `https://terrain.fixture/12/2048/2048.${format}?generation=7`,
+  ]);
+});
