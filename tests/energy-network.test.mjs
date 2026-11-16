@@ -149,3 +149,14 @@ test('material descriptors do not preempt lifecycle feature types',()=>{
  assert.equal(energyNetworkKind({resource:'coal',disused:'yes'}).state,'disused');
  assert.equal(energyNetworkKind({resource:'oil',proposed:'yes'}).state,'proposed');
 });
+test('planned removed and inactive tracks never establish current site servicing evidence',()=>{
+ const track=tags=>way(992,[[-.001,.0005],[.002,.0005]],tags);
+ const props=tags=>energyNetworkGeoJSON([area,track(tags)]).features.find(f=>f.id==='way-1').properties;
+ assert.equal(props({railway:'rail',service:'siding'}).rail_served,true);
+ for(const state of ['proposed','construction','removed','razed','demolished','abandoned','disused']){
+  for(const tags of [{[state+':railway']:'rail'},{railway:'rail',[state]:'yes'}]){
+   assert.equal(props(tags).rail_served,false,JSON.stringify(tags));
+   assert.equal(props(tags).supply_tier,'civil_network');
+  }
+ }
+});

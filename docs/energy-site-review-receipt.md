@@ -18,3 +18,10 @@ Regression coverage includes direct nodes, nested node sites, vector-tile
 encoding, missing/cyclic references, lifecycle converters and successful complete
 candidate construction from a node-only nested site. This correction is separate
 from browser cartography and can land before the data refresh finishes.
+
+Review r4588127277 additionally identified historical/planned tracks incorrectly
+establishing current rail-served evidence. The relationship index now requires
+an explicit current railway type and excludes lifecycle yes flags. Proposed,
+construction, removed, razed, demolished, abandoned and disused cases are covered;
+a current mapped siding still establishes intersection evidence. Extraction
+selection and historical energy-feature visibility are unchanged.

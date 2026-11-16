@@ -44,7 +44,8 @@ export function energyNetworkKind(tags={}) {
   }
   return null;
 }
-export const isNetworkTrack=({type,tags={}})=>type==='way'&&prefixes.some(p=>first(tags,p+'railway',['rail','narrow_gauge','light_rail','tram','subway','monorail','funicular']));
+// Current site evidence excludes planned, removed and inactive track states.
+export const isNetworkTrack=({type,tags={}})=>type==='way'&&!states.some(state=>tags[state]==='yes')&&Boolean(first(tags,'railway',['rail','narrow_gauge','light_rail','tram','subway','monorail','funicular']));
 export const isEnergyNetworkElement=e=>Boolean(energyNetworkKind(e.tags))||isNetworkTrack(e);
 const coords=e=>(e.geometry||[]).map(p=>[p.lon,p.lat]);
 const linearNetwork=e=>['line','minor_line','cable','pipeline','coal_conveyor'].includes(energyNetworkKind(e.tags)?.kind);
