@@ -84,3 +84,9 @@ export async function energyCandidateCameras(root,{read=readFile,size=async path
  }
  assert.ok(cameras.length,'candidate must provide a populated hotspot');return cameras;
 }
+
+export function assertEnergyFixturePixels(count,active=true){
+ assert.ok(Number.isSafeInteger(count)&&count>=0,'valid framebuffer pixel evidence required');
+ if(active)assert.ok(count>0,'synthetic energy geometry must produce red framebuffer pixels');
+ else assert.equal(count,0,'inactive energy geometry must not draw');
+}

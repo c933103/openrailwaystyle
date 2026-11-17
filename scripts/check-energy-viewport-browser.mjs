@@ -7,7 +7,7 @@ import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 import {validateEnergyNetwork} from './validate-energy-network.mjs';
-import {ENERGY_VIEWPORTS,ENERGY_CAMERAS,energyCandidateCameras,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,assertEnergyDemand} from './energy-viewport-acceptance.mjs';
+import {ENERGY_VIEWPORTS,ENERGY_CAMERAS,energyCandidateCameras,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,assertEnergyDemand,assertEnergyFixturePixels} from './energy-viewport-acceptance.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const candidate=process.env.ENERGY_NETWORK_CANDIDATE?resolve(process.env.ENERGY_NETWORK_CANDIDATE):null;
 if(candidate)await validateEnergyNetwork(candidate);
@@ -52,7 +52,19 @@ try{
    await page.waitForFunction(()=>window.energyIdle&&window.energyMap?.loaded()&&energyMap.areTilesLoaded()&&energyPending===0,{},{timeout:60000});
    observed=await page.evaluate(()=>({protocolRequests:energyCalls,errors:energyErrors,center:energyMap.getCenter().toArray(),zoom:energyMap.getZoom(),pitch:energyMap.getPitch(),bearing:energyMap.getBearing(),projection:energyMap.getProjection().type,rendered:energyMap.queryRenderedFeatures().length}));
    assert.ok(observed.center.every((value,i)=>Math.abs(value-camera.center[i])<1e-6),'camera centre changed');assert.ok(Math.abs(observed.zoom-camera.zoom)<1e-6,'camera zoom changed');assert.ok(Math.abs(observed.pitch-camera.pitch)<1e-6,'camera pitch changed');assert.ok(Math.abs(observed.bearing-camera.bearing)<1e-6,'camera bearing changed');assert.equal(observed.projection,camera.projection);
-   if(!candidate&&active)assert.ok(observed.rendered>0,'synthetic energy geometry must render');
+   // Feature picking can return zero above the horizon even when the
+   // framebuffer contains geometry. Read actual pixels inside the render event.
+   observed.energyPixels=await page.evaluate(()=>new Promise((resolve,reject)=>{
+    energyMap.once('render',()=>{try{
+     const gl=energyMap.getCanvas().getContext('webgl2'),pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
+     gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+     let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&pixels[i]>pixels[i+1]+8&&pixels[i]>pixels[i+2]+8)count++;
+     resolve(count);
+    }catch(error){reject(error);}});energyMap.triggerRepaint();
+   }));
+   assert.ok(await page.evaluate(()=>energyMap.loaded()&&energyMap.areTilesLoaded()&&energyPending===0),'pixel capture must retain settled tile demand');
+   observed.protocolRequests=await page.evaluate(()=>energyCalls);observed.errors=await page.evaluate(()=>energyErrors);
+   if(!candidate)assertEnergyFixturePixels(observed.energyPixels,active);
    if(camera.expectedBundle&&active)assert.ok(requests.some(r=>r.path===camera.expectedBundle),'candidate hotspot bundle was not fetched');
    const summary=assertEnergyDemand({requests,protocolRequests:observed.protocolRequests,active,errors:[...errors,...observed.errors]});
    samples.push({viewport,camera,active,observed,...summary,responses:requests});

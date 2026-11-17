@@ -16,7 +16,10 @@ Equator, Nuuk latitude and the dateline. Two additional cold non-Power controls
 must issue no energy protocol or HTTP requests.
 
 The default data is a compact synthetic point-and-area fixture encoded by the real tile
-and bundle builders. Each active fixture sample must render nonempty geometry.
+and bundle builders. Each active fixture sample must draw red electricity pixels in the actual
+WebGL framebuffer, read during a render event; inactive fixtures must draw none.
+Feature-query counts remain diagnostic because high-pitch picking can return
+zero even when geometry is visibly drawn.
 The renderer's requested protocol coordinates and every delivered energy HTTP
 body are retained in `browser-review/energy-viewport-budget.json`. Metadata is
 included, compressed bundle bodies are counted in full, and repeated responses

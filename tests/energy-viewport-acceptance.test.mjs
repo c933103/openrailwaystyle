@@ -5,7 +5,7 @@ import {gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {decodeBundle} from '../styles/tile-bundles.mjs';
-import {energyCandidateCameras,ENERGY_CAMERAS,ENERGY_VIEWPORTS,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,summarizeEnergyDemand,assertEnergyDemand} from '../scripts/energy-viewport-acceptance.mjs';
+import {assertEnergyFixturePixels,energyCandidateCameras,ENERGY_CAMERAS,ENERGY_VIEWPORTS,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,summarizeEnergyDemand,assertEnergyDemand} from '../scripts/energy-viewport-acceptance.mjs';
 import {createEnergyNetworkProtocol} from '../styles/energy-network.mjs';
 const call='energynetwork://overview/5/16/15';
 const receipt=(path,size)=>energyResponseRecord(path,Buffer.alloc(size));
@@ -63,4 +63,10 @@ test('synthetic areas retain interior geometry on both sides of the overview til
   const polygons=Array.from({length:layer.length},(_,i)=>layer.feature(i)).filter(f=>f.type===3);
   assert.ok(polygons.some(f=>f.loadGeometry().flat().some(p=>p.x>0&&p.x<4096&&p.y>0&&p.y<4096)),`interior area in ${x}/${y}`);
  }
+});
+
+test('framebuffer evidence requires visible energy pixels and rejects empty or invalid observations',()=>{
+ assertEnergyFixturePixels(5);assertEnergyFixturePixels(0,false);
+ for(const count of [0,-1,NaN,undefined,.5])assert.throws(()=>assertEnergyFixturePixels(count));
+ assert.throws(()=>assertEnergyFixturePixels(1,false));
 });
