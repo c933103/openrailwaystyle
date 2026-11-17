@@ -64,7 +64,8 @@ test('the primary key of each dataset is selected, not only listed as a refineme
   }
   assert.equal(selectedKey('building'), false);
   assert.equal(selectedKey('name'), false);
-  assert.equal(selectedKey('power'), false, 'power alone would bring every power line; facilities need a railway hint');
+  assert.equal(selectedKey('power'), true, 'the energy network now includes civil power lines');
+  for (const key of ['industrial','resource','man_made','proposed:power','disused:industrial','abandoned:resource']) assert.ok(selectedKey(key), key);
 });
 
 test('the inline queries of the snapshot, street-running and loading-gauge builders still read as pinned here', () => {
@@ -169,4 +170,8 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
   } finally {
     rmSync(dir, {recursive: true, force: true});
   }
+});
+
+test('energy selection retains named wells conveyors and legacy water tanks across lifecycle',()=>{
+ for(const value of ['petroleum_well','goods_conveyor','gasometer','water_tank'])for(const prefix of ['','disused:','construction:'])assert.equal(selectsTag(prefix+'man_made',value),true, prefix+value);
 });

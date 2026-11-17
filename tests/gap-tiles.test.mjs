@@ -47,7 +47,7 @@ test('the Overpass form selects exactly what the osmium filter selects', () => {
     checked++; if (expected) selected++;
   }
   assert.ok(checked > 10000 && selected > 1000, `${checked} checked, ${selected} selected`);
-  assert.equal(overpassFilters().length, 23, 'one key filter per type and one per key tested by value');
+  assert.equal(overpassFilters().length, 47, 'one key filter per type and one per key tested by value');
   assert.ok(overpassFilters().every(f => !f.tag.includes('\\')), 'no backslash escapes');
 });
 
@@ -81,7 +81,7 @@ test('a poly filter is lat lon, without the closing point', () => {
   const query = gapQuery([square(1, 2, 3, 4)]);
   assert.match(query, /^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];\(/);
   assert.match(query, /\(\.p0;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
-  assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 23);
+  assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 47);
   // A hole is taken out of its own part with four statements (nodes and ways
   // of the selection, nodes and ways of its relations' members), never asked
   // for with every filter.

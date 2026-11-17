@@ -57,6 +57,25 @@ jobs:
           node scripts/assemble-extracts.mjs index.json regions assembled.osm.pbf
           df -h . | tail -1
           { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and measure complete optional energy context
+        # Candidate failures remain visible while independent datasets build.
+        continue-on-error: true
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-energy-network.mjs assembled.osm.pbf assembled.osm.pbf.json energy-network-extract
+          if test -f energy-network-extract/manifest.json; then
+            node scripts/validate-energy-network.mjs energy-network-extract
+            node scripts/measure-energy-network.mjs energy-network-extract > energy-network-viewport.json
+            cat energy-network-viewport.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: energy-network-candidate
+          path: |
+            energy-network-extract/
+            energy-network-viewport.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build branch lines from the extract
         # 6 GB, as the other large builds use. The first world build ran out
         # of Node's default 4 GB heap (2026-11-10); since then each way is
