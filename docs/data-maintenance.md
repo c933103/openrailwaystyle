@@ -817,3 +817,25 @@ assembly still reloads and validates its inputs, and each dataset retains its
 coverage, provenance and publication gates. An incomplete rollout remains visible
 in Actions rather than replacing an accepted dataset. Manual workflow controls
 remain available for dated refreshes and recovery.
+
+### Resuming interrupted signal change partitions
+
+The combined signal builder checkpoints successful augmented-diff responses and
+executed-query subdivision decisions at each node of its existing bounded
+quarter tree. A later failed quarter leaves the accepted region and both
+published snapshots unchanged. The next run can reuse completed quarters only
+when their exact query (region, start time and optional pinned end time) matches,
+the response validates again, and its recorded acquisition time is neither
+future-dated nor a week old. Resumed quarters keep the first accepted end time;
+the completed region retains the earliest response acquisition time rather than
+being relabeled fresh at restart. Corrupt, expired or mismatched records are
+requested again through the existing request policy.
+
+These are raw-response checkpoints in `.snapshot-cache`, preserved by the
+existing workflow cache and durable response archive. Each quarter-tree node has
+one overwriteable slot, so a new weekly generation does not accumulate new
+files. Transport failures do not become subdivision decisions. Three attempts,
+request spacing, Retry-After handling and maximum split depth are unchanged.
+This reduces repeated successful queries after an interruption; it does not
+make an unreachable provider reachable, publish partial coverage, add a workflow
+or initiate production acquisition.
