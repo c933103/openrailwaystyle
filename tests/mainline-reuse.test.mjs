@@ -108,7 +108,7 @@ else:
    PATH:bin+':'+process.env.PATH,GITHUB_REPOSITORY:'fixture/repository',GITHUB_OUTPUT:output,
    REFERENCE_EVENT:'pull_request',MOCK_MANIFEST:payload,MOCK_CALLS:calls,...extra}});
   const result=run({});assert.equal(result.status,0,result.stderr);
-  assert.equal(await readFile(output,'utf8'),`reuse=true\nreference_sha=${sha}\nreference_date=2026-10-09\n`);
+  assert.equal(await readFile(output,'utf8'),`reuse=true\nreference_sha=${sha}\nreference_date=2026-10-09\ncheckpoint_run=\n`);
   assert.equal((await readFile(calls,'utf8')).trim().split('\n').length,2,'no provider request or acquisition command');
   await writeFile(output,'');assert.notEqual(run({MOCK_FAIL:'1'}).status,0);
   assert.equal(await readFile(output,'utf8'),'','a failed candidate read cannot select acquisition');
