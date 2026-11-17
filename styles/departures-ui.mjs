@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261116-owner-schema-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261117-owner-schema-recovery-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

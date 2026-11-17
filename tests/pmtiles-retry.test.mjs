@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {gzipSync} from 'node:zlib';
-import {FetchSource, PMTiles, Protocol} from 'pmtiles';
+import {FetchSource, PMTiles, Protocol, EtagMismatch} from 'pmtiles';
+import {createBasemapSourceFactory} from '../styles/basemap-range-source.mjs';
 import {installLabelProtocols, timedSource} from '../styles/tile-labels.mjs';
 import {shareArchiveRequests} from '../styles/bathymetry.mjs';
 import {pmtilesBytesResponse} from '../scripts/pmtiles-browser-fixture.mjs';
@@ -27,9 +28,10 @@ function setup(t,{stage='header',answer=403,failures=Infinity,retries=[0,0]}={})
     }
     const response=pmtilesBytesResponse(bytes,range,'fixture-v1');return new Response(response.body,response);
   });
+  const makeSource=createBasemapSourceFactory({FetchSource,EtagMismatch});
   const protocol=new Protocol({metadata:stage==='metadata'});protocol.tile=shareArchiveRequests(protocol.tile.bind(protocol));
   const adapters=installLabelProtocols({addProtocol:(id,fn)=>protocols[id]=fn},protocol,globalThis.fetch,{basemapRetries:retries,
-    basemapArchive:address=>{made.push(address);return new PMTiles(timedSource(new FetchSource(address),1000));}});
+    basemapArchive:address=>{made.push(address);return new PMTiles(timedSource(makeSource(address),1000));}});
   t.after(()=>adapters.dispose());
   const request=(controller=new AbortController())=>protocols.atlasbase({url:`atlasbase://en/${url}${stage==='metadata'?'':'/0/0/0'}`,type:stage==='metadata'?'json':'arrayBuffer'},controller);
   return {request,requests,made,protocol};
