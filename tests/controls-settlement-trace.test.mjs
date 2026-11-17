@@ -102,7 +102,7 @@ test('inactive fetch probe preserves the original promise and this before and af
 
 test('the real controls path records operations without skipping or loosening acceptance',()=>{
  const root=new URL('..',import.meta.url),read=path=>existsSync(new URL(path,root))?readFileSync(new URL(path,root),'utf8'):null;
- const source=read('scripts/check-map-controls-browser.mjs'),helper=read('scripts/controls-settlement-trace.mjs');
+ const source=read('scripts/check-map-controls-browser.mjs'),helper=read('scripts/diagnostics/controls-settlement-trace.mjs');
  assert.match(source,/page.addInitScript\(installControlsFetchProbe\)/);
  assert.match(source,/settlementTrace.observe\('idle-acceptance',\(\)=>waitUntil\(page,async\(\)=>\{/);
  assert.match(source,/map.once\('idle',\(\)=>resolve\(\)\);map.triggerRepaint\(\)/);

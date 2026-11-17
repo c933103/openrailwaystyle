@@ -81,7 +81,7 @@ test('language polling survives style replacement and still times out for a stal
 });
 
 test('browser checks bind the tested predicates and preserve recovery, language and no-idle assertions',async()=>{
-  const rail=await readFile(new URL('../scripts/rail-recovery-browser-fixture.mjs',import.meta.url),'utf8');
+  const rail=await readFile(new URL('../scripts/checks/rail-recovery-browser-fixture.mjs',import.meta.url),'utf8');
   assert.match(rail,/page\.waitForFunction\(railOutageReady,RAIL_OUTAGE_STATUS,\{timeout:30000\}\)/);
   assert.match(rail,/assert\.equal\(settings\.status,RAIL_OUTAGE_STATUS\)/);
   assert.match(rail,/assert\.equal\(partial\.status,RAIL_OUTAGE_STATUS\)/);

@@ -17,7 +17,7 @@ const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
 const renderer=await rendererFixture(base);
-const painterProbeSource=await readFile(new URL('./controls-painter-probe.mjs',import.meta.url));
+const painterProbeSource=await readFile(new URL('./diagnostics/controls-painter-probe.mjs',import.meta.url));
 const browser=await launchBrowser({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();

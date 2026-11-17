@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {GROUPS, LOCAL_ORM_CHECKS, VALIDATED_CONTEXT, plan, matrix, validatedPull, localReferences, dataDigest, resultKey} from '../scripts/ci-plan.mjs';
 import {mkdtemp, mkdir, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join, matchesGlob} from 'node:path';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = file => existsSync(root + file) ? readFileSync(root + file, 'utf8') : null;
@@ -110,4 +110,48 @@ test('the data digest follows every file name and byte of the assembled data', a
   assert.notEqual(await make({...base, 'heritage/8/1/3.bundle.gz': 'bundle'}), digest, 'an added file');
   const {['manifest.json']: _, ...without} = base;
   assert.notEqual(await make({...without, 'manifest2.json': '{}'}), digest, 'a renamed file');
+});
+
+// Organization retains existing entrypoints, and closure follows their re-exports.
+test('organized diagnostic and check helpers retain their exact browser CI selection', () => {
+  for (const [oldPath, newPath] of [
+    ['controls-cpu-profile.mjs', 'diagnostics/controls-cpu-profile.mjs'],
+    ['controls-settlement-trace.mjs', 'diagnostics/controls-settlement-trace.mjs'],
+    ['mainline-outage-check.mjs', 'checks/mainline-outage-check.mjs'],
+  ]) {
+    const expected = groupsFor(['scripts/' + oldPath]);
+    assert.ok(expected.length, oldPath + ' is used by a browser check');
+    assert.deepEqual(groupsFor(['scripts/' + newPath]), expected);
+  }
+});
+
+test('organized browser primitives preserve every existing CI consumer', () => {
+  for (const [name, group] of [['browser-map-ready.mjs', 'checks'], ['browser-response-cache.mjs', 'checks'], ['mainline-browser-deadlines.mjs', 'checks'], ['orm-vector-fixture.mjs', 'checks'], ['pmtiles-browser-fixture.mjs', 'checks'], ['rail-fixture-readiness.mjs', 'checks'], ['terrain-3d-browser-fixture.mjs', 'checks'], ['click-visible-control.mjs', 'checks'], ['wait-until.mjs', 'checks'], ['browser-timing.mjs', 'diagnostics']]) {
+    const expected = groupsFor(['scripts/' + name]);
+    assert.deepEqual(groupsFor(['scripts/' + group + '/' + name]), expected);
+  }
+});
+
+test('organized painter helpers preserve existing CI consumers', () => {
+ for (const name of ['controls-painter-probe.mjs','controls-painter-fixture.mjs','controls-painter-terrain-replay.mjs']) {
+  assert.deepEqual(groupsFor(['scripts/diagnostics/'+name]), groupsFor(['scripts/'+name]));
+ }
+});
+
+test('organized browser fixtures preserve existing CI consumers', () => {
+ for (const name of ['atlas-app-browser-fixture.mjs', 'bathymetry-browser-fixture.mjs', 'browser-network-guard.mjs', 'browser-policy.mjs', 'browser-renderer-fixture.mjs', 'normandy-service-geometry-fixture.mjs', 'rail-recovery-browser-fixture.mjs', 'required-browser-libraries.mjs', 'service-geometry-browser-fixture.mjs', 'service-provenance-fixture.mjs', 'service-status-browser-fixture.mjs', 'station-density-comparison.mjs', 'wuhan-rail-browser.mjs']) {
+  assert.deepEqual(groupsFor(['scripts/checks/'+name]), groupsFor(['scripts/'+name]));
+ }
+});
+
+test('static diagnostic workflow filters retain coverage for relocated helpers', () => {
+ const workflow=read('.github/workflows/mainline-tests.yml').split('permissions:')[0];
+ const filters=[...workflow.matchAll(/paths: \[([^\n]+)\]/g)].map(match=>[...match[1].matchAll(/'([^']+)'/g)].map(value=>value[1]));
+ assert.equal(filters.length,2,'PR and push filters are both checked');
+ for(const patterns of filters)for(const folder of ['checks','diagnostics','extract','overpass'])
+  for(const name of readdirSync(root+'scripts/'+folder)){
+   const oldPath='scripts/'+name,newPath='scripts/'+folder+'/'+name;
+   if(patterns.some(pattern=>matchesGlob(oldPath,pattern)))
+    assert.ok(patterns.some(pattern=>matchesGlob(newPath,pattern)),newPath+' retains '+oldPath+' workflow coverage');
+  }
 });
