@@ -144,6 +144,45 @@ class DownloadBudgetTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.planned_date('workflow_dispatch','461','2026-99-99')
 
+
+    def normalize_artifacts(self, *, region='asia', legacy=False, duplicate=False):
+        workflow = Path('.github/workflows/mainline-reference.yml').read_text()
+        section = workflow.split('      - name: Validate all continents', 1)[1].split('      - name:', 1)[0]
+        block = section.split("          python - <<'PY'\n", 1)[1].split('          PY\n', 1)[0]
+        code = '\n'.join(line[10:] for line in block.splitlines())
+        from types import SimpleNamespace
+        moves = []
+        target = SimpleNamespace(exists=lambda: duplicate)
+        parent = target if legacy else SimpleNamespace(rename=lambda value:moves.append(value))
+        source = SimpleNamespace(parent=parent, read_text=lambda:'{"region":"' + region + '"}')
+        class Root:
+            def glob(self, pattern):
+                return [source]
+            def __truediv__(self, name):
+                self.expected = name
+                return target
+        root = Root()
+        with patch('pathlib.Path', return_value=root):
+            exec(code, {})
+        return moves, target, root.expected
+
+    def test_dated_artifact_restores_builder_region_directory(self):
+        moves, target, name = self.normalize_artifacts()
+        self.assertEqual(moves, [target])
+        self.assertEqual(name, 'mainline-source-asia')
+
+    def test_legacy_region_directory_is_preserved(self):
+        moves, _, _ = self.normalize_artifacts(legacy=True)
+        self.assertEqual(moves, [])
+
+    def test_duplicate_artifact_region_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'Duplicate'):
+            self.normalize_artifacts(duplicate=True)
+
+    def test_invalid_artifact_region_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'Invalid'):
+            self.normalize_artifacts(region='../elsewhere')
+
     def workflow_limit(self):
         workflow = Path('.github/workflows/mainline-reference.yml').read_text()
         import re

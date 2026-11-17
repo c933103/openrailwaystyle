@@ -76,6 +76,9 @@ jobs:
         if: steps.reuse.outputs.reuse != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_DATE: ${{ steps.plan.outputs.date }}
+          RECOVERY_SOURCE_DATE: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '2026-11-14' || '' }}
+          MAINLINE_CHECKPOINT_RUN: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '43893320392' || '' }}
         run: node scripts/find-mainline-checkpoints.mjs
   extract:
     needs: plan
@@ -162,7 +165,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: mainline-source-${{ matrix.region }}
+          name: mainline-source-${{ matrix.region }}-${{ needs.plan.outputs.date }}
           path: extract-output
           compression-level: 0
           retention-days: 14
@@ -195,7 +198,20 @@ jobs:
         if: needs.plan.outputs.reuse != 'true'
         env:
           NODE_OPTIONS: --max-old-space-size=6144
-        run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('mainline-input')
+          for source in root.glob('*/source.json'):
+              region=json.loads(source.read_text())['region']
+              if region not in ('africa','antarctica','asia','australia-oceania','central-america','europe','north-america','south-america'): raise ValueError('Invalid source artifact region')
+              target=root/('mainline-source-'+region)
+              if source.parent != target:
+                  if target.exists(): raise ValueError('Duplicate source artifact region')
+                  source.parent.rename(target)
+          PY
+          node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
       - name: Read the pinned complete generation without reacquiring provider data
         if: needs.plan.outputs.reuse == 'true'
         env:

@@ -7,5 +7,5 @@ test('actual PBF download enforces and identifies byte/time bounds through EOF',
     {encoding: 'utf8', timeout: 30000});
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stderr, /Ran 18 tests/);
+  assert.match(result.stderr, /Ran 22 tests/);
 });

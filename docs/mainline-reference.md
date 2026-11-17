@@ -36,7 +36,14 @@ A slower transfer or runner timeout still fails without publishing partial data.
 
 PR #461 recovery pins 2026-11-14 in the pull-request planner only; scheduled and
 production runs keep their normal date policy, and explicit manual dates retain
-precedence. Other PRs are unaffected. Recovery reuses complete continent artifacts
+precedence. Other PRs are unaffected. That recovery explicitly checks run
+43893320392 first, even beyond the recent-run search window, so a newer artifact
+from a different date cannot hide its completed exports. New export artifact names include their source date, so the finder skips newer
+wrong-date exports and continues searching. Legacy undated names are eligible
+only from that explicitly identified recovery run and date. The assembly step
+restores the builder's region directory names and rejects duplicate regions.
+Repository identity, acquirer identity, expiration, size and downloaded-export
+validation still apply. Recovery reuses complete continent artifacts
 with matching acquirer bytes, dated source size/MD5 and export SHA-256. The
 workflow override leaves the acquirer source unchanged, preserving eligibility
 of the four successful exports. Failed partial PBFs from the old run were deleted
