@@ -1,7 +1,7 @@
-import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261116-polar-stack-1';
-import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261116-polar-stack-1';
-import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261116-polar-stack-1';
-import {serviceCoverageMessages} from './service-status.mjs?v=20261116-polar-stack-1';
+import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261116-polar-final-1';
+import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261116-polar-final-1';
+import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261116-polar-final-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261116-polar-final-1';
 
 // State is retained by the application; each render reads current settings and coverage.
 export function renderLegendUI({document, $, textNode, settings, inView, legendState,

@@ -267,3 +267,13 @@ test('terrain witnesses stay within four tiles at edges, parent quadrants and wo
     assert.ok(repairFromWitness(fixed, 256, z, x, y, (tx, ty) => allowed.has(`${tx}/${ty}`) ? flat : null) > 0);
   }
 });
+
+test('terrain repair: polar reach preserves original fault-edge propagation on a plateau', () => {
+  const z = 13, y = Math.floor((1 - Math.asinh(Math.tan(64.18 * Math.PI / 180)) / Math.PI) / 2 * 2 ** z);
+  const plateau = (x, y) => Math.abs(x - 128) <= 15 && Math.abs(y - 128) <= 15 ? 800 : 200;
+  const data = tile((x, y) => x === 128 && y === 128 ? -1500 : Math.abs(x - 128) <= 2 && Math.abs(y - 128) <= 2 ? 200 : plateau(x, y));
+  // Wider shoulders reach beyond the plateau, but the original shoulders
+  // establish the whole five-pixel fault. Preserve propagation and filling.
+  assert.equal(repairPixels(data, 256, z, 0, y, null), 25);
+  assert.deepEqual(data, tile(plateau));
+});
