@@ -33,20 +33,7 @@ const tilePolygon = c => {
   return [[[west, south], [east, south], [east, north], [west, north], [west, south]]];
 };
 
-// Presentation tracks retryable AND nonretryable errors independently of retry
-// scheduling. A healthy neighboring tile cannot clear another tile's failure or
-// acquire fallback markers. Metadata failure is the only source-wide fallback.
-export function createStationFallbackState(map) {
-  const failed = new Map(), observed = new Map();
-  function remember(id, source, tile) {
-    if (!tile) return;
-    let evidence = observed.get(id);
-    if (!evidence || evidence.source !== source || evidence.url !== source.url) {
-      evidence = {source, url: source.url, tiles: new WeakSet()};observed.set(id, evidence);
-    }
-    evidence.tiles.add(tile);
-  }
-  function onScreen(c) {
+function onScreen(map, c) {
     if (!c || !map.getBounds) return true;
     const bounds = map.getBounds();
     if (!bounds?.getWest) return true;
@@ -64,13 +51,27 @@ export function createStationFallbackState(map) {
     // An integer world offset must place the tile across this interval.
     return Math.ceil((start - right) / 360) <= Math.floor((start + width - left) / 360);
   }
+
+// Presentation tracks retryable AND nonretryable errors independently of retry
+// scheduling. A healthy neighboring tile cannot clear another tile's failure or
+// acquire fallback markers. Metadata failure is the only source-wide fallback.
+export function createStationFallbackState(map, {sourceAtZoom = stationSource, sourceIds = ['stations','stationMed']} = {}) {
+  const failed = new Map(), observed = new Map();
+  function remember(id, source, tile) {
+    if (!tile) return;
+    let evidence = observed.get(id);
+    if (!evidence || evidence.source !== source || evidence.url !== source.url) {
+      evidence = {source, url: source.url, tiles: new WeakSet()};observed.set(id, evidence);
+    }
+    evidence.tiles.add(tile);
+  }
   function selectionFor(source) {
     const zoom = map.getZoom?.();
     if (!Number.isFinite(zoom)) return null;
     // Compatibility fallback when the pinned renderer's active inventory is
     // unavailable. Vector sources use 512px tiles and floor camera zoom.
     const max = Number.isFinite(source?.maxzoom) ? source.maxzoom : 22;
-    return `${stationSource(zoom)}:${Math.min(Math.max(0, Math.floor(zoom)), max)}`;
+    return `${sourceAtZoom(zoom)}:${Math.min(Math.max(0, Math.floor(zoom)), max)}`;
   }
   function activeTiles(id, source) {
     // Read the pinned MapLibre inventory, including errored/non-renderable
@@ -90,11 +91,11 @@ export function createStationFallbackState(map) {
     // An expired retry can enter MapLibre's out-of-view cache and fail there.
     // Reusing that object emits no new error event. Keep weak identity evidence,
     // but restore presentation only while the same unresolved tile is active.
-    if (evidence && stationSource(map.getZoom?.()) === id) for (const tile of inventory || []) {
+    if (evidence && sourceAtZoom(map.getZoom?.()) === id) for (const tile of inventory || []) {
       if (!evidence.tiles.has(tile)) continue;
       if (tile.aborted || ['loaded', 'unloaded'].includes(tile.state)) { evidence.tiles.delete(tile);continue; }
       const c = tile.tileID?.canonical;
-      if (!validCoordinate(c) || !onScreen(c)) continue;
+      if (!validCoordinate(c) || !onScreen(map,c)) continue;
       if (!state) { state = {source, url: source.url, metadata: false, tiles: new Map()};failed.set(id, state); }
       const key = tileKey(c), previous = state.tiles.get(key);
       const instances = [...new Set([...(previous?.instances || (previous?.tile ? [previous.tile] : [])), tile])];
@@ -110,18 +111,18 @@ export function createStationFallbackState(map) {
         if (!record.instances.length) { state.tiles.delete(key); continue; }
       }
       const zoom = map.getZoom?.();
-      const inactive = record.fromCoordinate && Number.isFinite(zoom) && stationSource(zoom) !== id;
+      const inactive = record.fromCoordinate && Number.isFinite(zoom) && sourceAtZoom(zoom) !== id;
       const obsolete = inactive || (record.fromCoordinate && inventory !== null
         ? !inventory.includes(record.tile)
         : !record.tile && record.selection !== null && selection !== null && record.selection !== selection);
-      if (obsolete || record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
+      if (obsolete || record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(map,record.coordinate)) state.tiles.delete(key);
     }
     if (!state.metadata && !state.tiles.size) { failed.delete(id); return null; }
     return state;
   }
   return {
     noteError(event) {
-      if (!['stations', 'stationMed'].includes(event?.sourceId) || event.error?.name === 'AbortError') return;
+      if (!sourceIds.includes(event?.sourceId) || event.error?.name === 'AbortError') return;
       const c = coordinate(event);
       // An unlocated tile failure is not evidence of a whole-source outage.
       if (('tile' in event || 'coord' in event) && !validCoordinate(c)) return;
@@ -135,7 +136,7 @@ export function createStationFallbackState(map) {
         const selection = `${event.sourceId}:${c.z}`;
         if (fromCoordinate) {
           const zoom = map.getZoom?.();
-          if (Number.isFinite(zoom) && stationSource(zoom) !== event.sourceId) return true;
+          if (Number.isFinite(zoom) && sourceAtZoom(zoom) !== event.sourceId) return true;
           const inventory = activeTiles(event.sourceId, source);
           if (inventory !== null) {
             // A delayed error for a removed parent must not be stamped with
@@ -197,7 +198,7 @@ export function createStationFallbackState(map) {
       return !stateFor(event.sourceId) || changed || state.tiles.size !== previousSize;
     },
     area(zoom) {
-      const id = stationSource(zoom), state = id && stateFor(id);
+      const id = sourceAtZoom(zoom), state = id && stateFor(id);
       if (!state) return null;
       if (state.metadata) return true;
       const records = [...state.tiles.values()];
@@ -309,4 +310,42 @@ export function shouldRefreshCuratedStationSource({ready,stationsEnabled,backgro
   // Curated geometry remains reusable at every zoom once activated at z3.
   return Boolean(ready && stationsEnabled && background!=='satellite' &&
     Number.isFinite(zoom) && zoom>=3);
+}
+
+const TRACK_SOURCES = ['network','speed','electric','control','gaugeLow','loadingLow','axleLow','ownerLow','railway','ownerRail','axleRail'];
+export function createRailReferenceState(map, settings, {sourcePaused = () => false} = {}) {
+  const sourceAtZoom = zoom => map.getStyle()?.layers?.find(layer =>
+    layer.id === `${settings.mode}-${zoom < 7 ? 'overview' : 'tracks'}`)?.source;
+  const failures = createStationFallbackState(map, {sourceIds: TRACK_SOURCES, sourceAtZoom});
+  const pausedTiles=new WeakMap();
+  return {...failures, area(zoom) {
+    const area=failures.area(zoom);
+    if(area)return area;
+    const id=sourceAtZoom(zoom),source=id&&map.getSource(id),manager=map.style?.tileManagers?.[id];
+    // A known provider cooldown can delay a selected track request before it
+    // emits its own error. Display reference geometry during that pause only
+    // for active pending tiles; healthy/empty sources are not outages.
+    if(!source||manager?.getSource?.()!==source||typeof manager.getIds!=='function'||typeof manager.getTileByID!=='function')return null;
+    const tiles=manager.getIds().map(key=>manager.getTileByID(key));
+    const paused=sourcePaused(source);
+    const pending=tiles.filter(tile=>{
+      if(tile.aborted||tile.state!=='loading'){pausedTiles.delete(tile);return false;}
+      const coordinate=tile.tileID?.canonical;
+      if(!validCoordinate(coordinate)||!onScreen(map,coordinate))return false;
+      if(paused)pausedTiles.set(tile,source);
+      // Keep the reference until affected requests settle, rather than
+      // unloading it between adjacent provider cooldown windows.
+      return pausedTiles.get(tile)===source;
+    });
+    return pending.length?{type:'MultiPolygon',coordinates:pending.map(tile=>tilePolygon(tile.tileID.canonical))}:null;
+  }};
+}
+
+// Request-pool activity can be synchronous. Coalesce presentation work and
+// retire already-queued callbacks when the map is removed.
+export function createReferenceRefresh(refresh) {
+ let queued=false,removed=false;
+ return {notify(){if(removed||queued)return;queued=true;
+   queueMicrotask(()=>{queued=false;if(!removed)refresh();});
+  },dispose(){removed=true;}};
 }

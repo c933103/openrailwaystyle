@@ -146,7 +146,7 @@ for (const mode of model.MODES) test(`${mode}: zoom-suppressed urban references 
  try {
   const map=f.maps[0],status=f.window.document.getElementById('map-status');
   map.handlers['style.load']();
-  const reference=subclass=>({source:'openmaptiles',properties:{subclass},layer:{id:'rail-basemap-reference'}});
+  const reference=subclass=>({source:'openmaptiles',properties:{subclass},layer:{id:mode==='infrastructure'?'infrastructure-basemap-reference':'rail-basemap-reference'}});
   for (const subclass of ['light_rail','monorail','tram','funicular']) {
    map.rendered=[reference(subclass)];
    for (const zoom of [8,9,9.99]) {
@@ -174,7 +174,7 @@ test('reference-only rail coverage is reported without mistaking a different vie
  try{
   const map=f.maps[0],status=f.window.document.getElementById('map-status');
   map.handlers['style.load']();map.zoom=10.9;
-  const reference={source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}};
+  const reference={source:'openmaptiles',properties:{},layer:{id:'infrastructure-basemap-reference'}};
   map.rendered=[reference,{source:'railway',properties:{},layer:{id:'speed-tracks'}}];
   map.handlers.idle();assert.match(status.textContent,/Only basemap railway reference.*detailed railway data/);
   for(const id of ['infrastructure-tracks','infrastructure-metro-overview']){
@@ -189,7 +189,7 @@ test('reference coverage waits for the selected detail source and preserves actu
   const f=await start({search:`?mode=${mode}`});
   try{
    const map=f.maps[0],status=f.window.document.getElementById('map-status');
-   map.handlers['style.load']();map.zoom=10.9;map.rendered=[{source:'openmaptiles',properties:{},layer:{id:'rail-basemap-reference'}}];
+   map.handlers['style.load']();map.zoom=10.9;map.rendered=[{source:'openmaptiles',properties:{},layer:{id:mode==='infrastructure'?'infrastructure-basemap-reference':'rail-basemap-reference'}}];
    let loaded=false;map.isSourceLoaded=id=>{assert.equal(id,source);return loaded};
    map.handlers.idle();assert.doesNotMatch(status.textContent,/Only basemap/,'pending geometry is not declared absent');
    loaded=true;map.handlers.idle();assert.match(status.textContent,/Only basemap/);
@@ -606,4 +606,27 @@ test('switching to 2D stops an older ease before arming exit suppression',async(
    assert.equal(button.getAttribute('aria-pressed'),'false');
    assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
+});
+
+test('neutral rail reference starts hidden and follows only the selected track outage through mode changes and recovery',async()=>{
+ const f=await start({search:'?mode=speed'});
+ try{
+  const map=f.maps[0];map.handlers['style.load']();map.zoom=6;
+  const visibility=()=>map.getLayoutProperty('rail-reference-main','visibility');
+  assert.equal(visibility(),'none','loading and healthy providers do not pre-render gray');
+  map.handlers.error({sourceId:'stations',error:{status:403,message:'HTTP 403'}});
+  assert.equal(visibility(),'none','station failure is not track failure');
+  map.handlers.error({sourceId:'speed',error:{status:403,message:'HTTP 403'}});
+  assert.equal(visibility(),'visible','permanent track errors still need reference geometry');
+  f.window.document.querySelector('[data-mode="electrification"]').click();
+  assert.equal(visibility(),'none','a different theme does not inherit the speed outage');
+  f.window.document.querySelector('[data-mode="speed"]').click();
+  assert.equal(visibility(),'visible');
+  map.handlers.sourcedata({sourceId:'speed',sourceDataType:'metadata'});
+  assert.equal(visibility(),'none','actual source recovery retires gray references');
+  map.handlers.error({sourceId:'speed',error:{status:503,message:'HTTP 503'}});
+  f.window.document.querySelector('[data-mode="infrastructure"]').click();
+  assert.equal(visibility(),'none');
+  assert.equal(map.getLayoutProperty('infrastructure-reference-main','visibility'),'visible');
+ }finally{f.dom.window.close();}
 });

@@ -142,3 +142,11 @@ test('Power facility kinds and names stay with their markers, former supplies fo
     assert.equal(shouldLocalizeLayer(supply),name,supply.id);
   }
 });
+
+test('static catalog defaults to Infrastructure while all other thematic tracks start hidden',()=>{
+ for(const mode of MODES){
+  const layer=style.layers.find(l=>l.id===`${mode}-tracks`);
+  assert.equal(layer.layout.visibility==='none',mode!=='infrastructure',mode);
+  assert.equal(getLayerSemantics(layer)['atlas:initial-hidden'],mode!=='infrastructure',mode);
+ }
+});

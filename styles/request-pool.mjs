@@ -6,7 +6,7 @@ import {ByteCache} from './byte-cache.mjs';
 // waiting for a slot. Successful bytes remain bounded; failures never become
 // empty successful tiles. A shared request survives cancellation of one reader.
 export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin = 4,
-  timeout = 12000, retries = [1000], cache = new ByteCache(), now = Date.now} = {}) {
+  timeout = 12000, retries = [1000], cache = new ByteCache(), now = Date.now, onChange = () => {}} = {}) {
   if (![concurrency, perOrigin].every(n => Number.isInteger(n) && n > 0)) throw new RangeError('Invalid request concurrency');
   const entries = new Map(), origins = new Map(), blocked = new Map();
   const stats = {started: 0, coalesced: 0, cacheHits: 0, cancelled: 0, retried: 0, peak: 0};
@@ -40,6 +40,7 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
       stats.peak = Math.max(stats.peak, running);
       void send(entry);
     }
+    onChange();
     if (next < Infinity) wakeTimer = setTimeout(drain, Math.max(1, Math.min(2 ** 31 - 1, next - now())));
   }
   async function send(entry) {
@@ -136,5 +137,5 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
     disposed = true; clearTimeout(wakeTimer);
     for (const entry of [...entries.values()]) { entry.controller?.abort(abortError()); finish(entry, abortError()); }
   }
-  return {get, dispose, stats: () => ({...stats, active: running, queued: [...entries.values()].filter(e => !e.running).length})};
+  return {get, dispose, originPaused: address => !disposed && (blocked.get(new URL(address).origin) || 0) > now(), stats: () => ({...stats, active: running, queued: [...entries.values()].filter(e => !e.running).length})};
 }
