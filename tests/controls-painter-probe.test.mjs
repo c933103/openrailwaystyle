@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {matchesGlob} from 'node:path';
 import {createHash} from 'node:crypto';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -145,4 +146,13 @@ test('diagnostic build uses fork source repository for PRs and event repository 
  for(const [event,head,base,expected] of [['pull_request','contributor/atlas','c933103/openrailwaystyle','contributor/atlas'],['pull_request','c933103/openrailwaystyle','c933103/openrailwaystyle','c933103/openrailwaystyle'],['push',null,'c933103/openrailwaystyle','c933103/openrailwaystyle']]){
   const actual=runInNewContext(expression,{github:{event_name:event,event:head?{pull_request:{head:{repo:{full_name:head}}}}:{},repository:base}});assert.equal(actual,expected);
  }
+});
+
+// GitHub workflow path filters run before the dynamic browser dependency planner.
+test('painter workflow runs for implementation-only and compatibility-path changes',async()=>{
+ const workflow=await readFile(new URL('../.github/workflows/controls-painter-diagnostic.yml',import.meta.url),'utf8');
+ const filters=[...workflow.split('permissions:')[0].matchAll(/^      - '([^']+)'$/gm)].map(match=>match[1]);
+ for(const name of ['controls-painter-probe.mjs','controls-painter-fixture.mjs','controls-painter-terrain-replay.mjs'])
+  for(const directory of ['scripts/','scripts/diagnostics/'])
+   assert.ok(filters.some(pattern=>matchesGlob(directory+name,pattern)),directory+name+' alone must trigger the painter comparison');
 });
