@@ -12,8 +12,9 @@ ends at z8 and does not replace close-zoom infrastructure or branch overlays.
 
 ## Source and publication boundary
 
-The PBF downloader retains the planned byte bound and 5,400-second elapsed-time
-bound. It checks both after every data chunk and at EOF, before checksum-complete
+The PBF downloader retains the planned byte bound. Its standalone elapsed-time
+bound is 5,400 seconds; the continent workflow explicitly uses 18,000 seconds
+inside a 360-minute job, leaving one hour for setup, processing and export. It checks both after every data chunk and at EOF, before checksum-complete
 data can be promoted. A delayed EOF therefore cannot accept an over-time download.
 An exceeded-bound error identifies byte, time, or both, with received and expected
 bytes and measured GET elapsed seconds. The elapsed period includes opening the
@@ -22,6 +23,26 @@ This is not a resumable-download mechanism or a fix for slow provider throughput
 Failures remove the partial file and cannot publish a source manifest. Offline
 regressions execute the actual acquisition function with a blocked socket boundary,
 including late EOF, exact bounds, checksum/truncation and transport-error controls.
+
+The workflow allowance follows run [43893320392](https://github.com/c933103/openrailwaystyle/actions/runs/43893320392):
+Europe, Asia, Africa and North America stopped after 90 minutes with respectively
+12.90/35.45, 8.71/16.48, 6.85/7.96 and 7.18/19.55 GB received. At their measured
+rates, complete transfers project to 247, 170, 105 and 245 minutes. The five-hour
+ceiling provides about 20% margin over the longest projection, while keeping
+at most two downloads concurrent and the original per-source/world byte limits.
+Observed processing for the three nonempty successful regions took 20–59 seconds;
+this does not guarantee the larger continents finish within the remaining hour.
+A slower transfer or runner timeout still fails without publishing partial data.
+
+PR #461 recovery pins 2026-11-14 in the pull-request planner only; scheduled and
+production runs keep their normal date policy, and explicit manual dates retain
+precedence. Other PRs are unaffected. Recovery reuses complete continent artifacts
+with matching acquirer bytes, dated source size/MD5 and export SHA-256. The
+workflow override leaves the acquirer source unchanged, preserving eligibility
+of the four successful exports. Failed partial PBFs from the old run were deleted
+and cannot be resumed. Renewed execution requests only missing complete exports;
+it does not automatically retry a failed download. The workflow change receives
+a new generation fingerprint; reused source exports retain their original identity.
 
 `mainline-reference.yml` acquires dated PBF exports from **all eight** Geofabrik
 continent roots: Africa, Antarctica, Asia, Australia/Oceania, Central America,
