@@ -15,8 +15,10 @@ the cached-tile limit also matches the app. Camera centres cycle through the
 Equator, Nuuk latitude and the dateline. Two additional cold non-Power controls
 must issue no energy protocol or HTTP requests.
 
-The default data is a compact synthetic point-and-area fixture encoded by the real tile
-and bundle builders. Each active fixture sample must draw red electricity pixels in the actual
+The default data is a synthetic point-and-area fixture encoded by the real tile
+and bundle builders. Each tier spans two minimum-zoom tiles around its camera
+centres, including near-field ground requested at high pitch when the centre
+would require a tile below that source tier’s minimum zoom. Each active fixture sample must draw red electricity pixels in the actual
 WebGL framebuffer, read during a render event; inactive fixtures must draw none.
 Feature-query counts remain diagnostic because high-pitch picking can return
 zero even when geometry is visibly drawn.

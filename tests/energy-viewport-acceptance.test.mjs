@@ -7,6 +7,12 @@ import Pbf from 'pbf';
 import {decodeBundle} from '../styles/tile-bundles.mjs';
 import {assertEnergyFixturePixels,energyCandidateCameras,ENERGY_CAMERAS,ENERGY_VIEWPORTS,energyAcceptanceStyle,energyFixtureFiles,energyResponseRecord,summarizeEnergyDemand,assertEnergyDemand} from '../scripts/energy-viewport-acceptance.mjs';
 import {createEnergyNetworkProtocol} from '../styles/energy-network.mjs';
+// Fixture polygons are axis-aligned rectangles; a buffered rectangle can
+// cover the tile interior while every vertex lies outside its bounds.
+const hasInteriorArea=layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)).some(f=>{
+ if(f.type!==3)return false;const p=f.loadGeometry().flat(),xs=p.map(p=>p.x),ys=p.map(p=>p.y);
+ return Math.max(...xs)>0&&Math.min(...xs)<4096&&Math.max(...ys)>0&&Math.min(...ys)<4096;
+});
 const call='energynetwork://overview/5/16/15';
 const receipt=(path,size)=>energyResponseRecord(path,Buffer.alloc(size));
 const input=()=>({protocolRequests:[call],requests:[receipt('manifest.json',100),receipt('overview/index.json',100),receipt('overview/5/16/15.bundle.gz',100000)]});
@@ -60,8 +66,7 @@ test('synthetic areas retain interior geometry on both sides of the overview til
  for(const x of [15,16])for(const y of [15,16]){
   const tiles=decodeBundle(gunzipSync(files.get(`overview/5/${x}/${y}.bundle.gz`)));
   const layer=new VectorTile(new Pbf(tiles.get(`5/${x}/${y}`))).layers.atlas_energy_network;
-  const polygons=Array.from({length:layer.length},(_,i)=>layer.feature(i)).filter(f=>f.type===3);
-  assert.ok(polygons.some(f=>f.loadGeometry().flat().some(p=>p.x>0&&p.x<4096&&p.y>0&&p.y<4096)),`interior area in ${x}/${y}`);
+  assert.ok(hasInteriorArea(layer),`interior area in ${x}/${y}`);
  }
 });
 
@@ -69,4 +74,13 @@ test('framebuffer evidence requires visible energy pixels and rejects empty or i
  assertEnergyFixturePixels(5);assertEnergyFixturePixels(0,false);
  for(const count of [0,-1,NaN,undefined,.5])assert.throws(()=>assertEnergyFixturePixels(count));
  assert.throws(()=>assertEnergyFixturePixels(1,false));
+});
+
+test('dateline high-pitch near-field tiles contain geometry at the tier minimum zoom',()=>{
+ const files=energyFixtureFiles();
+ for(const [x,y] of [[255,114],[255,115],[254,114]]){
+  const tiles=decodeBundle(gunzipSync(files.get(`context/8/${x}/${y}.bundle.gz`)));
+  const layer=new VectorTile(new Pbf(tiles.get(`8/${x}/${y}`))).layers.atlas_energy_network;
+  assert.ok(hasInteriorArea(layer),`near-field area in ${x}/${y}`);
+ }
 });

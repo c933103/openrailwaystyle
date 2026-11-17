@@ -577,12 +577,21 @@ uses fontnik-compatible FreeType-origin bearings rather than Pillow's
 alphabetic-baseline bearings. This is a fixture correction, not production
 typography evidence.
 
+The original DEM fault-propagation and replacement checks retain their original
+pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
+WALL detector: otherwise shoulders beyond a small elevated plateau could hide
+an already established fault. The compact plateau regression repairs all 25
+faulty pixels and preserves the surrounding plateau and lower terrain.
+
 ### Neutral railway outage references
 
 The Infrastructure view draws its own mapped-class reference colors from the
 initial style. Other views keep neutral mainline, Natural Earth and close-zoom
 basemap references hidden until the selected live track source has a recorded
-failure in the viewport. Station or unrelated-theme failures do not enable them.
+failure in the viewport, or its active loading tiles are blocked by an observed
+provider cooldown. Pause evidence stays bound to the affected tile and source
+until it settles; healthy loaded or retained reloading tiles stay independent.
+Station errors alone and unrelated origins do not enable references for healthy tracks.
 Permanent failures qualify for presentation without granting another retry.
 
 The presentation reuses the station fallback's source-instance, active tile,
@@ -594,9 +603,3 @@ than clipping whole railway chains to failed tile rectangles. This preserves
 continuous lines but can also show neutral reference geometry beside healthy
 areas in a partially failed view. It does not assert thematic values or current
 operating status for those reference features.
-
-The original DEM fault-propagation and replacement checks retain their original
-pixel radius. Latitude widening is explicit only in the coarse-evidence-guarded
-WALL detector: otherwise shoulders beyond a small elevated plateau could hide
-an already established fault. The compact plateau regression repairs all 25
-faulty pixels and preserves the surrounding plateau and lower terrain.

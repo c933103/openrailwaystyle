@@ -29,17 +29,17 @@ export function energyAcceptanceStyle(world,active=true){
  return {version:8,glyphs:world.glyphs,sources,layers};
 }
 export function energyFixtureFiles(){
- const data={type:'FeatureCollection',features:ENERGY_CENTRES.flatMap((coordinates,id)=>{
-  const [x,y]=coordinates,r=.04,properties={power_state:'present',energy_minzoom:5,energy_domain:'electricity',supply_tier:'civil_network'};
-  // A point quantized onto a tile edge can be clipped in an oblique view.
-  // Retain the point and span its neighbouring tiles with an actual area, so
-  // the fixture exercises visible geometry whichever boundary tile is loaded.
+ const dataForTier=minzoom=>({type:'FeatureCollection',features:ENERGY_CENTRES.flatMap((coordinates,id)=>{
+  const [x,y]=coordinates,r=2*360/2**minzoom,properties={power_state:'present',energy_minzoom:5,energy_domain:'electricity',supply_tier:'civil_network'};
+  // High-pitch LOD can omit the centre's below-minzoom tile while loading
+  // nearer ground. Populate two minimum-zoom tiles around each centre so
+  // the fixture contains actual visible near-field geometry as well.
   return [{type:'Feature',id:id*2,properties,geometry:{type:'Point',coordinates}},
    {type:'Feature',id:id*2+1,properties,geometry:{type:'Polygon',coordinates:[[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r],[x-r,y-r]]]}}];
- })};
+ })});
  const files=new Map();let count=0,bytes=0;
  for(const [tier,{minzoom,maxzoom,bundleZoom}] of Object.entries(ENERGY_TIERS)){
-  const bundles=heritageBundles(networkTiles(data,{minZoom:minzoom,maxZoom:maxzoom}),bundleZoom);
+  const bundles=heritageBundles(networkTiles(dataForTier(minzoom),{minZoom:minzoom,maxZoom:maxzoom}),bundleZoom);
   files.set(`${tier}/index.json`,Buffer.from(JSON.stringify({format:'atlas-tile-bundle-1',zoom:bundleZoom,bundles:[...bundles.keys()].map(key=>key.split('/').slice(1).join('/'))})));
   for(const [key,body] of bundles){files.set(`${tier}/${key}.bundle.gz`,body);count++;bytes+=body.length;}
  }
