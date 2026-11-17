@@ -77,8 +77,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_DATE: ${{ steps.plan.outputs.date }}
-          RECOVERY_SOURCE_DATE: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '2026-11-14' || '' }}
-          MAINLINE_CHECKPOINT_RUN: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '43893320392' || '' }}
+          RECOVERY_SOURCE_DATE: ${{ steps.reuse.outputs.reference_date || (github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '2026-11-14') || '' }}
+          MAINLINE_CHECKPOINT_RUN: ${{ steps.reuse.outputs.checkpoint_run || (github.event_name == 'pull_request' && github.event.pull_request.number == 461 && '43893320392') || '' }}
         run: node scripts/find-mainline-checkpoints.mjs
   extract:
     needs: plan

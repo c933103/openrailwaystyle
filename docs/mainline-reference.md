@@ -297,3 +297,21 @@ input digest and requires a newly built, validated complete `mainline-data`
 generation before a later rendering change consumes these fields. Existing
 byte budgets, coverage checks, source provenance and complete-only publication
 remain binding; synthetic fixture tests do not measure worldwide output growth.
+
+### Production continuation of the dated recovery
+
+After PR #461 merges, an ordinary main push first tries the accepted production
+generation as before. If that cannot satisfy the current generator, recovery
+reads the merged PR's immutable head source and computes its complete generator
+dependency fingerprint. Only an exact match with the current generator retains
+the November 14 source date and explicit legacy checkpoint run. This also applies
+to subsequent main pushes while recovery is unfinished; it is not limited to
+the merge commit. A different generator, another branch, an unmerged or foreign
+PR, scheduled refresh, or explicit manual date does not acquire this recovery
+policy. Failed metadata reads fail before acquisition.
+
+This path returns `reuse:false`: it reuses raw dated exports, rebuilds the
+complete world generation, and runs current validation and browser acceptance
+before production publication. It does not copy or certify a PR preview as
+production. Matching accepted production data takes precedence once available.
+The main workflow retains its non-cancelling concurrency policy.
