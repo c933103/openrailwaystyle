@@ -768,3 +768,24 @@ when refresh data is unavailable. A new fork must publish its first valid
 snapshot before deploying. The existing 5,000-feature acquisition floor and
 zoom-12 contract are unchanged. This structural check does not claim complete
 worldwide OSM coverage or freshness, and does not start a new extraction.
+
+## Continuing a changed extract selection
+
+`extract-rollout.yml` checks the working-copy index when the extract selection
+changes on main. Missing inputs or stale regional/gap selection hashes start the
+existing `osm-extract.yml` through its non-cancelling concurrency group. An active
+run may refresh only gap tiles, so source identity does not establish that it can
+update stale regional inputs. A full refresh is queued; unchanged working copies
+retain the existing size, MD5 and filter reuse checks. This adds no recurring schedule and retains the two-region parallelism,
+100 GiB plan cap and bounded gap requests.
+
+A successful same-repository main extract run can continue to `osm-assemble.yml`
+only when the loaded index was published by that run, has no missing planned
+inputs and every entry matches the current selection. This assembly is queued
+even if an older assembly of the same source is active: code identity does not
+establish which input generation that assembly loaded. Failed or partial refreshes
+do not advance. This preflight is dispatch readiness, not worldwide acceptance:
+assembly still reloads and validates its inputs, and each dataset retains its
+coverage, provenance and publication gates. An incomplete rollout remains visible
+in Actions rather than replacing an accepted dataset. Manual workflow controls
+remain available for dated refreshes and recovery.
