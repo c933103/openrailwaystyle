@@ -1,6 +1,7 @@
 // Regression for a content blocker rejecting public code CDNs. This exercises
 // real MapLibre and PMTiles with synthetic providers; no public tiles are read.
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
@@ -90,9 +91,20 @@ try {
     const page=await context.newPage(),cdnRequests=[],blocked=[];
     const assets=await Promise.all(BROWSER_LIBRARIES.map(async library=>{
       let bytes=await readFile(new URL(mode==='patched-cache'&&library.sourceSha256?`../styles/${library.target}`:`../node_modules/${library.package}/${library.source}`,import.meta.url));
-      if(mode==='previous-patched-cache'&&library.sourceSha256)bytes=Buffer.from(bytes.toString('utf8')
-        .replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
-      const legacy=mode==='previous-patched-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0-atlas.1.js':library.target,base).href
+      if(mode==='previous-patched-cache'&&library.sourceSha256){
+        // atlas.2 includes the attribution AND worker repairs, but no
+        // Mongolian shaping hooks. Verify the fixture before browser startup.
+        const original=bytes.toString('utf8');
+        const current=await readFile(new URL(`../styles/${library.target}`,import.meta.url),'utf8');
+        const workerMethod=text=>{
+          const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
+          assert.equal(matches.length,1);return matches[0][0];
+        };
+        bytes=Buffer.from(original.replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous')
+          .replace(workerMethod(original),workerMethod(current)).replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+        assert.equal(createHash('sha256').update(bytes).digest('hex'),MAPLIBRE_BACKPORT.previousSha256,'previous cache fixture must be exact atlas.2');
+      }
+      const legacy=mode==='previous-patched-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0-atlas.2.js':library.target,base).href
         :mode==='patched-cache'?new URL(library.target,base).href:mode==='first-party-cache'?new URL(library.sourceSha256?'vendor/maplibre-gl-5.24.0.js':library.target,base).href
         :`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`;
       return {...library,body:bytes.toString('base64'),legacy};
