@@ -114,7 +114,7 @@ wraps into further columns to the right.
 
 Map labels get the same treatment inside the renderer's shaping layer,
 per script run — not through its per-layer writing-mode switch. The
-patched distribution (`docs/maplibre-backport.md`, atlas.3) substitutes
+patched distribution (`docs/maplibre-backport.md`, atlas.4) substitutes
 each Mongolian letter in a word with a private-use code point naming
 its contextual form and variation-selector variant, and restacks the
 run vertically at the end of point-label shaping; the glyph fallback

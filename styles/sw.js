@@ -11,16 +11,18 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}80`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}81`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 80 adds traditional Mongolian label shaping (the atlas.3 MapLibre
-// repair and its glyph supply) to the polar imagery shell.
+// Shell 81 adds the Mongolian failure fix (the atlas.4 MapLibre repair:
+// form advances measured in full joining context, and vertical runs
+// breaking into columns at the label's size budget) to the Mongolian
+// label shaping shell.
 // Reuse the prior 3D/high-pitch controls and terrain-source integrity.
 // The complete module graph updates together; older open tabs retain their
 // versioned assets and verified MapLibre attribution backport.
 // Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
-const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.3.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.4.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
 const LEGACY_LIBRARIES = {
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
   'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
@@ -28,9 +30,10 @@ const LEGACY_LIBRARIES = {
 // Historical pages use plain script tags without SRI. Their v5 API remains
 // compatible, so future requests to either old JS URL receive verified fixed
 // bytes. Do not migrate original executable JS into the replacement cache.
-const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', self.registration.scope).href;
-const MAPLIBRE_PATCHED_SHA256 = 'a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed';
+const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', self.registration.scope).href;
+const MAPLIBRE_PATCHED_SHA256 = 'd0ed321052a01314a9b3dd5384e0acecb1399fc755f4d3e3f07681f6ba213150';
 const LEGACY_MAPLIBRE = new Set([
+  new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', self.registration.scope).href,
   new URL('vendor/maplibre-gl-5.24.0-atlas.2.js', self.registration.scope).href,
   new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', self.registration.scope).href,
   new URL('vendor/maplibre-gl-5.24.0.js', self.registration.scope).href,

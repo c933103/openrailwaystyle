@@ -238,8 +238,14 @@ export function createCanvasDrawer() {
   // variation selector right after the letter — so the text engine
   // produces the form itself. Only the letter has ink, so the draw's own
   // measurements describe the form's glyph; its advance is the letter's
-  // share of the context's advance. The bitmap is then rotated into the
-  // vertical orientation the shaping layer stacks.
+  // share of the FULL context's advance, trailing joiner included: the
+  // trailing joiner is what makes the letter take its joining form, and
+  // that form's advance differs from the same letter measured without
+  // it (an initial form measured without its trailing joiner prices at
+  // the isolate advance, a medial at the final advance — errors of
+  // several pixels at 24 px, which left the stacked column's joining
+  // spine broken at nearly every joint). The bitmap is then rotated
+  // into the vertical orientation the shaping layer stacks.
   const drawForm = (code, families, weight) => {
     const decoded = decodeMongolianForm(code);
     if (!decoded) return null;
@@ -254,7 +260,7 @@ export function createCanvasDrawer() {
     const drawn = text === letter ? plain : sdf.draw(text);
     if (!drawn.glyphWidth || !drawn.glyphHeight || isSentinel(drawn, sentinel)) return null;
     const measure = value => sdf.ctx.measureText(value).width;
-    const advance = measure(prefix + letter + selector) - (prefix ? measure(prefix) : 0);
+    const advance = measure(text) - (prefix ? measure(prefix) : 0) - (suffix ? measure(suffix) : 0);
     if (!(advance > 0)) return null;
     const ascent = sdf.ctx.measureText(text).fontBoundingBoxAscent || GLYPH_FONT_SIZE;
     return rotateFormGlyph({bitmap: drawn.data, width: drawn.glyphWidth, height: drawn.glyphHeight,

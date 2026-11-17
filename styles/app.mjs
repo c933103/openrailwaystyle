@@ -109,7 +109,7 @@ async function cachedLegacyLibrary(name) {
     for (const key of names) {
       const cache = await window.caches.open(key);
       if (!await cache.match(new URL('./', import.meta.url).href)) continue;
-      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href, new URL('vendor/maplibre-gl-5.24.0-atlas.2.js', import.meta.url).href] : []),
+      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href, new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', import.meta.url).href] : []),
         new URL(library.local, import.meta.url).href, library.url];
       for (const url of urls) {
         const response = await cache.match(url);
@@ -171,7 +171,7 @@ function restoreCachedMapStyle() {
 $('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
 restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
   loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);

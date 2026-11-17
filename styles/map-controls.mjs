@@ -394,14 +394,19 @@ export function installPwaInstall({window = globalThis.window, document = window
 // and retain GeoJSON raw bytes across interrupted parses. Inputs and output
 // are pinned; the public v5 renderer API stays unchanged.
 //
-// The atlas.3 repair adds traditional Mongolian label shaping inside the
+// The atlas.4 repair adds traditional Mongolian label shaping inside the
 // distribution, at the same hook the RTL text plugin's Arabic shaping
 // uses: atlasMongolianShapeText (defined below, embedded verbatim
 // between the atlas-mongolian markers) runs inside the text transform, so
 // Mongolian letters become private-use contextual forms before glyph
 // collection and shaping, and atlasMongolianVerticalize restacks each
-// Mongolian run vertically at the end of shaping. The glyph supply for
-// the forms is the atlas's own (glyph-fallback.mjs).
+// Mongolian run vertically at the end of shaping, breaking long runs
+// into further columns at the label's size budget. The glyph supply for
+// the forms is the atlas's own (glyph-fallback.mjs). atlas.4 supersedes
+// the atlas.3 shaping, whose generated forms carried advances measured
+// without their trailing joiner (the stacked column's joining spine
+// broke at the letter joints) and whose runs formed one unbounded
+// column.
 // Joining model (DerivedJoiningType, Unicode 17; the Mongolian shaping
 // model of the Unicode Mongolian shaping draft): Mongolian letters are
 // dual-joining. Free variation selectors (U+180B–U+180D, U+180F) are
@@ -468,45 +473,105 @@ export function atlasMongolianShapeText(text) {
 
 // The layout half, called from the patched shaping entry with the
 // finished horizontal shaping: each Mongolian run inside a line is
-// restacked as a vertical column at the run's own place — glyphs keep
+// restacked as vertical columns at the run's own place — glyphs keep
 // the run's starting x, and y advances downward by each glyph form's
 // advance (the horizontal advance of the form, which the 90-degree
 // rotation turns into the vertical step). Glue characters between the
 // run's first and last letters (spaces between the words of a name, the
 // vowel separator, narrow no-break spaces, joiners, nirugu) stack with
-// it, so a multi-word name forms one column with vertical gaps. Glyphs
-// outside runs and the shaping's other bounds are untouched; the bottom
-// grows to cover the column so collision keeps other labels clear.
+// it, so a multi-word name forms one column with vertical gaps.
+// A run whose column would exceed the label's own size budget wraps
+// into further columns, the way horizontal lines wrap at maxWidth:
+// maxWidth is the bound determineLineBreaks applies to a line's
+// advance sum, reinterpreted here as the column's height budget (the
+// same value, the label's one size constraint). A break prefers the
+// run's spaces — word boundaries; the space stays with the column it
+// ends — and a single word longer than the bound breaks mid-word at
+// the bound, as horizontal shaping breaks long words; a lone glyph
+// taller than the bound is placed anyway. Columns progress in +x from
+// the run's x, each starting at the run's top, by the column pitch:
+// the shaping's line height, or the column's ink width when that is
+// wider (or no line height was passed), so columns never overlap.
+// Glyph order stays reading order. The shaping's right and bottom grow
+// to cover every column's ink and stack, so collision keeps other
+// labels clear. Glyphs outside runs are untouched.
 // Vertical-orientation shapings (writingMode 2) and line placement —
 // which shapes with an infinite maxWidth — keep the horizontal run.
-export function atlasMongolianVerticalize(shaping, writingMode, maxWidth) {
+export function atlasMongolianVerticalize(shaping, writingMode, maxWidth, lineHeight) {
   if (writingMode === 2 || !isFinite(maxWidth)) return;
   const isForm = code => (code >= 0xF0000 && code < 0xF02AC) || (code >= 0xF0300 && code < 0xF0DB0);
   const isGlue = code => code === 0x20 || code === 0x180E || code === 0x202F || code === 0x200D || code === 0x180A;
-  for (const line of shaping.positionedLines) {
-    const glyphs = line.positionedGlyphs;
-    let i = 0;
-    while (i < glyphs.length) {
-      if (!isForm(glyphs[i].glyph) && !isGlue(glyphs[i].glyph)) { i++; continue; }
-      let end = i, first = -1, last = -1;
-      while (end < glyphs.length && (isForm(glyphs[end].glyph) || isGlue(glyphs[end].glyph))) {
-        if (isForm(glyphs[end].glyph)) { if (first < 0) first = end; last = end; }
-        end++;
+  const isSpace = code => code === 0x20 || code === 0x180E || code === 0x202F;
+  // Runs are gathered across the shaping's lines: horizontal shaping
+  // has already wrapped a long label at the same bound, so one
+  // Mongolian run can span two positioned lines — restacking each
+  // line's piece separately would start the second piece at the same x
+  // one line lower, interleaving its glyphs with the first piece's
+  // column. In reading order across the lines, a run simply continues
+  // (any intervening text would appear between the pieces and break
+  // the span), so the pieces merge back into one run here.
+  const glyphs = [];
+  for (const line of shaping.positionedLines) glyphs.push(...line.positionedGlyphs);
+  let i = 0;
+  while (i < glyphs.length) {
+    if (!isForm(glyphs[i].glyph) && !isGlue(glyphs[i].glyph)) { i++; continue; }
+    let end = i, first = -1, last = -1;
+    while (end < glyphs.length && (isForm(glyphs[end].glyph) || isGlue(glyphs[end].glyph))) {
+      if (isForm(glyphs[end].glyph)) { if (first < 0) first = end; last = end; }
+      end++;
+    }
+    if (first >= 0) {
+      // Partition the run into columns by unscaled advance sum, the
+      // comparison determineLineBreaks makes against maxWidth.
+      const columns = [];
+      let column = [], height = 0, forms = 0, spaceAt = -1, spaceHeight = 0;
+      for (let k = first; k <= last; k++) {
+        const glyph = glyphs[k];
+        if (isForm(glyph.glyph) && forms > 0 && height + glyph.metrics.advance > maxWidth) {
+          if (spaceAt > 0) {
+            columns.push(column.slice(0, spaceAt));
+            column = column.slice(spaceAt);
+            height -= spaceHeight;
+            forms = column.reduce((count, at) => count + (isForm(glyphs[at].glyph) ? 1 : 0), 0);
+            spaceAt = -1;
+            if (forms > 0 && height + glyph.metrics.advance > maxWidth) {
+              columns.push(column); column = []; height = 0; forms = 0;
+            }
+          } else {
+            columns.push(column); column = []; height = 0; forms = 0;
+          }
+        }
+        column.push(k);
+        height += glyph.metrics.advance;
+        if (isForm(glyph.glyph)) forms++;
+        else if (isSpace(glyph.glyph) && forms > 0) { spaceAt = column.length; spaceHeight = height; }
       }
-      if (first >= 0) {
-        const x = glyphs[first].x;
-        let y = glyphs[first].y;
-        for (let k = first; k <= last; k++) {
+      if (column.length) columns.push(column);
+      let x = glyphs[first].x;
+      const top = glyphs[first].y;
+      for (const members of columns) {
+        let y = top, inkLeft = Infinity, inkRight = -Infinity, scale = 1;
+        for (const k of members) {
           const glyph = glyphs[k];
           glyph.x = x;
-          const step = glyph.metrics.advance * glyph.scale;
           glyph.y = y;
-          y += step;
+          y += glyph.metrics.advance * glyph.scale;
+          scale = glyph.scale;
+          if (isForm(glyph.glyph)) {
+            if (glyph.metrics.left < inkLeft) inkLeft = glyph.metrics.left;
+            if (glyph.metrics.left + glyph.metrics.width > inkRight) inkRight = glyph.metrics.left + glyph.metrics.width;
+            const right = x + (glyph.metrics.left + glyph.metrics.width - 1) * glyph.scale;
+            if (right > shaping.right) shaping.right = right;
+            const bottom = glyph.y + (-glyph.metrics.top - 1 + glyph.metrics.height) * glyph.scale;
+            if (bottom > shaping.bottom) shaping.bottom = bottom;
+          }
         }
         if (y > shaping.bottom) shaping.bottom = y;
+        const inkWidth = inkRight > inkLeft ? inkRight - inkLeft : 0;
+        x += Math.max(isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 0, inkWidth) * scale;
       }
-      i = end;
     }
+    i = end;
   }
 }
 
@@ -516,13 +581,13 @@ export const MAPLIBRE_MONGOLIAN_EDITS = Object.freeze([
   Object.freeze(['Bs.applyArabicShaping&&(t=Bs.applyArabicShaping(t)),t}',
     'Bs.applyArabicShaping&&(t=Bs.applyArabicShaping(t)),t=atlasMongolianShapeText(t),t}']),
   Object.freeze(['(_,n,r,i,g,a,l,u,p,c,f,y),!function(t){for(const e of t)if(0!==e.positionedGlyphs.length)return !1;return !0}(w)&&_}',
-    '(_,n,r,i,g,a,l,u,p,c,f,y),atlasMongolianVerticalize(_,p,o),!function(t){for(const e of t)if(0!==e.positionedGlyphs.length)return !1;return !0}(w)&&_}']),
+    '(_,n,r,i,g,a,l,u,p,c,f,y),atlasMongolianVerticalize(_,p,o,a),!function(t){for(const e of t)if(0!==e.positionedGlyphs.length)return !1;return !0}(w)&&_}']),
 ]);
 export const MAPLIBRE_BACKPORT = Object.freeze({
   upstreamSha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
-  previousSha256: '1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e',
-  sha256: 'a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed',
-  target: 'vendor/maplibre-gl-5.24.0-atlas.3.js',
+  previousSha256: 'a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed',
+  sha256: 'd0ed321052a01314a9b3dd5384e0acecb1399fc755f4d3e3f07681f6ba213150',
+  target: 'vendor/maplibre-gl-5.24.0-atlas.4.js',
 });
 export async function backportMapLibre524(bytes, subtle) {
   if (!subtle) throw new Error('MapLibre backport requires integrity verification');
@@ -542,12 +607,27 @@ export async function backportMapLibre524(bytes, subtle) {
   // result carries the repair exactly once.
   const workerPresent = upstream ? workerOriginal : workerFixed;
   if (source.split(workerPresent).length !== 2) throw new Error('Unexpected MapLibre GeoJSON worker');
-  for (const [editOriginal] of MAPLIBRE_MONGOLIAN_EDITS)
-    if (source.split(editOriginal).length !== 2) throw new Error('Unexpected MapLibre Mongolian shaping');
   // These bounded changes invalidate the upstream source map's columns. Do not
   // advertise that unchanged map for the locally modified distribution.
   let patchedSource = source.replace(upstream ? original : replacement, replacement).replace(workerPresent, workerFixed);
-  for (const [editOriginal, editReplacement] of MAPLIBRE_MONGOLIAN_EDITS) patchedSource = patchedSource.replace(editOriginal, editReplacement);
+  if (upstream) {
+    for (const [editOriginal] of MAPLIBRE_MONGOLIAN_EDITS)
+      if (source.split(editOriginal).length !== 2) throw new Error('Unexpected MapLibre Mongolian shaping');
+    for (const [editOriginal, editReplacement] of MAPLIBRE_MONGOLIAN_EDITS) patchedSource = patchedSource.replace(editOriginal, editReplacement);
+  } else {
+    // The previous distribution already carries the Mongolian span and
+    // hooks; upgrade it in place — swap the whole span for the current
+    // source and pass the shaping's line height to the verticalize
+    // hook. The result is byte-identical to patching upstream, which
+    // the output pin below verifies.
+    const startMarker = '/*atlas-mongolian-start*/', endMarker = '/*atlas-mongolian-end*/';
+    const start = patchedSource.indexOf(startMarker), end = patchedSource.indexOf(endMarker);
+    if (start < 0 || end < start || patchedSource.indexOf(startMarker, start + 1) >= 0 || patchedSource.indexOf(endMarker, end + 1) >= 0)
+      throw new Error('Unexpected MapLibre Mongolian shaping');
+    patchedSource = patchedSource.slice(0, start) + MAPLIBRE_MONGOLIAN_SOURCE + patchedSource.slice(end + endMarker.length);
+    if (patchedSource.split('atlasMongolianVerticalize(_,p,o)').length !== 2) throw new Error('Unexpected MapLibre Mongolian shaping');
+    patchedSource = patchedSource.replace('atlasMongolianVerticalize(_,p,o)', 'atlasMongolianVerticalize(_,p,o,a)');
+  }
   const patched = new TextEncoder().encode(patchedSource.replace('//# sourceMappingURL=maplibre-gl.js.map\n', ''));
   if (await digest(patched) !== MAPLIBRE_BACKPORT.sha256) throw new Error('Unexpected MapLibre output');
   return patched;

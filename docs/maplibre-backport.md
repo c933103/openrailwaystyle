@@ -1,6 +1,6 @@
 # MapLibre bounded runtime repairs
 
-Atlas publishes `vendor/maplibre-gl-5.24.0-atlas.3.js`: the official MapLibre GL
+Atlas publishes `vendor/maplibre-gl-5.24.0-atlas.4.js`: the official MapLibre GL
 JS 5.24.0 distribution with the GeoJSON parse repair below, the Mongolian
 label shaping repair described at the end of this document, and the attribution fix from upstream commit
 [`1da69f3cd913a39fa948708e01478663bf48bc27`](https://github.com/maplibre/maplibre-gl-js/commit/1da69f3cd913a39fa948708e01478663bf48bc27).
@@ -38,15 +38,15 @@ is installed by the application on its own painter instance. It does not change
 these bounded distribution repairs.
 
 The shared `backportMapLibre524` helper checks both hashes and the unique
-replacement count. Only the exact upstream distribution and exact previous atlas.2 distribution are accepted. Unknown, altered, truncated, already-current or unexpected output fails closed. The result is deterministic and is not an opaque checked-in
+replacement count. Only the exact upstream distribution and exact previous atlas.3 distribution are accepted. Unknown, altered, truncated, already-current or unexpected output fails closed. The result is deterministic and is not an opaque checked-in
 binary. Generated vendor files remain uncommitted. A successful build removes
 the obsolete original JavaScript artifact from reused output directories.
 
 | Input/output | SHA-256 |
 | --- | --- |
 | Upstream 5.24.0 JavaScript | `45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb` |
-| Previous atlas.2 JavaScript | `1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e` |
-| Current atlas.3 JavaScript | `a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed` |
+| Previous atlas.3 JavaScript | `a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed` |
+| Current atlas.4 JavaScript | `d0ed321052a01314a9b3dd5384e0acecb1399fc755f4d3e3f07681f6ba213150` |
 | Original `src/source/geojson_worker_source.ts` | `ede54a37fe4e9a5ba5a80941127ed5942d0d9d77ad921af3138c46d488b3cb14` |
 | Original `src/util/dom.ts` | `185a0ae3e1f09e40d3cfa2b40fa863be7b814526cea45479e89e38545c932364` |
 | Original distribution source map | `a09ebdfe7d8a259b7c67a470caa2d4e57d31262bc99020ec41983d3325fa9901` |
@@ -105,7 +105,7 @@ old application modules remain. An already-running old library is not
 retroactively rewritten; reload after a successful upgrade to execute the
 patched application.
 
-## Traditional Mongolian label shaping (atlas.3)
+## Traditional Mongolian label shaping (atlas.4)
 
 Mixed-script labels already shape per script run inside the renderer: an
 Arabic run is contextually joined by the RTL plugin's shaping, substituted
@@ -125,13 +125,25 @@ embedded verbatim in the distribution, between `atlas-mongolian` markers:
   a new word); spaces, digits, punctuation and other scripts break a run.
 - `atlasMongolianVerticalize` runs at the end of shaping for point/symbol
   placement. Each Mongolian run is restacked on its first glyph's x,
-  advancing downward by each glyph's advance, and the shaping's bottom
-  grows to cover the column — the column the renderer's own glyph supply
-  draws, because the glyph fallback (`styles/glyph-fallback.mjs`)
-  generates each private-use form by drawing the letter in joining
-  context (zero-width joiners on its joined sides) with the packaged
-  Atlas Mongolian font and rotating the bitmap a quarter turn clockwise,
-  the orientation CSS `writing-mode: vertical-lr` produces.
+  advancing downward by each glyph's advance, and the shaping's right
+  and bottom grow to cover the columns — the column the renderer's own
+  glyph supply draws, because the glyph fallback
+  (`styles/glyph-fallback.mjs`) generates each private-use form by
+  drawing the letter in joining context (zero-width joiners on its
+  joined sides) with the packaged Atlas Mongolian font and rotating the
+  bitmap a quarter turn clockwise, the orientation CSS
+  `writing-mode: vertical-lr` produces. A run whose column would exceed
+  the label's size budget (the same `maxWidth` bound horizontal line
+  breaking applies to a line's advance sum, read as the column's height
+  budget) breaks into further columns, preferring the run's spaces —
+  word boundaries — and breaking mid-word at the bound when a single
+  word exceeds it; columns progress in +x by the shaping's line height
+  or the column's ink width, whichever is wider. atlas.4 also corrects
+  the glyph supply's form advances: a form's advance is its letter's
+  share of the full joining context, trailing joiner included — atlas.3
+  measured the letter without its trailing joiner, pricing initial
+  forms at the isolate advance and medial forms at the final advance,
+  which broke the column's joining spine at the letter joints.
 
 Vertical writing mode (`text-writing-mode`) and line-path placement keep
 the upstream horizontal layout for a Mongolian run; other scripts are

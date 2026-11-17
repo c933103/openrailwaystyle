@@ -6,6 +6,7 @@ import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
 import {MAPLIBRE_BACKPORT,MAPLIBRE_MONGOLIAN_EDITS,backportMapLibre524} from '../styles/map-controls.mjs';
 import {verifyMapLibreBackportSource} from '../scripts/maplibre-backport.mjs';
+import {buildAtlas3Text} from './fixtures/atlas3-maplibre.mjs';
 
 const root = new URL('../node_modules/maplibre-gl/', import.meta.url);
 const original = await readFile(new URL('dist/maplibre-gl.js', root));
@@ -64,17 +65,10 @@ test('MapLibre backport changes only the attribution loop, the GeoJSON parse met
   } finally {dom.window.close();}
 });
 
-test('the exact prior atlas.2 cache is upgraded to the same current distribution',async()=>{
-  // atlas.2 = upstream + the attribution and worker repairs, without the
-  // Mongolian shaping hooks.
-  let previousText=original.toString('utf8').replace('of e.attributes)d.isPossiblyDangerous',
-    'of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
-  const workerMethod=text=>{
-    const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
-    assert.equal(matches.length,1);return matches[0][0];
-  };
-  previousText=previousText.replace(workerMethod(previousText),workerMethod(Buffer.from(patched).toString('utf8')));
-  const previous=Buffer.from(previousText);
+test('the exact prior atlas.3 cache is upgraded to the same current distribution',async()=>{
+  // atlas.3 = upstream + the attribution and worker repairs + the
+  // atlas.3 Mongolian span and hooks (see fixtures/atlas3-maplibre.mjs).
+  const previous=Buffer.from(buildAtlas3Text(original.toString('utf8'),Buffer.from(patched).toString('utf8')));
   assert.equal(digest(previous),MAPLIBRE_BACKPORT.previousSha256);
   assert.deepEqual(Buffer.from(await backportMapLibre524(previous,webcrypto.subtle)),Buffer.from(patched));
   await assert.rejects(backportMapLibre524(Buffer.concat([previous,Buffer.from(' ')]),webcrypto.subtle),/Unexpected MapLibre input/);
