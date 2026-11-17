@@ -7,7 +7,8 @@
 # published to their own branches (branch-lines-extract-data,
 # service-routes-extract-data, station-points-extract-data,
 # crossings-extract-data, traction-extract-data, conveying-extract-data,
-# aerialways-extract-data, street-running-extract-data). The site uses
+# aerialways-extract-data, street-running-extract-data,
+# heritage-extract-data). The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -227,6 +228,30 @@ jobs:
           if ! git push --force origin HEAD:street-running-extract-data; then
             test "$(git ls-remote origin refs/heads/street-running-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build historic areas from the extract
+        # One read for the ways and relations, a second for the relations'
+        # member ways. The world in a local run (2026-11-10 index): 126 s,
+        # 2.3 GB peak.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-heritage.mjs assembled.osm.pbf assembled.osm.pbf.json heritage-extract | tee heritage-extract.json
+          { echo '# Historic areas from the extract'; echo; echo '```json'; node -e 'const {coverage, ...m} = JSON.parse(require("fs").readFileSync("heritage-extract/manifest.json", "utf8")); console.log(JSON.stringify(m, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish heritage-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/heritage-publish
+          cd /tmp/heritage-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan heritage-extract-data
+          cp -r "$GITHUB_WORKSPACE/heritage-extract/." .
+          git add .
+          git commit -q -m "Historic areas from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:heritage-extract-data; then
+            test "$(git ls-remote origin refs/heads/heritage-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -245,5 +270,6 @@ jobs:
             conveying-extract/conveying/manifest.json
             conveying-extract/aerialways/manifest.json
             street-running-extract/manifest.json
+            heritage-extract/manifest.json
           if-no-files-found: ignore
           retention-days: 30

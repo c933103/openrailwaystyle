@@ -196,6 +196,12 @@ How the choice is made:
 - **Floor and completeness.** From a complete assembly, fewer than 100 features stop the run, as in the Overpass build. `source.json` is complete only when the assembly is.
 - **Checked against `street-data` of 2026-11-15.** The world assembled from the 2026-11-10 index took 73 s and 0.3 GB locally: 15,707 identical; 274 differ, 32 only in the extract, 23 only in Overpass. Traced through the Overpass branch's history as above, every difference is a feature that an earlier Overpass snapshot held and a snapshot after the region's time changed.
 
+**Historic areas (heritage).** Then `scripts/build-extract-heritage.mjs` builds them and, on `main`, publishes them to `heritage-extract-data`, in the `heritage-data` layout (bundles, `index.json`, `manifest.json`), without the Overpass build's per-region `elements/`.
+- **Selection.** `heritageQuery`'s, element by element, over the whole world (its region boxes together cover it): ways, and relations with `type` exactly `multipolygon` or `boundary`, tagged `historic=archaeological_site|battlefield|district`, `protect_class=22` or `heritage=1`, each value exact.
+- **Shapes.** As its `out geom` answer gives them: a way with its geometry; a relation with its member ways' geometry, read in a second pass from the members cut out with `osmium getid` (`shapeRelations`, as for the energy supplies). Converted by `heritageFeatures`.
+- **Same files.** The Overpass build and this one write with `writeHeritageSnapshot` (`scripts/heritage-files.mjs`). The manifest's coverage is the world's 45-degree regions, each with the assembly's oldest time and the areas an Overpass box there would hold; `oldestSource` is the date Help shows.
+- **Completeness.** From a complete assembly, an empty world stops the run, as in the Overpass build. `source.json` is complete only when the assembly is.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
