@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261116-energy-stack-1';
+import {SEARCH_API} from './map-model.mjs?v=20261117-energy-final-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
