@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
 import {extractReadiness} from '../scripts/extract-rollout.mjs';
 const filter=id=>id.startsWith('gap/')?'gap-v2':'region-v2';
 const complete=()=>({schema:1,generation:'20261117T010203Z-123',missing:[],regions:{a:{region:'a',filter:'region-v2'},'gap/1':{region:'gap/1',filter:'gap-v2'}}});
@@ -24,4 +25,15 @@ test('continuation uses trusted main and existing bounded workflows without a ne
  assert.match(w,/ref: main/);assert.match(w,/persist-credentials: false/);assert.doesNotMatch(w,/pull_request_target|schedule:/);
  assert.match(w,/headSha == env.ROLLOUT_HEAD/);assert.match(w,/workflow=osm-extract.yml; else workflow=osm-assemble.yml/);
  assert.match(w,/EXTRACT_RUN_ID:.*workflow_run.id/);assert.match(w,/cancel-in-progress: false/);
+});
+
+test('an active same-source assembly cannot swallow a new generation continuation',()=>{
+ const workflow=readFileSync(new URL('../.github/workflows/extract-rollout.yml',import.meta.url),'utf8');
+ const script=workflow.slice(workflow.lastIndexOf('        run: |')+'        run: |'.length).split('\n').map(line=>line.replace(/^          /,'')).join('\n');
+ for(const [event,active,expected] of [['workflow_run','1','osm-assemble.yml'],['push','1',null],['push','0','osm-extract.yml']]){
+  const harness=`gh(){ if [ "$1" = run ]; then echo "$MOCK_ACTIVE"; else echo "DISPATCH:$3"; fi; }; git(){ echo trustedhead; };\n${script}`;
+  const result=spawnSync('bash',['-e','-c',harness],{encoding:'utf8',env:{...process.env,EVENT_NAME:event,MOCK_ACTIVE:active}});
+  assert.equal(result.status,0,result.stderr);
+  if(expected)assert.ok(result.stdout.includes(`DISPATCH:${expected}`),result.stdout);else assert.ok(!result.stdout.includes('DISPATCH:'),result.stdout);
+ }
 });

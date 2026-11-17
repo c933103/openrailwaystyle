@@ -767,14 +767,16 @@ worldwide OSM coverage or freshness, and does not start a new extraction.
 
 `extract-rollout.yml` checks the working-copy index when the extract selection
 changes on main. Missing inputs or stale regional/gap selection hashes start the
-existing `osm-extract.yml`; an active run of the same source is reused. A run of
+existing `osm-extract.yml`; an active refresh of the same source is reused. A run of
 an older source can finish before the new one through the existing concurrency
 group. This adds no recurring schedule and retains the two-region parallelism,
 100 GiB plan cap and bounded gap requests.
 
 A successful same-repository main extract run can continue to `osm-assemble.yml`
 only when the loaded index was published by that run, has no missing planned
-inputs and every entry matches the current selection. Failed or partial refreshes
+inputs and every entry matches the current selection. This assembly is queued
+even if an older assembly of the same source is active: code identity does not
+establish which input generation that assembly loaded. Failed or partial refreshes
 do not advance. This preflight is dispatch readiness, not worldwide acceptance:
 assembly still reloads and validates its inputs, and each dataset retains its
 coverage, provenance and publication gates. An incomplete rollout remains visible
