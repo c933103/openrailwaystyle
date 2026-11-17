@@ -9,6 +9,7 @@ import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, i
 import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261116-polar-final-1';
 import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261116-polar-final-1';
 import {createWorldFonts} from './world-font.mjs?v=20261116-polar-final-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261116-polar-final-1';
 
 import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261116-polar-final-1';
 import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261116-polar-final-1';
@@ -355,6 +356,15 @@ function updateDetailGlyphs() {
       }
       fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
     }
+    // Traditional Mongolian runs stand vertically (mongolian-text.mjs).
+    // A fresh walk, because the CJK pass above replaced its text nodes;
+    // text inside either kind of wrapped run is already handled.
+    const mongolianWalker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), mongolianNodes = [];
+    while (mongolianWalker.nextNode()) {
+      const node = mongolianWalker.currentNode;
+      if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs], .atlas-mongolian') && hasMongolian(node.data)) mongolianNodes.push(node);
+    }
+    for (const node of mongolianNodes) node.replaceWith(nameFragment(document, node.data));
   } finally {
     // All renderers share this container, including asynchronous departures
     // and nearby names. Existing text-node edits need the same treatment.
@@ -368,6 +378,8 @@ function loadDetailFonts() {
   if (/\p{Script=Han}/u.test(text)) loadCjkFont(cjkScript(settings.language));
   const blocks = rareHanBlocks(text);
   if (blocks.size) void rareHanFonts.ensure(blocks);
+  const mongolian = mongolianFontRequests(text);
+  if (mongolian.size) void worldFonts.ensure(mongolian);
 }
 updateDetailGlyphs();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
@@ -391,6 +403,20 @@ const errors = new Map(), sourceFailureStates = new Map();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
   if (className) el.className = className;
+  return el;
+};
+// A display name that may carry traditional Mongolian: its runs stand
+// vertically (mongolian-text.mjs) and the packaged slices are requested
+// (they swap in when loaded; rendering never waits on them). Names
+// without Mongolian keep the plain text-node path unchanged. The
+// detail panel needs no such helper: updateDetailGlyphs treats every
+// text node rendered into it, whichever renderer produced it.
+const nameNode = (tag, value, className) => {
+  if (!hasMongolian(value)) return textNode(tag, value, className);
+  const el = document.createElement(tag); if (className) el.className = className;
+  el.append(nameFragment(document, value));
+  const requests = mongolianFontRequests(value);
+  if (requests.size) void worldFonts.ensure(requests);
   return el;
 };
 const {row, controlSystemLabel, controlSystemRow} = createInspectorRows(textNode);
@@ -2260,7 +2286,7 @@ $('search-form').addEventListener('submit', async e => {
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
-      button.append(textNode('span', title), textNode('small', detail));
+      button.append(nameNode('span', title), nameNode('small', detail));
       button.addEventListener('click', () => { onClick(); narrow(); });
       li.append(button); results.append(li);
     };

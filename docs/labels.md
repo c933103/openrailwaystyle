@@ -90,8 +90,31 @@ Bulgarian Cyrillic forms as OpenType language variants. Generated
 Cyrillic glyphs use that design's default forms, as the remote source
 also serves them: a glyph request carries no language for its name, so
 this one case stays approximate. Shaping proper — Arabic joining beyond
-the presentation forms recorded in tiles, Mongolian vertical layout —
-is separate from glyph coverage and unchanged by it.
+the presentation forms recorded in tiles, Mongolian vertical layout on
+the map — is separate from glyph coverage and unchanged by it. Off the
+map, Mongolian names do stand vertically; see the next section.
+
+## Vertical Mongolian in detail panels and search results
+
+Traditional Mongolian is written vertically — top to bottom, columns
+progressing left to right — so the map's per-code-point glyphs, drawn
+horizontally in isolated forms, are only a fallback for labels. Where a
+name is text instead — the detail panel (feature and station details,
+departures and nearby names, all of which render into that one
+container) and search results — Mongolian runs are wrapped in a span
+that stands them vertically (`writing-mode: vertical-lr`, never
+`text-orientation: upright`, which collapses the glyphs in Blink), and
+the browser's own text engine joins the letters properly
+(`styles/mongolian-text.mjs`). The span draws in the packaged Atlas
+Mongolian design, requested for the name's blocks when the panel or
+results render and swapped in when it loads, so a device with no
+Mongolian font still renders the name correctly. A mixed name keeps its
+other scripts horizontal: the vertical run is an inline block aligned
+to the line's top, capped at about nine lines' height, beyond which it
+wraps into further columns to the right. Map labels are unchanged: the
+renderer's shaping works per code point, with no contextual joining
+for Mongolian, and its writing-mode switch is per layer, not per
+script, so a mixed Cyrillic–Mongolian label cannot be split by it.
 
 ## Provider handling
 
