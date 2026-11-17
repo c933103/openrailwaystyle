@@ -1,5 +1,5 @@
 export {createBasemapSourceFactory} from './basemap-range-source.mjs';
-export {createGlyphFallback} from './glyph-fallback.mjs';
+export {createGlyphFallback, emptyGlyphRangePbf} from './glyph-fallback.mjs';
 import {waitForViewport} from './viewport-settle.mjs';
 import {createRequestPool} from './request-pool.mjs';
 import {isRetryableProviderError, providerRetryDelay} from './provider-retry.mjs';
@@ -14,6 +14,7 @@ import {chooseName, mergeStationTranslation, stationLanguages, stationPending, O
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
 import {isLocalFamily} from './cjk-font.mjs';
+import {emptyGlyphRangePbf} from './glyph-fallback.mjs';
 import {rareHanBlocks} from './rare-han.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 import {validProviderVectorTile} from './vector-tile-validation.mjs';
@@ -173,7 +174,17 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // slices before MapLibre sees the range. Any failure keeps the range as
   // downloaded. The returned buffer is copied: MapLibre detaches it.
   maplibregl.addProtocol('atlasglyph',async(params,controller)=>{
-    const url=glyphRequestURL(params.url),data=(await get(url,controller.signal,false,1)).slice(0);
+    const url=glyphRequestURL(params.url);
+    let data;
+    try{data=(await get(url,controller.signal,false,1)).slice(0);}
+    catch(error){
+      // A range the glyph server does not serve at all (astral ranges
+      // 404) is an empty range, not a failure: substitute the empty
+      // range so the packaged-font fallback can generate its glyphs.
+      if(error?.status!==404)throw error;
+      data=emptyGlyphRangePbf(url);
+      if(!data)throw error;
+    }
     if(!glyphFallback)return {data};
     try{return {data:(await glyphFallback.augment(url,data)).slice(0)};}catch{return {data};}
   });

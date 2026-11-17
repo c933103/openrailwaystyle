@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash,webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
-import {MAPLIBRE_BACKPORT,backportMapLibre524} from '../styles/map-controls.mjs';
+import {MAPLIBRE_BACKPORT,MAPLIBRE_MONGOLIAN_EDITS,backportMapLibre524} from '../styles/map-controls.mjs';
 import {verifyMapLibreBackportSource} from '../scripts/maplibre-backport.mjs';
 
 const root = new URL('../node_modules/maplibre-gl/', import.meta.url);
@@ -37,7 +37,7 @@ function distributionSanitizer(bytes) {
   return {sanitize,close:()=>dom.window.close()};
 }
 
-test('MapLibre backport changes only the attribution loop and GeoJSON parse method, with no stale source map',async()=>{
+test('MapLibre backport changes only the attribution loop, the GeoJSON parse method and the Mongolian shaping hooks, with no stale source map',async()=>{
   assert.equal(digest(original), MAPLIBRE_BACKPORT.upstreamSha256);
   assert.equal(digest(patched), MAPLIBRE_BACKPORT.sha256);
   let expected=original.toString('utf8').replace(
@@ -50,6 +50,7 @@ test('MapLibre backport changes only the attribution loop and GeoJSON parse meth
   const fixedMethod=workerMethod(Buffer.from(patched).toString('utf8'));
   assert.notEqual(workerMethod(expected),fixedMethod);
   expected=expected.replace(workerMethod(expected),fixedMethod);
+  for(const [editOriginal,editReplacement] of MAPLIBRE_MONGOLIAN_EDITS)expected=expected.replace(editOriginal,editReplacement);
   assert.equal(Buffer.from(patched).toString('utf8'),expected);
   assert.match(expected,/MapLibre/);
   assert.ok(!expected.includes('sourceMappingURL='));
@@ -63,9 +64,17 @@ test('MapLibre backport changes only the attribution loop and GeoJSON parse meth
   } finally {dom.window.close();}
 });
 
-test('the exact prior atlas.1 cache is upgraded to the same current distribution',async()=>{
-  const previous=Buffer.from(original.toString('utf8').replace('of e.attributes)d.isPossiblyDangerous',
-    'of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+test('the exact prior atlas.2 cache is upgraded to the same current distribution',async()=>{
+  // atlas.2 = upstream + the attribution and worker repairs, without the
+  // Mongolian shaping hooks.
+  let previousText=original.toString('utf8').replace('of e.attributes)d.isPossiblyDangerous',
+    'of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
+  const workerMethod=text=>{
+    const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
+    assert.equal(matches.length,1);return matches[0][0];
+  };
+  previousText=previousText.replace(workerMethod(previousText),workerMethod(Buffer.from(patched).toString('utf8')));
+  const previous=Buffer.from(previousText);
   assert.equal(digest(previous),MAPLIBRE_BACKPORT.previousSha256);
   assert.deepEqual(Buffer.from(await backportMapLibre524(previous,webcrypto.subtle)),Buffer.from(patched));
   await assert.rejects(backportMapLibre524(Buffer.concat([previous,Buffer.from(' ')]),webcrypto.subtle),/Unexpected MapLibre input/);

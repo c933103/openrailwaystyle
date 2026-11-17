@@ -458,8 +458,8 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
     if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.2.js'))throw Error('replacement library unavailable');
-    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.2.js','.js')));
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.3.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace(/-atlas\.\d+\.js$/,'.js')));
     if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
       const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
@@ -491,7 +491,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
-  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.2.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.3.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
   const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
   assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
   assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
@@ -528,14 +528,22 @@ test('new app recovers verified already-patched first-party cache bytes without 
   } finally {result.dom.window.close();}
 });
 
-test('new app upgrades exact atlas.1 cached bytes when atlas.2 installation is interrupted',async()=>{
+test('new app upgrades exact atlas.2 cached bytes when atlas.3 installation is interrupted',async()=>{
   const scope='https://example.org/openrailwaystyle/';
   const original=legacyDistributions.find(library=>library.sourceSha256).body.toString('utf8');
+  const patchedText=legacyDistributions.find(library=>library.sourceSha256).patchedBody.toString('utf8');
+  const workerMethod=text=>{
+    const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
+    assert.equal(matches.length,1);return matches[0][0];
+  };
+  // atlas.2 = upstream + the attribution and worker repairs, without the
+  // Mongolian shaping hooks.
   const previous=original.replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous')
+    .replace(workerMethod(original),workerMethod(patchedText))
     .replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
   const caches={keys:async()=>['atlas-shell-69'],open:async()=>({match:async url=>{
     if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
-    if(url===scope+'vendor/maplibre-gl-5.24.0-atlas.1.js')return new Response(previous,{headers:{'content-type':'text/javascript'}});
+    if(url===scope+'vendor/maplibre-gl-5.24.0-atlas.2.js')return new Response(previous,{headers:{'content-type':'text/javascript'}});
     const library=legacyDistributions.find(library=>!library.sourceSha256&&new URL(library.target,scope).href===url);
     return library?new Response(library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}}):undefined;
   }})};

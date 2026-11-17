@@ -72,7 +72,7 @@ try {
         archiveVersion:header.specVersion,archiveEntries:header.numTileEntries};
     });
     assert.deepEqual(actual,{version:'5.24.0',realMap:true,canvas:true,stylesheet:'absolute',archiveVersion:3,archiveEntries:1});
-    for(const name of ['maplibre-gl-5.24.0-atlas.2.js','maplibre-gl-5.24.0.css','pmtiles-4.2.1.js']){
+    for(const name of ['maplibre-gl-5.24.0-atlas.3.js','maplibre-gl-5.24.0.css','pmtiles-4.2.1.js']){
       assert.ok(codeRequests.some(url=>new URL(url).pathname===path+'vendor/'+name),name+' must load from the actual project path');
     }
     assert.deepEqual(blocked,[],'the app must make zero requests to code CDNs');

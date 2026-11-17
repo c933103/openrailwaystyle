@@ -1,7 +1,8 @@
 # MapLibre bounded runtime repairs
 
-Atlas publishes `vendor/maplibre-gl-5.24.0-atlas.2.js`: the official MapLibre GL
-JS 5.24.0 distribution with the GeoJSON parse repair below and the attribution fix from upstream commit
+Atlas publishes `vendor/maplibre-gl-5.24.0-atlas.3.js`: the official MapLibre GL
+JS 5.24.0 distribution with the GeoJSON parse repair below, the Mongolian
+label shaping repair described at the end of this document, and the attribution fix from upstream commit
 [`1da69f3cd913a39fa948708e01478663bf48bc27`](https://github.com/maplibre/maplibre-gl-js/commit/1da69f3cd913a39fa948708e01478663bf48bc27).
 This is a locally patched 5.24.0 runtime, **not** the official 6.4.1 release.
 The public upstream advisory is
@@ -16,7 +17,9 @@ The [v6 migration](https://github.com/maplibre/maplibre-gl-js/releases/tag/v6.0.
 changes UMD loading to ESM, requires WebGL2, removes `map.transform` used by
 Atlas's polar/globe navigation, and changes the missing-style-image callback.
 Those changes warrant a separate compatibility migration. This bounded fix
-retains the v5 renderer API and WebGL support. Only the two reviewed method bodies are changed.
+retains the v5 renderer API and WebGL support. Only the two reviewed method bodies are changed,
+plus the Mongolian shaping hooks, which are inert for text without
+Mongolian letters.
 The npm version and lock integrity stay unchanged; no transitive override or
 unrelated test-tooling migration is included.
 
@@ -35,15 +38,15 @@ is installed by the application on its own painter instance. It does not change
 these bounded distribution repairs.
 
 The shared `backportMapLibre524` helper checks both hashes and the unique
-replacement count. Only the exact upstream distribution and exact previous atlas.1 distribution are accepted. Unknown, altered, truncated, already-current or unexpected output fails closed. The result is deterministic and is not an opaque checked-in
+replacement count. Only the exact upstream distribution and exact previous atlas.2 distribution are accepted. Unknown, altered, truncated, already-current or unexpected output fails closed. The result is deterministic and is not an opaque checked-in
 binary. Generated vendor files remain uncommitted. A successful build removes
 the obsolete original JavaScript artifact from reused output directories.
 
 | Input/output | SHA-256 |
 | --- | --- |
 | Upstream 5.24.0 JavaScript | `45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb` |
-| Previous atlas.1 JavaScript | `46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223` |
-| Current atlas.2 JavaScript | `1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e` |
+| Previous atlas.2 JavaScript | `1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e` |
+| Current atlas.3 JavaScript | `a1689c6e2f7119abaff9706daeaf6c3a2e9b184cf670120db5344f27b3c6caed` |
 | Original `src/source/geojson_worker_source.ts` | `ede54a37fe4e9a5ba5a80941127ed5942d0d9d77ad921af3138c46d488b3cb14` |
 | Original `src/util/dom.ts` | `185a0ae3e1f09e40d3cfa2b40fa863be7b814526cea45479e89e38545c932364` |
 | Original distribution source map | `a09ebdfe7d8a259b7c67a470caa2d4e57d31262bc99020ec41983d3325fa9901` |
@@ -82,7 +85,7 @@ previous complete shell available, following the existing recovery policy.
 
 If a previous worker admits the new page but replacement installation fails,
 the new app may find the original 5.24.0 in the same application's old cache,
-either at its first-party or CDN key, or exact atlas.1 bytes under their original key. It verifies the saved bytes, performs
+either at its first-party or CDN key, or exact atlas.2 bytes under their original key. It verifies the saved bytes, performs
 the same backport and verifies the result **before** creating an executable
 blob. This does not request a CDN or mutate the original cache entry. Already
 patched cached bytes are accepted only after matching the patched hash. Missing
@@ -101,6 +104,40 @@ be served rather than run the old distribution. CSS/PMTiles compatibility and
 old application modules remain. An already-running old library is not
 retroactively rewritten; reload after a successful upgrade to execute the
 patched application.
+
+## Traditional Mongolian label shaping (atlas.3)
+
+Mixed-script labels already shape per script run inside the renderer: an
+Arabic run is contextually joined by the RTL plugin's shaping, substituted
+to presentation forms before glyph lookup. Traditional Mongolian gets the
+same treatment. Two functions from `styles/mongolian-shaping.mjs` are
+embedded verbatim in the distribution, between `atlas-mongolian` markers:
+
+- `atlasMongolianShapeText` runs inside the text transform, at the same
+  point as the Arabic shaping call, so its output feeds both glyph
+  collection and shaping. Within a Mongolian word, each letter is replaced
+  one-for-one by a private-use code point (plane 15, U+F0000…) naming its
+  joining form — isolate, initial, medial or final — and its free
+  variation selector variant where one is present. Joining follows the
+  Unicode Mongolian model: letters are dual-joining; U+180A NIRUGU and
+  U+200D ZWJ join across; U+180E MVS and U+202F NNBSP join forward only
+  (the preceding letter keeps a joining form, the following letter starts
+  a new word); spaces, digits, punctuation and other scripts break a run.
+- `atlasMongolianVerticalize` runs at the end of shaping for point/symbol
+  placement. Each Mongolian run is restacked on its first glyph's x,
+  advancing downward by each glyph's advance, and the shaping's bottom
+  grows to cover the column — the column the renderer's own glyph supply
+  draws, because the glyph fallback (`styles/glyph-fallback.mjs`)
+  generates each private-use form by drawing the letter in joining
+  context (zero-width joiners on its joined sides) with the packaged
+  Atlas Mongolian font and rotating the bitmap a quarter turn clockwise,
+  the orientation CSS `writing-mode: vertical-lr` produces.
+
+Vertical writing mode (`text-writing-mode`) and line-path placement keep
+the upstream horizontal layout for a Mongolian run; other scripts are
+untouched in all modes. The shaping functions are self-contained, and a
+test extracts the embedded copies from the patched distribution and runs
+them standalone.
 
 ## Regression scope
 

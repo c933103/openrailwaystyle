@@ -17,6 +17,7 @@
 import Pbf from 'pbf';
 import TinySDF from '@mapbox/tiny-sdf';
 import {WORLD_FONT_FAMILIES} from './world-font.mjs';
+import {decodeMongolianForm, isMongolianFormCode, MONGOLIAN_FVS_CODEPOINTS} from './mongolian-shaping.mjs';
 
 // The glyph PBF geometry of the remote source (fontnik): 24 px font,
 // 3 px border, signed distances over an 8 px radius.
@@ -61,6 +62,21 @@ export function encodeGlyphPbf(stacks) {
   const pbf = new Pbf();
   for (const stack of stacks) pbf.writeMessage(1, writeStack, stack);
   return pbf.finish();
+}
+
+// The empty range a glyph server answers for a range it leaves
+// unpopulated — one stack, no glyphs — synthesized for the ranges it
+// refuses outright (astral ranges return 404): the atlasglyph protocol
+// substitutes this so augment() can generate the range's glyphs itself.
+// Returns an ArrayBuffer, or null when the URL is not a glyph range.
+export function emptyGlyphRangePbf(url) {
+  try {
+    const parts = new URL(url).pathname.split('/');
+    const range = /^(\d+)-(\d+)$/.exec(parts.at(-1).replace(/\.pbf$/, ''));
+    if (!range) return null;
+    const bytes = encodeGlyphPbf([{name: decodeURIComponent(parts.at(-2)), range: `${range[1]}-${range[2]}`, glyphs: []}]);
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  } catch { return null; }
 }
 
 // --- Which packaged families draw a code point --------------------------
@@ -159,6 +175,10 @@ function arabicRoute(code, language) {
   return {families: ['arabic', 'naskh'], lang: 'ar'};
 }
 export function routeForCodePoint(code, language = 'local') {
+  // Mongolian contextual forms (mongolian-shaping.mjs): the shaping
+  // layer asks for them by private-use code point, and the drawer below
+  // generates them from the packaged Mongolian design.
+  if (isMongolianFormCode(code)) return {families: ['mongolian'], lang: undefined};
   if (ARABIC_RANGES.some(([first, last]) => code >= first && code <= last)) return arabicRoute(code, language);
   for (const [first, last, families] of ROUTES) if (code >= first && code <= last) return {families, lang: undefined};
   return null;
@@ -171,6 +191,24 @@ export function generationStack(code, language = 'local') {
 }
 export const glyphWeight = stackName => /\bbold\b/i.test(String(stackName).split(',')[0]) ? 700 : 400;
 const isControl = code => /^\p{Cc}$/u.test(String.fromCodePoint(code));
+
+// Rotate a drawn glyph 90 degrees clockwise — the turn that takes the
+// horizontal Mongolian script to its vertical form (verified against
+// CSS writing-mode: vertical-lr; see mongolian-shaping.mjs). The bitmap
+// grid rotates with the ink box: in pen coordinates (y down from the
+// baseline, ink top `ascent`-relative as the drawer reports it) a point
+// (x, y) lands at (−y, x), so the ink's new left edge is the old ink
+// top less the old ink height, and the new top is the negated old left.
+// The advance is unchanged: horizontal advance becomes the vertical
+// step of the column the shaping layer stacks.
+export function rotateFormGlyph({bitmap, width, height, left, top, advance}, ascent) {
+  const gridWidth = width + 2 * GLYPH_BUFFER, gridHeight = height + 2 * GLYPH_BUFFER;
+  const data = new Uint8ClampedArray(bitmap.length);
+  for (let y = 0; y < gridHeight; y++) for (let x = 0; x < gridWidth; x++)
+    data[x * gridHeight + (gridHeight - 1 - y)] = bitmap[y * gridWidth + x];
+  return {bitmap: data, width: height, height: width,
+    left: Math.round((top + ascent) - height), top: Math.round(-left - ascent), advance};
+}
 
 // The default drawer: TinySDF over a canvas, one instance per stack. The
 // metrics follow the remote source's convention (see
@@ -193,7 +231,38 @@ export function createCanvasDrawer() {
     }
     return entry;
   };
+  const isSentinel = (drawn, sentinel) => drawn.glyphWidth === sentinel.glyphWidth && drawn.glyphHeight === sentinel.glyphHeight
+    && drawn.data.length === sentinel.data.length && drawn.data.every((value, i) => value === sentinel.data[i]);
+  // A Mongolian contextual form (mongolian-shaping.mjs): draw the letter
+  // in joining context — a zero-width joiner on each joined side, the
+  // variation selector right after the letter — so the text engine
+  // produces the form itself. Only the letter has ink, so the draw's own
+  // measurements describe the form's glyph; its advance is the letter's
+  // share of the context's advance. The bitmap is then rotated into the
+  // vertical orientation the shaping layer stacks.
+  const drawForm = (code, families, weight) => {
+    const decoded = decodeMongolianForm(code);
+    if (!decoded) return null;
+    const {sdf, sentinel} = instance(families, weight, undefined);
+    const letter = String.fromCodePoint(decoded.base);
+    const plain = sdf.draw(letter);
+    if (!plain.glyphWidth || !plain.glyphHeight || isSentinel(plain, sentinel)) return null;
+    const selector = decoded.fvs ? String.fromCodePoint(MONGOLIAN_FVS_CODEPOINTS[decoded.fvs]) : '';
+    const prefix = decoded.form >= 2 ? '\u200D' : '';
+    const suffix = decoded.form === 1 || decoded.form === 2 ? '\u200D' : '';
+    const text = prefix + letter + selector + suffix;
+    const drawn = text === letter ? plain : sdf.draw(text);
+    if (!drawn.glyphWidth || !drawn.glyphHeight || isSentinel(drawn, sentinel)) return null;
+    const measure = value => sdf.ctx.measureText(value).width;
+    const advance = measure(prefix + letter + selector) - (prefix ? measure(prefix) : 0);
+    if (!(advance > 0)) return null;
+    const ascent = sdf.ctx.measureText(text).fontBoundingBoxAscent || GLYPH_FONT_SIZE;
+    return rotateFormGlyph({bitmap: drawn.data, width: drawn.glyphWidth, height: drawn.glyphHeight,
+      left: drawn.glyphLeft, top: drawn.glyphTop - ascent, advance}, ascent);
+  };
   return (char, {families, weight, lang}) => {
+    const code = char.codePointAt(0);
+    if (isMongolianFormCode(code)) return drawForm(code, families, weight);
     const {sdf, sentinel} = instance(families, weight, lang);
     const drawn = sdf.draw(char);
     if (!drawn.glyphWidth || !drawn.glyphHeight) {
@@ -201,8 +270,7 @@ export function createCanvasDrawer() {
       // packaged font knows), anything else stays missing.
       return drawn.glyphAdvance > 0 ? {bitmap: drawn.data, width: 0, height: 0, left: 0, top: -GLYPH_FONT_SIZE, advance: drawn.glyphAdvance} : null;
     }
-    if (drawn.glyphWidth === sentinel.glyphWidth && drawn.glyphHeight === sentinel.glyphHeight
-      && drawn.data.length === sentinel.data.length && drawn.data.every((value, i) => value === sentinel.data[i])) return null;
+    if (isSentinel(drawn, sentinel)) return null;
     const ascent = sdf.ctx.measureText(char).fontBoundingBoxAscent || GLYPH_FONT_SIZE;
     return {bitmap: drawn.data, width: drawn.glyphWidth, height: drawn.glyphHeight,
       left: drawn.glyphLeft, top: Math.round(drawn.glyphTop - ascent), advance: drawn.glyphAdvance};
@@ -242,7 +310,15 @@ export function createGlyphFallback({worldFonts, drawGlyph = createCanvasDrawer(
       if (!missing.length) return remember(key, block, bytes);
       if (worldFonts) {
         const requests = new Set();
-        for (const {code, route} of missing) for (const family of route.ids) requests.add({family, weight, block: code >> 8});
+        for (const {code, route} of missing) {
+          for (const family of route.ids) requests.add({family, weight, block: code >> 8});
+          // A Mongolian form is drawn from the base letter's slices, not
+          // from any slice of its private-use block.
+          if (isMongolianFormCode(code)) {
+            const {base} = decodeMongolianForm(code);
+            requests.add({family: 'mongolian', weight, block: base >> 8});
+          }
+        }
         try { await worldFonts.ensure(requests); } catch { /* slices are best effort; drawing proceeds */ }
       }
       const generated = [];
@@ -260,7 +336,11 @@ export function createGlyphFallback({worldFonts, drawGlyph = createCanvasDrawer(
   }
   function invalidate(keys) {
     const blocks = new Set([...keys].map(key => Number(String(key).split(':')[2])));
-    for (const [key, entry] of cache) if (blocks.has(entry.block)) cache.delete(key);
+    // Mongolian form ranges are drawn from the Mongolian slices: when
+    // one of those arrives late, the form ranges drawn without it go too.
+    const mongolian = [...keys].some(key => String(key).startsWith('mongolian:'));
+    for (const [key, entry] of cache)
+      if (blocks.has(entry.block) || (mongolian && entry.block >= 0xF00 && entry.block < 0xF0E)) cache.delete(key);
   }
   return {augment, invalidate};
 }
