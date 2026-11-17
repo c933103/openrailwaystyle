@@ -8,6 +8,7 @@ import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261116-polar-final-1
 import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261116-polar-final-1';
 import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261116-polar-final-1';
 import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261116-polar-final-1';
+import {createWorldFonts} from './world-font.mjs?v=20261116-polar-final-1';
 
 import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261116-polar-final-1';
 import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261116-polar-final-1';
@@ -196,6 +197,15 @@ const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered
 // Rare Han glyph slices, loaded for the labels of each tile before it is drawn;
 // one that arrives after a label was drawn without it redraws the labels.
 const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:()=>refreshCjkFont()});
+// Packaged world label fonts (world-font.mjs) and the glyphs generated
+// from them (glyph-fallback.mjs, created through the label bundle in
+// initialize): the remote glyph source leaves whole scripts empty, so
+// the atlasglyph protocol generates those glyphs from these slices on
+// the device, with no dependence on fonts the device has. A slice that
+// arrives after its glyphs were drawn without it drops the cached
+// glyphs and redraws the labels, like a rare Han slice.
+let worldGlyphFallback;
+const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshCjkFont();}});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
 // Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
@@ -1468,7 +1478,8 @@ async function initialize() {
   const basemapSource = labelCode.createBasemapSourceFactory(pmtiles);
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(basemapSource(url), 20000));
   const requestRefresh=createReferenceRefresh(()=>{if(ready)applyRailReferenceState();});
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure,
+  worldGlyphFallback = labelCode.createGlyphFallback({worldFonts, language: () => settings.language});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure, glyphFallback: worldGlyphFallback,
     onRequestChange:requestRefresh.notify, isMoving:() => Boolean(map?.isMoving() || map?.isZooming())});
   const reference=createReferenceReader({root:new URL('./data/mainline-reference/',import.meta.url)});
   maplibregl.addProtocol('mainlinetiles',async(params,controller)=>({

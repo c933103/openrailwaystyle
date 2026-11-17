@@ -38,7 +38,7 @@ const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'world-font.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -172,8 +172,9 @@ self.addEventListener('fetch', event => {
   // retain it offline without making installation download both large files.
   // Rare Han slices (rare-han.mjs) are kept the same way, one per 256
   // characters, with the index that lists them: without it no saved slice is
-  // used offline.
-  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)){
+  // used offline. World font slices (world-font.mjs) likewise, one per
+  // family, weight and 256 characters, with their index.
+  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)||/\/fonts\/world-v1\/([a-z0-9-]+-\d{3}-[0-9a-f]{3,4}\.woff2|index\.json)$/.test(url.pathname)){
     // Keeping a copy is best effort: without Cache Storage, or with it full,
     // the downloaded font is still served.
     event.respondWith((async()=>{

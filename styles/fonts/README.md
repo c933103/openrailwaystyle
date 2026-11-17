@@ -66,3 +66,39 @@ the service worker keeps loaded slices for offline use.
 
 Names in these planes also depend on `styles/pbf-utf8.mjs`: pbf's own UTF-8
 writer turned U+20000–U+2FFFF into U+10000–U+1FFFF when tiles were re-encoded.
+
+## World label fonts
+
+The remote glyph source serves only some Unicode ranges, so the glyphs it
+lacks are generated on the device from packaged fonts for the local scripts
+of common languages: the Noto designs for Arabic (the Sans design, Naskh and
+the Urdu Nastaliq as separate families), Hebrew, Armenian, Georgian,
+Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada,
+Malayalam, Sinhala, Thai, Lao, Myanmar, Tibetan (the Serif design; Noto has
+no Sans Tibetan), Khmer, Ethiopic, Mongolian, Syriac, Tifinagh, Thaana, NKo,
+Canadian Aboriginal and Cherokee, a base design (Latin, Greek, Cyrillic and
+their extensions), and symbol and math designs — all under the
+[SIL Open Font License](OFL.txt). `scripts/build-world-fonts.py` cuts the
+system Noto fonts (the site workflow installs the fonts-noto-core and
+fonts-noto-extra packages, which between them ship every listed family, and
+the build fails if one is missing) into `world-v1/`: one WOFF2 slice per
+family, weight and 256 code points — 515 slices, about 3.1 MB in all — plus
+an `index.json` of the slices published. The slices are built at deploy
+time (cached on the script's hash) and are not committed. Slice and
+directory names are immutable: a changed family list or cut needs a new
+directory name in the script, in `styles/app.mjs` and in `styles/sw.js`.
+Regenerate with `python scripts/build-world-fonts.py` after installing
+Python `fonttools` and `brotli` (`ATLAS_FONT_DIRS` overrides the font
+search directories). Noto Sans Mongolian, Syriac, Tifinagh, NKo and the
+symbol designs ship no static Bold in the source packages; their Bold
+labels are synthesised from the Regular slices, as MapLibre synthesises
+weight for local fonts.
+
+`styles/world-font.mjs` registers each slice as an `Atlas …` font face with
+its `unicode-range`, one family per regional design. `styles/glyph-fallback.mjs`
+routes each missing code point to its script's families, loads the slices
+for its block, and draws the glyph with TinySDF from those families only —
+no system or generic family is ever in the drawing stack — so a device with
+no font for a script renders the same glyphs as any other. A slice that
+arrives after its glyphs were drawn without it drops the cached range and
+redraws the labels; the service worker keeps loaded slices for offline use.

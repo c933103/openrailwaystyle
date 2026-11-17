@@ -56,6 +56,43 @@ when ready; each selected script's font is cached for later offline use. Neither
 font is part of mandatory app installation. Source, coverage and regeneration
 instructions are in [the font reference](../styles/fonts/README.md).
 
+## Glyphs the remote source does not serve
+
+Labels draw their glyphs from the remote source the style names, which
+serves only some Unicode ranges: at the last audit 28 of the 256
+basic-plane ranges had any glyphs, and Arabic, Thai, Lao, Tibetan,
+Khmer, Ethiopic, most Indic scripts and Mongolian were empty, so those
+characters were dropped from basemap and railway labels alike. The
+`atlasglyph` protocol completes each downloaded range on the device
+instead: code points the range lacks are generated from the packaged
+world fonts (below) before the map sees the range, and a range that
+cannot be completed is used as downloaded.
+
+The packaged fonts are the Noto designs for the local scripts of common
+languages, cut at deploy time into one WOFF2 slice per family, weight
+and 256 code points, and downloaded only for characters in labels about
+to be drawn, like the rare Han slices. Glyph generation uses only these
+packaged families — never a system or generic family — so a device with
+no font for a script still renders its names, and renders the same
+glyphs as any other device. CJK ideographs, kana and Hangul keep their
+own routes above, and rare Han keeps its slices.
+
+Regional designs stay separate families, because one region's forms
+must not be shipped as universal. The Arabic script has three packaged
+designs: the Sans design (whose letterforms are also the Persian ones),
+Naskh, and the Urdu Nastaliq, which draws Urdu's own letters. An
+Arabic-script label language selects its design; in local names, a
+name's Urdu or Persian letters select theirs. Scripts whose regional
+conventions are code points or variants within one design share a
+family: Assamese names use the Bengali design, Hindi and Marathi names
+the Devanagari design, and the base design carries the Serbian and
+Bulgarian Cyrillic forms as OpenType language variants. Generated
+Cyrillic glyphs use that design's default forms, as the remote source
+also serves them: a glyph request carries no language for its name, so
+this one case stays approximate. Shaping proper — Arabic joining beyond
+the presentation forms recorded in tiles, Mongolian vertical layout —
+is separate from glyph coverage and unchanged by it.
+
 ## Provider handling
 
 `styles/tile-labels.mjs` preserves vector tile geometry and attaches the selected display name. The station provider exposes one translation per request, so the client requests fallback languages only while current-view stations remain unresolved and retains a bounded cache. Missing translations are distinguished from the provider's native-name substitution. Failed optional translation lookups retain already loaded stations. Snapshot line names retain OSM `name:*` tags. The operating-line provider generally exposes **only local names**, so translations omitted from those tiles cannot be recovered by the selector. Search results depend on the separate search API. Railway names appear along tracks from zoom 9; speed labels retain source units.
