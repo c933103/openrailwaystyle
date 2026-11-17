@@ -17,6 +17,8 @@ export async function writeHeritageSnapshot(output, features, {head, tail}, {mkd
   const tiles = heritageTiles(features);
   const bundles = heritageBundles(tiles);
   await rm(output, {recursive:true, force:true});
+  // Made here too: a partial world with no areas has no bundle to make it.
+  await mkdir(output, {recursive:true});
   let bytes = 0;
   for (const [path, data] of bundles) {
     await mkdir(`${output}/${path.slice(0, path.lastIndexOf('/'))}`, {recursive:true});

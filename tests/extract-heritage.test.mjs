@@ -131,6 +131,11 @@ test('from a partial assembly: written, not complete; an empty world is refused'
   assert.match(checkMarker(await readFile(join(dir, 'p', 'source.json'), 'utf8'), 'heritage'), /not complete/);
   const older = await buildExtractHeritage('x', report({olderFilter: ['gap/0_-180_45_-135']}), join(dir, 'o'), {read: fakeRead(), subset: fakeSubset});
   assert.equal(older.complete, false, 'a tile asked with an older query');
+  // A partial world with no areas is still written, not complete.
+  const none = await buildExtractHeritage('x', report({missingRegions: ['africa']}), join(dir, 'n'), {read: fakeRead([]), subset: fakeSubset});
+  assert.deepEqual([none.complete, none.areas, none.bundles], [false, 0, 0]);
+  assert.deepEqual(JSON.parse(await readFile(join(dir, 'n', 'index.json'), 'utf8')).bundles, []);
+  assert.match(checkMarker(await readFile(join(dir, 'n', 'source.json'), 'utf8'), 'heritage'), /not complete/);
   await assert.rejects(buildExtractHeritage('x', report(), join(dir, 'e'), {read: fakeRead([]), subset: fakeSubset}), /empty worldwide historic area/);
   await assert.rejects(buildExtractHeritage('x', {...report(), schema: 2}, join(dir, 'b'), {read: () => assert.fail('nothing read')}), /Not an assembly report/);
 });
