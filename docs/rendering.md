@@ -427,7 +427,7 @@ coverage, licence evidence, repair limits and the remaining source-switch checks
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.
 
-Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Carto and Satellite/Hybrid are unchanged.
+Beyond 85.05° N and S, where the terrain tiles end, the globe's relief, contours and **sea-depth colours** come from NOAA ETOPO 2022's 60 arc-second surface data (sampled onto a 1.5 km polar grid), prepared in advance rather than in the browser. This is not a navigation chart. In the Atlas Map background the polar depth texture retains numeric depths and the renderer applies the exact seven `DEPTH_COLOURS` stops shared with the ordinary map, interpolating depths before colours. Non-ocean/positive elevations and missing values are transparent; the ordinary water and ice layers retain their existing order. Satellite and Hybrid also use these prepared depths in their cartographic polar fallback.
 
 The polar texture is an optional, format-validated asset (`north-depth.png`/`south-depth.png`) published alongside the existing contour/relief snapshots. Earlier snapshots lack the depth image and keep their flat polar fill without requesting a nonexistent asset; depth image load or shader failure is isolated from the rest of the map. Polar depth uses **ETOPO 2022**, while the ordinary Mercator seabed raster uses a different ETOPO-derived terrain source; the palette is identical but source resolution/depth samples may differ near 85.05° rather than providing artificial continuity. The colour texture is separate from the 3D terrain geometry; full 3D relief remains unavailable within the polar cap.
 
@@ -451,7 +451,7 @@ clipping mask. Older assets cannot distinguish original edges exactly coincident
 with that mask; those coincident segments are conservatively omitted.
 
 The already-published polar OSM detail tiles (historically named `carto`
-in their index/filenames) are now shared by Map and Carto. In Map, camera-zoom ranges and layout visibility control mapped waterways,
+in their index/filenames) are shared by Map, Carto and Hybrid. In Map, camera-zoom ranges and layout visibility control mapped waterways,
 subdued buildings and outlines; airport aprons/taxiways/runways also follow
 the Transport toggle. Removed style layers stay hidden, and overlapping
 seabed layer ranges draw each visible layer in style order. Polar roads and
@@ -461,9 +461,14 @@ its own live filter accepts, with its colour, width, opacity, zoom range and
 visibility, in style order. Detail tiles built before this change carry no
 class and draw no Map roads; Carto still draws all roads and paths. Polar line
 strokes are solid, so dashed road styles (cycle and footpaths) appear solid
-beyond 85°. Named facility and peak labels remain Carto-only: the snapshot
-stores no amenity type to match the Map's per-category context labels.
-Satellite/Hybrid remain black where imagery ends and cancel fine meshes.
+beyond 85°. Named facility and peak labels appear from ground zoom 12 in Map and Hybrid
+when place labels are visible. The snapshot stores no amenity type for finer
+per-category label control. Major contours receive signed metre/foot labels
+from ground zoom 8 when their live contour-label layer is visible; one
+half-length candidate per isoline is collision-filtered with place labels.
+Each tile retains at most 128 contour candidates. Satellite and Hybrid show a shaded terrain fallback
+from existing polar depth, relief, water and ice data, rather than satellite
+photography. Hybrid retains vector overlays; Satellite cancels fine meshes.
 Visibility-based requests, byte/count limits, aborts and older-snapshot
 fallback remain in force. No browser request is made to Overpass.
 
@@ -520,7 +525,7 @@ These layers are independent of the original demo styles and remain visible over
 
 ### Carto background
 
-Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map and Carto share the visible fine contour bands and prepared detail tiles; roads, paths and detailed facility labels remain Carto-only. Satellite/Hybrid retain black caps and release detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the custom polar layer uses Carto land, water and ice colours, restored finer contour bands and tiled OSM roads/paths, waterways, airport details, buildings and facility labels. Map, Carto and Hybrid share the visible fine contour bands and prepared detail tiles. Satellite and Hybrid use shaded terrain as a polar fallback; Satellite releases detailed meshes. Older snapshots containing only the coarsest band remain compatible. See [polar data and resolution](data-maintenance.md#polar-caps). The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
 
