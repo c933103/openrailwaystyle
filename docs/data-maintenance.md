@@ -202,6 +202,13 @@ How the choice is made:
 - **Same files.** The Overpass build and this one write with `writeHeritageSnapshot` (`scripts/heritage-files.mjs`). The manifest's coverage is the world's 45-degree regions, each with the assembly's oldest time and the areas an Overpass box there would hold; `oldestSource` is the date Help shows.
 - **Completeness.** From a complete assembly, an empty world stops the run, as in the Overpass build. `source.json` is complete only when the assembly is.
 
+**Axle load.** Then `scripts/build-extract-axle-load.mjs` builds the lookup and, on `main`, publishes it to `axle-load-extract-data`, in the `axle-data` layout (`axle-load.json`), with `manifest.json` and `source.json`.
+- **Selection.** That of `build-axle-load-list.mjs`'s queries, way by way: railway ways with `railway` exactly one of `AXLE_RAILWAYS` and any `axle_load`, `maxaxleload` or `railway:track_class`. The values are trimmed, as the Overpass CSV rows are.
+- **Same lookup.** Both builds make it with `axleLookup` (`scripts/axle-load-lookup.mjs`). `updated` is the assembly's oldest region time.
+- **Finland.** Overpass marks a way with a track class Finnish when it lies in Finland's `admin_level=2` area. The extract has no boundaries, so this build uses the region plan's `finland` polygon (Geofabrik's, from the index the run assembled) and marks a way with a node inside it. Geofabrik's polygon reaches a little beyond the border. Without that polygon in the index, the run stops.
+- **Floor and completeness.** From a complete assembly, fewer than 100,000 ways stop the run (the Overpass lookup had 425,848 on 2026-11-07). `source.json` is complete only when the assembly is.
+- **Checked against `axle-data` of 2026-11-07.** The world assembled from the 2026-11-10 index took 105 s and 0.35 GB locally: 425,841 ways identical, none different, and the same 8,278 Finnish ways. 30 are only in the extract, all new ways whose versions date from 2026-11-07 04:18 to 19:42, after the Overpass lookup (00:44). 7 are only in Overpass: old way ids that the assembly no longer holds as `railway` ways.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
