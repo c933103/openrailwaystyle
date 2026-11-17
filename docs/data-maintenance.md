@@ -209,6 +209,12 @@ How the choice is made:
 - **Floor and completeness.** From a complete assembly, fewer than 100,000 ways stop the run (the Overpass lookup had 425,848 on 2026-11-07). `source.json` is complete only when the assembly is.
 - **Checked against `axle-data` of 2026-11-07.** The world assembled from the 2026-11-10 index took 105 s and 0.35 GB locally: 425,841 ways identical, none different, and the same 8,278 Finnish ways. 30 are only in the extract, all new ways whose versions date from 2026-11-07 04:18 to 19:42, after the Overpass lookup (00:44). 7 are only in Overpass: old way ids that the assembly no longer holds as `railway` ways.
 
+**Planned, construction and former railways (lifecycle).** Then `scripts/build-extract-lifecycle.mjs` builds them, `scripts/pack-snapshot.py` packs the tiles, and, on `main`, the result is published to `lifecycle-extract-data`, in the `rail-data` layout (`manifest.json` and the archive and table in 80 MB parts).
+- **Selection.** `regionQuery`'s in `build-snapshot.mjs`, way by way, over the whole world: `railway` exactly one of the lifecycle states, or `<state>:railway` one of its track values. Each way is converted by `toGeoJSON` as it is read, so the build holds only the features (the world did not fit a 6 GB heap with the ways as well).
+- **Same files.** Both builds write with `writeLifecycleSnapshot` and check the 남부내륙선 regression with `lifecycleRegression` (`scripts/lifecycle-files.mjs`). The manifest's one part is the world at the assembly's oldest region time; `oldestSource` is the date Help shows.
+- **Not complete yet.** `rail-data` also carries the loading-gauge list and the polar caps, which this build does not make. So `source.json` stays not complete and lists them under `missing`, and the site keeps `rail-data`.
+- **Checked against `rail-data` of 2026-11-17** (parts from 2026-09-22 to 2026-11-10). The world assembled from the 2026-11-10 index took 179 s and 5.7 GB locally: 753,645 of 776,329 ways identical. The rest were traced with the assembly's own edit times: a way or one of its nodes edited after the Overpass part that holds it, or an Overpass part newer than the region file. The 2,158 ways only in Overpass that the assembly no longer holds as railway objects lie in parts older than the region files, except 37 in parts newer than them, 35 of which have ids above the extract's highest.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.

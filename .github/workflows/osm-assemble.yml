@@ -8,7 +8,8 @@
 # service-routes-extract-data, station-points-extract-data,
 # crossings-extract-data, traction-extract-data, conveying-extract-data,
 # aerialways-extract-data, street-running-extract-data,
-# heritage-extract-data, axle-load-extract-data). The site uses
+# heritage-extract-data, axle-load-extract-data, lifecycle-extract-data).
+# The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -295,6 +296,38 @@ jobs:
           if ! git push --force origin HEAD:axle-load-extract-data; then
             test "$(git ls-remote origin refs/heads/axle-load-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build planned, construction and former railways from the extract
+        # One read of the ways, each converted as read. The world in a local
+        # run (2026-11-10 index): 179 s, 5.7 GB peak; then the tiles packed
+        # by scripts/pack-snapshot.py, as snapshot.yml packs them.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-lifecycle.mjs assembled.osm.pbf assembled.osm.pbf.json lifecycle-extract | tee lifecycle-extract.json
+          pip install pmtiles==3.8.1
+          (cd lifecycle-extract && python ../scripts/pack-snapshot.py)
+          { echo '# Planned, construction and former railways from the extract'; echo; echo '```json'; node -e 'const {parts, regression, ...m} = JSON.parse(require("fs").readFileSync("lifecycle-extract/snapshot/manifest.json", "utf8")); console.log(JSON.stringify({...m, regressionWays: regression.ways}, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish lifecycle-extract-data
+        if: github.ref == 'refs/heads/main'
+        # The rail-data layout: manifest.json and the archive and table in
+        # 80 MB parts (Git blobs stay under the hosting limit), with
+        # source.json. The loading-gauge list and the polar caps are not made
+        # here yet, so source.json says not complete.
+        run: |
+          mkdir /tmp/lifecycle-publish
+          cd /tmp/lifecycle-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan lifecycle-extract-data
+          cp "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/manifest.json" "$GITHUB_WORKSPACE/lifecycle-extract/source.json" .
+          split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.pmtiles" lifecycle.pmtiles.part-
+          split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.geojson.gz" lifecycle.geojson.gz.part-
+          git add manifest.json source.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          git commit -q -m "Planned, construction and former railways from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:lifecycle-extract-data; then
+            test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -315,5 +348,7 @@ jobs:
             street-running-extract/manifest.json
             heritage-extract/manifest.json
             axle-load-extract/manifest.json
+            lifecycle-extract/snapshot/manifest.json
+            lifecycle-extract/source.json
           if-no-files-found: ignore
           retention-days: 30
