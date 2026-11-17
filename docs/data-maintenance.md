@@ -767,9 +767,10 @@ worldwide OSM coverage or freshness, and does not start a new extraction.
 
 `extract-rollout.yml` checks the working-copy index when the extract selection
 changes on main. Missing inputs or stale regional/gap selection hashes start the
-existing `osm-extract.yml`; an active refresh of the same source is reused. A run of
-an older source can finish before the new one through the existing concurrency
-group. This adds no recurring schedule and retains the two-region parallelism,
+existing `osm-extract.yml` through its non-cancelling concurrency group. An active
+run may refresh only gap tiles, so source identity does not establish that it can
+update stale regional inputs. A full refresh is queued; unchanged working copies
+retain the existing size, MD5 and filter reuse checks. This adds no recurring schedule and retains the two-region parallelism,
 100 GiB plan cap and bounded gap requests.
 
 A successful same-repository main extract run can continue to `osm-assemble.yml`

@@ -62,12 +62,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = push ]; then workflow=osm-extract.yml; else workflow=osm-assemble.yml; fi
-          # Refreshes of the same source can share acquisition work.
-          if [ "$EVENT_NAME" = push ]; then
-            export ROLLOUT_HEAD=$(git rev-parse HEAD)
-            active=$(gh run list --workflow "$workflow" --branch main --limit 100 --json status,headSha --jq '[.[] | select(.status != "completed" and .headSha == env.ROLLOUT_HEAD)] | length')
-            if [ "$active" -gt 0 ]; then echo "Existing $workflow run will complete the continuation"; exit 0; fi
-          fi
-          # An active assembly may already hold an older index. Queue this
-          # continuation through its existing non-cancelling concurrency group.
+          # Queue through existing non-cancelling concurrency. An active refresh
+          # may be gaps-only; an active assembly may hold an older input index.
           gh workflow run "$workflow" --ref main
