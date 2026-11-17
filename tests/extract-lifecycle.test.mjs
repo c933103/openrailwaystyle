@@ -5,7 +5,9 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {buildExtractLifecycle, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS} from '../scripts/build-extract-lifecycle.mjs';
+import {buildExtractLifecycle, isGaugeWay, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS} from '../scripts/build-extract-lifecycle.mjs';
+import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
+import {fileURLToPath} from 'node:url';
 import {lifecycleRegression, stateCounts, writeLifecycleSnapshot} from '../scripts/lifecycle-files.mjs';
 import {STATES, toGeoJSON} from '../scripts/lifecycle.mjs';
 import {checkMarker} from '../scripts/data-source.mjs';
@@ -32,10 +34,18 @@ const ELEMENTS = [
   way(8, [[2.9, 48.3], [2.91, 48.31]], {railway: 'Abandoned'}), // case matters
   way(9, [[3.0, 48.2], [3.01, 48.21]], {railway: 'abandoned;rail'}), // not exactly a state
   way(10, [[3.1, 48.1], [3.11, 48.11]], {'historic:railway': 'rail'}), // not a state prefix
+  // The loading-gauge list's ways.
+  way(13, [[8.5, 47.3], [8.51, 47.31]], {railway: 'rail', loading_gauge: ' GC '}),
+  way(14, [[8.6, 47.4], [8.61, 47.41]], {railway: 'subway', loading_gauge: 'DE:BOStrab', usage: 'main'}),
+  way(15, [[8.7, 47.5], [8.71, 47.51]], {railway: 'tram', loading_gauge: 'G1'}), // not one of its railway values
+  way(16, [[8.8, 47.6], [8.81, 47.61]], {railway: 'narrow_gauge', 'loading_gauge:note': 'x'}), // another key
+  way(17, [[8.9, 47.7], [8.91, 47.71]], {railway: 'funicular', loading_gauge: '  '}), // blank: left out of the list, as the encoder leaves it
+  way(18, [[9.0, 47.8], [9.01, 47.81]], {railway: 'light_rail', loading_gauge: ''}), // empty: [loading_gauge] matches it
   {type: 'node', id: 11, ...meta, lat: 1, lon: 1, tags: {railway: 'abandoned'}},
   {type: 'relation', id: 12, ...meta, members: [], tags: {railway: 'abandoned'}},
 ];
 const SELECTED = [1, 2, 3, 4, 5, 6];
+const GAUGES = [13, 14, 17, 18];
 const pick = ({type, id, tags, geometry}) => ({type, id, tags, geometry});
 // The answer to regionQuery over the world (`out tags geom`).
 const OVERPASS = {elements: ELEMENTS.filter(e => SELECTED.includes(e.id)).map(pick)};
@@ -61,7 +71,7 @@ test('the same features as from the Overpass answer', async () => {
   const {features, counts} = await lifecycleFeatures('assembled.osm.pbf', {read: fakeRead()});
   assert.deepEqual(features, toGeoJSON(OVERPASS).features);
   assert.deepEqual(features.map(f => f.id), [1, 2, 3, 4]);
-  assert.deepEqual(counts, {read: ELEMENTS.length, kept: SELECTED.length, waysWithoutGeometry: 0});
+  assert.deepEqual(counts, {read: ELEMENTS.length, kept: SELECTED.length + GAUGES.length, waysWithoutGeometry: 0});
   // Way ids in order whatever order the ways are read in.
   const shuffled = await lifecycleFeatures('x', {read: fakeRead([...ELEMENTS].reverse())});
   assert.deepEqual(shuffled.features, features);
@@ -87,9 +97,31 @@ test('the snapshot in the Overpass layout, with source.json naming what is not m
   assert.ok(lines.every(([z]) => z >= 5 && z <= 10));
   assert.ok(lines.some(([z, x, y]) => z === 7 && x === 109 && y === 50), 'the Korean tile the site\'s data check asks for');
   const marker = await readFile(join(out, 'source.json'), 'utf8');
-  assert.deepEqual(JSON.parse(marker), {schema: 1, dataset: 'lifecycle', source: 'extract', complete: false, missing: ['loading-gauge.json', 'polar'], osmTimestamp: '2026-11-03T21:24:23Z'});
-  assert.deepEqual(MISSING_PARTS, ['loading-gauge.json', 'polar']);
+  assert.deepEqual(JSON.parse(marker), {schema: 1, dataset: 'lifecycle', source: 'extract', complete: false, missing: ['polar'], osmTimestamp: '2026-11-03T21:24:23Z'});
+  assert.deepEqual(MISSING_PARTS, ['polar']);
+  assert.equal(written.loadingGauges, 4, 'every selected way, as the Overpass CSV has a row for each');
   assert.match(checkMarker(marker, 'lifecycle'), /not complete/, 'the site keeps rail-data');
+});
+
+test('the loading-gauge list: the Overpass build\'s selection and the same file it writes from the same ways', async t => {
+  assert.deepEqual(ELEMENTS.filter(isGaugeWay).map(e => e.id), GAUGES);
+  const source = await readFile(new URL('../scripts/build-loading-gauge-list.mjs', import.meta.url), 'utf8');
+  assert.match(source, /way\[railway~"\^\(rail\|narrow_gauge\|light_rail\|subway\|monorail\|funicular\)\$"\]\[loading_gauge\];out;/, 'the same railway values and key');
+  const {gauges} = await lifecycleFeatures('x', {read: fakeRead()});
+  assert.deepEqual(gauges, [[13, 'GC'], [14, 'DE:BOStrab'], [17, ''], [18, '']]);
+  // The real Overpass build, on its CSV answer for the same ways (::id, loading_gauge).
+  const root = await mkdtemp(join(tmpdir(), 'gauge-overpass-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const csv = ELEMENTS.filter(isGaugeWay).map(e => `${e.id}\t${e.tags.loading_gauge}`).join('\n') + '\n';
+  await writeFile(join(root, 'fake.mjs'), `globalThis.setTimeout=(f)=>{f();return 0;};globalThis.fetch=async()=>new Response(${JSON.stringify(csv)});`);
+  const run = spawnSync(process.execPath, ['--import', './fake.mjs', fileURLToPath(new URL('../scripts/build-loading-gauge-list.mjs', import.meta.url))], {cwd: root, encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  const overpass = await readFile(join(root, 'snapshot', 'loading-gauge.json'), 'utf8');
+  const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  await buildExtractLifecycle('x', report(), join(dir, 'l'), {read: fakeRead()});
+  assert.equal(await readFile(join(dir, 'l', 'snapshot', 'loading-gauge.json'), 'utf8'), overpass);
+  assert.equal(overpass, JSON.stringify(encodeLoadingGauges([[13, 'GC'], [14, 'DE:BOStrab']])));
 });
 
 test('the regression line is required; a bad report is refused; a rebuild leaves nothing stale', async t => {
@@ -105,7 +137,7 @@ test('the regression line is required; a bad report is refused; a rebuild leaves
   assert.equal(partial.complete, false);
   await writeFile(join(dir, 'c', 'snapshot', 'stale.pmtiles'), 'old');
   await buildExtractLifecycle('x', report(), join(dir, 'c'), {read: fakeRead()});
-  assert.deepEqual((await readdir(join(dir, 'c', 'snapshot'))).sort(), ['lifecycle.geojson.gz', 'manifest.json', 'tiles.jsonl']);
+  assert.deepEqual((await readdir(join(dir, 'c', 'snapshot'))).sort(), ['lifecycle.geojson.gz', 'loading-gauge.json', 'manifest.json', 'tiles.jsonl']);
 });
 
 test('the Overpass build writes through the same writer', async t => {
@@ -128,6 +160,7 @@ test('the assembly workflow builds and packs it after the axle-load lookup, and 
   assert.ok(workflow.indexOf('(cd lifecycle-extract && python ../scripts/pack-snapshot.py)') > build);
   assert.match(workflow, /- name: Publish lifecycle-extract-data\n\s+if: github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /split -b 80M -d -a 3 "\$GITHUB_WORKSPACE\/lifecycle-extract\/snapshot\/lifecycle\.pmtiles" lifecycle\.pmtiles\.part-/);
+  assert.match(workflow, /git add manifest\.json loading-gauge\.json source\.json lifecycle\.pmtiles\.part-\* lifecycle\.geojson\.gz\.part-\*/);
   assert.match(workflow, /git push --force origin HEAD:lifecycle-extract-data/);
   assert.doesNotMatch(workflow, /HEAD:(refs\/heads\/)?rail-data\b/, 'the Overpass branch is never written');
 });
@@ -146,6 +179,7 @@ test('with osmium, from a real extract file: the same features', {skip: osmium.s
     + ways.map(w => `<way id="${w.id}" ${at}>${w.nodes.map(n => `<nd ref="${n}"/>`).join('')}${tags(w.tags)}</way>`).join('')
     + `<relation id="12" ${at}>${tags({railway: 'abandoned'})}</relation></osm>`);
   assert.equal(spawnSync('osmium', ['sort', join(dir, 'in.osm'), '-o', join(dir, 'in.osm.pbf')]).status, 0);
-  const {features} = await lifecycleFeatures(join(dir, 'in.osm.pbf'));
-  assert.deepEqual(features, toGeoJSON(OVERPASS).features);
+  const real = await lifecycleFeatures(join(dir, 'in.osm.pbf')), fake = await lifecycleFeatures('x', {read: fakeRead()});
+  assert.deepEqual(real.features, toGeoJSON(OVERPASS).features);
+  assert.deepEqual(real.gauges, fake.gauges);
 });

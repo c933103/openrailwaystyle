@@ -307,10 +307,10 @@ jobs:
           { echo '# Planned, construction and former railways from the extract'; echo; echo '```json'; node -e 'const {parts, regression, ...m} = JSON.parse(require("fs").readFileSync("lifecycle-extract/snapshot/manifest.json", "utf8")); console.log(JSON.stringify({...m, regressionWays: regression.ways}, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish lifecycle-extract-data
         if: github.ref == 'refs/heads/main'
-        # The rail-data layout: manifest.json and the archive and table in
-        # 80 MB parts (Git blobs stay under the hosting limit), with
-        # source.json. The loading-gauge list and the polar caps are not made
-        # here yet, so source.json says not complete.
+        # The rail-data layout: manifest.json, the loading-gauge list, and
+        # the archive and table in 80 MB parts (Git blobs stay under the
+        # hosting limit), with source.json. The polar caps are not made here,
+        # so source.json says not complete.
         run: |
           mkdir /tmp/lifecycle-publish
           cd /tmp/lifecycle-publish
@@ -320,10 +320,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -q --orphan lifecycle-extract-data
-          cp "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/manifest.json" "$GITHUB_WORKSPACE/lifecycle-extract/source.json" .
+          cp "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/manifest.json" "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/loading-gauge.json" "$GITHUB_WORKSPACE/lifecycle-extract/source.json" .
           split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.pmtiles" lifecycle.pmtiles.part-
           split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.geojson.gz" lifecycle.geojson.gz.part-
-          git add manifest.json source.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          git add manifest.json loading-gauge.json source.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
           git commit -q -m "Planned, construction and former railways from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:lifecycle-extract-data; then
             test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
