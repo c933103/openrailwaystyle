@@ -26,6 +26,12 @@ export const ELECTRICITY_SIGNAL_STYLE = Object.freeze({color:'#e0a21a', stroke:'
 // map layers and legend samples share this table. A fourth-rail track has
 // conductor rails on both sides. Overhead contact line is the track colour.
 export const POWER_METHOD_STROKES = Object.freeze([
+  {id:'trolley-contact',when:['catenary_trolley'],offset:8,width:1,dash:[1,2],label:'Trolley-type overhead contact (outer dots)',sample:'trolley'},
+  {id:'rigid-contact',when:['catenary_rigid'],offset:-8,width:1.5,dash:null,label:'Rigid overhead contact rail (outer solid)',sample:'rigid'},
+  {id:'steam-propulsion',when:['propulsion_steam'],offset:0,width:1,gap:6,dash:null,color:'#8c510a',label:'Explicit steam propulsion (brown casing)',sample:'steam'},
+  {id:'maglev-propulsion',when:['propulsion_maglev'],offset:0,width:1,gap:3,dash:null,color:'#e7298a',label:'Magnetic levitation (pink casing)',sample:'maglev'},
+  {id:'battery-propulsion',when:['propulsion_battery'],offset:6,width:1.5,dash:[2,1],color:'#008a83',label:'Explicit battery propulsion (teal outer dashes)',sample:'battery'},
+  {id:'hydrogen-propulsion',when:['propulsion_hydrogen'],offset:-6,width:1.5,dash:[4,1,1,1],color:'#0088aa',label:'Explicit hydrogen propulsion (blue outer dash-dot)',sample:'hydrogen'},
   {id:'conductor-rails', when:['method_rail','method_fourth_rail'], offset:3.5, width:2, dash:[2,2], label:'Third rail (dashed, one side)', sample:'third-rail'},
   {id:'fourth-rails', when:['method_fourth_rail'], offset:-3.5, width:2, dash:[2,2], label:'Fourth rail (dashed, both sides)', sample:'fourth-rail'},
   {id:'ground-supply', when:['method_ground'], offset:0, width:3, dash:[0.1,1.8], color:'#fffef8', cap:'round', label:'Ground-level supply (dotted centre)', sample:'ground-supply'},
@@ -40,12 +46,13 @@ export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', ink:'#3d424
 // The legend keys the drawing, not a list of kinds: what a facility is shows
 // on hover and in its details.
 export const POWER_FACILITY_LEGEND = Object.freeze([
-  {symbol:'shape',geometry:'area',label:'Railway power or servicing facility (mapped outline)'},
-  {symbol:'shape',geometry:'point',label:'Railway power or servicing facility (mapped point)'},
+  {symbol:'shape',geometry:'area',label:'Railway power or servicing facility (mapped outline; colour by supply)'},
+  {symbol:'shape',geometry:'point',label:'Railway power or servicing facility (mapped point; colour by supply)'},
+  ...['substation','charging_station','fuel','coaling_facility','water_crane'].map(kind=>({symbol:'dot',color:POWER_FACILITY_KINDS[kind].color,stroke:POWER_FACILITY_SYMBOL.paper,label:({substation:'Electricity supply',charging_station:'Battery charging',fuel:'Fuel supply',coaling_facility:'Coal supply',water_crane:'Water supply'})[kind]})),
 ].map(Object.freeze));
 // Both the help page and legend explanation use the actual marker categories.
 // Storage and generation are evidence about a supply, not proof of servicing.
-export const POWER_FACILITY_LIMITS = `Railway power and servicing facilities (substations, power stations, converters, refuelling and charging points, coaling stages, water towers, tanks and cranes) are drawn as they are mapped: outlines for areas, small dots for points. Hover or select one for what it is, its name and supplies. Tanks show mapped railway storage; storage alone does not establish a train servicing point. Dashed, faint shapes are planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing facilities do not establish an absence of supplies; mapped facilities do not establish current availability.`;
+export const POWER_FACILITY_LIMITS = `Railway power and servicing facilities (substations, power stations, converters, refuelling and charging points, coaling stages, water towers, tanks and cranes) are drawn as they are mapped: outlines for areas, small dots for points, coloured by the recorded supply domain. Hover or select one for what it is, its name and supplies. Tanks show mapped railway storage; storage alone does not establish a train servicing point. Dashed, faint shapes are planned or former facilities when those are enabled. The whole electricity grid and wider fuel supply chain are not yet covered. Missing facilities do not establish an absence of supplies; mapped facilities do not establish current availability.`;
 export const POWER_METHOD_NOTE = `Track strokes: overhead contact line is the track colour alone; ${POWER_METHOD_STROKES.map(({label})=>label).join('; ')}.`;
 export const ELECTRICITY_SIGNAL_NOTE = `Small amber dots with a dark outline are electrification signals, such as lower pantograph, main switch off and end of catenary, wherever a signal records railway:signal:electricity; they show mapped locations, not live aspects.`;
 export const POWER_FACILITY_EXPLANATION = `${POWER_METHOD_NOTE} ${ELECTRICITY_SIGNAL_NOTE} ${POWER_FACILITY_LIMITS}`;
@@ -149,6 +156,13 @@ export function powerFacilityEnergyRows(properties = {}) {
     ['Plant energy source',p['plant:source']],
     ['Generator energy source',p['generator:source']],
     ['Stored contents',p.content],
+    ['Supply role',({trackside:'Trackside servicing',rail_served:'Rail-related site',civil_network:'Civil network'})[p.supply_tier]],
+    ['Siding evidence',p.siding_evidence],
+    ['Traction circuit evidence',p.traction_basis],
+    ['Mapped circuit connectivity',p.circuit_connection_basis],
+    ['Matching voltage/frequency pairs',p.circuit_electrical_pairs],
+    ['Generation source',p.generation_source],
+    ['Pipeline substance',p.pipeline_substance],
   ].filter(([,value])=>value!=null&&String(value).trim()!=='');
 }
 

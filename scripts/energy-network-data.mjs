@@ -1,5 +1,6 @@
 // Extract-only energy context. Tags establish the supply domain; geometry
 // establishes a separate rail relationship, never actual supply availability.
+import {tractionCircuitEvidence} from './energy-circuit-evidence.mjs';
 import {HYDROGEN_FUEL_KEYS} from './energy-fuel-tags.mjs';
 import {areaPolygons, lineMeetsPolygon, inside, validPoint, bounds} from './osm-geometry.mjs';
 const states=['construction','proposed','disused','abandoned','razed','demolished','removed'];
@@ -20,9 +21,10 @@ export function energyNetworkKind(tags={}) {
     const power=first(t,'power',['line','minor_line','cable','plant','generator','substation','converter','frequency_converter','transformer']);
     if(power) {
       const voltage=Math.max(0,...values(t.voltage).filter(v=>/^\d+$/.test(v)).map(Number));
-      const minzoom=power==='line'?(voltage>=380000?5:voltage>=220000?6:voltage>=110000?7:9):({minor_line:12,cable:8,plant:6,generator:11,substation:9,converter:8,frequency_converter:8,transformer:13})[power];
+      const railwayFrequency=values(t.frequency).find(v=>['16.6','16.7','25'].includes(v));
+      const minzoom=power==='line'?(railwayFrequency||values(t.usage).some(v=>['traction','railway'].includes(v))||voltage>=380000?5:voltage>=220000?6:voltage>=110000?7:9):({minor_line:12,cable:8,plant:9,generator:11,substation:9,converter:8,frequency_converter:8,transformer:13})[power];
       const storage=first(t,'substation',['storage'])||first(t,'generator:source',['battery']);
-      return {voltage,usage:t.usage,kind:storage?'battery_storage':power,domain:storage?'battery':'electricity',minzoom:storage?10:minzoom,state};
+      return {voltage,usage:t.usage,railwayFrequency,kind:storage?'battery_storage':power,domain:storage?'battery':'electricity',minzoom:storage?10:minzoom,state};
     }
     const coal=first(t,'resource',['coal','coke','lignite','anthracite']);
     if(t.man_made==='goods_conveyor'&&coal)return {kind:'coal_conveyor',domain:'coal',minzoom:12,state};
@@ -141,13 +143,20 @@ function trackIndex(tracks) {
 export function energyNetworkGeoJSON(elements) {
   const tracks=elements.filter(isNetworkTrack).map(e=>{if(!e.geometry||e.geometry.length<2||!e.geometry.every(validPoint))throw new Error(`Incomplete track ${e.id}`);return {id:`way-${e.id}`,line:coords(e)};});
   const nearbyTracks=trackIndex(tracks);
+  const circuits=tractionCircuitEvidence(elements);
+  const racks=elements.filter(e=>{const kind=energyNetworkKind(e.tags);return kind?.kind==='loading_rack'&&kind.state==='present';}).flatMap(e=>{const line=e.type==='node'&&validPoint(e)?[[e.lon,e.lat],[e.lon,e.lat]]:coords(e);return line.length>=2?[{id:`${e.type}-${e.id}`,line}]:[];});
+  const nearbyRacks=trackIndex(racks);
   const features=[];
   for(const e of elements) {
     const kind=energyNetworkKind(e.tags);if(!kind)continue;
     const traction=values(kind.usage).find(v=>['traction','railway'].includes(v));
-    const lineStyle=['line','minor_line','cable'].includes(kind.kind)?(traction?'traction':kind.kind==='cable'?'cable':'grid'):kind.kind==='pipeline'?kind.domain:kind.kind==='coal_conveyor'?'coal':'other';
-    const relationship=kind.trackside?{supply_tier:'trackside',rail_served:true,siding_evidence:'Explicit railway servicing tag'}:railRelationship(e,nearbyTracks(e));
-    features.push({type:'Feature',id:`${e.type}-${e.id}`,geometry:geometry(e),properties:{...e.tags,osm_type:e.type,osm_id:String(e.id),energy_kind:kind.kind,energy_domain:kind.domain,energy_minzoom:kind.minzoom,energy_voltage:kind.voltage||0,energy_line_style:lineStyle,...(traction?{traction_basis:`usage=${traction}`} : {}),power_state:kind.state,...relationship,
+    const circuit=circuits.get(`${e.type}-${e.id}`);
+    const tractionBasis=traction?`usage=${traction}`:kind.railwayFrequency?`Mapped frequency=${kind.railwayFrequency} Hz`:undefined;
+    const lineStyle=['line','minor_line','cable'].includes(kind.kind)?(tractionBasis?'traction':kind.kind==='cable'?'cable':'grid'):kind.kind==='pipeline'?kind.domain:kind.kind==='coal_conveyor'?'coal':'other';
+    let relationship=kind.trackside?{supply_tier:'trackside',rail_served:true,siding_evidence:'Explicit railway servicing tag'}:railRelationship(e,nearbyTracks(e));
+    if(!relationship.rail_served){const rack=railRelationship(e,nearbyRacks(e),{adjacencyMetres:0});if(rack.rail_served)relationship={...rack,siding_evidence:'Mapped railway loading rack intersects site; supply connection unverified'};}
+    const minzoom=kind.kind==='plant'&&relationship.rail_served?6:kind.minzoom;
+    features.push({type:'Feature',id:`${e.type}-${e.id}`,geometry:geometry(e),properties:{...e.tags,osm_type:e.type,osm_id:String(e.id),energy_kind:kind.kind,energy_domain:kind.domain,energy_minzoom:minzoom,energy_voltage:kind.voltage||0,energy_line_style:lineStyle,...(tractionBasis?{traction_basis:tractionBasis}:{}),...(circuit||{}),power_state:kind.state,...relationship,
       generation_source:e.tags?.['plant:source']||e.tags?.['generator:source']||'Not recorded',pipeline_substance:kind.substance||'Not recorded'}});
   }
   return {type:'FeatureCollection',features:features.sort((a,b)=>a.id.localeCompare(b.id))};

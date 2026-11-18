@@ -1,11 +1,12 @@
-import {POWER_FACILITY_SYMBOL} from '../../../styles/power-facilities.mjs';
+import {POWER_FACILITY_SYMBOL,POWER_FACILITY_KINDS} from '../../../styles/power-facilities.mjs';
 
 // Facilities are drawn as they are mapped, as on a topographic map: an area
 // as its outline with a neutral man-made fill, a line as a line, a point as a
 // small plain dot. No symbols or text; hover and click give the details.
 // Planned and former facilities are fainter with a dashed outline.
 export function facilityShapeLayers(prefix, source, base, former=false) {
-  const {ink,fill,paper}=POWER_FACILITY_SYMBOL;
+  const {paper}=POWER_FACILITY_SYMBOL;
+  const ink=['match',['get','power_kind'],...Object.entries(POWER_FACILITY_KINDS).flatMap(([kind,{color}])=>[kind,color]),POWER_FACILITY_SYMBOL.ink],fill=ink;
   const geometry=types=>['match',['geometry-type'],types,true,false];
   const filter=(...extra)=>['all',...base.filter.slice(1),...extra];
   return [
