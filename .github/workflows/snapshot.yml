@@ -200,7 +200,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tar --zstd --exclude='budget-*' -cf /tmp/overpass-cache.tar.zst .snapshot-cache
+          tar --zstd --exclude='budget-*' --exclude='provider-pause-*' -cf /tmp/overpass-cache.tar.zst .snapshot-cache
           ls -l /tmp/overpass-cache.tar.zst
           gh release view overpass-cache >/dev/null 2>&1 || gh release create overpass-cache --target "$GITHUB_SHA" --prerelease --title 'Raw Overpass responses for the lifecycle snapshot' --notes 'Cached Overpass API responses (© OpenStreetMap contributors, ODbL) used to rebuild the railway lifecycle snapshot without querying Overpass again. Replaced by each snapshot build.'
           gh release upload overpass-cache /tmp/overpass-cache.tar.zst --clobber
