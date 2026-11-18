@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261117-native-fusion-1';
+import {SEARCH_API} from './map-model.mjs?v=20261118-native-fusion-integration-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

@@ -1,5 +1,5 @@
-import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261117-native-fusion-1';
-import {terrain3DEnabled} from './terrain-3d.mjs?v=20261117-native-fusion-1';
+import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261118-native-fusion-integration-1';
+import {terrain3DEnabled} from './terrain-3d.mjs?v=20261118-native-fusion-integration-1';
 
 // Source-event reconciliation and the visible availability diagnostics.
 export function mapErrorMessage({railRecovery, stationFailures, errors, settings, terrain3DSelected}) {
@@ -19,7 +19,7 @@ export function mapErrorMessage({railRecovery, stationFailures, errors, settings
   return 'Some map data could not load. Check your connection or reload to retry.';
 }
 export function updateMapStatus(context) {
-  const {railRecovery, stationFailures, errors, sourceFailureStates, applyStationFallbackState, status, map, ready, settings} = context;
+  const {railRecovery, stationFailures, errors, sourceFailureStates, applyRailReferenceState, applyStationFallbackState, status, map, ready, settings} = context;
   const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
   for (const [id, failures] of sourceFailureStates) {
     if (!failures.current()) sourceFailureStates.delete(id);
@@ -32,6 +32,7 @@ export function updateMapStatus(context) {
     else if (error.failures && !error.failures.hasFailures() &&
       !railRecovery?.hasSourceFailure(id, error.source) && !stationFailures?.hasSourceFailure(id)) errors.delete(id);
   }
+  applyRailReferenceState();
   applyStationFallbackState();
   if (errors.size || railFailed || ['stations','stationMed'].some(id=>stationFailures?.hasSourceFailure(id))) {
     status.classList.add('error'); status.textContent = mapErrorMessage(context); return;
@@ -45,7 +46,7 @@ export function updateMapStatus(context) {
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
   const trackLayer = map.getStyle().layers.find(layer => layer.id === `${settings.mode}-tracks`);
-  const reference = features.some(f => f.layer?.id === 'rail-basemap-reference' && referenceDetailEligible(f, map.getZoom(), trackLayer));
+  const reference = features.some(f => ['rail-basemap-reference','infrastructure-basemap-reference'].includes(f.layer?.id) && referenceDetailEligible(f, map.getZoom(), trackLayer));
   const detailed = features.some(f => f.layer?.id === `${settings.mode}-tracks` || f.layer?.id === `${settings.mode}-metro-overview` || settings.mode === 'service' && f.layer?.id === 'service-routes');
   const detailSource = settings.mode === 'owner' ? 'ownerRail' : settings.mode === 'axle' ? 'axleRail' : 'railway';
   if (reference && !detailed && map.isSourceLoaded(detailSource)) {

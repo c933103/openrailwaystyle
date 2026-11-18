@@ -5,6 +5,7 @@ import {PolarLayer} from '../styles/polar-layer.mjs';
 import {readFileSync} from 'node:fs';
 import {expression as styleExpression, featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import {seabedContourOpacity} from '../styles/bathymetry.mjs';
+import {layerVisibility} from '../styles/layer-semantics.mjs';
 import {encodeLine} from '../styles/polar.mjs';
 
 const world = JSON.parse(readFileSync(new URL('../styles/world.style.json', import.meta.url)));
@@ -279,7 +280,8 @@ test('Atlas draws all tiles in ordinary layer order and follows in-session layer
   assert.deepEqual(changed.slice(0,2),['waterways','waterways']);
   f.background('carto');const carto=f.draw().map(call=>call[1]);
   assert.ok(carto.indexOf('runways')<carto.indexOf('aprons'),'Carto keeps its existing sequence');
-  for(const mode of ['satellite','hybrid']){f.background(mode);assert.deepEqual(f.draw().map(call=>call[1]),['disc']);}
+  f.background('satellite');assert.deepEqual(f.draw().map(call=>call[1]),['disc','water','iceShelves']);
+  f.background('hybrid');assert.ok(f.draw().some(call=>call[1]==='buildings'));
 });
 
 test('Atlas uses camera zoom for live style paint/ranges and ground zoom only for asset bands', () => {
@@ -450,4 +452,19 @@ test('negative polar camera zoom keeps unbounded cap paint visible like MapLibre
   assert.equal(polarStylePaint(map,-10).depthVisible,true);
   visibility='none';assert.equal(polarStylePaint(map,-10).depthVisible,false);
   assert.equal(polarStylePaint({...map,getLayer:()=>undefined},-10).depthVisible,false,'removed layer stays absent');
+});
+
+test('Hybrid polar paint uses production settings independently of hidden Mercator basemap',()=>{
+  let settings={background:'hybrid',mode:'infrastructure',relief:true,transport:true,stations:true,names:true,labels:true};
+  const layers=new Map(world.layers.map(layer=>[layer.id,layer]));
+  const map={getLayer:id=>layers.get(id),getLayersOrder:()=>[...layers.keys()],getLayoutProperty:(id)=>layerVisibility(layers.get(id),settings)?'visible':'none',getPaintProperty:(id,key)=>layers.get(id)?.paint?.[key],getFilter:id=>layers.get(id)?.filter};
+  assert.equal(layerVisibility(layers.get('building-footprints'),settings),false);
+  const visibility=layer=>layerVisibility(layer,{...settings,background:'map'});
+  let paint=polarStylePaint(map,14,visibility);
+  assert.ok(paint.buildingVisible);assert.ok(paint.placesVisible);assert.ok(paint.landContour({ele:100,level:1}).visible);
+  assert.ok(paint.transportationLines().some(layer=>layer.style({class:'service',kind:'roads',subclass:''})));
+  assert.ok(paint.apronVisible);
+  settings={...settings,relief:false,transport:false};paint=polarStylePaint(map,14,visibility);
+  assert.equal(paint.landContour({ele:100,level:1}).visible,false);assert.equal(paint.apronVisible,false);
+  assert.equal(polarStylePaint(map,14).buildingVisible,false,'ordinary Map paint still respects actual visibility');
 });

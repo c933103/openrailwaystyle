@@ -17,3 +17,8 @@ export function referenceDetailEligible(feature, zoom, layer) {
   const kind = feature.properties?.subclass || 'rail';
   return zoom >= (KIND_ZOOMS.find(rule => rule.kinds.includes(kind))?.minzoom ?? 0);
 }
+
+// Neutral geometry is an outage fallback, never a promise of thematic values.
+// The view-wide toggle avoids clipping long railway chains with `within`, which
+// would reject a line that crosses the boundary of a failed provider tile.
+export const isNeutralRailReference = layer => /^rail-(reference|backbone)-/.test(layer.id) || layer.id === 'rail-basemap-reference';

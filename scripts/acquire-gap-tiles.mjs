@@ -239,10 +239,15 @@ export async function writeTile(tile, parts, out, {run = promisify(execFile), pr
   return manifest;
 }
 
-// Tiles without a working copy first, then the oldest; otherwise as planned.
+// Tiles without a working copy first, then those made with an older filter
+// or gap query (their copy may lack what the current one selects, and the
+// assembly does not count them as covering), then the oldest; otherwise as
+// planned.
 export function tileOrder(tiles, index = null) {
-  const time = tile => { const t = Date.parse(index?.regions?.[`gap/${tile.key}`]?.sourceTimestamp); return Number.isFinite(t) ? t : -Infinity; };
-  return tiles.map((tile, i) => ({tile, i, t: time(tile)})).sort((a, b) => a.t - b.t || a.i - b.i).map(({tile}) => tile);
+  const entry = tile => index?.regions?.[`gap/${tile.key}`];
+  const time = tile => { const t = Date.parse(entry(tile)?.sourceTimestamp); return Number.isFinite(t) ? t : -Infinity; };
+  const rank = tile => !Number.isFinite(time(tile)) ? 0 : entry(tile).filter !== GAP_FILTER_HASH ? 1 : 2;
+  return tiles.map((tile, i) => ({tile, i, r: rank(tile), t: time(tile)})).sort((a, b) => a.r - b.r || a.t - b.t || a.i - b.i).map(({tile}) => tile);
 }
 
 export async function acquireGapTiles(tiles, out, {index = null, instances = overpassInstances(), fetcher = fetch, dispatcher = requestDispatcher(), wait = sleep, now = Date.now, clock = () => performance.now(), run, maxRequests = MAX_REQUESTS, maxBytes = MAX_BYTES, timeBudgetMs = null, log = () => {}} = {}) {

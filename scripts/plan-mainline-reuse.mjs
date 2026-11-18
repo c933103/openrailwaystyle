@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {validateReferenceManifest} from '../styles/mainline-reference.mjs';
 import {validateMainlineSources} from './mainline-coverage.mjs';
-import {referenceDataInputDigest} from './mainline-provenance.mjs';
+import {referenceDataInputDigest,referenceDataInputDigestFrom} from './mainline-provenance.mjs';
 
 // This only chooses a candidate. The entire pinned dataset must still pass
 // current checksum/coverage validation and fresh current-app browser acceptance.
@@ -34,11 +34,25 @@ export async function planReferenceReuse({event,requestedDate,readPublished,root
  return {reuse:true,sha:published.sha,date:manifest.sourceDate,generation:manifest.generation,dataDigest};
 }
 
+export async function planMergedReferenceRecovery({event,requestedDate,ref,repository,readMergedPr,readSourceAt,dataDigest}={}){
+ if(event!=='push'||ref!=='refs/heads/main'||requestedDate||repository!=='c933103/openrailwaystyle')return null;
+ const pr=await readMergedPr(461);
+ if(pr.number!==461||!pr.merged_at||pr.base?.ref!=='main'||
+    pr.base?.repo?.full_name!==repository||pr.head?.repo?.full_name!==repository)return null;
+ if(!/^[a-f0-9]{40}$/.test(pr.head?.sha||''))throw Error('Unpinned merged recovery source');
+ if(!/^[a-f0-9]{64}$/.test(dataDigest||''))throw Error('Missing current recovery generator identity');
+ const recoveryDigest=await referenceDataInputDigestFrom(path=>readSourceAt(pr.head.sha,path));
+ if(recoveryDigest!==dataDigest)return null;
+ // This chooses raw source exports, not an accepted production dataset.
+ // Every later main push with this generator retains the same recovery date.
+ return {reuse:false,reason:'merged-generator-source-recovery',date:'2026-11-14',checkpointRun:'43893320392'};
+}
+
 async function main(){
  const repository=process.env.GITHUB_REPOSITORY;
  if(!/^[\w.-]+\/[\w.-]+$/.test(repository||''))throw Error('Expected GitHub repository');
  const api=path=>JSON.parse(execFileSync('gh',['api',`repos/${repository}/${path}`],{encoding:'utf8',timeout:90000,maxBuffer:2*1024**2}));
- const result=await planReferenceReuse({event:process.env.REFERENCE_EVENT,requestedDate:process.env.REQUESTED,
+ let result=await planReferenceReuse({event:process.env.REFERENCE_EVENT,requestedDate:process.env.REQUESTED,
   readPublished:async()=>{
    // Absence is a known bootstrap condition; other transport/API errors fail
    // rather than silently turning a failed read into a new acquisition.
@@ -49,7 +63,20 @@ async function main(){
    return {sha,manifest:JSON.parse(Buffer.from(file.content,'base64').toString('utf8'))};
   }
  });
- const outputs={reuse:String(result.reuse),reference_sha:result.sha||'',reference_date:result.date||''};
+ if(!result.reuse && process.env.REFERENCE_EVENT==='push' && process.env.GITHUB_REF==='refs/heads/main' && !process.env.REQUESTED){
+  const recovery=await planMergedReferenceRecovery({
+   event:process.env.REFERENCE_EVENT,requestedDate:process.env.REQUESTED,ref:process.env.GITHUB_REF,repository,
+   dataDigest:await referenceDataInputDigest(),
+   readMergedPr:number=>api(`pulls/${number}`),
+   readSourceAt:async(sha,path)=>{
+    const file=api(`contents/${path}?ref=${sha}`);
+    if(file.encoding!=='base64'||file.size>1024*1024)throw Error('Invalid recovery source envelope');
+    return Buffer.from(file.content,'base64');
+   }
+  });
+  if(recovery)result=recovery;
+ }
+ const outputs={reuse:String(result.reuse),reference_sha:result.sha||'',reference_date:result.date||'',checkpoint_run:result.checkpointRun||''};
  for(const [key,value] of Object.entries(outputs))await appendFile(process.env.GITHUB_OUTPUT,`${key}=${value}\n`);
  console.log('Reference plan',JSON.stringify(result));
 }

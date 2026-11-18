@@ -1,4 +1,6 @@
 import {withinDeadline,closeBrowser,armWatchdog} from './mainline-browser-deadlines.mjs';
+import {mainlineAtlasSample} from './mainline-atlas-sample.mjs';
+import {mainlineAtlasDiagnostics} from './mainline-atlas-diagnostics.mjs';
 import {mainlineOutageVisible} from './mainline-outage-check.mjs';
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -17,10 +19,10 @@ const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'
 const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
 // One neutral and one Infrastructure layer per mapped classification; the
-// compiled style starts with only the neutral strokes visible.
+// compiled style starts with only the Infrastructure strokes visible.
 const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,6);
 assert.deepEqual(layers.filter(l=>l.layout?.visibility!=='none').map(l=>l.id).sort(),
- ['rail-reference-branch','rail-reference-main','rail-reference-unknown']);
+ ['infrastructure-reference-branch','infrastructure-reference-main','infrastructure-reference-unknown']);
 const readerModule=new URL('mainline-reference.mjs',base).href;
 const renderer=published?new Map():await rendererFixture(base);
 const librarySpec=BROWSER_LIBRARIES.find(l=>l.package==='maplibre-gl'&&l.target.endsWith('.js'));
@@ -98,6 +100,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
+    console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
    await evaluate(page,({center,zoom,projection,expected})=>{
     testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
@@ -105,14 +108,14 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
    },{center:c.center,zoom,projection,expected});
-   try{await page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
+   try{await withinDeadline(()=>page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
     testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
-    expected,{timeout:30000})}
+    expected,{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
    catch(error){
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
      sourceLoaded:testMap.isSourceLoaded('railReference'),errorCount:sourceErrors.length,errors:sourceErrors.filter(e=>e.source!=='missingLive').slice(-10),
-     rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))})), 'source failure diagnostics',5000)}
+     rendered:testMap.queryRenderedFeatures({layers:['infrastructure-reference-main','infrastructure-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))})), 'source failure diagnostics',5000)}
     catch(diagnosticError){diagnostic={unavailable:diagnosticError.message}}
     const failure={profile:profile.name,projection,name:c.name,zoom,expected,diagnostic};
     console.error('MAINLINE_RENDER_FAILURE',JSON.stringify(failure));
@@ -140,7 +143,9 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    },expected);
    assert.ok(result.ids.length&&result.painted>0,`${profile.name} ${projection} ${c.name} z${zoom}: actual reference stroke must paint`);
    assert.ok(Math.abs(result.zoom-zoom)<.001,`${profile.name} ${projection}: verify the actual camera zoom, not a clamped request`);
-   samples.push({profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
+   const sample={profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted};
+    samples.push(sample);
+    console.log('MAINLINE_CASE_END',JSON.stringify({...sample,at:new Date().toISOString()}));
   }
   assert.ok(await evaluate(page,()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
   profiles.push({...profile,...await evaluate(page,()=>referenceReader.statistics())});
@@ -163,6 +168,9 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
  const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1000,height:700}});
  await installEmptyMapProviders(context,base,{firstParty:'network'});
  const page=await context.newPage(),c=controls.find(c=>c.name==='Japan–Tokyo');
+ const browserErrors=[];
+ page.on('console',message=>{if(message.type()==='error'){browserErrors.push(message.text().slice(0,2000));if(browserErrors.length>50)browserErrors.shift();}});
+ page.on('pageerror',error=>{browserErrors.push(error.message.slice(0,2000));if(browserErrors.length>50)browserErrors.shift();});
  if(!published)await page.route(new URL('data/mainline-reference/**',base).href,route=>{
   const key=route.request().url().split('/data/mainline-reference/')[1],body=paths.get(key);
   return body?route.fulfill({body,contentType:key.endsWith('.gz')?'application/octet-stream':'application/json'}):route.fulfill({status:404,body:''});
@@ -180,14 +188,11 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
    // colours; every other view draws the neutral strokes. Never both.
    const prefix=mode==='infrastructure'?'infrastructure-reference-':'rail-reference-';
    const shown=[`${prefix}main`,`${prefix}unknown`],hidden=[prefix==='rail-reference-'?'infrastructure-reference-main':'rail-reference-main'];
-   await page.waitForFunction(({ids,shown})=>atlasMap.queryRenderedFeatures({layers:shown})
-    .some(f=>ids.includes(f.properties.id)),{ids:c.chainIdsByZoom[6],shown},{timeout:30000});
-   const sample=await evaluate(page,({ids,shown,hidden})=>({cameraZoom:atlasMap.getZoom(),
-    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:shown})
-     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))],
-    // queryRenderedFeatures ignores visibility, and layers that differ only in
-    // paint share one bucket, so read the other style's visibility directly.
-    hidden:hidden.map(id=>atlasMap.getLayoutProperty(id,'visibility'))}),{ids:c.chainIdsByZoom[6],shown,hidden});
+   const handle=await page.waitForFunction(mainlineAtlasSample,
+    {ids:c.chainIdsByZoom[6],shown,hidden,zoom,settleMs:3000,token:`${mode}:${zoom}`},{timeout:30000});
+   const sample=await handle.jsonValue();await handle.dispose();
+   checkpoint.sample=sample;
+   assert.deepEqual(sample.unstableDrops,[],`${mode} z${zoom}: reference disappeared after initial settling`);
    assert.deepEqual(sample.hidden,['none'],`${mode} z${zoom}: ${hidden[0]} must not draw in this view`);
    appSamples.push({mode,zoom,...sample});
   }
@@ -196,7 +201,10 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
  }catch(error){
   primaryError=error;
   console.error('MAINLINE_ATLAS_FAILURE',JSON.stringify(checkpoint),error.stack||error.message);
-  await writeFile('browser-review/mainline-atlas-failure.json',JSON.stringify({...checkpoint,message:error.message,stack:error.stack},null,2)+'\n');
+  const runtime=await withinDeadline(()=>evaluate(page,mainlineAtlasDiagnostics),'Atlas failure diagnostics',5000)
+   .catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
+  console.error('MAINLINE_ATLAS_STATE',JSON.stringify({runtime,browserErrors}));
+  await writeFile('browser-review/mainline-atlas-failure.json',JSON.stringify({...checkpoint,message:error.message,stack:error.stack,runtime,browserErrors},null,2)+'\n');
   await screenshot(page,{path:'browser-review/mainline-atlas-failure.png'}).catch(captureError=>console.error('MAINLINE_CAPTURE_FAILURE',captureError.message));
   throw error;
  }finally{await closeBrowser(context,browser,{primaryError})}

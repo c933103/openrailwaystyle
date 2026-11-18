@@ -13,7 +13,7 @@ import {MODES,stationMarkerDiameter} from '../styles/map-model.mjs';
 import {serviceFrequencyPaint} from '../styles/service-frequency.mjs';
 
 const server=await serveAtlasAppFixture(),base=server.origin+'/',assets=await rendererFixture(base);
-const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.2.js'));
+const renderer=[...assets.keys()].find(url=>url.endsWith('maplibre-gl-5.24.0-atlas.4.js'));
 assert.ok(renderer);
 const center=[15,15],points=Array.from({length:8},(_,i)=>({
  type:'Feature',id:i+1,properties:{id:`node-${i+1}`,osm_id:String(i+1),osm_type:'node',

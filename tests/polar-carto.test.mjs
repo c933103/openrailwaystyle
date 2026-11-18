@@ -4,10 +4,10 @@ import {CAP_RADIUS, decodeLine, detailOutlineLines, fromPolar, polarBandFor} fro
 import {PolarLayer, transportationGroups} from '../styles/polar-layer.mjs';
 import {closedRings, detailQuery, detailTiles, parseOverpass, transportationType} from '../scripts/polar-features.mjs';
 
-test('both drawn backgrounds use fine contours; imagery stays coarse and older snapshots work', () => {
-  for (const background of ['satellite', 'hybrid']) for (const zoom of [8, 9, 11, 18])
+test('Map, Carto and Hybrid use fine contours; Satellite stays coarse and older snapshots work', () => {
+  for (const background of ['satellite']) for (const zoom of [8, 9, 11, 18])
     assert.equal(polarBandFor(zoom, background, 3), 0);
-  for (const background of ['map', 'carto']) {
+  for (const background of ['map', 'carto', 'hybrid']) {
     assert.equal(polarBandFor(8.99, background, 3), 0);
     assert.equal(polarBandFor(9, background, 3), 1);
     assert.equal(polarBandFor(11, background, 3), 2);
@@ -87,7 +87,7 @@ function renderingLayer() {
   const render=()=>layer.renderCaps(gl,{defaultProjectionData:{projectionTransition:1},shaderData:{}});
   return {layer, calls, labels, render, background:b=>background=b, zoom:z=>zoom=z, terrain:t=>terrain=t, view:v=>view=v};
 }
-test('Map and Carto use visible fine assets; imagery cancels them', () => {
+test('Map, Carto and Hybrid use visible fine assets; Satellite cancels them', () => {
   const r = renderingLayer();
   r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-2-1-1','south-carto-1-1']);
   r.background('carto');r.zoom(9);r.render(); assert.deepEqual(r.calls.splice(0), ['south-metric-1-0-0']);
@@ -95,7 +95,9 @@ test('Map and Carto use visible fine assets; imagery cancels them', () => {
   r.terrain(false);r.render(); assert.deepEqual(r.calls.splice(0), ['south-carto-1-1'], 'OSM detail is independent of relief');
   r.background('map');r.render();assert.deepEqual(r.calls.splice(0), ['south-carto-1-1']);
   assert.ok(r.layer.detailPending, 'Map keeps its visible detail budget');
-  for (const background of ['satellite','hybrid']) {
+  r.background('hybrid');r.render();assert.deepEqual(r.calls.splice(0), ['south-carto-1-1']);
+  assert.ok(r.layer.detailPending);
+  for (const background of ['satellite']) {
     r.background(background);r.render();assert.deepEqual(r.calls.splice(0), []);
     assert.equal(r.layer.detailPending, null);
   }
@@ -151,4 +153,44 @@ test('viewer groups classified lines and leaves older or misaligned tiles unclas
   const misaligned = transportationGroups({roads:['a','b'], lineTypes:[{class:'service',subclass:''}], roadTypes:[0]});
   assert.deepEqual(misaligned.map(g => [g.class, g.lines.length]), [['', 2]], 'a type list of the wrong length is ignored, not shifted');
   assert.deepEqual(transportationGroups({}), []);
+});
+
+ test('Map and Hybrid return detail labels only when live place labels are visible', () => {
+  const r=renderingLayer(), place={name:'Fixture station',lngLat:[0,-88]};
+  r.terrain(false);
+  r.layer.loadDetailTile=()=>({lineGroups:[],places:[place]});
+  let visible=true;
+  r.layer.map.getLayer=id=>id==='place_label_other'?{}:undefined;
+  r.layer.map.getLayoutProperty=()=>visible?'visible':'none';
+  for(const background of ['map','hybrid']) {
+    r.background(background);visible=true;r.render();assert.deepEqual(r.labels.at(-1),[place]);
+    visible=false;r.render();assert.deepEqual(r.labels.at(-1),[]);
+    visible=true;r.zoom(11);r.render();assert.deepEqual(r.labels.at(-1),[]);r.zoom(13);
+  }
+  r.background('satellite');r.render();assert.deepEqual(r.labels.at(-1),[]);
+});
+
+ test('major contour labels follow live label layers and clear when relief is off', () => {
+  const r=renderingLayer(), label={name:'-100 m',lngLat:[0,-88],ele:-100,level:1,contour:true};
+  r.layer.loadTile=()=>({labels:[label]});
+  r.layer.loadDetailTile=()=>({loading:true});
+  let visible=true;
+  r.layer.map.getLayer=id=>id==='terrain-seabed-contour-labels-close'?{}:undefined;
+  r.layer.map.getLayoutProperty=()=>visible?'visible':'none';
+  r.layer.map.getFilter=()=>['<',['get','ele'],0];
+  for(const background of ['map','hybrid']) {
+    r.background(background);visible=true;r.terrain(true);r.render();assert.deepEqual(r.labels.at(-1),[label]);
+    visible=false;r.render();assert.deepEqual(r.labels.at(-1),[]);
+    visible=true;r.terrain(false);r.render();assert.deepEqual(r.labels.at(-1),[]);
+  }
+});
+
+ test('Satellite draws faint coarse seabed and Antarctic surface contours without OSM detail or labels',()=>{
+  const r=renderingLayer(),lines=[];r.background('satellite');
+  r.layer.loadTile=key=>{r.calls.push(key);return {seabedMinor:'sea-minor',seabedMajor:'sea-major',landMinor:'surface-minor',landMajor:'surface-major'};};
+  r.layer.line=(mesh,_shader,_projection,colour,width)=>lines.push({mesh,colour,width});
+  r.render();assert.deepEqual(r.calls,['south-metric-0-0-0']);
+  assert.deepEqual(lines.map(l=>l.mesh),['sea-minor','sea-major','surface-minor','surface-major']);
+  assert.ok(lines.every(l=>l.colour[3]===0.25));assert.deepEqual(r.labels.at(-1),[]);assert.equal(r.layer.detailPending,null);
+  r.terrain(false);r.calls.length=0;lines.length=0;r.render();assert.deepEqual(r.calls,[]);assert.deepEqual(lines,[]);
 });

@@ -17,7 +17,7 @@ export const SOURCE_CONTRACTS = {
     park:[...LABEL, 'class'],
     boundary:[...LABEL, 'admin_level', 'claimed_by', 'class'],
     building:[],
-    transportation:['brunnel', 'class', 'subclass'],
+    transportation:['brunnel', 'class', 'subclass', 'service'],
     waterway:['brunnel', 'intermittent'],
     place:[...LABEL, 'class', 'iso_a2', 'name:en'],
     transportation_name:[...LABEL, 'class'],

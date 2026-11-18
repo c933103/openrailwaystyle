@@ -155,6 +155,7 @@ export async function assemble(index, dir, output, {work} = {}) {
   const {stdout: info} = await run('osmium', ['fileinfo', '-e', '-j', output]);
   const report = {schema: 1, index: index.generation, regions: Object.keys(index.regions).length,
     oldestTimestamp: index.oldestTimestamp, newestTimestamp: index.newestTimestamp,
+    selectionFilters: {region: currentFilter('region'), gap: currentFilter('gap/0')},
     counts: (({nodes, ways, relations}) => ({nodes, ways, relations}))(JSON.parse(info).data.count), bytes: (await stat(output)).size,
     deletions: Object.fromEntries([...removed].map(([region, ids]) => [region, ids.size]).sort()),
     pairsCompared: pairs.length, pairsSkipped: skipped,

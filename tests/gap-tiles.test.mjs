@@ -47,7 +47,7 @@ test('the Overpass form selects exactly what the osmium filter selects', () => {
     checked++; if (expected) selected++;
   }
   assert.ok(checked > 10000 && selected > 1000, `${checked} checked, ${selected} selected`);
-  assert.equal(overpassFilters().length, 23, 'one key filter per type and one per key tested by value');
+  assert.equal(overpassFilters().length, 47, 'one key filter per type and one per key tested by value');
   assert.ok(overpassFilters().every(f => !f.tag.includes('\\')), 'no backslash escapes');
 });
 
@@ -81,7 +81,7 @@ test('a poly filter is lat lon, without the closing point', () => {
   const query = gapQuery([square(1, 2, 3, 4)]);
   assert.match(query, /^\[out:xml\]\[timeout:180\]\[maxsize:536870912\];\(/);
   assert.match(query, /\(\.p0;\)->\.g;\(\.g;\.g >>;\);out meta;$/);
-  assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 23);
+  assert.equal(query.split('(poly:"2 1 2 3 4 3 4 1")').length - 1, 47);
   // A hole is taken out of its own part with four statements (nodes and ways
   // of the selection, nodes and ways of its relations' members), never asked
   // for with every filter.
@@ -585,11 +585,15 @@ test('an instance that stops answering hands the next tiles to the next instance
   assert.throws(() => overpassInstances({OVERPASS_URLS: ' , '}), /No Overpass instance/);
 });
 
-test('tiles without a working copy go first, then the oldest', async t => {
+test('tiles without a working copy go first, then those made with an older filter, then the oldest', async t => {
   const tiles = ['a', 'b', 'c', 'd', 'e'].map(key => ({key}));
-  const index = {regions: {'gap/a': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/b': {sourceTimestamp: '2026-11-05T06:00:00Z'},
-    'gap/d': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/e': {sourceTimestamp: 'not a date'}}};
+  const filter = GAP_FILTER_HASH;
+  const index = {regions: {'gap/a': {sourceTimestamp: '2026-11-09T14:00:00Z', filter}, 'gap/b': {sourceTimestamp: '2026-11-05T06:00:00Z', filter},
+    'gap/d': {sourceTimestamp: '2026-11-09T14:00:00Z', filter}, 'gap/e': {sourceTimestamp: 'not a date', filter}}};
   assert.deepEqual(tileOrder(tiles, index).map(t => t.key), ['c', 'e', 'b', 'a', 'd']);
+  // A newer tile asked with an older query goes before every current one.
+  const older = {regions: {...index.regions, 'gap/d': {sourceTimestamp: '2026-11-11T10:00:00Z', filter: 'overpass:older'}, 'gap/a': {sourceTimestamp: '2026-11-10T10:00:00Z', filter: 'overpass:older'}}};
+  assert.deepEqual(tileOrder(tiles, older).map(t => t.key), ['c', 'e', 'a', 'd', 'b']);
   assert.deepEqual(tileOrder(tiles).map(t => t.key), ['a', 'b', 'c', 'd', 'e'], 'the first run keeps the planned order');
   const root = await mkdtemp(join(tmpdir(), 'gap-order-'));
   t.after(() => rm(root, {recursive: true, force: true}));

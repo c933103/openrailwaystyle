@@ -54,7 +54,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
   layers.splice(layers.findIndex(l=>l.id==='water')+1,0,{id:'terrain-bathymetry',type:'raster',source:'bathymetry',paint:{'raster-fade-duration':0,'raster-resampling':'linear'}});
   for(const layer of layers)if(['terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))layer.paint['line-opacity']=seabedContourOpacity();
   annotateLayers(layers);
-  // Preserve the first frame's default Speed view, before saved settings apply.
+  // Use the first frame's default Infrastructure view, before saved settings apply.
   for (const layer of layers) {
     if (layer.metadata['atlas:initial-hidden']) {
       layer.layout ||= {};
