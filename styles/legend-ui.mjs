@@ -1,7 +1,8 @@
-import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261118-owner-schema-merge-1';
-import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261118-owner-schema-merge-1';
-import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261118-owner-schema-merge-1';
-import {serviceCoverageMessages} from './service-status.mjs?v=20261118-owner-schema-merge-1';
+import {ENERGY_DOMAINS,ENERGY_NETWORK_LINES} from './energy-network.mjs?v=20261118-energy-integration-1';
+import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261118-energy-integration-1';
+import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261118-energy-integration-1';
+import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261118-energy-integration-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261118-energy-integration-1';
 
 // State is retained by the application; each render reads current settings and coverage.
 export function renderLegendUI({document, $, textNode, settings, inView, legendState,
@@ -28,11 +29,11 @@ function powerFacilitySwatch({geometry}, includeFormer) {
 // fourth-rail track shows the conductor-rail stroke as well as its own.
 function powerMethodSwatch(stroke) {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),system='#3f6fa8';
-  svg.setAttribute('viewBox','0 0 25 14');svg.setAttribute('width','25');svg.setAttribute('height','14');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
+  svg.setAttribute('viewBox','0 -3 25 20');svg.setAttribute('width','25');svg.setAttribute('height','20');svg.setAttribute('aria-hidden','true');svg.classList.add('method-swatch');
   const line=(attrs)=>{const el=document.createElementNS(ns,'line');for(const [k,v] of Object.entries({x1:0,x2:25,...attrs}))el.setAttribute(k,v);svg.append(el);};
   line({y1:7,y2:7,stroke:system,'stroke-width':2.5});
   const strokes=stroke?POWER_METHOD_STROKES.filter(s=>s.when.includes(stroke.when[0])):[];
-  for(const s of strokes){const y=7+s.offset;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
+  for(const s of strokes)for(const side of s.gap?[-1,1]:[0]){const y=7+s.offset+side*((s.gap||0)+s.width)/2;line({y1:y,y2:y,stroke:s.color||system,'stroke-width':s.width,'stroke-linecap':s.cap||'butt',...(s.dash?{'stroke-dasharray':s.dash.map(v=>Math.max(v,0.1)*s.width).join(' ')}:{})});}
   return svg;
 }
 // Cable line with ticks, matching the aerialway layers' dash lengths.
@@ -54,6 +55,12 @@ function conveyingSwatch() {
   for(const [k,v] of Object.entries({x1:1,x2:24,y1:7,y2:7,stroke:CONVEYING_COLOUR,'stroke-width':1.5,'stroke-linecap':'round'}))line.setAttribute(k,v);
   for(const [k,v] of Object.entries({d:'M10 3 L15 7 L10 11',fill:'none',stroke:CONVEYING_COLOUR,'stroke-width':1.6,'stroke-linejoin':'round','stroke-linecap':'round'}))arrow.setAttribute(k,v);
   svg.append(line,arrow);return svg;
+}
+function networkLineSwatch(stroke) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),line=document.createElementNS(ns,'line');
+  for(const [key,value] of Object.entries({viewBox:'0 0 25 14',width:25,height:14,'aria-hidden':'true'}))svg.setAttribute(key,value);
+  for(const [key,value] of Object.entries({x1:0,x2:25,y1:7,y2:7,stroke:stroke.color,'stroke-width':2,...(stroke.dash?{'stroke-dasharray':stroke.dash.map(x=>x*2).join(' ')}:{})}))line.setAttribute(key,value);
+  svg.append(line);return svg;
 }
 function render() {
   const box = $('legend');
@@ -87,7 +94,7 @@ function render() {
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
-  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
+  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND,...ENERGY_NETWORK_LINES.map(stroke=>({symbol:'network-line',stroke,label:stroke.label})),...Object.values(ENERGY_DOMAINS).map(({color,label})=>({symbol:'dot',color,stroke:'#fffef8',label})),{symbol:'dot',color:ELECTRICITY_SIGNAL_STYLE.color,label:'Electrification signal'},{symbol:'method',label:'Overhead contact line (track colour alone)'},...POWER_METHOD_STROKES.map(stroke=>({symbol:'method',stroke,label:stroke.label})));
   if (settings.mode === 'infrastructure') rows.push({symbol:'method',stroke:POWER_METHOD_STROKES.find(({id})=>id==='rack-traction'),label:'Rack railway (ladder ticks)'});
   if (['infrastructure','electrification'].includes(settings.mode)) rows.push(...AERIALWAY_KINDS.map(kind=>({symbol:'aerialway',kind,label:kind.label})),{symbol:'conveying',label:'Escalator, moving walkway or elevator (arrow: direction)'});
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
@@ -96,8 +103,8 @@ function render() {
   // their geometry metadata instead of losing it in a colour/label tuple.
   for (const {symbol,color,label,extra,geometry,stroke,kind} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : symbol === 'conveying' ? conveyingSwatch() : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
-    if (symbol === 'dot') {swatch.setAttribute('aria-hidden','true');swatch.style.setProperty('--swatch', color);swatch.style.setProperty('--swatch-stroke', ELECTRICITY_SIGNAL_STYLE.stroke);}
+    const swatch = symbol==='network-line'?networkLineSwatch(stroke):symbol === 'shape' ? powerFacilitySwatch({geometry},settings.inactive) : symbol === 'method' ? powerMethodSwatch(stroke) : symbol === 'aerialway' ? aerialwaySwatch(kind) : symbol === 'conveying' ? conveyingSwatch() : symbol === 'dot' ? textNode('span','','dot-swatch') : textNode('span', '', `swatch ${extra || ''}`);
+    if (symbol === 'dot') {swatch.setAttribute('aria-hidden','true');swatch.style.setProperty('--swatch', color);swatch.style.setProperty('--swatch-stroke', typeof stroke==='string'?stroke:ELECTRICITY_SIGNAL_STYLE.stroke);}
     if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
       const pattern=LIFECYCLE_PATTERNS[extra.slice(9)];

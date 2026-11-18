@@ -13,7 +13,7 @@ import {checkAssembly, coversWorld} from './build-extract-branch-lines.mjs';
 import {readElements} from './extract-elements.mjs';
 import {osmiumSubset} from './build-extract-station-points.mjs';
 import {shapeRelations} from './build-extract-power-facilities.mjs';
-import {powerMethodsGeoJSON} from './power-method-data.mjs';
+import {powerMethodsGeoJSON,contactLineDetail} from './power-method-data.mjs';
 import {publishPowerMethods} from './build-power-methods.mjs';
 import {startRegions} from './crossing-data.mjs';
 
@@ -23,7 +23,7 @@ import {startRegions} from './crossing-data.mjs';
 const PREFIXES = ['', ...['construction', 'proposed', 'disused', 'abandoned', 'razed', 'demolished', 'removed'].map(state => `${state}:`)];
 const TRACKS = 'rail|narrow_gauge|subway|light_rail|tram|monorail|miniature|funicular';
 const token = options => new RegExp(`(^|;)[ \\t\\n\\v\\f\\r]*(${options})[ \\t\\n\\v\\f\\r]*(;|$)`, 'i');
-const P = {methods: token('rail|4th_rail|ground-level_power_supply|inductive'), propulsion: token('linear_motor'), traction: token('rack|cable'),
+const P = {methods: token('rail|4th_rail|ground-level_power_supply|inductive'), propulsion: token('linear_motor|maglev|battery|hydrogen|steam'), traction: token('rack|cable'),
   chargingRailway: token('charging_station'), amenity: token('charging_station'), chargePoint: token('charge_point'),
   mode: token('yes|designated|only'), railwayHint: token(`yes|power_supply|${TRACKS}`), usage: token('railway|traction'), landuse: token('railway')};
 const matches = (tags, key, pattern) => typeof tags[key] === 'string' && pattern.test(tags[key]);
@@ -33,7 +33,7 @@ const chargerHint = tags => ['train', 'tram', 'light_rail', 'subway'].some(key =
   || PREFIXES.some(prefix => matches(tags, `${prefix}railway`, P.railwayHint))
   || matches(tags, 'usage', P.usage) || matches(tags, 'landuse', P.landuse);
 export function isMethodElement({type, tags = {}}) {
-  if (type === 'way' && PREFIXES.some(prefix => matches(tags, `${prefix}electrified`, P.methods) || matches(tags, `${prefix}propulsion`, P.propulsion)
+  if (type === 'way' && PREFIXES.some(prefix => matches(tags, `${prefix}electrified`, P.methods) || contactLineDetail(tags,prefix) || matches(tags, `${prefix}propulsion`, P.propulsion)
     || matches(tags, `${prefix}traction`, P.traction))) return true;
   if (PREFIXES.some(prefix => matches(tags, `${prefix}railway`, P.chargingRailway))) return true;
   const charger = PREFIXES.some(prefix => matches(tags, `${prefix}amenity`, P.amenity) || matches(tags, `${prefix}man_made`, P.chargePoint));
@@ -64,7 +64,7 @@ export async function buildExtractPowerMethods(pbf, report, out, {read = readEle
   checkAssembly(report);
   if (!coversWorld(report)) return null;
   const {elements} = await methodElements(pbf, {read, subset});
-  const data = powerMethodsGeoJSON({elements});
+  const data = powerMethodsGeoJSON({elements}, {expanded: true});
   if (!data.features.length) throw new Error('Refusing to publish empty worldwide conductor-rail and charging data');
   // The world's start regions as the coverage, each counted as an Overpass
   // bounding box holds a feature (a coordinate inside, edges included).

@@ -59,3 +59,15 @@ test('late crossing lookup cannot replace a different selected feature', async (
     assert.equal(f.$('detail-content').querySelector('h2').textContent, 'Second selection');
   } finally { f.dom.window.close(); }
 });
+
+test('extracted Power UI retains energy context evidence and network legend',()=>{
+ const f=ui();try{
+  const settings={mode:'electrification',language:'en',units:'metric'};
+  renderLegendUI({...f,settings,inView:[],legendState:{help:false,service:false},periodCovered:()=>false});
+  assert.match(f.$('legend').textContent,/Fuel or gas pipeline/);
+  assert.match(f.$('legend').textContent,/Explicit traction supply circuit/);
+  const inspector=createFeatureInspector({...f,settings,osmLink:()=>{},signalSources:()=>[],getCurrentFeature:()=>null});
+  inspector.showPowerFacilityDetails({source:'energyNetworkDetail',properties:{energy_kind:'battery_storage',supply_tier:'civil_network',siding_evidence:'Not recorded',power_state:'present',fuel:'hvo;diesel'}});
+  const text=f.$('detail-content').textContent;assert.match(text,/battery storage/);assert.match(text,/Civil network/);assert.match(text,/Not recorded/);assert.match(text,/hvo;diesel/);
+ }finally{f.dom.window.close();}
+});

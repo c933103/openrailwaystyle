@@ -12,7 +12,9 @@ cyclic memberships remain explicit failures. The shared facility shaper remains
 unchanged for its other consumers.
 
 The energy classifier includes power=frequency_converter and its lifecycle
-variants at zoom 8. Extract filters and their identities are unchanged.
+variants at zoom 8. Circuit evidence also accepts explicitly traction-tagged
+frequency converters, subject to the same current-state and electrical-pair
+requirements. Extract filters and their identities are unchanged.
 
 Regression coverage includes direct nodes, nested node sites, vector-tile
 encoding, missing/cyclic references, lifecycle converters and successful complete

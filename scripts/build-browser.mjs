@@ -17,6 +17,8 @@ const server=new URL(process.env.GITHUB_SERVER_URL || 'https://github.com');
 if(!['https:','http:'].includes(server.protocol) || server.username || server.password)throw new Error('Invalid build server');
 const sourceUrl=commit && repository ? `${server.href.replace(/\/$/,'')}/${repository}/commit/${commit.toLowerCase()}` : '';
 const buildInfo={version,commit:commit.toLowerCase(),sourceUrl};
+// Publish the data builder's canonical tier contract into the browser shell.
+await copyFile('scripts/energy-network-schema.mjs','styles/energy-network-schema.mjs');
 await mkdir('styles/vendor',{recursive:true});
 for (const library of BROWSER_LIBRARIES) {
   const root = `node_modules/${library.package}`;

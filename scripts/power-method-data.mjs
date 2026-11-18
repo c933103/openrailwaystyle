@@ -43,7 +43,18 @@ export function powerMethodQuery(box) {
   // Unchanged text: cached responses are keyed by the exact query.
   return `[out:json][timeout:240][maxsize:134217728];${powerMethodSelection(`(${box.join(',')})`)}out body geom qt;`;
 }
-export function powerMethodsGeoJSON(json) {
+// Contact-line detail has an explicit source tag; ordinary overhead ways
+// already come from the live provider and do not belong in this supplement.
+export function contactLineDetail(tags, prefix = '') {
+  if(!tokens(tags[prefix+'electrified']).includes('contact_line'))return null;
+  const raw=tokens(tags[prefix+'voltage']);
+  const voltages=raw.every(v=>/^\d+(\.\d+)?$/.test(v))?[...new Set(raw.map(Number))]:[];
+  const type=tokens(tags[prefix+'electrified:contact_line']).find(v=>['trolley-type','rail','catenary'].includes(v));
+  return type||voltages.length>1?{type,voltages}:null;
+}
+// Expanded attributes are emitted only by the extract builder. Keeping the
+// legacy conversion default preserves its query/cache and acquisition scope.
+export function powerMethodsGeoJSON(json, {expanded = false} = {}) {
   if(json?.remark||!Array.isArray(json?.elements))throw new Error(json?.remark||'Incomplete power-method response');
   const byId=new Map();
   for(const element of json.elements) {
@@ -66,9 +77,9 @@ export function powerMethodsGeoJSON(json) {
     const trackState=genericState||railPrefix?.slice(0,-1)||undefined;
     const fallback=states.find(s=>tags[s]==='yes')||'present';
     const means=[];
-    for(const [key,allowed] of [['electrified',methods],['propulsion',PROPULSION],['traction',TRACTION]])
+    for(const [key,allowed] of [['electrified',expanded ? [...methods, 'contact_line'] : methods],['propulsion',expanded ? [...PROPULSION, 'maglev', 'battery', 'hydrogen', 'steam'] : PROPULSION],['traction',TRACTION]])
       for(const prefix of prefixes)for(const value of tokens(tags[prefix+key]).filter(v=>allowed.includes(v)))
-        if(!means.some(m=>m.key===key&&m.value===value))means.push({key,value,prefix,state:trackState||prefix.slice(0,-1)||fallback});
+        if((value!=='contact_line'||contactLineDetail(tags,prefix))&&!means.some(m=>m.key===key&&m.value===value))means.push({key,value,prefix,state:trackState||prefix.slice(0,-1)||fallback});
     if(!means.length)continue;
     const coordinates=element.geometry?.map(p=>[p.lon,p.lat]);
     if(!coordinates||coordinates.length<2||coordinates.some(p=>!p.every(Number.isFinite)||Math.abs(p[0])>180||Math.abs(p[1])>90))throw new Error(`Incomplete geometry for power method way-${element.id}`);
@@ -84,18 +95,35 @@ export function powerMethodsGeoJSON(json) {
       // from that means' own prefix.
       const prefix=(group.find(m=>m.key==='electrified')||group[0]).prefix;
       const number=key=>prefix!==undefined&&/^\d+(\.\d+)?$/.test(tags[prefix+key]||'')?Number(tags[prefix+key]):undefined;
+      const voltageTokens = tokens(tags[prefix+'voltage']);
+      const voltages = expanded && voltageTokens.every(v=>/^\d+(\.\d+)?$/.test(v)) ? [...new Set(voltageTokens.map(Number))] : [];
+      const frequencyTokens=tokens(tags[prefix+'frequency']);
+      const frequencyAt=index=>{const token=frequencyTokens.length===1?frequencyTokens[0]:frequencyTokens.length===voltageTokens.length?frequencyTokens[index]:undefined;return /^\d+(\.\d+)?$/.test(token||'')?Number(token):undefined;};
+      const secondaryIndex=voltageTokens.findIndex(v=>Number(v)===voltages[1]);
       const id=index?`way-${element.id}-${state}`:`way-${element.id}`;
       byId.set(id,{type:'Feature',id,geometry:{type:'LineString',coordinates},properties:{...tags,
         atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(...center):'',osm_type:'way',osm_id:String(element.id),
         power_state:state,electrification_state:state,
         power_method:selected.join(';'),// A planned or former means says so in its label, not only by opacity.
-        power_method_label:group.map(m=>METHOD_LABELS[m.value]).join(' + ')+(state==='present'?'':` (${state})`),
+        power_method_label:group.map(m=>(METHOD_LABELS[m.value] || ({contact_line:'Overhead contact line',maglev:'Magnetic levitation',battery:'Battery propulsion',hydrogen:'Hydrogen propulsion',steam:'Steam propulsion'})[m.value])).join(' + ')+(state==='present'?'':` (${state})`),
         // Booleans keep layer filters exact (4th_rail must not match rail).
         method_rail:selected.includes('rail'),method_fourth_rail:selected.includes('4th_rail'),
         method_ground:selected.includes('ground-level_power_supply'),method_inductive:selected.includes('inductive'),
         // This lifecycle's own values, for the inspector.
         power_propulsion:propulsion.join(';'),power_traction:traction.join(';'),
         propulsion_linear_motor:propulsion.includes('linear_motor'),traction_rack:traction.includes('rack'),traction_cable:traction.includes('cable'),
+        ...(expanded ? {
+          catenary_trolley:selected.includes('contact_line')&&contactLineDetail(tags,prefix)?.type==='trolley-type',
+          catenary_rigid:selected.includes('contact_line')&&contactLineDetail(tags,prefix)?.type==='rail',
+          contact_line_type:selected.includes('contact_line')?contactLineDetail(tags,prefix)?.type||'':'',
+          rail_contact:selected.some(v=>['rail','4th_rail'].includes(v))?tokens(tags[prefix+'electrified:rail']).find(v=>['top','side','bottom'].includes(v))||'':'',
+          propulsion_maglev:propulsion.includes('maglev'),propulsion_battery:propulsion.includes('battery'),
+          propulsion_hydrogen:propulsion.includes('hydrogen'),propulsion_steam:propulsion.includes('steam'),
+          voltages:voltages.join(';'),voltages_secondary:voltages.slice(1).join(';'),
+          ...(voltages.length>1?{dual_voltage:true,voltage_secondary:voltages[1],...(frequencyAt(secondaryIndex)!==undefined?{frequency_secondary:frequencyAt(secondaryIndex)}:{})}:{}),
+          ...(frequencyAt(0)!==undefined?{frequency:frequencyAt(0)}:{}),
+          ...(voltages.length ? {voltage:voltages[0]} : {}),
+        } : {}),
         ...(number('voltage')!==undefined?{voltage:number('voltage')}:{}),...(number('frequency')!==undefined?{frequency:number('frequency')}:{}),
       }});
     }

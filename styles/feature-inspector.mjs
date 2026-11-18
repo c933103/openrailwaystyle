@@ -1,8 +1,8 @@
-import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261118-owner-schema-merge-1';
-import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261118-owner-schema-merge-1';
-import {contextDescription} from './context.mjs?v=20261118-owner-schema-merge-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261118-owner-schema-merge-1';
-import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261118-owner-schema-merge-1';
+import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261118-energy-integration-1';
+import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261118-energy-integration-1';
+import {contextDescription} from './context.mjs?v=20261118-energy-integration-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261118-energy-integration-1';
+import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261118-energy-integration-1';
 
 // DOM helpers shared by the feature inspector and train-protection legend.
 export function createInspectorRows(textNode) {
@@ -61,7 +61,7 @@ function showRailwayPointDetails(feature) {
   osmLink(panel,feature);$('details').hidden=false;
 }
 function showPowerFacilityDetails(feature) {
-  const p=feature.properties, panel=$('detail-content'), label=feature.source==='electricSubstations'?'Traction substation':feature.source==='electricCatenary'?(p.feature==='portal'?'Catenary portal':'Catenary mast'):powerFacilityName(p);
+  const p=feature.properties, panel=$('detail-content'), label=feature.source?.startsWith('energyNetwork')?String(p.energy_kind||'Energy supply').replaceAll('_',' '):feature.source==='electricSubstations'?'Traction substation':feature.source==='electricCatenary'?(p.feature==='portal'?'Catenary portal':'Catenary mast'):powerFacilityName(p);
   panel.replaceChildren(textNode('div','RAILWAY ENERGY SUPPLY','eyebrow'),textNode('h2',displayName(p,settings.language)||p.ref||label));
   const dl=document.createElement('dl');
   row(dl,'Type',label); row(dl,'Status',p.power_state||(feature.source==='electricSubstations'?'Not recorded':'present')); row(dl,'Reference',p.ref);
