@@ -62,7 +62,7 @@ try{
      resolve(count);
     }catch(error){reject(error);}});energyMap.triggerRepaint();
    }));
-   observed.afterCapture=await page.evaluate(()=>({loaded:energyMap.loaded(),tilesLoaded:energyMap.areTilesLoaded(),pending:energyPending,protocolRequests:[...energyCalls],errors:[...energyErrors]}));
+   observed.afterCapture=await page.evaluate(()=>({loaded:energyMap.loaded(),styleDirty:energyMap._styleDirty,sourcesDirty:energyMap._sourcesDirty,styleLoaded:energyMap.style?.loaded(),styleInitialized:energyMap.style?._loaded,updatedSources:Object.keys(energyMap.style?._updatedSources||{}),imagesLoaded:energyMap.style?.imageManager?.isLoaded(),tilesLoaded:energyMap.areTilesLoaded(),pending:energyPending,protocolRequests:[...energyCalls],errors:[...energyErrors]}));
    assert.ok(observed.afterCapture.loaded&&observed.afterCapture.tilesLoaded&&observed.afterCapture.pending===0,'pixel capture must retain settled tile demand');
    observed.protocolRequests=await page.evaluate(()=>energyCalls);observed.errors=await page.evaluate(()=>energyErrors);
    if(!candidate)assertEnergyFixturePixels(observed.energyPixels,active);
