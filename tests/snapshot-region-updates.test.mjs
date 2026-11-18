@@ -29,7 +29,9 @@ async function run(t, files, replies, mode = 'delta', previousRoot, {early = fal
       const query = body.get('data'); log.push(query);
       (await import('node:fs')).writeFileSync('requests.json', JSON.stringify(log));
       times.push(elapsed); (await import('node:fs')).writeFileSync('request-times.json', JSON.stringify(times));
-      const [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
+      let [, reply] = Object.entries(replies).find(([box]) => query.includes('(' + box + ')')) || [, {text:'<osm><meta osm_base="${BASE}"/></osm>'}];
+      // A list answers its box's requests in turn; the last answer repeats.
+      if (Array.isArray(reply)) reply = reply.length > 1 ? reply.shift() : reply[0];
       if (reply.fail || reply.cut) {
         const cause = Object.assign(new Error(reply.secret || 'synthetic connection failure'), {name:reply.causeName || 'Error', code:reply.code});
         if (reply.cycle) cause.cause = cause;
@@ -44,7 +46,7 @@ async function run(t, files, replies, mode = 'delta', previousRoot, {early = fal
         if (reply.cut) return {ok:true, status:200, text:async () => { throw error; }};
         throw error;
       }
-      return new Response(reply.text, {status:reply.status || 200});
+      return new Response(reply.text, {status:reply.status || 200, headers:reply.headers});
     };`);
   const result = spawnSync(process.execPath, ['--import', './fake.mjs', builder], {cwd:root, env:{...process.env, SNAPSHOT_REGION:mode, GITHUB_RUN_ID:'1'}, encoding:'utf8', timeout:15000});
   assert.equal(result.error, undefined, result.error?.message);
@@ -186,6 +188,78 @@ for (const [name, reply] of Object.entries({connection:{fail:true}, body:{cut:tr
     assert.doesNotMatch(result.stdout, /REGION COMPLETE/);
   });
 }
+// Overpass's Retry-After (seconds or an HTTP date) holds back the next request.
+test('a full region download waits out Retry-After when it is longer than the retry interval', async t => {
+  const busy = {status:429, text:'busy', headers:{'retry-after':'120'}};
+  const {result, requests, times} = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(times, [15000, 135000], 'the second request 120 s after the answer, not 60 s');
+  assert.equal(requests.length, 2);
+  assert.match(result.stdout, /REGION COMPLETE/);
+});
+test('a shorter Retry-After keeps the retry interval', async t => {
+  const busy = {status:503, text:'busy', headers:{'retry-after':'10'}};
+  const {result, times} = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(times, [15000, 75000]);
+});
+test('a Retry-After of exactly 15 minutes is still waited out', async t => {
+  const busy = {status:429, text:'busy', headers:{'retry-after':'900'}};
+  const {result, times} = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(times, [15000, 915000]);
+});
+test('a Retry-After longer than 15 minutes stops the region without another request', async t => {
+  const busy = {status:429, text:'busy', headers:{'retry-after':'901'}};
+  const {result, requests, names} = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.notEqual(result.status, 0);
+  assert.equal(requests.length, 1, 'nothing sent after the long wait was asked for');
+  assert.match(result.stderr + result.stdout, /asked to wait longer than 15 minutes/);
+  assert.ok(!names.includes('0_90_45_135.json'), 'no region written');
+  assert.ok(!names.includes('0_90_45_135.json.split'), 'a wait does not subdivide a region');
+});
+// Each world region is its own workflow step: a wait asked for in one holds
+// back the run's later steps (same GITHUB_RUN_ID), on the wall clock.
+test('a Retry-After carries over to the run\'s next region step', async t => {
+  const busy = {status:429, text:'busy', headers:{'retry-after':'600'}};
+  const first = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.equal(first.result.status, 0, first.result.stderr);
+  assert.deepEqual(first.times, [15000, 615000]);
+  await rm(join(first.root, 'request-times.json'));
+  // The same region again, as a later step would ask for its own.
+  await rm(join(first.root, '.snapshot-cache', '0_90_45_135.json'));
+  const next = await run(t, {}, {'0,90,45,135':full([])}, '0', first.root, {early:true});
+  assert.equal(next.result.status, 0, next.result.stderr);
+  assert.ok(next.times[0] > 590000 && next.times[0] <= 600000, `next step's first request waits the rest: ${next.times[0]}`);
+});
+test('a Retry-After beyond 15 minutes stops the run\'s later region steps too', async t => {
+  const busy = {status:429, text:'busy', headers:{'retry-after':'1800'}};
+  const first = await run(t, {}, {'0,90,45,135':[busy, full([])]}, '0', undefined, {early:true});
+  assert.notEqual(first.result.status, 0);
+  assert.equal(first.requests.length, 1);
+  await rm(join(first.root, 'requests.json'));
+  const next = await run(t, {}, {}, '1', first.root, {early:true});
+  assert.notEqual(next.result.status, 0);
+  assert.deepEqual(next.requests, [], 'nothing sent');
+  assert.match(next.result.stderr + next.result.stdout, /asked to wait longer than 15 minutes/);
+  // Another run (another GITHUB_RUN_ID) does not read this run's pause.
+  const pause = JSON.parse(await readFile(join(first.root, '.snapshot-cache', 'provider-pause-1.json'), 'utf8'));
+  assert.ok(Date.parse(pause.until) - Date.now() > 1700_000, 'saved as the wall-clock end of the wait');
+});
+test('cached-region change requests wait out Retry-After, and stop after one beyond 15 minutes', async t => {
+  const files = {'0_90_45_135.json':region([way(1, {railway:'proposed'})]), '-90_-180.json':region([])};
+  const waited = await run(t, files, {'0,90,45,135':{status:429, text:'', headers:{'retry-after':'30'}}}, 'delta', undefined, {early:true});
+  assert.equal(waited.result.status, 0, waited.result.stderr);
+  assert.deepEqual(waited.times, [5000, 35000], 'the next region asked 30 s after the answer');
+  assert.equal((await waited.read('-90_-180.json')).osm3s.timestamp_osm_base, BASE);
+  const date = new Date(Date.now() + 2 * 3600_000).toUTCString();
+  const stopped = await run(t, files, {'0,90,45,135':{status:429, text:'', headers:{'retry-after':date}}}, 'delta', undefined, {early:true});
+  assert.equal(stopped.result.status, 0, stopped.result.stderr);
+  assert.equal(stopped.requests.length, 1, 'the other region is not asked this run');
+  assert.equal((await stopped.read('0_90_45_135.json')).osm3s.timestamp_osm_base, SINCE);
+  assert.equal((await stopped.read('-90_-180.json')).osm3s.timestamp_osm_base, SINCE, 'kept, asked again next run');
+  assert.match(stopped.result.stdout, /"unanswered":2/);
+});
 test('lifecycle early timers preserve quiet intervals between query-limit children', async t => {
   const children = ['0,90,22.5,112.5', '0,112.5,22.5,135', '22.5,90,45,112.5', '22.5,112.5,45,135'];
   const replies = Object.fromEntries(children.map(box => [box, full([])]));
@@ -376,12 +450,12 @@ test('a requested refresh takes the regions downloaded in full longest ago, howe
   const day = 86_400_000, iso = ms => new Date(Date.now() - ms).toISOString();
   // All three were just rewritten by change updates.
   const files = {'old.json': JSON.stringify({fetched:iso(10 * day), osm3s:{}, elements:[]}), 'recent.json': JSON.stringify({fetched:iso(2 * day), osm3s:{}, elements:[]}),
-    'unrecorded.json': region([]), 'delta.json': '{}', 'budget-1.json': '{}', 'x.json.split': 'split'};
+    'unrecorded.json': region([]), 'delta.json': '{}', 'budget-1.json': '{}', 'provider-pause-1.json': '{}', 'x.json.split': 'split'};
   for (const [name, data] of Object.entries(files)) await writeFile(join(root, '.snapshot-cache', name), data);
   const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/refresh-snapshot-cache.mjs', import.meta.url))], {cwd:root, env:{...process.env, REFRESH_BYTES:'1000000'}, encoding:'utf8'});
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual((await readdir(join(root, '.snapshot-cache'))).sort(),
-    ['budget-1.json', 'delta.json', 'old.json.previous', 'recent.json', 'unrecorded.json.previous', 'x.json.split'], 'kept as .previous to log the differences');
+    ['budget-1.json', 'delta.json', 'old.json.previous', 'provider-pause-1.json', 'recent.json', 'unrecorded.json.previous', 'x.json.split'], 'kept as .previous to log the differences');
   assert.ok(result.stdout.indexOf('unrecorded.json') < result.stdout.indexOf('old.json'), 'a response without a download time first');
 });
 

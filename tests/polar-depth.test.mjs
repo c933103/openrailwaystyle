@@ -128,3 +128,13 @@ test('depth draw sends shared seven palette stops and metres to the shader', () 
   }
   f.layer.onRemove();
 });
+
+ test('satellite bathymetry uses a distinct deep-ocean palette without altering numeric depths',()=>{
+  const layer=new PolarLayer({});const values={};
+  layer.draw=(_mesh,_shader,_projection,set)=>set({activeTexture(){},bindTexture(){},uniform1i(){},uniform3f(){},uniform1f(){},
+    uniform1fv:(_u,v)=>values.levels=[...v],uniform3fv:(_u,v)=>values.rgb=[...v]},{});
+  layer.drawDepth({index:{depth:{x0:0,step:1,size:2}},reliefMesh:{}},{},{},1,true);
+  assert.deepEqual(values.levels,[0,200,1500,4500,6000,8000,11000]);
+  assert.equal(values.levels.length,DEPTH_COLOURS.length);
+  assert.ok(Math.abs(values.rgb[9]-5/255)<1e-6);
+ });

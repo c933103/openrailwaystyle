@@ -2,7 +2,7 @@
 import {retryAfterMs} from './retry-after.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createAxlePartCache} from './axle-load-parts.mjs';
-import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
+import {AXLE_RAIL_FILTER, axleLookup} from './axle-load-lookup.mjs';
 const api='https://overpass-api.de/api/interpreter',cache='.snapshot-cache/axle-load.json',partsFile='.snapshot-cache/axle-load-parts.json',age=28*86400000;
 await mkdir('.snapshot-cache',{recursive:true});await mkdir('snapshot',{recursive:true});
 let previous,parts={};
@@ -41,7 +41,7 @@ async function part(key,text,fields=3){
  console.log(`${value.downloaded?'Downloaded':'Reusing'} validated axle part ${key}: ${value.rows.length} ways, ${value.downloaded} bytes`);return value;
 }
 try {
- const rail='[railway~"^(rail|narrow_gauge|light_rail|subway|monorail|funicular)$"]';
+ const rail=AXLE_RAIL_FILTER;
  const datasets=[];
  for(const [key,selector] of [['capacity','[axle_load]'],['legal','[maxaxleload]'],['d4','["railway:track_class"="D4"]'],['other-classes','["railway:track_class"]["railway:track_class"!="D4"]']]){
   datasets.push(await part(key,`[out:csv(::type,::id,::count,axle_load,maxaxleload,"railway:track_class";false)][timeout:240];way${selector}${rail}->.tracks;.tracks out;.tracks out count;`));
@@ -51,11 +51,10 @@ try {
  // Every part carries complete tags; if parts were recovered from different
  // attempts, the newest observation of a shared way wins, including deletions.
  for(const data of datasets.sort((a,b)=>Date.parse(a.updated)-Date.parse(b.updated)))for(const row of data.rows)byId.set(row[0],row);
- const rows=[...byId.values()].map(([id,capacity,maximum,category])=>[id,JSON.stringify({...(capacity&&{axle_load:capacity}),...(maximum&&{maxaxleload:maximum}),...(category&&{track_class:category}),axle_system:finnish.has(id)?'fi':'en'})]);
  const updated=new Date(Math.min(...[...datasets,fi].map(p=>Date.parse(p.updated)))).toISOString();
- const result={...encodeLoadingGauges(rows),updated,ways:rows.length,finnishWays:finnish.size,source:'OpenStreetMap via Overpass API; ODbL'};
+ const result=axleLookup([...byId.values()],finnish,{updated,source:'OpenStreetMap via Overpass API; ODbL'});
  const data=JSON.stringify(result);await writeFile(cache,data);await writeFile('snapshot/axle-load.json',data);
- console.log(`Axle-load lookup: ${rows.length} railway ways, ${finnish.size} Finnish classes, ${Buffer.byteLength(data)} bytes; download ${downloaded} bytes`);
+ console.log(`Axle-load lookup: ${result.ways} railway ways, ${finnish.size} Finnish classes, ${Buffer.byteLength(data)} bytes; download ${downloaded} bytes`);
 }catch(error){
  console.warn('Axle-load snapshot:',error.message);
  if(!previous){console.log('No previous axle-load snapshot; high-detail unambiguous categories remain available');process.exit(0);}

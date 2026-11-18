@@ -10,6 +10,7 @@
 // data is re-fetched when older than POLAR_OSM_MAX_AGE_DAYS (default 28).
 import {readFile, writeFile, mkdir, stat, rm, rename} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {POLAR_SATELLITE, fetchPolarSatellite, validatePolarSatellite} from './polar-satellite.mjs';
 import {createPolarTextFetcher} from './polar-fetch.mjs';
 import polygonClipping from 'polygon-clipping';
 import {CAP_RADIUS, POLAR_BANDS, FEET, toPolar, encodeLine, fromPolar} from '../styles/polar.mjs';
@@ -219,6 +220,16 @@ for (const cap of CAPS) {
   index.carto = {from: 10, n: DETAIL_SIDE, tiles: [...tiles.keys()]};
   // This remains ETOPO's 60 arc-second surface product, resampled to 1.5 km.
   // Denser isolines do not imply a finer DEM or subglacial bedrock heights.
+  // Optional imagery has independent provenance and never makes terrain
+  // publication depend on an imagery service's availability.
+  try {
+    const cache = `.snapshot-cache/polar-blue-marble-v1-${cap}.jpg`;
+    let image;
+    try { image = validatePolarSatellite(await readFile(cache)); }
+    catch { image = await fetchPolarSatellite(cap); await writeFile(cache, image); }
+    await writeFile(`${output}/${cap}-satellite.jpg`, image);
+    index.satellite = {...POLAR_SATELLITE, projection:cap==='north'?'EPSG:3413':'EPSG:3031', sha256:createHash('sha256').update(image).digest('hex')};
+  } catch (error) { console.warn(`${cap} satellite unavailable; retaining cartographic fallback:`, error.message); }
   index.elevation = {source: 'NOAA ETOPO 2022', product: 'surface', arcSeconds: 60, gridStepKm: STEP};
   await writeFile(`${output}/${cap}-index.json`, JSON.stringify(index));
   console.log(cap, 'Carto detail:', tiles.size, 'tiles');

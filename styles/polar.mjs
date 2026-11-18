@@ -40,10 +40,9 @@ export const POLAR_BANDS = {
 };
 export const FEET = 3.28084;
 export const bandFor = zoom => zoom >= 11 ? 2 : zoom >= 9 ? 1 : 0;
-// Both drawn backgrounds follow the map's fine contour bands. Imagery
-// keeps coarse/no-data caps; clamp for older snapshots with fewer bands.
+// Map, Carto and Hybrid use fine contour bands; clamp for older snapshots.
 export const polarBandFor = (zoom, background, count) =>
-  Math.min(background === 'map' || background === 'carto' ? bandFor(zoom) : 0, count - 1);
+  Math.min(['map', 'carto', 'hybrid'].includes(background) ? bandFor(zoom) : 0, count - 1);
 export const POLAR_DETAIL_ZOOM = 10;
 // Published detail polygons are clipped to a 4×4 grid and the 720-sided
 // cap mask. Their closing cut edges are not original building outlines.
@@ -91,4 +90,37 @@ export function decodeLine(values, start = 0, end = values.length, quantum = QUA
   const out = []; let x = 0, y = 0;
   for (let i = start; i < end; i += 2) { x += values[i]; y += values[i + 1]; out.push([x * quantum, y * quantum]); }
   return out;
+}
+
+// One stable label at the half-length point of an authored polar isoline.
+// Elevations in imperial tiles are already feet: do not convert them again.
+export function polarContourLabel(cap, points, ele, units) {
+  if (!Number.isFinite(ele) || ele === 0 || points.length < 2) return null;
+  let length = 0;
+  for (let i=1;i<points.length;i++) length += Math.hypot(points[i][0]-points[i-1][0], points[i][1]-points[i-1][1]);
+  if (!(length > 0)) return null;
+  let remaining = length / 2;
+  for (let i=1;i<points.length;i++) {
+    const a=points[i-1], b=points[i], segment=Math.hypot(b[0]-a[0], b[1]-a[1]);
+    if (segment && remaining <= segment) {
+      const t=remaining/segment;
+      return {name:`${Math.round(ele)} ${units === 'imperial' ? 'ft' : 'm'}`,
+        lngLat:fromPolar(cap,[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]), ele, level:1, contour:true};
+    }
+    remaining -= segment;
+  }
+  return null;
+}
+
+// WGS84 polar stereographic constants for NASA EPSG:3413/3031 imagery.
+export function polarSatelliteScale(cap) {
+  const e=0.08181919084262149, phi=(cap==='north'?70:71)*Math.PI/180;
+  const t=Math.tan(Math.PI/4-phi/2)/((1-e*Math.sin(phi))/(1+e*Math.sin(phi)))**(e/2);
+  return 6378137*Math.cos(phi)/Math.sqrt(1-e*e*Math.sin(phi)**2)/t;
+}
+export function polarSatelliteXY(cap, [lng,lat]) {
+  const e=0.08181919084262149,phi=Math.abs(lat)*Math.PI/180;
+  const t=Math.tan(Math.PI/4-phi/2)/((1-e*Math.sin(phi))/(1+e*Math.sin(phi)))**(e/2);
+  const r=polarSatelliteScale(cap)*t,lon=(lng+(cap==='north'?45:0))*Math.PI/180;
+  return [r*Math.sin(lon),(cap==='north'?-1:1)*r*Math.cos(lon)];
 }

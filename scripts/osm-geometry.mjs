@@ -49,3 +49,24 @@ export function inside([x,y],ring) {
   return result;
 }
 export const bounds=points=>points.reduce((b,[x,y])=>[Math.min(b[0],x),Math.min(b[1],y),Math.max(b[2],x),Math.max(b[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
+export const boxesOverlap=(a,b)=>a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1];
+const orient=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));
+const onSegment=(a,b,p)=>Math.min(a[0],b[0])<=p[0]&&p[0]<=Math.max(a[0],b[0])&&Math.min(a[1],b[1])<=p[1]&&p[1]<=Math.max(a[1],b[1]);
+// Whether segments ab and cd intersect, including touching.
+export function segmentsMeet(a,b,c,d) {
+  const o1=orient(a,b,c),o2=orient(a,b,d),o3=orient(c,d,a),o4=orient(c,d,b);
+  if(o1!==o2&&o3!==o4)return true;
+  return o1===0&&onSegment(a,b,c)||o2===0&&onSegment(a,b,d)||o3===0&&onSegment(c,d,a)||o4===0&&onSegment(c,d,b);
+}
+const ringMeets=(line,ring)=>{
+  for(let i=1;i<line.length;i++)for(let j=1;j<ring.length;j++)if(segmentsMeet(line[i-1],line[i],ring[j-1],ring[j]))return true;
+  return false;
+};
+// Whether a point lies in a polygon's area, outside its holes.
+export const insidePolygon=(p,polygon)=>inside(p,polygon.outer)&&!polygon.inners.some(ring=>inside(p,ring));
+// Whether a line reaches a polygon: a vertex in its area, or a segment meeting
+// its outline or a hole's edge (which includes ending on the boundary).
+export function lineMeetsPolygon(line,polygon) {
+  if(!boxesOverlap(bounds(line),polygon.box))return false;
+  return line.some(p=>insidePolygon(p,polygon))||ringMeets(line,polygon.outer)||polygon.inners.some(ring=>ringMeets(line,ring));
+}

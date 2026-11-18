@@ -93,3 +93,22 @@ for (const [label,header,start,pause] of [
     if(previousTZ===undefined)delete process.env.TZ;else process.env.TZ=previousTZ;
   }
 });
+
+test('origin pause evidence and changes follow cooldown without issuing extra requests',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});let now=1000,changes=0,calls=0;
+ const pool=createRequestPool({now:()=>now,retries:[],onChange:()=>changes++,fetcher:async()=>{
+  calls++;return {ok:false,status:503,headers:{get:()=>null}};
+ }});
+ try{
+  assert.equal(pool.originPaused('https://rail.example/track'),false);
+  await assert.rejects(pool.get('https://rail.example/station'));
+  assert.equal(pool.originPaused('https://rail.example/track'),true);
+  assert.equal(pool.originPaused('https://other.example/track'),false);
+  const before=changes;const pending=pool.get('https://rail.example/track').catch(error=>error);
+  assert.ok(changes>before,'queued selected tile changes presentation');assert.equal(calls,1);
+  now+=1000;t.mock.timers.tick(1000);await tick();await pending;
+  assert.equal(calls,2,'only original requests run');
+  now+=1000;assert.equal(pool.originPaused('https://rail.example/track'),false);
+ }finally{pool.dispose();}
+ assert.equal(pool.originPaused('https://rail.example/track'),false);
+});

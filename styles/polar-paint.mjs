@@ -202,7 +202,7 @@ function evaluatePaint(expression, zoom, properties, budget, depth) {
   return expression;
 }
 
-export function polarStylePaint(map, zoom) {
+export function polarStylePaint(map, zoom, overlayVisibility) {
   // Cache lookups only for this frame. null means a successful missing
   // lookup; undefined means the API/style is unavailable and allows fallback.
   const layers = new Map();
@@ -223,8 +223,9 @@ export function polarStylePaint(map, zoom) {
       const layer = layerFor(id);
       if (layer === null) return false;
       min = layer?.minzoom ?? min; max = layer?.maxzoom ?? max;
-      return inRange(min,max) &&
-        map?.getLayoutProperty?.(id, 'visibility') !== 'none';
+      const overlay=layer && overlayVisibility?.(layer);
+      return inRange(min,max) && (typeof overlay==='boolean' ? overlay :
+        map?.getLayoutProperty?.(id, 'visibility') !== 'none');
     } catch { return inRange(min,max); }
   };
   const matches = (id, properties) => {
@@ -299,6 +300,9 @@ export function polarStylePaint(map, zoom) {
       taxiway: colour('context-transport-airport-runways', 'line-color', DEFAULTS.taxiway, {class:'taxiway'}),
       apron: colour('context-transport-airport-area', 'fill-color', DEFAULTS.apron, {class:'apron'}),
     },
+    contourLabelVisible: properties => ['terrain-contour-labels', 'terrain-seabed-contour-labels', 'terrain-seabed-contour-labels-close']
+      .some(id => visible(id, 8) && matches(id, properties)),
+    placesVisible: visible('place_label_city') || visible('place_label_other'),
     backgroundVisible: visible('background'),
     backgroundOpacity: number('background', 'background-opacity', 1),
     waterVisible: visible('water'),

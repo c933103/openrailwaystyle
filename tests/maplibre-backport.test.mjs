@@ -4,8 +4,9 @@ import {readFile} from 'node:fs/promises';
 import {createHash,webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
-import {MAPLIBRE_BACKPORT,backportMapLibre524} from '../styles/map-controls.mjs';
+import {MAPLIBRE_BACKPORT,MAPLIBRE_MONGOLIAN_EDITS,backportMapLibre524} from '../styles/map-controls.mjs';
 import {verifyMapLibreBackportSource} from '../scripts/maplibre-backport.mjs';
+import {buildAtlas3Text} from './fixtures/atlas3-maplibre.mjs';
 
 const root = new URL('../node_modules/maplibre-gl/', import.meta.url);
 const original = await readFile(new URL('dist/maplibre-gl.js', root));
@@ -37,7 +38,7 @@ function distributionSanitizer(bytes) {
   return {sanitize,close:()=>dom.window.close()};
 }
 
-test('MapLibre backport changes only the attribution loop and GeoJSON parse method, with no stale source map',async()=>{
+test('MapLibre backport changes only the attribution loop, the GeoJSON parse method and the Mongolian shaping hooks, with no stale source map',async()=>{
   assert.equal(digest(original), MAPLIBRE_BACKPORT.upstreamSha256);
   assert.equal(digest(patched), MAPLIBRE_BACKPORT.sha256);
   let expected=original.toString('utf8').replace(
@@ -50,6 +51,7 @@ test('MapLibre backport changes only the attribution loop and GeoJSON parse meth
   const fixedMethod=workerMethod(Buffer.from(patched).toString('utf8'));
   assert.notEqual(workerMethod(expected),fixedMethod);
   expected=expected.replace(workerMethod(expected),fixedMethod);
+  for(const [editOriginal,editReplacement] of MAPLIBRE_MONGOLIAN_EDITS)expected=expected.replace(editOriginal,editReplacement);
   assert.equal(Buffer.from(patched).toString('utf8'),expected);
   assert.match(expected,/MapLibre/);
   assert.ok(!expected.includes('sourceMappingURL='));
@@ -63,9 +65,10 @@ test('MapLibre backport changes only the attribution loop and GeoJSON parse meth
   } finally {dom.window.close();}
 });
 
-test('the exact prior atlas.1 cache is upgraded to the same current distribution',async()=>{
-  const previous=Buffer.from(original.toString('utf8').replace('of e.attributes)d.isPossiblyDangerous',
-    'of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+test('the exact prior atlas.3 cache is upgraded to the same current distribution',async()=>{
+  // atlas.3 = upstream + the attribution and worker repairs + the
+  // atlas.3 Mongolian span and hooks (see fixtures/atlas3-maplibre.mjs).
+  const previous=Buffer.from(buildAtlas3Text(original.toString('utf8'),Buffer.from(patched).toString('utf8')));
   assert.equal(digest(previous),MAPLIBRE_BACKPORT.previousSha256);
   assert.deepEqual(Buffer.from(await backportMapLibre524(previous,webcrypto.subtle)),Buffer.from(patched));
   await assert.rejects(backportMapLibre524(Buffer.concat([previous,Buffer.from(' ')]),webcrypto.subtle),/Unexpected MapLibre input/);

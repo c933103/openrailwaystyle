@@ -52,3 +52,7 @@ for (const [source,target] of [['@mapbox/point-geometry/LICENSE','point-geometry
 await rm('styles/vendor/maplibre-gl-5.24.0.js', {force:true});
 
 await rm('styles/vendor/maplibre-gl-5.24.0-atlas.1.js', {force:true});
+
+await rm('styles/vendor/maplibre-gl-5.24.0-atlas.2.js', {force:true});
+
+await rm('styles/vendor/maplibre-gl-5.24.0-atlas.3.js', {force:true});
