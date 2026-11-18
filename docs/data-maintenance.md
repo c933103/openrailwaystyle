@@ -839,3 +839,31 @@ request spacing, Retry-After handling and maximum split depth are unchanged.
 This reduces repeated successful queries after an interruption; it does not
 make an unreachable provider reachable, publish partial coverage, add a workflow
 or initiate production acquisition.
+
+## Optional energy-network extract builder
+
+`node scripts/build-extract-energy-network.mjs assembled.osm.pbf assembled.osm.pbf.json output`
+prepares civil power lines and multi-energy supply context from the shared extracts.
+Its enlarged selection includes civil `power`, `industrial`, `resource` and selected
+`man_made` features. Refresh the extracts and bounded gap tiles with that filter
+before building: the assembly report must explicitly name the current region and
+gap filters, and every region must be complete and current. Historical assemblies
+without this provenance cannot certify the new dataset. The larger filter's real
+download and storage cost remains to be measured within the existing limits.
+
+The builder preserves raw fuel tags, separates explicit railway servicing from
+polygon intersection and 35 m adjacency, and describes adjacency as an unverified
+connection. Track geometry wholly inside an area's hole is excluded. Its static
+MVT overview bundles cover z6–7 and include only features visible by z7; separate
+z8 detail bundles retain all feature geometry and zoom thresholds for overzoomed
+display. Closed power circuits and pipelines remain lines. Dateline-crossing
+polygons fail explicitly until their geometry can be verified.
+The builder rejects a bundle reaching 350 KB rather than dropping features. This
+is a per-bundle limit; the requested per-viewport budget requires measurement
+with the eventual client and is not certified by this check.
+
+This optional builder does not change `site.yml` or enable client requests.
+Snapshot publication, measured worldwide coverage/size, and Power-only client
+loading are separate rollout steps. Full circuit connectivity inference, high-
+latitude/dateline proximity verification and shared loading-rack relationships
+remain additional work; geometry evidence does not establish operational supply.

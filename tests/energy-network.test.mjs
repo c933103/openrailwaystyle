@@ -57,6 +57,13 @@ test('complete-only extract builder checks filter provenance and emits readable 
   const index=JSON.parse(await readFile(join(output,'detail/index.json')));
   const bytes=gunzipSync(await readFile(join(output,`detail/12/${index.bundles[0]}.bundle.gz`)));
   const tiles=decodeBundle(bytes);assert.ok(tiles.size>0);
+  const {createEnergyNetworkProtocol}=await import('../styles/energy-network.mjs');
+  const requests=[];const root=new URL('https://atlas.test/energy/');
+  const protocol=createEnergyNetworkProtocol({root,active:()=>true,fetcher:async url=>{const path=new URL(url).pathname.slice('/energy/'.length);requests.push(path);return new Response(await readFile(join(output,path)));}});
+  const coordinate=[...tiles.keys()][0];
+  const loaded=await protocol({url:`energynetwork://detail/${coordinate}`},new AbortController());
+  assert.deepEqual(new Uint8Array(loaded.data),new Uint8Array(tiles.get(coordinate)));
+  assert.equal(requests.length,3,'one manifest, one index and one required bundle');
   await writeFile(join(output,'manifest.json'),JSON.stringify({...manifest,bytes:manifest.bytes+1}));
   await assert.rejects(validateEnergyNetwork(output),/size mismatch/);
 
@@ -148,6 +155,28 @@ test('material descriptors do not preempt lifecycle feature types',()=>{
  assert.equal(energyNetworkKind({'disused:resource':'coal'}).state,'disused');
  assert.equal(energyNetworkKind({resource:'coal',disused:'yes'}).state,'disused');
  assert.equal(energyNetworkKind({resource:'oil',proposed:'yes'}).state,'proposed');
+});
+
+test('shared railway loading rack is geometry evidence, without proximity or hole inference',()=>{
+ const rack=(lon,lat)=>({type:'node',id:90,lon,lat,tags:{railway:'loading_rack'}});
+ const feature=(site,r)=>energyNetworkGeoJSON([site,r]).features.find(f=>f.id===`${site.type}-${site.id}`);
+ assert.match(feature(area,rack(.0005,.0005)).properties.siding_evidence,/loading rack intersects site/);
+ assert.equal(feature(area,rack(.00101,.0005)).properties.rail_served,false);
+ assert.equal(feature(area,{...rack(.0005,.0005),tags:{'disused:railway':'loading_rack'}}).properties.rail_served,false);
+ assert.equal(feature(area,{...rack(.0005,.0005),tags:{railway:'loading_rack',proposed:'yes'}}).properties.rail_served,false);
+ const hole=way(9,[[.0002,.0002],[.0008,.0002],[.0008,.0008],[.0002,.0008],[.0002,.0002]],{});
+ const site={type:'relation',id:3,tags:{type:'multipolygon',industrial:'refinery'},members:[{type:'way',role:'outer',geometry:area.geometry},{type:'way',role:'inner',geometry:hole.geometry}]};
+ assert.equal(feature(site,rack(.0005,.0005)).properties.rail_served,false);
+});
+test('traction frequency and mapped circuit evidence control line visibility while civil plants remain contextual',()=>{
+ for(const frequency of ['16.7','25']){const line=energyNetworkGeoJSON([way(1,[[0,0],[.001,0]],{power:'line',frequency})]).features[0];assert.equal(line.properties.energy_minzoom,5);assert.equal(line.properties.energy_line_style,'traction');}
+ const facility={type:'node',id:90,lon:0,lat:0,tags:{power:'substation',usage:'traction',voltage:'15000',frequency:'50'}};
+ const line={...way(1,[[0,0],[.001,0]],{power:'line',voltage:'15000',frequency:'50'}),nodes:[90,91]};
+ const props=energyNetworkGeoJSON([facility,line]).features.find(f=>f.id==='way-1').properties;
+ assert.match(props.circuit_connection_basis,/Shared node/);assert.equal(props.energy_minzoom,9);assert.equal(props.energy_line_style,'grid');assert.equal(props.traction_basis,undefined);
+ assert.equal(energyNetworkGeoJSON([{...area,tags:{power:'plant'}}]).features[0].properties.energy_minzoom,9);
+ const plant=energyNetworkGeoJSON([{...area,tags:{power:'plant'}},way(9,[[0,.0005],[.001,.0005]],{railway:'rail'})]).features.find(f=>f.id==='way-1');
+ assert.equal(plant.properties.energy_minzoom,6);
 });
 test('planned removed and inactive tracks never establish current site servicing evidence',()=>{
  const track=tags=>way(992,[[-.001,.0005],[.002,.0005]],tags);

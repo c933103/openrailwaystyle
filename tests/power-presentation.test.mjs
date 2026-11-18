@@ -73,3 +73,12 @@ test('non-fuel additives and unknown supplies are recorded without calling them 
  }
  assert.deepEqual(rows({fuel:'diesel;adblue','fuel:hydrogen':'yes'}),{'Recorded supplies':'diesel, adblue, hydrogen','Fuel tag':'diesel;adblue','Fuel tags':'fuel:hydrogen=yes'});
 });
+
+test('network inspector keeps the evidence qualifier and all raw fuel values',()=>{
+ const result=rows({supply_tier:'rail_served',siding_evidence:'Track within 35 m; connection unverified',generation_source:'solar',pipeline_substance:'hydrogen','fuel:diesel':'no'});
+ assert.equal(result['Supply role'],'Rail-related site');
+ assert.equal(result['Siding evidence'],'Track within 35 m; connection unverified');
+ assert.equal(result['Generation source'],'solar');
+ assert.equal(result['Pipeline substance'],'hydrogen');
+ assert.equal(result['Fuel tags'],'fuel:diesel=no');
+});

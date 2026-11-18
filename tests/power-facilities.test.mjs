@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {gzipSync} from 'node:zlib';
-import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
+import {featureFilter,validateStyleMin,expression} from '@maplibre/maplibre-gl-style-spec';
 import {powerFacility,createPowerFacilityLoader,readGzipJson,POWER_FACILITY_KINDS,POWER_FACILITY_LEGEND,POWER_FACILITY_SYMBOL} from '../styles/power-facilities.mjs';
 import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse,powerFacilitySplitAccepted} from '../scripts/power-facility-data.mjs';
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
@@ -243,12 +243,18 @@ test('former railway use does not describe an operating traction supply',()=>{
 });
 
 
-test('every facility kind shares one neutral drawing; the legend keys shapes, not kinds',()=>{
-  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>[row.symbol,row.geometry]),[['shape','area'],['shape','point']]);
+test('facility domains share their map and legend colours',()=>{
+  const colours=new Set(POWER_FACILITY_LEGEND.filter(row=>row.symbol==='dot').map(row=>row.color));
+  for(const kind of Object.values(POWER_FACILITY_KINDS))assert.ok(colours.has(kind.color));
   const layers=powerFacilityLayers();
-  for(const layer of layers.filter(l=>l.id.startsWith('electrification-')&&/-(areas|outlines|points)$/.test(l.id))) {
-    const colours=JSON.stringify(layer.paint);
-    assert.ok(!colours.includes('power_color')&&!colours.includes('power_kind'),`${layer.id} does not colour by kind or supply group`);
+  for(const layer of layers.filter(l=>/electrification-(former-)?supply-(areas|outlines|points)$/.test(l.id))) {
+    assert.match(JSON.stringify(layer.paint),/power_kind/);
+    for(const [kind,{color}] of Object.entries(POWER_FACILITY_KINDS)){
+      const property=layer.type==='fill'?'fill-color':layer.type==='circle'?'circle-stroke-color':'line-color';
+      const paint=layer.paint[layer.type==='circle'&&!layer.id.includes('former')?'circle-color':property];
+      const compiled=expression.createExpression(paint);assert.equal(compiled.result,'success');
+      assert.equal(compiled.value.evaluate({zoom:14},{properties:{power_kind:kind}}),color);
+    }
   }
 });
 

@@ -1920,14 +1920,14 @@
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "0d361996d6ff3c5fdb80308a3c20118a44c881aa56567e0a3dc767a17fda8a46"
+      "sha256": "54d20adbb7dc4b3dc2a204265eca93c00acc256bc97a4dbd1a4f978cb712ec94"
     },
     {
       "id": "electrification-former-supply-points",
       "type": "circle",
       "source": "electricFacilities",
       "minzoom": 10,
-      "sha256": "9b01879c26ff6c43d91b06b3a276c11f940a8a77b052bd8dead72a2e81a6b9f2"
+      "sha256": "2df29d27a50f04eebb3d7d5df61126ae73c88e1f265dcc416b8f0a9cd33ea1c9"
     },
     {
       "id": "road-labels",

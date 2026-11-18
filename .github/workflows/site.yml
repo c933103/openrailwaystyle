@@ -447,6 +447,22 @@ jobs:
       # frequency browser checks rebuild the service tiles from it.
       - name: Keep the ODbL download tables out of the site
         run: rm -f styles/data/level-crossings/crossings.tsv.gz styles/data/branch-lines/branch-lines.ndjson.gz
+      - name: Load optional civil energy network
+        run: |
+          set -e
+          target=styles/data/energy-network
+          mkdir -p "$target"
+          status=0
+          git ls-remote --exit-code --heads origin energy-network-data > /tmp/energy-network-ref || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin energy-network-data
+            git archive FETCH_HEAD | tar -x -C "$target"
+            node scripts/validate-energy-network.mjs "$target"
+          elif [ "$status" = 2 ]; then
+            echo '{"schema":2,"dataset":"energy-network","complete":false}' > "$target/manifest.json"
+          else
+            exit "$status"
+          fi
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction

@@ -1,5 +1,5 @@
-import {electrificationPaint} from '../../../styles/map-model.mjs';
-import {present,notFerry,byKindZoom,hasRack} from './railway-expressions.mjs';
+import {electrificationPaint,railwayTrackWidth} from '../../../styles/map-model.mjs';
+import {present,notFerry,byKindZoom,hasRack,hasService} from './railway-expressions.mjs';
 import {POWER_METHOD_STROKES} from '../../../styles/power-facilities.mjs';
 import {facilityShapeLayers} from './power-facilities.mjs';
 
@@ -15,13 +15,14 @@ export function powerMethodLayers() {
     const legacy={method_rail:'rail',method_fourth_rail:'4th_rail',method_ground:'ground-level',method_inductive:'inductive'};
     const has=key=>legacy[key]?['any',['==',['get',key],true],['all',['!',['has',key]],['in',legacy[key],['coalesce',['get','power_method'],'']]]]:['==',['get',key],true];
     const opacity=former?0.5:1;
+    for(const [side,sign] of [['primary',-1],['secondary',1]])layers.push({...base,id:`electrification-${suffix}dual-voltage-${side}`,type:'line',filter:['all',...base.filter.slice(1),['==',['get','dual_voltage'],true]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-color':side==='primary'?electrificationPaint():electrificationPaint('voltage_secondary','frequency_secondary'),'line-width':railwayTrackWidth(.5),'line-offset':['interpolate',['linear'],['zoom'],7,.4*sign,11,['case',hasService,.275*sign,.7*sign],16,['case',hasService,.5*sign,1.2*sign],20,1.75*sign],'line-opacity':opacity}});
     // Each means of delivery or traction has its own stroke beside or along
     // the track, so several can be read on one track. Overhead contact line
     // is the track colour alone. Power strokes keep the system colour.
-    for(const {id,when,offset,width,dash,color,cap} of POWER_METHOD_STROKES)
+    for(const {id,when,offset,width,gap,dash,color,cap} of POWER_METHOD_STROKES)
       layers.push({...base,id:`electrification-${suffix}${id}`,type:'line',filter:['all',...base.filter.slice(1),['any',...when.map(has)]],
         layout:{'line-cap':cap||'butt','line-join':'round'},
-        paint:{'line-color':color||electrificationPaint(),'line-width':width,'line-offset':offset,...(dash?{'line-dasharray':dash}:{}),'line-opacity':opacity}});
+        paint:{'line-color':color||electrificationPaint(),'line-width':width,'line-offset':offset,...(gap?{'line-gap-width':gap}:{}),...(dash?{'line-dasharray':dash}:{}),'line-opacity':opacity}});
     // Rack railways are mapped with rack=* (abt, strub, riggenbach, yes…),
     // which the provider's detailed railway tiles already carry; draw them
     // from there rather than only from the rare traction=rack tag.
