@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261117-energy-final-1';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261117-energy-final-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261118-energy-integration-1';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261118-energy-integration-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261117-energy-final-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261117-energy-final-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261118-energy-integration-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261118-energy-integration-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -521,16 +521,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export function ownerColor(name) {
-  const key = String(name ?? '').trim().toLowerCase();
-  if (!key) return null;
-  let hash = 0x811c9dc5;
-  for (const ch of key) { hash ^= ch.codePointAt(0); hash = Math.imul(hash, 0x01000193) >>> 0; }
-  // Hues spread by the golden angle; saturation and lightness in three
-  // steps each, kept away from the grey of "not recorded".
-  const hue = Math.round((hash % 360) * 137.508) % 360, sat = [62, 74, 86][(hash >>> 9) % 3], light = [34, 42, 50][(hash >>> 13) % 3];
-  return `hsl(${hue}, ${sat}%, ${light}%)`;
-}
+export {ownerColor} from './owner-color.mjs?v=20261118-energy-integration-1';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the

@@ -12,8 +12,9 @@ ends at z8 and does not replace close-zoom infrastructure or branch overlays.
 
 ## Source and publication boundary
 
-The PBF downloader retains the planned byte bound and 5,400-second elapsed-time
-bound. It checks both after every data chunk and at EOF, before checksum-complete
+The PBF downloader retains the planned byte bound. Its standalone elapsed-time
+bound is 5,400 seconds; the continent workflow explicitly uses 18,000 seconds
+inside a 360-minute job, leaving one hour for setup, processing and export. It checks both after every data chunk and at EOF, before checksum-complete
 data can be promoted. A delayed EOF therefore cannot accept an over-time download.
 An exceeded-bound error identifies byte, time, or both, with received and expected
 bytes and measured GET elapsed seconds. The elapsed period includes opening the
@@ -22,6 +23,33 @@ This is not a resumable-download mechanism or a fix for slow provider throughput
 Failures remove the partial file and cannot publish a source manifest. Offline
 regressions execute the actual acquisition function with a blocked socket boundary,
 including late EOF, exact bounds, checksum/truncation and transport-error controls.
+
+The workflow allowance follows run [43893320392](https://github.com/c933103/openrailwaystyle/actions/runs/43893320392):
+Europe, Asia, Africa and North America stopped after 90 minutes with respectively
+12.90/35.45, 8.71/16.48, 6.85/7.96 and 7.18/19.55 GB received. At their measured
+rates, complete transfers project to 247, 170, 105 and 245 minutes. The five-hour
+ceiling provides about 20% margin over the longest projection, while keeping
+at most two downloads concurrent and the original per-source/world byte limits.
+Observed processing for the three nonempty successful regions took 20–59 seconds;
+this does not guarantee the larger continents finish within the remaining hour.
+A slower transfer or runner timeout still fails without publishing partial data.
+
+PR #461 recovery pins 2026-11-14 in the pull-request planner only; scheduled and
+production runs keep their normal date policy, and explicit manual dates retain
+precedence. Other PRs are unaffected. That recovery explicitly checks run
+43893320392 first, even beyond the recent-run search window, so a newer artifact
+from a different date cannot hide its completed exports. New export artifact names include their source date, so the finder skips newer
+wrong-date exports and continues searching. Legacy undated names are eligible
+only from that explicitly identified recovery run and date. The assembly step
+restores the builder's region directory names and rejects duplicate regions.
+Repository identity, acquirer identity, expiration, size and downloaded-export
+validation still apply. Recovery reuses complete continent artifacts
+with matching acquirer bytes, dated source size/MD5 and export SHA-256. The
+workflow override leaves the acquirer source unchanged, preserving eligibility
+of the four successful exports. Failed partial PBFs from the old run were deleted
+and cannot be resumed. Renewed execution requests only missing complete exports;
+it does not automatically retry a failed download. The workflow change receives
+a new generation fingerprint; reused source exports retain their original identity.
 
 `mainline-reference.yml` acquires dated PBF exports from **all eight** Geofabrik
 continent roots: Africa, Antarctica, Asia, Australia/Oceania, Central America,
@@ -251,3 +279,39 @@ production concurrency, dispatch a replacement, or cancel an active deployment.
 The controller reads trusted GitHub metadata only and never checks out source or
 downloads artifacts. Its existing Actions write authority is retained; only
 repository-content read access is needed to verify the current main ref.
+
+### Thematic overview schema
+
+Mainline ways retain the same speed, electrification, gauge, loading-gauge,
+train-protection and operator normalization as branch lines. Missing values remain
+absent; proposed/construction voltage stays in future fields. Chain assembly
+joins segments only when every retained thematic field agrees, preserving
+attribute boundaries instead of coloring a whole chain from its first way.
+Infrastructure ownership comes from the mapped `owner` tag; `owner_color` uses
+the same `ownerColor` function as the live Owner view. The separately retained
+`operator` identifies operation. Operator-only ways keep ownership unknown.
+Both the owner and its color survive chain projection and tile encoding.
+
+This builder increment adds no thematic rendering layers. It changes the data
+input digest and requires a newly built, validated complete `mainline-data`
+generation before a later rendering change consumes these fields. Existing
+byte budgets, coverage checks, source provenance and complete-only publication
+remain binding; synthetic fixture tests do not measure worldwide output growth.
+
+### Production continuation of the dated recovery
+
+After PR #461 merges, an ordinary main push first tries the accepted production
+generation as before. If that cannot satisfy the current generator, recovery
+reads the merged PR's immutable head source and computes its complete generator
+dependency fingerprint. Only an exact match with the current generator retains
+the November 14 source date and explicit legacy checkpoint run. This also applies
+to subsequent main pushes while recovery is unfinished; it is not limited to
+the merge commit. A different generator, another branch, an unmerged or foreign
+PR, scheduled refresh, or explicit manual date does not acquire this recovery
+policy. Failed metadata reads fail before acquisition.
+
+This path returns `reuse:false`: it reuses raw dated exports, rebuilds the
+complete world generation, and runs current validation and browser acceptance
+before production publication. It does not copy or certify a PR preview as
+production. Matching accepted production data takes precedence once available.
+The main workflow retains its non-cancelling concurrency policy.

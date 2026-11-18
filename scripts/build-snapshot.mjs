@@ -1,21 +1,39 @@
 // Maintenance build only. Visitors never query Overpass.
 import {readFile, writeFile, mkdir, unlink, rename} from 'node:fs/promises';
-import {createWriteStream} from 'node:fs';
-import {once} from 'node:events';
-import {gzipSync} from 'node:zlib';
-import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
-import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES, toGeoJSON} from './lifecycle.mjs';
+import {lifecycleRegression, stateCounts, writeLifecycleSnapshot} from './lifecycle-files.mjs';
 import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
 import {updateElements} from './overpass-adiff.mjs';
 import {quarters, worldRegions} from './world-regions.mjs';
 import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
+import {retryAfterMs} from './retry-after.mjs';
+import {MAX_PROVIDER_WAIT_MS} from './polar-fetch.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
+// Overpass's Retry-After, on any answer, holds back the next request until
+// it has passed, on elapsed time. A wait longer than the polar step's limit
+// (the same job) is not waited out: no further request is sent, and every
+// region keeps its data, as when Overpass does not answer. Each region is
+// its own step (process) of the same run, so the wait's end is also saved,
+// as a wall-clock time, for the run's later steps.
+const pauseFile = `.snapshot-cache/provider-pause-${process.env.GITHUB_RUN_ID || 'local'}.json`;
+let providerNotBefore = 0, providerStopped = false, providerUntil = 0;
+function holdProvider(wait) {
+  if (wait > MAX_PROVIDER_WAIT_MS) providerStopped = true;
+  else providerNotBefore = Math.max(providerNotBefore, performance.now() + wait);
+}
+async function observeProvider(response) {
+  const now = Date.now(), wait = retryAfterMs(response.headers?.get('retry-after'), now);
+  if (!(wait > 0)) return;
+  holdProvider(wait);
+  if (now + wait > providerUntil) {
+    providerUntil = now + wait;
+    await writeFile(pauseFile, JSON.stringify({until:new Date(providerUntil).toISOString()}));
+  }
+}
 // A timer may wake before the requested interval. Keep each existing quiet
 // or retry floor on elapsed time and recheck before the next provider call.
 async function pause(ms) {
-  const notBefore = performance.now() + ms;
+  const notBefore = Math.max(performance.now() + ms, providerNotBefore);
   for (let remaining; (remaining = notBefore - performance.now()) > 0;)
     await new Promise(resolve => setTimeout(resolve, remaining));
 }
@@ -27,11 +45,13 @@ const errorCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTF
   'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID',
   'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'ERR_SSL_WRONG_VERSION_NUMBER']);
 async function fetchOverpass(query, timeout, phase) {
+  if (providerStopped) throw new Error(`Overpass asked to wait longer than ${MAX_PROVIDER_WAIT_MS / 60000} minutes; not sent`);
   const started = performance.now();
   let stage = 'fetch';
   try {
     const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
       headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(timeout)});
+    await observeProvider(response);
     stage = 'body';
     const text = phase === 'full' || response.ok ? await response.text() : '';
     return {response, text};
@@ -58,6 +78,11 @@ const features = new Map(), base = new Map(), parts = [];
 const budgetFile=`.snapshot-cache/budget-${process.env.GITHUB_RUN_ID || 'local'}.json`;
 let downloaded=0;
 try {downloaded=JSON.parse(await readFile(budgetFile,'utf8')).bytes;} catch {}
+// A wait an earlier step of this run was asked for, and has not yet passed.
+try {
+  const until=Date.parse(JSON.parse(await readFile(pauseFile,'utf8')).until);
+  if(until>Date.now()) {providerUntil=until; holdProvider(until-Date.now());}
+} catch {}
 // Disjoint world regions, serial requests with a quiet interval.
 // Full way geometry is retained across quadrant boundaries and deduplicated.
 // Whole quadrants in the south, 45-degree quarters in the denser north.
@@ -296,28 +321,7 @@ if(delta) {
   await writeFile(DELTA_FILE,JSON.stringify(pruned));
 }
 const data = {type:'FeatureCollection', features:[...features.values()]};
-const nambu = data.features.filter(f => /남부내륙/.test(f.properties.name));
-if (!nambu.length) throw new Error('Regression: 남부내륙선 missing from worldwide snapshot');
-const coordinates = nambu.flatMap(f => f.geometry.type==='LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat());
-const bbox = [Math.min(...coordinates.map(p=>p[0])), Math.min(...coordinates.map(p=>p[1])), Math.max(...coordinates.map(p=>p[0])), Math.max(...coordinates.map(p=>p[1]))];
-if (bbox[3]-bbox[1] < 1) throw new Error('Regression: 남부내륙선 extent appears incomplete');
-const counts = Object.fromEntries(STATES.map(s=>[s,data.features.filter(f=>f.properties.state===s).length]));
-const manifest = {coverage:'world', built:new Date().toISOString(), source:api, licence:'ODbL-1.0', parts, changesUpTo:delta?.since, changesApplied:deltaResult, features:features.size, states:counts, regression:{name:'남부내륙선',ways:nambu.length,bbox,ids:nambu.map(f=>f.id)}};
+const regression = lifecycleRegression(data.features);
+const manifest = {coverage:'world', built:new Date().toISOString(), source:api, licence:'ODbL-1.0', parts, changesUpTo:delta?.since, changesApplied:deltaResult, features:features.size, states:stateCounts(data.features), regression};
 console.log(JSON.stringify(manifest));
-await writeFile('snapshot/manifest.json', JSON.stringify(manifest,null,2)+'\n');
-// Source dump makes the derived ODbL database reusable independently of renderer.
-await writeFile('snapshot/lifecycle.geojson.gz',gzipSync(JSON.stringify(data)));
-const index = geojsonvt(data,{maxZoom:10,indexMaxZoom:4,indexMaxPoints:100000,tolerance:1,extent:4096,buffer:128});
-const stream=createWriteStream('snapshot/tiles.jsonl'); let tileCount=0;
-async function visit(z,x,y) {
-  const tile=index.getTile(z,x,y);
-  if (!tile?.features.length) return;
-  if(z>=5) {
-    const bytes=gzipSync(vtpbf.fromGeojsonVt({lifecycle:tile}));
-    if(!stream.write(JSON.stringify([z,x,y,bytes.toString('base64')])+'\n')) await once(stream,'drain');
-    tileCount++;
-  }
-  if(z<10) for(let dy=0;dy<2;dy++) for(let dx=0;dx<2;dx++) await visit(z+1,x*2+dx,y*2+dy);
-}
-await visit(0,0,0); stream.end(); await once(stream,'finish');
-console.log('Generated tiles',tileCount);
+console.log('Generated tiles',await writeLifecycleSnapshot('snapshot',data,manifest));

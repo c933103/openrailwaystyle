@@ -143,13 +143,34 @@ export async function buildSignals({
   // `parts` are the boxes that answered, recorded with the region so its next
   // update asks them directly instead of timing out on the whole region again.
   async function changesSince(box, since, until, depth = 0) {
+    const query = signalChangesQuery(box, since, until);
+    // One slot per node in the existing bounded quarter tree. Exact query
+    // identity binds both diff endpoints; another generation cannot reuse it.
+    const file = new URL(`signals-changes-v1-${box.join('_')}.json`, cacheRoot);
+    const saved = await read(`signals-changes-v1-${box.join('_')}.json`);
+    const age = now() - Date.parse(saved?.generated);
+    const reusable = saved?.query === query && Number.isFinite(age) && age >= 0 && age < UPDATE_EVERY;
+    if (reusable && saved.split === true && depth < 5)
+      return changesOver(quarters(box), since, until, () => depth + 1);
+    if (reusable && typeof saved.response === 'string') {
+      try {
+        const changes = parseSignalChanges(saved.response);
+        valid(changes.upserts);
+        return {...changes, ...(until ? {timestamp: until} : {}), parts: [box], generated: new Date(Date.parse(saved.generated)).toISOString()};
+      } catch { /* A corrupt/incomplete checkpoint must be requested again. */ }
+    }
     try {
-      const changes = parseSignalChanges(await fetchText(signalChangesQuery(box, since, until)));
+      const response = await fetchText(query);
+      const changes = parseSignalChanges(response);
+      valid(changes.upserts);
+      const generated = new Date(now()).toISOString();
+      await writeFile(file, JSON.stringify({query, generated, response}));
       // With an end time the response still carries the current database time.
-      return {...changes, ...(until ? {timestamp: until} : {}), parts: [box]};
+      return {...changes, ...(until ? {timestamp: until} : {}), parts: [box], generated};
     } catch (error) {
       warn('Signal changes', box.join(','), error.message);
       if (!timeoutLike(error) || depth >= 5) throw error;
+      await writeFile(file, JSON.stringify({query, generated: new Date(now()).toISOString(), split: true}));
       return changesOver(quarters(box), since, until, () => depth + 1);
     }
   }
@@ -162,7 +183,8 @@ export async function buildSignals({
       until ||= part.timestamp;
       parts.push(part);
     }
-    return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes), parts: parts.flatMap(part => part.parts)};
+    return {timestamp: until, upserts: parts.flatMap(part => part.upserts), deletes: parts.flatMap(part => part.deletes), parts: parts.flatMap(part => part.parts),
+      generated: new Date(Math.min(...parts.map(part => Date.parse(part.generated)))).toISOString()};
   }
   // Reuse only leaves of the same bounded quarter tree that changesSince
   // creates. Equal total area alone can hide overlapping and missing boxes.
@@ -215,7 +237,7 @@ export async function buildSignals({
           ? await changesOver(known, since, undefined, part => Math.round(Math.log2((box[3] - box[1]) / (part[3] - part[1]))))
           : await changesSince(box, since);
         const elements = valid(applySignalChanges(stored.response.elements, changes));
-        stored = {query: combinedQuery, generated: new Date(now()).toISOString(), response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements},
+        stored = {query: combinedQuery, generated: changes.generated, response: {osm3s: {timestamp_osm_base: changes.timestamp}, elements},
           ...(changes.parts.length > 1 ? {changeParts: changes.parts} : {})};
         await save(stored);
         log('Signal region', box.join(','), 'updated:', changes.upserts.length, 'added or changed,', changes.deletes.length, 'removed since', since);
