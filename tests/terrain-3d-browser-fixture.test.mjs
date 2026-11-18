@@ -9,7 +9,8 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {readTile} from '../styles/tile-labels.mjs';
 import {oceanPolygons} from '../styles/bathymetry.mjs';
-import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture} from '../scripts/terrain-3d-browser-fixture.mjs';
+import {composeTerrainHeights} from '../styles/terrain-3d.mjs';
+import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture,terrain3DDemFixture} from '../scripts/terrain-3d-browser-fixture.mjs';
 
 test('terrain water MVT round-trips the complete closed ocean rectangle in page and worker decoders',()=>{
   const bytes=terrain3DWaterFixture();
@@ -94,4 +95,21 @@ test('failure diagnostics survive missing initialization and individual renderer
   assert.deepEqual(result.state,{error:'synthetic query failure'});
   assert.deepEqual(result.styleLoaded,{error:'synthetic style failure'});
   assert.deepEqual(result.counts,{fine:1});assert.equal(result.sourceLoaded,false);
+});
+
+test('native browser grids preserve the original synthetic physical hill and sea',()=>{
+  const legacy=terrain3DDemFixture(256),native=terrain3DDemFixture(512);
+  for(let y=0;y<256;y++)for(let x=0;x<256;x++){
+    const peak=1100*Math.exp(-(((x-160)/12)**2)-(((y-128)/28)**2));
+    assert.equal(legacy.data[y*256+x],Math.fround(x<128?0:340+peak));
+  }
+  const result=composeTerrainHeights(native);
+  assert.equal(result[128*256+64],0);
+  assert.ok(Math.abs(result[128*256+192]-legacy.data[128*256+192])<1);
+  assert.ok(Math.abs(result[128*256+160]-legacy.data[128*256+160])<1);
+  const sea=terrain3DDemFixture(256,true);
+  assert.ok(sea.data.every(h=>h===-875));
+  assert.throws(()=>terrain3DDemFixture(1024),/Unsupported/);
+  const serialized=vm.runInNewContext(`(${terrain3DDemFixture.toString()})(512,false)`);
+  assert.deepEqual(Array.from(serialized.data),Array.from(native.data),'browser serialization retains exact fixture bytes');
 });

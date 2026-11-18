@@ -44,3 +44,21 @@ contracts and exercise all contour/hillshade/profile consumers and bounded app
 browser views. This change does not certify a source migration, macro fault
 classification, coastal smoothing, or completion of workstream 3. Existing
 #251 hold is unchanged.
+
+## Native browser acceptance follow-up
+
+`check-terrain-native-browser.mjs` runs the existing terrain renderer acceptance
+with 512-pixel synthetic land and independent 256-pixel synthetic seabed. The
+original 256-grid checker remains in CI. Both variants retain the same camera,
+signed-height, real-worker/MVT, framebuffer deformation, vertical-exaggeration,
+high-pitch LOD, and overhead-release assertions. The native variant additionally
+requires the real worker to reject an unknown contributing height. Its artifacts
+use `browser-review/terrain-native512/`, preserving the original check's evidence.
+
+The shared fixture expresses the original physical hill at each input's pixel
+centres; a regression proves every original 256-grid sample remains unchanged.
+Fixture and CI-selection checks passed with all terrain tests (37 total), along
+with build and generated-output equality. Actual browser execution and complete
+aggregate results are recorded on the follow-up PR; prepared checks alone do not
+certify native512 rendering or provider accuracy. No production module changes
+or new provider calls are introduced by this acceptance follow-up.

@@ -92,6 +92,12 @@ test('every matrix browser launches through the shared guard (including WebKit)'
   for(const check of GROUPS.flatMap(group=>group.checks)){
     const source=await readFile(new URL('../scripts/'+check,import.meta.url),'utf8');
     if(check==='check-deployed-fixture-browser.mjs')assert.match(source,/check-orm-fixture-browser/);
+    else if(check==='check-terrain-native-browser.mjs'){
+      assert.match(source,/await import\('\.\/check-terrain-3d-browser\.mjs'\)/,check);
+      assert.match(source,/process\.argv\.push\('--native512'\)/,check);
+      assert.ok(GROUPS.some(group=>group.checks.includes('check-terrain-3d-browser.mjs')),
+        'delegated terrain checker is checked for its direct guarded launch');
+    }
     else if(check==='check-normandy-service-geometry-browser.mjs'){
       assert.match(source,/from '\.\/check-paris-service-geometry-browser\.mjs'/,check);
       assert.match(source,/await checkParisServiceGeometryBrowser\(/,check);
