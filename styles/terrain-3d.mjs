@@ -2,10 +2,10 @@
 // the provider has no seabed elevations beyond z10. Restore only genuine sea
 // cells from the coarse, bathymetry-bearing DEM; never alter inland depressions.
 // All elevations remain metres, regardless of the contour-label unit setting.
-import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261118-energy-integration-1';
-import {encodeTerrarium} from './dem-repair.mjs?v=20261118-energy-integration-1';
-import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261118-energy-integration-1';
-import {globeGroundZoom, zoomForLatitude} from './globe-drag.mjs?v=20261118-energy-integration-1';
+import {depthTile, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs?v=20261118-fusion-energy-1';
+import {encodeTerrarium} from './dem-repair.mjs?v=20261118-fusion-energy-1';
+import {sharedTerrainTiles, terrainAbort} from './terrain-requests.mjs?v=20261118-fusion-energy-1';
+import {globeGroundZoom, zoomForLatitude} from './globe-drag.mjs?v=20261118-fusion-energy-1';
 
 // MapLibre renders its terrain DEM one zoom below the camera tile level.
 // At globe/continent scales even mountains several kilometres high cover
@@ -154,8 +154,8 @@ export function needsSeabedRecovery(fine, z) {
 }
 
 function assertHeights(tile) {
-  if (tile?.width !== TERRAIN_TILE_SIZE || tile?.height !== TERRAIN_TILE_SIZE ||
-      tile.data?.length !== TERRAIN_TILE_SIZE * TERRAIN_TILE_SIZE) {
+  if (![256, 512].includes(tile?.width) || tile.height !== tile.width ||
+      tile.data?.length !== tile.width * tile.height) {
     throw new Error('Invalid 3D elevation tile dimensions');
   }
 }
@@ -188,15 +188,28 @@ export function sampleSeabed(dem, tile, px, py) {
       tile.ox < 0 || tile.oy < 0 || tile.ox >= tile.scale || tile.oy >= tile.scale) {
     throw new Error('Invalid seabed tile position');
   }
-  const size = TERRAIN_TILE_SIZE;
-  const clamp = v => Math.max(0, Math.min(size - 1, v));
-  const sx = clamp((tile.ox + (px + 0.5) / size) / tile.scale * size - 0.5);
-  const sy = clamp((tile.oy + (py + 0.5) / size) / tile.scale * size - 0.5);
+  return sampleGrid(dem, (tile.ox + (px + 0.5) / TERRAIN_TILE_SIZE) / tile.scale,
+    (tile.oy + (py + 0.5) / TERRAIN_TILE_SIZE) / tile.scale);
+}
+
+// Input rasters contain pixel-centred samples over the same XYZ tile bounds.
+// Normalize at the 256-pixel mesh boundary, never in the shared source cache.
+// This is resampling, not new surveyed detail or a vertical-datum conversion.
+function sampleGrid(dem, u, v) {
+  const size = dem.width, clamp = value => Math.max(0, Math.min(size - 1, value));
+  const sx = clamp(u * size - 0.5), sy = clamp(v * size - 0.5);
   const x0 = Math.floor(sx), x1 = Math.min(size - 1, x0 + 1), fx = sx - x0;
   const y0 = Math.floor(sy), y1 = Math.min(size - 1, y0 + 1), fy = sy - y0;
-  const data = dem.data;
-  const a = data[y0 * size + x0], b = data[y0 * size + x1];
-  const c = data[y1 * size + x0], d = data[y1 * size + x1];
+  const sample = (x, y, weight) => {
+    if (!weight) return 0;
+    const value = dem.data[y * size + x];
+    // Unknown/out-of-range contributors cannot be averaged into plausible land.
+    if (!Number.isFinite(value) || value < HEIGHT_MIN || value > HEIGHT_MAX)
+      throw new Error('Invalid 3D elevation height');
+    return value;
+  };
+  const a = sample(x0,y0,(1-fx)*(1-fy)), b = sample(x1,y0,fx*(1-fy));
+  const c = sample(x0,y1,(1-fx)*fy), d = sample(x1,y1,fx*fy);
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 }
 
@@ -205,11 +218,13 @@ export function composeTerrainHeights(fine, coarse = null, tile = null, mask = n
   if (mask && (!coarse || !tile || mask.length !== TERRAIN_TILE_SIZE ** 2 * 4)) {
     throw new Error('Ocean mask lacks matching bathymetry');
   }
-  const values = new Float32Array(fine.data.length);
+  const values = new Float32Array(TERRAIN_TILE_SIZE ** 2);
   for (let i = 0; i < values.length; i++) {
     const inSea = mask && mask[i * 4 + 3] >= 128;
     const height = inSea ? sampleSeabed(coarse, tile, i % TERRAIN_TILE_SIZE, Math.floor(i / TERRAIN_TILE_SIZE))
-      : fine.data[i];
+      : fine.width === TERRAIN_TILE_SIZE ? fine.data[i]
+        : sampleGrid(fine, (i % TERRAIN_TILE_SIZE + 0.5) / TERRAIN_TILE_SIZE,
+          (Math.floor(i / TERRAIN_TILE_SIZE) + 0.5) / TERRAIN_TILE_SIZE);
     // A bogus or absent height must not be encoded as a plausible 0 m cell.
     if (!Number.isFinite(height) || height < HEIGHT_MIN || height > HEIGHT_MAX) {
       throw new Error('Invalid 3D elevation height');
@@ -276,7 +291,7 @@ function paintWorker(create) {
 
 // Each reader has independent cancellation. The shared output LRU is bounded,
 // and DEM fetches continue to use the existing repaired, bounded DEM manager.
-export function installTerrain3D(maplibre, dem, {waterTile, readTile, createWorker, keep = 32}) {
+export function installTerrain3D(maplibre, dem, {waterTile, readTile, createWorker, keep = 32, seabedDem = dem}) {
   let worker = null;
   if (createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined') {
     try { worker = paintWorker(createWorker); } catch { worker = null; }
@@ -298,7 +313,7 @@ export function installTerrain3D(maplibre, dem, {waterTile, readTile, createWork
         // Dead Sea, below-sea valleys, lakes or DEM zero-height plains.
         if (result.data?.byteLength && oceanPolygons(readTile(result.data)).length) {
           tile = depthTile(z, x, y);
-          coarse = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
+          coarse = await seabedDem.getDemTile(tile.z, tile.x, tile.y, controller);
           water = result.data;
           if (signal.aborted) throw terrainAbort();
         }

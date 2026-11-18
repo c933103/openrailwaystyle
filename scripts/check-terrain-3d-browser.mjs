@@ -4,17 +4,19 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
-import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture} from './terrain-3d-browser-fixture.mjs';
+import {TERRAIN_3D_BROWSER_FIXTURE as fixture,captureTerrain3DFailure,terrain3DWaterFixture,terrain3DDemFixture} from './terrain-3d-browser-fixture.mjs';
 
 // Real MVT bytes: the worker must decode ocean polygons itself rather than
 // falling back to the page. Both paths decode the same validated bytes.
+const nativeSize=process.argv.includes('--native512')?512:256;
+const evidenceDir=nativeSize===512?'browser-review/terrain-native512':'browser-review';
 const MASK_MVT = Buffer.from(terrain3DWaterFixture()).toString('base64');
 
 const base=(process.env.ATLAS_FIXTURE_BASE_URL||process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:fixture.width,height:fixture.height},serviceWorkers:'block'});
 const page=await context.newPage(), failures=[];
-await mkdir('browser-review',{recursive:true});
+await mkdir(evidenceDir,{recursive:true});
 page.on('pageerror',error=>failures.push(error.message));
 try {
   await page.route('**/*', route => {
@@ -34,17 +36,7 @@ try {
       const {tileSize:SIZE,demZoom:z,tileX:x,tileY:y}=${JSON.stringify(fixture)},n=2**z;
       const lng=(fraction)=>(x+fraction)/n*360-180;
       const lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/n)))*180/Math.PI;
-      const makeTile=(coarse)=>{
-        const data=new Float32Array(SIZE*SIZE);
-        for(let iy=0;iy<SIZE;iy++)for(let ix=0;ix<SIZE;ix++){
-          // One prominent land summit makes visual deformation measurable.
-          // The original sea/land sampling locations stay -875/340 m.
-          const dx=(ix-160)/12,dy=(iy-128)/28;
-          const peak=1100*Math.exp(-dx*dx-dy*dy);
-          data[iy*SIZE+ix]=coarse?-875:(ix<128?0:340+peak);
-        }
-        return {width:SIZE,height:SIZE,data};
-      };
+      const makeTile=coarse=>(${terrain3DDemFixture.toString()})(coarse?256:${nativeSize},coarse);
       const counts=window.terrainCounts={fine:0,coarse:0,water:0};
       window.requestedDems=[];
       window.terrainErrors=[];
@@ -53,8 +45,9 @@ try {
       window.workerErrors=[];
       installTerrain3D(maplibregl,{getDemTile:async (z,x,y)=>{
         counts[z<=10?'coarse':'fine']++;
-        window.requestedDems.push({z,x,y});
-        return makeTile(z<=10);
+        const tile=makeTile(z<=10);
+        window.requestedDems.push({z,x,y,size:tile.width});
+        return tile;
       }},{waterTile:async()=>{counts.water++;return {data:waterBytes.slice(0)};},
          readTile,
          createWorker:()=>{
@@ -121,13 +114,28 @@ try {
   const workerReplies=await page.evaluate(()=>window.workerReplies);
   assert.ok(workerReplies.some(reply=>reply.encoded),'the native terrain worker must encode real decoded ocean MVT');
   assert.ok(workerReplies.every(reply=>!reply.error),JSON.stringify(workerReplies));
+  const requested=await page.evaluate(()=>window.requestedDems);
+  assert.ok(requested.some(t=>t.z>10&&t.size===nativeSize),'native land input must reach the real terrain pipeline');
+  assert.ok(requested.some(t=>t.z<=10&&t.size===256),'seabed input retains its independent native grid');
+  if(nativeSize===512){
+    const invalid=await page.evaluate(()=>new Promise((resolve,reject)=>{
+      const worker=new Worker('./vendor/terrain-3d-worker.js');
+      const timer=setTimeout(()=>{worker.terminate();reject(new Error('Invalid native DEM worker did not settle'));},10000);
+      worker.onmessage=({data})=>{clearTimeout(timer);worker.terminate();resolve(data);};
+      worker.onerror=error=>{clearTimeout(timer);worker.terminate();reject(new Error(error.message));};
+      const data=new Float32Array(512*512);data[0]=NaN;
+      worker.postMessage({id:1,fine:{width:512,height:512,data}});
+    }));
+    assert.match(invalid.error,/Invalid 3D elevation height/);
+    assert.equal(invalid.data,undefined,'unknown native elevations cannot encode plausible terrain');
+  }
   assert.equal(terrain.source,'terrain3d');
   assert.ok(terrain.sea < -750,JSON.stringify(terrain));
   assert.ok(terrain.land > 250,JSON.stringify(terrain));
   assert.ok(terrain.summit > terrain.land+600,'a real hill must rise above its surroundings');
   assert.ok(terrain.counts.fine>0&&terrain.counts.coarse>0&&terrain.counts.water>0,
     'the browser must recover real negative ocean mesh cells');
-  await page.screenshot({path:'browser-review/terrain-3d-seabed-synthetic.png'});
+  await page.screenshot({path:`${evidenceDir}/terrain-3d-seabed-synthetic.png`});
   // Renderer acceptance, not merely source/query acceptance: use the real
   // WebGL output and compare pixels at the SAME pitch, centre and zoom.
   // Synthetic sea fill and signed contour strokes provide visible reference
@@ -160,9 +168,9 @@ try {
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
   const visual={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
   console.log('Native 3D vs flat map at identical pitch:',visual);
-  await writeFile('browser-review/terrain-3d-pixel-difference.json',JSON.stringify(visual,null,2)+'\n');
+  await writeFile(`${evidenceDir}/terrain-3d-pixel-difference.json`,JSON.stringify(visual,null,2)+'\n');
   assert.ok(visual.significant>=300,'3D mesh must visibly deform the coastline and contour strokes, not just report numeric heights: '+JSON.stringify(visual));
-  await page.screenshot({path:'browser-review/terrain-flat-same-pitch-synthetic.png'});
+  await page.screenshot({path:`${evidenceDir}/terrain-flat-same-pitch-synthetic.png`});
   // A second, stricter control keeps the *same* terrain source and renderer
   // enabled, but flattens only its heights. This rules out a false positive
   // caused solely by the renderer switching from direct to terrain drawing.
@@ -170,9 +178,9 @@ try {
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===0);
   const flattened={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
   console.log('1× DEM vs 0× DEM with terrain renderer still on:',flattened);
-  await writeFile('browser-review/terrain-3d-height-only-difference.json',JSON.stringify(flattened,null,2)+'\n');
+  await writeFile(`${evidenceDir}/terrain-3d-height-only-difference.json`,JSON.stringify(flattened,null,2)+'\n');
   assert.ok(flattened.significant>=300,'Real height displacement must change the render even when both images use terrain mode: '+JSON.stringify(flattened));
-  await page.screenshot({path:'browser-review/terrain-zero-height-same-pitch-synthetic.png'});
+  await page.screenshot({path:`${evidenceDir}/terrain-zero-height-same-pitch-synthetic.png`});
   // Restore the genuine 1× DEM before testing the original overhead release.
   await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
@@ -183,12 +191,12 @@ try {
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===3);
   const boosted={...await captureFrame(false),pitch:terrain.pitch,sea:terrain.sea,land:terrain.land};
   console.log('Enhanced 3× vertical relief vs true-scale 1× terrain:',boosted);
-  await writeFile('browser-review/terrain-3d-exaggeration-pixels.json',JSON.stringify(boosted,null,2)+'\n');
+  await writeFile(`${evidenceDir}/terrain-3d-exaggeration-pixels.json`,JSON.stringify(boosted,null,2)+'\n');
   assert.ok(boosted.significant>=300,'3× vertical scale must change actual mountain and seabed geometry: '+JSON.stringify(boosted));
   const boostedHeights=await page.evaluate(()=>window.terrainState());
   assert.ok(boostedHeights.summit>terrain.summit*2.5,'MapLibre returns visually exaggerated DEM values');
   assert.ok(boostedHeights.sea<terrain.sea*2.5,'negative seabed values are visually exaggerated as well');
-  await page.screenshot({path:'browser-review/terrain-enhanced-3x-same-pitch-synthetic.png'});
+  await page.screenshot({path:`${evidenceDir}/terrain-enhanced-3x-same-pitch-synthetic.png`});
   await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
 
@@ -245,7 +253,7 @@ try {
     'late-created source must request a coarser horizon: '+JSON.stringify(lateSource));
   console.log('Late station source high-pitch tile LOD:',lateSource);
 
-  await writeFile('browser-review/terrain-high-pitch-lod.json',JSON.stringify(highPitch,null,2)+'\n');
+  await writeFile(`${evidenceDir}/terrain-high-pitch-lod.json`,JSON.stringify(highPitch,null,2)+'\n');
   for (const pitch of [82,85]) {
     await page.evaluate(pitch=>window.fixtureMap.setPitch(pitch),pitch);
     await page.waitForFunction(() => {
@@ -255,7 +263,7 @@ try {
     const atHorizon=await page.evaluate(()=>window.terrainState());
     assert.ok(atHorizon.sea < -700 && atHorizon.land > 200,
       'even with coarser horizon tiles, land and seabed retain their sign near the camera');
-    await page.screenshot({path:`browser-review/terrain-high-pitch-${pitch}deg.png`});
+    await page.screenshot({path:`${evidenceDir}/terrain-high-pitch-${pitch}deg.png`});
     // The higher angle must also render genuine height displacement rather
     // than merely let the camera tilt over a flat ground plane.
     await captureFrame(true);
@@ -264,7 +272,7 @@ try {
     const horizonDifference=await captureFrame(false);
     assert.ok(horizonDifference.significant>=200,
       `at ${pitch}° pitch the rendered 3D surface must differ from zero-height terrain: `+JSON.stringify(horizonDifference));
-    await writeFile(`browser-review/terrain-high-pitch-${pitch}-pixels.json`,JSON.stringify(horizonDifference,null,2)+'\n');
+    await writeFile(`${evidenceDir}/terrain-high-pitch-${pitch}-pixels.json`,JSON.stringify(horizonDifference,null,2)+'\n');
     await page.evaluate(()=>window.fixtureMap.setTerrain({source:'terrain3d',exaggeration:1}));
     await page.waitForFunction(()=>window.fixtureMap.getTerrain()?.exaggeration===1);
   }
@@ -280,7 +288,7 @@ try {
   await page.waitForFunction(()=>window.fixtureMap.getTerrain()===null);
   assert.equal(await page.evaluate(()=>window.fixtureMap.queryTerrainElevation([0,0])),null);
   assert.deepEqual(failures,[]);
-  console.log('3D native terrain: signed sea and land elevations, overhead release',terrain);
+  console.log('3D native terrain: signed sea and land elevations, overhead release',{nativeSize,...terrain});
 } catch(error) {
   // Preserve the unchanged 45-second predicate's actual state before cleanup.
   // Every input is synthetic; this adds evidence, never a retry or waiver.
@@ -288,9 +296,9 @@ try {
     .catch(diagnosticError=>({unavailable:diagnosticError.message}));
   const evidence={error:error.message,pageErrors:failures,...diagnostics};
   console.error('3D terrain failure diagnostics:',JSON.stringify(evidence));
-  await writeFile('browser-review/terrain-3d-failure.json',JSON.stringify(evidence,null,2)+'\n')
+  await writeFile(`${evidenceDir}/terrain-3d-failure.json`,JSON.stringify(evidence,null,2)+'\n')
     .catch(saveError=>console.error('Cannot save terrain diagnostics:',saveError.message));
-  await page.screenshot({path:'browser-review/terrain-3d-failure.png'})
+  await page.screenshot({path:`${evidenceDir}/terrain-3d-failure.png`})
     .catch(saveError=>console.error('Cannot save terrain failure screenshot:',saveError.message));
   throw error;
 } finally {await context.close();await browser.close();}

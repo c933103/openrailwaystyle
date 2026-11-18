@@ -156,3 +156,10 @@ test('static diagnostic workflow filters retain coverage for relocated helpers',
     assert.ok(patterns.some(pattern=>matchesGlob(newPath,pattern)),newPath+' retains '+oldPath+' workflow coverage');
   }
 });
+
+test('native512 terrain acceptance remains independently selected alongside original256 checks',()=>{
+ const checks=plan(['scripts/checks/terrain-3d-browser-fixture.mjs'],read).groups.flatMap(g=>g.checks);
+ assert.ok(checks.includes('check-terrain-3d-browser.mjs'));
+ assert.ok(checks.includes('check-terrain-native-browser.mjs'));
+ assert.match(read('scripts/check-terrain-native-browser.mjs'),/--native512/);
+});
