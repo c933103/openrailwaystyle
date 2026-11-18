@@ -98,6 +98,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
+    console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
    await evaluate(page,({center,zoom,projection,expected})=>{
     testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
@@ -105,9 +106,9 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
    },{center:c.center,zoom,projection,expected});
-   try{await page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
+   try{await withinDeadline(()=>page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
     testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
-    expected,{timeout:30000})}
+    expected,{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
    catch(error){
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
@@ -140,7 +141,9 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    },expected);
    assert.ok(result.ids.length&&result.painted>0,`${profile.name} ${projection} ${c.name} z${zoom}: actual reference stroke must paint`);
    assert.ok(Math.abs(result.zoom-zoom)<.001,`${profile.name} ${projection}: verify the actual camera zoom, not a clamped request`);
-   samples.push({profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
+   const sample={profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted};
+    samples.push(sample);
+    console.log('MAINLINE_CASE_END',JSON.stringify({...sample,at:new Date().toISOString()}));
   }
   assert.ok(await evaluate(page,()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
   profiles.push({...profile,...await evaluate(page,()=>referenceReader.statistics())});
