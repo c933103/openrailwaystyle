@@ -18,7 +18,7 @@ export const HERITAGE_MAX_ZOOM = 12;
 // about 3,100 files for the world rather than about 140,000 single tiles.
 export const HERITAGE_BUNDLE_ZOOM = 8;
 export const HERITAGE_LAYER = 'heritage';
-const HISTORIC = ['archaeological_site','battlefield','district'];
+export const HISTORIC = ['archaeological_site','battlefield','district'];
 
 export function heritageQuery([south,west,north,east]) {
   const box = `${south},${west},${north},${east}`, rel = '[type~"^(multipolygon|boundary)$"]';

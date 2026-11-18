@@ -671,3 +671,60 @@ for(const path of ['spacing','HTTP backoff','transport backoff'])
   assert.equal(times.length,path==='spacing'?32:33);
   if(path!=='spacing')assert.equal(queries[0],queries[1],'retry stays on the same region');
  });
+
+// A stopped augmented-diff update must not replay the successful quarters or
+// silently mix endpoints when the database advances before its next run.
+test('interrupted split changes resume exact completed queries and retain their freshness time', async t => {
+  const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+  const home = await seed(d, '2026-10-20T01:00:00Z');
+  for (const {box: other} of startRegions()) {
+    if (other.join(',') === HOME) continue;
+    const file = new URL(`signals-v2-${other.join('_')}.json`, d.cacheRoot);
+    const cached = JSON.parse(await readFile(file, 'utf8'));
+    cached.generated = '2026-10-31T12:00:00Z';
+    await writeFile(file, JSON.stringify(cached));
+  }
+  const parts = quarters(home), end = '2026-10-31T11:00:00Z';
+  const combined = new URL(`signals-v2-${home.join('_')}.json`, d.cacheRoot);
+  const previous = await readFile(combined, 'utf8');
+  const first = fakeOverpass(query => {
+    if (box(query) === HOME) return {raw: adiff(end, '<remark>Query timed out</remark>')};
+    if (box(query) === parts[2].join(',')) throw new Error('connection unavailable');
+    return {raw: adiff(end, '')};
+  });
+  await assert.rejects(buildSignals({...d, ...quiet, fetcher: first.fetcher}), /connection unavailable/);
+  assert.equal(await readFile(combined, 'utf8'), previous, 'incomplete diff does not advance the base');
+  await assert.rejects(readdir(d.output), 'incomplete diff cannot publish');
+  // Persisted dates are admitted by Date.parse, not by their lexical order.
+  // The first is 12:00 UTC despite sorting after the second's 12:30 UTC.
+  for (const [i, generated] of ['2026-10-31T13:00:00+01:00', '2026-10-31T12:30:00Z'].entries()) {
+    const file = new URL(`signals-changes-v1-${parts[i].join('_')}.json`, d.cacheRoot);
+    const cached = JSON.parse(await readFile(file, 'utf8'));
+    await writeFile(file, JSON.stringify({...cached, generated}));
+  }
+  const second = fakeOverpass(query => ({raw: adiff('2026-11-01T11:00:00Z', '')}));
+  await buildSignals({...d, ...quiet, now: () => Date.parse('2026-11-01T12:00:00Z'), fetcher: second.fetcher});
+  assert.deepEqual(second.queries, parts.slice(2).map(part => signalChangesQuery(part, '2026-10-20T00:00:00Z', end)));
+  const saved = JSON.parse(await readFile(combined, 'utf8'));
+  assert.equal(saved.response.osm3s.timestamp_osm_base, end, 'resumed quarters retain the first accepted endpoint');
+  assert.equal(saved.generated, '2026-10-31T12:00:00.000Z', 'resuming does not relabel old response freshness');
+});
+
+for (const damage of ['query', 'expired', 'future', 'truncated', 'malformed']) {
+  test(`signal diff checkpoint rejects ${damage} without weakening publication`, async t => {
+    const d = await dirs(); t.after(() => rm(d.root, {recursive: true, force: true}));
+    const home = await seed(d, '2026-10-20T01:00:00Z');
+    const query = signalChangesQuery(home, '2026-10-20T00:00:00Z');
+    const checkpoint = {query, generated: '2026-10-31T11:00:00Z', response: adiff('2026-10-31T11:00:00Z', '')};
+    if (damage === 'query') checkpoint.query = signalChangesQuery(home, '2026-10-19T00:00:00Z');
+    if (damage === 'expired') checkpoint.generated = '2026-10-20T00:00:00Z';
+    if (damage === 'future') checkpoint.generated = '2026-11-01T00:00:00Z';
+    if (damage === 'truncated') checkpoint.response = '<osm>';
+    if (damage === 'malformed') checkpoint.response = adiff('2026-10-31T11:00:00Z', '<action type="create"><node id="10" lat="bad" lon="2"><tag k="railway" v="signal"/></node></action>');
+    await writeFile(new URL(`signals-changes-v1-${home.join('_')}.json`, d.cacheRoot), JSON.stringify(checkpoint));
+    const answer = fakeOverpass(() => ({status: 503}));
+    await assert.rejects(buildSignals({...d, ...quiet, regions: [home], fetcher: answer.fetcher}), /Overpass HTTP 503/);
+    assert.deepEqual(answer.queries, [query, query, query], 'ordinary bounded request policy is unchanged');
+    await assert.rejects(readdir(d.output));
+  });
+}

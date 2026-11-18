@@ -1,7 +1,7 @@
-import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261117-owner-schema-recovery-1';
-import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261117-owner-schema-recovery-1';
-import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261117-owner-schema-recovery-1';
-import {serviceCoverageMessages} from './service-status.mjs?v=20261117-owner-schema-recovery-1';
+import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261118-owner-schema-merge-1';
+import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261118-owner-schema-merge-1';
+import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261118-owner-schema-merge-1';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261118-owner-schema-merge-1';
 
 // State is retained by the application; each render reads current settings and coverage.
 export function renderLegendUI({document, $, textNode, settings, inView, legendState,
@@ -136,8 +136,8 @@ function render() {
   };
   let note = notes[settings.mode];
   note+=settings.mode==='infrastructure'
-    ?' At world scales, OSM reference lines preserve corridor geometry when thematic data is unavailable, coloured from their own mapped high-speed and main/branch tags; a line without a main/branch tag shows as Railway. From zoom 8,'
-    :' At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification. From zoom 8, dashed grey basemap railways preserve reference geometry beneath detailed tracks; they do not establish operating status or any missing railway attributes.';
+    ?' At world scales, OSM reference lines preserve corridor geometry when thematic data is unavailable, coloured from their own mapped high-speed and main/branch tags; a line without a main/branch tag shows as Railway. From zoom 8, solid basemap references use recorded rail kind and service tags; detailed tracks add the provider attributes.'
+    :' At world scales, grey OSM reference lines appear only after the selected track source fails in the current viewport. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification. From zoom 8, dashed grey basemap railways provide the same outage reference; they do not establish operating status or any missing railway attributes.';
   if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale across periods, using the lower directional rate or the lower bound of a published range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.

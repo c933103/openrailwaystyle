@@ -33,7 +33,7 @@ try {
     });
     const sign=cap==='north'?1:-1, latitude=sign*88.5;
     await page.route('**/polar-depth-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><body style="margin:0"><div id="map" style="height:100vh;width:100vw"></div>
-      <script src="vendor/maplibre-gl-5.24.0-atlas.2.js"></script><script type="module">
+      <script src="vendor/maplibre-gl-5.24.0-atlas.4.js"></script><script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres,zoomForLatitude} from './globe-drag.mjs';
       import {syncTerrain3D,syncHighPitchTileBudget} from './terrain-3d.mjs';
@@ -172,12 +172,36 @@ try {
     const cartoFill=cap==='north'?[170,211,223]:[242,239,233];
     for(let i=0;i<3;i++)assert.ok(Math.abs(carto[i]-cartoFill[i])<=5,
       `${cap}: Carto must retain its independent flat cap palette, got ${carto}`);
-    await page.evaluate(async()=>{window.background='satellite';await window.frame();});
-    const dark=await page.evaluate(()=>window.pixel());
-    assert.ok(dark.slice(0,3).every(v=>v<=5),'Satellite retains black no-imagery polar cap');
+    // Satellite and Hybrid retain real bathymetry using their own ocean
+    // palette, even when the ordinary Map bathymetry style layer is absent.
+    // Independent expected values: shallow shelf #194a7a, and the midpoint
+    // between 1500 m #0d2d52 and 4500 m #05162b at 3000 m.
+    const imageryExpected=depth===20?[25,74,122]:[9,34,63];
+    for(const mode of ['satellite','hybrid']) {
+      const before=await page.evaluate(()=>window.draws);
+      await page.evaluate(async mode=>{window.background=mode;await window.frame();},mode);
+      const imagery=await page.evaluate(()=>({pixel:window.pixel(),draws:window.draws}));
+      assert.ok(imagery.draws>before,`${cap} ${mode}: current frame must draw depth`);
+      for(let i=0;i<3;i++)assert.ok(Math.abs(imagery.pixel[i]-imageryExpected[i])<=5,
+        `${cap} ${mode} -${depth} m: visible pixel ${imagery.pixel} != ${imageryExpected}`);
+      assert.equal(imagery.pixel[3],255);
+      // Disabling only the depth texture must reveal the underlying cap,
+      // proving that a retained framebuffer or a flat fill cannot pass.
+      const fallback=await page.evaluate(async cap=>{
+        window.layer.caps[cap].depthFailed=true;
+        await window.frame();const pixel=window.pixel();
+        window.layer.caps[cap].depthFailed=false;await window.frame();return pixel;
+      },cap);
+      const fallbackExpected=cap==='north'?[5,22,43]:[230,238,245];
+      for(let i=0;i<3;i++)assert.ok(Math.abs(fallback[i]-fallbackExpected[i])<=5,
+        `${cap} ${mode}: missing depth must reveal terrain fallback, got ${fallback}`);
+      assert.ok(fallback.slice(0,3).some((v,i)=>Math.abs(v-imageryExpected[i])>5),
+        `${cap} ${mode}: suppressed depth must change framebuffer pixels`);
+    }
+    assert.equal(requests.filter(n=>n===cap+'-depth.png').length,1,'mode changes reuse the cap depth texture');
     assert.deepEqual(errors,[]);
     assert.ok(!warnings.some(x=>/Polar depth|Polar caps not drawn/.test(x)),warnings.join('\n'));
-    console.log(`PASS ${cap}: depth ${depth} m, exact shared palette, toggle/removed layers, Carto/Satellite isolation`);
+    console.log(`PASS ${cap}: depth ${depth} m, exact shared palette, toggle/removed layers, Carto isolation and Satellite/Hybrid depth palette`);
     await page.close();
   }
 } finally {await browser.close();}

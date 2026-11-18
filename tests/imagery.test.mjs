@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, eoxCovers, ESRI_MAX_ZOOM, ESRI_OFF_KEY, ESRI_OFF_MS, ESRI_ATTRIBUTION} from '../styles/imagery.mjs';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, eoxCovers, ESRI_MAX_ZOOM, ESRI_OFF_KEY, ESRI_OFF_MS, ESRI_ATTRIBUTION, GIBS_ATTRIBUTION, IMAGERY_MAX_ZOOM, regionalImagery, installImageryAttribution} from '../styles/imagery.mjs';
 
 const KEY = 'AAPTxy8BH1VEsoebNVZXo8HurEOF051kAEKlhkOhBEc9BmTEST';
 const bytes = text => new TextEncoder().encode(text).buffer;
@@ -31,13 +31,16 @@ test('the deployment configuration enables Esri only with a well-formed key', as
   assert.deepEqual(await loadImageryConfig('x', {fetcher: async () => { throw new TypeError('offline'); }}), {});
 });
 
-test('without a key the published EOX source is untouched; with one it routes through the protocol', () => {
+test('keyless southern fallback and optional Esri share the imagery protocol', () => {
   const eox = {type: 'raster', tiles: ['https://tiles.maps.eox.at/x/{z}/{y}/{x}.jpg'], maxzoom: 14, attribution: 'EOX credit'};
   const untouched = structuredClone(eox);
-  assert.deepEqual(applyImageryConfig(untouched, {}), eox);
+  applyImageryConfig(untouched, {});
+  assert.deepEqual(untouched.tiles,['atlasimagery://{z}/{x}/{y}']);
+  assert.ok(untouched.attribution.includes(GIBS_ATTRIBUTION));
+  assert.ok(!untouched.attribution.includes(ESRI_ATTRIBUTION));
   const esri = applyImageryConfig(structuredClone(eox), {esriKey: KEY});
   assert.deepEqual(esri.tiles, ['atlasimagery://{z}/{x}/{y}']);
-  assert.equal(esri.maxzoom, ESRI_MAX_ZOOM);
+  assert.equal(esri.maxzoom, IMAGERY_MAX_ZOOM);
   assert.ok(esri.attribution.startsWith(ESRI_ATTRIBUTION) && esri.attribution.includes('EOX credit'), 'both providers credited');
   assert.match(ESRI_ATTRIBUTION, /Powered by .*Esri.*Vantor, Earthstar Geographics, and the GIS User Community/);
 });
@@ -124,4 +127,120 @@ test('with a key, Esri is used only where EOX cannot cover the tile',async()=>{
   assert.equal(h.calls.filter(url=>url.includes('arcgis')).length,0,'no Esri request where EOX has native detail');
   for(const [lat,lon,z] of [[0,30,15],[35.68,139.76,14],[60.5,10,13],[-70,0,6],[84.5,0,8]])
     assert.equal(await get(h.protocol,z,x(lon,z),tileY(lat,z)),'esri',`Esri at ${lat}° z${z}`);
+});
+
+ test('keyless Antarctic imagery uses and shares its declared z8 NASA ancestor', async () => {
+  const calls=[], crops=[];
+  const protocol=createImageryProtocol({fetcher:async url=>{calls.push(url);return image('gibs');},
+    resample:async(data,depth,dx,dy)=>{crops.push([text(data),depth,dx,dy]);return bytes('crop');}});
+  assert.equal(await get(protocol,12,3900,3501),'crop');
+  assert.equal(await get(protocol,12,3901,3502),'crop');
+  assert.equal(calls.length,1);assert.match(calls[0],/GoogleMapsCompatible_Level8\/8\/218\/243\.jpeg$/);
+  assert.deepEqual(crops,[['gibs',4,12,13],['gibs',4,13,14]]);
+});
+ test('NASA failure falls back and aborts never start or silently replace requests', async () => {
+  const calls=[];
+  const protocol=createImageryProtocol({fetcher:async url=>{calls.push(url);return url.includes('gibs.')?reply(503):image('eox');}});
+  assert.equal(await get(protocol,8,240,230),'eox');assert.equal(calls.length,2);
+  const c=new AbortController();c.abort();
+  await assert.rejects(get(protocol,8,240,230,c.signal),{name:'AbortError'});assert.equal(calls.length,2);
+  await assert.rejects(get(protocol,8,256,230),/Invalid imagery tile/);
+});
+
+ const tileX=(lon,z)=>Math.floor((lon+180)/360*2**z);
+ test('regional imagery selects country interiors and excludes neighboring countries and borders',async()=>{
+  for(const [lon,lat,id] of [[8.54,47.37,'CHE'],[2.35,48.85,'FRA'],[-97.74,30.27,'USA']])
+    assert.equal((await regionalImagery(16,tileX(lon,16),tileY(lat,16)))?.id,id);
+  for(const [lon,lat] of [[-79.38,43.65],[7.85,48],[9.19,45.46],[-99.13,19.43],[-149.9,61.2]])
+    assert.equal(await regionalImagery(16,tileX(lon,16),tileY(lat,16)),null,`${lon},${lat}`);
+  assert.equal(await regionalImagery(14,tileX(2.35,14),tileY(48.85,14)),null);
+ });
+ test('keyless orthophotos precede EOX crops and failed providers retain an observed pause',async()=>{
+  const calls=[];let clock=0,refuse=true;
+  const protocol=createImageryProtocol({monotonic:()=>clock,fetcher:async url=>{
+    calls.push(url);
+    if(url.includes('geo.admin.ch'))return refuse?{...reply(429),headers:new Headers({'Retry-After':'120'})}:image('swiss');
+    return image('eox');
+  },resample:async()=>bytes('eox crop')});
+  const x=tileX(8.54,16),y=tileY(47.37,16);
+  assert.equal(await get(protocol,16,x,y),'eox crop');assert.equal(calls.filter(x=>x.includes('geo.admin')).length,1);
+  refuse=false;clock=119999;assert.equal(await get(protocol,16,x,y),'eox crop');assert.equal(calls.filter(x=>x.includes('geo.admin')).length,1);
+  clock=120000;assert.equal(await get(protocol,16,x,y),'swiss');
+ });
+ test('French service uses its current PM_0_19 matrix and regional abort remains an abort',async()=>{
+  const calls=[],c=new AbortController();
+  const protocol=createImageryProtocol({fetcher:async url=>{calls.push(url);return image('regional');}});
+  assert.equal(await get(protocol,19,tileX(2.35,19),tileY(48.85,19)),'regional');
+  assert.match(calls[0],/TILEMATRIXSET=PM_0_19/);
+  c.abort();await assert.rejects(get(protocol,19,tileX(2.35,19),tileY(48.85,19),c.signal),{name:'AbortError'});assert.equal(calls.length,1);
+ });
+
+ test('a canceled NASA consumer settles without canceling a shared ancestor for its sibling',async()=>{
+  let complete,upstream;const canceled=new AbortController();
+  const protocol=createImageryProtocol({fetcher:(_url,options)=>{upstream=options.signal;return new Promise(resolve=>complete=resolve);},resample:async()=>bytes('crop')});
+  const a=get(protocol,12,3900,3501,canceled.signal), b=get(protocol,12,3901,3502);
+  await new Promise(resolve=>setImmediate(resolve));canceled.abort();
+  await assert.rejects(a,{name:'AbortError'});assert.equal(upstream.aborted,false);
+  complete(image('gibs'));assert.equal(await b,'crop');
+ });
+ test('hung shared NASA fetches and bodies time out, fall back and remove their cache entry',async()=>{
+  for(const phase of ['fetch','body']) {
+    let clock=new AbortController(),calls=0;
+    const protocol=createImageryProtocol({timeoutSignal:()=>clock.signal,fetcher:async url=>{
+      if(!url.includes('gibs.'))return image('eox');
+      calls++;if(calls>1)return image('gibs');
+      if(phase==='fetch')return new Promise(()=>{});
+      return {...image('gibs'),arrayBuffer:()=>new Promise(()=>{})};
+    }});
+    const pending=get(protocol,8,240,230);await new Promise(resolve=>setImmediate(resolve));
+    clock.abort(new DOMException('Timed out','TimeoutError'));assert.equal(await pending,'eox');
+    clock=new AbortController();assert.equal(await get(protocol,8,240,230),'gibs');assert.equal(calls,2);
+  }
+ });
+ test('EOX shared ancestor wait also settles on consumer cancellation and on timeout',async()=>{
+  const timeout=new AbortController(),cancel=new AbortController();let calls=0;
+  const protocol=createImageryProtocol({timeoutSignal:()=>timeout.signal,fetcher:async()=>{calls++;return new Promise(()=>{});}});
+  const a=get(protocol,16,100,100,cancel.signal),b=get(protocol,16,101,100);
+  await new Promise(resolve=>setImmediate(resolve));cancel.abort();await assert.rejects(a,{name:'AbortError'});
+  timeout.abort(new DOMException('Timed out','TimeoutError'));await assert.rejects(b,{name:'TimeoutError'});assert.equal(calls,1);
+ });
+
+test('provider attribution follows rendered textures, mixed fallback, cached panning and removal',async()=>{
+  let regional=true;const protocol=createImageryProtocol({fetcher:async url=>url.includes('geo.admin')&&!regional?reply(503):image('tile'),resample:async data=>data});
+  const c={z:16,x:tileX(8.54,16),y:tileY(47.37,16)};
+  await get(protocol,c.z,c.x,c.y);assert.equal(protocol.providerFor(c),'CHE');
+  const first={texture:{},tileID:{canonical:c}},second={texture:{},tileID:{canonical:{z:12,x:1,y:1000}}};
+  await get(protocol,12,1,1000);assert.equal(protocol.providerFor(second.tileID.canonical),'EOX');
+  let visible=[first],polar=false;const events=new Map(),source={attribution:'initial'},fired=[];
+  const manager={used:true,getRenderableIds:()=>visible.map((_,i)=>String(i)),getTileByID:i=>visible[+i]};
+  const map={getSource:()=>source,style:{tileManagers:{satellite:manager}},on:(type,fn)=>events.set(type,fn),off:(type,fn)=>{if(events.get(type)===fn)events.delete(type);},fire:(...args)=>fired.push(args)};
+  const destroy=installImageryAttribution(map,protocol,{eoxAttribution:'EOX credit',polarImagery:()=>polar});
+  events.get('render')();assert.match(source.attribution,/swisstopo/);assert.doesNotMatch(source.attribution,/Esri|IGN|EOX/);
+  visible=[first,second];events.get('render')();assert.match(source.attribution,/swisstopo/);assert.match(source.attribution,/EOX credit/);
+  visible=[second];events.get('render')();assert.equal(source.attribution,'EOX credit');
+  regional=false;await get(protocol,c.z,c.x,c.y);assert.equal(protocol.providerFor(c),'EOX');
+  visible=[first];events.get('render')();assert.match(source.attribution,/swisstopo/,'old cached texture keeps original credit after newer fallback');
+  const recycled={texture:first.texture,tileID:second.tileID};visible=[recycled];events.get('render')();assert.equal(source.attribution,'EOX credit','GPU texture reused by another tile does not retain Swiss credit');
+  visible=[first];events.get('render')();assert.match(source.attribution,/swisstopo/);
+  first.state='loaded';events.get('sourcedata')({sourceId:'satellite',tile:first});events.get('render')();assert.equal(source.attribution,'EOX credit','same tile and texture reload with unchanged clock refreshes provider');
+  first.texture={};events.get('render')();assert.equal(source.attribution,'EOX credit','replaced texture uses actual fallback');
+  polar=true;events.get('render')();assert.match(source.attribution,/NASA/);
+  polar=false;manager.used=false;events.get('render')();assert.equal(source.attribution,'');
+  manager.used=true;visible=[{texture:{},tileID:{canonical:{z:10,x:1,y:1}}}];events.get('render')();assert.match(source.attribution,/Esri/);assert.match(source.attribution,/swisstopo/,'unknown provenance retains all possible credits');
+  const count=fired.length;events.get('render')();assert.equal(fired.length,count,'unchanged attribution emits no event');
+  delete map.style.tileManagers;source.attribution='stale';events.get('render')();assert.match(source.attribution,/Esri/,'unavailable renderer API restores conservative union');
+  destroy();assert.equal(events.size,0);
+});
+test('failed and canceled image requests never establish a provider credit',async()=>{
+  const p=createImageryProtocol({fetcher:async()=>{throw Error('offline');}}),c={z:2,x:1,y:1};
+  await assert.rejects(get(p,2,1,1));assert.equal(p.providerFor(c),undefined);
+  const controller=new AbortController();controller.abort();await assert.rejects(get(p,2,1,1,controller.signal));assert.equal(p.providerFor(c),undefined);
+});
+
+test('z19 retains Esri z18 ancestor detail outside native regional coverage',async()=>{
+  const calls=[],crops=[],x=tileX(139.76,19),y=tileY(35.68,19);
+  const p=createImageryProtocol({esriKey:KEY,fetcher:async url=>{calls.push(url);return image('esri');},resample:async(data,...crop)=>{crops.push(crop);return data;}});
+  assert.equal(await get(p,19,x,y),'esri');assert.match(calls[0],new RegExp(`/tile/18/${Math.floor(y/2)}/${Math.floor(x/2)}\\?token=`));
+  assert.deepEqual(crops,[[1,x%2,y%2]]);assert.equal(p.providerFor({z:19,x,y}),'ESRI');
+  calls.length=0;crops.length=0;await get(p,19,tileX(2.35,19),tileY(48.85,19));assert.match(calls[0],/data.geopf.fr/);assert.equal(crops.length,0);
 });

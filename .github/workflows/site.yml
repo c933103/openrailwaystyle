@@ -250,6 +250,26 @@ jobs:
         run: |
           pip install fonttools==4.66.1 brotli==1.2.0
           python scripts/build-rare-han.py
+      # World label font slices (styles/world-font.mjs): the packaged Noto
+      # designs for the local scripts of common languages, cut per family,
+      # weight and 256 characters, so glyphs the remote glyph source does
+      # not serve can be generated on the device. The distro packages ship
+      # the sources: fonts-noto-core and fonts-noto-extra between them
+      # carry every family scripts/build-world-fonts.py lists, and the
+      # build fails if one is missing, so a runner image change cannot
+      # silently drop a script. The script's own hash keys the cache.
+      - name: Restore world font slices
+        id: world-fonts
+        uses: actions/cache@v4
+        with:
+          path: styles/fonts/world-v1
+          key: world-fonts-${{ hashFiles('scripts/build-world-fonts.py') }}
+      - name: Build world font slices
+        if: steps.world-fonts.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y fonts-noto-core fonts-noto-extra
+          pip install fonttools==4.66.1 brotli==1.2.0
+          python scripts/build-world-fonts.py
       - name: Load the published axle-load lookup
         run: |
           if git ls-remote --exit-code --heads origin "$DATA_BRANCH_AXLE_LOAD"; then

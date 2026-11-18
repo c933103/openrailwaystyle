@@ -7,7 +7,9 @@
 # published to their own branches (branch-lines-extract-data,
 # service-routes-extract-data, station-points-extract-data,
 # crossings-extract-data, traction-extract-data, conveying-extract-data,
-# aerialways-extract-data, street-running-extract-data). The site uses
+# aerialways-extract-data, street-running-extract-data,
+# heritage-extract-data, axle-load-extract-data, lifecycle-extract-data).
+# The site uses
 # one only when the repository variable DATA_SOURCES selects it
 # (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
@@ -56,6 +58,25 @@ jobs:
           node scripts/assemble-extracts.mjs index.json regions assembled.osm.pbf
           df -h . | tail -1
           { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and measure complete optional energy context
+        # Candidate failures remain visible while independent datasets build.
+        continue-on-error: true
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-energy-network.mjs assembled.osm.pbf assembled.osm.pbf.json energy-network-extract
+          if test -f energy-network-extract/manifest.json; then
+            node scripts/validate-energy-network.mjs energy-network-extract
+            node scripts/measure-energy-network.mjs energy-network-extract > energy-network-viewport.json
+            cat energy-network-viewport.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: energy-network-candidate
+          path: |
+            energy-network-extract/
+            energy-network-viewport.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build branch lines from the extract
         # 6 GB, as the other large builds use. The first world build ran out
         # of Node's default 4 GB heap (2026-11-10); since then each way is
@@ -227,6 +248,86 @@ jobs:
           if ! git push --force origin HEAD:street-running-extract-data; then
             test "$(git ls-remote origin refs/heads/street-running-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Build historic areas from the extract
+        # One read for the ways and relations, a second for the relations'
+        # member ways. The world in a local run (2026-11-10 index): 126 s,
+        # 2.3 GB peak.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-heritage.mjs assembled.osm.pbf assembled.osm.pbf.json heritage-extract | tee heritage-extract.json
+          { echo '# Historic areas from the extract'; echo; echo '```json'; node -e 'const {coverage, ...m} = JSON.parse(require("fs").readFileSync("heritage-extract/manifest.json", "utf8")); console.log(JSON.stringify(m, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish heritage-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/heritage-publish
+          cd /tmp/heritage-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan heritage-extract-data
+          cp -r "$GITHUB_WORKSPACE/heritage-extract/." .
+          git add .
+          git commit -q -m "Historic areas from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:heritage-extract-data; then
+            test "$(git ls-remote origin refs/heads/heritage-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build the axle-load lookup from the extract
+        # One read of the ways; Finland's polygon from the index this run
+        # assembled. The world in a local run (2026-11-10 index): 105 s,
+        # 0.35 GB peak.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-axle-load.mjs assembled.osm.pbf assembled.osm.pbf.json index.json axle-load-extract | tee axle-load-extract.json
+          { echo '# Axle-load lookup from the extract'; echo; echo '```json'; cat axle-load-extract/manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish axle-load-extract-data
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/axle-load-publish
+          cd /tmp/axle-load-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan axle-load-extract-data
+          cp -r "$GITHUB_WORKSPACE/axle-load-extract/." .
+          git add .
+          git commit -q -m "Axle-load lookup from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:axle-load-extract-data; then
+            test "$(git ls-remote origin refs/heads/axle-load-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Build planned, construction and former railways from the extract
+        # One read of the ways, each converted as read. The world in a local
+        # run (2026-11-10 index): 179 s, 5.7 GB peak; then the tiles packed
+        # by scripts/pack-snapshot.py, as snapshot.yml packs them.
+        run: |
+          node --max-old-space-size=6144 scripts/build-extract-lifecycle.mjs assembled.osm.pbf assembled.osm.pbf.json lifecycle-extract | tee lifecycle-extract.json
+          pip install pmtiles==3.8.1
+          (cd lifecycle-extract && python ../scripts/pack-snapshot.py)
+          { echo '# Planned, construction and former railways from the extract'; echo; echo '```json'; node -e 'const {parts, regression, ...m} = JSON.parse(require("fs").readFileSync("lifecycle-extract/snapshot/manifest.json", "utf8")); console.log(JSON.stringify({...m, regressionWays: regression.ways}, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish lifecycle-extract-data
+        if: github.ref == 'refs/heads/main'
+        # The rail-data layout: manifest.json, the loading-gauge list, and
+        # the archive and table in 80 MB parts (Git blobs stay under the
+        # hosting limit), with source.json. The polar caps are not made here,
+        # so source.json says not complete.
+        run: |
+          mkdir /tmp/lifecycle-publish
+          cd /tmp/lifecycle-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -q --orphan lifecycle-extract-data
+          cp "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/manifest.json" "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/loading-gauge.json" "$GITHUB_WORKSPACE/lifecycle-extract/source.json" .
+          split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.pmtiles" lifecycle.pmtiles.part-
+          split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.geojson.gz" lifecycle.geojson.gz.part-
+          git add manifest.json loading-gauge.json source.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          git commit -q -m "Planned, construction and former railways from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:lifecycle-extract-data; then
+            test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -245,5 +346,9 @@ jobs:
             conveying-extract/conveying/manifest.json
             conveying-extract/aerialways/manifest.json
             street-running-extract/manifest.json
+            heritage-extract/manifest.json
+            axle-load-extract/manifest.json
+            lifecycle-extract/snapshot/manifest.json
+            lifecycle-extract/source.json
           if-no-files-found: ignore
           retention-days: 30

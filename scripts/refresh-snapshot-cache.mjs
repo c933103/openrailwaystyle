@@ -21,9 +21,9 @@ async function fetched(path) {
 }
 const files = [];
 for (const name of await readdir(dir).catch(() => [])) {
-  // Region responses only: keep split decisions, download budgets and the
-  // weekly change log.
-  if (!name.endsWith('.json') || name.startsWith('budget-') || name === 'delta.json') continue;
+  // Region responses only: keep split decisions, download budgets, a run's
+  // provider pause and the weekly change log.
+  if (!name.endsWith('.json') || name.startsWith('budget-') || name.startsWith('provider-pause-') || name === 'delta.json') continue;
   // A failed replacement may have restored an older release-cache file at
   // this name. Keep the pending source intact until the builder reconciles
   // a complete replacement; never rename over an existing .previous.

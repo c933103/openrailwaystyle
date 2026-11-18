@@ -42,7 +42,7 @@ export const OSM_UPDATES = Object.freeze([
   {id:'aerialways', workflow:'aerialways.yml', due:{weekly:[0], hour:3},
     paths:[...PROVIDER_DATES, 'scripts/build-aerialways.mjs', 'scripts/conveying-data.mjs', 'scripts/conveying-files.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/conveying.mjs']},
   {id:'heritage', workflow:'heritage.yml', due:{monthly:3, hour:21},
-    paths:[...PROVIDER_DATES, 'scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
+    paths:[...PROVIDER_DATES, 'scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'scripts/heritage-files.mjs', 'styles/pbf-utf8.mjs', 'styles/tile-bundles.mjs']},
   {id:'station-points', workflow:'station-points.yml', due:{every:true},
     paths:['scripts/station-overview.mjs', 'scripts/station-point.mjs', 'scripts/station-acquisition.mjs', 'scripts/build-station-snapshot.mjs', 'scripts/overpass-adiff.mjs', 'scripts/overpass/overpass-adiff.mjs', 'styles/tile-bundles.mjs']},
   // One download for branch lines, service routes and power methods

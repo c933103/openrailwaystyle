@@ -1,6 +1,7 @@
 // Keep startup fixtures in separate Node test processes: evaluated VM modules
 // retain their contexts on Node 24 even after JSDOM closes and GC runs.
 import {globeModule,test,encodeTile,assert,readFile,createHash,vm,gzipSync,net,https,frequencyModule,unmockedRequests,html,code,style,legacyDistributions,start,ALL_PROBES} from './startup-harness.mjs';
+import {buildAtlas3Text} from './fixtures/atlas3-maplibre.mjs';
 
 
 for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 'already loaded' : 'cold'} style readiness`, async () => {
@@ -458,8 +459,8 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
     if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.2.js'))throw Error('replacement library unavailable');
-    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.2.js','.js')));
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.4.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace(/-atlas\.\d+\.js$/,'.js')));
     if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
       const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
@@ -491,7 +492,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
-  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.2.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.4.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
   const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
   assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
   assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
@@ -528,14 +529,17 @@ test('new app recovers verified already-patched first-party cache bytes without 
   } finally {result.dom.window.close();}
 });
 
-test('new app upgrades exact atlas.1 cached bytes when atlas.2 installation is interrupted',async()=>{
+test('new app upgrades exact atlas.3 cached bytes when atlas.4 installation is interrupted',async()=>{
   const scope='https://example.org/openrailwaystyle/';
   const original=legacyDistributions.find(library=>library.sourceSha256).body.toString('utf8');
-  const previous=original.replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous')
-    .replace('//# sourceMappingURL=maplibre-gl.js.map\n','');
-  const caches={keys:async()=>['atlas-shell-69'],open:async()=>({match:async url=>{
+  const patchedText=legacyDistributions.find(library=>library.sourceSha256).patchedBody.toString('utf8');
+  // atlas.3 = upstream + the attribution and worker repairs + the
+  // atlas.3 Mongolian span and hooks (fixtures/atlas3-maplibre.mjs,
+  // pinned by the backport test to the previous distribution's hash).
+  const previous=buildAtlas3Text(original,patchedText);
+  const caches={keys:async()=>['atlas-shell-80'],open:async()=>({match:async url=>{
     if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
-    if(url===scope+'vendor/maplibre-gl-5.24.0-atlas.1.js')return new Response(previous,{headers:{'content-type':'text/javascript'}});
+    if(url===scope+'vendor/maplibre-gl-5.24.0-atlas.3.js')return new Response(previous,{headers:{'content-type':'text/javascript'}});
     const library=legacyDistributions.find(library=>!library.sourceSha256&&new URL(library.target,scope).href===url);
     return library?new Response(library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}}):undefined;
   }})};
