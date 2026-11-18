@@ -52,6 +52,7 @@ async function fixture(t, {download = true, corrupt = false} = {}) {
   await writeFile(join(root, '.snapshot-cache/partial.json.previous'), 'preserved-before-redownload');
   await writeFile(join(root, '.snapshot-cache/delta.json'), '{"changes":[37]}');
   await writeFile(join(root, '.snapshot-cache/budget-123.json'), '{"bytes":142935}');
+  await writeFile(join(root, '.snapshot-cache/provider-pause-123.json'), '{"until":"2026-11-18T06:00:00.000Z"}');
   // Exercise the real tar/shell paths without requiring a system zstd binary.
   // Production still uses zstd; fixture archives use gzip through this shim,
   // consistently for creation, workflow execution and readback.
@@ -85,6 +86,7 @@ test('real restore and save shells retain newer, previous, delta and unrelated r
     assert.equal(await readFile(join(root, 'unpacked/.snapshot-cache', file), 'utf8'), value);
   }
   await assert.rejects(readFile(join(root, 'unpacked/.snapshot-cache/budget-123.json')), {code: 'ENOENT'});
+  await assert.rejects(readFile(join(root, 'unpacked/.snapshot-cache/provider-pause-123.json')), {code: 'ENOENT'}, 'a run\'s provider pause stays with that run');
   assert.match(await readFile(join(root, 'gh-calls'), 'utf8'), /release upload overpass-cache .* --clobber/);
 });
 

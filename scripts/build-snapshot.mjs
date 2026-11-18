@@ -6,11 +6,34 @@ import {DELTA_FILE, applyDelta, recordChanges} from './snapshot-delta.mjs';
 import {updateElements} from './overpass-adiff.mjs';
 import {quarters, worldRegions} from './world-regions.mjs';
 import {stationQueryExceededLimits as queryExceededLimits} from './station-acquisition.mjs';
+import {retryAfterMs} from './retry-after.mjs';
+import {MAX_PROVIDER_WAIT_MS} from './polar-fetch.mjs';
 const api = 'https://overpass-api.de/api/interpreter';
+// Overpass's Retry-After, on any answer, holds back the next request until
+// it has passed, on elapsed time. A wait longer than the polar step's limit
+// (the same job) is not waited out: no further request is sent, and every
+// region keeps its data, as when Overpass does not answer. Each region is
+// its own step (process) of the same run, so the wait's end is also saved,
+// as a wall-clock time, for the run's later steps.
+const pauseFile = `.snapshot-cache/provider-pause-${process.env.GITHUB_RUN_ID || 'local'}.json`;
+let providerNotBefore = 0, providerStopped = false, providerUntil = 0;
+function holdProvider(wait) {
+  if (wait > MAX_PROVIDER_WAIT_MS) providerStopped = true;
+  else providerNotBefore = Math.max(providerNotBefore, performance.now() + wait);
+}
+async function observeProvider(response) {
+  const now = Date.now(), wait = retryAfterMs(response.headers?.get('retry-after'), now);
+  if (!(wait > 0)) return;
+  holdProvider(wait);
+  if (now + wait > providerUntil) {
+    providerUntil = now + wait;
+    await writeFile(pauseFile, JSON.stringify({until:new Date(providerUntil).toISOString()}));
+  }
+}
 // A timer may wake before the requested interval. Keep each existing quiet
 // or retry floor on elapsed time and recheck before the next provider call.
 async function pause(ms) {
-  const notBefore = performance.now() + ms;
+  const notBefore = Math.max(performance.now() + ms, providerNotBefore);
   for (let remaining; (remaining = notBefore - performance.now()) > 0;)
     await new Promise(resolve => setTimeout(resolve, remaining));
 }
@@ -22,11 +45,13 @@ const errorCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTF
   'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_TLS_CERT_ALTNAME_INVALID',
   'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'ERR_SSL_WRONG_VERSION_NUMBER']);
 async function fetchOverpass(query, timeout, phase) {
+  if (providerStopped) throw new Error(`Overpass asked to wait longer than ${MAX_PROVIDER_WAIT_MS / 60000} minutes; not sent`);
   const started = performance.now();
   let stage = 'fetch';
   try {
     const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
       headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(timeout)});
+    await observeProvider(response);
     stage = 'body';
     const text = phase === 'full' || response.ok ? await response.text() : '';
     return {response, text};
@@ -53,6 +78,11 @@ const features = new Map(), base = new Map(), parts = [];
 const budgetFile=`.snapshot-cache/budget-${process.env.GITHUB_RUN_ID || 'local'}.json`;
 let downloaded=0;
 try {downloaded=JSON.parse(await readFile(budgetFile,'utf8')).bytes;} catch {}
+// A wait an earlier step of this run was asked for, and has not yet passed.
+try {
+  const until=Date.parse(JSON.parse(await readFile(pauseFile,'utf8')).until);
+  if(until>Date.now()) {providerUntil=until; holdProvider(until-Date.now());}
+} catch {}
 // Disjoint world regions, serial requests with a quiet interval.
 // Full way geometry is retained across quadrant boundaries and deduplicated.
 // Whole quadrants in the south, 45-degree quarters in the denser north.
