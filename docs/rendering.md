@@ -81,6 +81,20 @@ inland locations must never be flooded or treated as ocean. The coarse seabed
 is informative relief, not survey-grade soundings; missing or impossible
 heights fail explicitly instead of becoming artificial sea-level flats.
 
+The 3D composition boundary accepts square 256- or 512-pixel height rasters
+with pixel-centred samples spanning the same XYZ tile bounds, in metres. It
+bilinearly samples them onto the existing 256-pixel mesh; native source caches
+remain unchanged. This normalization is neither extra surveyed resolution nor
+a datum conversion. Positive-weight invalid samples fail, rather than being
+averaged into plausible terrain. Ocean classification remains the independent
+256-pixel polygon mask; signed land and sharp inland steps remain intact.
+`installTerrain3D` accepts an optional `seabedDem` reader so future land-provider
+changes can retain independently identified bathymetry. Its default is the
+current repaired DEM, and its recovery policy remains Mapzen's z10/zero-ocean
+contract. A new provider still needs a verified datum, validity and recovery
+policy before activation; no replacement endpoint or shoreline smoothing is
+selected by this change.
+
 Source availability and render compatibility have separate checks:
 `tests/terrain-3d.test.mjs` verifies signed-height blending, mask boundaries,
 source selection and pitch/relief activation; `tests/startup*.test.mjs` checks

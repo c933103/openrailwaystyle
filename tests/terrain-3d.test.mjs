@@ -6,7 +6,7 @@ import {
   TERRAIN_3D_INSPECTION_ZOOM, TERRAIN_3D_VIEW_PITCH, TERRAIN_3D_MAX_PITCH,
   HIGH_PITCH_THRESHOLD, HIGH_PITCH_LOD, HIGH_PITCH_TILE_CACHE_LIMIT, syncHighPitchTileBudget, terrain3DViewTarget,
   terrain3DEnabled, terrain3DSelectedForPitch, syncTerrain3D, terrainExaggeration, TERRAIN_EXAGGERATION_OPTIONS, DEFAULT_TERRAIN_EXAGGERATION, needsSeabedRecovery,
-  sampleSeabed, composeTerrainHeights, encodeTerrainPng,
+  sampleSeabed, composeTerrainHeights, encodeTerrainPng, installTerrain3D,
 } from '../styles/terrain-3d.mjs';
 import {depthTile} from '../styles/bathymetry.mjs';
 import {zoomForLatitude,globeGroundZoom} from '../styles/globe-drag.mjs';
@@ -265,4 +265,96 @@ test('Terrarium output represents signed heights without changing their units',a
     for(let i=0;i<4;i++)assert.ok(Math.abs(terrarium(...decoded.slice(i*4,i*4+3))-v[i])<1/256+0.005);
     assert.deepEqual(Array.from(decoded.slice(0,4)),[104,144,0,255],'negative depths stay signed');
   } finally {if(previous===undefined)delete globalThis.OffscreenCanvas;else globalThis.OffscreenCanvas=previous;}
+});
+
+const nativeGrid = (size, height) => ({width:size,height:size,
+  data:Float32Array.from({length:size*size},(_,i)=>height((i%size+.5)/size,(Math.floor(i/size)+.5)/size))});
+
+test('native 256 and 512 pixel-centred ramps compose onto the same physical mesh',()=>{
+  const ramp=(u,v)=>-435+128*u+64*v;
+  const expected=composeTerrainHeights(nativeGrid(256,ramp));
+  const fine=nativeGrid(512,ramp),before=fine.data.slice();
+  assert.deepEqual(composeTerrainHeights(fine),expected);
+  assert.deepEqual(fine.data,before,'native cache remains untouched');
+  for(const size of [256,512]){
+    const coarse=nativeGrid(size,(u,v)=>-2000+512*u+256*v);
+    for(const tile of [{scale:1,ox:0,oy:0},{scale:16,ox:15,oy:2}]){
+      const x=80,y=96,u=(tile.ox+(x+.5)/256)/tile.scale,v=(tile.oy+(y+.5)/256)/tile.scale;
+      assert.equal(sampleSeabed(coarse,tile,x,y),-2000+512*u+256*v);
+    }
+  }
+  // Adjacent XYZ tiles use pixel centres, not duplicated endpoint samples.
+  const west=composeTerrainHeights(nativeGrid(512,(u)=>100+256*u));
+  const east=composeTerrainHeights(nativeGrid(512,(u)=>356+256*u));
+  assert.equal(east[0]-west[255],1);
+});
+
+test('mixed native fusion preserves negative land, sea-level land and backed cliff steps',()=>{
+  const fine=nativeGrid(512,(u)=>u<.25?-435:u<.5?0:800);
+  const coarse=nativeGrid(256,()=>-2400),mask=maskAt([[0,0],[255,0]]);
+  const values=composeTerrainHeights(fine,coarse,{scale:1,ox:0,oy:0},mask);
+  assert.equal(values[0],-2400);assert.equal(values[1],-435);
+  assert.equal(values[64],0);assert.equal(values[127],0);
+  assert.equal(values[128],800);assert.equal(values[254],800);assert.equal(values[255],-2400);
+  assert.equal(needsSeabedRecovery(fine,14),true);
+  assert.equal(needsSeabedRecovery(nativeGrid(512,()=>-435),14),false);
+});
+
+test('native resampling rejects unknown contributors rather than hiding them in an average',()=>{
+  for(const invalid of [NaN,Infinity,-16000,12000]){
+    const fine=nativeGrid(512,()=>0);fine.data[0]=invalid;
+    assert.throws(()=>composeTerrainHeights(fine),/Invalid 3D elevation height/);
+    assert.throws(()=>composeTerrainHeights(nativeGrid(256,()=>100),fine,
+      {scale:1,ox:0,oy:0},maskAt([[0,0]])),/Invalid 3D elevation height/);
+  }
+  for(const size of [128,257,1024])assert.throws(()=>composeTerrainHeights(nativeGrid(size,()=>0)),/dimensions/);
+  assert.throws(()=>composeTerrainHeights({width:512,height:256,data:new Float32Array(512*256)}),/dimensions/);
+});
+
+test('3D recovery can retain a distinct seabed reader without routing land to it',async()=>{
+  const oldWorker=globalThis.Worker,oldCanvas=globalThis.OffscreenCanvas;
+  const calls=[],messages=[];let protocol;
+  const ocean={layers:{water:{length:1,extent:4096,feature:()=>({type:3,properties:{class:'ocean'},
+    loadGeometry:()=>[[{x:0,y:0},{x:4096,y:0},{x:4096,y:4096}]]})}}};
+  const worker={postMessage(message){messages.push(message);queueMicrotask(()=>this.onmessage({data:{id:message.id,data:new ArrayBuffer(1)}}));}};
+  try{
+    globalThis.Worker=class {};globalThis.OffscreenCanvas=class {};
+    const land={getDemTile:async(z,x,y)=>{calls.push(['land',z,x,y]);return nativeGrid(512,()=>0);}};
+    const seabedDem={getDemTile:async(z,x,y)=>{calls.push(['sea',z,x,y]);return nativeGrid(256,()=>-1000);}};
+    installTerrain3D({addProtocol:(_,handler)=>{protocol=handler;}},land,
+      {seabedDem,waterTile:async()=>({data:new ArrayBuffer(1)}),readTile:()=>ocean,createWorker:()=>worker});
+    await protocol({url:'atlas-terrain://12/45/29'},new AbortController());
+    assert.deepEqual(calls,[['land',12,45,29],['sea',10,11,7]]);
+    assert.equal(messages[0].fine.width,512);assert.equal(messages[0].coarse.width,256);
+    assert.equal(composeTerrainHeights(messages[0].fine,messages[0].coarse,messages[0].tile,maskAt([[0,0]]))[0],-1000);
+  }finally{
+    if(oldWorker===undefined)delete globalThis.Worker;else globalThis.Worker=oldWorker;
+    if(oldCanvas===undefined)delete globalThis.OffscreenCanvas;else globalThis.OffscreenCanvas=oldCanvas;
+  }
+});
+
+test('worker and page encode the same native land grid and both reject invalid samples',async()=>{
+  const oldSelf=globalThis.self,oldCanvas=globalThis.OffscreenCanvas;
+  const replies=[];
+  class PixelCanvas{
+    constructor(width,height){assert.equal(width,256);assert.equal(height,256);}
+    getContext(){return {createImageData:()=>({data:new Uint8ClampedArray(256*256*4)}),
+      putImageData:image=>{this.pixels=image.data;}};}
+    async convertToBlob(){return {arrayBuffer:async()=>this.pixels.buffer.slice(0)};}
+  }
+  try{
+    globalThis.OffscreenCanvas=PixelCanvas;
+    globalThis.self={postMessage:reply=>replies.push(reply)};
+    await import('../styles/terrain-3d-worker.mjs');
+    const fine=nativeGrid(512,(u,v)=>-435+512*u+256*v);
+    const expected=await encodeTerrainPng(composeTerrainHeights(fine));
+    await self.onmessage({data:{id:1,fine}});
+    assert.equal(replies[0].id,1);assert.deepEqual(new Uint8Array(replies[0].data),new Uint8Array(expected));
+    fine.data[0]=NaN;
+    await self.onmessage({data:{id:2,fine}});
+    assert.match(replies[1].error,/Invalid 3D elevation height/);assert.equal(replies[1].data,undefined);
+  }finally{
+    if(oldSelf===undefined)delete globalThis.self;else globalThis.self=oldSelf;
+    if(oldCanvas===undefined)delete globalThis.OffscreenCanvas;else globalThis.OffscreenCanvas=oldCanvas;
+  }
 });
