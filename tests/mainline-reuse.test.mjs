@@ -66,13 +66,13 @@ test('generator identity follows actual transform dependencies and package lock,
   for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
   await mkdir(join(root,'tests/fixtures'),{recursive:true});await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const data=await referenceDataInputDigest(root),renderer=await referenceInputDigest(root);
-  for(const path of ['styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){
+  for(const path of ['styles/map-model.mjs','styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){
    const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n// renderer or acceptance change\n')]));
    assert.equal(await referenceDataInputDigest(root),data,path);
    assert.notEqual(await referenceInputDigest(root),renderer,path);
    await writeFile(file,bytes);
   }
-  for(const path of [...DATA_INPUTS,'styles/pbf-utf8.mjs']){
+  for(const path of [...DATA_INPUTS,'styles/pbf-utf8.mjs','styles/owner-color.mjs']){
    const file=join(root,path),bytes=await readFile(file);await writeFile(file,Buffer.concat([bytes,Buffer.from('\n')]));
    assert.notEqual(await referenceDataInputDigest(root),data,path);await writeFile(file,bytes);
   }
@@ -108,7 +108,7 @@ else:
    PATH:bin+':'+process.env.PATH,GITHUB_REPOSITORY:'fixture/repository',GITHUB_OUTPUT:output,
    REFERENCE_EVENT:'pull_request',MOCK_MANIFEST:payload,MOCK_CALLS:calls,...extra}});
   const result=run({});assert.equal(result.status,0,result.stderr);
-  assert.equal(await readFile(output,'utf8'),`reuse=true\nreference_sha=${sha}\nreference_date=2026-10-09\n`);
+  assert.equal(await readFile(output,'utf8'),`reuse=true\nreference_sha=${sha}\nreference_date=2026-10-09\ncheckpoint_run=\n`);
   assert.equal((await readFile(calls,'utf8')).trim().split('\n').length,2,'no provider request or acquisition command');
   await writeFile(output,'');assert.notEqual(run({MOCK_FAIL:'1'}).status,0);
   assert.equal(await readFile(output,'utf8'),'','a failed candidate read cannot select acquisition');

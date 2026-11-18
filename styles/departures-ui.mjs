@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261116-polar-final-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261118-owner-schema-merge-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

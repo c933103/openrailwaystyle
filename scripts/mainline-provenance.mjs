@@ -43,11 +43,11 @@ async function nativeStyleInputs(root,dir='styles'){
  }
  return files;
 }
-async function inputDigest(root,inputs){
+async function inputDigest(root,inputs,readBytes=readFile){
  const entries=new Map(),queue=[...inputs];
  while(queue.length){
   const path=queue.pop();if(entries.has(path))continue;
-  const bytes=await readFile(resolve(root,path));entries.set(path,sha256(bytes));
+  const bytes=await readBytes(resolve(root,path));entries.set(path,sha256(bytes));
   if(/\.(?:mjs|js)$/.test(path))for(const match of bytes.toString().matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"](\.[^'"]+)['"]/g)){
    const dependency=relative(root,resolve(root,dirname(path),match[1].split('?')[0]));
    if(dependency.startsWith('..'))throw Error('Reference dependency escaped repository');
@@ -63,6 +63,11 @@ async function inputDigest(root,inputs){
 export async function referenceDataInputDigest(root=process.cwd()){
  root=resolve(root);
  return inputDigest(root,DATA_INPUTS);
+}
+// Hash immutable GitHub source bytes with the same dependency closure as local inputs.
+export async function referenceDataInputDigestFrom(readSource){
+ const root=resolve('/__reference_source__');
+ return inputDigest(root,DATA_INPUTS,path=>readSource(relative(root,path)));
 }
 export async function referenceInputDigest(root=process.cwd()){
  root=resolve(root);
