@@ -62,7 +62,8 @@ try{
      resolve(count);
     }catch(error){reject(error);}});energyMap.triggerRepaint();
    }));
-   assert.ok(await page.evaluate(()=>energyMap.loaded()&&energyMap.areTilesLoaded()&&energyPending===0),'pixel capture must retain settled tile demand');
+   observed.afterCapture=await page.evaluate(()=>({loaded:energyMap.loaded(),tilesLoaded:energyMap.areTilesLoaded(),pending:energyPending,protocolRequests:[...energyCalls],errors:[...energyErrors]}));
+   assert.ok(observed.afterCapture.loaded&&observed.afterCapture.tilesLoaded&&observed.afterCapture.pending===0,'pixel capture must retain settled tile demand');
    observed.protocolRequests=await page.evaluate(()=>energyCalls);observed.errors=await page.evaluate(()=>energyErrors);
    if(!candidate)assertEnergyFixturePixels(observed.energyPixels,active);
    if(camera.expectedBundle&&active)assert.ok(requests.some(r=>r.path===camera.expectedBundle),'candidate hotspot bundle was not fetched');
