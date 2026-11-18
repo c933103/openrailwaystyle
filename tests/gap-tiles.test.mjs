@@ -585,11 +585,15 @@ test('an instance that stops answering hands the next tiles to the next instance
   assert.throws(() => overpassInstances({OVERPASS_URLS: ' , '}), /No Overpass instance/);
 });
 
-test('tiles without a working copy go first, then the oldest', async t => {
+test('tiles without a working copy go first, then those made with an older filter, then the oldest', async t => {
   const tiles = ['a', 'b', 'c', 'd', 'e'].map(key => ({key}));
-  const index = {regions: {'gap/a': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/b': {sourceTimestamp: '2026-11-05T06:00:00Z'},
-    'gap/d': {sourceTimestamp: '2026-11-09T14:00:00Z'}, 'gap/e': {sourceTimestamp: 'not a date'}}};
+  const filter = GAP_FILTER_HASH;
+  const index = {regions: {'gap/a': {sourceTimestamp: '2026-11-09T14:00:00Z', filter}, 'gap/b': {sourceTimestamp: '2026-11-05T06:00:00Z', filter},
+    'gap/d': {sourceTimestamp: '2026-11-09T14:00:00Z', filter}, 'gap/e': {sourceTimestamp: 'not a date', filter}}};
   assert.deepEqual(tileOrder(tiles, index).map(t => t.key), ['c', 'e', 'b', 'a', 'd']);
+  // A newer tile asked with an older query goes before every current one.
+  const older = {regions: {...index.regions, 'gap/d': {sourceTimestamp: '2026-11-11T10:00:00Z', filter: 'overpass:older'}, 'gap/a': {sourceTimestamp: '2026-11-10T10:00:00Z', filter: 'overpass:older'}}};
+  assert.deepEqual(tileOrder(tiles, older).map(t => t.key), ['c', 'e', 'a', 'd', 'b']);
   assert.deepEqual(tileOrder(tiles).map(t => t.key), ['a', 'b', 'c', 'd', 'e'], 'the first run keeps the planned order');
   const root = await mkdtemp(join(tmpdir(), 'gap-order-'));
   t.after(() => rm(root, {recursive: true, force: true}));

@@ -1,7 +1,8 @@
 // Shared only by the existing polar elevation and OSM maintenance reads.
 // A provider pause belongs to its origin, not only the query that received it.
 import {retryAfterMs} from './retry-after.mjs';
-const MAX_PROVIDER_WAIT_MS=15*60_000;
+// The lifecycle snapshot job (build-snapshot.mjs) uses the same limit.
+export const MAX_PROVIDER_WAIT_MS=15*60_000;
 export function createPolarTextFetcher({userAgent,fetcher=fetch,now=()=>Date.now(),clock=()=>performance.now(),
  wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),warn=console.warn}={}){
  const providers=new Map();

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {webcrypto, createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {backportMapLibre524} from '../styles/map-controls.mjs';
+import {buildAtlas3Text} from './fixtures/atlas3-maplibre.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 import * as cachedStationCompatibility from './fixtures/cached-station-compatibility.mjs';
 
@@ -22,6 +23,18 @@ const patchedMapLibre=Buffer.from(await backportMapLibre524(
   legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js').body,webcrypto.subtle));
 const previousMapLibre=Buffer.from(legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js').body.toString('utf8')
   .replace('of e.attributes)d.isPossiblyDangerous','of Array.from(e.attributes))d.isPossiblyDangerous').replace('//# sourceMappingURL=maplibre-gl.js.map\n',''));
+// atlas.2 = atlas.1 plus the GeoJSON worker repair the current backport
+// also carries; extract the repaired method from the patched bytes.
+const workerMethod=text=>{
+  const matches=[...text.matchAll(/_parseWorkerTile\(t,i,s\)\{return e\._\(this,void 0,void 0,\(function\*\(\)\{[\s\S]*?return r\}\)\)\}/g)].filter(match=>match[0].includes('encoding:"mvt"'));
+  assert.equal(matches.length,1);return matches[0][0];
+};
+const priorMapLibre=Buffer.from(previousMapLibre.toString('utf8').replace(workerMethod(previousMapLibre.toString('utf8')),workerMethod(patchedMapLibre.toString('utf8'))));
+// atlas.3 = atlas.2 plus the Mongolian shaping span and hooks
+// (fixtures/atlas3-maplibre.mjs, pinned by the backport test).
+const atlas3MapLibre=Buffer.from(buildAtlas3Text(
+  legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js').body.toString('utf8'),
+  patchedMapLibre.toString('utf8')));
 
 // Installing workers have a small network concurrency budget. A fetch resolves
 // at headers, but its slot is only released when the response body is consumed.
@@ -66,8 +79,10 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     if (counts.active >= 3) await new Promise(resolve => queue.push(resolve));
     else counts.active++;
     counts.started++; counts.peak = Math.max(counts.peak, counts.active);
-    const legacy=new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.2.js')
-      ? {body:patchedMapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
+    const legacy=new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.4.js')
+      ? {body:patchedMapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.3.js')
+      ? {body:atlas3MapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.2.js')
+      ? {body:priorMapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
       ? {body:previousMapLibre,type:'application/javascript'} : legacyDistributions.get(url) ?? (new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0.js')
       ? legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js') : null);
     const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
@@ -137,7 +152,7 @@ test('installation drains response bodies without exhausting its three network s
   assert.equal(await app.clone().text(), `new: ${scope}app.mjs?v=new`);
 });
 
-for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0-atlas.2.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
+for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
   test(`a truncated ${fail} response cannot publish or activate an incomplete shell`, async () => {
     const worker = startWorker({fail});
     await assert.rejects(bounded(worker.lifecycle('install')), /truncated response/);
@@ -422,8 +437,8 @@ test('first-party libraries install together and remain available offline with e
   await worker.lifecycle('activate');
   assert.ok(worker.requests.every(url => new URL(url).origin === new URL(scope).origin));
   worker.setOffline();
-  for (const path of ['vendor/maplibre-gl-5.24.0-atlas.2.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js']) {
-    const expected=path.endsWith('-atlas.2.js')?patchedMapLibre.toString('utf8'):`new: ${scope}${path}?v=new`;
+  for (const path of ['vendor/maplibre-gl-5.24.0-atlas.4.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js']) {
+    const expected=path.endsWith('-atlas.4.js')?patchedMapLibre.toString('utf8'):`new: ${scope}${path}?v=new`;
     assert.equal(await (await worker.request(path)).text(), expected);
     assert.equal(await (await worker.request(path+'?v=new')).text(), expected);
   }
@@ -482,7 +497,7 @@ for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy cache mig
     else assert.equal(servedResponse.type,'error','serving must validate again before exposing the response');
   }
   next.setOffline();
-  assert.deepEqual(Buffer.from(await(await next.request('vendor/maplibre-gl-5.24.0-atlas.2.js')).arrayBuffer()),patchedMapLibre,'first-party installation remains independent of legacy recovery');
+  assert.deepEqual(Buffer.from(await(await next.request('vendor/maplibre-gl-5.24.0-atlas.4.js')).arrayBuffer()),patchedMapLibre,'first-party installation remains independent of legacy recovery');
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
 
@@ -501,7 +516,7 @@ test('actual first-party worker migration serves fixed bytes to delayed old tabs
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
   const cache=next.stores.get(`atlas-shell-${generation}`);
   assert.ok(![...cache.keys()].some(url=>url.startsWith(scope+'vendor/maplibre-gl-5.24.0.js')),'original executable JS is not migrated');
-  cache.set(scope+'vendor/maplibre-gl-5.24.0-atlas.2.js',new Response(Buffer.concat([patchedMapLibre,Buffer.from(' ')]),{headers:{'content-type':'text/javascript'}}));
+  cache.set(scope+'vendor/maplibre-gl-5.24.0-atlas.4.js',new Response(Buffer.concat([patchedMapLibre,Buffer.from(' ')]),{headers:{'content-type':'text/javascript'}}));
   assert.equal((await next.request('vendor/maplibre-gl-5.24.0.js')).type,'error','modified legacy first-party bytes must not execute');
 });
 
@@ -911,7 +926,7 @@ test('search row-isolation release updates cached app/model together and retains
   const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.notEqual(version,previous,'the changed search parser requires a fresh release token');
-  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs','service-frequency.mjs'];
+  const paths=['app.mjs','map-model.mjs','platform-length.mjs','railway-visibility.mjs','axle-load.mjs','service-frequency.mjs','owner-color.mjs'];
   const current=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL('../styles/'+path,import.meta.url),'utf8')]));
   // Compact preceding-cache payloads exercise version isolation, not historical
   // source reconstruction. New module bytes are exact current build inputs.

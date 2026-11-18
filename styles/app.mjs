@@ -1,36 +1,38 @@
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261117-energy-final-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261117-energy-final-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261117-energy-final-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261117-energy-final-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261117-energy-final-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261118-energy-integration-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261118-energy-integration-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261118-energy-integration-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261118-energy-integration-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261118-energy-integration-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261117-energy-final-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261117-energy-final-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261117-energy-final-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261117-energy-final-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261118-energy-integration-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261118-energy-integration-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261118-energy-integration-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261118-energy-integration-1';
+import {createWorldFonts} from './world-font.mjs?v=20261118-energy-integration-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261118-energy-integration-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261117-energy-final-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261117-energy-final-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261118-energy-integration-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261118-energy-integration-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261117-energy-final-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261117-energy-final-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261117-energy-final-1';
-import {departureItem} from './departures-ui.mjs?v=20261117-energy-final-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261117-energy-final-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261117-energy-final-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261117-energy-final-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261117-energy-final-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261117-energy-final-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261117-energy-final-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261117-energy-final-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261117-energy-final-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261117-energy-final-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261117-energy-final-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261117-energy-final-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261117-energy-final-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261117-energy-final-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261117-energy-final-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261117-energy-final-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261118-energy-integration-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261118-energy-integration-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261118-energy-integration-1';
+import {departureItem} from './departures-ui.mjs?v=20261118-energy-integration-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261118-energy-integration-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261118-energy-integration-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261118-energy-integration-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261118-energy-integration-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261118-energy-integration-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261118-energy-integration-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261118-energy-integration-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261118-energy-integration-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261118-energy-integration-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261118-energy-integration-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261118-energy-integration-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261118-energy-integration-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261118-energy-integration-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261118-energy-integration-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261118-energy-integration-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -87,7 +89,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261117-energy-final-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261118-energy-integration-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -108,7 +110,7 @@ async function cachedLegacyLibrary(name) {
     for (const key of names) {
       const cache = await window.caches.open(key);
       if (!await cache.match(new URL('./', import.meta.url).href)) continue;
-      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href, new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', import.meta.url).href] : []),
+      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href, new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', import.meta.url).href] : []),
         new URL(library.local, import.meta.url).href, library.url];
       for (const url of urls) {
         const response = await cache.match(url);
@@ -170,7 +172,7 @@ function restoreCachedMapStyle() {
 $('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
 restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.2.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
   loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
@@ -197,6 +199,15 @@ const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered
 // Rare Han glyph slices, loaded for the labels of each tile before it is drawn;
 // one that arrives after a label was drawn without it redraws the labels.
 const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:()=>refreshCjkFont()});
+// Packaged world label fonts (world-font.mjs) and the glyphs generated
+// from them (glyph-fallback.mjs, created through the label bundle in
+// initialize): the remote glyph source leaves whole scripts empty, so
+// the atlasglyph protocol generates those glyphs from these slices on
+// the device, with no dependence on fonts the device has. A slice that
+// arrives after its glyphs were drawn without it drops the cached
+// glyphs and redraws the labels, like a rare Han slice.
+let worldGlyphFallback;
+const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshCjkFont();}});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
 // Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
@@ -346,6 +357,15 @@ function updateDetailGlyphs() {
       }
       fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
     }
+    // Traditional Mongolian runs stand vertically (mongolian-text.mjs).
+    // A fresh walk, because the CJK pass above replaced its text nodes;
+    // text inside either kind of wrapped run is already handled.
+    const mongolianWalker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), mongolianNodes = [];
+    while (mongolianWalker.nextNode()) {
+      const node = mongolianWalker.currentNode;
+      if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs], .atlas-mongolian') && hasMongolian(node.data)) mongolianNodes.push(node);
+    }
+    for (const node of mongolianNodes) node.replaceWith(nameFragment(document, node.data));
   } finally {
     // All renderers share this container, including asynchronous departures
     // and nearby names. Existing text-node edits need the same treatment.
@@ -359,6 +379,8 @@ function loadDetailFonts() {
   if (/\p{Script=Han}/u.test(text)) loadCjkFont(cjkScript(settings.language));
   const blocks = rareHanBlocks(text);
   if (blocks.size) void rareHanFonts.ensure(blocks);
+  const mongolian = mongolianFontRequests(text);
+  if (mongolian.size) void worldFonts.ensure(mongolian);
 }
 updateDetailGlyphs();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
@@ -382,6 +404,20 @@ const errors = new Map(), sourceFailureStates = new Map();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
   if (className) el.className = className;
+  return el;
+};
+// A display name that may carry traditional Mongolian: its runs stand
+// vertically (mongolian-text.mjs) and the packaged slices are requested
+// (they swap in when loaded; rendering never waits on them). Names
+// without Mongolian keep the plain text-node path unchanged. The
+// detail panel needs no such helper: updateDetailGlyphs treats every
+// text node rendered into it, whichever renderer produced it.
+const nameNode = (tag, value, className) => {
+  if (!hasMongolian(value)) return textNode(tag, value, className);
+  const el = document.createElement(tag); if (className) el.className = className;
+  el.append(nameFragment(document, value));
+  const requests = mongolianFontRequests(value);
+  if (requests.size) void worldFonts.ensure(requests);
   return el;
 };
 const {row, controlSystemLabel, controlSystemRow} = createInspectorRows(textNode);
@@ -1469,7 +1505,8 @@ async function initialize() {
   const basemapSource = labelCode.createBasemapSourceFactory(pmtiles);
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(basemapSource(url), 20000));
   const requestRefresh=createReferenceRefresh(()=>{if(ready)applyRailReferenceState();});
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure,
+  worldGlyphFallback = labelCode.createGlyphFallback({worldFonts, language: () => settings.language});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure, glyphFallback: worldGlyphFallback,
     onRequestChange:requestRefresh.notify, isMoving:() => Boolean(map?.isMoving() || map?.isZooming())});
   const reference=createReferenceReader({root:new URL('./data/mainline-reference/',import.meta.url)});
   maplibregl.addProtocol('mainlinetiles',async(params,controller)=>({
@@ -2251,7 +2288,7 @@ $('search-form').addEventListener('submit', async e => {
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
-      button.append(textNode('span', title), textNode('small', detail));
+      button.append(nameNode('span', title), nameNode('small', detail));
       button.addEventListener('click', () => { onClick(); narrow(); });
       li.append(button); results.append(li);
     };

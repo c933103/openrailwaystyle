@@ -153,8 +153,12 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
       way(105, [30, 31, 32, 30], tag('historic', 'battlefield')), way(106, [33, 34], tag('abandoned:electrified', 'rail')),
       way(107, [35, 36], tag('railway', 'tram'), tag('propulsion', 'linear_motor')),
     ];
-    const dropped = [node(9, tag('power', 'tower')), node(10, tag('name', 'x')), node(14, tag('landuse', 'residential')), way(200, [40, 41], tag('highway', 'primary')),
-      way(201, [42, 43], tag('power', 'line'), tag('usage', 'transmission')), way(202, [44, 45, 46, 44], tag('historic', 'memorial'))];
+    // Any power object is selected for the energy network (nwr/power), with
+    // or without a railway hint: a tower, a transmission line.
+    kept.push(node(9, tag('power', 'tower')));
+    ways.push(way(201, [42, 43], tag('power', 'line'), tag('usage', 'transmission')));
+    const dropped = [node(10, tag('name', 'x')), node(14, tag('landuse', 'residential')), way(200, [40, 41], tag('highway', 'primary')),
+      way(202, [44, 45, 46, 44], tag('historic', 'memorial'))];
     const plainNodes = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46].map(id => node(id));
     const relations = '<relation id="300" version="1"><member type="way" ref="100" role=""/>' + tag('type', 'route') + tag('route', 'subway') + '</relation>'
       + '<relation id="301" version="1"><member type="way" ref="200" role=""/>' + tag('type', 'route') + tag('route', 'bus') + '</relation>';
@@ -163,10 +167,10 @@ test('osmium selects what the datasets need and leaves the rest out', {skip: osm
     const run = spawnSync('osmium', ['tags-filter', join(dir, 'in.osm'), '-e', join(dir, 'filter.txt'), '-f', 'opl', '-o', '-'], {encoding: 'utf8'});
     assert.equal(run.status, 0, run.stderr);
     const ids = new Set(run.stdout.trim().split('\n').map(line => line.split(' ')[0]));
-    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n11', 'n12', 'n13', 'n15', 'n16', 'n17', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'r300']) assert.ok(ids.has(id), `${id} kept`);
+    for (const id of ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'n11', 'n12', 'n13', 'n15', 'n16', 'n17', 'w100', 'w101', 'w102', 'w103', 'w104', 'w105', 'w106', 'w107', 'w201', 'r300']) assert.ok(ids.has(id), `${id} kept`);
     for (const id of variantIds) assert.ok(ids.has(`n${id}`), `n${id}: ASCII hint selected by osmium`);
-    for (const id of ['n20', 'n21', 'n30', 'n35']) assert.ok(ids.has(id), `${id}: nodes of a selected way are kept`);
-    for (const id of ['n9', 'n10', 'n14', 'w200', 'w201', 'w202', 'r301', 'n40', 'n42']) assert.ok(!ids.has(id), `${id} left out`);
+    for (const id of ['n20', 'n21', 'n30', 'n35', 'n42']) assert.ok(ids.has(id), `${id}: nodes of a selected way are kept`);
+    for (const id of ['n10', 'n14', 'w200', 'w202', 'r301', 'n40']) assert.ok(!ids.has(id), `${id} left out`);
   } finally {
     rmSync(dir, {recursive: true, force: true});
   }

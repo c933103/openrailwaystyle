@@ -199,3 +199,15 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 .data-ages { border-collapse: collapse; margin: 0.25em 0 0.75em; }
 .data-ages th, .data-ages td { text-align: left; padding: 0.15em 0.75em 0.15em 0; vertical-align: top; }
 .data-ages-notice, .data-age-stale { color: #8a4b00; }
+/* Traditional Mongolian runs (mongolian-text.mjs) stand vertically in
+   horizontal panels: vertical-lr gives top-to-bottom letters in
+   left-to-right columns, the script's own layout. The packaged Atlas
+   Mongolian design leads the stack, so no device font is required.
+   No text-orientation: upright collapses the glyphs in Blink.
+   The span is an inline block aligned to the line's top, so a mixed
+   name (Cyrillic + Mongolian) keeps its horizontal part on the first
+   line and the column descends beside it; max-inline-size (the
+   vertical extent in this writing mode) caps a long name at about
+   nine lines' worth, after which it wraps into further columns to
+   the right instead of stretching the panel. */
+.atlas-mongolian{writing-mode:vertical-lr;display:inline-block;vertical-align:top;max-inline-size:9.5em;font-family:"Atlas Mongolian","Noto Sans Mongolian",sans-serif}

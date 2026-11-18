@@ -83,7 +83,7 @@ The same workflow also plans which Geofabrik files the extract pipeline would do
   - **Requests** (`scripts/acquire-gap-tiles.mjs`, job `gaps` of `osm-extract.yml`). One `[out:xml]` request per tile, with `(.g;.g >>;)` for complete downward recursion, including nested relation members and their descendants, and `out meta`, 10 s apart and never in parallel, at most 400 requests and a 1 GB consumed-body budget per run. Body chunks count as they arrive, including failed reads; reaching the byte limit cancels the stream without retrying. The final transport chunk can cross the limit and is counted in full. A tile is split into quarters only when Overpass says the query itself ran out of time or memory. A busy or unreachable server is asked again after 2, 5 and 10 minutes (or its Retry-After), then the tile keeps its copy.
     **Instances.** Overpass-api.de first. When it does not answer 2 tiles in a row, the next tiles go to the next instance on the list, overpass.private.coffee (its operator and terms are in [external services](external-services.md)); the run stops only when every instance has failed that way. Never two at once, and the run's budget is shared. Each tile records the instance that answered it (`url`). `OVERPASS_URLS` (comma-separated, HTTPS only) replaces the list. Added after connections from the runners to overpass-api.de timed out for hours on 2026-11-09 and 11-10.
     **Waiting for an answer.** Each request may take up to its 6-minute limit. Node's fetch would otherwise stop waiting for the response headers after 300 s (undici's default), which cut off a busy instance on 2026-11-11. Requests carry an `Agent` from the `undici` package (8.11.2) with its headers and body timeouts at the request's limit; Node's fetch accepts it only from the undici major version Node bundles, so on a Node whose bundled undici differs, requests keep the default and the run prints a warning.
-    Run limits: tiles without a working copy are asked first, then the oldest, so a run cut short does not leave the same tiles behind each time. Two tiles in a row that got no answer to any of their requests (4 each, over about 17 minutes) stop the run: the server is down, not busy, and the remaining tiles keep their copies. The job's time budget (`GAP_TIME_BUDGET_MINUTES`, 170 of the job's 180 minutes) ends the run with its outputs and its `OVERPASS_USAGE` line written: no request starts unless its whole 6-minute timeout fits, and a retry that no longer fits ends the run. Each tile and each failed request is logged with its time, and a request that got no answer records the reason fetch gave (for example `UND_ERR_SOCKET: other side closed`).
+    Run limits: tiles without a working copy are asked first, then those made with an older filter or gap query, then the oldest, so a run cut short does not leave the same tiles behind each time. Two tiles in a row that got no answer to any of their requests (4 each, over about 17 minutes) stop the run: the server is down, not busy, and the remaining tiles keep their copies. The job's time budget (`GAP_TIME_BUDGET_MINUTES`, 170 of the job's 180 minutes) ends the run with its outputs and its `OVERPASS_USAGE` line written: no request starts unless its whole 6-minute timeout fits, and a retry that no longer fits ends the run. Each tile and each failed request is logged with its time, and a request that got no answer records the reason fetch gave (for example `UND_ERR_SOCKET: other side closed`).
     Header-time pauses and HTTP retry backoffs share the calendar-validated Retry-After parser. Malformed dates keep the ordinary backoff; valid RFC850 and asctime dates retain their intended UTC delay. The gap workflow remains manually started, and its request/byte limits and longer-pause stop are unchanged.
   - **Working copies.** Each tile is stored like a region, as `gap/<tile box>` in the index, with its own filter hash (`overpass:…`), so it is never compared with a Geofabrik region. A tile never fetched is listed in `missing`, never taken for complete. A run without gap tiles keeps the stored ones.
   - **Gap tiles alone.** A run started with `gaps_only` downloads no region. It plans the regions (the Geofabrik index, Natural Earth land from GitHub, and one HEAD per region looked at), then fetches and publishes the gap tiles; every region keeps its working copy. Use it to fill tiles a run left without a file, without downloading the world again.
@@ -196,6 +196,26 @@ How the choice is made:
 - **Floor and completeness.** From a complete assembly, fewer than 100 features stop the run, as in the Overpass build. `source.json` is complete only when the assembly is.
 - **Checked against `street-data` of 2026-11-15.** The world assembled from the 2026-11-10 index took 73 s and 0.3 GB locally: 15,707 identical; 274 differ, 32 only in the extract, 23 only in Overpass. Traced through the Overpass branch's history as above, every difference is a feature that an earlier Overpass snapshot held and a snapshot after the region's time changed.
 
+**Historic areas (heritage).** Then `scripts/build-extract-heritage.mjs` builds them and, on `main`, publishes them to `heritage-extract-data`, in the `heritage-data` layout (bundles, `index.json`, `manifest.json`), without the Overpass build's per-region `elements/`.
+- **Selection.** `heritageQuery`'s, element by element, over the whole world (its region boxes together cover it): ways, and relations with `type` exactly `multipolygon` or `boundary`, tagged `historic=archaeological_site|battlefield|district`, `protect_class=22` or `heritage=1`, each value exact.
+- **Shapes.** As its `out geom` answer gives them: a way with its geometry; a relation with its member ways' geometry, read in a second pass from the members cut out with `osmium getid` (`shapeRelations`, as for the energy supplies). Converted by `heritageFeatures`.
+- **Same files.** The Overpass build and this one write with `writeHeritageSnapshot` (`scripts/heritage-files.mjs`). The manifest's coverage is the world's 45-degree regions, each with the assembly's oldest time and the areas an Overpass box there would hold; `oldestSource` is the date Help shows.
+- **Completeness.** From a complete assembly, an empty world stops the run, as in the Overpass build. `source.json` is complete only when the assembly is.
+
+**Axle load.** Then `scripts/build-extract-axle-load.mjs` builds the lookup and, on `main`, publishes it to `axle-load-extract-data`, in the `axle-data` layout (`axle-load.json`), with `manifest.json` and `source.json`.
+- **Selection.** That of `build-axle-load-list.mjs`'s queries, way by way: railway ways with `railway` exactly one of `AXLE_RAILWAYS` and any `axle_load`, `maxaxleload` or `railway:track_class`. The values are trimmed, as the Overpass CSV rows are.
+- **Same lookup.** Both builds make it with `axleLookup` (`scripts/axle-load-lookup.mjs`). `updated` is the assembly's oldest region time.
+- **Finland.** Overpass marks a way with a track class Finnish when it lies in Finland's `admin_level=2` area. The extract has no boundaries, so this build uses the region plan's `finland` polygon (Geofabrik's, from the index the run assembled) and marks a way with a node inside it. Geofabrik's polygon reaches a little beyond the border. Without that polygon in the index, the run stops.
+- **Floor and completeness.** From a complete assembly, fewer than 100,000 ways stop the run (the Overpass lookup had 425,848 on 2026-11-07). `source.json` is complete only when the assembly is.
+- **Checked against `axle-data` of 2026-11-07.** The world assembled from the 2026-11-10 index took 105 s and 0.35 GB locally: 425,841 ways identical, none different, and the same 8,278 Finnish ways. 30 are only in the extract, all new ways whose versions date from 2026-11-07 04:18 to 19:42, after the Overpass lookup (00:44). 7 are only in Overpass: old way ids that the assembly no longer holds as `railway` ways.
+
+**Planned, construction and former railways (lifecycle).** Then `scripts/build-extract-lifecycle.mjs` builds them, `scripts/pack-snapshot.py` packs the tiles, and, on `main`, the result is published to `lifecycle-extract-data`, in the `rail-data` layout (`manifest.json`, `loading-gauge.json`, and the archive and table in 80 MB parts).
+- **Selection.** `regionQuery`'s in `build-snapshot.mjs`, way by way, over the whole world: `railway` exactly one of the lifecycle states, or `<state>:railway` one of its track values. Each way is converted by `toGeoJSON` as it is read, so the build holds only the features (the world did not fit a 6 GB heap with the ways as well).
+- **Same files.** Both builds write with `writeLifecycleSnapshot` and check the 남부내륙선 regression with `lifecycleRegression` (`scripts/lifecycle-files.mjs`). The manifest's one part is the world at the assembly's oldest region time; `oldestSource` is the date Help shows.
+- **Loading-gauge list.** The same read gives `build-loading-gauge-list.mjs`'s selection, way by way: `railway` exactly one of the axle-load lookup's six values and any `loading_gauge`, trimmed and encoded with `encodeLoadingGauges` into the same `loading-gauge.json`. Checked against `rail-data` of 2026-11-17: 209,274 of 209,675 ways identical; 400 only in the extract, all edited from 2026-10-30 on (the Overpass list is older); 1 differs, edited on 2026-11-03; of the 16 only in Overpass, 15 are no longer in the assembly and one became `razed:railway` on 2026-11-01.
+- **Not complete yet.** `rail-data` also carries the polar caps, which this build does not make. So `source.json` stays not complete and lists them under `missing`, and the site keeps `rail-data`.
+- **Checked against `rail-data` of 2026-11-17** (parts from 2026-09-22 to 2026-11-10). The world assembled from the 2026-11-10 index took 191 s and 5.9 GB locally (with the loading-gauge list): 753,645 of 776,329 ways identical. The rest were traced with the assembly's own edit times: a way or one of its nodes edited after the Overpass part that holds it, or an Overpass part newer than the region file. The 2,158 ways only in Overpass that the assembly no longer holds as railway objects lie in parts older than the region files, except 37 in parts newer than them, 35 of which have ids above the extract's highest.
+
 **Fallback drill.**
 1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
 2. Run `site.yml` on `main` by hand.
@@ -213,7 +233,7 @@ The raw Overpass responses are kept in the `overpass-cache` release (the Actions
 
 A run on Monday and Friday, started from 03:23 UTC by the scheduler above (night across Europe, where most users of the public Overpass server are), brings every cached region response up to date with only its changes since its own database time: an Overpass augmented diff of the region's query, and the difference when the query changed (`updateElements` in `scripts/overpass-adiff.mjs`). Unlike the earlier `changed` filter, augmented diffs also report ways deleted from OSM or no longer tagged as planned, construction or former, and a way whose nodes moved, so a line that opens or is deleted disappears from the snapshot within a few days, and no region is re-downloaded on a timer. A region Overpass does not answer keeps its data and catches up next run. A region whose changes cannot be used (over the time limit, unreadable, removing over 5% of its ways) is downloaded in full by that run's region steps. Each region file records its query. Files cached before that were all made by the current query, which has not changed since the cache began on 2026-09-22. Each region update also logs its changes with their time (`delta.json`, `recordChanges` in `scripts/snapshot-delta.mjs`): a way shared with a region whose update failed takes the logged state wherever it is newer than that region's copy, deletions included, and an entry is pruned once every region is newer.
 
-A region downloaded in full is split into its quarters, and the split remembered (`.split`), only when Overpass reports an executed-query time or memory limit, in a JSON remark or an HTTP 5xx body. A network failure, HTTP 429, 503 or a busy gateway leaves it whole: after three attempts the run stops and the next run asks for it again, so an outage never leaves the world in more pieces.
+A region downloaded in full is split into its quarters, and the split remembered (`.split`), only when Overpass reports an executed-query time or memory limit, in a JSON remark or an HTTP 5xx body. A network failure, HTTP 429, 503 or a busy gateway leaves it whole: after three attempts the run stops and the next run asks for it again, so an outage never leaves the world in more pieces. Every request, full or for a cached region's changes, also waits out a `Retry-After` from Overpass's previous answer (seconds or an HTTP date, on elapsed time) when it is longer than the 15-second, 60-second or 5-second interval. The wait's end is saved for the run's later region steps (`provider-pause-<run>.json` in `.snapshot-cache`, left out of the `overpass-cache` release and of the refresh), so the next step does not ask before it either. A wait over 15 minutes, the limit the polar step in the same job uses, is not waited out: nothing more is sent to Overpass in this run while that much of it remains, and every region keeps its data for the next run.
 
 It also fetches the loading gauge of every railway way as a CSV list of way IDs (`scripts/build-loading-gauge-list.mjs`, about 4 MB), which colours the zoom 0–6 overview of the Loading gauge view, since no overview tiles carry loading gauge.
 
@@ -776,6 +796,49 @@ when refresh data is unavailable. A new fork must publish its first valid
 snapshot before deploying. The existing 5,000-feature acquisition floor and
 zoom-12 contract are unchanged. This structural check does not claim complete
 worldwide OSM coverage or freshness, and does not start a new extraction.
+
+## Continuing a changed extract selection
+
+`extract-rollout.yml` checks the working-copy index when the extract selection
+changes on main. Missing inputs or stale regional/gap selection hashes start the
+existing `osm-extract.yml` through its non-cancelling concurrency group. An active
+run may refresh only gap tiles, so source identity does not establish that it can
+update stale regional inputs. A full refresh is queued; unchanged working copies
+retain the existing size, MD5 and filter reuse checks. This adds no recurring schedule and retains the two-region parallelism,
+100 GiB plan cap and bounded gap requests.
+
+A successful same-repository main extract run can continue to `osm-assemble.yml`
+only when the loaded index was published by that run, has no missing planned
+inputs and every entry matches the current selection. This assembly is queued
+even if an older assembly of the same source is active: code identity does not
+establish which input generation that assembly loaded. Failed or partial refreshes
+do not advance. This preflight is dispatch readiness, not worldwide acceptance:
+assembly still reloads and validates its inputs, and each dataset retains its
+coverage, provenance and publication gates. An incomplete rollout remains visible
+in Actions rather than replacing an accepted dataset. Manual workflow controls
+remain available for dated refreshes and recovery.
+
+### Resuming interrupted signal change partitions
+
+The combined signal builder checkpoints successful augmented-diff responses and
+executed-query subdivision decisions at each node of its existing bounded
+quarter tree. A later failed quarter leaves the accepted region and both
+published snapshots unchanged. The next run can reuse completed quarters only
+when their exact query (region, start time and optional pinned end time) matches,
+the response validates again, and its recorded acquisition time is neither
+future-dated nor a week old. Resumed quarters keep the first accepted end time;
+the completed region retains the earliest response acquisition time rather than
+being relabeled fresh at restart. Corrupt, expired or mismatched records are
+requested again through the existing request policy.
+
+These are raw-response checkpoints in `.snapshot-cache`, preserved by the
+existing workflow cache and durable response archive. Each quarter-tree node has
+one overwriteable slot, so a new weekly generation does not accumulate new
+files. Transport failures do not become subdivision decisions. Three attempts,
+request spacing, Retry-After handling and maximum split depth are unchanged.
+This reduces repeated successful queries after an interruption; it does not
+make an unreachable provider reachable, publish partial coverage, add a workflow
+or initiate production acquisition.
 
 ## Optional energy-network extract builder
 

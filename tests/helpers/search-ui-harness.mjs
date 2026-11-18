@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
 import * as model from '../../styles/map-model.mjs';
+import * as mongolianText from '../../styles/mongolian-text.mjs';
 
 const app = await readFile(new URL('../../styles/app.mjs', import.meta.url), 'utf8');
 // Execute the actual request/cache/submission/rendering block, with real DOM
@@ -26,6 +27,9 @@ export function searchHarness({fetcher=async()=>response(), local=[], language='
     whenReady:fn=>fn(),showDetails:item=>details.push(item),searchResponse:model.searchResponse,searchResults:model.searchResults,tileStations:model.tileStations,drawnStationQueries:model.drawnStationQueries,displayName:model.displayName,
     SEARCH_API:model.SEARCH_API,PLACE_SEARCH_API:model.PLACE_SEARCH_API,matchMedia:()=>({matches:false}),locate:()=>({}),
     textNode:(tag,text,className)=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;},
+    // app.mjs's nameNode, with its real segmentation and fragment code;
+    // the packaged-font request it also makes is app wiring, not rendering.
+    nameNode:(tag,text,className)=>{const n=document.createElement(tag);if(className)n.className=className;if(mongolianText.hasMongolian(text))n.append(mongolianText.nameFragment(document,text));else n.textContent=text;return n;},
     fetch:async(url,options)=>{const copy=new URL(url);assert.ok([model.SEARCH_API,model.PLACE_SEARCH_API].some(api=>copy.href.startsWith(api)));calls.push({url:copy,options});return fetcher(copy,options);},
     Date:class extends Date {static now(){return now;}},
     setTimeout:(fn,ms)=>{const id=++serial;timers.set(id,{at:now+ms,fn});return id;},clearTimeout:id=>timers.delete(id),

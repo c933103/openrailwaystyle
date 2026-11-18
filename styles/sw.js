@@ -11,15 +11,19 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}80`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}83`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 80 integrates energy with final polar, terrain and rail corrections.
+// Shell 83 adds energy networks and retains ownership schema and the Mongolian fix.
+// The previous shell adds ownership schema to the Mongolian failure fix (the atlas.4 MapLibre repair:
+// form advances measured in full joining context, and vertical runs
+// breaking into columns at the label's size budget) to the Mongolian
+// label shaping shell.
 // Reuse the prior 3D/high-pitch controls and terrain-source integrity.
 // The complete module graph updates together; older open tabs retain their
 // versioned assets and verified MapLibre attribution backport.
 // Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
-const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.2.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.4.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
 const LEGACY_LIBRARIES = {
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
   'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
@@ -27,9 +31,11 @@ const LEGACY_LIBRARIES = {
 // Historical pages use plain script tags without SRI. Their v5 API remains
 // compatible, so future requests to either old JS URL receive verified fixed
 // bytes. Do not migrate original executable JS into the replacement cache.
-const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.2.js', self.registration.scope).href;
-const MAPLIBRE_PATCHED_SHA256 = '1d5066a984b7913ace268371faff76d16edfd2eb9d7331de56c33d93f31e201e';
+const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', self.registration.scope).href;
+const MAPLIBRE_PATCHED_SHA256 = 'd0ed321052a01314a9b3dd5384e0acecb1399fc755f4d3e3f07681f6ba213150';
 const LEGACY_MAPLIBRE = new Set([
+  new URL('vendor/maplibre-gl-5.24.0-atlas.3.js', self.registration.scope).href,
+  new URL('vendor/maplibre-gl-5.24.0-atlas.2.js', self.registration.scope).href,
   new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', self.registration.scope).href,
   new URL('vendor/maplibre-gl-5.24.0.js', self.registration.scope).href,
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
@@ -38,7 +44,7 @@ const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'energy-network.mjs', 'energy-network-schema.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'owner-color.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'world-font.mjs', 'mongolian-text.mjs', 'mongolian-shaping.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'energy-network.mjs', 'energy-network-schema.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -172,8 +178,9 @@ self.addEventListener('fetch', event => {
   // retain it offline without making installation download both large files.
   // Rare Han slices (rare-han.mjs) are kept the same way, one per 256
   // characters, with the index that lists them: without it no saved slice is
-  // used offline.
-  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)){
+  // used offline. World font slices (world-font.mjs) likewise, one per
+  // family, weight and 256 characters, with their index.
+  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)||/\/fonts\/world-v1\/([a-z0-9-]+-\d{3}-[0-9a-f]{3,4}\.woff2|index\.json)$/.test(url.pathname)){
     // Keeping a copy is best effort: without Cache Storage, or with it full,
     // the downloaded font is still served.
     event.respondWith((async()=>{
