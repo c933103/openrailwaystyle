@@ -108,8 +108,8 @@ Byte-range responses for archive assets remain supported.
 
 ### Historical topographic sheet preview
 
-To prepare a local historical sheet, use GDAL 3.9 or later with its Python
-bindings and `gdal2tiles`, plus the `pmtiles==3.8.1` Python package. Place an
+To prepare historical sheets, use GDAL 3.9 or later with its Python bindings
+and `gdal2tiles`, plus the `pmtiles==3.8.1` and Pillow Python packages. Place an
 original indexed-colour scan beside its OziExplorer calibration file. Check
 the sheet identification, printed date, and source credit against the original.
 
@@ -121,12 +121,60 @@ python3 scripts/prepare-soviet-topo.py /path/to/L32.map styles/data/soviet-topo 
   --source https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-orig
 ```
 
-The builder reads local files, uses the calibration datum and sheet footprint,
-and writes a versioned raster PMTiles archive and its index. It accepts one
-sheet per preview build. The archive and index live under the ignored data
+For a mosaic, pass a JSON catalogue in place of a single calibration file and
+omit the flags. The catalogue is an array with one object per sheet. Each
+object contains `calibration` (relative to the catalogue), `id`, `name`, `date`,
+`scale`, `source`, `credit`, `minzoom`, and `maxzoom`. For example:
+
+```json
+[
+  {
+    "calibration": "L32.map",
+    "id": "L-32",
+    "name": "Zürich and the central Alps",
+    "date": "Compiled 1970",
+    "scale": 1000000,
+    "source": "https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-orig",
+    "credit": "Mapstor scan and calibration, via ramSeraph",
+    "minzoom": 3,
+    "maxzoom": 10
+  }
+]
+```
+
+The builder reads local files only. It clips each scan to its sheet footprint,
+reprojects it using the calibration datum, and joins overlapping tiles without
+allocating a world-sized raster. It publishes separate archives by map scale and
+native zoom range so coarse sheets can overzoom through gaps in finer coverage.
+Split antimeridian-crossing raw sheets before processing. The generated
+`index.json` lists the groups in coarse-to-fine order. A group can also refer
+to several local archive parts, using SHA-256 filenames and a shared sheet
+catalogue. The preview reads both PNG and WebP archives.
+
+To assemble previously prepared archives, supply a JSON object with a
+`groups` array instead. Each group names its `scale`, `source` and `credit`,
+the local archive paths in `archives`, and the local GeoJSON path in
+`footprints`. Paths are relative to the catalogue. The footprint features
+carry sheet `id` and, where available, catalogue `year`. The same command
+validates the local files and creates the preview index:
+
+```sh
+python3 scripts/prepare-soviet-topo.py /path/to/archive-catalogue.json styles/data/soviet-topo
+```
+
+The worldwide preview uses the downloadable
+[1:1,000,000 archive and index](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-pmtiles)
+and all six parts plus the index of the
+[1:500,000 archive](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/500k-gs-pmtiles).
+The seven files occupy about 13.4 GB. A public deployment needs storage sized
+for those files and HTTP byte-range responses. A separate asset origin also
+needs compatible CORS and browser caching for immutable filenames.
+
+Use source downloads offered by the archive. Live provider map tiles do not
+feed the builder. The archives and index live under the ignored data
 directory. Run the local server and open
 [the sheet preview](http://127.0.0.1:4173/?sovietPreview=1&background=soviet#9/47.24/8.56).
-The background is available on loopback with a readable preview archive. The
+The background is available on loopback with readable preview archives. The
 modern basemap and seabed remain underneath the scanned area. The preview help
 shows the sheet date, scale, coverage cue, and attribution. The app shell alone
 is available offline. Preview archives are outside its service-worker cache.

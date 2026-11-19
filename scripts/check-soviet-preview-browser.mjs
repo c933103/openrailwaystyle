@@ -17,7 +17,7 @@ for (const [offset, number] of [
   [40, tileOffset], [56, tileOffset], [64, red.length], [72, 1], [80, 1], [88, 1],
 ]) header.writeBigUInt64LE(BigInt(number), offset);
 header.set([1, 1, 1, 2, 3, 3], 96); // Clustered, uncompressed index and PNG tiles at z3.
-for (const [offset, number] of [[102, 0], [106, 40], [110, 45], [114, 66]]) header.writeInt32LE(number * 1e7, offset);
+for (const [offset, number] of [[102, -40], [106, 40], [110, 45], [114, 66]]) header.writeInt32LE(number * 1e7, offset);
 const raster = Buffer.concat([header, directory, metadata, red]);
 const name = `${'a'.repeat(64)}.pmtiles`;
 const config = {version: 1, archive: name, sheets: [{
@@ -83,6 +83,11 @@ try {
     map.triggerRepaint();
   }));
   assert.ok(pixel[0] > 245 && pixel[1] < 10 && pixel[2] < 10, `historical raster renders over the map: ${pixel}`);
+  // This gap is inside the archive's bounding box but has no raster tile.
+  // Source settlement must succeed without raising an outage in that gap.
+  await page.evaluate(() => window.sovietMap.jumpTo({center: [-30, 47], zoom: 9}));
+  await page.waitForFunction(() => window.sovietMap.isSourceLoaded('soviet-topo'));
+  assert.match(await page.locator('#soviet-status').textContent(), /No historical sheet/);
   await page.evaluate(() => window.sovietMap.jumpTo({center: [-150, 30], zoom: 9}));
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('No historical sheet'));
   await page.locator('[data-background="map"]').click();

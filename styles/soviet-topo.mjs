@@ -1,6 +1,22 @@
-import {getLayerSemantics} from './layer-semantics.mjs?v=20261119-soviet-sheet-preview-1';
+import {getLayerSemantics} from './layer-semantics.mjs?v=20261119-soviet-sheet-preview-2';
 
 export const SOVIET_SOURCE = 'soviet-topo';
+export const isSovietSource = id => id === SOVIET_SOURCE || id?.startsWith(`${SOVIET_SOURCE}-`);
+const SCHEME = 'atlassoviet://';
+const TRANSPARENT = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+
+export function installSovietProtocol(maplibre, load) {
+  maplibre.addProtocol('atlassoviet', async (params, controller) => {
+    const result = await load({...params, url: `pmtiles://${params.url.slice(SCHEME.length)}`}, controller);
+    if (params.type === 'json') {
+      const tiles = result.data.tiles.map(url => url.replace(/^pmtiles:\/\//, SCHEME));
+      return {...result, data: {...result.data, tiles}};
+    }
+    // MapLibre's image queue needs decodable bytes to finish a request.
+    // PMTiles returns null where an archive has no raster tile at all.
+    return result.data === null ? {...result, data: TRANSPARENT.slice()} : result;
+  });
+}
 
 export function sovietPreviewAllowed(href) {
   let url;
@@ -29,14 +45,26 @@ export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}
     const response = await fetcher(new URL('index.json', dataRoot), {redirect: 'error', signal: AbortSignal.timeout(6000)});
     if (!response.ok) return null;
     const config = await response.json();
-    if (config.version !== 1 || typeof config.archive !== 'string' || !/^[a-f0-9]{64}\.pmtiles$/.test(config.archive)
-        || !Array.isArray(config.sheets) || !config.sheets.length || !config.sheets.every(validSheet)) return null;
-    const url = new URL(config.archive, dataRoot).href;
-    const archive = createArchive(url);
-    const header = await archive.getHeader();
-    if (header.tileType !== 2 || !Number.isInteger(header.minZoom) || !Number.isInteger(header.maxZoom)
-        || header.minZoom < 0 || header.minZoom > header.maxZoom || header.maxZoom > 13) return null;
-    return {url, archive, sheets: config.sheets};
+    // Items are ordered from the overview to finer scales. Each scale keeps its
+    // own source maxzoom, so the browser can overzoom a coarse sheet at a gap.
+    const groups = config.version === 2 ? config.groups : config.version === 1
+      ? [{archives: [config.archive], sheets: config.sheets}] : null;
+    if (!Array.isArray(groups) || !groups.length || !groups.every(group =>
+      Array.isArray(group?.archives) && group.archives.length && group.archives.every(name =>
+        typeof name === 'string' && /^[a-f0-9]{64}\.pmtiles$/.test(name))
+      && Array.isArray(group.sheets) && group.sheets.length && group.sheets.every(validSheet))) return null;
+    const filenames = groups.flatMap(group => group.archives);
+    if (filenames.length !== new Set(filenames).size) return null;
+    const archives = await Promise.all(filenames.map(async name => {
+      const url = new URL(name, dataRoot).href, archive = createArchive(url);
+      const header = await archive.getHeader();
+      // Both formats preserve alpha at cutlines and around sparse coverage.
+      if (![2, 4].includes(header.tileType) || !Number.isInteger(header.minZoom) || !Number.isInteger(header.maxZoom)
+          || header.minZoom < 0 || header.minZoom > header.maxZoom || header.maxZoom > 13)
+        throw new Error('Invalid historical raster archive');
+      return {url, archive};
+    }));
+    return {archives, sheets: groups.flatMap(group => group.sheets)};
   } catch { return null; }
 }
 
@@ -60,20 +88,30 @@ export function installSovietPreview(style, preview) {
   const credits = [...new Set(preview.sheets.map(sheet => (
     `<a href="${escapeHTML(sheet.source)}">${escapeHTML(sheet.credit)}</a>`
   )))].join(' · ');
-  style.sources[SOVIET_SOURCE] = {
-    type: 'raster', url: `pmtiles://${preview.url}`, tileSize: 256,
-    attribution: `Historical Soviet military topographic maps · ${credits}`,
-  };
-  style.layers.splice(overlays, 0, {
-    id: SOVIET_SOURCE, type: 'raster', source: SOVIET_SOURCE,
-    metadata: {'atlas:semantics-version': 1, 'atlas:background': 'soviet'},
-    paint: {'raster-fade-duration': 0, 'raster-resampling': 'linear'},
+  const layers = preview.archives.map(({url}, index) => {
+    const id = index ? `${SOVIET_SOURCE}-${index}` : SOVIET_SOURCE;
+    style.sources[id] = {
+      type: 'raster', url: `${SCHEME}${url}`, tileSize: 256,
+      attribution: `Historical Soviet military topographic maps · ${credits}`,
+    };
+    return {
+      id, type: 'raster', source: id,
+      metadata: {'atlas:semantics-version': 1, 'atlas:background': 'soviet'},
+      paint: {'raster-fade-duration': 0, 'raster-resampling': 'linear'},
+    };
   });
+  style.layers.splice(overlays, 0, ...layers);
   return true;
 }
 
-export function sovietCoverage(preview, lng, lat) {
+export function sovietCoverage(preview, lng, lat, tileZoom = Infinity) {
   const longitude = ((lng + 180) % 360 + 360) % 360 - 180;
-  return preview.sheets.find(({bounds: [west, south, east, north]}) =>
-    longitude >= west && longitude <= east && lat >= south && lat <= north);
+  let best;
+  for (const sheet of preview.sheets) {
+    const [west, south, east, north] = sheet.bounds;
+    const withinLongitude = (longitude >= west && longitude <= east) || (longitude === -180 && east === 180);
+    if (tileZoom < (sheet.minzoom ?? 0) || lat < south || lat > north || !withinLongitude) continue;
+    if (!best || sheet.scale <= best.scale) best = sheet;
+  }
+  return best;
 }

@@ -1,4 +1,4 @@
-import {waitForViewport} from './viewport-settle.mjs?v=20261119-soviet-sheet-preview-1';
+import {waitForViewport} from './viewport-settle.mjs?v=20261119-soviet-sheet-preview-2';
 // Colour sea elevations from the existing, repaired terrain cache. ETOPO1
 // bathymetry disappears from the provider's finer tiles, so depth requests
 // stop at zoom 10. Coastlines still use the basemap's detailed water polygons.
@@ -34,7 +34,10 @@ export function shareArchiveRequests(load) {
           if (pending.get(params.url) === entry) pending.delete(params.url);
           entry.controller.abort();
         }
-        if (error) reject(error); else resolve({...result, data:result.data.slice(0)});
+        if (error) reject(error);
+        // PMTiles uses null for a missing raster tile. Keep that result so
+        // sparse archives settle cleanly and the underlying map can show.
+        else resolve({...result, data:result.data?.slice(0) ?? result.data});
       };
       const abort = () => finish(controller.signal.reason || new DOMException('Cancelled','AbortError'));
       controller.signal.addEventListener('abort', abort, {once:true});

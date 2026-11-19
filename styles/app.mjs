@@ -1,39 +1,39 @@
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261119-soviet-sheet-preview-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261119-soviet-sheet-preview-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261119-soviet-sheet-preview-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261119-soviet-sheet-preview-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261119-soviet-sheet-preview-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261119-soviet-sheet-preview-2';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261119-soviet-sheet-preview-2';
+import {updateMapStatus} from './status-ui.mjs?v=20261119-soviet-sheet-preview-2';
+import {renderLegendUI} from './legend-ui.mjs?v=20261119-soviet-sheet-preview-2';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261119-soviet-sheet-preview-2';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261119-soviet-sheet-preview-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261119-soviet-sheet-preview-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261119-soviet-sheet-preview-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261119-soviet-sheet-preview-1';
-import {createWorldFonts} from './world-font.mjs?v=20261119-soviet-sheet-preview-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261119-soviet-sheet-preview-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261119-soviet-sheet-preview-2';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261119-soviet-sheet-preview-2';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261119-soviet-sheet-preview-2';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261119-soviet-sheet-preview-2';
+import {createWorldFonts} from './world-font.mjs?v=20261119-soviet-sheet-preview-2';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261119-soviet-sheet-preview-2';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261119-soviet-sheet-preview-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261119-soviet-sheet-preview-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261119-soviet-sheet-preview-2';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261119-soviet-sheet-preview-2';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261119-soviet-sheet-preview-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261119-soviet-sheet-preview-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261119-soviet-sheet-preview-1';
-import {departureItem} from './departures-ui.mjs?v=20261119-soviet-sheet-preview-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261119-soviet-sheet-preview-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261119-soviet-sheet-preview-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261119-soviet-sheet-preview-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261119-soviet-sheet-preview-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261119-soviet-sheet-preview-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261119-soviet-sheet-preview-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261119-soviet-sheet-preview-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261119-soviet-sheet-preview-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261119-soviet-sheet-preview-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261119-soviet-sheet-preview-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261119-soviet-sheet-preview-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261119-soviet-sheet-preview-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261119-soviet-sheet-preview-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261119-soviet-sheet-preview-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261119-soviet-sheet-preview-1';
-import {installSovietPreview, loadSovietPreview, sovietCoverage, sovietPreviewAllowed, SOVIET_SOURCE} from './soviet-topo.mjs?v=20261119-soviet-sheet-preview-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261119-soviet-sheet-preview-2';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261119-soviet-sheet-preview-2';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261119-soviet-sheet-preview-2';
+import {departureItem} from './departures-ui.mjs?v=20261119-soviet-sheet-preview-2';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261119-soviet-sheet-preview-2';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261119-soviet-sheet-preview-2';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261119-soviet-sheet-preview-2';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261119-soviet-sheet-preview-2';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261119-soviet-sheet-preview-2';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261119-soviet-sheet-preview-2';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261119-soviet-sheet-preview-2';
+import {installWatchGesture} from './watch-map.mjs?v=20261119-soviet-sheet-preview-2';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261119-soviet-sheet-preview-2';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261119-soviet-sheet-preview-2';
+import {createBundleReader} from './tile-bundles.mjs?v=20261119-soviet-sheet-preview-2';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261119-soviet-sheet-preview-2';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261119-soviet-sheet-preview-2';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261119-soviet-sheet-preview-2';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261119-soviet-sheet-preview-2';
+import {installSovietPreview, installSovietProtocol, isSovietSource, loadSovietPreview, sovietCoverage, sovietPreviewAllowed} from './soviet-topo.mjs?v=20261119-soviet-sheet-preview-2';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -80,7 +80,8 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 if (settings.background === 'soviet' && !sovietPreviewAllowed(location.href)) settings.background = 'map';
-let sovietPreview, sovietFailures;
+let sovietPreview;
+const sovietFailures = new Map();
 // The compact attribution/info control is UI state rather than a shareable map
 // setting. Keep it in the same settings cookie, closed on a first visit.
 settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
@@ -92,7 +93,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261119-soviet-sheet-preview-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261119-soviet-sheet-preview-2';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -656,8 +657,9 @@ function updateSovietStatus() {
   message.hidden = !sovietPreview || settings.background !== 'soviet';
   if (message.hidden || !map) return;
   const {lng, lat} = map.getCenter();
-  const sheet = sovietCoverage(sovietPreview, lng, lat);
-  if (sovietFailures?.current() && sovietFailures.hasFailures()) {
+  // The 256 px raster source uses one finer tile zoom than the 512 px camera.
+  const sheet = sovietCoverage(sovietPreview, lng, lat, Math.floor(map.getZoom() + 1));
+  if ([...sovietFailures.values()].some(failures => failures.current() && failures.hasFailures())) {
     message.textContent = 'Some historical tiles could not load. The modern map fills gaps.';
   } else if (sheet) {
     message.textContent = `${sheet.id} · ${sheet.date} · 1:${sheet.scale.toLocaleString('en')}`;
@@ -1522,12 +1524,21 @@ async function initialize() {
     createArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 6000)),
   });
   if (sovietPreview && installSovietPreview(style, sovietPreview)) {
-    protocol.add(sovietPreview.archive);
-    for (const sheet of sovietPreview.sheets) {
-      const link = textNode('a', `${sheet.id} · ${sheet.name}`);
-      link.href = sheet.source;
+    for (const {archive} of sovietPreview.archives) protocol.add(archive);
+    installSovietProtocol(maplibregl, protocol.tile);
+    if (sovietPreview.sheets.length <= 12) {
+      for (const sheet of sovietPreview.sheets) {
+        const link = textNode('a', `${sheet.id} · ${sheet.name}`);
+        link.href = sheet.source;
+        const item = document.createElement('li');
+        item.append(link, ` · ${sheet.date} · 1:${sheet.scale.toLocaleString('en')} · ${sheet.credit}. ${sheet.alignment}`);
+        $('soviet-sheets').append(item);
+      }
+    } else {
+      const link = textNode('a', `Catalogue of ${sovietPreview.sheets.length.toLocaleString('en')} historical sheets`);
+      link.href = new URL('./data/soviet-topo/index.json', import.meta.url).href;
       const item = document.createElement('li');
-      item.append(link, ` · ${sheet.date} · 1:${sheet.scale.toLocaleString('en')} · ${sheet.credit}. ${sheet.alignment}`);
+      item.append(link);
       $('soviet-sheets').append(item);
     }
     $('soviet-background').hidden = $('soviet-help').hidden = false;
@@ -1879,9 +1890,13 @@ async function initialize() {
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) {
       otherMetadataRetries.noteError(e); return;
     }
-    if (e.sourceId === SOVIET_SOURCE) {
-      if (!sovietFailures?.current()) sovietFailures = createSourceFailures(map, SOVIET_SOURCE);
-      sovietFailures.noteError(e);
+    if (isSovietSource(e.sourceId)) {
+      let failures = sovietFailures.get(e.sourceId);
+      if (!failures?.current()) {
+        failures = createSourceFailures(map, e.sourceId);
+        sovietFailures.set(e.sourceId, failures);
+      }
+      failures.noteError(e);
       updateSovietStatus();
       return;
     }
@@ -1907,8 +1922,9 @@ async function initialize() {
     otherMetadataRetries.noteError(e);
   });
   map.on('sourcedata', e => {
-    if (e.sourceId === SOVIET_SOURCE && sovietFailures?.current()) {
-      sovietFailures.noteSourceData(e);
+    const historicalFailure = sovietFailures.get(e.sourceId);
+    if (historicalFailure?.current()) {
+      historicalFailure.noteSourceData(e);
       updateSovietStatus();
     }
     // A provider/source can be added after style.load (or replaced under the

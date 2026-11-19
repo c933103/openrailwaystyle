@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {test} from 'node:test';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
-import {installSovietPreview, loadSovietPreview, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
+import {installSovietPreview, installSovietProtocol, loadSovietPreview, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
 
 const loopback = 'http://127.0.0.1:4173/?sovietPreview=1';
 const dataRoot = new URL('./data/soviet-topo/', loopback);
@@ -37,15 +37,15 @@ test('only a valid local manifest and raster archive enable the background', asy
   assert.equal(await load(config, () => ({getHeader: async () => ({...goodHeader, tileType: 1})})), null);
   assert.equal(await load(config, () => ({getHeader: async () => { throw new Error('Missing archive'); }})), null);
   const preview = await load(config);
-  assert.equal(preview.url, new URL(name, dataRoot).href);
-  assert.equal(requested, preview.url);
+  assert.equal(preview.archives[0].url, new URL(name, dataRoot).href);
+  assert.equal(requested, preview.archives[0].url);
   assert.equal(sovietCoverage(preview, 368.5, 47), sheet);
   assert.equal(sovietCoverage(preview, -150, 30), undefined);
 });
 
 test('the original raster sits above seabed and below railway and localized labels', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
-  assert.equal(installSovietPreview(style, {url: new URL(name, dataRoot).href, sheets: [sheet]}), true);
+  assert.equal(installSovietPreview(style, {archives: [{url: new URL(name, dataRoot).href}], sheets: [sheet]}), true);
   const layers = new Map(style.layers.map((layer, index) => [layer.id, {layer, index}]));
   const soviet = layers.get('soviet-topo');
   assert.ok(layers.get('terrain-bathymetry').index < soviet.index);
@@ -58,4 +58,46 @@ test('the original raster sits above seabed and below railway and localized labe
   assert.equal(layerVisibility(layers.get('terrain-seabed-contours').layer, {...settings, background:'map'}), true);
   assert.equal(layerVisibility(soviet.layer, {...settings, background:'map'}), false);
   assert.match(style.sources['soviet-topo'].attribution, /Scans &lt;example&gt;/);
+});
+
+test('worldwide groups preserve coarse archives beneath independently overzoomed detail', async () => {
+  const west = {...sheet, id: 'America', bounds: [-75, 35, -65, 45]};
+  const pacific = {...sheet, id: 'Pacific', bounds: [172, -45, 180, -38]};
+  const detail = {...sheet, id: 'L-32-1', scale: 500000, minzoom: 6};
+  const secondFile = `${'b'.repeat(64)}.pmtiles`, thirdFile = `${'c'.repeat(64)}.pmtiles`;
+  const manifest = {version: 2, groups: [
+    {archives: [name], sheets: [sheet, west, pacific]},
+    {archives: [secondFile, thirdFile], sheets: [detail]},
+  ]};
+  const load = groups => loadSovietPreview({
+    href: loopback, dataRoot, fetcher: async () => ({ok: true, json: async () => ({version: 2, groups})}),
+    createArchive: url => ({getHeader: async () => ({...goodHeader, tileType: url.endsWith(secondFile) ? 4 : 2})}),
+  });
+  const preview = await load(manifest.groups);
+  assert.deepEqual(preview.archives.map(({url}) => url.split('/').at(-1)), [name, secondFile, thirdFile]);
+  assert.equal(sovietCoverage(preview, 8.5, 47, 3), sheet);
+  assert.equal(sovietCoverage(preview, 8.5, 47, 12), detail);
+  assert.equal(sovietCoverage(preview, -68, 41, 12), west);
+  assert.equal(sovietCoverage(preview, -180, -40, 12), pacific);
+  assert.equal(sovietCoverage(preview, -150, 30, 12), undefined);
+  assert.equal(await load([manifest.groups[0], manifest.groups[0]]), null);
+  const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
+  assert.equal(installSovietPreview(style, preview), true);
+  assert.deepEqual(style.layers.filter(({id}) => id.startsWith('soviet-topo')).map(({id}) => id),
+    ['soviet-topo', 'soviet-topo-1', 'soviet-topo-2']);
+});
+
+test('the historical protocol settles a missing tile with a transparent image', async () => {
+  let handler;
+  const component = 'http://127.0.0.1/history.pmtiles';
+  installSovietProtocol({addProtocol: (_, load) => { handler = load; }}, async ({type, url}) => {
+    if (type === 'json') return {data: {tiles: [`pmtiles://${component}/{z}/{x}/{y}`]}};
+    assert.equal(url, `pmtiles://${component}/3/4/2`);
+    return {data: null};
+  });
+  const controller = new AbortController();
+  const metadata = await handler({type:'json', url:`atlassoviet://${component}`}, controller);
+  assert.deepEqual(metadata.data.tiles, [`atlassoviet://${component}/{z}/{x}/{y}`]);
+  const result = await handler({type:'arrayBuffer', url:`atlassoviet://${component}/3/4/2`}, controller);
+  assert.deepEqual([...result.data.slice(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 });
