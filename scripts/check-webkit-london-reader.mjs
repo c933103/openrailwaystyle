@@ -12,11 +12,15 @@ const replayDeadline=schedule?Math.ceil(schedule.at(-1).offsetMs)+40000:30000;
 const base=new URL(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/');
 assert.equal(base.origin,'http://127.0.0.1:4173','Only the staged loopback archive is supported');
 const shell=new URL('reader-only-test.html',base).href;
+const decoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER??'native';
+assert.ok(['native','fflate'].includes(decoder),'Unknown diagnostic decoder');
+assert.ok(decoder==='native'||mode==='replay','Alternate decoder is only a reader replay arm');
+const codecUrl=decoder==='fflate'?new URL('reference-alt-decode.mjs',base).href:null;
 const tiles=['5/15/11','5/15/10','5/16/11','5/16/10'];
 const stop=armWatchdog(()=>({mode,stage:'reader-only'}),{timeout:replayDeadline+60000});
 const started=Date.now();
 function log(stage,data={}) {
- console.log('READER_ONLY '+JSON.stringify({mode,stage,elapsedMs:Date.now()-started,...data}));
+ console.log('READER_ONLY '+JSON.stringify({mode,decoder,stage,elapsedMs:Date.now()-started,...data}));
 }
 const heartbeat=setInterval(()=>log('NODE_HEARTBEAT'),2500);
 let browser,context,error;
@@ -24,6 +28,7 @@ try {
  browser=await launchBrowser({engine:'webkit',timeout:20000});
  context=await browser.newContext();
  await context.route(shell,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Reader-only diagnostic</title>'}));
+ if(codecUrl)await context.route(codecUrl,route=>route.fulfill({path:'london-diagnostics/reference-alt-decode.mjs',contentType:'text/javascript'}));
  const control=await context.newPage(), page=await context.newPage();
  for(const [label,tab] of [['control',control],['reader',page]]){
   tab.on('console',event=>{
@@ -35,10 +40,11 @@ try {
    setInterval(()=>console.log('READER_PAGE '+JSON.stringify({stage:'HEARTBEAT',time:Date.now()})),1000);
   }),label+' heartbeat setup',5000);
  }
- const result=await withinDeadline(()=>page.evaluate(async ({mode,tiles,generation,schedule})=>{
+ const result=await withinDeadline(()=>page.evaluate(async ({mode,tiles,generation,schedule,codecUrl})=>{
   const {createReferenceReader}=await import('/mainline-reference.mjs');
   const reader=createReferenceReader({
    root:new URL('/data/mainline-reference/',location.href),
+   ...(codecUrl?{decompress:(await import(codecUrl)).decodeReferenceForDiagnostic}:{}),
    onTileStage:(key,stage,bytes)=>console.log('READER_PAGE '+JSON.stringify({key,stage,bytes}))
   });
   if(schedule){
@@ -70,8 +76,12 @@ try {
   if(mode==='serial')for(const key of tiles)result.push(await check(key));
   else result.push(...await Promise.all(tiles.map(check)));
   return result;
- },{mode,tiles,generation,schedule}),mode+' London reader',replayDeadline);
- if(schedule)assert.deepEqual(result.unexpected,[],'Unexpected reader error');
+ },{mode,tiles,generation,schedule,codecUrl}),mode+' London reader',replayDeadline);
+ if(schedule){
+  assert.deepEqual(result.unexpected,[],'Unexpected reader error');
+  assert.equal(result.resolved+result.aborted,result.starts,'Every replay call must settle as expected');
+  if(schedule.every(e=>e.kind==='START'&&!e.aborted))assert.equal(result.resolved,result.starts,'No calls were aborted in this trace');
+ }
  else{
   assert.deepEqual(result.map(row=>row.key),tiles);
   assert.ok(result.every(row=>row.bytes>0),'A missing tile is not a passing decode');

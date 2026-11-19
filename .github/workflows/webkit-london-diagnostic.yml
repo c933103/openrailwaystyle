@@ -63,21 +63,14 @@ jobs:
           set -e
           printf '%s %s\n' full "$full_status" | tee -a london-diagnostics/status.txt
           if [ -d browser-review ]; then mv browser-review london-diagnostics/full-review; fi
-          # Prefer a suite prefix that actually stalled; otherwise replay the full trace.
-          trace=london-diagnostics/full.log
-          if ! grep -Fxq "suite 2" london-diagnostics/status.txt &&
-             grep -q "^ATLAS_REFERENCE_PROTOCOL_START " london-diagnostics/suite.log; then
-            trace=london-diagnostics/suite.log
-          fi
-          set +e
-          timeout --kill-after=10s 12m node scripts/check-webkit-london-reader.mjs replay "$trace" >london-diagnostics/reader-replay.log 2>&1
-          replay_status=$?
-          set -e
-          printf 'reader-replay %s %s\n' "$replay_status" "$trace" | tee -a london-diagnostics/status.txt
+          # Pin the prior successful renderer trace whose native reader-only replay stalled.
+          trace=london-diagnostics/pinned-reader-trace.log
+          gzip -dc scripts/fixtures/webkit-reader-full-44515561418.log.gz >"$trace"
+          printf '%s  %s\n' 8a3af012c93590f52db726be7c1bd32e0e68db23300604ce87468dfd4038deee "$trace" | sha256sum -c -
           # Use the exact staged bytes. Do not interpret arm differences if parity fails.
           node_modules/.bin/esbuild scripts/webkit-reference-alt-decode.mjs --bundle --platform=browser --format=esm --outfile=london-diagnostics/reference-alt-decode.mjs
           node scripts/check-webkit-reference-decoder-parity.mjs mainline-output london-diagnostics/reference-alt-decode.mjs >london-diagnostics/decoder-parity.log 2>&1
-          # Two opposite-order pairs; keep measuring even if any renderer stalls.
+          # Two opposite-order pairs on the same pinned trace, each without MapLibre.
           pair_pass=1
           ordinal=0
           for decoder in native fflate fflate native; do
@@ -93,17 +86,15 @@ jobs:
             ) >"london-diagnostics/$arm-resources.log" 2>&1 &
             monitor=$!
             set +e
-            ATLAS_WEBKIT_REFERENCE_TRACE=1 ATLAS_WEBKIT_REFERENCE_DECODER="$decoder" ATLAS_WEBKIT_LONDON_DIAGNOSTIC=suite timeout --kill-after=10s 4m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$arm.log" 2>&1
+            ATLAS_WEBKIT_REFERENCE_DECODER="$decoder" timeout --kill-after=10s 4m node scripts/check-webkit-london-reader.mjs replay "$trace" >"london-diagnostics/$arm.log" 2>&1
             arm_status=$?
             set -e
             kill "$monitor" 2>/dev/null || true
             wait "$monitor" 2>/dev/null || true
             printf '%s %s\n' "$arm" "$arm_status" | tee -a london-diagnostics/status.txt
-            if [ -d browser-review ]; then mv browser-review "london-diagnostics/$arm-review"; fi
-            if [ "$arm_status" -ne 2 ] || ! grep -q "^LONDON_DIAGNOSTIC_RESULT " "london-diagnostics/$arm.log"; then pair_pass=0; fi
+            if [ "$arm_status" -ne 0 ] || ! grep -q '^READER_ONLY .*"stage":"RESULT"' "london-diagnostics/$arm.log"; then pair_pass=0; fi
           done
           test "$pair_pass" -eq 1
-          test "$replay_status" -eq 0
           test "$full_status" -eq 0
           test -s london-diagnostics/full-review/mainline-reference.json
           for mode in fresh transition suite; do
