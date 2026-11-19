@@ -91,7 +91,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   page.on('response',response=>logTile('RESPONSE',response.request(),{status:response.status()}));
   page.on('requestfinished',request=>logTile('REQUEST_FINISHED',request));
   page.on('requestfailed',request=>logTile('REQUEST_FAILURE',request,{error:request.failure()?.errorText}));
-  page.on('console',message=>{if(message.text().startsWith('LONDON_DIAGNOSTIC_READINESS '))console.log(message.text());});
+  page.on('console',message=>{if(/^(?:LONDON_DIAGNOSTIC_READINESS |ATLAS_REFERENCE_PROTOCOL_)/.test(message.text()))console.log(message.text());});
  }
  if(profile.engine==='webkit'){
   await page.addInitScript(()=>{
@@ -117,10 +117,25 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.goto(new URL('mainline-test.html',base).href);
   await page.setContent(`<html><body style="margin:0"><div id="test-map" style="width:${profile.width}px;height:${profile.height}px"></div></body></html>`);
   await page.addScriptTag({url:library});
-  await evaluate(page,async({layers,base,module})=>{
+  await evaluate(page,async({layers,base,module,traceProtocol})=>{
    const {createReferenceReader}=await import(module),reader=createReferenceReader({root:new URL('data/mainline-reference/',base)});
    window.referenceReader=reader;window.referenceLayers=layers;
-   maplibregl.addProtocol('mainlinetiles',async(p,c)=>({data:await reader.tile(p.url.slice('mainlinetiles://'.length),c.signal)}));
+   let protocolId=0;
+   maplibregl.addProtocol('mainlinetiles',async(p,c)=>{
+    const key=p.url.slice('mainlinetiles://'.length);
+    if(!traceProtocol)return {data:await reader.tile(key,c.signal)};
+    const requestId=++protocolId,started=Date.now(),camera=window.referenceTraceCamera??null;
+    const log=(event,extra={})=>console.log('ATLAS_REFERENCE_PROTOCOL_'+event+' '+JSON.stringify({
+     key,requestId,camera,elapsedMs:Date.now()-started,...extra
+    }));
+    log('START');
+    try{
+     const data=await reader.tile(key,c.signal);
+     log('RESOLVED',{bytes:data.byteLength});return {data};
+    }catch(error){
+     log('REJECTED',{name:error?.name,message:error?.message});throw error;
+    }
+   });
    window.testMap=new maplibregl.Map({container:'test-map',minZoom:-2,maxZoom:9,center:[139.75,35.68],zoom:6,fadeDuration:0,
     canvasContextAttributes:{preserveDrawingBuffer:true},style:{version:8,sources:{
      railReference:{type:'vector',tiles:['mainlinetiles://{z}/{x}/{y}'],minzoom:0,maxzoom:6,promoteId:'id'},
@@ -128,7 +143,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     layers:[{id:'background',type:'background',paint:{'background-color':'#fafafa'}},...layers,
      {id:'missing-live',type:'line',source:'missingLive','source-layer':'missing',paint:{'line-color':'red'}}]}});
    window.sourceErrors=[];testMap.on('error',e=>sourceErrors.push({source:e.sourceId,message:e.error?.message}));
-  },{layers,base,module:readerModule});
+  },{layers,base,module:readerModule,traceProtocol:trace&&profile.engine==='webkit'});
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    const target=projection==='globe'&&c.name==='United Kingdom–London';
@@ -138,12 +153,13 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     (trace&&projection==='mercator'&&((c.name==='Spain–Madrid'&&zoom===4)||(c.name==='Italy–Milan'&&zoom===5))));
     console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
-   await evaluate(page,({center,zoom,projection,expected})=>{
+   await evaluate(page,({center,zoom,projection,expected,traceCamera})=>{
+    if(traceCamera)window.referenceTraceCamera=traceCamera;
     testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
     // Globe queryRenderedFeatures uses a planar approximation in this pinned
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
-   },{center:c.center,zoom,projection,expected});
+   },{center:c.center,zoom,projection,expected,traceCamera:trace&&profile.engine==='webkit'?checkpoint:null});
    try{await withinDeadline(()=>page.waitForFunction(({expected,probe,camera})=>{
     const loaded=testMap.loaded(),sourceLoaded=loaded?testMap.isSourceLoaded('railReference'):false;
     const chains=loaded&&sourceLoaded?testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length:0;

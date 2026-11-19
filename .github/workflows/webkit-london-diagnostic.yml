@@ -31,8 +31,8 @@ jobs:
           npm run build
           mkdir -p styles/data/mainline-reference
           cp -r mainline-output/. styles/data/mainline-reference/
-          npx playwright install --with-deps webkit
-      - name: Run all three arms without publishing
+          npx playwright install --with-deps chromium webkit
+      - name: Run the isolated and full-browser arms without publishing
         run: |
           mkdir -p london-diagnostics
           node scripts/serve.mjs >london-diagnostics/server.log 2>&1 &
@@ -47,6 +47,14 @@ jobs:
             printf '%s %s\n' "$mode" "$status" | tee -a london-diagnostics/status.txt
             if [ -d browser-review ]; then mv browser-review "london-diagnostics/$mode-review"; fi
           done
+          set +e
+          ATLAS_WEBKIT_REFERENCE_TRACE=1 timeout 10m node scripts/check-mainline-reference-browser.mjs --published >london-diagnostics/full.log 2>&1
+          full_status=$?
+          set -e
+          printf '%s %s\n' full "$full_status" | tee -a london-diagnostics/status.txt
+          if [ -d browser-review ]; then mv browser-review london-diagnostics/full-review; fi
+          test "$full_status" -eq 0
+          test -s london-diagnostics/full-review/mainline-reference.json
           for mode in fresh transition suite; do
             grep -q "^LONDON_DIAGNOSTIC_RESULT" "london-diagnostics/$mode.log"
             grep -Fxq "$mode 2" london-diagnostics/status.txt
