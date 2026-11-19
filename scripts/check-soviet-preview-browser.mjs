@@ -42,8 +42,8 @@ try {
     const range = route.request().headers().range;
     return route.fulfill(failTiles && !range?.startsWith('bytes=0-') ? {status: 503} : pmtilesBytesResponse(raster, range, 'soviet-fixture'));
   });
-  async function open(preview) {
-    await page.goto(`${base}?background=soviet&relief=0&stations=0${preview ? '&sovietPreview=1' : ''}#6/47.241/8.557`, {waitUntil: 'domcontentloaded'});
+  async function open(preview, background = 'soviet') {
+    await page.goto(`${base}?background=${background}&relief=0&stations=0${preview ? '&sovietPreview=1' : ''}#6/47.241/8.557`, {waitUntil: 'domcontentloaded'});
     await page.waitForSelector('body[data-map-ready="true"]', {timeout: 90000});
     await page.evaluate(async () => { window.sovietMap = (await import(document.querySelector('script[type="module"]').src)).map; });
   }
@@ -99,8 +99,57 @@ try {
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
   await page.locator('[data-background="map"]').click();
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
+  // Production configuration comes from the deployment page, not a shared
+  // URL or a local-storage setting. The external host is a fixture only.
+  const host = 'https://assets.example.org/topo/';
+  let hostedIndex = 0, ranges = 0, hostedAvailable = false;
+  await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
+    const response = await route.fetch();
+    await route.fulfill({response, body: (await response.text()).replace(
+      '<meta name="atlas-soviet-archive-root" content="">',
+      `<meta name="atlas-soviet-archive-root" content="${host}">`
+    )});
+  });
+  const cors = {
+    'Access-Control-Allow-Origin': new URL(base).origin,
+    'Access-Control-Expose-Headers': 'ETag, Content-Range',
+  };
+  await page.route(host + 'index.json', route => {
+    hostedIndex++;
+    return route.fulfill(hostedAvailable ? {json:config, headers:cors} : {status:503, headers:cors});
+  });
+  await page.route(host + name, route => {
+    const range = route.request().headers().range;
+    assert.match(range, /^bytes=/);
+    ranges++;
+    const result = pmtilesBytesResponse(raster, range, 'soviet-hosted-fixture');
+    return route.fulfill({...result, headers:{...result.headers, ...cors}});
+  });
+  await open(false, 'map');
+  assert.equal(await page.locator(button).isVisible(), true);
+  assert.equal(hostedIndex, 0, 'regular sessions must not fetch archival metadata');
+  assert.equal(ranges, 0);
+  await page.locator(button).click();
+  await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('temporarily unavailable'));
+  assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(hostedIndex, 1);
+  assert.equal(ranges, 0);
+  hostedAvailable = true;
+  await page.locator(button).click();
+  await page.waitForFunction(() => document.querySelector('[data-background="soviet"]').getAttribute('aria-pressed') === 'true');
+  await page.waitForFunction(() => window.sovietMap.isSourceLoaded('soviet-topo'));
+  assert.match(await page.locator('#soviet-status').textContent(), /Compiled 1970/);
+  assert.equal(hostedIndex, 2, 'a successful retry reads exactly one catalogue');
+  assert.ok(ranges >= 2, 'cross-origin data uses header and tile ranges');
+  const layerOrder = await page.evaluate(() => window.sovietMap.getStyle().layers.map(layer => layer.id));
+  assert.ok(layerOrder.indexOf('terrain-bathymetry') < layerOrder.indexOf('soviet-topo'));
+  assert.ok(layerOrder.indexOf('soviet-topo') < layerOrder.indexOf('energy-overview-areas'));
+  const beforeLink = hostedIndex;
+  await open(false);
+  assert.equal(await page.locator(button).getAttribute('aria-pressed'), 'true', 'shared hosted backgrounds restore on load');
+  assert.equal(hostedIndex, beforeLink + 1);
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: loopback opt-in, missing archive, historical pixels, layer order, coverage and isolated tile failure');
+  console.log('PASS: loopback opt-in, missing archive, historical pixels, layer order, coverage, isolated tile failure, and on-demand cross-origin hosting');
 } finally {
   await browser.close();
 }

@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261119-soviet-sheet-preview-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261119-soviet-topo-hosting-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

@@ -1,5 +1,3 @@
-import {getLayerSemantics} from './layer-semantics.mjs?v=20261119-soviet-sheet-preview-2';
-
 export const SOVIET_SOURCE = 'soviet-topo';
 export const isSovietSource = id => id === SOVIET_SOURCE || id?.startsWith(`${SOVIET_SOURCE}-`);
 const SCHEME = 'atlassoviet://';
@@ -26,6 +24,16 @@ export function sovietPreviewAllowed(href) {
     && url.searchParams.get('sovietPreview') === '1';
 }
 
+export function publicSovietArchiveRoot(value) {
+  if (!value || /[?#]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    if (!url.pathname.endsWith('/')) url.pathname += '/';
+    return url;
+  } catch { return null; }
+}
+
 function validSheet(sheet) {
   const {bounds, source, scale} = sheet ?? {};
   if (!['id', 'name', 'date', 'credit', 'alignment'].every(key => typeof sheet?.[key] === 'string' && sheet[key].trim())
@@ -39,10 +47,12 @@ function validSheet(sheet) {
   } catch { return false; }
 }
 
-export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}) {
-  if (!sovietPreviewAllowed(href)) return null;
+export async function loadSovietPreview({href, dataRoot, hostedRoot, fetcher, createArchive}) {
+  const root = sovietPreviewAllowed(href) ? dataRoot : publicSovietArchiveRoot(hostedRoot?.href);
+  if (!root) return null;
   try {
-    const response = await fetcher(new URL('index.json', dataRoot), {redirect: 'error', signal: AbortSignal.timeout(6000)});
+    const catalogue = new URL('index.json', root);
+    const response = await fetcher(catalogue, {redirect: 'error', signal: AbortSignal.timeout(6000)});
     if (!response.ok) return null;
     const config = await response.json();
     // Items are ordered from the overview to finer scales. Each scale keeps its
@@ -56,7 +66,7 @@ export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}
     const filenames = groups.flatMap(group => group.archives);
     if (filenames.length !== new Set(filenames).size) return null;
     const archives = await Promise.all(filenames.map(async name => {
-      const url = new URL(name, dataRoot).href, archive = createArchive(url);
+      const url = new URL(name, root).href, archive = createArchive(url);
       const header = await archive.getHeader();
       // Both formats preserve alpha at cutlines and around sparse coverage.
       if (![2, 4].includes(header.tileType) || !Number.isInteger(header.minZoom) || !Number.isInteger(header.maxZoom)
@@ -64,7 +74,7 @@ export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}
         throw new Error('Invalid historical raster archive');
       return {url, archive};
     }));
-    return {archives, sheets: groups.flatMap(group => group.sheets)};
+    return {archives, catalogue, sheets: groups.flatMap(group => group.sheets)};
   } catch { return null; }
 }
 
@@ -78,13 +88,6 @@ export function installSovietPreview(style, preview) {
   // rail or station overlay. Those overlays and localized labels keep their order.
   const overlays = style.layers.findIndex(layer => layer.id === 'energy-overview-areas');
   if (bathymetry < 0 || overlays <= bathymetry || style.sources[SOVIET_SOURCE]) return false;
-  for (const layer of style.layers.slice(overlays)) {
-    const semantics = getLayerSemantics(layer);
-    if (!semantics['atlas:terrain']) continue;
-    // The modern seabed raster remains underneath the scan. Modern contours
-    // and their labels must not cover contours or soundings printed on it.
-    layer.metadata = {...semantics, 'atlas:hide-backgrounds': [...(semantics['atlas:hide-backgrounds'] || []), 'soviet']};
-  }
   const credits = [...new Set(preview.sheets.map(sheet => (
     `<a href="${escapeHTML(sheet.source)}">${escapeHTML(sheet.credit)}</a>`
   )))].join(' · ');

@@ -668,6 +668,10 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
+      - name: Configure historical archive origin
+        env:
+          SOVIET_TOPO_ARCHIVE_ROOT: ${{ vars.SOVIET_TOPO_ARCHIVE_ROOT }}
+        run: node scripts/configure-soviet-topo.mjs
       # Fail closed before removing/uploading anything: the previous deployed
       # site remains live until all four immutable release tables are verified.
       # On the first merge the publisher may still be running; after it succeeds,

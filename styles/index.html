@@ -6,6 +6,7 @@
   <meta name="description" content="Railway Atlas: explore railways worldwide, with prominent stations, infrastructure, maximum speeds, electrification and gauges. Built on OpenStreetMap.">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
+  <meta name="atlas-soviet-archive-root" content="">
   <title>Railway Atlas · Worldwide rail map</title>
   <meta name="application-name" content="Railway Atlas">
   <meta property="og:site_name" content="Railway Atlas">
@@ -32,7 +33,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261119-soviet-sheet-preview-2" rel="stylesheet">
+  <link href="app.css?v=20261119-soviet-topo-hosting-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -187,7 +188,7 @@
     <p>Zoom in on Infrastructure view for platforms and their boarding edges. Platform numbers and edge references appear from zoom 17; from zoom 19 an edge label pairs its reference with the length of the complete mapped boarding edge, in metres or feet. Platform numbers and lengths can take a moment to load. Signals (purple) appear from zoom 13 in Infrastructure and Train control, with references from zoom 16. Mapped train or subway station entrances (teal) appear from zoom 16; click them for mapped details and an OpenStreetMap link. Signal markers identify their location, not their current aspect. Coverage depends on the provider’s mapped data. Value labels hides their text while keeping the mapped shapes and markers.</p>
     <p>Carto background: <a href="https://www.openstreetmap.org/">OpenStreetMap Standard</a>, under the <a href="https://operations.osmfoundation.org/policies/tiles/">OSMF tile usage policy</a>. <a href="https://www.openstreetmap.org/fixthemap">Report a map issue</a>.</p>
     <section id="soviet-help" hidden>
-      <h3>Soviet topo preview</h3>
+      <h3>Soviet topo</h3>
       <p>Scanned historical Soviet military topographic maps have limited coverage. The modern map and seabed fill gaps. Printed routes, names and boundaries reflect the sheet’s date. Current railway data and localized labels are separate overlays.</p>
       <ul id="soviet-sheets"></ul>
     </section>
@@ -245,6 +246,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261119-soviet-sheet-preview-2"></script>
+  <script type="module" src="app.mjs?v=20261119-soviet-topo-hosting-1"></script>
 </body>
 </html>

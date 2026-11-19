@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {test} from 'node:test';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
-import {installSovietPreview, installSovietProtocol, loadSovietPreview, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
+import {installSovietPreview, installSovietProtocol, loadSovietPreview, publicSovietArchiveRoot, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
 
 const loopback = 'http://127.0.0.1:4173/?sovietPreview=1';
 const dataRoot = new URL('./data/soviet-topo/', loopback);
@@ -41,6 +41,32 @@ test('only a valid local manifest and raster archive enable the background', asy
   assert.equal(requested, preview.archives[0].url);
   assert.equal(sovietCoverage(preview, 368.5, 47), sheet);
   assert.equal(sovietCoverage(preview, -150, 30), undefined);
+});
+
+test('public archive roots come from a clean HTTPS configuration', async () => {
+  for (const value of ['', './data', 'http://assets.example.org/map/', 'https://user:p@assets.example.org/',
+    'https://assets.example.org/map/?', 'https://assets.example.org/map/#fragment'])
+    assert.equal(publicSovietArchiveRoot(value), null, value);
+  const hostedRoot = publicSovietArchiveRoot('https://assets.example.org/topo/v1');
+  assert.equal(hostedRoot.href, 'https://assets.example.org/topo/v1/');
+  const requests = [];
+  const options = {
+    dataRoot, hostedRoot,
+    fetcher: async (url, {redirect}) => {
+      assert.equal(redirect, 'error');
+      requests.push(url.href);
+      return {ok: true, json: async () => config};
+    },
+    createArchive: url => {
+      requests.push(url);
+      return {getHeader: async () => goodHeader};
+    },
+  };
+  const preview = await loadSovietPreview({href: 'https://atlas.example/?background=soviet', ...options});
+  assert.equal(preview.catalogue.href, 'https://assets.example.org/topo/v1/index.json');
+  assert.deepEqual(requests, [preview.catalogue.href, hostedRoot.href + name]);
+  const local = await loadSovietPreview({href: loopback, ...options});
+  assert.equal(local.catalogue.href, new URL('index.json', dataRoot).href);
 });
 
 test('the original raster sits above seabed and below railway and localized labels', async () => {
