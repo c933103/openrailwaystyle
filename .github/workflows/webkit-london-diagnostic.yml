@@ -9,7 +9,7 @@ jobs:
   compare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
     runs-on: ubuntu-26.04
-    timeout-minutes: 68
+    timeout-minutes: 85
     env:
       REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
       MAP_BASE_URL: http://127.0.0.1:4173/
@@ -77,13 +77,32 @@ jobs:
           # Use the exact staged bytes. Do not interpret arm differences if parity fails.
           node_modules/.bin/esbuild scripts/webkit-reference-alt-decode.mjs --bundle --platform=browser --format=esm --outfile=london-diagnostics/reference-alt-decode.mjs
           node scripts/check-webkit-reference-decoder-parity.mjs mainline-output london-diagnostics/reference-alt-decode.mjs >london-diagnostics/decoder-parity.log 2>&1
-          set +e
-          ATLAS_WEBKIT_REFERENCE_TRACE=1 ATLAS_WEBKIT_REFERENCE_DECODER=fflate ATLAS_WEBKIT_LONDON_DIAGNOSTIC=suite timeout 10m node scripts/check-mainline-reference-browser.mjs --published >london-diagnostics/suite-fflate.log 2>&1
-          alt_status=$?
-          set -e
-          printf 'suite-fflate %s\n' "$alt_status" | tee -a london-diagnostics/status.txt
-          if [ -d browser-review ]; then mv browser-review london-diagnostics/suite-fflate-review; fi
-          test "$alt_status" -eq 2
+          # Two opposite-order pairs; keep measuring even if any renderer stalls.
+          pair_pass=1
+          ordinal=0
+          for decoder in native fflate fflate native; do
+            ordinal=$((ordinal+1))
+            arm="decoder-$ordinal-$decoder"
+            (
+              while true; do
+                date -Ins
+                grep -E '^(MemAvailable|SwapFree):' /proc/meminfo
+                ps -eo pid,ppid,rss,pcpu,comm | awk 'NR == 1 || $5 ~ /(WebKit|MiniBrowser)/'
+                sleep 2
+              done
+            ) >"london-diagnostics/$arm-resources.log" 2>&1 &
+            monitor=$!
+            set +e
+            ATLAS_WEBKIT_REFERENCE_TRACE=1 ATLAS_WEBKIT_REFERENCE_DECODER="$decoder" ATLAS_WEBKIT_LONDON_DIAGNOSTIC=suite timeout --kill-after=10s 4m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$arm.log" 2>&1
+            arm_status=$?
+            set -e
+            kill "$monitor" 2>/dev/null || true
+            wait "$monitor" 2>/dev/null || true
+            printf '%s %s\n' "$arm" "$arm_status" | tee -a london-diagnostics/status.txt
+            if [ -d browser-review ]; then mv browser-review "london-diagnostics/$arm-review"; fi
+            if [ "$arm_status" -ne 2 ] || ! grep -q "^LONDON_DIAGNOSTIC_RESULT " "london-diagnostics/$arm.log"; then pair_pass=0; fi
+          done
+          test "$pair_pass" -eq 1
           test "$replay_status" -eq 0
           test "$full_status" -eq 0
           test -s london-diagnostics/full-review/mainline-reference.json
