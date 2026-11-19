@@ -34,6 +34,7 @@ function originalVisibility(layer, settings) {
   else if (layer.id === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && baseMap) visible = false;
+  else if (settings.background === 'google' && baseMap && layer.type !== 'background') visible = false;
   else if (settings.background === 'carto' && baseMap && !layer.id.startsWith('terrain-')) visible = false;
   if (layer.id === 'terrain-bathymetry' && settings.background === 'carto') visible = false;
   if (settings.background === 'soviet' && contoursOverHistoricalRaster.has(layer.id)) visible = false;

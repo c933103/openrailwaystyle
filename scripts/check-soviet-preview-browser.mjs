@@ -112,7 +112,7 @@ try {
       '<meta name="atlas-restricted-tile-origin" content="https://tiles.atlas.test">'
     )});
   });
-  const cors = {'Access-Control-Allow-Origin': new URL(base).origin, 'Access-Control-Allow-Headers':'Authorization',
+  const cors = {'Access-Control-Allow-Origin': new URL(base).origin, 'Access-Control-Allow-Headers':'Authorization, X-Atlas-Preview',
     'Access-Control-Allow-Methods':'GET, POST, DELETE', 'Access-Control-Expose-Headers':'Retry-After'};
   let admin = false;
   await context.route(broker + 'auth/device', route => {

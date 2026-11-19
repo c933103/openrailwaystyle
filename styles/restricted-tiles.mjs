@@ -12,7 +12,7 @@ export function createRestrictedTiles({origin, window, fetcher, changed, report,
   const key = /^[A-Za-z0-9_-]{43}$/;
   const request = (path, {signal, method = 'GET', authorization} = {}) => fetcher(`${origin}/restricted/${path}`, {
     method, signal, redirect: 'error', cache: 'no-store', credentials: 'omit',
-    headers: authorization ? {Authorization: authorization} : {},
+    headers: {...(method !== 'GET' && {'X-Atlas-Preview':'1'}), ...(authorization && {Authorization:authorization})},
   });
   function clear(message) {
     const previous = session;

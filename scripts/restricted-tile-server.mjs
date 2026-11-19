@@ -218,14 +218,17 @@ export function createRestrictedTileHandler({
       for (const key of quotas.keys()) if (!key.startsWith(`${Math.floor(now() / 60_000)}:`)) quotas.delete(key);
       for (const [source, until] of providerPauses) if (until <= now()) providerPauses.delete(source);
       let result;
+      const sameOriginRead = !req.headers.origin && siteOrigin === brokerOrigin && req.method === 'GET';
+      const markedLocalRequest = !req.headers.origin && local && req.headers['x-atlas-preview'] === '1';
       if (req.headers.host !== address.host || url.origin !== brokerOrigin ||
-          (req.headers.origin !== siteOrigin && !(siteOrigin === brokerOrigin && !req.headers.origin && req.method === 'GET'))) result = empty(403);
+          (req.headers.origin !== siteOrigin && !sameOriginRead && !markedLocalRequest)) result = empty(403);
       else if (req.method === 'OPTIONS') {
-        res.setHeader('Access-Control-Allow-Headers', 'Authorization');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, X-Atlas-Preview');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE');
         result = empty(204);
       }
-      else if (path === '/restricted/auth/device' && req.method === 'POST') result = await startLogin();
+      else if (path === '/restricted/auth/device' && req.method === 'POST')
+        result = req.headers['x-atlas-preview'] === '1' ? await startLogin() : empty(403);
       else if (path === '/restricted/auth/device' && req.method === 'GET') {
         const ticket = /^Device ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
         result = ticket ? await finishLogin(ticket) : empty(401);

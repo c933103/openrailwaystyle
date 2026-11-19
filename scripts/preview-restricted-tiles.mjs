@@ -123,7 +123,7 @@ export async function createRestrictedPreview({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const env = process.env, args = process.argv.slice(2);
-  if (args.some(arg => arg !== '--github')) throw new Error('Usage: npm run preview:restricted -- [--github]');
+  if (args.some(arg => arg !== '--github')) throw new Error('Usage: node scripts/preview-restricted-tiles.mjs -- [--github]');
   const fixture = !args.includes('--github'), port = Number(env.ATLAS_PREVIEW_PORT || 4180);
   const origin = `http://127.0.0.1:${port}`;
   const server = await createRestrictedPreview({

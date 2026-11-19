@@ -78,7 +78,7 @@ async function runServer(t, overrides = {}) {
     outgoing.end();
   });
   const request = (path, {token, origin = atlas, method = 'GET'} = {}) => send(path, {
-    method, headers:{Origin:origin, ...(token ? {Authorization:'Bearer '+token} : {})},
+    method, headers:{Origin:origin, 'X-Atlas-Preview':'1', ...(token ? {Authorization:'Bearer '+token} : {})},
   });
   async function login() {
     const start = await request('/auth/device',{method:'POST'});

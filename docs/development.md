@@ -189,7 +189,7 @@ repository-admin session. The ordinary map page does not offer these controls.
 ```sh
 npm ci --ignore-scripts
 npm run build
-npm run preview:restricted
+node scripts/preview-restricted-tiles.mjs
 ```
 
 Open [the local test page](http://127.0.0.1:4180/admin-preview.html#6/47.241/8.557).
@@ -206,7 +206,7 @@ Set `GOOGLE_MAPS_API_KEY` in the process to exercise satellite with your Map Til
 API project. To test historical scan pixels from prepared archive groups, set
 `ATLAS_SOVIET_ARCHIVES` to the directory of the two-scale catalogue and PMTiles
 files. It can also be used with the fixture sign-in and Google fixture. Run
-`npm run preview:restricted -- --github` for real sign-in. Open GitHub using the
+`node scripts/preview-restricted-tiles.mjs --github` for real sign-in. Open GitHub using the
 link in Settings and enter the displayed code.
 
 The same browser test page can be served by GitHub Pages at `/admin-preview.html`.
