@@ -106,6 +106,35 @@ and non-file paths return 404. If a file read fails after a response starts, tha
 response is closed and the preview remains available for subsequent requests.
 Byte-range responses for archive assets remain supported.
 
+### Historical topographic sheet preview
+
+To prepare a local historical sheet, use GDAL 3.9 or later with its Python
+bindings and `gdal2tiles`, plus the `pmtiles==3.8.1` Python package. Place an
+original indexed-colour scan beside its OziExplorer calibration file. Check
+the sheet identification, printed date, and source credit against the original.
+
+```sh
+python3 scripts/prepare-soviet-topo.py /path/to/L32.map styles/data/soviet-topo \
+  --sheet L-32 --name "Zürich and the central Alps" --date "Compiled 1970" \
+  --scale 1000000 --maxzoom 10 \
+  --credit "Mapstor scan and calibration, via ramSeraph" \
+  --source https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-orig
+```
+
+The builder reads local files, uses the calibration datum and sheet footprint,
+and writes a versioned raster PMTiles archive and its index. It accepts one
+sheet per preview build. The archive and index live under the ignored data
+directory. Run the local server and open
+[the sheet preview](http://127.0.0.1:4173/?sovietPreview=1&background=soviet#9/47.24/8.56).
+The background is available on loopback with a readable preview archive. The
+modern basemap and seabed remain underneath the scanned area. The preview help
+shows the sheet date, scale, coverage cue, and attribution. The app shell alone
+is available offline. Preview archives are outside its service-worker cache.
+
+Run `node scripts/check-soviet-preview-browser.mjs` with the local server up
+to verify the preview using a synthetic archive. Its output does not establish
+geographic coverage of any historical source.
+
 ## Source layout and generated files
 
 | Path | Purpose |
