@@ -9,7 +9,7 @@ jobs:
   compare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
     runs-on: ubuntu-26.04
-    timeout-minutes: 38
+    timeout-minutes: 46
     env:
       REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
       MAP_BASE_URL: http://127.0.0.1:4173/
@@ -39,6 +39,14 @@ jobs:
           server=$!
           trap 'kill "$server" 2>/dev/null || true' EXIT
           curl --silent --show-error --fail --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 "${MAP_BASE_URL}data/mainline-reference/manifest.json" >london-diagnostics/manifest.json
+          # Run these first so reader-only evidence survives a later renderer stall.
+          for mode in serial parallel; do
+            set +e
+            timeout --kill-after=10s 100s node scripts/check-webkit-london-reader.mjs "$mode" >"london-diagnostics/reader-$mode.log" 2>&1
+            reader_status=$?
+            set -e
+            printf 'reader-%s %s\n' "$mode" "$reader_status" | tee -a london-diagnostics/status.txt
+          done
           for mode in fresh transition suite; do
             set +e
             ATLAS_WEBKIT_LONDON_DIAGNOSTIC="$mode" timeout 10m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$mode.log" 2>&1
