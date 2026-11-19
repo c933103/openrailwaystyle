@@ -9,7 +9,7 @@ jobs:
   compare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
     runs-on: ubuntu-26.04
-    timeout-minutes: 46
+    timeout-minutes: 58
     env:
       REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
       MAP_BASE_URL: http://127.0.0.1:4173/
@@ -49,7 +49,9 @@ jobs:
           done
           for mode in fresh transition suite; do
             set +e
-            ATLAS_WEBKIT_LONDON_DIAGNOSTIC="$mode" timeout 10m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$mode.log" 2>&1
+            trace=0
+            if [ "$mode" = suite ]; then trace=1; fi
+            ATLAS_WEBKIT_REFERENCE_TRACE="$trace" ATLAS_WEBKIT_LONDON_DIAGNOSTIC="$mode" timeout 10m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$mode.log" 2>&1
             status=$?
             set -e
             printf '%s %s\n' "$mode" "$status" | tee -a london-diagnostics/status.txt
@@ -61,6 +63,18 @@ jobs:
           set -e
           printf '%s %s\n' full "$full_status" | tee -a london-diagnostics/status.txt
           if [ -d browser-review ]; then mv browser-review london-diagnostics/full-review; fi
+          # Prefer a suite prefix that actually stalled; otherwise replay the full trace.
+          trace=london-diagnostics/full.log
+          if ! grep -Fxq "suite 2" london-diagnostics/status.txt &&
+             grep -q "^ATLAS_REFERENCE_PROTOCOL_START " london-diagnostics/suite.log; then
+            trace=london-diagnostics/suite.log
+          fi
+          set +e
+          timeout --kill-after=10s 12m node scripts/check-webkit-london-reader.mjs replay "$trace" >london-diagnostics/reader-replay.log 2>&1
+          replay_status=$?
+          set -e
+          printf 'reader-replay %s %s\n' "$replay_status" "$trace" | tee -a london-diagnostics/status.txt
+          test "$replay_status" -eq 0
           test "$full_status" -eq 0
           test -s london-diagnostics/full-review/mainline-reference.json
           for mode in fresh transition suite; do

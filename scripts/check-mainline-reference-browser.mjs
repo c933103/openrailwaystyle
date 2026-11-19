@@ -134,17 +134,19 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    maplibregl.addProtocol('mainlinetiles',async(p,c)=>{
     const key=p.url.slice('mainlinetiles://'.length);
     if(!traceProtocol)return {data:await reader.tile(key,c.signal)};
-    const requestId=++protocolId,started=Date.now(),camera=window.referenceTraceCamera??null;
+    const requestId=++protocolId,started=performance.now(),camera=window.referenceTraceCamera??null;
     const log=(event,extra={})=>console.log('ATLAS_REFERENCE_PROTOCOL_'+event+' '+JSON.stringify({
-     key,requestId,camera,elapsedMs:Date.now()-started,...extra
+     key,requestId,camera,atMs:performance.now(),elapsedMs:performance.now()-started,...extra
     }));
-    log('START');
+    log('START',{aborted:c.signal.aborted});
+    const onAbort=()=>log('ABORT');
+    c.signal.addEventListener('abort',onAbort,{once:true});
     try{
      const data=await reader.tile(key,c.signal);
      log('RESOLVED',{bytes:data.byteLength});return {data};
     }catch(error){
      log('REJECTED',{name:error?.name,message:error?.message});throw error;
-    }
+    }finally{c.signal.removeEventListener('abort',onAbort);}
    });
    window.testMap=new maplibregl.Map({container:'test-map',minZoom:-2,maxZoom:9,center:[139.75,35.68],zoom:6,fadeDuration:0,
     canvasContextAttributes:{preserveDrawingBuffer:true},style:{version:8,sources:{
