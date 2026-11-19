@@ -118,7 +118,17 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   await page.setContent(`<html><body style="margin:0"><div id="test-map" style="width:${profile.width}px;height:${profile.height}px"></div></body></html>`);
   await page.addScriptTag({url:library});
   await evaluate(page,async({layers,base,module,traceProtocol})=>{
-   const {createReferenceReader}=await import(module),reader=createReferenceReader({root:new URL('data/mainline-reference/',base)});
+   const {createReferenceReader}=await import(module);
+   const options={root:new URL('data/mainline-reference/',base)};
+   if(traceProtocol){
+    options.onTileStage=(key,stage,bytes)=>console.log('ATLAS_REFERENCE_PROTOCOL_STAGE '+JSON.stringify({
+     key,stage,bytes,camera:window.referenceTraceCamera??null,at:Date.now()
+    }));
+    setInterval(()=>console.log('ATLAS_REFERENCE_PROTOCOL_HEARTBEAT '+JSON.stringify({
+     camera:window.referenceTraceCamera??null,at:Date.now()
+    })),5000);
+   }
+   const reader=createReferenceReader(options);
    window.referenceReader=reader;window.referenceLayers=layers;
    let protocolId=0;
    maplibregl.addProtocol('mainlinetiles',async(p,c)=>{
