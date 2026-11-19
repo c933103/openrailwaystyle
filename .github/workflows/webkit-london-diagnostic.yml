@@ -1,0 +1,55 @@
+name: WebKit London diagnostic
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  compare:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 38
+    env:
+      REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
+      MAP_BASE_URL: http://127.0.0.1:4173/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.13.1
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Stage the archived reference and build
+        run: |
+          git fetch --no-tags --depth=1 origin "$REFERENCE_SHA"
+          mkdir mainline-output
+          git archive "$REFERENCE_SHA" | tar -x -C mainline-output
+          node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
+          npm run build
+          mkdir -p styles/data/mainline-reference
+          cp -r mainline-output/. styles/data/mainline-reference/
+          npx playwright install --with-deps webkit
+      - name: Run all three arms without publishing
+        run: |
+          mkdir -p london-diagnostics
+          node scripts/serve.mjs >london-diagnostics/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          curl --silent --show-error --fail --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 "${MAP_BASE_URL}data/mainline-reference/manifest.json" >london-diagnostics/manifest.json
+          for mode in fresh transition suite; do
+            set +e
+            ATLAS_WEBKIT_LONDON_DIAGNOSTIC="$mode" timeout 10m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$mode.log" 2>&1
+            status=$?
+            set -e
+            printf '%s %s\n' "$mode" "$status" | tee -a london-diagnostics/status.txt
+            if [ -d browser-review ]; then mv browser-review "london-diagnostics/$mode-review"; fi
+          done
+          for mode in fresh transition suite; do
+            grep -q "^LONDON_DIAGNOSTIC_RESULT" "london-diagnostics/$mode.log"
+            grep -Fxq "$mode 2" london-diagnostics/status.txt
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-london-diagnostics
+          path: london-diagnostics/
