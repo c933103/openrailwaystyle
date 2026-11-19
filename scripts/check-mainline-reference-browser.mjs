@@ -67,10 +67,29 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
  if(diagnostic){
   const referencePath='/data/mainline-reference/';
-  page.on('response',response=>{const url=new URL(response.url());if(url.pathname.includes(referencePath))
-   console.log('LONDON_DIAGNOSTIC_RESPONSE',JSON.stringify({case:checkpoint,status:response.status(),path:url.pathname}));});
-  page.on('requestfailed',request=>{const url=new URL(request.url());if(url.pathname.includes(referencePath))
-   console.log('LONDON_DIAGNOSTIC_REQUEST_FAILURE',JSON.stringify({case:checkpoint,path:url.pathname,error:request.failure()?.errorText}));});
+  const pending=new WeakMap();
+  let requestId=0;
+  function referenceTile(request){
+   const url=new URL(request.url());
+   return url.pathname.includes(referencePath)&&url.pathname.endsWith('.pbf.gz')?url.pathname:null;
+  }
+  function logTile(event,request,extra={}){
+   const path=referenceTile(request);
+   if(!path)return;
+   const now=Date.now(),meta=pending.get(request);
+   console.log('LONDON_DIAGNOSTIC_'+event,JSON.stringify({
+    case:meta?.checkpoint??checkpoint,path,requestId:meta?.id??null,at:new Date(now).toISOString(),
+    elapsedMs:meta?now-meta.start:null,...extra
+   }));
+  }
+  page.on('request',request=>{
+   if(!referenceTile(request))return;
+   pending.set(request,{id:++requestId,checkpoint,start:Date.now()});
+   logTile('REQUEST_START',request);
+  });
+  page.on('response',response=>logTile('RESPONSE',response.request(),{status:response.status()}));
+  page.on('requestfinished',request=>logTile('REQUEST_FINISHED',request));
+  page.on('requestfailed',request=>logTile('REQUEST_FAILURE',request,{error:request.failure()?.errorText}));
   page.on('console',message=>{if(message.text().startsWith('LONDON_DIAGNOSTIC_READINESS '))console.log(message.text());});
  }
  if(profile.engine==='webkit'){
