@@ -43,35 +43,41 @@ test('only a valid local manifest and raster archive enable the background', asy
   assert.equal(sovietCoverage(preview, -150, 30), undefined);
 });
 
-const provider = 'https://indianopenmaps.com/world/topo/russian/';
+const provider = 'soviet/';
 const hostedCatalogue = new URL('https://atlas.example/soviet-footprints.json');
 const footprints = {1000000: [[sheet.id, '1970', sheet.bounds]], 500000: [['L-32-1', 'unknown', sheet.bounds]]};
-const metadata = (key, maxzoom = 9) => ({tiles: [`${provider}${key}/gs/{z}/{x}/{y}.webp`], minzoom: 3, maxzoom});
+const metadata = (maxzoom = 9) => ({minzoom: 3, maxzoom});
+const template = key => `${provider}${key}/{z}/{x}/{y}`;
 
-test('tiles use the verified provider routes and date catalogue', async () => {
+test('tiles use restricted metadata and the date catalogue', async () => {
   const requests = [];
-  const load = async (detail = metadata('500k')) => loadSovietTiles({catalogue: hostedCatalogue, fetcher: async (url, {redirect}) => {
-    assert.equal(redirect, 'error');
-    const address = String(url);
-    requests.push(address);
-    return {ok: true, json: async () => address === hostedCatalogue.href ? footprints
-      : address === `${provider}1m/gs/tiles.json` ? metadata('1m') : detail};
-  }});
+  const load = async (detail = metadata()) => loadSovietTiles({
+    catalogue: hostedCatalogue,
+    fetcher: async url => {
+      requests.push(String(url));
+      return Response.json(footprints);
+    },
+    restrictedFetch: async (path, {redirect}) => {
+      assert.equal(redirect, 'error');
+      requests.push(path);
+      return Response.json(path.includes('1m') ? metadata() : detail);
+    },
+  });
   const preview = await load();
-  assert.deepEqual(requests, [hostedCatalogue.href, provider + '1m/gs/tiles.json', provider + '500k/gs/tiles.json']);
+  assert.deepEqual(requests, [hostedCatalogue.href, provider + '1m/tiles.json', provider + '500k/tiles.json']);
   assert.equal(sovietCoverage(preview, 8.5, 47).date, 'Date unknown');
   assert.equal(sovietCoverage(preview, 8.5, 47).scale, 500000);
   assert.equal(sovietCoverage(preview, 8.5, 47, 2), undefined);
-  assert.equal(await load(metadata('500k', 12)), null);
-  assert.equal(await load({...metadata('500k'), tiles: ['https://elsewhere.example/{z}/{x}/{y}.webp']}), null);
+  assert.equal(await load(metadata(12)), null);
+  assert.equal(await load({minzoom: 10, maxzoom: 8}), null);
 });
 
 test('tile requests skip areas outside the catalogue, treat 404 as gaps, and pause a rate-limited source', async () => {
   let handler, response = new Response(null, {status: 404});
   const requests = [];
   installSovietXYZProtocol({addProtocol: (_, fn) => {handler = fn;}}, [
-    {key: '1m', template: metadata('1m').tiles[0], minzoom: 3, maxzoom: 9, sheets: [sheet]},
-    {key: '500k', template: metadata('500k').tiles[0], minzoom: 3, maxzoom: 9, sheets: [sheet]},
+    {key: '1m', template: template('1m'), minzoom: 3, maxzoom: 9, sheets: [sheet]},
+    {key: '500k', template: template('500k'), minzoom: 3, maxzoom: 9, sheets: [sheet]},
   ], async (url, options) => {requests.push([url, options.redirect]); return response;});
   const get = path => handler({url: 'atlassovietxyz://' + path}, new AbortController());
   const gap = await get('1m/3/0/2');
@@ -80,7 +86,7 @@ test('tile requests skip areas outside the catalogue, treat 404 as gaps, and pau
   await assert.rejects(() => get('1m/3/10/2'), /Invalid/);
   const empty = await get('1m/3/4/2');
   assert.deepEqual(empty, gap);
-  assert.deepEqual(requests[0], [provider + '1m/gs/3/4/2.webp', 'error']);
+  assert.deepEqual(requests[0], [provider + '1m/3/4/2', 'error']);
   response = new Response(null, {status: 429, headers: {'Retry-After': '60'}});
   await assert.rejects(() => get('500k/3/4/2'), /429/);
   await assert.rejects(() => get('1m/3/4/2'), /pause/);

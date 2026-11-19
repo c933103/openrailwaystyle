@@ -6,7 +6,7 @@
   <meta name="description" content="Railway Atlas: explore railways worldwide, with prominent stations, infrastructure, maximum speeds, electrification and gauges. Built on OpenStreetMap.">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
-  <meta name="atlas-soviet-tile-service" content="">
+  <meta name="atlas-restricted-tile-origin" content="">
   <title>Railway Atlas · Worldwide rail map</title>
   <meta name="application-name" content="Railway Atlas">
   <meta property="og:site_name" content="Railway Atlas">
@@ -33,7 +33,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261119-soviet-topo-xyz-1" rel="stylesheet">
+  <link href="app.css?v=20261119-restricted-tiles-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -83,6 +83,11 @@
     <section id="settings-view" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
+        <fieldset id="restricted-tiles" hidden><legend>Admin map backgrounds</legend>
+          <button id="restricted-tile-sign-in" type="button">Sign in with GitHub</button>
+          <button id="restricted-tile-sign-out" type="button" hidden>Sign out</button>
+          <p id="restricted-tile-status" class="small" role="status"></p>
+        </fieldset>
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="stationImportanceColors"> Different colours by station importance at zooms 3–6</label>
@@ -246,6 +251,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261119-soviet-topo-xyz-1"></script>
+  <script type="module" src="app.mjs?v=20261119-restricted-tiles-1"></script>
 </body>
 </html>

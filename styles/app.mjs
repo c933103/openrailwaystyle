@@ -1,39 +1,40 @@
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261119-soviet-topo-xyz-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261119-soviet-topo-xyz-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261119-soviet-topo-xyz-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261119-soviet-topo-xyz-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261119-soviet-topo-xyz-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261119-restricted-tiles-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261119-restricted-tiles-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261119-restricted-tiles-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261119-restricted-tiles-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261119-restricted-tiles-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261119-soviet-topo-xyz-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261119-soviet-topo-xyz-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261119-soviet-topo-xyz-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261119-soviet-topo-xyz-1';
-import {createWorldFonts} from './world-font.mjs?v=20261119-soviet-topo-xyz-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261119-soviet-topo-xyz-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261119-restricted-tiles-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261119-restricted-tiles-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261119-restricted-tiles-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261119-restricted-tiles-1';
+import {createWorldFonts} from './world-font.mjs?v=20261119-restricted-tiles-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261119-restricted-tiles-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261119-soviet-topo-xyz-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261119-soviet-topo-xyz-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261119-restricted-tiles-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261119-restricted-tiles-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261119-soviet-topo-xyz-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261119-soviet-topo-xyz-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261119-soviet-topo-xyz-1';
-import {departureItem} from './departures-ui.mjs?v=20261119-soviet-topo-xyz-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261119-soviet-topo-xyz-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261119-soviet-topo-xyz-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261119-soviet-topo-xyz-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261119-soviet-topo-xyz-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261119-soviet-topo-xyz-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261119-soviet-topo-xyz-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261119-soviet-topo-xyz-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261119-soviet-topo-xyz-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261119-soviet-topo-xyz-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261119-soviet-topo-xyz-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261119-soviet-topo-xyz-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261119-soviet-topo-xyz-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261119-soviet-topo-xyz-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261119-soviet-topo-xyz-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261119-soviet-topo-xyz-1';
-import {installSovietPreview, installSovietProtocol, isSovietSource, loadSovietPreview, loadSovietTiles, installSovietXYZProtocol, sovietCoverage, sovietPreviewAllowed} from './soviet-topo.mjs?v=20261119-soviet-topo-xyz-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261119-restricted-tiles-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261119-restricted-tiles-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261119-restricted-tiles-1';
+import {departureItem} from './departures-ui.mjs?v=20261119-restricted-tiles-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261119-restricted-tiles-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261119-restricted-tiles-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261119-restricted-tiles-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261119-restricted-tiles-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261119-restricted-tiles-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261119-restricted-tiles-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261119-restricted-tiles-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261119-restricted-tiles-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261119-restricted-tiles-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261119-restricted-tiles-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261119-restricted-tiles-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261119-restricted-tiles-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261119-restricted-tiles-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261119-restricted-tiles-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261119-restricted-tiles-1';
+import {createRestrictedTiles, restrictedTileOrigin} from './restricted-tiles.mjs?v=20261119-restricted-tiles-1';
+import {installSovietPreview, installSovietProtocol, isSovietSource, loadSovietPreview, loadSovietTiles, installSovietXYZProtocol, sovietCoverage, sovietPreviewAllowed} from './soviet-topo.mjs?v=20261119-restricted-tiles-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -80,9 +81,19 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const localSovietPreview = sovietPreviewAllowed(location.href);
-const hostedSoviet = document.querySelector('meta[name="atlas-soviet-tile-service"]')?.content === 'indian-open-maps';
-if (settings.background === 'soviet' && !localSovietPreview && !hostedSoviet) settings.background = 'map';
-let sovietPreview, loadHostedSoviet, hostedSovietLoad;
+const restrictedOrigin = restrictedTileOrigin(document.querySelector('meta[name="atlas-restricted-tile-origin"]')?.content);
+let requestedSoviet = settings.background === 'soviet' && !localSovietPreview;
+if (requestedSoviet) settings.background = 'map';
+let sovietPreview, loadHostedSoviet, hostedSovietLoad, tileAccess;
+const restrictedTiles = restrictedOrigin && createRestrictedTiles({
+  origin: restrictedOrigin, window, fetcher: fetch, changed: updateRestrictedTileAccess,
+  report: message => { $('restricted-tile-status').textContent = message; },
+});
+if (restrictedTiles) {
+  $('restricted-tiles').hidden = false;
+  $('restricted-tile-sign-in').addEventListener('click', restrictedTiles.signIn);
+  $('restricted-tile-sign-out').addEventListener('click', restrictedTiles.signOut);
+}
 let backgroundSelection = 0, sovietNotice = '';
 const sovietFailures = new Map();
 // The compact attribution/info control is UI state rather than a shareable map
@@ -96,7 +107,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261119-soviet-topo-xyz-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261119-restricted-tiles-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -655,6 +666,36 @@ function renameOpenMajorStation(){
  }).catch(()=>{});
 }
 let previousTileMode;
+function removeHostedSovietLayers() {
+  for (const {id, source} of map.getStyle().layers.filter(layer => isSovietSource(layer.id))) {
+    map.removeLayer(id);
+    map.removeSource(source);
+  }
+}
+function updateRestrictedTileAccess(access) {
+  tileAccess = access;
+  $('restricted-tile-sign-in').hidden = Boolean(access);
+  $('restricted-tile-sign-out').hidden = !access;
+  if (localSovietPreview) return;
+  $('soviet-background').hidden = !access?.soviet;
+  if (access?.soviet) {
+    if (ready && requestedSoviet) $('soviet-background').click();
+    return;
+  }
+  backgroundSelection++;
+  sovietNotice = '';
+  hostedSovietLoad = undefined;
+  sovietPreview = undefined;
+  sovietFailures.clear();
+  $('soviet-help').hidden = true;
+  $('soviet-sheets').replaceChildren();
+  if (settings.background === 'soviet') settings.background = 'map';
+  if (ready) {
+    removeHostedSovietLayers();
+    applySettings();
+    saveSettings();
+  }
+}
 function renderSovietCatalogue(preview) {
   const items = $('soviet-sheets');
   if (preview.sheets.length <= 12) {
@@ -1542,41 +1583,38 @@ async function initialize() {
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  if (localSovietPreview || hostedSoviet) {
-    const getHistoricalArchive = () => localSovietPreview
-      ? loadSovietPreview({
-        href: location.href, dataRoot: new URL('./data/soviet-topo/', import.meta.url),
-        fetcher: fetch, createArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 6000)),
-      })
-      : loadSovietTiles({catalogue: new URL('./soviet-footprints.json', import.meta.url), fetcher: fetch});
-    if (localSovietPreview) installSovietProtocol(maplibregl, protocol.tile);
-    const register = preview => {
-      if (preview.tileSources) installSovietXYZProtocol(maplibregl, preview.tileSources);
+  if (localSovietPreview) {
+    installSovietProtocol(maplibregl, protocol.tile);
+    const preview = await loadSovietPreview({
+      href: location.href, dataRoot: new URL('./data/soviet-topo/', import.meta.url),
+      fetcher: fetch, createArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 6000)),
+    });
+    if (preview && installSovietPreview(style, preview)) {
       for (const {archive} of preview.archives) protocol.add(archive);
       sovietPreview = preview;
       renderSovietCatalogue(preview);
-    };
-    if (localSovietPreview || settings.background === 'soviet') {
-      const preview = await getHistoricalArchive();
-      if (preview && installSovietPreview(style, preview)) register(preview);
-      else if (settings.background === 'soviet') {
-        settings.background = 'map';
-        if (!localSovietPreview) sovietNotice = 'Soviet topo is temporarily unavailable. Select it to try again.';
-      }
-    }
-    if (!localSovietPreview) loadHostedSoviet = async () => {
-      const preview = await getHistoricalArchive();
-      if (!preview || !ready) return false;
+      $('soviet-background').hidden = false;
+    } else if (settings.background === 'soviet') settings.background = 'map';
+  } else if (restrictedTiles) {
+    loadHostedSoviet = async () => {
+      const access = tileAccess;
+      if (!access?.soviet) return false;
+      const preview = await loadSovietTiles({
+        catalogue: new URL('./soviet-footprints.json', import.meta.url),
+        fetcher: fetch, restrictedFetch: restrictedTiles.fetch,
+      });
+      if (!preview || !ready || tileAccess !== access) return false;
       const currentStyle = map.getStyle();
       if (!installSovietPreview(currentStyle, preview)) return false;
-      register(preview);
+      installSovietXYZProtocol(maplibregl, preview.tileSources, restrictedTiles.fetch);
+      sovietPreview = preview;
+      renderSovietCatalogue(preview);
       for (const layer of currentStyle.layers.filter(layer => isSovietSource(layer.id))) {
         map.addSource(layer.source, currentStyle.sources[layer.source]);
         map.addLayer({...layer, layout: {visibility: 'none'}}, 'energy-overview-areas');
       }
       return true;
     };
-    $('soviet-background').hidden = !sovietPreview && !loadHostedSoviet;
   }
   // Both the labelled basemap and bathymetry read the same PMTiles archive.
   // Create it with the timeout wrapper once, before either consumer can ask
@@ -1906,7 +1944,7 @@ async function initialize() {
   document.addEventListener('visibilitychange', wakeRailRecovery);
   window.addEventListener('online', wakeRailRecovery);
   map.on('moveend', wakeRailRecovery);
-  if (localSovietPreview || hostedSoviet) map.on('moveend', updateSovietStatus);
+  if (localSovietPreview || restrictedTiles) map.on('moveend', updateSovietStatus);
   map.on('remove', () => {requestRefresh.dispose();recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();otherMetadataRetries.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
     // Any failed complete-snapshot tile returns to the original station dots,
@@ -2002,6 +2040,7 @@ async function initialize() {
     if (typeof rememberedView.g === 'boolean') lastAutoProjection = wantedProjection();
     applySettings(); applyUnits(); updateStatus(); updatePolar();
     document.body.dataset.mapReady = 'true';
+    if (tileAccess?.soviet && requestedSoviet) $('soviet-background').click();
     const action = pendingView; pendingView = undefined; action?.();
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
@@ -2092,14 +2131,17 @@ fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', async () => {
   if (button.hidden) return;
+  requestedSoviet = false;
   const background = button.dataset.background;
   const selection = ++backgroundSelection;
   if (background === 'soviet' && !sovietPreview) {
     if (!ready) return;
     sovietNotice = 'Loading Soviet topo…';
     updateSovietStatus();
-    hostedSovietLoad ??= loadHostedSoviet().finally(() => { hostedSovietLoad = undefined; });
-    const available = await hostedSovietLoad;
+    const loading = hostedSovietLoad ??= loadHostedSoviet().finally(() => {
+      if (hostedSovietLoad === loading) hostedSovietLoad = undefined;
+    });
+    const available = await loading;
     if (selection !== backgroundSelection) return;
     if (!available) {
       sovietNotice = 'Soviet topo is temporarily unavailable. Select it to try again.';
@@ -2134,9 +2176,11 @@ function reloadLanguage() {
   // Camera and display options persist; protocol/HTTP caches reuse the data.
   map.once('style.load',()=>{
     ready=true;
+    if (restrictedTiles && !localSovietPreview && !tileAccess?.soviet) removeHostedSovietLayers();
     if(appliedLanguage!==settings.language||cjkFontRefresh) {cjkFontRefresh=false;reloadLanguage();return;}
     applySettings();applyUnits();updateStatus();
     document.body.dataset.mapReady = 'true';
+    if (tileAccess?.soviet && requestedSoviet) $('soviet-background').click();
     if(currentFeature) {showDetails(currentFeature);renameOpenMajorStation();}
     const action = pendingView; pendingView = undefined; action?.();
   });

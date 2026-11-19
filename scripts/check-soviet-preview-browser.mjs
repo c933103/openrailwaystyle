@@ -100,38 +100,71 @@ try {
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
   await page.locator('[data-background="map"]').click();
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
-  // Production configuration comes from the deployment page, not a shared
-  // URL or a local-storage setting. The external host is a fixture only.
-  const host = 'https://indianopenmaps.com/world/topo/russian/';
+  // Only the fixture admin session can use the production delivery route.
+  const broker = 'https://tiles.atlas.test/restricted/';
   let metadataRequests = 0, providerTiles = 0, hostedAvailable = false, tileState = 'image';
+  let capability = true;
+  const token = 'x'.repeat(43);
+  let logoutRequests = 0;
   await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
     const response = await route.fetch();
     await route.fulfill({response, body: (await response.text()).replace(
-      '<meta name="atlas-soviet-tile-service" content="">',
-      '<meta name="atlas-soviet-tile-service" content="indian-open-maps">'
+      '<meta name="atlas-restricted-tile-origin" content="">',
+      '<meta name="atlas-restricted-tile-origin" content="https://tiles.atlas.test">'
     )});
   });
-  const cors = {'Access-Control-Allow-Origin': new URL(base).origin};
+  await context.route(broker + 'auth/login', route => route.fulfill({
+    contentType: 'text/html', body: `<script>window.opener.postMessage(
+      {kind:'atlas-restricted-tiles',session:${JSON.stringify(capability ? {
+        token, soviet:true, google:true, expiresAt:Date.now()+60_000,
+      } : null)}}, ${JSON.stringify(new URL(base).origin)});window.close();</script>`,
+  }));
+  const cors = {'Access-Control-Allow-Origin': new URL(base).origin, 'Access-Control-Allow-Headers':'Authorization',
+    'Access-Control-Allow-Methods':'GET, DELETE', 'Access-Control-Expose-Headers':'Retry-After'};
+  const authenticated = (route, respond) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:cors});
+    assert.equal(route.request().headers().authorization, 'Bearer ' + token);
+    return respond();
+  };
+  await context.route(broker + 'auth/session', route => authenticated(route, () => {
+    assert.equal(route.request().method(), 'DELETE');
+    logoutRequests++;
+    return route.fulfill({status:204,headers:cors});
+  }));
+  await context.route('https://indianopenmaps.com/**', () => assert.fail('browser tried a direct historical tile request'));
   const sheet = ['L-32 fixture', '1970', [0, 40, 30, 66]];
   await page.route(base + 'soviet-footprints.json', route => route.fulfill({json: {
     1000000: [sheet], 500000: [['L-32-1 fixture', '1980', sheet[2]]],
   }}));
   for (const key of ['1m', '500k']) {
-    const root = host + key + '/gs/';
-    await page.route(root + 'tiles.json', route => {
+    const root = broker + 'soviet/' + key + '/';
+    await context.route(root + 'tiles.json', route => authenticated(route, () => {
       metadataRequests++;
       return route.fulfill(hostedAvailable
-        ? {headers:cors, json:{minzoom:3,maxzoom:5,scheme:'xyz',tiles:[root + '{z}/{x}/{y}.webp']}}
+        ? {headers:cors, json:{minzoom:3,maxzoom:5}}
         : {status:503, headers:cors});
-    });
-    await page.route(root + '**/*.webp', route => {
+    }));
+    await context.route(url => url.href.startsWith(root) && /\/\d+\/\d+\/\d+$/.test(url.pathname), route => authenticated(route, () => {
       providerTiles++;
       if (tileState === 'missing') return route.fulfill({status:404, headers:cors});
       if (tileState === 'failed') return route.fulfill({status:503, headers:{...cors, 'Retry-After':'120'}});
+      if (tileState === 'expired') return route.fulfill({status:401, headers:cors});
       return route.fulfill({headers:cors, contentType:'image/webp', body:redWebP});
-    });
+    }));
   }
+  async function signIn() {
+    await page.locator('#settings-open').click();
+    await page.locator('#restricted-tile-sign-in').click();
+    await page.locator('#restricted-tile-sign-out').waitFor();
+    await page.locator('#settings-close').click();
+  }
+  await open(false);
+  assert.equal(await page.locator(button).isVisible(), false);
+  assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(metadataRequests, 0, 'even a shared Soviet background requires sign-in');
+  assert.equal(providerTiles, 0);
   await open(false, 'map');
+  await signIn();
   assert.equal(await page.locator(button).isVisible(), true);
   assert.equal(metadataRequests, 0, 'regular sessions must not fetch hosted metadata');
   assert.equal(providerTiles, 0);
@@ -145,7 +178,7 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-background="soviet"]').getAttribute('aria-pressed') === 'true');
   await page.waitForFunction(() => ['soviet-topo', 'soviet-topo-1'].every(id => window.sovietMap.isSourceLoaded(id)));
   assert.match(await page.locator('#soviet-status').textContent(), /Catalogue date 1980/);
-  assert.ok(providerTiles > 0, 'direct raster views request the two XYZ layers');
+  assert.ok(providerTiles > 0, 'authenticated raster views request the two XYZ layers');
   const painted = await page.evaluate(() => new Promise(resolve => {
     window.sovietMap.once('render', () => {
       const gl = window.sovietMap.getCanvas().getContext('webgl2'), bytes = new Uint8Array(4);
@@ -161,16 +194,32 @@ try {
   assert.equal(providerTiles, beforeGap, 'coverage suppresses open-ocean fetches');
   tileState = 'missing';
   await open(false);
-  await page.waitForFunction(() => ['soviet-topo', 'soviet-topo-1'].every(id => window.sovietMap.isSourceLoaded(id)));
+  await signIn();
+  await page.waitForFunction(() => ['soviet-topo', 'soviet-topo-1'].every(id => window.sovietMap.getSource(id) && window.sovietMap.isSourceLoaded(id)));
   assert.equal(await page.locator(button).getAttribute('aria-pressed'), 'true');
   assert.doesNotMatch(await page.locator('#soviet-status').textContent(), /could not load/);
   tileState = 'failed';
   await open(false);
+  await signIn();
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
   await page.locator('[data-background="map"]').click();
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
+  await page.locator('#settings-open').click();
+  await page.locator('#restricted-tile-sign-out').click();
+  await page.locator('#settings-close').click();
+  assert.equal(await page.locator(button).isVisible(), false);
+  assert.equal(await page.evaluate(() => Boolean(window.sovietMap.getSource('soviet-topo'))), false);
+  await page.waitForTimeout(300);
+  assert.equal(logoutRequests, 1);
+  tileState = 'expired';
+  await open(false, 'map');
+  await signIn();
+  await page.locator(button).click();
+  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.startsWith('Session expired'));
+  assert.equal(await page.locator(button).isVisible(), false);
+  assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: loopback opt-in, missing archive, historical pixels, layer order, coverage, isolated tile failure, and on-demand third-party XYZ');
+  console.log('PASS: loopback preview, historical pixels, stacking, coverage, failures, admin sign-in, sign-out, and expired-session fallback');
 } finally {
   await browser.close();
 }

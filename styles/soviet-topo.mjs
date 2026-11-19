@@ -67,31 +67,29 @@ export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}
   } catch { return null; }
 }
 
-// The public service supplies browser tiles. The small first-party catalogue
-// records the footprints of the same two releases used by the tile server.
-const XYZ_ROOT = 'https://indianopenmaps.com/world/topo/russian/';
+// The first-party catalogue records the footprints of both historical series.
+const XYZ_ROOT = 'soviet/';
 const XYZ_SCHEME = 'atlassovietxyz://';
 const XYZ_SERIES = [
   {key: '1m', scale: 1000000, maxZoom: 10, credit: 'Indian Open Maps · Petro Vlasenko and Mapstor Archive'},
   {key: '500k', scale: 500000, maxZoom: 11, credit: 'Indian Open Maps · Petro Vlasenko, Mapstor Archive and University of Wisconsin–Milwaukee Libraries'},
 ];
 
-export async function loadSovietTiles({catalogue, fetcher}) {
-  const get = async url => {
-    const response = await fetcher(url, {redirect: 'error', signal: AbortSignal.timeout(6000)});
+export async function loadSovietTiles({catalogue, fetcher, restrictedFetch}) {
+  const get = async (url, request) => {
+    const response = await request(url, {redirect: 'error', signal: AbortSignal.timeout(6000)});
     if (!response.ok) throw new Error(`Historical map metadata returned HTTP ${response.status}`);
     return response.json();
   };
   try {
     const [footprints, ...metadata] = await Promise.all([
-      get(catalogue), ...XYZ_SERIES.map(({key}) => get(`${XYZ_ROOT}${key}/gs/tiles.json`)),
+      get(catalogue, fetcher), ...XYZ_SERIES.map(({key}) => get(`${XYZ_ROOT}${key}/tiles.json`, restrictedFetch)),
     ]);
     const sheets = [];
     const tileSources = XYZ_SERIES.map(({key, scale, maxZoom, credit}, i) => {
-      const {tiles, minzoom, maxzoom, scheme} = metadata[i] ?? {};
-      const template = `${XYZ_ROOT}${key}/gs/{z}/{x}/{y}.webp`;
-      if (!Array.isArray(tiles) || tiles.length !== 1 || tiles[0] !== template ||
-          (scheme && scheme !== 'xyz') || !Number.isInteger(minzoom) || !Number.isInteger(maxzoom) ||
+      const {minzoom, maxzoom} = metadata[i] ?? {};
+      const template = `${XYZ_ROOT}${key}/{z}/{x}/{y}`;
+      if (!Number.isInteger(minzoom) || !Number.isInteger(maxzoom) ||
           minzoom < 0 || maxzoom < minzoom || maxzoom > maxZoom) throw new Error('Unexpected historical tile configuration');
       const group = footprints?.[scale]?.map(([id, date, bounds]) => ({
         id, name: id, bounds, date: date === 'unknown' ? 'Date unknown' : `Catalogue date ${date}`,
@@ -106,7 +104,7 @@ export async function loadSovietTiles({catalogue, fetcher}) {
   } catch { return null; }
 }
 
-export function installSovietXYZProtocol(maplibre, tileSources, fetcher = fetch) {
+export function installSovietXYZProtocol(maplibre, tileSources, fetcher) {
   const sources = new Map(tileSources.map(source => [source.key, source]));
   const tileLatitude = (row, n) => 180 / Math.PI * Math.atan(Math.sinh(Math.PI * (1 - 2 * row / n)));
   let retryAt = 0;

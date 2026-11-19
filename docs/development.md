@@ -181,29 +181,47 @@ Run `node scripts/check-soviet-preview-browser.mjs` with the local server up
 to verify the preview using a synthetic archive. Its output does not establish
 geographic coverage of any historical source.
 
-#### Public tile service
+#### Repository-admin tile service
 
-The candidate public mode uses Indian Open Maps' 1:1,000,000 and 1:500,000
-Genshtab XYZ layers directly from the browser. The source
-[route definitions](https://github.com/ramSeraph/indianopenmaps/blob/main/worker/src/routes/listing.json)
-link these layers to the same archives as the local preview.
-`styles/soviet-footprints.json` keeps the sheet identifiers, dates and bounds
-from the two published sheet indexes. Pages publishes this catalogue with the
-site. The raster service delivers each tile with its own HTTP cache headers.
+GitHub Pages keeps the public map static. Settings → Admin map backgrounds opens
+GitHub sign-in on the restricted tile service. The service checks the user's
+administrator permission on the configured repository and issues a 15-minute
+session. Atlas stores the session in memory. Signing out, expiry, and a rejected
+session remove the restricted layer. A shared link to Soviet topo opens the map
+until an admin signs in.
 
-Ordinary map visits make no calls to this service. Selecting Soviet topo
-loads the two TileJSON records and requests only viewport tiles that
-intersect a known sheet footprint. An empty tile or a footprint gap is
-transparent. Service errors leave the modern map and overlays usable. The
-client pauses on rate or availability limits and honours `Retry-After` when
-provided. Historical tiles stay outside the service worker's cache.
+Soviet topo uses the Indian Open Maps 1:1,000,000 and 1:500,000 Genshtab XYZ routes.
+[The provider's route definitions](https://github.com/ramSeraph/indianopenmaps/blob/main/worker/src/routes/listing.json)
+link these layers to the preview archives. The site catalogue supplies footprints
+and dates. Selecting the background fetches metadata and viewport tiles through
+the authenticated service. Footprint gaps and 404s are transparent. The broker
+streams tiles from the provider and respects `Retry-After`; browser, service-worker
+and shared HTTP caches do not store the responses.
 
-After confirming the service's terms for a public Atlas integration, set the
-GitHub Actions variable `SOVIET_TOPO_TILE_SERVICE` to `indian-open-maps`.
-The default is empty. Before enabling it publicly, verify a normal viewer
-session from the Atlas origin with the configured service and check both
-covered and uncovered regions. Clear the variable and redeploy to remove the
-public control.
+To configure the service, register a GitHub App with Metadata read access, install
+it on the Atlas repository, and register the HTTPS callback
+`<AUTH_BACKEND_ORIGIN>/restricted/auth/callback`. No write permissions are required.
+Run `node scripts/restricted-tile-server.mjs` as one instance behind a TLS reverse
+proxy. Configure `ATLAS_SITE_ORIGIN`, `AUTH_BACKEND_ORIGIN`, `GITHUB_ADMIN_REPO`,
+`GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` on that service. Keep credentials on
+the server. Its `PORT` defaults to 8080. Sessions and request counters reset on
+restart. The shared per-account limit defaults to 120 requests/minute
+(`TILES_PER_MINUTE`). Each provider also has a separate service-wide limit of
+300 requests/minute (`TOTAL_TILES_PER_MINUTE`).
+
+Set the Pages repository variable `AUTH_BACKEND_ORIGIN` to the HTTPS service
+origin after deployment. With the variable empty there is no admin sign-in
+control. Enable `SOVIET_TOPO_TILE_SERVICE=indian-open-maps` **on the service**
+once authenticated interactive relay use and the request budget have been
+established for that endpoint. A signed-in browser needs to verify the credits,
+covered and uncovered areas, account access, and sign-out from the Atlas origin.
+
+The proposed Google client can use the same in-memory session via
+`restrictedTiles.fetch` and its `google/{z}/{x}/{y}` and `google/viewport` routes.
+These use the Google Map Tiles API satellite session when `GOOGLE_MAPS_API_KEY`
+is configured on the service. The Google renderer and its viewport attribution
+are a separate integration. The public Satellite and Hybrid backgrounds use
+their existing providers.
 
 ## Source layout and generated files
 

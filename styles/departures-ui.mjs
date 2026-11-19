@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261119-soviet-topo-xyz-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261119-restricted-tiles-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
