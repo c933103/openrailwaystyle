@@ -17,6 +17,9 @@ const evaluate=(page,fn,arg)=>withinDeadline(()=>page.evaluate(fn,arg),`browser 
 const screenshot=(page,options)=>withinDeadline(()=>page.screenshot({...options,timeout:5000}),'failure/snapshot capture',5000);
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
+const diagnostic=process.env.ATLAS_WEBKIT_LONDON_DIAGNOSTIC;
+if(diagnostic&&(!published||!['fresh','transition','suite'].includes(diagnostic)))
+ throw new Error('London diagnostic requires --published and fresh, transition or suite');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
 // One neutral and one Infrastructure layer per mapped classification; the
 // compiled style starts with only the Infrastructure strokes visible.
@@ -57,10 +60,19 @@ await mkdir('browser-review',{recursive:true});
 for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  {name:'android',engine:'chromium',width:360,height:450},
  {name:'safari',engine:'webkit',width:390,height:450}]){
+ if(diagnostic&&profile.engine!=='webkit')continue;
  checkpoint={phase:'profile setup',profile:profile.name};
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
  let closing=false,primaryError;
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
+ if(diagnostic){
+  const referencePath='/data/mainline-reference/';
+  page.on('response',response=>{const url=new URL(response.url());if(url.pathname.includes(referencePath))
+   console.log('LONDON_DIAGNOSTIC_RESPONSE',JSON.stringify({case:checkpoint,status:response.status(),path:url.pathname}));});
+  page.on('requestfailed',request=>{const url=new URL(request.url());if(url.pathname.includes(referencePath))
+   console.log('LONDON_DIAGNOSTIC_REQUEST_FAILURE',JSON.stringify({case:checkpoint,path:url.pathname,error:request.failure()?.errorText}));});
+  page.on('console',message=>{if(message.text().startsWith('LONDON_DIAGNOSTIC_READINESS '))console.log(message.text());});
+ }
  if(profile.engine==='webkit'){
   await page.addInitScript(()=>{
    window.referenceBlobs=new Map();const create=URL.createObjectURL.bind(URL);
@@ -99,6 +111,8 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   },{layers,base,module:readerModule});
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
+   const target=projection==='globe'&&c.name==='United Kingdom–London';
+   if(diagnostic&&diagnostic!=='suite'&&!(target&&(zoom===6||(diagnostic==='transition'&&zoom===5))))continue;
    checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
     console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
@@ -108,9 +122,13 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
    },{center:c.center,zoom,projection,expected});
-   try{await withinDeadline(()=>page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
-    testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
-    expected,{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
+   try{await withinDeadline(()=>page.waitForFunction(({expected,probe,zoom})=>{
+    const loaded=testMap.loaded(),sourceLoaded=probe||loaded?testMap.isSourceLoaded('railReference'):false;
+    const chains=probe||(loaded&&sourceLoaded)?testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length:0;
+    if(probe){const state=JSON.stringify({zoom,loaded,sourceLoaded,chains});
+     if(window.lastLondonState!==state){window.lastLondonState=state;console.log('LONDON_DIAGNOSTIC_READINESS '+state);}}
+    return loaded&&sourceLoaded&&chains;
+   },{expected,probe:Boolean(diagnostic&&target&&(zoom===5||zoom===6)),zoom},{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
    catch(error){
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
@@ -158,6 +176,13 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   throw error;
  }finally{closing=true;await closeBrowser(page.context(),browser,{primaryError})}
 }
+if(diagnostic){
+ const london=samples.filter(s=>s.projection==='globe'&&s.name==='United Kingdom–London'&&[5,6].includes(s.zoom));
+ assert.deepEqual(london.map(s=>s.zoom), diagnostic==='fresh'?[6]:[5,6]);
+ console.log('LONDON_DIAGNOSTIC_RESULT',JSON.stringify({mode:diagnostic,generation:manifest.generation,london,acceptance:false}));
+ stopWatchdog();
+ process.exitCode=2; // A diagnostic run may never satisfy the publication gate.
+}else{
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
 // missing protocol registration or a runtime visibility override that the
@@ -216,3 +241,4 @@ const report={scope:published?'Actual OSM generation; exact chain identities':'S
 await writeFile('browser-review/mainline-reference.json',JSON.stringify(report,null,2)+'\n');
 stopWatchdog();
 console.log('PASS: independent reference with unavailable thematic provider',JSON.stringify({samples:samples.length,timing:report.timing,generation:manifest.generation}));
+}
