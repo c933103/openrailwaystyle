@@ -24,16 +24,6 @@ export function sovietPreviewAllowed(href) {
     && url.searchParams.get('sovietPreview') === '1';
 }
 
-export function publicSovietArchiveRoot(value) {
-  if (!value || /[?#]/.test(value)) return null;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-    if (!url.pathname.endsWith('/')) url.pathname += '/';
-    return url;
-  } catch { return null; }
-}
-
 function validSheet(sheet) {
   const {bounds, source, scale} = sheet ?? {};
   if (!['id', 'name', 'date', 'credit', 'alignment'].every(key => typeof sheet?.[key] === 'string' && sheet[key].trim())
@@ -47,11 +37,10 @@ function validSheet(sheet) {
   } catch { return false; }
 }
 
-export async function loadSovietPreview({href, dataRoot, hostedRoot, fetcher, createArchive}) {
-  const root = sovietPreviewAllowed(href) ? dataRoot : publicSovietArchiveRoot(hostedRoot?.href);
-  if (!root) return null;
+export async function loadSovietPreview({href, dataRoot, fetcher, createArchive}) {
+  if (!sovietPreviewAllowed(href)) return null;
   try {
-    const catalogue = new URL('index.json', root);
+    const catalogue = new URL('index.json', dataRoot);
     const response = await fetcher(catalogue, {redirect: 'error', signal: AbortSignal.timeout(6000)});
     if (!response.ok) return null;
     const config = await response.json();
@@ -66,7 +55,7 @@ export async function loadSovietPreview({href, dataRoot, hostedRoot, fetcher, cr
     const filenames = groups.flatMap(group => group.archives);
     if (filenames.length !== new Set(filenames).size) return null;
     const archives = await Promise.all(filenames.map(async name => {
-      const url = new URL(name, root).href, archive = createArchive(url);
+      const url = new URL(name, dataRoot).href, archive = createArchive(url);
       const header = await archive.getHeader();
       // Both formats preserve alpha at cutlines and around sparse coverage.
       if (![2, 4].includes(header.tileType) || !Number.isInteger(header.minZoom) || !Number.isInteger(header.maxZoom)
@@ -76,6 +65,75 @@ export async function loadSovietPreview({href, dataRoot, hostedRoot, fetcher, cr
     }));
     return {archives, catalogue, sheets: groups.flatMap(group => group.sheets)};
   } catch { return null; }
+}
+
+// The public service supplies browser tiles. The small first-party catalogue
+// records the footprints of the same two releases used by the tile server.
+const XYZ_ROOT = 'https://indianopenmaps.com/world/topo/russian/';
+const XYZ_SCHEME = 'atlassovietxyz://';
+const XYZ_SERIES = [
+  {key: '1m', scale: 1000000, maxZoom: 10, credit: 'Indian Open Maps · Petro Vlasenko and Mapstor Archive'},
+  {key: '500k', scale: 500000, maxZoom: 11, credit: 'Indian Open Maps · Petro Vlasenko, Mapstor Archive and University of Wisconsin–Milwaukee Libraries'},
+];
+
+export async function loadSovietTiles({catalogue, fetcher}) {
+  const get = async url => {
+    const response = await fetcher(url, {redirect: 'error', signal: AbortSignal.timeout(6000)});
+    if (!response.ok) throw new Error(`Historical map metadata returned HTTP ${response.status}`);
+    return response.json();
+  };
+  try {
+    const [footprints, ...metadata] = await Promise.all([
+      get(catalogue), ...XYZ_SERIES.map(({key}) => get(`${XYZ_ROOT}${key}/gs/tiles.json`)),
+    ]);
+    const sheets = [];
+    const tileSources = XYZ_SERIES.map(({key, scale, maxZoom, credit}, i) => {
+      const {tiles, minzoom, maxzoom, scheme} = metadata[i] ?? {};
+      const template = `${XYZ_ROOT}${key}/gs/{z}/{x}/{y}.webp`;
+      if (!Array.isArray(tiles) || tiles.length !== 1 || tiles[0] !== template ||
+          (scheme && scheme !== 'xyz') || !Number.isInteger(minzoom) || !Number.isInteger(maxzoom) ||
+          minzoom < 0 || maxzoom < minzoom || maxzoom > maxZoom) throw new Error('Unexpected historical tile configuration');
+      const group = footprints?.[scale]?.map(([id, date, bounds]) => ({
+        id, name: id, bounds, date: date === 'unknown' ? 'Date unknown' : `Catalogue date ${date}`,
+        scale, source: `https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/${key}-gs-pmtiles`,
+        credit, alignment: 'Published catalogue footprint. Alignment accuracy varies.', minzoom,
+      }));
+      if (!group?.length || !group.every(validSheet)) throw new Error('Missing historical coverage catalogue');
+      sheets.push(...group);
+      return {key, template, minzoom, maxzoom, sheets: group};
+    });
+    return {catalogue, sheets, archives: [], tileSources};
+  } catch { return null; }
+}
+
+export function installSovietXYZProtocol(maplibre, tileSources, fetcher = fetch) {
+  const sources = new Map(tileSources.map(source => [source.key, source]));
+  const tileLatitude = (row, n) => 180 / Math.PI * Math.atan(Math.sinh(Math.PI * (1 - 2 * row / n)));
+  let retryAt = 0;
+  maplibre.addProtocol('atlassovietxyz', async ({url}, controller) => {
+    const match = /^(1m|500k)\/(\d+)\/(\d+)\/(\d+)$/.exec(url.slice(XYZ_SCHEME.length));
+    if (!match || !sources.has(match[1])) throw new Error('Unexpected historical tile URL');
+    const source = sources.get(match[1]);
+    const [z, x, y] = match.slice(2).map(Number);
+    const width = 2 ** z;
+    if (z < source.minzoom || z > source.maxzoom || x >= width || y >= width) throw new Error('Invalid historical tile coordinates');
+    const west = 360 * x / width - 180, east = 360 * (x + 1) / width - 180;
+    const north = tileLatitude(y, width), south = tileLatitude(y + 1, width);
+    if (!source.sheets.some(({bounds}) => bounds[2] > west && bounds[0] < east && bounds[3] > south && bounds[1] < north))
+      return {data: TRANSPARENT.slice()};
+    if (performance.now() < retryAt) throw new Error('Historical tile service asked the browser to pause');
+    const target = source.template.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y));
+    const response = await fetcher(target, {signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]), redirect: 'error'});
+    if (response.status === 404) return {data: TRANSPARENT.slice()};
+    if (response.status === 429 || response.status === 503) {
+      const retry = response.headers.get('Retry-After')?.trim();
+      const wait = /^\d+$/.test(retry ?? '') ? Number(retry) * 1000 : Date.parse(retry) - Date.now();
+      retryAt = Math.max(retryAt, performance.now() + (Number.isFinite(wait) && wait >= 0 ? wait : 30_000));
+    }
+    if (!response.ok || !/^image\/webp(?:;|$)/i.test(response.headers.get('Content-Type') ?? ''))
+      throw new Error(`Historical tile could not load (HTTP ${response.status})`);
+    return {data: await response.arrayBuffer()};
+  });
 }
 
 const escapeHTML = value => value.replace(/[&<>"']/g, character => (
@@ -91,10 +149,13 @@ export function installSovietPreview(style, preview) {
   const credits = [...new Set(preview.sheets.map(sheet => (
     `<a href="${escapeHTML(sheet.source)}">${escapeHTML(sheet.credit)}</a>`
   )))].join(' · ');
-  const layers = preview.archives.map(({url}, index) => {
+  const definitions = preview.tileSources?.map(({key, minzoom, maxzoom}) => ({
+    tiles: [`${XYZ_SCHEME}${key}/{z}/{x}/{y}`], minzoom, maxzoom,
+  })) ?? preview.archives.map(({url}) => ({url: `${SCHEME}${url}`}));
+  const layers = definitions.map((definition, index) => {
     const id = index ? `${SOVIET_SOURCE}-${index}` : SOVIET_SOURCE;
     style.sources[id] = {
-      type: 'raster', url: `${SCHEME}${url}`, tileSize: 256,
+      type: 'raster', ...definition, tileSize: 256,
       attribution: `Historical Soviet military topographic maps · ${credits}`,
     };
     return {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {test} from 'node:test';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
-import {installSovietPreview, installSovietProtocol, loadSovietPreview, publicSovietArchiveRoot, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
+import {installSovietPreview, installSovietProtocol, loadSovietPreview, loadSovietTiles, installSovietXYZProtocol, sovietCoverage, sovietPreviewAllowed} from '../styles/soviet-topo.mjs';
 
 const loopback = 'http://127.0.0.1:4173/?sovietPreview=1';
 const dataRoot = new URL('./data/soviet-topo/', loopback);
@@ -43,30 +43,48 @@ test('only a valid local manifest and raster archive enable the background', asy
   assert.equal(sovietCoverage(preview, -150, 30), undefined);
 });
 
-test('public archive roots come from a clean HTTPS configuration', async () => {
-  for (const value of ['', './data', 'http://assets.example.org/map/', 'https://user:p@assets.example.org/',
-    'https://assets.example.org/map/?', 'https://assets.example.org/map/#fragment'])
-    assert.equal(publicSovietArchiveRoot(value), null, value);
-  const hostedRoot = publicSovietArchiveRoot('https://assets.example.org/topo/v1');
-  assert.equal(hostedRoot.href, 'https://assets.example.org/topo/v1/');
+const provider = 'https://indianopenmaps.com/world/topo/russian/';
+const hostedCatalogue = new URL('https://atlas.example/soviet-footprints.json');
+const footprints = {1000000: [[sheet.id, '1970', sheet.bounds]], 500000: [['L-32-1', 'unknown', sheet.bounds]]};
+const metadata = (key, maxzoom = 9) => ({tiles: [`${provider}${key}/gs/{z}/{x}/{y}.webp`], minzoom: 3, maxzoom});
+
+test('tiles use the verified provider routes and date catalogue', async () => {
   const requests = [];
-  const options = {
-    dataRoot, hostedRoot,
-    fetcher: async (url, {redirect}) => {
-      assert.equal(redirect, 'error');
-      requests.push(url.href);
-      return {ok: true, json: async () => config};
-    },
-    createArchive: url => {
-      requests.push(url);
-      return {getHeader: async () => goodHeader};
-    },
-  };
-  const preview = await loadSovietPreview({href: 'https://atlas.example/?background=soviet', ...options});
-  assert.equal(preview.catalogue.href, 'https://assets.example.org/topo/v1/index.json');
-  assert.deepEqual(requests, [preview.catalogue.href, hostedRoot.href + name]);
-  const local = await loadSovietPreview({href: loopback, ...options});
-  assert.equal(local.catalogue.href, new URL('index.json', dataRoot).href);
+  const load = async (detail = metadata('500k')) => loadSovietTiles({catalogue: hostedCatalogue, fetcher: async (url, {redirect}) => {
+    assert.equal(redirect, 'error');
+    const address = String(url);
+    requests.push(address);
+    return {ok: true, json: async () => address === hostedCatalogue.href ? footprints
+      : address === `${provider}1m/gs/tiles.json` ? metadata('1m') : detail};
+  }});
+  const preview = await load();
+  assert.deepEqual(requests, [hostedCatalogue.href, provider + '1m/gs/tiles.json', provider + '500k/gs/tiles.json']);
+  assert.equal(sovietCoverage(preview, 8.5, 47).date, 'Date unknown');
+  assert.equal(sovietCoverage(preview, 8.5, 47).scale, 500000);
+  assert.equal(sovietCoverage(preview, 8.5, 47, 2), undefined);
+  assert.equal(await load(metadata('500k', 12)), null);
+  assert.equal(await load({...metadata('500k'), tiles: ['https://elsewhere.example/{z}/{x}/{y}.webp']}), null);
+});
+
+test('tile requests skip areas outside the catalogue, treat 404 as gaps, and pause a rate-limited source', async () => {
+  let handler, response = new Response(null, {status: 404});
+  const requests = [];
+  installSovietXYZProtocol({addProtocol: (_, fn) => {handler = fn;}}, [
+    {key: '1m', template: metadata('1m').tiles[0], minzoom: 3, maxzoom: 9, sheets: [sheet]},
+    {key: '500k', template: metadata('500k').tiles[0], minzoom: 3, maxzoom: 9, sheets: [sheet]},
+  ], async (url, options) => {requests.push([url, options.redirect]); return response;});
+  const get = path => handler({url: 'atlassovietxyz://' + path}, new AbortController());
+  const gap = await get('1m/3/0/2');
+  assert.equal(gap.data[0], 137);
+  assert.deepEqual(requests, []);
+  await assert.rejects(() => get('1m/3/10/2'), /Invalid/);
+  const empty = await get('1m/3/4/2');
+  assert.deepEqual(empty, gap);
+  assert.deepEqual(requests[0], [provider + '1m/gs/3/4/2.webp', 'error']);
+  response = new Response(null, {status: 429, headers: {'Retry-After': '60'}});
+  await assert.rejects(() => get('500k/3/4/2'), /429/);
+  await assert.rejects(() => get('1m/3/4/2'), /pause/);
+  assert.equal(requests.length, 2);
 });
 
 test('the original raster sits above seabed and below railway and localized labels', async () => {

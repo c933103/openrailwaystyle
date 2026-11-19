@@ -7,6 +7,7 @@ import {pmtilesBytesResponse} from './pmtiles-browser-fixture.mjs';
 
 const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
 const red = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64');
+const redWebP = Buffer.from('UklGRhwAAABXRUJQVlA4TA8AAAAvAAAAAAcQ/Y/+ByKi/wEA', 'base64');
 const directory = Buffer.from([1, zxyToTileId(3, 4, 2), 1, red.length, 1]);
 const metadata = Buffer.from('{}'), header = Buffer.alloc(127);
 const tileOffset = header.length + directory.length + metadata.length;
@@ -101,55 +102,75 @@ try {
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
   // Production configuration comes from the deployment page, not a shared
   // URL or a local-storage setting. The external host is a fixture only.
-  const host = 'https://assets.example.org/topo/';
-  let hostedIndex = 0, ranges = 0, hostedAvailable = false;
+  const host = 'https://indianopenmaps.com/world/topo/russian/';
+  let metadataRequests = 0, providerTiles = 0, hostedAvailable = false, tileState = 'image';
   await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
     const response = await route.fetch();
     await route.fulfill({response, body: (await response.text()).replace(
-      '<meta name="atlas-soviet-archive-root" content="">',
-      `<meta name="atlas-soviet-archive-root" content="${host}">`
+      '<meta name="atlas-soviet-tile-service" content="">',
+      '<meta name="atlas-soviet-tile-service" content="indian-open-maps">'
     )});
   });
-  const cors = {
-    'Access-Control-Allow-Origin': new URL(base).origin,
-    'Access-Control-Expose-Headers': 'ETag, Content-Range',
-  };
-  await page.route(host + 'index.json', route => {
-    hostedIndex++;
-    return route.fulfill(hostedAvailable ? {json:config, headers:cors} : {status:503, headers:cors});
-  });
-  await page.route(host + name, route => {
-    const range = route.request().headers().range;
-    assert.match(range, /^bytes=/);
-    ranges++;
-    const result = pmtilesBytesResponse(raster, range, 'soviet-hosted-fixture');
-    return route.fulfill({...result, headers:{...result.headers, ...cors}});
-  });
+  const cors = {'Access-Control-Allow-Origin': new URL(base).origin};
+  const sheet = ['L-32 fixture', '1970', [0, 40, 30, 66]];
+  await page.route(base + 'soviet-footprints.json', route => route.fulfill({json: {
+    1000000: [sheet], 500000: [['L-32-1 fixture', '1980', sheet[2]]],
+  }}));
+  for (const key of ['1m', '500k']) {
+    const root = host + key + '/gs/';
+    await page.route(root + 'tiles.json', route => {
+      metadataRequests++;
+      return route.fulfill(hostedAvailable
+        ? {headers:cors, json:{minzoom:3,maxzoom:5,scheme:'xyz',tiles:[root + '{z}/{x}/{y}.webp']}}
+        : {status:503, headers:cors});
+    });
+    await page.route(root + '**/*.webp', route => {
+      providerTiles++;
+      if (tileState === 'missing') return route.fulfill({status:404, headers:cors});
+      if (tileState === 'failed') return route.fulfill({status:503, headers:{...cors, 'Retry-After':'120'}});
+      return route.fulfill({headers:cors, contentType:'image/webp', body:redWebP});
+    });
+  }
   await open(false, 'map');
   assert.equal(await page.locator(button).isVisible(), true);
-  assert.equal(hostedIndex, 0, 'regular sessions must not fetch archival metadata');
-  assert.equal(ranges, 0);
+  assert.equal(metadataRequests, 0, 'regular sessions must not fetch hosted metadata');
+  assert.equal(providerTiles, 0);
   await page.locator(button).click();
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('temporarily unavailable'));
   assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
-  assert.equal(hostedIndex, 1);
-  assert.equal(ranges, 0);
+  assert.equal(metadataRequests, 2);
+  assert.equal(providerTiles, 0);
   hostedAvailable = true;
   await page.locator(button).click();
   await page.waitForFunction(() => document.querySelector('[data-background="soviet"]').getAttribute('aria-pressed') === 'true');
-  await page.waitForFunction(() => window.sovietMap.isSourceLoaded('soviet-topo'));
-  assert.match(await page.locator('#soviet-status').textContent(), /Compiled 1970/);
-  assert.equal(hostedIndex, 2, 'a successful retry reads exactly one catalogue');
-  assert.ok(ranges >= 2, 'cross-origin data uses header and tile ranges');
-  const layerOrder = await page.evaluate(() => window.sovietMap.getStyle().layers.map(layer => layer.id));
-  assert.ok(layerOrder.indexOf('terrain-bathymetry') < layerOrder.indexOf('soviet-topo'));
-  assert.ok(layerOrder.indexOf('soviet-topo') < layerOrder.indexOf('energy-overview-areas'));
-  const beforeLink = hostedIndex;
+  await page.waitForFunction(() => ['soviet-topo', 'soviet-topo-1'].every(id => window.sovietMap.isSourceLoaded(id)));
+  assert.match(await page.locator('#soviet-status').textContent(), /Catalogue date 1980/);
+  assert.ok(providerTiles > 0, 'direct raster views request the two XYZ layers');
+  const painted = await page.evaluate(() => new Promise(resolve => {
+    window.sovietMap.once('render', () => {
+      const gl = window.sovietMap.getCanvas().getContext('webgl2'), bytes = new Uint8Array(4);
+      gl.readPixels(gl.drawingBufferWidth >> 1, gl.drawingBufferHeight >> 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+      resolve([...bytes]);
+    });
+    window.sovietMap.triggerRepaint();
+  }));
+  assert.ok(painted[0] > 245 && painted[1] < 10 && painted[2] < 10, `hosted tiles render: ${painted}`);
+  const beforeGap = providerTiles;
+  await page.evaluate(() => window.sovietMap.jumpTo({center: [-150, 30], zoom: 9}));
+  await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('No historical sheet'));
+  assert.equal(providerTiles, beforeGap, 'coverage suppresses open-ocean fetches');
+  tileState = 'missing';
   await open(false);
-  assert.equal(await page.locator(button).getAttribute('aria-pressed'), 'true', 'shared hosted backgrounds restore on load');
-  assert.equal(hostedIndex, beforeLink + 1);
+  await page.waitForFunction(() => ['soviet-topo', 'soviet-topo-1'].every(id => window.sovietMap.isSourceLoaded(id)));
+  assert.equal(await page.locator(button).getAttribute('aria-pressed'), 'true');
+  assert.doesNotMatch(await page.locator('#soviet-status').textContent(), /could not load/);
+  tileState = 'failed';
+  await open(false);
+  await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
+  await page.locator('[data-background="map"]').click();
+  assert.equal(await page.locator('#soviet-status').isVisible(), false);
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: loopback opt-in, missing archive, historical pixels, layer order, coverage, isolated tile failure, and on-demand cross-origin hosting');
+  console.log('PASS: loopback opt-in, missing archive, historical pixels, layer order, coverage, isolated tile failure, and on-demand third-party XYZ');
 } finally {
   await browser.close();
 }

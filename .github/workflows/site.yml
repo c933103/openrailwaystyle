@@ -668,9 +668,9 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
-      - name: Configure historical archive origin
+      - name: Configure historical tile service
         env:
-          SOVIET_TOPO_ARCHIVE_ROOT: ${{ vars.SOVIET_TOPO_ARCHIVE_ROOT }}
+          SOVIET_TOPO_TILE_SERVICE: ${{ vars.SOVIET_TOPO_TILE_SERVICE }}
         run: node scripts/configure-soviet-topo.mjs
       # Fail closed before removing/uploading anything: the previous deployed
       # site remains live until all four immutable release tables are verified.

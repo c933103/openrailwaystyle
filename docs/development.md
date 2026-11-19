@@ -166,8 +166,7 @@ The worldwide preview uses the downloadable
 [1:1,000,000 archive and index](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-pmtiles)
 and all six parts plus the index of the
 [1:500,000 archive](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/500k-gs-pmtiles).
-The seven files occupy about 13.4 GB. Stage them on an archive host outside the
-Pages artifact for public use.
+The seven files occupy about 13.4 GB and are used for local rendering checks.
 
 Use source downloads offered by the archive. Live provider map tiles do not
 feed the builder. The archives and index live under the ignored data
@@ -182,31 +181,29 @@ Run `node scripts/check-soviet-preview-browser.mjs` with the local server up
 to verify the preview using a synthetic archive. Its output does not establish
 geographic coverage of any historical source.
 
-#### Public archive configuration
+#### Public tile service
 
-Publish the staged directory on an Atlas-controlled HTTPS asset host. Keep the
-SHA-256 filenames and publish `index.json` after the archives. Use
-`application/json` for the index and identity encoding for the binary files.
-The host should return HTTP 206 for archive byte ranges and expose `ETag` and
-`Content-Range` to browser JavaScript. On a separate host, allow `GET` and the
-`Range` header from `https://10671435.xyz` (or the site's actual origin). Use a
-long immutable cache lifetime for the archive files and revalidate the index.
-See [PMTiles cloud storage](https://docs.protomaps.com/pmtiles/cloud-storage).
+The candidate public mode uses Indian Open Maps' 1:1,000,000 and 1:500,000
+Genshtab XYZ layers directly from the browser. The source
+[route definitions](https://github.com/ramSeraph/indianopenmaps/blob/main/worker/src/routes/listing.json)
+link these layers to the same archives as the local preview.
+`styles/soviet-footprints.json` keeps the sheet identifiers, dates and bounds
+from the two published sheet indexes. Pages publishes this catalogue with the
+site. The raster service delivers each tile with its own HTTP cache headers.
 
-Set the GitHub Actions variable `SOVIET_TOPO_ARCHIVE_ROOT` to the URL of that
-directory. The Pages deploy job writes the configuration into the page. The
-variable is empty in fixtures and new deployments unless explicitly configured.
-A configured app contacts the archive only when someone selects Soviet topo or
-opens the map with it selected. A load failure leaves the modern map usable and
-the Soviet topo control can retry. The service worker leaves the index and archive
-requests to the browser's HTTP cache.
+Ordinary map visits make no calls to this service. Selecting Soviet topo
+loads the two TileJSON records and requests only viewport tiles that
+intersect a known sheet footprint. An empty tile or a footprint gap is
+transparent. Service errors leave the modern map and overlays usable. The
+client pauses on rate or availability limits and honours `Retry-After` when
+provided. Historical tiles stay outside the service worker's cache.
 
-Before setting the deployment variable, open a preview of the configured site
-from an allowed origin. Select Soviet topo and verify a cross-origin index read,
-206 archive responses, historic coverage, and the fallback at a gap. For
-deployment simulations, run `scripts/configure-soviet-topo.mjs` on a copy of
-the site entry page with the variable set. Clear the variable and redeploy to
-remove the public control.
+After confirming the service's terms for a public Atlas integration, set the
+GitHub Actions variable `SOVIET_TOPO_TILE_SERVICE` to `indian-open-maps`.
+The default is empty. Before enabling it publicly, verify a normal viewer
+session from the Atlas origin with the configured service and check both
+covered and uncovered regions. Clear the variable and redeploy to remove the
+public control.
 
 ## Source layout and generated files
 
