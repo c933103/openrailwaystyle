@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261119-restricted-tiles-1';
+import { MODES } from './map-model.mjs?v=20261120-admin-tile-preview-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -95,9 +95,9 @@ export function layerVisibility(layer, settings) {
   const background = semantics['atlas:background'];
   if (background === 'carto') visible = settings.background === 'carto';
   else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
-  else if (background === 'soviet') visible = settings.background === 'soviet';
+  else if (background === 'soviet' || background === 'google') visible = settings.background === background;
   else if (settings.background === 'satellite' && !runtime) visible = false;
-  else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
+  else if (semantics['atlas:base-map'] && (settings.background === 'hybrid' || (settings.background === 'google' && layer.id !== 'background'))) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
   // The historical scan has its own printed contours and soundings. Keep the
   // shaded seabed raster below it for transparent areas and missing sheets.

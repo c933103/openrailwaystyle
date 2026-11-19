@@ -668,7 +668,7 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
-      - name: Configure restricted tile access
+      - name: Configure optional admin test page
         env:
           AUTH_BACKEND_ORIGIN: ${{ vars.AUTH_BACKEND_ORIGIN }}
         run: node scripts/configure-restricted-tiles.mjs

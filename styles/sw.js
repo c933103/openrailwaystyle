@@ -11,9 +11,9 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}89`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}90`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 89 adds admin sign-in for restricted backgrounds.
+// Shell 90 includes the admin tile preview client.
 // The previous shell adds ownership schema to the Mongolian failure fix (the atlas.4 MapLibre repair:
 // form advances measured in full joining context, and vertical runs
 // breaking into columns at the label's size budget) to the Mongolian

@@ -128,7 +128,7 @@ export function installSovietXYZProtocol(maplibre, tileSources, fetcher) {
       const wait = /^\d+$/.test(retry ?? '') ? Number(retry) * 1000 : Date.parse(retry) - Date.now();
       retryAt = Math.max(retryAt, performance.now() + (Number.isFinite(wait) && wait >= 0 ? wait : 30_000));
     }
-    if (!response.ok || !/^image\/webp(?:;|$)/i.test(response.headers.get('Content-Type') ?? ''))
+    if (!response.ok || !/^image\/(?:png|webp)(?:;|$)/i.test(response.headers.get('Content-Type') ?? ''))
       throw new Error(`Historical tile could not load (HTTP ${response.status})`);
     return {data: await response.arrayBuffer()};
   });

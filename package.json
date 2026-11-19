@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "preview:restricted": "node scripts/preview-restricted-tiles.mjs",
     "build": "node scripts/build-style.mjs && node scripts/build-browser.mjs",
     "test": "node --experimental-vm-modules --test tests/*.test.mjs"
   },

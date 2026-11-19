@@ -100,10 +100,9 @@ try {
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
   await page.locator('[data-background="map"]').click();
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
-  // Only the fixture admin session can use the production delivery route.
+  // Simulate the independent gateway origin of the Pages test entry point.
   const broker = 'https://tiles.atlas.test/restricted/';
   let metadataRequests = 0, providerTiles = 0, hostedAvailable = false, tileState = 'image';
-  let capability = true;
   const token = 'x'.repeat(43);
   let logoutRequests = 0;
   await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
@@ -113,14 +112,19 @@ try {
       '<meta name="atlas-restricted-tile-origin" content="https://tiles.atlas.test">'
     )});
   });
-  await context.route(broker + 'auth/login', route => route.fulfill({
-    contentType: 'text/html', body: `<script>window.opener.postMessage(
-      {kind:'atlas-restricted-tiles',session:${JSON.stringify(capability ? {
-        token, soviet:true, google:true, expiresAt:Date.now()+60_000,
-      } : null)}}, ${JSON.stringify(new URL(base).origin)});window.close();</script>`,
-  }));
   const cors = {'Access-Control-Allow-Origin': new URL(base).origin, 'Access-Control-Allow-Headers':'Authorization',
-    'Access-Control-Allow-Methods':'GET, DELETE', 'Access-Control-Expose-Headers':'Retry-After'};
+    'Access-Control-Allow-Methods':'GET, POST, DELETE', 'Access-Control-Expose-Headers':'Retry-After'};
+  let admin = false;
+  await context.route(broker + 'auth/device', route => {
+    const method = route.request().method();
+    if (method === 'OPTIONS') return route.fulfill({status:204,headers:cors});
+    if (method === 'POST') return route.fulfill({status:201,headers:cors,json:{
+      challenge:'t'.repeat(43), userCode:'TEST-2345', expiresAt:Date.now()+60_000,
+    }});
+    assert.equal(route.request().headers().authorization,'Device '+'t'.repeat(43));
+    return admin ? route.fulfill({headers:cors,json:{token, soviet:true, google:true, expiresAt:Date.now()+60_000}})
+      : route.fulfill({status:403,headers:cors});
+  });
   const authenticated = (route, respond) => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:cors});
     assert.equal(route.request().headers().authorization, 'Bearer ' + token);
@@ -152,6 +156,16 @@ try {
       return route.fulfill({headers:cors, contentType:'image/webp', body:redWebP});
     }));
   }
+  const google = '[data-background="google"]';
+  let googleTiles = 0, googleViewportCalls = 0;
+  await context.route(url => url.href.startsWith(broker + 'google/viewport?'), route => authenticated(route, () => {
+    googleViewportCalls++;
+    return route.fulfill({headers:cors,json:{copyright:'Fixture satellite credits'}});
+  }));
+  await context.route(url => url.href.startsWith(broker + 'google/') && /\/\d+\/\d+\/\d+$/.test(url.pathname), route => authenticated(route, () => {
+    googleTiles++;
+    return route.fulfill({headers:cors,contentType:'image/png',body:red});
+  }));
   async function signIn() {
     await page.locator('#settings-open').click();
     await page.locator('#restricted-tile-sign-in').click();
@@ -163,9 +177,29 @@ try {
   assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
   assert.equal(metadataRequests, 0, 'even a shared Soviet background requires sign-in');
   assert.equal(providerTiles, 0);
+  assert.equal(await page.locator(google).isVisible(), false);
+  assert.equal(googleViewportCalls, 0);
+  assert.equal(googleTiles, 0);
   await open(false, 'map');
+  await page.locator('#settings-open').click();
+  await page.locator('#restricted-tile-sign-in').click();
+  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('does not have repository admin access'));
+  await page.locator('#settings-close').click();
+  assert.equal(await page.locator(button).isVisible(), false);
+  assert.equal(await page.locator(google).isVisible(), false);
+  admin = true;
   await signIn();
   assert.equal(await page.locator(button).isVisible(), true);
+  assert.equal(await page.locator(google).isVisible(), true);
+  assert.equal(googleTiles, 0);
+  await page.locator(google).click();
+  await page.locator('#google-preview-attribution').waitFor();
+  assert.match(await page.locator('#google-preview-attribution').textContent(), /Google Maps.*Fixture satellite credits/);
+  await page.waitForFunction(() => window.sovietMap.isSourceLoaded('google-satellite-preview'));
+  assert.ok(googleTiles > 0);
+  assert.ok(googleViewportCalls > 0);
+  await page.locator('[data-background="map"]').click();
+  assert.equal(await page.locator('#google-preview-attribution').isVisible(), false);
   assert.equal(metadataRequests, 0, 'regular sessions must not fetch hosted metadata');
   assert.equal(providerTiles, 0);
   await page.locator(button).click();
@@ -204,11 +238,16 @@ try {
   await page.waitForFunction(() => document.querySelector('#soviet-status').textContent.includes('could not load'));
   await page.locator('[data-background="map"]').click();
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
+  await page.locator(google).click();
+  await page.locator('#google-preview-attribution').waitFor();
   await page.locator('#settings-open').click();
   await page.locator('#restricted-tile-sign-out').click();
   await page.locator('#settings-close').click();
   assert.equal(await page.locator(button).isVisible(), false);
+  assert.equal(await page.locator(google).isVisible(), false);
+  assert.equal(await page.locator('#google-preview-attribution').isVisible(), false);
   assert.equal(await page.evaluate(() => Boolean(window.sovietMap.getSource('soviet-topo'))), false);
+  assert.equal(await page.evaluate(() => Boolean(window.sovietMap.getSource('google-satellite-preview'))), false);
   await page.waitForTimeout(300);
   assert.equal(logoutRequests, 1);
   tileState = 'expired';
@@ -219,7 +258,7 @@ try {
   assert.equal(await page.locator(button).isVisible(), false);
   assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: loopback preview, historical pixels, stacking, coverage, failures, admin sign-in, sign-out, and expired-session fallback');
+  console.log('PASS: historical pixels, map stacking, both admin layers, viewport credits, denied sign-in, sign-out, and expiry');
 } finally {
   await browser.close();
 }

@@ -1,11 +1,21 @@
 import {readFile, writeFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
 import {restrictedTileOrigin} from '../styles/restricted-tiles.mjs';
 
-const input = (process.env.AUTH_BACKEND_ORIGIN ?? '').trim();
-const origin = restrictedTileOrigin(input);
-if (input && !origin) throw new Error('AUTH_BACKEND_ORIGIN must be an HTTPS origin.');
-const path = process.argv[2] ?? 'styles/index.html';
-const html = await readFile(path, 'utf8');
-const tag = /<meta name="atlas-restricted-tile-origin" content="[^"]*">/g;
-if ([...html.matchAll(tag)].length !== 1) throw new Error('Expected exactly one restricted tile service setting.');
-await writeFile(path, html.replace(tag, () => `<meta name="atlas-restricted-tile-origin" content="${origin ?? ''}">`));
+export function restrictedPreviewPage(html, origin, fixture = false) {
+  const tag = '<meta name="atlas-restricted-tile-origin" content="">';
+  if (html.split(tag).length !== 2) throw new Error('Expected one restricted preview setting.');
+  const parsed = restrictedTileOrigin(origin, origin);
+  if (!parsed) throw new Error('Invalid restricted preview origin.');
+  return html.replace(tag, () => `<meta name="atlas-restricted-tile-origin" content="${parsed}">` +
+    (fixture ? '<meta name="atlas-restricted-tile-fixture" content="1">' : ''));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const origin = (process.env.AUTH_BACKEND_ORIGIN ?? '').trim();
+  if (origin) {
+    if (!restrictedTileOrigin(origin)) throw new Error('AUTH_BACKEND_ORIGIN must be an HTTPS origin.');
+    const html = await readFile('styles/index.html', 'utf8');
+    await writeFile('styles/admin-preview.html', restrictedPreviewPage(html, origin));
+  }
+}
