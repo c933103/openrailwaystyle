@@ -15,7 +15,8 @@ const shell=new URL('reader-only-test.html',base).href;
 const decoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER??'native';
 assert.ok(['native','native-chunked','fflate'].includes(decoder),'Unknown diagnostic decoder');
 assert.ok(decoder==='native'||mode==='replay','Alternate decoder is only a reader replay arm');
-const codecUrl=decoder==='fflate'?new URL('reference-alt-decode.mjs',base).href:null;
+const codecFile=decoder==='fflate'?'reference-alt-decode.mjs':'webkit-native-input-diagnostic.mjs';
+const codecUrl=new URL(codecFile,base).href;
 const tiles=['5/15/11','5/15/10','5/16/11','5/16/10'];
 const stop=armWatchdog(()=>({mode,stage:'reader-only'}),{timeout:replayDeadline+60000});
 const started=Date.now();
@@ -28,7 +29,7 @@ try {
  browser=await launchBrowser({engine:'webkit',timeout:20000});
  context=await browser.newContext();
  await context.route(shell,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Reader-only diagnostic</title>'}));
- if(codecUrl)await context.route(codecUrl,route=>route.fulfill({path:'london-diagnostics/reference-alt-decode.mjs',contentType:'text/javascript'}));
+ if(mode==='replay')await context.route(codecUrl,route=>route.fulfill({path:decoder==='fflate'?`london-diagnostics/${codecFile}`:`scripts/${codecFile}`,contentType:'text/javascript'}));
  const control=await context.newPage(), page=await context.newPage();
  for(const [label,tab] of [['control',control],['reader',page]]){
   tab.on('console',event=>{
@@ -42,40 +43,11 @@ try {
  }
  const result=await withinDeadline(()=>page.evaluate(async ({mode,tiles,generation,schedule,codecUrl,decoder})=>{
   const {createReferenceReader}=await import('/mainline-reference.mjs');
-  // Same native transform and bounded output consumer in both arms. Only input differs.
-  const decodeNative=async (data,maxBytes)=>{
-   const fixed=decoder==='native-chunked', bytes=new Uint8Array(data);
-   const logControl=stage=>{
-    if(bytes.byteLength===849970||bytes.byteLength===829296)
-     console.log('READER_PAGE '+JSON.stringify({stage,compressedBytes:bytes.byteLength}));
-   };
-   let offset=0;
-   const input=fixed?new ReadableStream({
-    pull(controller){
-     if(offset===bytes.length){controller.close();return;}
-     const end=Math.min(offset+65536,bytes.length);
-     controller.enqueue(bytes.subarray(offset,end));offset=end;
-    }
-   }):new Blob([data]).stream();
-   const streamReader=input.pipeThrough(new DecompressionStream('gzip')).getReader();
-   const chunks=[];let size=0;
-   try{
-    while(true){
-     const {done,value}=await streamReader.read();
-     if(done){logControl('NATIVE_OUTPUT_EOF');break;}
-     if(chunks.length===0)logControl('NATIVE_FIRST_OUTPUT');
-     size+=value.byteLength;
-     if(size>maxBytes){await streamReader.cancel();throw Error('Oversized decoded OSM reference tile');}
-     chunks.push(value);
-    }
-   }finally{streamReader.releaseLock();}
-   const result=new Uint8Array(size);
-   let outputOffset=0;
-   for(const c of chunks){result.set(c,outputOffset);outputOffset+=c.byteLength;}
-   logControl('NATIVE_OUTPUT_COMPLETE');
-   return result.buffer;
-  };
-  const decompress=codecUrl?(await import(codecUrl)).decodeReferenceForDiagnostic:decodeNative;
+  const decompress=decoder==='fflate'?(await import(codecUrl)).decodeReferenceForDiagnostic:
+   mode==='replay'?(await import(codecUrl)).makeNativeDecoder({decoder,logControl:(stage,compressedBytes)=>{
+    if(compressedBytes===849970||compressedBytes===829296)
+     console.log('READER_PAGE '+JSON.stringify({stage,compressedBytes}));
+   }}):undefined;
   const reader=createReferenceReader({
    root:new URL('/data/mainline-reference/',location.href),
    ...(mode==='replay'?{decompress}:{}),

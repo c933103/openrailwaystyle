@@ -19,10 +19,14 @@ const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'
 const published=process.argv.includes('--published');
 const diagnostic=process.env.ATLAS_WEBKIT_LONDON_DIAGNOSTIC;
 const trace=published&&process.env.ATLAS_WEBKIT_REFERENCE_TRACE==='1';
-const alternateDecoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER==='fflate';
+const selectedDecoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER;
+if(selectedDecoder&&!['fflate','native','native-chunked'].includes(selectedDecoder))
+ throw new Error('Unexpected diagnostic decoder');
+const alternateDecoder=Boolean(selectedDecoder);
 if(alternateDecoder&&(!published||diagnostic!=='suite'||new URL(base).origin!=='http://127.0.0.1:4173'))
  throw Error('Alternative decoder requires the staged loopback Safari suite');
-const alternateDecoderUrl=new URL('reference-alt-decode.mjs',base).href;
+const decoderFile=selectedDecoder==='fflate'?'reference-alt-decode.mjs':'webkit-native-input-diagnostic.mjs';
+const alternateDecoderUrl=new URL(decoderFile,base).href;
 if(diagnostic&&(!published||!['fresh','transition','suite'].includes(diagnostic)))
  throw new Error('London diagnostic requires --published and fresh, transition or suite');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
@@ -118,14 +122,17 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  await page.route('https://mainline-fixture.invalid/**',route=>route.fulfill({status:503,body:'upstream unavailable'}));
  await page.route(new URL('mainline-test.html',base).href,route=>route.fulfill({contentType:'text/html',body:'<html><body></body></html>'}));
  try{
-  if(alternateDecoder)await page.route(alternateDecoderUrl,route=>route.fulfill({path:'london-diagnostics/reference-alt-decode.mjs',contentType:'text/javascript'}));
+  if(alternateDecoder)await page.route(alternateDecoderUrl,route=>route.fulfill({path:selectedDecoder==='fflate'?`london-diagnostics/${decoderFile}`:`scripts/${decoderFile}`,contentType:'text/javascript'}));
   await page.goto(new URL('mainline-test.html',base).href);
   await page.setContent(`<html><body style="margin:0"><div id="test-map" style="width:${profile.width}px;height:${profile.height}px"></div></body></html>`);
   await page.addScriptTag({url:library});
-  await evaluate(page,async({layers,base,module,traceProtocol,codecUrl})=>{
+  await evaluate(page,async({layers,base,module,traceProtocol,codecUrl,selectedDecoder})=>{
    const {createReferenceReader}=await import(module);
    const options={root:new URL('data/mainline-reference/',base)};
-   if(codecUrl)options.decompress=(await import(codecUrl)).decodeReferenceForDiagnostic;
+   if(codecUrl){
+    const codec=await import(codecUrl);
+    options.decompress=selectedDecoder==='fflate'?codec.decodeReferenceForDiagnostic:codec.makeNativeDecoder({decoder:selectedDecoder});
+   }
    if(traceProtocol){
     options.onTileStage=(key,stage,bytes)=>console.log('ATLAS_REFERENCE_PROTOCOL_STAGE '+JSON.stringify({
      key,stage,bytes,camera:window.referenceTraceCamera??null,at:Date.now()
@@ -161,7 +168,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     layers:[{id:'background',type:'background',paint:{'background-color':'#fafafa'}},...layers,
      {id:'missing-live',type:'line',source:'missingLive','source-layer':'missing',paint:{'line-color':'red'}}]}});
    window.sourceErrors=[];testMap.on('error',e=>sourceErrors.push({source:e.sourceId,message:e.error?.message}));
-  },{layers,base,module:readerModule,traceProtocol:trace&&profile.engine==='webkit',codecUrl:alternateDecoder?alternateDecoderUrl:null});
+  },{layers,base,module:readerModule,traceProtocol:trace&&profile.engine==='webkit',codecUrl:alternateDecoder?alternateDecoderUrl:null,selectedDecoder});
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    const target=projection==='globe'&&c.name==='United Kingdom–London';

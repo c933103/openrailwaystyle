@@ -9,7 +9,7 @@ jobs:
   compare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
     runs-on: ubuntu-26.04
-    timeout-minutes: 85
+    timeout-minutes: 110
     env:
       REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
       MAP_BASE_URL: http://127.0.0.1:4173/
@@ -94,6 +94,23 @@ jobs:
             printf '%s %s\n' "$arm" "$arm_status" | tee -a london-diagnostics/status.txt
             if [ "$arm_status" -ne 0 ] || ! grep -q '^READER_ONLY .*"stage":"RESULT"' "london-diagnostics/$arm.log"; then pair_pass=0; fi
           done
+          # Run all 280 Safari camera cases in each renderer process. Diagnostic
+          # exit code 2 deliberately cannot satisfy the publication gate.
+          renderer_pass=1
+          ordinal=0
+          for decoder in native-chunked native native native-chunked; do
+            ordinal=$((ordinal+1))
+            arm="renderer-$ordinal-$decoder"
+            set +e
+            ATLAS_WEBKIT_REFERENCE_DECODER="$decoder" ATLAS_WEBKIT_REFERENCE_TRACE=1 ATLAS_WEBKIT_LONDON_DIAGNOSTIC=suite timeout --kill-after=10s 6m node scripts/check-mainline-reference-browser.mjs --published >"london-diagnostics/$arm.log" 2>&1
+            arm_status=$?
+            set -e
+            printf '%s %s\n' "$arm" "$arm_status" | tee -a london-diagnostics/status.txt
+            if [ -d browser-review ]; then mv browser-review "london-diagnostics/$arm-review"; fi
+            if [ "$arm_status" -ne 2 ] || ! grep -q '^LONDON_DIAGNOSTIC_RESULT ' "london-diagnostics/$arm.log" ||
+               [ "$(grep -c '^MAINLINE_CASE_END ' "london-diagnostics/$arm.log" || true)" -ne 280 ]; then renderer_pass=0; fi
+          done
+          test "$renderer_pass" -eq 1
           test "$pair_pass" -eq 1
           test "$full_status" -eq 0
           test -s london-diagnostics/full-review/mainline-reference.json
