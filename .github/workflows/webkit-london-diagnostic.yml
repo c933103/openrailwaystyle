@@ -9,7 +9,7 @@ jobs:
   compare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/webkit-london-readiness-diagnostic'
     runs-on: ubuntu-26.04
-    timeout-minutes: 58
+    timeout-minutes: 68
     env:
       REFERENCE_SHA: 2ee6efc7450230f609dbe217830895f278692063
       MAP_BASE_URL: http://127.0.0.1:4173/
@@ -74,6 +74,16 @@ jobs:
           replay_status=$?
           set -e
           printf 'reader-replay %s %s\n' "$replay_status" "$trace" | tee -a london-diagnostics/status.txt
+          # Use the exact staged bytes. Do not interpret arm differences if parity fails.
+          node_modules/.bin/esbuild scripts/webkit-reference-alt-decode.mjs --bundle --platform=browser --format=esm --outfile=london-diagnostics/reference-alt-decode.mjs
+          node scripts/check-webkit-reference-decoder-parity.mjs mainline-output london-diagnostics/reference-alt-decode.mjs >london-diagnostics/decoder-parity.log 2>&1
+          set +e
+          ATLAS_WEBKIT_REFERENCE_TRACE=1 ATLAS_WEBKIT_REFERENCE_DECODER=fflate ATLAS_WEBKIT_LONDON_DIAGNOSTIC=suite timeout 10m node scripts/check-mainline-reference-browser.mjs --published >london-diagnostics/suite-fflate.log 2>&1
+          alt_status=$?
+          set -e
+          printf 'suite-fflate %s\n' "$alt_status" | tee -a london-diagnostics/status.txt
+          if [ -d browser-review ]; then mv browser-review london-diagnostics/suite-fflate-review; fi
+          test "$alt_status" -eq 2
           test "$replay_status" -eq 0
           test "$full_status" -eq 0
           test -s london-diagnostics/full-review/mainline-reference.json
