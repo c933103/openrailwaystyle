@@ -18,6 +18,7 @@ const screenshot=(page,options)=>withinDeadline(()=>page.screenshot({...options,
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
 const diagnostic=process.env.ATLAS_WEBKIT_LONDON_DIAGNOSTIC;
+const trace=published&&process.env.ATLAS_WEBKIT_REFERENCE_TRACE==='1';
 if(diagnostic&&(!published||!['fresh','transition','suite'].includes(diagnostic)))
  throw new Error('London diagnostic requires --published and fresh, transition or suite');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
@@ -65,7 +66,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
  let closing=false,primaryError;
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
- if(diagnostic){
+ if((diagnostic||trace)&&profile.engine==='webkit'){
   const referencePath='/data/mainline-reference/';
   const pending=new WeakMap();
   let requestId=0;
@@ -133,6 +134,8 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    const target=projection==='globe'&&c.name==='United Kingdom–London';
    if(diagnostic&&diagnostic!=='suite'&&!(target&&(zoom===6||(diagnostic==='transition'&&zoom===5))))continue;
    checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
+   const probe=profile.engine==='webkit'&&((diagnostic&&target&&(zoom===5||zoom===6))||
+    (trace&&projection==='mercator'&&((c.name==='Spain–Madrid'&&zoom===4)||(c.name==='Italy–Milan'&&zoom===5))));
     console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
    await evaluate(page,({center,zoom,projection,expected})=>{
@@ -141,13 +144,13 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
    },{center:c.center,zoom,projection,expected});
-   try{await withinDeadline(()=>page.waitForFunction(({expected,probe,zoom})=>{
-    const loaded=testMap.loaded(),sourceLoaded=probe||loaded?testMap.isSourceLoaded('railReference'):false;
-    const chains=probe||(loaded&&sourceLoaded)?testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length:0;
-    if(probe){const state=JSON.stringify({zoom,loaded,sourceLoaded,chains});
+   try{await withinDeadline(()=>page.waitForFunction(({expected,probe,camera})=>{
+    const loaded=testMap.loaded(),sourceLoaded=loaded?testMap.isSourceLoaded('railReference'):false;
+    const chains=loaded&&sourceLoaded?testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length:0;
+    if(probe){const state=JSON.stringify({camera,loaded,sourceLoaded,chains});
      if(window.lastLondonState!==state){window.lastLondonState=state;console.log('LONDON_DIAGNOSTIC_READINESS '+state);}}
     return loaded&&sourceLoaded&&chains;
-   },{expected,probe:Boolean(diagnostic&&target&&(zoom===5||zoom===6)),zoom},{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
+   },{expected,probe,camera:checkpoint},{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
    catch(error){
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),

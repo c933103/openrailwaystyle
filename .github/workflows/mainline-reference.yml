@@ -224,6 +224,8 @@ jobs:
           git archive FETCH_HEAD | tar -x -C mainline-output
           node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
       - name: Verify the exact generation and renderer before publication
+        env:
+          ATLAS_WEBKIT_REFERENCE_TRACE: ${{ github.event_name == 'pull_request' && github.head_ref == 'test/webkit-london-readiness-diagnostic' && github.event.pull_request.head.repo.full_name == github.repository && '1' || '0' }}
         run: |
           node scripts/verify-mainline-snapshot.mjs mainline-output
           npm run build
@@ -231,7 +233,12 @@ jobs:
           cp -r mainline-output/. styles/data/mainline-reference/
           npx playwright install --with-deps chromium webkit
           node scripts/serve.mjs &
-          node scripts/check-mainline-reference-browser.mjs --published
+          if [[ "$ATLAS_WEBKIT_REFERENCE_TRACE" == 1 ]]; then
+            mkdir -p browser-review
+            (set -o pipefail; node scripts/check-mainline-reference-browser.mjs --published 2>&1 | tee browser-review/webkit-reference-trace.log)
+          else
+            node scripts/check-mainline-reference-browser.mjs --published
+          fi
           node scripts/record-mainline-acceptance.mjs mainline-output browser-review/mainline-reference.json
           node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
       - name: Save source and browser acceptance diagnostics
