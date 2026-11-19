@@ -7,6 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
   <meta name="atlas-restricted-tile-origin" content="">
+  <meta name="atlas-static-tile-tests" content="">
   <title>Railway Atlas · Worldwide rail map</title>
   <meta name="application-name" content="Railway Atlas">
   <meta property="og:site_name" content="Railway Atlas">
@@ -33,7 +34,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261120-admin-tile-preview-1" rel="stylesheet">
+  <link href="app.css?v=20261120-pages-admin-tiles-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -85,7 +86,12 @@
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
         <fieldset id="restricted-tiles" hidden><legend>Admin map backgrounds</legend>
-          <button id="restricted-tile-sign-in" type="button">Sign in with GitHub</button>
+          <button id="restricted-tile-sign-in" type="button" hidden>Sign in with GitHub</button>
+          <form id="restricted-tile-token-form" hidden>
+            <label for="restricted-tile-token">Fine-grained GitHub token</label>
+            <input id="restricted-tile-token" type="password" autocomplete="off" required>
+            <button type="submit">Verify GitHub access</button>
+          </form>
           <p id="restricted-tile-device" hidden>
             Code <strong id="restricted-tile-code"></strong>
             <a id="restricted-tile-github" href="https://github.com/login/device" target="_blank" rel="noopener noreferrer">Open GitHub</a>
@@ -257,6 +263,6 @@
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
   <div id="google-preview-attribution" hidden><strong id="google-preview-brand">Google Maps</strong> <span id="google-preview-credits"></span></div>
-  <script type="module" src="app.mjs?v=20261120-admin-tile-preview-1"></script>
+  <script type="module" src="app.mjs?v=20261120-pages-admin-tiles-1"></script>
 </body>
 </html>

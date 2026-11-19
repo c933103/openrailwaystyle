@@ -3,8 +3,8 @@ import {once} from 'node:events';
 import {test} from 'node:test';
 import {createServer, request as httpRequest} from 'node:http';
 import {createRestrictedTileHandler} from '../scripts/restricted-tile-server.mjs';
-import {restrictedPreviewPage} from '../scripts/configure-restricted-tiles.mjs';
-import {googleViewport} from '../styles/restricted-tiles.mjs';
+import {configureRestrictedMap, restrictedPreviewPage} from '../scripts/configure-restricted-tiles.mjs';
+import {createStaticRestrictedTiles, googleViewport, parseStaticTileSettings} from '../styles/restricted-tiles.mjs';
 
 const atlas = 'https://atlas.example';
 const broker = 'https://tiles.example';
@@ -152,14 +152,80 @@ test('provider enablement, quota, provider backoff, and expiry fail closed', asy
   assert.equal(disabled.calls.filter(url => url.startsWith(historical)).length,0);
 });
 
-test('only the generated test page receives the gateway origin', () => {
-  const standard = '<meta name="atlas-restricted-tile-origin" content="">';
-  const preview = restrictedPreviewPage(standard, broker);
-  assert.match(preview, /https:\/\/tiles\.example/);
-  assert.doesNotMatch(standard, /tiles\.example/);
+test('the same map page selects static mode with no gateway and keeps hosted sign-in optional', () => {
+  const standard = '<meta name="atlas-restricted-tile-origin" content="">\n<meta name="atlas-static-tile-tests" content="">';
+  const googleKey = 'sample_browser_key_for_testing';
+  const fixture = {repository, googleKey, historical:'indian-open-maps'};
+  assert.equal(configureRestrictedMap(standard,{}), standard);
+  const staticMap = configureRestrictedMap(standard,fixture);
+  assert.match(staticMap,/atlas-restricted-tile-origin" content=""/);
+  assert.match(staticMap,/c933103\/openrailwaystyle\|sample_browser_key_for_testing\|indian-open-maps/);
+  assert.deepEqual(parseStaticTileSettings(`${repository}|${googleKey}|indian-open-maps`), {repository, googleKey, soviet:true});
+  const gatewayMap = configureRestrictedMap(standard, {...fixture, origin:broker});
+  assert.match(gatewayMap,/https:\/\/tiles\.example/);
+  assert.doesNotMatch(gatewayMap,/sample_browser_key_for_testing/);
   assert.throws(() => restrictedPreviewPage(standard, 'https://tiles.example/other'), /Invalid/);
+  assert.throws(() => configureRestrictedMap(standard,{...fixture, googleKey:'" bad'}), /Invalid/);
 });
 
+test('Pages verifies a repository admin before fetching either provider directly', async () => {
+  const token = 'github_pat_fixture_only';
+  const googleKey = 'sample_browser_key_for_testing';
+  const requests = [], grants = [];
+  let admin = false, time = Date.now(), scheduledExpiry;
+  const session = createStaticRestrictedTiles({
+    settings:{repository, googleKey, soviet:true},
+    window:{setTimeout:fn => {scheduledExpiry=fn;}, clearTimeout:() => {}},
+    changed:access => grants.push(access), report:() => {}, now:() => time,
+    fetcher:async (target, options) => {
+      const address = new URL(target);
+      requests.push(address.href);
+      assert.equal(options.cache,'no-store');
+      assert.equal(options.redirect,'error');
+      if (address.origin === 'https://api.github.com') {
+        assert.equal(address.pathname,'/repos/' + repository);
+        assert.equal(options.headers.Authorization,'Bearer ' + token);
+        return Response.json({permissions:{admin}});
+      }
+      assert.equal(options.headers?.Authorization,undefined);
+      assert.doesNotMatch(address.href,/github_pat/);
+      if (address.origin === 'https://indianopenmaps.com') {
+        if (address.pathname.endsWith('tiles.json')) return Response.json({
+          tiles:[historical+'{z}/{x}/{y}.webp'], scheme:'xyz', minzoom:3, maxzoom:10,
+        });
+        assert.equal(address.href,historical+'3/4/2.webp');
+        return fixtureTile();
+      }
+      assert.equal(address.origin,'https://tile.googleapis.com');
+      assert.equal(address.searchParams.get('key'),googleKey);
+      if (address.pathname === '/v1/createSession') return Response.json({session:'fixture-session',expiry:String((time + 300_000)/1000)});
+      assert.equal(address.searchParams.get('session'),'fixture-session');
+      return fixtureTile();
+    },
+  });
+  await assert.rejects(() => session.fetch(sovietPath.slice(1)),/verification required/);
+  await session.signIn(token);
+  assert.equal(requests.length,1);
+  assert.deepEqual(grants,[]);
+  await assert.rejects(() => session.fetch(googlePath.slice(1)),/verification required/);
+  admin = true;
+  await session.signIn(token);
+  assert.deepEqual(grants,[{soviet:true,google:true}]);
+  assert.equal(requests.length,2,'verification never requests tiles');
+  const tiles = await Promise.all([session.fetch(googlePath.slice(1)),session.fetch(googlePath.slice(1))]);
+  assert.ok(tiles.every(response => response.ok));
+  assert.equal(requests.filter(url => url.includes('/createSession')).length,1);
+  assert.deepEqual(await (await session.fetch('soviet/1m/tiles.json')).json(),{minzoom:3,maxzoom:10});
+  for (let i=0;i<117;i++) assert.equal((await session.fetch(sovietPath.slice(1))).status,200);
+  const beforeLimit=requests.length;
+  assert.equal((await session.fetch(googlePath.slice(1))).status,429);
+  assert.equal(requests.length,beforeLimit);
+  time += 60_000;
+  assert.equal((await session.fetch(sovietPath.slice(1))).status,200);
+  scheduledExpiry();
+  await assert.rejects(() => session.fetch(googlePath.slice(1)),/verification required/);
+  assert.equal(grants.at(-1),null);
+});
 test('a Google viewport crossing the antimeridian includes attribution from both sides', async () => {
   const calls = [];
   const bounds = {getSouth:() => -20, getNorth:() => 40, getWest:() => 170, getEast:() => -165};

@@ -7,6 +7,137 @@ export function restrictedTileOrigin(input, href) {
   } catch { return null; }
 }
 
+const SOVIET_ROOT = 'https://indianopenmaps.com/world/topo/russian/';
+const GOOGLE_ROOT = 'https://tile.googleapis.com/';
+const SESSION_MS = 15 * 60_000;
+
+export function parseStaticTileSettings(value) {
+  const [repository, googleKey, historical, ...extra] = (value ?? '').split('|');
+  if (extra.length || !/^[\w.-]+\/[\w.-]+$/.test(repository) ||
+      (googleKey && !/^[A-Za-z0-9_-]{20,}$/.test(googleKey)) ||
+      !['', 'indian-open-maps'].includes(historical) || (!googleKey && !historical)) return null;
+  return {repository, googleKey, soviet: Boolean(historical)};
+}
+
+export function createStaticRestrictedTiles({settings, window, fetcher, changed, report, now = Date.now}) {
+  let active, verification, expire;
+  const minute = 60_000, limit = 120;
+  let budgetStart = now(), used = 0;
+  const request = (url, options = {}) => fetcher(url, {
+    ...options, cache:'no-store', credentials:'omit', redirect:'error',
+  });
+  function clear(message) {
+    active?.controller.abort();
+    verification?.abort();
+    active = verification = undefined;
+    window.clearTimeout(expire);
+    changed(null);
+    report(message);
+  }
+  async function google(requestPath, session, signal) {
+    const tile = /^(\d{1,2})\/(\d{1,8})\/(\d{1,8})$/.exec(requestPath);
+    const viewport = requestPath.startsWith('viewport?');
+    if (!viewport) {
+      if (!tile) return new Response(null, {status:400});
+      const [z,x,y] = tile.slice(1).map(Number);
+      if (z > 22 || x >= 2 ** z || y >= 2 ** z) return new Response(null, {status:400});
+    }
+    const target = new URL(viewport ? 'tile/v1/viewport' : 'v1/2dtiles/' + requestPath, GOOGLE_ROOT);
+    if (viewport) {
+      const parameters = new URLSearchParams(requestPath.slice('viewport?'.length));
+      for (const name of ['zoom','south','north','west','east']) target.searchParams.set(name, parameters.get(name) ?? '');
+    }
+    if (!session.google || session.google.expiresAt <= now()) {
+      session.googleRequest ??= (async () => {
+        const endpoint = new URL('v1/createSession', GOOGLE_ROOT);
+        endpoint.searchParams.set('key', settings.googleKey);
+        const result = await request(endpoint, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({mapType:'satellite', language:'en-US', region:'US'}),
+          signal:AbortSignal.any([session.controller.signal, AbortSignal.timeout(8000)]),
+        });
+        if (!result.ok) {
+          await result.body?.cancel();
+          return {error:result.status};
+        }
+        const info = await result.json(), expiresAt = Number(info.expiry) * 1000;
+        if (typeof info.session !== 'string' || !info.session || !Number.isFinite(expiresAt) || expiresAt <= now()) return {error:502};
+        return {token:info.session, expiresAt};
+      })().finally(() => {session.googleRequest = undefined;});
+      const opened = await session.googleRequest;
+      if (opened.error) return new Response(null,{status:opened.error});
+      session.google = opened;
+    }
+    signal.throwIfAborted();
+    target.searchParams.set('key', settings.googleKey);
+    target.searchParams.set('session', session.google.token);
+    return request(target, {signal});
+  }
+  async function soviet(path, signal) {
+    const match = /^(1m|500k)\/(tiles\.json|\d+\/\d+\/\d+)$/.exec(path);
+    if (!match) return new Response(null,{status:400});
+    const [, series, resource] = match;
+    const root = `${SOVIET_ROOT}${series}/gs/`;
+    const metadata = resource === 'tiles.json';
+    const result = await request(root + resource + (metadata ? '' : '.webp'), {signal});
+    if (!metadata || !result.ok) return result;
+    const {tiles, minzoom, maxzoom, scheme} = await result.json();
+    if (tiles?.length !== 1 || tiles[0] !== root + '{z}/{x}/{y}.webp' || (scheme && scheme !== 'xyz'))
+      return new Response(null,{status:502});
+    return Response.json({minzoom, maxzoom});
+  }
+  return {
+    async signIn(value) {
+      if (active || verification) return;
+      if (!/^github_pat_[A-Za-z0-9_]+$/.test(value ?? '')) {
+        report('Enter a fine-grained GitHub token.');
+        return;
+      }
+      const controller = verification = new AbortController();
+      try {
+        report('Checking GitHub repository access…');
+        const response = await request('https://api.github.com/repos/' + settings.repository, {
+          signal:AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
+          headers:{Authorization:'Bearer ' + value, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2026-03-10'},
+        });
+        if (!response.ok || (await response.json()).permissions?.admin !== true) {
+          if (!controller.signal.aborted) report('GitHub did not confirm repository admin access.');
+          return;
+        }
+        if (controller.signal.aborted) return;
+        active = {controller:new AbortController(), expiresAt:now() + SESSION_MS, pausedUntil:0};
+        expire = window.setTimeout(() => clear('Session expired. Verify your GitHub token again.'), SESSION_MS);
+        report('Repository admin verified. Select a test background.');
+        changed({soviet:settings.soviet, google:Boolean(settings.googleKey)});
+      } catch {
+        if (!controller.signal.aborted) report('GitHub verification could not complete. Try again.');
+      } finally {
+        if (verification === controller) verification = undefined;
+      }
+    },
+    signOut() {clear('Signed out.');},
+    async fetch(path, options = {}) {
+      const session = active;
+      if (!session || session.expiresAt <= now()) {
+        if (session) clear('Session expired. Verify your GitHub token again.');
+        throw new Error('Repository admin verification required');
+      }
+      const separator = path.indexOf('/');
+      const source = path.slice(0, separator), resource = path.slice(separator + 1);
+      if ((source !== 'soviet' || !settings.soviet) && (source !== 'google' || !settings.googleKey))
+        throw new Error('Test background is disabled');
+      if (now() - budgetStart >= minute) { budgetStart = now(); used = 0; }
+      const wait = Math.max(session.pausedUntil, used >= limit ? budgetStart + minute : 0) - now();
+      if (wait > 0) return new Response(null,{status:429,headers:{'Retry-After':String(Math.ceil(wait / 1000))}});
+      used++;
+      const signal = AbortSignal.any([session.controller.signal, ...(options.signal ? [options.signal] : [])]);
+      const result = source === 'google' ? await google(resource, session, signal) : await soviet(resource, signal);
+      if (result.status === 429) session.pausedUntil = now() + 30_000;
+      return result;
+    },
+  };
+}
+
 export function createRestrictedTiles({origin, window, fetcher, changed, report, showCode}) {
   let session, lifetime, expiry, challenge;
   const key = /^[A-Za-z0-9_-]{43}$/;

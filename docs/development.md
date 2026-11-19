@@ -181,54 +181,54 @@ Run `node scripts/check-soviet-preview-browser.mjs` with the local server up
 to verify the preview using a synthetic archive. Its output does not establish
 geographic coverage of any historical source.
 
-#### GitHub-admin background preview
+#### Admin background testing on GitHub Pages
 
-Use the test page to switch between Google Satellite and Soviet topo with one
-repository-admin session. The ordinary map page does not offer these controls.
+Google Satellite and Soviet topo share the same repository-admin check in
+**Settings → Admin map backgrounds** on the regular Railway Atlas map. The
+controls appear when one or more test backgrounds are configured. No test
+tiles load until an authorized tester selects a background.
 
-```sh
-npm ci --ignore-scripts
-npm run build
-node scripts/preview-restricted-tiles.mjs
-```
+For the static Pages path, set the repository variable `GOOGLE_MAPS_API_KEY`
+to a browser key restricted to the Pages website origin and Map Tiles API.
+Set `SOVIET_TOPO_TILE_SERVICE=indian-open-maps` for an approved interactive
+test with that service. The same settings can be injected into a local
+checkout with `node scripts/configure-restricted-tiles.mjs` and the
+`ADMIN_REPO`, `GOOGLE_MAPS_API_KEY` and `SOVIET_TOPO_TILE_SERVICE` environment
+variables.
 
-Open [the local test page](http://127.0.0.1:4180/admin-preview.html#6/47.241/8.557).
-In Settings → Admin map backgrounds, select **Sign in as fixture admin**.
-The default simulates GitHub and both raster services. It exercises the actual
-tile gate, authorization header, layer selection and sign-out without provider
-credentials or special-background network traffic. The preview port defaults to
-4180. Set `ATLAS_PREVIEW_PORT` to use another loopback port.
+In Settings, enter a fine-grained GitHub token with Metadata read permission
+for the Atlas repository and select **Verify GitHub access**. The browser sends
+the token only to the GitHub REST API for the verification request and clears
+the form immediately. The result unlocks the configured test backgrounds for
+15 minutes in that tab. Sign-out switches back to the regular map.
 
-For real sign-in, register and install a GitHub App with Metadata read permission
-on the repository and enable **Device Flow**. Set `GITHUB_CLIENT_ID` in the preview
-process. The default repository is `c933103/openrailwaystyle`.
-Set `GOOGLE_MAPS_API_KEY` in the process to exercise satellite with your Map Tiles
-API project. To test historical scan pixels from prepared archive groups, set
-`ATLAS_SOVIET_ARCHIVES` to the directory of the two-scale catalogue and PMTiles
-files. It can also be used with the fixture sign-in and Google fixture. Run
-`node scripts/preview-restricted-tiles.mjs --github` for real sign-in. Open GitHub using the
-link in Settings and enter the displayed code.
+The static version caps use at 120 requests per minute across both backgrounds
+per page session. The Google key is visible in the rendered site and the cap
+applies to requests made through the app. Set the Google project's Map Tiles
+quota for the test budget. The browser check does not create a private tile
+endpoint or enforce a cross-browser quota.
 
-The same browser test page can be served by GitHub Pages at `/admin-preview.html`.
-Set the Pages variable `AUTH_BACKEND_ORIGIN` to the HTTPS origin of the test
-gateway. Only the generated test entry point receives this origin; the usual
-map page has an empty setting. Run `node scripts/restricted-tile-server.mjs` on
-the gateway host behind a TLS reverse proxy that preserves the gateway Host.
-Set `ATLAS_SITE_ORIGIN` to the Pages site's origin,
-`AUTH_BACKEND_ORIGIN` to the gateway origin, and `GITHUB_CLIENT_ID` for the
-device-flow app. The gateway listens on loopback port 8080 by default (`PORT`).
-The Google key belongs on the gateway. For the historical online source, set
-`SOVIET_TOPO_TILE_SERVICE=indian-open-maps` on the gateway only for an approved
-interactive test using that endpoint.
+The optional gateway enables GitHub device sign-in and server-side Google
+key handling. After installing a GitHub App with Metadata read permission
+and Device Flow enabled, run `node scripts/restricted-tile-server.mjs` behind
+HTTPS. Set `ATLAS_SITE_ORIGIN`, `AUTH_BACKEND_ORIGIN`, `GITHUB_CLIENT_ID` and
+the tile-source variables on that gateway. The HTTPS proxy preserves the
+gateway Host. The gateway's default loopback port is 8080 (`PORT`).
+Set `AUTH_BACKEND_ORIGIN` in Pages to choose this path in the same Settings
+panel. The browser key is omitted in gateway mode. Server limits default to
+120 requests per account and 300 per provider per minute.
 
-The gateway checks GitHub repository-admin access before it issues a 15-minute
-session. Each provider's tile and metadata routes check that session. The
-shared account limit defaults to 120 requests/minute (`TILES_PER_MINUTE`) and
-each provider has a service-wide limit of 300/minute (`TOTAL_TILES_PER_MINUTE`).
-Sessions and counters reset on restart. Sign-out and expiry return the map to
-a regular background. The test response caches use private, no-store.
-Google attribution is updated from the viewport API. Historical tiles show the
-modern map and seabed through gaps. [Google Map Tiles policies](https://developers.google.com/maps/documentation/tile/policies)
+For a local fixture run, use `node scripts/preview-restricted-tiles.mjs` and
+open the printed URL at `127.0.0.1:4180`. Select **Sign in as fixture admin**.
+GitHub and the tile services are simulated. To test the prepared historical
+scan groups locally, point `ATLAS_SOVIET_ARCHIVES` at their catalogue and
+PMTiles files. To exercise real GitHub device sign-in locally, supply your
+GitHub App client ID and at least one test source, then pass `--github`.
+
+Both paths use viewport attribution for Google maps and preserve the modern
+map and seabed through gaps in the historical scans. Tile requests are excluded
+from the service worker cache. [GitHub REST API CORS](https://docs.github.com/en/rest/using-the-rest-api/using-cors-and-jsonp-to-make-cross-origin-requests)
+· [Google Maps key restrictions](https://developers.google.com/maps/documentation/tile/get-api-key)
 · [Indian Open Maps route definitions](https://github.com/ramSeraph/indianopenmaps/blob/main/worker/src/routes/listing.json)
 
 ## Source layout and generated files

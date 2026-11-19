@@ -1,40 +1,40 @@
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261120-admin-tile-preview-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261120-admin-tile-preview-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261120-admin-tile-preview-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261120-admin-tile-preview-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261120-admin-tile-preview-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261120-pages-admin-tiles-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261120-pages-admin-tiles-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261120-pages-admin-tiles-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261120-pages-admin-tiles-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261120-pages-admin-tiles-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261120-admin-tile-preview-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261120-admin-tile-preview-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261120-admin-tile-preview-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261120-admin-tile-preview-1';
-import {createWorldFonts} from './world-font.mjs?v=20261120-admin-tile-preview-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261120-admin-tile-preview-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261120-pages-admin-tiles-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261120-pages-admin-tiles-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261120-pages-admin-tiles-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261120-pages-admin-tiles-1';
+import {createWorldFonts} from './world-font.mjs?v=20261120-pages-admin-tiles-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261120-pages-admin-tiles-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261120-admin-tile-preview-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261120-admin-tile-preview-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261120-pages-admin-tiles-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261120-pages-admin-tiles-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261120-admin-tile-preview-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261120-admin-tile-preview-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261120-admin-tile-preview-1';
-import {departureItem} from './departures-ui.mjs?v=20261120-admin-tile-preview-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261120-admin-tile-preview-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261120-admin-tile-preview-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261120-admin-tile-preview-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261120-admin-tile-preview-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261120-admin-tile-preview-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261120-admin-tile-preview-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261120-admin-tile-preview-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261120-admin-tile-preview-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261120-admin-tile-preview-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261120-admin-tile-preview-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261120-admin-tile-preview-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261120-admin-tile-preview-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261120-admin-tile-preview-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261120-admin-tile-preview-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261120-admin-tile-preview-1';
-import {addGooglePreviewLayer, createRestrictedTiles, GOOGLE_PREVIEW, googleViewport, installGooglePreviewProtocol, restrictedTileOrigin} from './restricted-tiles.mjs?v=20261120-admin-tile-preview-1';
-import {installSovietPreview, installSovietProtocol, isSovietSource, loadSovietPreview, loadSovietTiles, installSovietXYZProtocol, sovietCoverage, sovietPreviewAllowed} from './soviet-topo.mjs?v=20261120-admin-tile-preview-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261120-pages-admin-tiles-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261120-pages-admin-tiles-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261120-pages-admin-tiles-1';
+import {departureItem} from './departures-ui.mjs?v=20261120-pages-admin-tiles-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261120-pages-admin-tiles-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261120-pages-admin-tiles-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261120-pages-admin-tiles-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261120-pages-admin-tiles-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261120-pages-admin-tiles-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261120-pages-admin-tiles-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261120-pages-admin-tiles-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261120-pages-admin-tiles-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261120-pages-admin-tiles-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261120-pages-admin-tiles-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261120-pages-admin-tiles-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261120-pages-admin-tiles-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261120-pages-admin-tiles-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261120-pages-admin-tiles-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261120-pages-admin-tiles-1';
+import {addGooglePreviewLayer, createRestrictedTiles, createStaticRestrictedTiles, GOOGLE_PREVIEW, googleViewport, installGooglePreviewProtocol, parseStaticTileSettings, restrictedTileOrigin} from './restricted-tiles.mjs?v=20261120-pages-admin-tiles-1';
+import {installSovietPreview, installSovietProtocol, isSovietSource, loadSovietPreview, loadSovietTiles, installSovietXYZProtocol, sovietCoverage, sovietPreviewAllowed} from './soviet-topo.mjs?v=20261120-pages-admin-tiles-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -81,20 +81,25 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const restrictedOrigin = restrictedTileOrigin(document.querySelector('meta[name="atlas-restricted-tile-origin"]')?.content, location.href);
+const staticTileSettings = !restrictedOrigin && parseStaticTileSettings(document.querySelector('meta[name="atlas-static-tile-tests"]')?.content);
 const restrictedFixture = restrictedOrigin === location.origin && document.querySelector('meta[name="atlas-restricted-tile-fixture"]')?.content === '1';
-const localSovietPreview = !restrictedOrigin && sovietPreviewAllowed(location.href);
+const localSovietPreview = !restrictedOrigin && !staticTileSettings && sovietPreviewAllowed(location.href);
 let requestedRestricted = (settings.background === 'google' || (settings.background === 'soviet' && !localSovietPreview))
   ? settings.background : null;
 if (requestedRestricted) settings.background = 'map';
 let sovietPreview, loadHostedSoviet, hostedSovietLoad, tileAccess, googleViewportRequest;
-const restrictedTiles = restrictedOrigin && createRestrictedTiles({
-  origin: restrictedOrigin, window, fetcher: fetch, changed: updateRestrictedTileAccess,
+const restrictedTileOptions = {
+  window, fetcher: fetch, changed: updateRestrictedTileAccess,
   report: message => { $('restricted-tile-status').textContent = message; },
-  showCode: code => {
-    $('restricted-tile-device').hidden = !code;
-    $('restricted-tile-code').textContent = code ?? '';
-  },
-});
+};
+const restrictedTiles = staticTileSettings ? createStaticRestrictedTiles({...restrictedTileOptions, settings:staticTileSettings})
+  : restrictedOrigin && createRestrictedTiles({
+    ...restrictedTileOptions, origin:restrictedOrigin,
+    showCode: code => {
+      $('restricted-tile-device').hidden = !code;
+      $('restricted-tile-code').textContent = code ?? '';
+    },
+  });
 if (restrictedTiles) {
   $('restricted-tiles').hidden = false;
   if (restrictedFixture) {
@@ -103,7 +108,18 @@ if (restrictedTiles) {
     $('restricted-tile-status').textContent = 'Local fixture preview. Google tiles and GitHub sign-in are simulated.';
     $('google-preview-brand').textContent = 'Satellite fixture';
   }
-  $('restricted-tile-sign-in').addEventListener('click', restrictedTiles.signIn);
+  if (staticTileSettings) {
+    $('restricted-tile-token-form').hidden = false;
+    $('restricted-tile-token-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const input = $('restricted-tile-token'), token = input.value.trim();
+      input.value = '';
+      void restrictedTiles.signIn(token);
+    });
+  } else {
+    $('restricted-tile-sign-in').hidden = false;
+    $('restricted-tile-sign-in').addEventListener('click', restrictedTiles.signIn);
+  }
   $('restricted-tile-sign-out').addEventListener('click', restrictedTiles.signOut);
 }
 let backgroundSelection = 0, sovietNotice = '';
@@ -119,7 +135,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261120-admin-tile-preview-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261120-pages-admin-tiles-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -689,7 +705,8 @@ function selectRequestedPreview() {
 }
 function updateRestrictedTileAccess(access) {
   tileAccess = access;
-  $('restricted-tile-sign-in').hidden = Boolean(access);
+  $('restricted-tile-sign-in').hidden = Boolean(staticTileSettings || access);
+  $('restricted-tile-token-form').hidden = !staticTileSettings || Boolean(access);
   $('restricted-tile-sign-out').hidden = !access;
   $('soviet-background').hidden = !access?.soviet;
   $('google-background').hidden = !access?.google;

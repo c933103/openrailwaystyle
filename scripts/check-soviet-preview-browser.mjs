@@ -257,8 +257,79 @@ try {
   await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.startsWith('Session expired'));
   assert.equal(await page.locator(button).isVisible(), false);
   assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'), 'true');
+
+  // Exercise the actual static Pages map with the optional gateway absent.
+  const repository = 'c933103/openrailwaystyle';
+  const tokenFixture = 'github_pat_browser_fixture';
+  const browserKey = 'sample_browser_key_for_testing';
+  let allowAdmin = false, directGoogle = 0, directSoviet = 0;
+  await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
+    const response = await route.fetch();
+    await route.fulfill({response, body:(await response.text()).replace(
+      '<meta name="atlas-static-tile-tests" content="">',
+      `<meta name="atlas-static-tile-tests" content="${repository}|${browserKey}|indian-open-maps">`
+    )});
+  });
+  await context.route(broker + '**', () => assert.fail('Static mode contacted the optional gateway'));
+  const directCors = {...cors, 'Access-Control-Allow-Headers':'Authorization, Content-Type, X-GitHub-Api-Version'};
+  await context.route('https://api.github.com/repos/' + repository, route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:directCors});
+    assert.equal(route.request().headers().authorization, 'Bearer ' + tokenFixture);
+    return route.fulfill({headers:directCors,json:{permissions:{admin:allowAdmin}}});
+  });
+  await context.route('https://tile.googleapis.com/**', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (request.method() === 'OPTIONS') return route.fulfill({status:204,headers:directCors});
+    assert.equal(request.headers().authorization,undefined);
+    assert.equal(url.searchParams.get('key'),browserKey);
+    directGoogle++;
+    if (url.pathname === '/v1/createSession') return route.fulfill({headers:directCors,json:{
+      session:'fixture-session', expiry:String(Math.floor(Date.now()/1000)+300),
+    }});
+    assert.equal(url.searchParams.get('session'),'fixture-session');
+    if (url.pathname === '/tile/v1/viewport') return route.fulfill({headers:directCors,json:{copyright:'Direct satellite fixture credits'}});
+    return route.fulfill({headers:directCors,contentType:'image/png',body:red});
+  });
+  await context.route('https://indianopenmaps.com/world/topo/russian/**', route => {
+    const request = route.request(), url = new URL(request.url());
+    assert.equal(request.headers().authorization,undefined);
+    directSoviet++;
+    if (url.pathname.endsWith('tiles.json')) return route.fulfill({headers:directCors,json:{
+      tiles:[url.href.replace('tiles.json','{z}/{x}/{y}.webp')], scheme:'xyz', minzoom:3, maxzoom:8,
+    }});
+    return route.fulfill({headers:directCors,contentType:'image/webp',body:redWebP});
+  });
+  await open(false, 'map');
+  await page.locator('#settings-open').click();
+  const input = page.locator('#restricted-tile-token');
+  const verify = page.getByRole('button',{name:'Verify GitHub access'});
+  assert.equal(await page.locator('#restricted-tile-sign-in').isVisible(),false);
+  await input.fill(tokenFixture);
+  await verify.click();
+  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('did not confirm repository admin access'));
+  assert.equal(await input.inputValue(),'');
+  assert.equal(directGoogle + directSoviet,0);
+  allowAdmin = true;
+  await input.fill(tokenFixture);
+  await verify.click();
+  await page.locator('#restricted-tile-sign-out').waitFor();
+  await page.locator('#settings-close').click();
+  assert.equal(directGoogle + directSoviet,0,'verified sign-in alone does not fetch test tiles');
+  await page.locator(google).click();
+  await page.waitForFunction(() => window.sovietMap.getSource('google-satellite-preview') && window.sovietMap.isSourceLoaded('google-satellite-preview'));
+  assert.ok(directGoogle > 1);
+  assert.match(await page.locator('#google-preview-attribution').textContent(), /Direct satellite fixture credits/);
+  await page.locator(button).click();
+  await page.waitForFunction(() => window.sovietMap.getSource('soviet-topo') && window.sovietMap.isSourceLoaded('soviet-topo'));
+  assert.ok(directSoviet > 2);
+  await page.locator('#settings-open').click();
+  await page.locator('#restricted-tile-sign-out').click();
+  await page.locator('#settings-close').click();
+  assert.equal(await page.locator(button).isVisible(),false);
+  assert.equal(await page.locator(google).isVisible(),false);
+  assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'),'true');
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: historical pixels, map stacking, both admin layers, viewport credits, denied sign-in, sign-out, and expiry');
+  console.log('PASS: historical pixels, stacking, static Pages and optional gateway access, viewport credits, non-admin rejection, sign-out, and expiry');
 } finally {
   await browser.close();
 }
