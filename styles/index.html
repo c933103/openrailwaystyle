@@ -85,20 +85,6 @@
     <section id="settings-view" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
-        <fieldset id="restricted-tiles" hidden><legend>Admin map backgrounds</legend>
-          <button id="restricted-tile-sign-in" type="button" hidden>Sign in with GitHub</button>
-          <form id="restricted-tile-token-form" hidden>
-            <label for="restricted-tile-token">Fine-grained GitHub token</label>
-            <input id="restricted-tile-token" type="password" autocomplete="off" required>
-            <button type="submit">Verify GitHub access</button>
-          </form>
-          <p id="restricted-tile-device" hidden>
-            Code <strong id="restricted-tile-code"></strong>
-            <a id="restricted-tile-github" href="https://github.com/login/device" target="_blank" rel="noopener noreferrer">Open GitHub</a>
-          </p>
-          <button id="restricted-tile-sign-out" type="button" hidden>Sign out</button>
-          <p id="restricted-tile-status" class="small" role="status"></p>
-        </fieldset>
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="stationImportanceColors"> Different colours by station importance at zooms 3–6</label>
@@ -128,6 +114,21 @@
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         </fieldset>
+        <details id="restricted-tiles" hidden>
+          <summary>Admin map backgrounds</summary>
+          <button id="restricted-tile-sign-in" type="button" hidden>Sign in with GitHub</button>
+          <form id="restricted-tile-token-form" hidden>
+            <label for="restricted-tile-token">Fine-grained GitHub token</label>
+            <input id="restricted-tile-token" type="password" autocomplete="off" required>
+            <button type="submit">Verify GitHub access</button>
+          </form>
+          <p id="restricted-tile-device" hidden>
+            Code <strong id="restricted-tile-code"></strong>
+            <a id="restricted-tile-github" href="https://github.com/login/device" target="_blank" rel="noopener noreferrer">Open GitHub</a>
+          </p>
+          <button id="restricted-tile-sign-out" type="button" hidden>Sign out</button>
+          <p id="restricted-tile-status" class="small" role="status"></p>
+        </details>
       </div>
     </section>
     </div>

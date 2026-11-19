@@ -166,8 +166,13 @@ try {
     googleTiles++;
     return route.fulfill({headers:cors,contentType:'image/png',body:red});
   }));
-  async function signIn() {
+  async function openAdminSettings() {
     await page.locator('#settings-open').click();
+    const summary = page.locator('#restricted-tiles:not([open]) > summary');
+    if (await summary.isVisible()) await summary.click();
+  }
+  async function signIn() {
+    await openAdminSettings();
     await page.locator('#restricted-tile-sign-in').click();
     await page.locator('#restricted-tile-sign-out').waitFor();
     await page.locator('#settings-close').click();
@@ -181,7 +186,7 @@ try {
   assert.equal(googleViewportCalls, 0);
   assert.equal(googleTiles, 0);
   await open(false, 'map');
-  await page.locator('#settings-open').click();
+  await openAdminSettings();
   await page.locator('#restricted-tile-sign-in').click();
   await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('does not have repository admin access'));
   await page.locator('#settings-close').click();
@@ -240,7 +245,7 @@ try {
   assert.equal(await page.locator('#soviet-status').isVisible(), false);
   await page.locator(google).click();
   await page.locator('#google-preview-attribution').waitFor();
-  await page.locator('#settings-open').click();
+  await openAdminSettings();
   await page.locator('#restricted-tile-sign-out').click();
   await page.locator('#settings-close').click();
   assert.equal(await page.locator(button).isVisible(), false);
@@ -300,7 +305,7 @@ try {
     return route.fulfill({headers:directCors,contentType:'image/webp',body:redWebP});
   });
   await open(false, 'map');
-  await page.locator('#settings-open').click();
+  await openAdminSettings();
   const input = page.locator('#restricted-tile-token');
   const verify = page.getByRole('button',{name:'Verify GitHub access'});
   assert.equal(await page.locator('#restricted-tile-sign-in').isVisible(),false);
@@ -322,7 +327,7 @@ try {
   await page.locator(button).click();
   await page.waitForFunction(() => window.sovietMap.getSource('soviet-topo') && window.sovietMap.isSourceLoaded('soviet-topo'));
   assert.ok(directSoviet > 2);
-  await page.locator('#settings-open').click();
+  await openAdminSettings();
   await page.locator('#restricted-tile-sign-out').click();
   await page.locator('#settings-close').click();
   assert.equal(await page.locator(button).isVisible(),false);
