@@ -8,7 +8,7 @@ const browser=await launchBrowser({...(process.env.BROWSER_PATH?{executablePath:
 const counts={permanent:0,transient:0},errors=[];
 try {
   const context=await browser.newContext(),page=await context.newPage();
-  page.on('pageerror',error=>errors.push(error.message));
+  page.on('pageerror',error=>{ console.error('PAGEERROR metadata:', error.stack || error.message); errors.push(error.message); });
   await installEmptyMapProviders(context,base);
   await context.route('https://metadata.test/**',route=>{
     const name=new URL(route.request().url()).pathname.slice(1).split('.')[0];
@@ -41,7 +41,7 @@ async function checkPartialRecovery(type) {
   const context=await browser.newContext({viewport:{width:1024,height:768}}),page=await context.newPage();
   const failures=new Set(['2/1/1','2/2/1']),requests=[];
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
-  page.on('pageerror',error=>errors.push(error.message));
+  page.on('pageerror',error=>{ console.error(`PAGEERROR partial-${type}:`, error.stack || error.message); errors.push(error.message); });
   await installEmptyMapProviders(context,base);
   await context.route('https://partial.test/**',route=>{
     const key=new URL(route.request().url()).pathname.slice(1),failed=failures.has(key);
