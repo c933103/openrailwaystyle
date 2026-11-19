@@ -13,7 +13,7 @@ const base=new URL(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/');
 assert.equal(base.origin,'http://127.0.0.1:4173','Only the staged loopback archive is supported');
 const shell=new URL('reader-only-test.html',base).href;
 const decoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER??'native';
-assert.ok(['native','fflate'].includes(decoder),'Unknown diagnostic decoder');
+assert.ok(['native','native-chunked','fflate'].includes(decoder),'Unknown diagnostic decoder');
 assert.ok(decoder==='native'||mode==='replay','Alternate decoder is only a reader replay arm');
 const codecUrl=decoder==='fflate'?new URL('reference-alt-decode.mjs',base).href:null;
 const tiles=['5/15/11','5/15/10','5/16/11','5/16/10'];
@@ -40,11 +40,45 @@ try {
    setInterval(()=>console.log('READER_PAGE '+JSON.stringify({stage:'HEARTBEAT',time:Date.now()})),1000);
   }),label+' heartbeat setup',5000);
  }
- const result=await withinDeadline(()=>page.evaluate(async ({mode,tiles,generation,schedule,codecUrl})=>{
+ const result=await withinDeadline(()=>page.evaluate(async ({mode,tiles,generation,schedule,codecUrl,decoder})=>{
   const {createReferenceReader}=await import('/mainline-reference.mjs');
+  // Same native transform and bounded output consumer in both arms. Only input differs.
+  const decodeNative=async (data,maxBytes)=>{
+   const fixed=decoder==='native-chunked', bytes=new Uint8Array(data);
+   const logControl=stage=>{
+    if(bytes.byteLength===849970||bytes.byteLength===829296)
+     console.log('READER_PAGE '+JSON.stringify({stage,compressedBytes:bytes.byteLength}));
+   };
+   let offset=0;
+   const input=fixed?new ReadableStream({
+    pull(controller){
+     if(offset===bytes.length){controller.close();return;}
+     const end=Math.min(offset+65536,bytes.length);
+     controller.enqueue(bytes.subarray(offset,end));offset=end;
+    }
+   }):new Blob([data]).stream();
+   const streamReader=input.pipeThrough(new DecompressionStream('gzip')).getReader();
+   const chunks=[];let size=0;
+   try{
+    while(true){
+     const {done,value}=await streamReader.read();
+     if(done){logControl('NATIVE_OUTPUT_EOF');break;}
+     if(chunks.length===0)logControl('NATIVE_FIRST_OUTPUT');
+     size+=value.byteLength;
+     if(size>maxBytes){await streamReader.cancel();throw Error('Oversized decoded OSM reference tile');}
+     chunks.push(value);
+    }
+   }finally{streamReader.releaseLock();}
+   const result=new Uint8Array(size);
+   let outputOffset=0;
+   for(const c of chunks){result.set(c,outputOffset);outputOffset+=c.byteLength;}
+   logControl('NATIVE_OUTPUT_COMPLETE');
+   return result.buffer;
+  };
+  const decompress=codecUrl?(await import(codecUrl)).decodeReferenceForDiagnostic:decodeNative;
   const reader=createReferenceReader({
    root:new URL('/data/mainline-reference/',location.href),
-   ...(codecUrl?{decompress:(await import(codecUrl)).decodeReferenceForDiagnostic}:{}),
+   ...(mode==='replay'?{decompress}:{}),
    onTileStage:(key,stage,bytes)=>console.log('READER_PAGE '+JSON.stringify({key,stage,bytes}))
   });
   if(schedule){
@@ -76,7 +110,7 @@ try {
   if(mode==='serial')for(const key of tiles)result.push(await check(key));
   else result.push(...await Promise.all(tiles.map(check)));
   return result;
- },{mode,tiles,generation,schedule,codecUrl}),mode+' London reader',replayDeadline);
+ },{mode,tiles,generation,schedule,codecUrl,decoder}),mode+' London reader',replayDeadline);
  if(schedule){
   assert.deepEqual(result.unexpected,[],'Unexpected reader error');
   assert.equal(result.resolved+result.aborted,result.starts,'Every replay call must settle as expected');

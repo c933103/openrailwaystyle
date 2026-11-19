@@ -70,10 +70,10 @@ jobs:
           # Use the exact staged bytes. Do not interpret arm differences if parity fails.
           node_modules/.bin/esbuild scripts/webkit-reference-alt-decode.mjs --bundle --platform=browser --format=esm --outfile=london-diagnostics/reference-alt-decode.mjs
           node scripts/check-webkit-reference-decoder-parity.mjs mainline-output london-diagnostics/reference-alt-decode.mjs >london-diagnostics/decoder-parity.log 2>&1
-          # Two opposite-order pairs on the same pinned trace, each without MapLibre.
+          # Compare only native input chunking in opposite-order pairs, without MapLibre.
           pair_pass=1
           ordinal=0
-          for decoder in native fflate fflate native; do
+          for decoder in native-chunked native native native-chunked; do
             ordinal=$((ordinal+1))
             arm="decoder-$ordinal-$decoder"
             (
