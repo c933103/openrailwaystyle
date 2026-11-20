@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261118-fusion-energy-1';
+import { MODES } from './map-model.mjs?v=20261120-pages-admin-tiles-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -95,9 +95,14 @@ export function layerVisibility(layer, settings) {
   const background = semantics['atlas:background'];
   if (background === 'carto') visible = settings.background === 'carto';
   else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
+  else if (background === 'soviet' || background === 'google') visible = settings.background === background;
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
+  else if (settings.background === 'google' && semantics['atlas:base-map'] && layer.type !== 'background') visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  // The historical scan has its own printed contours and soundings. Keep the
+  // shaded seabed raster below it for transparent areas and missing sheets.
+  if (settings.background === 'soviet' && semantics['atlas:terrain'] && ['line', 'symbol'].includes(layer.type)) visible = false;
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
 }

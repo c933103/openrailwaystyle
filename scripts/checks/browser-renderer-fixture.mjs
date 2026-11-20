@@ -40,7 +40,7 @@ export async function rendererFixture(base = 'http://127.0.0.1:4173/') {
 // Real MapLibre rendering with empty external providers for layout/gesture tests.
 const latinGlyphs = readFile(new URL('../../tests/fixtures/browser-glyphs/0-255.pbf', import.meta.url));
 
-export async function installEmptyMapProviders(context, base, {firstParty = 'fixture', rendererAssets, basemapTile = null} = {}) {
+export async function installEmptyMapProviders(context, base, {firstParty = 'fixture', rendererAssets, basemapTile = null, realPmtiles = false} = {}) {
   if (basemapTile !== null && (!(basemapTile instanceof Uint8Array) || basemapTile.byteLength > 1024*1024))
     throw new TypeError('Synthetic basemap vector tile must be a bounded byte buffer');
   if (!['fixture', 'network'].includes(firstParty)) throw new Error(`Unknown first-party fixture mode: ${firstParty}`);
@@ -48,7 +48,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
   if (style) style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
   const renderer = firstParty === 'network' ? new Map() : rendererAssets ?? await rendererFixture(base);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
-  if (firstParty === 'fixture') {
+  if (firstParty === 'fixture' && !realPmtiles) {
     // A specified synthetic basemap vector body lets consumers exercise real
     // water-layer parsing. Default fixtures remain truly empty. Do not use
     // live provider responses or expose the fixture through the site itself.
