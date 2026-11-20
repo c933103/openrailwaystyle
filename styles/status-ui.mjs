@@ -16,6 +16,9 @@ export function mapErrorMessage({railRecovery, stationFailures, errors, settings
   if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, terrain3DSelected)) {
     return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
   }
+  if (failed.length === 1 && failed[0] === 'bathymetry') {
+    return 'Bathymetry tiles could not load. Seabed shading may be incomplete.';
+  }
   return 'Some map data could not load. Check your connection or reload to retry.';
 }
 export function updateMapStatus(context) {
