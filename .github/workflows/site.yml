@@ -670,7 +670,6 @@ jobs:
           fi
       - name: Configure restricted tile access
         env:
-          AUTH_BACKEND_ORIGIN: ${{ vars.AUTH_BACKEND_ORIGIN }}
           GOOGLE_MAPS_API_KEY: ${{ vars.GOOGLE_MAPS_API_KEY }}
           SOVIET_TOPO_TILE_SERVICE: ${{ vars.SOVIET_TOPO_TILE_SERVICE }}
           ADMIN_REPO: ${{ github.repository }}

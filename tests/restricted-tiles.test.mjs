@@ -152,7 +152,7 @@ test('provider enablement, quota, provider backoff, and expiry fail closed', asy
   assert.equal(disabled.calls.filter(url => url.startsWith(historical)).length,0);
 });
 
-test('the same map page selects static mode with no gateway and keeps hosted sign-in optional', () => {
+test('Pages enables the configured browser test layers even with an old gateway setting', () => {
   const standard = '<meta name="atlas-restricted-tile-origin" content="">\n<meta name="atlas-static-tile-tests" content="">';
   const googleKey = 'sample_browser_key_for_testing';
   const fixture = {repository, googleKey, historical:'indian-open-maps'};
@@ -161,9 +161,8 @@ test('the same map page selects static mode with no gateway and keeps hosted sig
   assert.match(staticMap,/atlas-restricted-tile-origin" content=""/);
   assert.match(staticMap,/c933103\/openrailwaystyle\|sample_browser_key_for_testing\|indian-open-maps/);
   assert.deepEqual(parseStaticTileSettings(`${repository}|${googleKey}|indian-open-maps`), {repository, googleKey, soviet:true});
-  const gatewayMap = configureRestrictedMap(standard, {...fixture, origin:broker});
-  assert.match(gatewayMap,/https:\/\/tiles\.example/);
-  assert.doesNotMatch(gatewayMap,/sample_browser_key_for_testing/);
+  assert.equal(configureRestrictedMap(standard, {...fixture, origin:broker}), staticMap);
+  assert.match(restrictedPreviewPage(standard, broker),/https:\/\/tiles\.example/);
   assert.throws(() => restrictedPreviewPage(standard, 'https://tiles.example/other'), /Invalid/);
   assert.throws(() => configureRestrictedMap(standard,{...fixture, googleKey:'" bad'}), /Invalid/);
 });

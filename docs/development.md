@@ -188,8 +188,8 @@ Google Satellite and Soviet topo share the same repository-admin check in
 controls appear when one or more test backgrounds are configured. No test
 tiles load until an authorized tester selects a background.
 
-For the static Pages path, set the repository variable `GOOGLE_MAPS_API_KEY`
-to a browser key restricted to the Pages website origin and Map Tiles API.
+Set the Pages repository variable `GOOGLE_MAPS_API_KEY` to a browser key
+restricted to the Pages website origin and Map Tiles API.
 Set `SOVIET_TOPO_TILE_SERVICE=indian-open-maps` for an approved interactive
 test with that service. The same settings can be injected into a local
 checkout with `node scripts/configure-restricted-tiles.mjs` and the
@@ -202,21 +202,11 @@ the token only to the GitHub REST API for the verification request and clears
 the form immediately. The result unlocks the configured test backgrounds for
 15 minutes in that tab. Sign-out switches back to the regular map.
 
-The static version caps use at 120 requests per minute across both backgrounds
+The app caps use at 120 requests per minute across both backgrounds
 per page session. The Google key is visible in the rendered site and the cap
 applies to requests made through the app. Set the Google project's Map Tiles
 quota for the test budget. The browser check does not create a private tile
 endpoint or enforce a cross-browser quota.
-
-The optional gateway enables GitHub device sign-in and server-side Google
-key handling. After installing a GitHub App with Metadata read permission
-and Device Flow enabled, run `node scripts/restricted-tile-server.mjs` behind
-HTTPS. Set `ATLAS_SITE_ORIGIN`, `AUTH_BACKEND_ORIGIN`, `GITHUB_CLIENT_ID` and
-the tile-source variables on that gateway. The HTTPS proxy preserves the
-gateway Host. The gateway's default loopback port is 8080 (`PORT`).
-Set `AUTH_BACKEND_ORIGIN` in Pages to choose this path in the same Settings
-panel. The browser key is omitted in gateway mode. Server limits default to
-120 requests per account and 300 per provider per minute.
 
 For a local fixture run, use `node scripts/preview-restricted-tiles.mjs` and
 open the printed URL at `127.0.0.1:4180`. Select **Sign in as fixture admin**.
@@ -225,7 +215,7 @@ scan groups locally, point `ATLAS_SOVIET_ARCHIVES` at their catalogue and
 PMTiles files. To exercise real GitHub device sign-in locally, supply your
 GitHub App client ID and at least one test source, then pass `--github`.
 
-Both paths use viewport attribution for Google maps and preserve the modern
+The app uses viewport attribution for Google maps and preserves the modern
 map and seabed through gaps in the historical scans. Tile requests are excluded
 from the service worker cache. [GitHub REST API CORS](https://docs.github.com/en/rest/using-the-rest-api/using-cors-and-jsonp-to-make-cross-origin-requests)
 · [Google Maps key restrictions](https://developers.google.com/maps/documentation/tile/get-api-key)
