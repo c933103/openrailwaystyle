@@ -11,9 +11,9 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}91`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}92`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 91 runs admin map tests from Settings.
+// Shell 92 identifies isolated bathymetry failures without hiding other errors.
 // The previous shell adds ownership schema to the Mongolian failure fix (the atlas.4 MapLibre repair:
 // form advances measured in full joining context, and vertical runs
 // breaking into columns at the label's size budget) to the Mongolian
