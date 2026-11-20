@@ -38,7 +38,7 @@ export async function writeLifecycleSnapshot(dir, data, manifest) {
     const tile=index.getTile(z,x,y);
     if (!tile?.features.length) return;
     if(z>=5) {
-      const bytes=gzipSync(vtpbf.fromGeojsonVt({lifecycle:tile}));
+      const bytes=gzipSync(vtpbf.fromGeojsonVt({lifecycle:tile},{version:2,extent:4096}));
       if(!stream.write(JSON.stringify([z,x,y,bytes.toString('base64')])+'\n')) await once(stream,'drain');
       tileCount++;
     }
