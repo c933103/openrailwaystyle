@@ -1,0 +1,34 @@
+name: Terrain transition isolation (issue 475)
+on:
+  push:
+    branches:
+      - diagnostic/terrain-transition-475
+    paths:
+      - '.github/workflows/terrain-transition-475.yml'
+      - 'scripts/diagnostics/check-terrain-transition-475.mjs'
+permissions:
+  contents: read
+jobs:
+  isolate:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify patched Node 26
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Measure isolated and combined transitions with synthetic providers
+        run: timeout 240s node scripts/diagnostics/check-terrain-transition-475.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terrain-transition-475
+          path: browser-review/terrain-transition-475.json
+          if-no-files-found: warn
