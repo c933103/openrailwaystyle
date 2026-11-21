@@ -183,10 +183,10 @@ geographic coverage of any historical source.
 
 #### Admin background testing on GitHub Pages
 
-Google Satellite and Soviet topo share the same repository-admin check in
+Google Satellite and Soviet topo share the same repository-owner check in
 **Settings → Admin map backgrounds** on the regular Railway Atlas map. The
 controls appear when one or more test backgrounds are configured. No test
-tiles load until an authorized tester selects a background.
+tiles load until the owner selects a background.
 
 Set the Pages repository variable `GOOGLE_MAPS_API_KEY` to a browser key
 restricted to the Pages website origin and Map Tiles API.
@@ -198,9 +198,10 @@ variables.
 
 In Settings, enter a fine-grained GitHub token with Metadata read permission
 for the Atlas repository and select **Verify GitHub access**. The browser sends
-the token only to the GitHub REST API for the verification request and clears
-the form immediately. The result unlocks the configured test backgrounds for
-15 minutes in that tab. Sign-out switches back to the regular map.
+the token only to the GitHub REST API and clears the form immediately. Atlas compares
+the authenticated user’s numeric ID with the repository owner’s ID. A match
+unlocks the configured test backgrounds for 15 minutes in that tab. Signing
+out switches back to the regular map.
 
 The app caps use at 120 requests per minute across both backgrounds
 per page session. The Google key is visible in the rendered site and the cap
@@ -209,7 +210,7 @@ quota for the test budget. The browser check does not create a private tile
 endpoint or enforce a cross-browser quota.
 
 For a local fixture run, use `node scripts/preview-restricted-tiles.mjs` and
-open the printed URL at `127.0.0.1:4180`. Select **Sign in as fixture admin**.
+open the printed URL at `127.0.0.1:4180`. Select **Sign in as fixture owner**.
 GitHub and the tile services are simulated. To test the prepared historical
 scan groups locally, point `ATLAS_SOVIET_ARCHIVES` at their catalogue and
 PMTiles files. To exercise real GitHub device sign-in locally, supply your

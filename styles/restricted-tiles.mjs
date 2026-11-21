@@ -11,6 +11,14 @@ const SOVIET_ROOT = 'https://indianopenmaps.com/world/topo/russian/';
 const GOOGLE_ROOT = 'https://tile.googleapis.com/';
 const SESSION_MS = 15 * 60_000;
 
+export async function verifiedRepositoryOwner(github, repository) {
+  const [account, repo] = await Promise.all([github('user'), github('repos/' + repository)]);
+  if (!account.ok || !repo.ok) return null;
+  const [user, details] = await Promise.all([account.json(), repo.json()]);
+  const id = user?.id, owner = details?.owner;
+  return Number.isSafeInteger(id) && id > 0 && owner?.type === 'User' && id === owner.id ? id : null;
+}
+
 export function parseStaticTileSettings(value) {
   const [repository, googleKey, historical, ...extra] = (value ?? '').split('|');
   if (extra.length || !/^[\w.-]+\/[\w.-]+$/.test(repository) ||
@@ -95,19 +103,19 @@ export function createStaticRestrictedTiles({settings, window, fetcher, changed,
       }
       const controller = verification = new AbortController();
       try {
-        report('Checking GitHub repository access…');
-        const response = await request('https://api.github.com/repos/' + settings.repository, {
-          signal:AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
-          headers:{Authorization:'Bearer ' + value, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2026-03-10'},
-        });
-        if (!response.ok || (await response.json()).permissions?.admin !== true) {
-          if (!controller.signal.aborted) report('GitHub did not confirm repository admin access.');
+        report('Checking the repository owner with GitHub…');
+        const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]);
+        const owner = await verifiedRepositoryOwner(path => request('https://api.github.com/' + path, {
+          signal, headers:{Authorization:'Bearer ' + value, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2026-03-10'},
+        }), settings.repository);
+        if (!owner) {
+          if (!controller.signal.aborted) report('GitHub did not confirm repository ownership.');
           return;
         }
         if (controller.signal.aborted) return;
         active = {controller:new AbortController(), expiresAt:now() + SESSION_MS, pausedUntil:0};
         expire = window.setTimeout(() => clear('Session expired. Verify your GitHub token again.'), SESSION_MS);
-        report('Repository admin verified. Select a test background.');
+        report('Repository owner verified. Select a test background.');
         changed({soviet:settings.soviet, google:Boolean(settings.googleKey)});
       } catch {
         if (!controller.signal.aborted) report('GitHub verification could not complete. Try again.');
@@ -120,7 +128,7 @@ export function createStaticRestrictedTiles({settings, window, fetcher, changed,
       const session = active;
       if (!session || session.expiresAt <= now()) {
         if (session) clear('Session expired. Verify your GitHub token again.');
-        throw new Error('Repository admin verification required');
+        throw new Error('Repository owner verification required');
       }
       const separator = path.indexOf('/');
       const source = path.slice(0, separator), resource = path.slice(separator + 1);
@@ -162,7 +170,7 @@ export function createRestrictedTiles({origin, window, fetcher, changed, report,
       });
       if (response.status === 202) continue;
       if (response.status === 403) {
-        report('This GitHub account does not have repository admin access.');
+        report('Only the repository owner can use these backgrounds.');
         return;
       }
       if (response.status === 410) break;

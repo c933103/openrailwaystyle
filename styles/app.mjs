@@ -103,7 +103,7 @@ const restrictedTiles = staticTileSettings ? createStaticRestrictedTiles({...res
 if (restrictedTiles) {
   $('restricted-tiles').hidden = false;
   if (restrictedFixture) {
-    $('restricted-tile-sign-in').textContent = 'Sign in as fixture admin';
+    $('restricted-tile-sign-in').textContent = 'Sign in as fixture owner';
     $('restricted-tile-github').hidden = true;
     $('restricted-tile-status').textContent = 'Local fixture preview. Google tiles and GitHub sign-in are simulated.';
     $('google-preview-brand').textContent = 'Satellite fixture';

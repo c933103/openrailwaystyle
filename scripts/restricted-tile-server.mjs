@@ -2,6 +2,7 @@ import {randomBytes} from 'node:crypto';
 import {createServer} from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {Readable} from 'node:stream';
+import {verifiedRepositoryOwner} from '../styles/restricted-tiles.mjs';
 
 const SOVIET = 'https://indianopenmaps.com/world/topo/russian/';
 const GOOGLE = 'https://tile.googleapis.com/';
@@ -77,10 +78,8 @@ export function createRestrictedTileHandler({
       if (result.error === 'authorization_pending' || result.error === 'slow_down') return empty(202);
       pending.delete(ticket);
       if (!result.access_token) return empty(403);
-      const [identity, repo] = await Promise.all([github('user', result.access_token), github('repos/' + repository, result.access_token)]);
-      if (!identity.ok || !repo.ok || (await repo.json()).permissions?.admin !== true) return empty(403);
-      const {id} = await identity.json();
-      if (!Number.isSafeInteger(id) || id < 1 || now() >= attempt.expiresAt) return empty(403);
+      const id = await verifiedRepositoryOwner(path => github(path, result.access_token), repository);
+      if (!id || now() >= attempt.expiresAt) return empty(403);
       for (const [key, session] of sessions) if (session.id === id) sessions.delete(key);
       const token = random(), expiresAt = now() + SESSION_MS;
       sessions.set(token, {id, expiresAt});

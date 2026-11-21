@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {createServer, request as httpRequest} from 'node:http';
 import {createRestrictedTileHandler} from '../scripts/restricted-tile-server.mjs';
 import {configureRestrictedMap, restrictedPreviewPage} from '../scripts/configure-restricted-tiles.mjs';
-import {createStaticRestrictedTiles, googleViewport, parseStaticTileSettings} from '../styles/restricted-tiles.mjs';
+import {createStaticRestrictedTiles, googleViewport, parseStaticTileSettings, verifiedRepositoryOwner} from '../styles/restricted-tiles.mjs';
 
 const atlas = 'https://atlas.example';
 const broker = 'https://tiles.example';
@@ -16,7 +16,7 @@ const googlePath = '/google/3/4/2';
 const viewport = '/google/viewport?zoom=3&north=50&south=40&west=0&east=10';
 
 async function runServer(t, overrides = {}) {
-  let admin = true, time = Date.now(), rateLimited = false;
+  let accountId = 42, time = Date.now(), rateLimited = false;
   const calls = [];
   const handler = createRestrictedTileHandler({
     siteOrigin: atlas, brokerOrigin: broker, githubClientId:'fixture-client-id',
@@ -37,9 +37,9 @@ async function runServer(t, overrides = {}) {
       }
       if (address.origin === 'https://api.github.com') {
         assert.equal(options.headers.Authorization, 'Bearer fixture-github-token');
-        if (address.pathname === '/user') return Response.json({id:42});
+        if (address.pathname === '/user') return Response.json({id:accountId});
         assert.equal(address.pathname, '/repos/' + repository);
-        return Response.json({permissions:{admin}});
+        return Response.json({owner:{type:'User', id:42}, permissions:{admin:true}});
       }
       if (address.href === historical + 'tiles.json')
         return Response.json({tiles:[historical+'{z}/{x}/{y}.webp'],scheme:'xyz',minzoom:3,maxzoom:10});
@@ -98,11 +98,11 @@ async function runServer(t, overrides = {}) {
     assert.equal((await send('/auth/device',{headers})).status,410);
     return body ? JSON.parse(body).token : undefined;
   }
-  return {calls, login, request, nonAdmin:() => {admin = false;}, jump:ms => {time += ms;}, pauseSoviet:() => {rateLimited = true;}};
+  return {calls, login, request, otherAdmin:() => {accountId = 43;}, jump:ms => {time += ms;}, pauseSoviet:() => {rateLimited = true;}};
 }
 
-test('both providers require the same live GitHub repository-admin session for metadata and pixels', async t => {
-  const {calls, login, request, nonAdmin} = await runServer(t);
+test('both providers require the same live GitHub repository-owner session for metadata and pixels', async t => {
+  const {calls, login, request, otherAdmin} = await runServer(t);
   for (const path of [sovietPath, googlePath, '/soviet/1m/tiles.json', viewport]) {
     assert.equal((await request(path)).status, 401);
     assert.equal((await request(path, {token:'a'.repeat(43)})).status, 401);
@@ -126,7 +126,7 @@ test('both providers require the same live GitHub repository-admin session for m
   assert.equal((await request('/auth/session',{token,method:'DELETE'})).status,204);
   assert.equal((await request(sovietPath,{token})).status,401);
   assert.equal((await request(googlePath,{token})).status,401);
-  nonAdmin();
+  otherAdmin();
   assert.equal(await login(),undefined);
 });
 
@@ -167,11 +167,28 @@ test('Pages enables the configured browser test layers even with an old gateway 
   assert.throws(() => configureRestrictedMap(standard,{...fixture, googleKey:'" bad'}), /Invalid/);
 });
 
-test('Pages verifies a repository admin before fetching either provider directly', async () => {
+test('incomplete GitHub identities and organization-owned repositories keep owner access locked', async () => {
+  for (const [account, owner] of [
+    [{}, {}],
+    [{id:0}, {id:0,type:'User'}],
+    [{id:'42'}, {id:'42',type:'User'}],
+    [{id:42}, {id:42,type:'Organization'}],
+    [null, {id:42,type:'User'}],
+    [{id:42}, null],
+  ]) {
+    const github = async path => {
+      const data = path === 'user' ? account : owner && {owner};
+      return data ? Response.json(data) : new Response(null, {status:401});
+    };
+    assert.equal(await verifiedRepositoryOwner(github, repository), null);
+  }
+});
+
+test('Pages unlocks both backgrounds for the owner and denies another repository administrator', async () => {
   const token = 'github_pat_fixture_only';
   const googleKey = 'sample_browser_key_for_testing';
   const requests = [], grants = [];
-  let admin = false, time = Date.now(), scheduledExpiry;
+  let accountId = 43, time = Date.now(), scheduledExpiry;
   const session = createStaticRestrictedTiles({
     settings:{repository, googleKey, soviet:true},
     window:{setTimeout:fn => {scheduledExpiry=fn;}, clearTimeout:() => {}},
@@ -182,9 +199,10 @@ test('Pages verifies a repository admin before fetching either provider directly
       assert.equal(options.cache,'no-store');
       assert.equal(options.redirect,'error');
       if (address.origin === 'https://api.github.com') {
-        assert.equal(address.pathname,'/repos/' + repository);
         assert.equal(options.headers.Authorization,'Bearer ' + token);
-        return Response.json({permissions:{admin}});
+        if (address.pathname === '/user') return Response.json({id:accountId});
+        assert.equal(address.pathname,'/repos/' + repository);
+        return Response.json({owner:{type:'User', id:42}, permissions:{admin:true}});
       }
       assert.equal(options.headers?.Authorization,undefined);
       assert.doesNotMatch(address.href,/github_pat/);
@@ -204,13 +222,13 @@ test('Pages verifies a repository admin before fetching either provider directly
   });
   await assert.rejects(() => session.fetch(sovietPath.slice(1)),/verification required/);
   await session.signIn(token);
-  assert.equal(requests.length,1);
   assert.deepEqual(grants,[]);
+  assert.equal(requests.length,2);
   await assert.rejects(() => session.fetch(googlePath.slice(1)),/verification required/);
-  admin = true;
+  accountId = 42;
   await session.signIn(token);
   assert.deepEqual(grants,[{soviet:true,google:true}]);
-  assert.equal(requests.length,2,'verification never requests tiles');
+  assert.equal(requests.length,4,'verification never requests tiles');
   const tiles = await Promise.all([session.fetch(googlePath.slice(1)),session.fetch(googlePath.slice(1))]);
   assert.ok(tiles.every(response => response.ok));
   assert.equal(requests.filter(url => url.includes('/createSession')).length,1);
