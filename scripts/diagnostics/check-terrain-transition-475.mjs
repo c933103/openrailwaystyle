@@ -32,7 +32,7 @@ try {
           await new Promise(resolve => map.once('idle', resolve));
       });
       assert.equal(await button.getAttribute('aria-pressed'), 'false', 'begin without mesh');
-      row.start = await page.evaluate(async arm => {
+      row.baseline = await page.evaluate(async arm => {
         const src = document.querySelector('script[type="module"]').src;
         const {map} = await import(src);
         const terrainUrl = new URL('./terrain-3d.mjs', src);
@@ -41,7 +41,7 @@ try {
         const point = () => ({zoom: map.getZoom(), pitch: map.getPitch(),
           mesh: map.getTerrain()?.source ?? null, moving: map.isMoving(), loaded:map.areTilesLoaded()});
         const perf = {events: [], held: {mesh:0, camera:0}, start:null, last:null,
-                      maxFrameGap:0, frames:0, idle:null, done:false};
+                      maxFrameGap:0, frames:0, renders:0, lastRender:null, samples:[], idle:null, done:false};
         const mark = (name, data = {}) => {
           if (perf.events.length < 160)
             perf.events.push({event:name, ms:Math.round(performance.now()-perf.start), ...point(), ...data});
@@ -73,6 +73,29 @@ try {
         requestAnimationFrame(frame);
         for (const event of ['movestart','moveend','zoomstart','zoomend','pitchstart','pitchend','terrain','webglcontextlost'])
           map.on(event, () => { if (perf.start !== null && !perf.done) mark(event); });
+        map.on('render', () => {
+          if (perf.start !== null && !perf.done) {
+            perf.renders++;
+            perf.lastRender = Math.round(performance.now() - perf.start);
+          }
+        });
+        const sample = () => {
+          if (perf.start === null || perf.samples.length >= 58) return;
+          const style = map.style;
+          const dirtyFlag = v => typeof v === 'boolean' ? v : null;
+          perf.samples.push({
+            ms:Math.round(performance.now() - perf.start), ...point(),
+            mapLoaded:map.loaded(), styleLoaded:map.isStyleLoaded(),
+            styleDirty:dirtyFlag(map._styleDirty), sourcesDirty:dirtyFlag(map._sourcesDirty),
+            placementDirty:dirtyFlag(map._placementDirty), repaint:dirtyFlag(map._repaint),
+            hasTransitions:typeof style?.hasTransitions === 'function' ? style.hasTransitions() : null,
+            renders:perf.renders, lastRender:perf.lastRender,
+          });
+        };
+        const interval = setInterval(() => {
+          if (perf.done) { clearInterval(interval); return; }
+          sample();
+        }, 1000);
         map.on('idle', () => {
           if (perf.start !== null && !perf.done && !map.isMoving() ) {
             const p = point();
@@ -80,6 +103,7 @@ try {
               Math.abs(p.zoom - 12.3) < .04 && Math.abs(p.pitch - 60) < .04;
             if (target) {
               mark('idle');
+              sample();
               perf.idle = Math.round(performance.now() - perf.start);
               perf.done = true;
             }
@@ -88,7 +112,7 @@ try {
         const start = () => { perf.start = performance.now(); mark('start'); };
         if (arm !== 'camera-only') document.querySelector('.maplibregl-ctrl-top-right button[aria-label^="Inspect 3D terrain"]')
           .addEventListener('click',start,{capture:true,once:true});
-        window.terrain475 = {perf, point, runCamera() {
+        window.terrain475 = {perf, point, sample, runCamera() {
           start();
           const {lat} = map.getCenter();
           const view = terrain3DViewTarget({zoom:map.getZoom(),detail:0,active:false,
@@ -97,14 +121,15 @@ try {
         }};
         return point();
       }, arm);
-      assert.ok(near(row.start.zoom,10.2) && near(row.start.pitch,0) && !row.start.mesh,
+      assert.ok(near(row.baseline.zoom,10.2) && near(row.baseline.pitch,0) && !row.baseline.mesh,
                 'baseline camera, pitch, and mesh must match across arms');
       if (arm === 'camera-only') await page.evaluate(() => window.terrain475.runCamera());
       else await button.click({timeout: deadline});
       await page.waitForFunction(() => window.terrain475.perf.done, null, {timeout: deadline})
         .catch(error => {row.problem=error.message;});
       Object.assign(row, await page.evaluate(() => {
-        const {perf, point} = window.terrain475;
+        const {perf, point, sample} = window.terrain475;
+        if (!perf.done) sample();
         const settled = perf.done;
         perf.done = true;
         return {settled, ...perf, finish:point()};
