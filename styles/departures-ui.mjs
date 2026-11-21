@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261120-bathymetry-status-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261121-owner-backgrounds-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

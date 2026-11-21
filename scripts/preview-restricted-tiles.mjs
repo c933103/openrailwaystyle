@@ -23,8 +23,8 @@ export function restrictedFixtures({admin = true, record = () => {}} = {}) {
       device_code:'fixture-device', user_code:'ATLS-TEST', verification_uri:GITHUB_DEVICE, interval:1, expires_in:300,
     });
     if (url.href === 'https://github.com/login/oauth/access_token') return Response.json({access_token:'fixture-token'});
-    if (url.href === 'https://api.github.com/user') return Response.json({id:1});
-    if (/^\/repos\/[^/]+\/[^/]+$/.test(url.pathname) && url.origin === 'https://api.github.com') return Response.json({permissions:{admin}});
+    if (url.href === 'https://api.github.com/user') return Response.json({id:admin ? 1 : 2});
+    if (/^\/repos\/[^/]+\/[^/]+$/.test(url.pathname) && url.origin === 'https://api.github.com') return Response.json({owner:{id:1,type:'User'}});
     if (url.origin === 'https://tile.googleapis.com') {
       if (url.pathname === '/v1/createSession') return Response.json({session:'fixture-google-session', expiry:String(Math.floor(Date.now()/1000) + 600)});
       if (url.pathname === '/tile/v1/viewport') return Response.json({copyright:'Synthetic satellite tile', maxZoomRects:[]});

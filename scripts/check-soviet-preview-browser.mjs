@@ -188,7 +188,7 @@ try {
   await open(false, 'map');
   await openAdminSettings();
   await page.locator('#restricted-tile-sign-in').click();
-  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('does not have repository admin access'));
+  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('Only the repository owner'));
   await page.locator('#settings-close').click();
   assert.equal(await page.locator(button).isVisible(), false);
   assert.equal(await page.locator(google).isVisible(), false);
@@ -267,7 +267,7 @@ try {
   const repository = 'c933103/openrailwaystyle';
   const tokenFixture = 'github_pat_browser_fixture';
   const browserKey = 'sample_browser_key_for_testing';
-  let allowAdmin = false, directGoogle = 0, directSoviet = 0;
+  let ownerSignedIn = false, directGoogle = 0, directSoviet = 0;
   await page.route(url => url.href.startsWith(base) && url.pathname === new URL(base).pathname, async route => {
     const response = await route.fetch();
     await route.fulfill({response, body:(await response.text()).replace(
@@ -277,10 +277,15 @@ try {
   });
   await context.route(broker + '**', () => assert.fail('Static mode contacted the optional gateway'));
   const directCors = {...cors, 'Access-Control-Allow-Headers':'Authorization, Content-Type, X-GitHub-Api-Version'};
+  await context.route('https://api.github.com/user', route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:directCors});
+    assert.equal(route.request().headers().authorization, 'Bearer ' + tokenFixture);
+    return route.fulfill({headers:directCors,json:{id:ownerSignedIn ? 42 : 43}});
+  });
   await context.route('https://api.github.com/repos/' + repository, route => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:directCors});
     assert.equal(route.request().headers().authorization, 'Bearer ' + tokenFixture);
-    return route.fulfill({headers:directCors,json:{permissions:{admin:allowAdmin}}});
+    return route.fulfill({headers:directCors,json:{owner:{type:'User',id:42},permissions:{admin:true}}});
   });
   await context.route('https://tile.googleapis.com/**', route => {
     const request = route.request(), url = new URL(request.url());
@@ -311,10 +316,12 @@ try {
   assert.equal(await page.locator('#restricted-tile-sign-in').isVisible(),false);
   await input.fill(tokenFixture);
   await verify.click();
-  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('did not confirm repository admin access'));
+  await page.waitForFunction(() => document.querySelector('#restricted-tile-status').textContent.includes('did not confirm repository ownership'));
   assert.equal(await input.inputValue(),'');
+  assert.equal(await page.locator(button).isHidden(),true);
+  assert.equal(await page.locator(google).isHidden(),true);
   assert.equal(directGoogle + directSoviet,0);
-  allowAdmin = true;
+  ownerSignedIn = true;
   await input.fill(tokenFixture);
   await verify.click();
   await page.locator('#restricted-tile-sign-out').waitFor();
@@ -334,7 +341,7 @@ try {
   assert.equal(await page.locator(google).isVisible(),false);
   assert.equal(await page.locator('[data-background="map"]').getAttribute('aria-pressed'),'true');
   assert.deepEqual(pageErrors, []);
-  console.log('PASS: historical pixels, stacking, static Pages and optional gateway access, viewport credits, non-admin rejection, sign-out, and expiry');
+  console.log('PASS: historical pixels, stacking, static Pages and optional gateway access, viewport credits, non-owner rejection, sign-out, and expiry');
 } finally {
   await browser.close();
 }

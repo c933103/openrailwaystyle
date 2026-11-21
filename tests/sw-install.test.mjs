@@ -1075,3 +1075,23 @@ for (const [release,previous,paths] of [
  assert.deepEqual([...next.stores.keys()],caches,'no shell-generation change or purge');
  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+
+test('a returning Pages visitor loads the owner check with the new map shell', async () => {
+  const previous = '20261120-bathymetry-status-1';
+  const read = name => readFileSync(new URL('../styles/' + name, import.meta.url), 'utf8');
+  const version = read('index.html').match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version, previous);
+  assert.ok(read('app.mjs').includes('./restricted-tiles.mjs?v=' + version + "'"));
+  const path = new URL('restricted-tiles.mjs', scope).pathname;
+  const cached = 'previous administrator check';
+  const old = startWorker({version:previous, assetBodies:new Map([[path,cached]])});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  const ownerModule = read('restricted-tiles.mjs');
+  const next = startWorker({version, stores:old.stores, assetBodies:new Map([[path,ownerModule]])});
+  await bounded(next.request('./', true));
+  next.setOffline();
+  assert.equal(await (await next.request('restricted-tiles.mjs?v=' + version)).text(), ownerModule);
+  assert.equal(await (await next.request('restricted-tiles.mjs?v=' + previous)).text(), cached);
+});
