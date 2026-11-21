@@ -650,25 +650,40 @@ jobs:
         with:
           name: railway-world-site
           path: styles
-      # Esri World Imagery needs an ArcGIS Location Platform API key (public in
-      # the browser; restrict it to the site's referrer in Esri's dashboard).
-      # Without the repository variable the site keeps Sentinel-2 imagery only.
+      # Esri World Imagery and optional admin Google Maps / GitHub SSO settings
+      # use repository variables (restrict browser API keys to https://10671435.xyz/*).
+      # Without repository variables the site keeps Sentinel-2 imagery only.
       - name: Configure satellite imagery provider
         env:
           ESRI_API_KEY: ${{ vars.ESRI_API_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ vars.GOOGLE_MAPS_API_KEY }}
+          GITHUB_CLIENT_ID: ${{ vars.GITHUB_CLIENT_ID }}
+          AUTH_BACKEND_ORIGIN: ${{ vars.AUTH_BACKEND_ORIGIN }}
+          ADMIN_REPO: ${{ github.repository }}
         run: |
-          set -eu
-          if [ -n "$ESRI_API_KEY" ]; then
-            # The accepted character set needs no JSON escaping.
-            if ! printf '%s' "$ESRI_API_KEY" | grep -Eqx '[A-Za-z0-9._-]{20,}'; then
-              echo 'ESRI_API_KEY has an unexpected format' >&2; exit 1
-            fi
-            printf '{"esriKey":"%s"}\n' "$ESRI_API_KEY" > styles/imagery-config.json
-            echo 'Esri World Imagery enabled with Sentinel-2 fallback.'
-          else
-            echo '{}' > styles/imagery-config.json
-            echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
-          fi
+          node -e '
+            const fs = require("node:fs");
+            const out = {};
+            const check = (name, val, re) => {
+              if (!val) return;
+              if (!re.test(val)) { console.error(name + " has an unexpected format"); process.exit(1); }
+              return val;
+            };
+            if (check("ESRI_API_KEY", process.env.ESRI_API_KEY, /^[A-Za-z0-9._-]{20,}$/)) out.esriKey = process.env.ESRI_API_KEY;
+            if (check("GOOGLE_MAPS_API_KEY", process.env.GOOGLE_MAPS_API_KEY, /^[A-Za-z0-9._-]{20,}$/)) out.googleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+            if (check("GITHUB_CLIENT_ID", process.env.GITHUB_CLIENT_ID, /^[A-Za-z0-9._-]{10,}$/)) out.githubClientId = process.env.GITHUB_CLIENT_ID;
+            if (process.env.AUTH_BACKEND_ORIGIN) {
+              const u = new URL(process.env.AUTH_BACKEND_ORIGIN);
+              if (u.protocol !== "https:") { console.error("AUTH_BACKEND_ORIGIN must use https:"); process.exit(1); }
+              out.authBackendOrigin = u.origin;
+            }
+            if ((out.googleMapsKey || out.githubClientId || out.authBackendOrigin) && process.env.ADMIN_REPO) {
+              out.adminRepo = process.env.ADMIN_REPO;
+            }
+            fs.writeFileSync("styles/imagery-config.json", JSON.stringify(out) + "\n");
+            console.log(out.esriKey ? "Esri World Imagery enabled with Sentinel-2 fallback." : "No ESRI_API_KEY variable: Sentinel-2 imagery only.");
+            if (out.googleMapsKey) console.log("Admin Google Maps key configured for HTTP-referrer restricted Pages deployment.");
+          '
       # Fail closed before removing/uploading anything: the previous deployed
       # site remains live until all four immutable release tables are verified.
       # On the first merge the publisher may still be running; after it succeeds,

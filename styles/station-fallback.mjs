@@ -298,7 +298,7 @@ export function addStationFallbackLayers(style, {annotateLayers, labelExpression
 
 export function stationFallbackMarkersEnabled({zoom, stationsEnabled, background, failedSources}) {
   const requiredSource=stationSource(zoom);
-  return Boolean(requiredSource && stationsEnabled && background!=='satellite' &&
+  return Boolean(requiredSource && stationsEnabled && !['satellite', 'google-satellite'].includes(background) &&
     failedSources?.has?.(requiredSource)===true);
 }
 export function stationFallbackNamesEnabled(options) {
@@ -308,7 +308,7 @@ export function stationFallbackNamesEnabled(options) {
 export function shouldRefreshCuratedStationSource({ready,stationsEnabled,background,zoom}) {
   // The camera's raw maximum zoom depends on the More detail setting.
   // Curated geometry remains reusable at every zoom once activated at z3.
-  return Boolean(ready && stationsEnabled && background!=='satellite' &&
+  return Boolean(ready && stationsEnabled && !['satellite', 'google-satellite'].includes(background) &&
     Number.isFinite(zoom) && zoom>=3);
 }
 

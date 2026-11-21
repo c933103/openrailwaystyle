@@ -1,38 +1,41 @@
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261121-background-revert-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261121-background-revert-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261121-background-revert-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261121-background-revert-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261121-background-revert-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261121-supplied-atlas-rebase-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261121-supplied-atlas-rebase-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261121-supplied-atlas-rebase-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261121-supplied-atlas-rebase-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261121-background-revert-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261121-background-revert-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261121-background-revert-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261121-background-revert-1';
-import {createWorldFonts} from './world-font.mjs?v=20261121-background-revert-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261121-background-revert-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261121-supplied-atlas-rebase-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261121-supplied-atlas-rebase-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createWorldFonts} from './world-font.mjs?v=20261121-supplied-atlas-rebase-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261121-supplied-atlas-rebase-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261121-background-revert-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261121-background-revert-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261121-supplied-atlas-rebase-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261121-supplied-atlas-rebase-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261121-background-revert-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261121-background-revert-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261121-background-revert-1';
-import {departureItem} from './departures-ui.mjs?v=20261121-background-revert-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261121-background-revert-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261121-background-revert-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261121-background-revert-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261121-background-revert-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261121-background-revert-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261121-background-revert-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261121-background-revert-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261121-background-revert-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261121-background-revert-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261121-background-revert-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261121-background-revert-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261121-background-revert-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261121-background-revert-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261121-background-revert-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261121-background-revert-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261121-supplied-atlas-rebase-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261121-supplied-atlas-rebase-1';
+import {departureItem} from './departures-ui.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261121-supplied-atlas-rebase-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261121-supplied-atlas-rebase-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261121-supplied-atlas-rebase-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261121-supplied-atlas-rebase-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261121-supplied-atlas-rebase-1';
+import {installSovietStyle} from './soviet-topo.mjs?v=20261121-supplied-atlas-rebase-1';
+import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, googleZoomForMapLibre, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261121-supplied-atlas-rebase-1';
+import {createRasterFallbackMap} from './raster-fallback.mjs?v=20261121-supplied-atlas-rebase-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -88,8 +91,8 @@ let powerFacilities, powerMethods, electricitySignals;
 let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () => {};
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
-let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261121-background-revert-1';
+let map, fallbackMap = null, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261121-supplied-atlas-rebase-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -395,9 +398,9 @@ for (const context of [window.CanvasRenderingContext2D?.prototype, window.Offscr
     if (script) {if ('lang' in this) this.lang = CANVAS_LANG[script]; loadCjkFont(script);}
   }});
 }
-// Run once the map has loaded, or now if it has.
+// Run once the map (or non-WebGL raster fallback) has loaded, or now if it has.
 function whenReady(action) {
-  if (ready) action();
+  if (ready || fallbackMap) action();
   else pendingView = action;
 }
 const errors = new Map(), sourceFailureStates = new Map();
@@ -518,9 +521,10 @@ function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
   url.searchParams.set('terrain3d', terrain3DSelected ? '1' : '0');
-  if (map) {
-    const {lat, lng} = map.getCenter();
-    url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
+  const activeMap = map || fallbackMap;
+  if (activeMap) {
+    const {lat, lng} = activeMap.getCenter();
+    url.hash = viewHash({zoom: activeMap.getZoom(), lat, lng, bearing: activeMap.getBearing(), pitch: activeMap.getPitch()});
   } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
     url.hash = linkedViewHash;
@@ -648,7 +652,12 @@ function renameOpenMajorStation(){
  }).catch(()=>{});
 }
 let previousTileMode;
+let beforeGoogleView = null, adminController, appliedGoogleTileUrl = '';
+const isGoogleJsFallbackActive = () => settings.mapSource === 'google' && settings.googleMode === 'js-fallback' && ['map', 'satellite', 'hybrid'].includes(settings.background);
 function applySettings() {
+  settings.mapSource = adminController?.mapSource || 'standard';
+  settings.googleTheme = adminController?.googleTheme || 'roadmap';
+  settings.googleMode = adminController?.googleMode || null;
   $('service-frequency-options').hidden = settings.mode !== 'service';
   $('frequency-profile-options').hidden = settings.serviceWidth !== 'frequency';
   $('peak-phase-options').hidden = settings.frequencyPeriod !== 'peak';
@@ -660,7 +669,42 @@ function applySettings() {
   syncWatchLayout();
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
-  $('legend').hidden = settings.background === 'satellite';
+  // Google 2D Map Tiles render inside MapLibre's native raster pipeline and
+  // transform seamlessly across 3D terrain and the 3D globe ("Earth view").
+  // Only flatten camera if a custom API key falls back to the 2D JS underlay.
+  if (isGoogleJsFallbackActive()) {
+    if (map && !beforeGoogleView) {
+      beforeGoogleView = {globe: onGlobe(), terrain3D: terrain3DSelected};
+    }
+    if (map) {
+      if (onGlobe()) map.setProjection({type: 'mercator'});
+      if (map.getPitch() !== 0 || map.getBearing() !== 0) map.jumpTo({pitch: 0, bearing: 0});
+      map.setMaxPitch?.(0);
+      map.dragRotate?.disable?.();
+      map.touchZoomRotate?.disableRotation?.();
+      map.keyboard?.disableRotation?.();
+    }
+  } else if (beforeGoogleView) {
+    const previous = beforeGoogleView;
+    beforeGoogleView = null;
+    if (map) {
+      map.setMaxPitch?.(TERRAIN_3D_MAX_PITCH);
+      map.dragRotate?.enable?.();
+      map.touchZoomRotate?.enableRotation?.();
+      map.keyboard?.enableRotation?.();
+      if (previous.globe && !onGlobe()) map.setProjection({type: 'globe'});
+    }
+    terrain3DSelected = previous.terrain3D;
+  }
+  if (ready && map?.getSource(GOOGLE_TILE_SOURCE_ID)) {
+    const nextGoogleTileUrl = googleTileProtocolUrl(googleVariantForSettings(settings), settings.language);
+    if (appliedGoogleTileUrl !== nextGoogleTileUrl) {
+      appliedGoogleTileUrl = nextGoogleTileUrl;
+      map.getSource(GOOGLE_TILE_SOURCE_ID)?.setTiles?.([nextGoogleTileUrl]);
+    }
+  }
+  adminController?.syncUI();
+  $('legend').hidden = isImageryOnlyBackground(settings.background);
   updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
@@ -696,7 +740,9 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { syncTerrain3D(map, settings.relief, settings.terrainExaggeration, terrain3DSelected);applyRailReferenceState();applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.(); }
+  const googleJsFallback = isGoogleJsFallbackActive();
+  if (ready) { syncTerrain3D(map, settings.relief && !googleJsFallback, settings.terrainExaggeration, terrain3DSelected && !googleJsFallback);applyRailReferenceState();applyStationFallbackState();scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.();powerMethods?.();electricitySignals?.();updatePolar();adminController?.syncCamera(); }
+  fallbackMap?.refresh();
   // The button must reflect the mesh AFTER its state is reconciled. When
   // relief is re-enabled while already tilted, no new pitch event occurs.
   updateTerrainButton();
@@ -1206,9 +1252,10 @@ function localizeStyle(style) {
 const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
 let readoutPoint = null;
 function updateReadout() {
-  if (!map || readout.hidden) return;
-  const center=map.getCenter(),zoom=map.getProjection()?.type==='globe'?readoutZoom(map.getZoom(),center.lat):map.getZoom();
-  readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : center, zoom, settings.detail);
+  const activeMap = map || fallbackMap;
+  if (!activeMap || readout.hidden) return;
+  const center=activeMap.getCenter(),zoom=activeMap.getProjection()?.type==='globe'?readoutZoom(activeMap.getZoom(),center.lat):activeMap.getZoom();
+  readout.textContent = formatReadout(readoutPoint && map ? map.unproject(readoutPoint) : center, zoom, settings.detail);
 }
 // Track-count badges (see build-style.mjs): running tracks, a group wholly
 // in tunnels, and all the tracks at a station.
@@ -1244,6 +1291,16 @@ function wantedProjection() {
 let syncPanning = () => {}, globeDragged = () => false, globePan = () => false, polarCentres;
 function updatePolar() {
   if (!map) return;
+  if (isGoogleJsFallbackActive()) {
+    if (onGlobe()) map.setProjection({type: 'mercator'});
+    polarButton.disabled = true;
+    polarButton.textContent = '🌍';
+    polarButton.title = '3D globe requires Map Tiles API or a standard background';
+    polarButton.setAttribute('aria-label', polarButton.title);
+    syncPanning(); saveView();
+    return;
+  }
+  polarButton.disabled = false;
   if (settings.autoGlobe) {
     const wanted = wantedProjection();
     if (wanted !== lastAutoProjection) {
@@ -1257,7 +1314,7 @@ function updatePolar() {
   polarButton.setAttribute('aria-label', polarButton.title);
   syncPanning(); saveView();
 }
-polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
+polarButton.addEventListener('click', () => { if (!map || isGoogleJsFallbackActive()) return; map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
 // Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
 // rather than rendering the literal text "3D" in a MapLibre icon button.
@@ -1283,17 +1340,25 @@ const terrainScaleIndicator = Object.assign(document.createElement('span'),{
 terrainScaleIndicator.setAttribute('aria-hidden','true');
 terrainButton.append(terrainScaleIndicator);
 function updateTerrainButton() {
+  const scale = settings.terrainExaggeration;
+  terrainScaleIndicator.textContent = `${scale}×`;
+  if (isGoogleJsFallbackActive()) {
+    terrainButton.disabled = true;
+    terrainButton.setAttribute('aria-pressed', 'false');
+    terrainButton.title = '3D terrain relief requires Map Tiles API or a standard background';
+    terrainButton.setAttribute('aria-label', terrainButton.title);
+    return;
+  }
+  terrainButton.disabled = false;
   const enabled = terrain3DEnabled(settings.relief, terrain3DSelected) &&
     map?.getTerrain?.()?.source === 'terrain3d';
   terrainButton.setAttribute('aria-pressed', String(Boolean(enabled)));
-  const scale = settings.terrainExaggeration;
-  terrainScaleIndicator.textContent = `${scale}×`;
   terrainButton.title = enabled ? `Switch to 2D map (current 3D relief: ${scale}× vertical; keep current zoom)` :
     `Inspect 3D terrain and seabed (${scale}× vertical; change in Settings)`;
   terrainButton.setAttribute('aria-label',terrainButton.title);
 }
 terrainButton.addEventListener('click', () => {
-  if (!map) return;
+  if (!map || isGoogleJsFallbackActive()) return;
   const was3D = terrain3DEnabled(settings.relief, terrain3DSelected);
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
   // easeTo stops any older camera animation and emits its moveend first.
@@ -1327,6 +1392,7 @@ function applyDetail(from = settings.detail) {
   // On the globe the smallest zoom follows the latitude (globe-drag.mjs).
   polarCentres?.refresh();
   fitScale();
+  adminController?.syncCamera();
 }
 detailButton.addEventListener('click', () => { const from = settings.detail; settings.detail = (from + 1) % (DETAIL_LEVELS + 1); applyDetail(from); saveSettings(); });
 applyDetail();
@@ -1490,6 +1556,7 @@ async function initialize() {
   // Esri imagery only when the deployment configures a key; EOX otherwise.
   const imageryConfig=loadImageryConfig(new URL('./imagery-config.json',import.meta.url),{fetcher:fetch});
   const [, labelCode, style, imagery] = await Promise.all([libraries, labels, styleResponse, imageryConfig]);
+  adminController?.setDeploymentConfig?.(imagery);
   const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
@@ -1563,7 +1630,11 @@ async function initialize() {
   });
   const imageryProtocol=createImageryProtocol({esriKey:imagery.esriKey}),eoxAttribution=style.sources.satellite.attribution;
   maplibregl.addProtocol('atlasimagery',imageryProtocol.tile);
+  maplibregl.addProtocol(GOOGLE_PROTOCOL, (params, controller) => adminController.fetchTile(params, controller));
   applyImageryConfig(style.sources.satellite, imagery);
+  appliedGoogleTileUrl = googleTileProtocolUrl(googleVariantForSettings(settings), settings.language);
+  installGoogleTileLayer(style, {variant: googleVariantForSettings(settings), language: settings.language});
+  installSovietStyle(style);
   // Independent fallback uses only existing basemap tiles and vetted hubs.
   // It is not a complete replacement for a worldwide station inventory.
   addStationFallbackLayers(style,{annotateLayers,labelExpression});
@@ -1658,6 +1729,7 @@ async function initialize() {
   // A style replacement recreates source objects, so reapply per style load.
   map.on('style.load', () => syncHighPitchTileBudget(map));
   map.on('pitch', () => {
+    if (isGoogleJsFallbackActive()) return;
     syncHighPitchTileBudget(map);
     const tilted = terrain3DSelectedForPitch(map.getPitch());
     if (restoringTerrainView) {
@@ -1670,19 +1742,22 @@ async function initialize() {
   });
   // Reset the temporary suppression even if the 2D transition is interrupted
   // before reaching 0°; a later intentional tilt may enter 3D as normal.
-  map.on('moveend', () => { terrain3DExitPending = false; });
+  map.on('moveend', () => { terrain3DExitPending = false; adminController?.onViewportChange(); });
+  map.on('move', () => adminController?.syncCamera());
+  map.on('render', () => adminController?.syncCamera());
+  map.on('resize', () => adminController?.resize());
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
+    active:()=>ready&&settings.mode==='electrification'&&!isImageryOnlyBackground(settings.background)&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
   powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
+    active:()=>ready&&settings.mode==='electrification'&&!isImageryOnlyBackground(settings.background)&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language)}}))}),
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     onError:error=>console.warn('Conductor rails and railway charging unavailable:',error.message)});
   electricitySignals=createPowerFacilityLoader(map,{sourceId:'electricSignals',url:new URL('./data/traction/power/electricity-signals.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=13,
+    active:()=>ready&&settings.mode==='electrification'&&!isImageryOnlyBackground(settings.background)&&map.getZoom()>=13,
     onError:error=>console.warn('Electrification signals unavailable:',error.message)});
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
@@ -1906,6 +1981,7 @@ async function initialize() {
     // A remembered globe/flat choice holds until the automatic choice changes.
     if (typeof rememberedView.g === 'boolean') lastAutoProjection = wantedProjection();
     applySettings(); applyUnits(); updateStatus(); updatePolar();
+    if (settings.mapSource === 'google') void adminController?.ensureGoogleSourceReady();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();
   };
@@ -1913,7 +1989,7 @@ async function initialize() {
   // Cached tiles can re-enter the inventory after moveend without a source
   // event. Recheck retry demand once that render has settled, as well as status.
   map.on('idle', wakeRailRecovery);
-  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&!isImageryOnlyBackground(settings.background),onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;
@@ -1996,7 +2072,11 @@ fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).
 }).catch(()=>{serviceDataStatus={state:'failed'};renderLegend();});
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
-  settings.background = button.dataset.background; applySettings(); saveSettings();
+  if (button.disabled || button.hidden) return;
+  settings.background = button.dataset.background;
+  applySettings();
+  if (settings.mapSource === 'google') void adminController?.ensureGoogleSourceReady();
+  saveSettings();
 }));
 $('terrain-exaggeration').addEventListener('change', () => {
   // Numeric whitelist is shared with readSettings and the terrain runtime.
@@ -2015,6 +2095,8 @@ for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
 function reloadLanguage() {
   const appliedLanguage=settings.language;
   const style=map.getStyle();localizeStyle(style);
+  appliedGoogleTileUrl = googleTileProtocolUrl(googleVariantForSettings(settings), appliedLanguage);
+  if (style.sources?.[GOOGLE_TILE_SOURCE_ID]) style.sources[GOOGLE_TILE_SOURCE_ID].tiles = [appliedGoogleTileUrl];
   ready=false;errors.clear();sourceFailureStates.clear();
   status.classList.remove('error');status.textContent='Updating map labels…';
   // Replace the style atomically. Incremental setUrl calls can leave stale
@@ -2201,8 +2283,9 @@ $('share').addEventListener('click', () => { saveSettings(); copyText(shareURL()
 // The new controls may be missing when the service worker falls back to an
 // older saved page (offline, mid-update): their listeners are then skipped.
 $('copy-coordinates')?.addEventListener('click', () => {
-  if (!map) return;
-  const {lat, lng} = map.getCenter().wrap();
+  const activeMap = map || fallbackMap;
+  if (!activeMap) return;
+  const {lat, lng} = activeMap.getCenter().wrap();
   copyText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`, `Map centre copied: ${lat.toFixed(6)}, ${lng.toFixed(6)} (latitude, longitude).`, 'coordinates');
 });
 // Nominatim allows at most one request a second: searches submitted faster
@@ -2299,7 +2382,7 @@ $('search-form').addEventListener('submit', async e => {
         [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · '), () => {
           const coordinates = [item.longitude, item.latitude];
           // Before the map has loaded, go there as soon as it has.
-          whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: reduced() ? 0 : 1000 }));
+          whenReady(() => (map || fallbackMap)?.flyTo({ center: coordinates, zoom: 14, duration: reduced() ? 0 : 1000 }));
           showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
         });
     }
@@ -2309,8 +2392,9 @@ $('search-form').addEventListener('submit', async e => {
         try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
         entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => whenReady(() => {
           const [south, north, west, east] = item.boundingbox || [];
-          if ([south, north, west, east].every(Number.isFinite) && north > south) map.fitBounds([[west, south], [east, north]], { maxZoom: 15, padding: 40, duration: reduced() ? 0 : 1000 });
-          else map.flyTo({ center: [item.longitude, item.latitude], zoom: 13, duration: reduced() ? 0 : 1000 });
+          const activeMap = map || fallbackMap;
+          if ([south, north, west, east].every(Number.isFinite) && north > south) activeMap?.fitBounds([[west, south], [east, north]], { maxZoom: 15, padding: 40, duration: reduced() ? 0 : 1000 });
+          else activeMap?.flyTo({ center: [item.longitude, item.latitude], zoom: 13, duration: reduced() ? 0 : 1000 });
         }));
       }
     }
@@ -2399,16 +2483,68 @@ $('watch-menu').addEventListener('keydown',event=>{
   if(event.key==='Escape'){event.preventDefault();closeWatchMenu();}
   if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
 });
+adminController = createAdminController({
+  window,
+  document,
+  fetcher: (...args) => fetch(...args),
+  assetVersion,
+  getSettings: () => settings,
+  getCamera: () => {
+    const activeMap = map || fallbackMap;
+    if (!activeMap) return {center: {lat: 23, lng: 15}, zoom: googleZoomForMapLibre(1.8, settings.detail)};
+    const center = activeMap.getCenter().wrap();
+    return {center: {lat: center.lat, lng: center.lng}, zoom: googleZoomForMapLibre(activeMap.getZoom(), settings.detail)};
+  },
+  getViewportBounds: () => {
+    if (!map) return null;
+    const b = map.getBounds();
+    return {
+      zoom: googleZoomForMapLibre(map.getZoom(), settings.detail),
+      north: Math.min(85, Math.max(-85, b.getNorth())),
+      south: Math.min(85, Math.max(-85, b.getSouth())),
+      east: Math.min(180, Math.max(-180, b.getEast())),
+      west: Math.min(180, Math.max(-180, b.getWest())),
+    };
+  },
+  onStateChange: () => {
+    applySettings();
+  },
+});
+adminController.bindDOM();
 applySettings();
 initialize().catch(error => {
   console.error(error);
   status.classList.add('error');
-  status.textContent = /WebGL|webglcontext/i.test(error.message)
-    ? 'This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.'
+  const isWebGLError = /WebGL|webglcontext/i.test(error?.message || '');
+  status.textContent = isWebGLError
+    ? 'This browser could not start WebGL; showing 2D raster compatibility map.'
     : error.message;
+  if (isWebGLError && !fallbackMap) {
+    const linked = parseViewHash(captureViewHash());
+    const validSaved = Array.isArray(rememberedView.c) && rememberedView.c.length === 2 && rememberedView.c.every(Number.isFinite);
+    const initialCenter = linked ? linked.center : validSaved ? rememberedView.c : [15, 23];
+    const initialZoom = linked ? linked.zoom : Number.isFinite(rememberedView.z) ? rememberedView.z : 2;
+    fallbackMap = createRasterFallbackMap({
+      container: $('map'),
+      window,
+      document,
+      initialCenter,
+      initialZoom,
+      getSettings: () => settings,
+      getGoogleTileUrl: (variant, z, x, y) => adminController?.buildDirectTileUrl(variant, z, x, y),
+      getMajorStations: () => majorStationData?.features || [],
+      displayName,
+      onSelectStation: feature => showDetails(feature),
+      onMove: () => updateReadout(),
+    });
+    document.body.dataset.rasterFallback = 'true';
+    if (!readout.parentElement) $('map-frame')?.append(readout);
+    updateReadout();
+    const action = pendingView; pendingView = undefined; action?.();
+  }
 });
 
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
-export {map};
+export {map, fallbackMap};
 

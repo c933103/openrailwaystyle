@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261121-background-revert-1';
+import { MODES } from './map-model.mjs?v=20261121-supplied-atlas-rebase-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -93,11 +93,22 @@ export function layerVisibility(layer, settings) {
   const requirements = semantics['atlas:settings'] || [];
   let visible = runtime ? undefined : (!views.length || views.includes(settings.mode)) && requirements.every(key => settings[key]);
   const background = semantics['atlas:background'];
-  if (background === 'carto') visible = settings.background === 'carto';
-  else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
+  const googleTiles = settings.mapSource === 'google' && settings.googleMode === 'tiles';
+  const googleJsFallback = settings.mapSource === 'google' && settings.googleMode === 'js-fallback';
+  if (background === 'google') visible = googleTiles && ['map', 'satellite', 'hybrid'].includes(settings.background);
+  else if (background === 'satellite') visible = !googleTiles && !googleJsFallback && ['satellite', 'hybrid'].includes(settings.background);
+  else if (background) visible = settings.background === background;
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  else if ((googleTiles || googleJsFallback) && settings.background === 'map' && semantics['atlas:base-map'] && (!semantics['atlas:terrain'] || googleJsFallback)) visible = false;
+  // Historical scanned raster sits below modern terrain and railway layers,
+  // but modern basemap labels must not cover its printed Russian text.
+  if (settings.background === 'soviet' && !runtime) {
+    if (semantics['atlas:base-map'] && semantics['atlas:localize'] && layer.type === 'symbol') visible = false;
+    if (semantics['atlas:terrain']) visible = layer.type === 'raster';
+  }
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
+  if (googleTiles && settings.background === 'map' && layer.id === 'terrain-bathymetry') visible = false;
   return visible;
 }

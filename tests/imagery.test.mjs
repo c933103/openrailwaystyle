@@ -31,6 +31,40 @@ test('the deployment configuration enables Esri only with a well-formed key', as
   assert.deepEqual(await loadImageryConfig('x', {fetcher: async () => { throw new TypeError('offline'); }}), {});
 });
 
+test('the deployment configuration validates optional static GitHub Pages Google Maps and admin fields', async () => {
+  const json = value => async () => ({ok: true, json: async () => value});
+  const gmapsKey = 'AIzaSyTestGoogleMapsStaticPagesKey12345';
+  assert.deepEqual(
+    await loadImageryConfig('x', {
+      fetcher: json({
+        esriKey: KEY,
+        googleMapsKey: gmapsKey,
+        githubClientId: 'Iv1.10671435client',
+        adminRepo: 'c933103/openrailwaystyle',
+        authBackendOrigin: 'https://10671435.xyz/',
+      }),
+    }),
+    {
+      esriKey: KEY,
+      googleMapsKey: gmapsKey,
+      githubClientId: 'Iv1.10671435client',
+      adminRepo: 'c933103/openrailwaystyle',
+      authBackendOrigin: 'https://10671435.xyz',
+    },
+  );
+  assert.deepEqual(
+    await loadImageryConfig('x', {
+      fetcher: json({
+        googleMapsKey: 'short',
+        githubClientId: 'bad space',
+        adminRepo: 'not-a-repo',
+        authBackendOrigin: 'http://insecure.example.com',
+      }),
+    }),
+    {},
+  );
+});
+
 test('keyless southern fallback and optional Esri share the imagery protocol', () => {
   const eox = {type: 'raster', tiles: ['https://tiles.maps.eox.at/x/{z}/{y}/{x}.jpg'], maxzoom: 14, attribution: 'EOX credit'};
   const untouched = structuredClone(eox);
