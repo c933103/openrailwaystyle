@@ -1,4 +1,4 @@
-"""Upgrade only the version byte of validated line-only lifecycle MVTs."""
+"""Normalize validated line-only lifecycle MVTs without re-encoding properties."""
 import gzip
 
 
@@ -38,8 +38,23 @@ def fields(data, at, end):
         yield field, wire, start, at, value
 
 
-def line(data, start, end):
+def vint(value):
+    result = bytearray()
+    while value > 127:
+        result.append((value & 127) | 128)
+        value >>= 7
+    result.append(value)
+    return bytes(result)
+
+
+def message(field, body):
+    return vint((field << 3) | 2) + vint(len(body)) + body
+
+
+def line(data, start, end, version):
     x = y = 0
+    paths = []
+    dropped_segments = dropped_paths = 0
     if start == end:
         raise ValueError('empty line geometry')
     while start < end:
@@ -56,19 +71,44 @@ def line(data, start, end):
             raise ValueError('expected nonempty line LineTo')
         if max(abs(x), abs(y)) > 2**31 - 1:
             raise ValueError('out-of-range line coordinate')
+        path = [(x, y)]
         for _ in range(count):
             dx, start = varint(data, start, end)
             dy, start = varint(data, start, end)
             if not (dx or dy):
-                raise ValueError('zero-length line segment')
+                if version == 2:
+                    raise ValueError('zero-length MVT v2 line segment')
+                dropped_segments += 1
+                continue
             x += (dx >> 1) ^ -(dx & 1)
             y += (dy >> 1) ^ -(dy & 1)
             if max(abs(x), abs(y)) > 2**31 - 1:
                 raise ValueError('out-of-range line coordinate')
+            path.append((x, y))
+        if len(path) > 1:
+            paths.append(path)
+        else:
+            dropped_paths += 1
+    if not dropped_segments:
+        return None, 0, 0
+    # Recompute commands from absolute vertices: dropping a path changes the
+    # relative MoveTo delta of its successor, even if that successor was clean.
+    encoded = bytearray()
+    x = y = 0
+    for path in paths:
+        encoded.append(9)
+        for index, (px, py) in enumerate(path):
+            dx, dy = px - x, py - y
+            encoded += vint((dx << 1) ^ (dx >> 63))
+            encoded += vint((dy << 1) ^ (dy >> 63))
+            x, y = px, py
+            if index == 0:
+                encoded += vint(((len(path) - 1) << 3) | 2)
+    return bytes(encoded), dropped_segments, dropped_paths
 
 
 def normalize(data):
-    """Return deterministic gzip and whether the layer version changed."""
+    """Return gzip plus counts of upgraded tiles, segments, paths and features."""
     compressed = data.startswith(b'\x1f\x8b')
     raw = gzip.decompress(data) if compressed else data
     layer, = fields(raw, 0, len(raw))
@@ -76,6 +116,7 @@ def normalize(data):
         raise ValueError('expected one lifecycle layer')
     schema = {}
     features = []
+    previous = layer[2]
     for field, wire, start, end, value in fields(raw, layer[2], layer[3]):
         if field in (1, 5, 15):
             if field in schema or wire != (2 if field == 1 else 0):
@@ -83,28 +124,52 @@ def normalize(data):
             schema[field] = (start, end, value)
         elif field in (2, 3, 4) and wire == 2:
             if field == 2:
-                features.append((start, end))
+                features.append((previous, start, end))
         else:
             raise ValueError('unexpected lifecycle layer field')
-    if set(schema) != {1, 5, 15} or not features:
+        previous = end
+    if set(schema) != {1, 5, 15}:
         raise ValueError('incomplete lifecycle layer')
     start, end, _ = schema[1]
     if raw[start:end] != b'lifecycle' or schema[5][2] != 4096:
         raise ValueError('unexpected lifecycle layer name or extent')
     at, end, version = schema[15]
-    if end != at + 1 or version not in (1, 2):
+    if end != at + 1 or version not in (1, 2) or (version == 1 and not features):
         raise ValueError('unsupported lifecycle layer version')
-    for start, end in features:
+    changes = [(at, at + 1, b'\x02')] if version == 1 else []
+    segments = paths = removed = 0
+    for field_start, start, end in features:
         feature = {}
+        previous = start
         for field, wire, first, last, value in fields(raw, start, end):
             if field not in (1, 2, 3, 4) or field in feature or wire != (0 if field in (1, 3) else 2):
                 raise ValueError('unexpected lifecycle feature field')
-            feature[field] = (first, last, value)
+            feature[field] = (first, last, value, previous)
+            previous = last
         if feature.get(3, (None, None, None))[2] != 2 or 4 not in feature:
             raise ValueError('expected lifecycle line feature')
-        line(raw, *feature[4][:2])
+        first, last, _, header = feature[4]
+        geometry, dropped_segments, dropped_paths = line(raw, first, last, version)
+        segments += dropped_segments
+        paths += dropped_paths
+        if geometry is not None:
+            replacement = b''
+            if geometry:
+                replacement = message(2, raw[start:header] + message(4, geometry) + raw[last:end])
+            else:
+                removed += 1
+            changes.append((field_start, end, replacement))
     if version == 2 and compressed:
-        return data, False
-    if version == 1:
-        raw = raw[:at] + b'\x02' + raw[at+1:]
-    return gzip.compress(raw, mtime=0), version == 1
+        return data, (0, 0, 0, 0)
+    if version == 1 and not segments:
+        return gzip.compress(raw[:at] + b"\x02" + raw[at+1:], mtime=0), (1, 0, 0, 0)
+    chunks = []
+    previous = layer[2]
+    for start, end, replacement in sorted(changes):
+        chunks.extend((raw[previous:start], replacement))
+        previous = end
+    chunks.append(raw[previous:layer[3]])
+    # A tile can contain no remaining line if every input feature was
+    # zero-length; retain its key and exact layer dictionaries nevertheless.
+    raw = message(3, b''.join(chunks)) if changes else raw
+    return gzip.compress(raw, mtime=0), (int(version == 1), segments, paths, removed)

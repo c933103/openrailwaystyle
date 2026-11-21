@@ -9,11 +9,11 @@ from lifecycle_mvt import normalize
 
 def unpack_tiles(tiles, target):
     keys = []
-    total = upgraded = 0
+    total = upgraded = segments = paths = features = affected = 0
     for (z, x, y), data in tiles:
         key = f'{z}/{x}/{y}'
         try:
-            data, changed = normalize(data)
+            data, (changed, dropped_segments, dropped_paths, dropped_features) = normalize(data)
         except (ValueError, OSError, EOFError) as error:
             raise ValueError(f'Invalid lifecycle tile {key}: {error}') from error
         path = target / f'{key}.pbf.gz'
@@ -21,10 +21,16 @@ def unpack_tiles(tiles, target):
         path.write_bytes(data)
         total += len(data)
         upgraded += changed
+        affected += bool(dropped_segments)
+        segments += dropped_segments
+        paths += dropped_paths
+        features += dropped_features
         keys.append(key)
     if '7/109/50' not in keys:
         raise ValueError('Korean regression tile missing')
     (target / 'index.json').write_text(json.dumps({'tiles': keys}, separators=(',', ':')))
+    print(f'Legacy geometry cleanup: {affected} tiles, {segments} zero-length segments, '
+          f'{paths} zero-length paths, {features} all-degenerate features omitted')
     print(f'Published {len(keys)} static lifecycle tiles, {total} compressed bytes; upgraded {upgraded} to MVT v2')
 
 

@@ -43,23 +43,40 @@ class LifecycleMvtTest(unittest.TestCase):
         raw = tile()
         packed = gzip.compress(raw, mtime=123)
         output, changed = normalize(packed)
-        self.assertTrue(changed)
+        self.assertEqual(changed, (1, 0, 0, 0))
         self.assertEqual(output, normalize(raw)[0])
         self.assertEqual(gzip.decompress(output), tile(version=2))
         self.assertEqual(sum(a != b for a, b in zip(raw, gzip.decompress(output), strict=True)), 1)
-        self.assertEqual(normalize(output), (output, False))
+        self.assertEqual(normalize(output), (output, (0, 0, 0, 0)))
 
     def test_current_compressed_bytes_are_preserved(self):
         packed = gzip.compress(tile(version=2), compresslevel=3, mtime=123)
-        self.assertEqual(normalize(packed), (packed, False))
+        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0)))
 
     def test_unexpected_or_malformed_tiles(self):
         for raw in (b'', tile()[:-1], tile() * 2, tile(version=3), tile(extent=2048),
                     tile(name=b'rail'), tile(kind=3), tile(kind=1), tile(geom=b''),
-                    tile(geom=b'\x09\x02\x01\x0a\x00\x00'),
+                    tile(version=2, geom=b'\x09\x02\x01\x0a\x00\x00'),
                     tile(geom=b'\x09\x02\x01\x0a\x08\x00\x0f')):
             with self.subTest(raw=raw), self.assertRaises(ValueError):
                 normalize(raw)
+
+    def test_legacy_multipart_recomputes_cursor(self):
+        # (1,0)->(3,0), degenerate path at (8,0), then (2,0)->(2,2).
+        # Also drop repeated interior and terminal vertices on real paths.
+        g = bytes([9,2,0,18,0,0,4,0, 9,10,0,10,0,0, 9,11,0,18,0,4,0,0])
+        clean = bytes([9,2,0,10,4,0, 9,1,0,10,0,4])
+        packed, counts = normalize(tile(geom=g))
+        self.assertEqual(counts, (1, 3, 1, 0))
+        self.assertEqual(gzip.decompress(packed), tile(version=2, geom=clean))
+
+    def test_wholly_degenerate_feature_preserves_layer_metadata(self):
+        packed, counts = normalize(tile(geom=bytes([9,2,0,10,0,0])))
+        self.assertEqual(counts, (1, 1, 1, 1))
+        expected = field(3, field(15, 2) + field(1, b'lifecycle') + field(3, b'name')
+                         + field(4, field(1, '남부내륙선'.encode())) + field(5, 4096))
+        self.assertEqual(gzip.decompress(packed), expected)
+        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0)))
 
     def test_unpacked_index_and_source_manifest(self):
         with tempfile.TemporaryDirectory() as root:
