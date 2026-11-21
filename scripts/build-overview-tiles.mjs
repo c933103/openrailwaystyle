@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
+import {encodeLifecycleTile} from './lifecycle-tile.mjs';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 const OVERVIEW_STATES = ['construction'];
 const root = process.argv[2] ? pathToFileURL(resolve(process.argv[2]) + sep)
@@ -31,8 +31,10 @@ const keys = [];
 for (let z = 0; z <= 4; z++) for (let x = 0; x < 2**z; x++) for (let y = 0; y < 2**z; y++) {
   const tile = tiles.getTile(z,x,y);
   if (!tile?.features.length) continue;
+  const encoded = encodeLifecycleTile(tile);
+  if (!encoded) continue;
   await mkdir(new URL(`${z}/${x}/`, root), {recursive:true});
-  await writeFile(new URL(`${z}/${x}/${y}.pbf.gz`, root), gzipSync(vtpbf.fromGeojsonVt({lifecycle:tile},{version:2,extent:4096}), {level:9}));
+  await writeFile(new URL(`${z}/${x}/${y}.pbf.gz`, root), gzipSync(encoded, {level:9}));
   keys.push(`${z}/${x}/${y}`);
 }
 index.tiles = [...keys, ...index.tiles.filter(key => Number(key.split('/')[0]) >= 5)];
