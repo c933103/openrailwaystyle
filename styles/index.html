@@ -6,8 +6,6 @@
   <meta name="description" content="Railway Atlas: explore railways worldwide, with prominent stations, infrastructure, maximum speeds, electrification and gauges. Built on OpenStreetMap.">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
-  <meta name="atlas-restricted-tile-origin" content="">
-  <meta name="atlas-static-tile-tests" content="">
   <title>Railway Atlas · Worldwide rail map</title>
   <meta name="application-name" content="Railway Atlas">
   <meta property="og:site_name" content="Railway Atlas">
@@ -34,7 +32,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261121-owner-backgrounds-1" rel="stylesheet">
+  <link href="app.css?v=20261121-background-revert-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -66,9 +64,7 @@
           <div id="peak-phase-options" hidden><label for="peak-phase">Peak</label><select id="peak-phase"><option value="am">Morning</option><option value="pm">Evening</option></select></div>
         </div>
       </div>
-      <div class="background-picker" role="group" aria-label="Background"><button data-background="map" aria-pressed="true">Map</button><button data-background="satellite" aria-pressed="false" title="Satellite imagery only">Satellite</button><button data-background="hybrid" aria-pressed="false" title="Satellite imagery under the railways">Hybrid</button><button data-background="carto" aria-pressed="false">Carto</button><button id="google-background" data-background="google" aria-pressed="false" hidden>Google Satellite</button><button id="soviet-background" data-background="soviet" aria-pressed="false" hidden>Soviet topo</button></div>
-      <p id="soviet-status" class="small" role="status" hidden></p>
-      <p id="google-preview-status" class="small" role="status" hidden></p>
+      <div class="background-picker" role="group" aria-label="Background"><button data-background="map" aria-pressed="true">Map</button><button data-background="satellite" aria-pressed="false" title="Satellite imagery only">Satellite</button><button data-background="hybrid" aria-pressed="false" title="Satellite imagery under the railways">Hybrid</button><button data-background="carto" aria-pressed="false">Carto</button></div>
       <div id="legend" aria-live="polite"></div>
       <details class="context-key"><summary>Transport &amp; planning key</summary>
         <p class="small">Airports, bus/coach interchanges, ferry terminals and cable cars have framed symbols. Smaller symbols mark bus stops, taxi stands, bicycle rental and bicycle parking; hotels and other accommodation are marked as trip destinations. Roads remain subdued; blue-grey dashes indicate cycling paths and fine brown dots walking paths and trails.</p>
@@ -114,21 +110,6 @@
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         </fieldset>
-        <details id="restricted-tiles" hidden>
-          <summary>Admin map backgrounds</summary>
-          <button id="restricted-tile-sign-in" type="button" hidden>Sign in with GitHub</button>
-          <form id="restricted-tile-token-form" hidden>
-            <label for="restricted-tile-token">Fine-grained GitHub token</label>
-            <input id="restricted-tile-token" type="password" autocomplete="off" required>
-            <button type="submit">Verify GitHub access</button>
-          </form>
-          <p id="restricted-tile-device" hidden>
-            Code <strong id="restricted-tile-code"></strong>
-            <a id="restricted-tile-github" href="https://github.com/login/device" target="_blank" rel="noopener noreferrer">Open GitHub</a>
-          </p>
-          <button id="restricted-tile-sign-out" type="button" hidden>Sign out</button>
-          <p id="restricted-tile-status" class="small" role="status"></p>
-        </details>
       </div>
     </section>
     </div>
@@ -204,11 +185,6 @@
     <p>Every view draws aerial cableways and lifts (with ticks) and escalators, moving walkways and elevators mapped as OSM ways (with arrows for a mapped direction). Infrastructure and Power show their type; the other views colour them by that view's own value from their tags, such as owner or maximum speed, or as unknown. They are refreshed weekly from OSM: escalators <a href="data/conveying/manifest.json">snapshot date and query</a>, <a href="data/conveying/conveying.geojson.gz">ODbL extract</a>; aerialways <a href="data/aerialways/manifest.json">snapshot date and query</a>, <a href="data/aerialways/aerialways.geojson.gz">ODbL extract</a>.</p>
     <p>Zoom in on Infrastructure view for platforms and their boarding edges. Platform numbers and edge references appear from zoom 17; from zoom 19 an edge label pairs its reference with the length of the complete mapped boarding edge, in metres or feet. Platform numbers and lengths can take a moment to load. Signals (purple) appear from zoom 13 in Infrastructure and Train control, with references from zoom 16. Mapped train or subway station entrances (teal) appear from zoom 16; click them for mapped details and an OpenStreetMap link. Signal markers identify their location, not their current aspect. Coverage depends on the provider’s mapped data. Value labels hides their text while keeping the mapped shapes and markers.</p>
     <p>Carto background: <a href="https://www.openstreetmap.org/">OpenStreetMap Standard</a>, under the <a href="https://operations.osmfoundation.org/policies/tiles/">OSMF tile usage policy</a>. <a href="https://www.openstreetmap.org/fixthemap">Report a map issue</a>.</p>
-    <section id="soviet-help" hidden>
-      <h3>Soviet topo</h3>
-      <p>Scanned historical Soviet military topographic maps have limited coverage. The modern map and seabed fill gaps. Printed routes, names and boundaries reflect the sheet’s date. Current railway data and localized labels are separate overlays.</p>
-      <ul id="soviet-sheets"></ul>
-    </section>
     <h3 id="help-sources" tabindex="-1">Sources</h3><p>Service frequencies: <a href="frequency-credits.html">source credits and coverage</a>. Detailed/thematic railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. When those station tiles fail, the map can show rail POIs from the independently hosted En Liberté basemap and vetted hub points; neither fallback is a complete inventory. The neutral dashed railway backbone at zooms 4–6 uses generalized <a href="https://www.naturalearthdata.com/">Natural Earth</a> transport data hosted by <a href="https://papers.reearth.land/attribution">Re:Earth Papers</a>; it does not establish current operating status. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>; place search: <a href="https://nominatim.org/">Nominatim</a> (OpenStreetMap data). Departures and journey planning: <a href="https://transitous.org">Transitous</a> (<a href="https://transitous.org/sources/">timetable sources and licences</a>). Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a data-odbl-table="lifecycle.geojson.gz" href="https://github.com/c933103/openrailwaystyle/releases/tag/odbl-tables">download the ODbL database</a>; <a data-odbl-manifest href="https://github.com/c933103/openrailwaystyle/releases/tag/odbl-tables">all ODbL download tables (manifest)</a> (lifecycle, level crossings, branch lines, urban rail services). Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Satellite imagery: <a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p>Project origins: Railway Atlas began as a fork of <a href="https://github.com/OpenRail-Playground/openrailwaystyle">Open Railway Styles</a>, the Hack4Rail 2025 project. Atlas's current application and worldwide data pipeline are developed in this repository.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Map initialization can request TileJSON metadata from Re:Earth Papers (<code>papers.reearth.land</code>); at zooms 4–6, loading or panning automatically requests its tiles for the viewed area. These direct browser requests expose the requested tile coordinates, your IP address and ordinary browser request headers to that host. Search terms are sent to OpenRailwayMap and to OpenStreetMap's Nominatim geocoder only when submitted. Opening a station sends its position to Transitous for its departures; expanding a train requests its trip ID for the full schedule. Opening a level crossing asks the OpenStreetMap API for its tags. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
@@ -263,7 +239,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <div id="google-preview-attribution" hidden><strong id="google-preview-brand">Google Maps</strong> <span id="google-preview-credits"></span></div>
-  <script type="module" src="app.mjs?v=20261121-owner-backgrounds-1"></script>
+  <script type="module" src="app.mjs?v=20261121-background-revert-1"></script>
 </body>
 </html>

@@ -78,15 +78,6 @@ test('archive tile sharing avoids duplicate requests and isolates cancellation a
   assert.equal(count,2,'completed vector tiles must not occupy a second persistent cache');
 });
 
-test('a missing sparse raster tile settles for all archive consumers', async () => {
-  let count = 0;
-  const shared = shareArchiveRequests(async () => { count++; return {data: null}; });
-  const params = {url: 'pmtiles://historical/10/982/478', type: 'arrayBuffer'};
-  const tiles = await Promise.all([1, 2].map(() => shared(params, new AbortController())));
-  assert.deepEqual(tiles, [{data:null}, {data:null}]);
-  assert.equal(count, 1);
-});
-
 test('depth shading stays below islands, contours and railways and respects the terrain setting', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
   const ids = style.layers.map(l=>l.id), depth = ids.indexOf('terrain-bathymetry');
