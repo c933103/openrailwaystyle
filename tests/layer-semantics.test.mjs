@@ -8,11 +8,6 @@ const style = JSON.parse(await readFile(new URL('../styles/world.style.json', im
 // An independent copy of the browser policy, with the explicitly requested
 // shared signal and Power-supply controls. This does not call the annotation
 // adapter: it detects mistakes in that conversion.
-const contoursOverHistoricalRaster = new Set([
-  'terrain-contours', 'terrain-contour-labels',
-  'terrain-seabed-contours', 'terrain-seabed-contours-close',
-  'terrain-seabed-contour-labels', 'terrain-seabed-contour-labels-close',
-]);
 function originalVisibility(layer, settings) {
   const runtime = /^(drawing|measure)-|^polar-caps$/.test(layer.id);
   const valueLabels = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -34,10 +29,8 @@ function originalVisibility(layer, settings) {
   else if (layer.id === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && baseMap) visible = false;
-  else if (settings.background === 'google' && baseMap && layer.type !== 'background') visible = false;
   else if (settings.background === 'carto' && baseMap && !layer.id.startsWith('terrain-')) visible = false;
   if (layer.id === 'terrain-bathymetry' && settings.background === 'carto') visible = false;
-  if (settings.background === 'soviet' && contoursOverHistoricalRaster.has(layer.id)) visible = false;
   return visible;
 }
 const booleans = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'transport', 'destinations', 'constraints'];
