@@ -8,7 +8,7 @@ import {createWriteStream} from 'node:fs';
 import {once} from 'node:events';
 import {gzipSync} from 'node:zlib';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
+import {encodeLifecycleTile} from './lifecycle-tile.mjs';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES} from './lifecycle.mjs';
 
@@ -37,8 +37,9 @@ export async function writeLifecycleSnapshot(dir, data, manifest) {
   async function visit(z,x,y) {
     const tile=index.getTile(z,x,y);
     if (!tile?.features.length) return;
-    if(z>=5) {
-      const bytes=gzipSync(vtpbf.fromGeojsonVt({lifecycle:tile},{version:2,extent:4096}));
+    const encoded = z>=5 ? encodeLifecycleTile(tile) : null;
+    if(encoded) {
+      const bytes=gzipSync(encoded);
       if(!stream.write(JSON.stringify([z,x,y,bytes.toString('base64')])+'\n')) await once(stream,'drain');
       tileCount++;
     }
