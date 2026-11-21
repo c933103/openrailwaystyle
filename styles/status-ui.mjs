@@ -1,5 +1,5 @@
-import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261120-pages-admin-tiles-1';
-import {terrain3DEnabled} from './terrain-3d.mjs?v=20261120-pages-admin-tiles-1';
+import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261120-bathymetry-status-1';
+import {terrain3DEnabled} from './terrain-3d.mjs?v=20261120-bathymetry-status-1';
 
 // Source-event reconciliation and the visible availability diagnostics.
 export function mapErrorMessage({railRecovery, stationFailures, errors, settings, terrain3DSelected}) {
@@ -15,6 +15,9 @@ export function mapErrorMessage({railRecovery, stationFailures, errors, settings
   }
   if (failed.includes('terrain3d') && terrain3DEnabled(settings.relief, terrain3DSelected)) {
     return '3D elevation tiles could not load. Terrain geometry is incomplete; check your connection or reload.';
+  }
+  if (failed.length === 1 && failed[0] === 'bathymetry') {
+    return 'Bathymetry tiles could not load. Seabed shading may be incomplete.';
   }
   return 'Some map data could not load. Check your connection or reload to retry.';
 }
