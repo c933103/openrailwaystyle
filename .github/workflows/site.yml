@@ -205,6 +205,7 @@ jobs:
           if [ -d lifecycle-data/polar ]; then cp -r lifecycle-data/polar styles/data/polar; fi
           cat lifecycle-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
           pip install pmtiles==3.8.1
+          python tests/test_lifecycle_mvt.py
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           # The ODbL lifecycle table is offered from the odbl-tables release
