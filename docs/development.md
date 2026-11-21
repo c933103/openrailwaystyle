@@ -190,8 +190,13 @@ tiles load until the owner selects a background.
 
 Set the Pages repository variable `GOOGLE_MAPS_API_KEY` to a browser key
 restricted to the Pages website origin and Map Tiles API.
-Set `SOVIET_TOPO_TILE_SERVICE=indian-open-maps` for an approved interactive
-test with that service. The same settings can be injected into a local
+The canonical Pages build configures Indian Open Maps for the owner's Soviet
+topo test. Its publisher lists the browser tile URLs for the
+[1:1,000,000 sheets](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/1m-gs-pmtiles)
+and [1:500,000 sheets](https://github.com/ramSeraph/russian_world_topo_maps/releases/tag/500k-gs-pmtiles).
+Set `SOVIET_TOPO_TILE_SERVICE=off` to disable this source. Other repositories
+can opt in with `SOVIET_TOPO_TILE_SERVICE=indian-open-maps`.
+The same settings can be injected into a local
 checkout with `node scripts/configure-restricted-tiles.mjs` and the
 `ADMIN_REPO`, `GOOGLE_MAPS_API_KEY` and `SOVIET_TOPO_TILE_SERVICE` environment
 variables.

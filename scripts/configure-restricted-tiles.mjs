@@ -16,8 +16,10 @@ export function restrictedPreviewPage(html, origin, fixture = false) {
 }
 
 export function configureRestrictedMap(html, {repository, googleKey = '', historical = ''}) {
-  if (!googleKey && !historical) return html;
-  const value = `${repository}|${googleKey}|${historical}`;
+  const defaultSource = repository === 'c933103/openrailwaystyle' ? 'indian-open-maps' : '';
+  const source = historical === 'off' ? '' : historical || defaultSource;
+  if (!googleKey && !source) return html;
+  const value = `${repository}|${googleKey}|${source}`;
   if (!parseStaticTileSettings(value)) throw new Error('Invalid browser test-background configuration.');
   return replaceSetting(html, 'atlas-static-tile-tests', value);
 }

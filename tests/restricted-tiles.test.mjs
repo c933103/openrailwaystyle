@@ -157,6 +157,10 @@ test('Pages enables the configured browser test layers even with an old gateway 
   const googleKey = 'sample_browser_key_for_testing';
   const fixture = {repository, googleKey, historical:'indian-open-maps'};
   assert.equal(configureRestrictedMap(standard,{}), standard);
+  assert.match(configureRestrictedMap(standard,{repository}), /c933103\/openrailwaystyle\|\|indian-open-maps/);
+  assert.equal(configureRestrictedMap(standard,{repository:'a-fork/openrailwaystyle'}), standard);
+  assert.equal(configureRestrictedMap(standard,{repository, historical:'off'}), standard);
+  assert.ok(configureRestrictedMap(standard,{repository, googleKey, historical:'off'}).includes(`${repository}|${googleKey}|"`));
   const staticMap = configureRestrictedMap(standard,fixture);
   assert.match(staticMap,/atlas-restricted-tile-origin" content=""/);
   assert.match(staticMap,/c933103\/openrailwaystyle\|sample_browser_key_for_testing\|indian-open-maps/);
