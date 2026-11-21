@@ -179,7 +179,8 @@ try {
     const imageryExpected=depth===20?[25,74,122]:[9,34,63];
     for(const mode of ['satellite','hybrid']) {
       const before=await page.evaluate(()=>window.draws);
-      await page.evaluate(async mode=>{window.background=mode;await window.frame();},mode);
+      await page.evaluate(async mode=>{window.background=mode;await window.frame();},mode)
+        .catch(error=>{throw new Error(`${cap} ${mode} at ${depth} m: ${error.message}`,{cause:error});});
       const imagery=await page.evaluate(()=>({pixel:window.pixel(),draws:window.draws}));
       assert.ok(imagery.draws>before,`${cap} ${mode}: current frame must draw depth`);
       for(let i=0;i<3;i++)assert.ok(Math.abs(imagery.pixel[i]-imageryExpected[i])<=5,
