@@ -52,7 +52,7 @@ export async function decompressReference(data,maxBytes=MAX_DECODED){
  finally{reader.releaseLock()}
  const result=new Uint8Array(size);let offset=0;for(const c of chunks){result.set(c,offset);offset+=c.byteLength}return result.buffer;
 }
-export function createReferenceReader({root,fetcher=fetch,decompress=decompressReference,timeout=15000,maxCacheBytes=16*1024**2}){
+export function createReferenceReader({root,fetcher=fetch,decompress=decompressReference,timeout=15000,maxCacheBytes=16*1024**2,onTileStage}){
  if(typeof decompress!=='function')throw Error('Missing bounded reference decompressor');
  const base=new URL(root),cache=new Map(),pending=new Map();let metadata,cachedBytes=0,assetRequests=0,assetBytes=0,decodedTileBytes=0;
  async function read(path,maxBytes){
@@ -87,8 +87,15 @@ export function createReferenceReader({root,fetcher=fetch,decompress=decompressR
   if(cache.has(key)){const value=cache.get(key);cache.delete(key);cache.set(key,value);return value.slice(0)}
   if(!pending.has(key))pending.set(key,(async()=>{
    const zipped=await read(`generations/${manifest.generation}/${key}.pbf.gz`,MAX_COMPRESSED);
-   if(zipped.byteLength!==entry.bytes||await digest(zipped)!==entry.sha256)throw Error('Changed or truncated OSM reference tile');
+   onTileStage?.(key,'BODY_DRAINED',zipped.byteLength);
+   if(zipped.byteLength!==entry.bytes)throw Error('Changed or truncated OSM reference tile');
+   onTileStage?.(key,'CHECKSUM_START');
+   const hash=await digest(zipped);
+   onTileStage?.(key,'CHECKSUM_END');
+   if(hash!==entry.sha256)throw Error('Changed or truncated OSM reference tile');
+   onTileStage?.(key,'DECOMPRESS_START');
    const raw=await decompress(zipped.buffer,MAX_DECODED);
+   onTileStage?.(key,'DECOMPRESS_END',raw.byteLength);
    const data=raw instanceof ArrayBuffer?raw:raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.byteLength);
    if(data.byteLength>MAX_DECODED||!data.byteLength)throw Error('Invalid decoded OSM reference tile');
    decodedTileBytes+=data.byteLength;

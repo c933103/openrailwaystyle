@@ -17,6 +17,18 @@ const evaluate=(page,fn,arg)=>withinDeadline(()=>page.evaluate(fn,arg),`browser 
 const screenshot=(page,options)=>withinDeadline(()=>page.screenshot({...options,timeout:5000}),'failure/snapshot capture',5000);
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const published=process.argv.includes('--published');
+const diagnostic=process.env.ATLAS_WEBKIT_LONDON_DIAGNOSTIC;
+const trace=published&&process.env.ATLAS_WEBKIT_REFERENCE_TRACE==='1';
+const selectedDecoder=process.env.ATLAS_WEBKIT_REFERENCE_DECODER;
+if(selectedDecoder&&!['fflate','native','native-chunked'].includes(selectedDecoder))
+ throw new Error('Unexpected diagnostic decoder');
+const alternateDecoder=Boolean(selectedDecoder);
+if(alternateDecoder&&(!published||diagnostic!=='suite'||new URL(base).origin!=='http://127.0.0.1:4173'))
+ throw Error('Alternative decoder requires the staged loopback Safari suite');
+const decoderFile=selectedDecoder==='fflate'?'reference-alt-decode.mjs':'webkit-native-input-diagnostic.mjs';
+const alternateDecoderUrl=new URL(decoderFile,base).href;
+if(diagnostic&&(!published||!['fresh','transition','suite'].includes(diagnostic)))
+ throw new Error('London diagnostic requires --published and fresh, transition or suite');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
 // One neutral and one Infrastructure layer per mapped classification; the
 // compiled style starts with only the Infrastructure strokes visible.
@@ -57,10 +69,38 @@ await mkdir('browser-review',{recursive:true});
 for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  {name:'android',engine:'chromium',width:360,height:450},
  {name:'safari',engine:'webkit',width:390,height:450}]){
+ if(diagnostic&&profile.engine!=='webkit')continue;
  checkpoint={phase:'profile setup',profile:profile.name};
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
  let closing=false,primaryError;
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
+ if((diagnostic||trace)&&profile.engine==='webkit'){
+  const referencePath='/data/mainline-reference/';
+  const pending=new WeakMap();
+  let requestId=0;
+  function referenceTile(request){
+   const url=new URL(request.url());
+   return url.pathname.includes(referencePath)&&url.pathname.endsWith('.pbf.gz')?url.pathname:null;
+  }
+  function logTile(event,request,extra={}){
+   const path=referenceTile(request);
+   if(!path)return;
+   const now=Date.now(),meta=pending.get(request);
+   console.log('LONDON_DIAGNOSTIC_'+event,JSON.stringify({
+    case:meta?.checkpoint??checkpoint,path,requestId:meta?.id??null,at:new Date(now).toISOString(),
+    elapsedMs:meta?now-meta.start:null,...extra
+   }));
+  }
+  page.on('request',request=>{
+   if(!referenceTile(request))return;
+   pending.set(request,{id:++requestId,checkpoint,start:Date.now()});
+   logTile('REQUEST_START',request);
+  });
+  page.on('response',response=>logTile('RESPONSE',response.request(),{status:response.status()}));
+  page.on('requestfinished',request=>logTile('REQUEST_FINISHED',request));
+  page.on('requestfailed',request=>logTile('REQUEST_FAILURE',request,{error:request.failure()?.errorText}));
+  page.on('console',message=>{if(/^(?:LONDON_DIAGNOSTIC_READINESS |ATLAS_REFERENCE_PROTOCOL_)/.test(message.text()))console.log(message.text());});
+ }
  if(profile.engine==='webkit'){
   await page.addInitScript(()=>{
    window.referenceBlobs=new Map();const create=URL.createObjectURL.bind(URL);
@@ -82,13 +122,45 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  await page.route('https://mainline-fixture.invalid/**',route=>route.fulfill({status:503,body:'upstream unavailable'}));
  await page.route(new URL('mainline-test.html',base).href,route=>route.fulfill({contentType:'text/html',body:'<html><body></body></html>'}));
  try{
+  if(alternateDecoder)await page.route(alternateDecoderUrl,route=>route.fulfill({path:selectedDecoder==='fflate'?`london-diagnostics/${decoderFile}`:`scripts/${decoderFile}`,contentType:'text/javascript'}));
   await page.goto(new URL('mainline-test.html',base).href);
   await page.setContent(`<html><body style="margin:0"><div id="test-map" style="width:${profile.width}px;height:${profile.height}px"></div></body></html>`);
   await page.addScriptTag({url:library});
-  await evaluate(page,async({layers,base,module})=>{
-   const {createReferenceReader}=await import(module),reader=createReferenceReader({root:new URL('data/mainline-reference/',base)});
+  await evaluate(page,async({layers,base,module,traceProtocol,codecUrl,selectedDecoder})=>{
+   const {createReferenceReader}=await import(module);
+   const options={root:new URL('data/mainline-reference/',base)};
+   if(codecUrl){
+    const codec=await import(codecUrl);
+    options.decompress=selectedDecoder==='fflate'?codec.decodeReferenceForDiagnostic:codec.makeNativeDecoder({decoder:selectedDecoder});
+   }
+   if(traceProtocol){
+    options.onTileStage=(key,stage,bytes)=>console.log('ATLAS_REFERENCE_PROTOCOL_STAGE '+JSON.stringify({
+     key,stage,bytes,camera:window.referenceTraceCamera??null,at:Date.now()
+    }));
+    setInterval(()=>console.log('ATLAS_REFERENCE_PROTOCOL_HEARTBEAT '+JSON.stringify({
+     camera:window.referenceTraceCamera??null,at:Date.now()
+    })),5000);
+   }
+   const reader=createReferenceReader(options);
    window.referenceReader=reader;window.referenceLayers=layers;
-   maplibregl.addProtocol('mainlinetiles',async(p,c)=>({data:await reader.tile(p.url.slice('mainlinetiles://'.length),c.signal)}));
+   let protocolId=0;
+   maplibregl.addProtocol('mainlinetiles',async(p,c)=>{
+    const key=p.url.slice('mainlinetiles://'.length);
+    if(!traceProtocol)return {data:await reader.tile(key,c.signal)};
+    const requestId=++protocolId,started=performance.now(),camera=window.referenceTraceCamera??null;
+    const log=(event,extra={})=>console.log('ATLAS_REFERENCE_PROTOCOL_'+event+' '+JSON.stringify({
+     key,requestId,camera,atMs:performance.now(),elapsedMs:performance.now()-started,...extra
+    }));
+    log('START',{aborted:c.signal.aborted});
+    const onAbort=()=>log('ABORT');
+    c.signal.addEventListener('abort',onAbort,{once:true});
+    try{
+     const data=await reader.tile(key,c.signal);
+     log('RESOLVED',{bytes:data.byteLength});return {data};
+    }catch(error){
+     log('REJECTED',{name:error?.name,message:error?.message});throw error;
+    }finally{c.signal.removeEventListener('abort',onAbort);}
+   });
    window.testMap=new maplibregl.Map({container:'test-map',minZoom:-2,maxZoom:9,center:[139.75,35.68],zoom:6,fadeDuration:0,
     canvasContextAttributes:{preserveDrawingBuffer:true},style:{version:8,sources:{
      railReference:{type:'vector',tiles:['mainlinetiles://{z}/{x}/{y}'],minzoom:0,maxzoom:6,promoteId:'id'},
@@ -96,21 +168,30 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
     layers:[{id:'background',type:'background',paint:{'background-color':'#fafafa'}},...layers,
      {id:'missing-live',type:'line',source:'missingLive','source-layer':'missing',paint:{'line-color':'red'}}]}});
    window.sourceErrors=[];testMap.on('error',e=>sourceErrors.push({source:e.sourceId,message:e.error?.message}));
-  },{layers,base,module:readerModule});
+  },{layers,base,module:readerModule,traceProtocol:trace&&profile.engine==='webkit',codecUrl:alternateDecoder?alternateDecoderUrl:null,selectedDecoder});
   await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
+   const target=projection==='globe'&&c.name==='United Kingdom–London';
+   if(diagnostic&&diagnostic!=='suite'&&!(target&&(zoom===6||(diagnostic==='transition'&&zoom===5))))continue;
    checkpoint={phase:'source readiness',profile:profile.name,projection,name:c.name,zoom};
+   const probe=profile.engine==='webkit'&&((diagnostic&&target&&(zoom===5||zoom===6))||
+    (trace&&projection==='mercator'&&((c.name==='Spain–Madrid'&&zoom===4)||(c.name==='Italy–Milan'&&zoom===5))));
     console.log('MAINLINE_CASE_START',JSON.stringify({...checkpoint,at:new Date().toISOString()}));
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
-   await evaluate(page,({center,zoom,projection,expected})=>{
+   await evaluate(page,({center,zoom,projection,expected,traceCamera})=>{
+    if(traceCamera)window.referenceTraceCamera=traceCamera;
     testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
     // Globe queryRenderedFeatures uses a planar approximation in this pinned
     // renderer. Isolate exact expected chains, then check their painted pixels.
     for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
-   },{center:c.center,zoom,projection,expected});
-   try{await withinDeadline(()=>page.waitForFunction(expected=>testMap.loaded()&&testMap.isSourceLoaded('railReference')&&
-    testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
-    expected,{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
+   },{center:c.center,zoom,projection,expected,traceCamera:trace&&profile.engine==='webkit'?checkpoint:null});
+   try{await withinDeadline(()=>page.waitForFunction(({expected,probe,camera})=>{
+    const loaded=testMap.loaded(),sourceLoaded=loaded?testMap.isSourceLoaded('railReference'):false;
+    const chains=loaded&&sourceLoaded?testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length:0;
+    if(probe){const state=JSON.stringify({camera,loaded,sourceLoaded,chains});
+     if(window.lastLondonState!==state){window.lastLondonState=state;console.log('LONDON_DIAGNOSTIC_READINESS '+state);}}
+    return loaded&&sourceLoaded&&chains;
+   },{expected,probe,camera:checkpoint},{timeout:30000}),`source readiness ${JSON.stringify(checkpoint)}`,35000)}
    catch(error){
     let diagnostic;
     try{diagnostic=await withinDeadline(()=>evaluate(page,()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
@@ -158,6 +239,13 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   throw error;
  }finally{closing=true;await closeBrowser(page.context(),browser,{primaryError})}
 }
+if(diagnostic){
+ const london=samples.filter(s=>s.projection==='globe'&&s.name==='United Kingdom–London'&&[5,6].includes(s.zoom));
+ assert.deepEqual(london.map(s=>s.zoom), diagnostic==='fresh'?[6]:[5,6]);
+ console.log('LONDON_DIAGNOSTIC_RESULT',JSON.stringify({mode:diagnostic,generation:manifest.generation,london,acceptance:false}));
+ stopWatchdog();
+ process.exitCode=2; // A diagnostic run may never satisfy the publication gate.
+}else{
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
 // missing protocol registration or a runtime visibility override that the
@@ -216,3 +304,4 @@ const report={scope:published?'Actual OSM generation; exact chain identities':'S
 await writeFile('browser-review/mainline-reference.json',JSON.stringify(report,null,2)+'\n');
 stopWatchdog();
 console.log('PASS: independent reference with unavailable thematic provider',JSON.stringify({samples:samples.length,timing:report.timing,generation:manifest.generation}));
+}
