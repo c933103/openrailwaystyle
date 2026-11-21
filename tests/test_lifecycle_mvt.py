@@ -43,15 +43,15 @@ class LifecycleMvtTest(unittest.TestCase):
         raw = tile()
         packed = gzip.compress(raw, mtime=123)
         output, changed = normalize(packed)
-        self.assertEqual(changed, (1, 0, 0, 0))
+        self.assertEqual(changed, (1, 0, 0, 0, 0))
         self.assertEqual(output, normalize(raw)[0])
         self.assertEqual(gzip.decompress(output), tile(version=2))
         self.assertEqual(sum(a != b for a, b in zip(raw, gzip.decompress(output), strict=True)), 1)
-        self.assertEqual(normalize(output), (output, (0, 0, 0, 0)))
+        self.assertEqual(normalize(output), (output, (0, 0, 0, 0, 0)))
 
     def test_current_compressed_bytes_are_preserved(self):
         packed = gzip.compress(tile(version=2), compresslevel=3, mtime=123)
-        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0)))
+        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0, 0)))
 
     def test_unexpected_or_malformed_tiles(self):
         for raw in (b'', tile()[:-1], tile() * 2, tile(version=3), tile(extent=2048),
@@ -67,16 +67,29 @@ class LifecycleMvtTest(unittest.TestCase):
         g = bytes([9,2,0,18,0,0,4,0, 9,10,0,10,0,0, 9,11,0,18,0,4,0,0])
         clean = bytes([9,2,0,10,4,0, 9,1,0,10,0,4])
         packed, counts = normalize(tile(geom=g))
-        self.assertEqual(counts, (1, 3, 1, 0))
+        self.assertEqual(counts, (1, 3, 1, 0, 0))
         self.assertEqual(gzip.decompress(packed), tile(version=2, geom=clean))
 
     def test_wholly_degenerate_feature_preserves_layer_metadata(self):
         packed, counts = normalize(tile(geom=bytes([9,2,0,10,0,0])))
-        self.assertEqual(counts, (1, 1, 1, 1))
+        self.assertEqual(counts, (1, 1, 1, 1, 0))
         expected = field(3, field(15, 2) + field(1, b'lifecycle') + field(3, b'name')
                          + field(4, field(1, '남부내륙선'.encode())) + field(5, 4096))
         self.assertEqual(gzip.decompress(packed), expected)
-        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0)))
+        self.assertEqual(normalize(packed), (packed, (0, 0, 0, 0, 0)))
+
+    def test_move_only_matches_writer_and_preserves_cursor(self):
+        # Prior singleton at x=8, ordinary line x=2..3, terminal singleton x=4.
+        raw = bytes([9,16,0, 9,11,0,10,2,0, 9,2,0])
+        packed, counts = normalize(tile(geom=raw))
+        self.assertEqual(counts, (1, 0, 2, 0, 2))
+        self.assertEqual(gzip.decompress(packed), tile(version=2, geom=bytes([9,4,0,10,2,0])))
+        with self.assertRaisesRegex(ValueError, 'varint'):
+            normalize(tile(geom=raw[:-1]))
+        with self.assertRaisesRegex(ValueError, 'expected nonempty'):
+            normalize(tile(geom=bytes([9,4,0,18,2,0])))
+        with self.assertRaisesRegex(ValueError, 'missing line LineTo'):
+            normalize(tile(version=2, geom=bytes([9,4,0])))
 
     def test_unpacked_index_and_source_manifest(self):
         with tempfile.TemporaryDirectory() as root:

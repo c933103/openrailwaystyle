@@ -54,7 +54,7 @@ def message(field, body):
 def line(data, start, end, version):
     x = y = 0
     paths = []
-    dropped_segments = dropped_paths = 0
+    dropped_segments = dropped_paths = move_only = 0
     if start == end:
         raise ValueError('empty line geometry')
     while start < end:
@@ -65,12 +65,21 @@ def line(data, start, end, version):
         dy, start = varint(data, start, end)
         x += (dx >> 1) ^ -(dx & 1)
         y += (dy >> 1) ^ -(dy & 1)
-        command, start = varint(data, start, end)
+        if max(abs(x), abs(y)) > 2**31 - 1:
+            raise ValueError('out-of-range line coordinate')
+        command, after = varint(data, start, end) if start < end else (None, start)
+        # vt-pbf 3.1.3 emits no LineTo for a singleton ring. A full MoveTo
+        # with exactly two complete deltas and no line segments traces no line.
+        if command in (None, 9) and version == 1:
+            move_only += 1
+            dropped_paths += 1
+            continue
+        if command is None:
+            raise ValueError('missing line LineTo')
+        start = after
         count = command >> 3
         if command & 7 != 2 or not 1 <= count <= (end - start) // 2:
             raise ValueError('expected nonempty line LineTo')
-        if max(abs(x), abs(y)) > 2**31 - 1:
-            raise ValueError('out-of-range line coordinate')
         path = [(x, y)]
         for _ in range(count):
             dx, start = varint(data, start, end)
@@ -89,8 +98,8 @@ def line(data, start, end, version):
             paths.append(path)
         else:
             dropped_paths += 1
-    if not dropped_segments:
-        return None, 0, 0
+    if not dropped_paths and not dropped_segments:
+        return None, 0, 0, 0
     # Recompute commands from absolute vertices: dropping a path changes the
     # relative MoveTo delta of its successor, even if that successor was clean.
     encoded = bytearray()
@@ -104,10 +113,10 @@ def line(data, start, end, version):
             x, y = px, py
             if index == 0:
                 encoded += vint(((len(path) - 1) << 3) | 2)
-    return bytes(encoded), dropped_segments, dropped_paths
+    return bytes(encoded), dropped_segments, dropped_paths, move_only
 
 
-def normalize(data):
+def normalize(data, singleton_sample=None):
     """Return gzip plus counts of upgraded tiles, segments, paths and features."""
     compressed = data.startswith(b'\x1f\x8b')
     raw = gzip.decompress(data) if compressed else data
@@ -137,7 +146,7 @@ def normalize(data):
     if end != at + 1 or version not in (1, 2) or (version == 1 and not features):
         raise ValueError('unsupported lifecycle layer version')
     changes = [(at, at + 1, b'\x02')] if version == 1 else []
-    segments = paths = removed = 0
+    segments = paths = removed = move_only = 0
     for field_start, start, end in features:
         feature = {}
         previous = start
@@ -149,7 +158,15 @@ def normalize(data):
         if feature.get(3, (None, None, None))[2] != 2 or 4 not in feature:
             raise ValueError('expected lifecycle line feature')
         first, last, _, header = feature[4]
-        geometry, dropped_segments, dropped_paths = line(raw, first, last, version)
+        try:
+            geometry, dropped_segments, dropped_paths, singleton_paths = line(raw, first, last, version)
+        except ValueError as error:
+            payload = raw[first:last]
+            sample = payload.hex() if len(payload) <= 128 else payload[:64].hex() + '...' + payload[-64:].hex()
+            raise ValueError(f'{error}; geometry length={len(payload)} hex={sample}') from error
+        if singleton_paths and singleton_sample is not None:
+            singleton_sample(raw[first:last])
+        move_only += singleton_paths
         segments += dropped_segments
         paths += dropped_paths
         if geometry is not None:
@@ -160,9 +177,9 @@ def normalize(data):
                 removed += 1
             changes.append((field_start, end, replacement))
     if version == 2 and compressed:
-        return data, (0, 0, 0, 0)
-    if version == 1 and not segments:
-        return gzip.compress(raw[:at] + b"\x02" + raw[at+1:], mtime=0), (1, 0, 0, 0)
+        return data, (0, 0, 0, 0, 0)
+    if version == 1 and not (segments or paths):
+        return gzip.compress(raw[:at] + b"\x02" + raw[at+1:], mtime=0), (1, 0, 0, 0, 0)
     chunks = []
     previous = layer[2]
     for start, end, replacement in sorted(changes):
@@ -172,4 +189,4 @@ def normalize(data):
     # A tile can contain no remaining line if every input feature was
     # zero-length; retain its key and exact layer dictionaries nevertheless.
     raw = message(3, b''.join(chunks)) if changes else raw
-    return gzip.compress(raw, mtime=0), (int(version == 1), segments, paths, removed)
+    return gzip.compress(raw, mtime=0), (int(version == 1), segments, paths, removed, move_only)
