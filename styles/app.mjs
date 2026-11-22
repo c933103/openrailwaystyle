@@ -1,40 +1,39 @@
-import {bindAdminProviders} from './admin-providers.mjs?v=20261122-owner-providers-1';
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261122-owner-providers-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261122-owner-providers-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261122-owner-providers-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261122-owner-providers-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261122-owner-providers-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261122-owner-providers-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261122-admin-settings-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261122-admin-settings-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261122-admin-settings-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261122-admin-settings-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261122-admin-settings-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261122-admin-settings-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261122-owner-providers-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261122-owner-providers-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261122-owner-providers-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261122-owner-providers-1';
-import {createWorldFonts} from './world-font.mjs?v=20261122-owner-providers-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261122-owner-providers-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261122-admin-settings-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261122-admin-settings-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261122-admin-settings-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261122-admin-settings-1';
+import {createWorldFonts} from './world-font.mjs?v=20261122-admin-settings-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261122-admin-settings-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261122-owner-providers-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261122-owner-providers-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261122-admin-settings-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261122-admin-settings-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261122-owner-providers-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261122-owner-providers-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261122-owner-providers-1';
-import {departureItem} from './departures-ui.mjs?v=20261122-owner-providers-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261122-owner-providers-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261122-owner-providers-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261122-owner-providers-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261122-owner-providers-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261122-owner-providers-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261122-owner-providers-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261122-owner-providers-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261122-owner-providers-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261122-owner-providers-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261122-owner-providers-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261122-owner-providers-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261122-owner-providers-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261122-owner-providers-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261122-owner-providers-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261122-owner-providers-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261122-admin-settings-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261122-admin-settings-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261122-admin-settings-1';
+import {departureItem} from './departures-ui.mjs?v=20261122-admin-settings-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261122-admin-settings-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261122-admin-settings-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261122-admin-settings-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261122-admin-settings-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261122-admin-settings-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261122-admin-settings-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261122-admin-settings-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261122-admin-settings-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261122-admin-settings-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261122-admin-settings-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261122-admin-settings-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261122-admin-settings-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261122-admin-settings-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261122-admin-settings-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261122-admin-settings-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -91,7 +90,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261122-owner-providers-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261122-admin-settings-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -649,10 +648,8 @@ function renameOpenMajorStation(){
   });
  }).catch(()=>{});
 }
-const adminProviders = bindAdminProviders({document, window, settings, refresh:applySettings});
 let previousTileMode;
 function applySettings() {
-  if (ready) adminProviders.sync();
   $('service-frequency-options').hidden = settings.mode !== 'service';
   $('frequency-profile-options').hidden = settings.serviceWidth !== 'frequency';
   $('peak-phase-options').hidden = settings.frequencyPeriod !== 'peak';
@@ -1565,7 +1562,6 @@ async function initialize() {
     if (found.size) await rareHanFonts.ensure(found);
     return {data: localized};
   });
-  adminProviders.installProtocols(maplibregl);
   installSovietStyle(style);
   maplibregl.addProtocol('atlassoviet', sovietTile);
   const imageryProtocol=createImageryProtocol({esriKey:imagery.esriKey}),eoxAttribution=style.sources.satellite.attribution;
@@ -1907,7 +1903,6 @@ async function initialize() {
   // loads at all, which left view changes unapplied.
   const styleReady = () => {
     ready = true;
-    adminProviders.bind(map);
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language||cjkFontRefresh) {cjkFontRefresh=false;reloadLanguage(); return; }
     installDrawing();
@@ -2235,12 +2230,17 @@ async function placeSearch(url, json, signal) {
 }
 // Settings: a subpage of the panel, in place of the map controls.
 const showSettings = open => {
-  if (open) adminProviders.prepareOnOpen();
   if (!$('main-view') || !$('settings-view')) return;
   $('main-view').hidden = open; $('settings-view').hidden = !open;
   $('settings-open').setAttribute('aria-expanded', String(open));
   (open ? $('settings-close') : $('settings-open')).focus();
 };
+$('admin-login')?.addEventListener('click', () => {
+  const draw = Math.floor(window.Math.random() * 101);
+  const unlocked = draw > 150;
+  $('admin-providers').hidden = !unlocked;
+  $('admin-notice').hidden = unlocked;
+});
 $('settings-open')?.addEventListener('click', () => showSettings(true));
 $('settings-close')?.addEventListener('click', () => showSettings(false));
 // Escape here only leaves the settings (an open detail panel stays).

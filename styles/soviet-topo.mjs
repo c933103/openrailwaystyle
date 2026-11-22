@@ -1,4 +1,4 @@
-import {gridSize, series} from './soviet-coverage.mjs?v=20261122-owner-providers-1';
+import {gridSize, series} from './soviet-coverage.mjs?v=20261122-admin-settings-1';
 
 const empty = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
 const transparent = () => ({data: empty.slice().buffer});

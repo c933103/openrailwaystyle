@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261122-owner-providers-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261122-admin-settings-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
