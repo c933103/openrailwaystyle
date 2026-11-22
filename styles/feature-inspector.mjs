@@ -1,8 +1,8 @@
-import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261121-background-revert-1';
-import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261121-background-revert-1';
-import {contextDescription} from './context.mjs?v=20261121-background-revert-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261121-background-revert-1';
-import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261121-background-revert-1';
+import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261122-public-soviet-1';
+import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261122-public-soviet-1';
+import {contextDescription} from './context.mjs?v=20261122-public-soviet-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261122-public-soviet-1';
+import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261122-public-soviet-1';
 
 // DOM helpers shared by the feature inspector and train-protection legend.
 export function createInspectorRows(textNode) {
