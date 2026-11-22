@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261121-background-revert-1';
+import {SEARCH_API} from './map-model.mjs?v=20261122-public-soviet-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
