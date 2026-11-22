@@ -167,7 +167,7 @@ export function bindAdminProviders({document, window, settings, refresh, fetcher
     if (!map) return;
     const bg = settings.background;
     const useNakarte = owner() && historical.value === 'nakarte' && bg === 'soviet';
-    if (useNakarte) layer(nakarteLayer, 'atlasnakarte', 13, '<a href="https://nakarte.me/">AtloMaps via NaKarte</a>');
+    if (useNakarte) layer(nakarteLayer, 'atlasnakarte', 13, 'AtloMaps');
     else removeLayer(nakarteLayer);
     settings.nakarte = useNakarte;
     const variant = owner() && imagery.value === 'google' && ['map','satellite','hybrid'].includes(bg)

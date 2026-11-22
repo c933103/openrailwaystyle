@@ -30,6 +30,7 @@ test('settings login reveals both switches only to the owner; sign-out restores 
   api.bind(map);api.installProtocols({addProtocol:(name,fn)=>protocols.set(name,fn)});
   assert.equal(el('admin-login').closest('section').id,'settings-view');
   assert.equal(el('admin-login').textContent,'Administrator login');
+  assert.deepEqual(Array.from(el('soviet-provider').options, option => option.textContent), ['Indian Open Maps','Alternate source']);
   assert.equal(el('admin-providers').hidden,true);
   el('soviet-provider').value='nakarte';el('soviet-provider').dispatchEvent(new dom.window.Event('change'));
   await assert.rejects(protocols.get('atlasnakarte')({url:'atlasnakarte://2/1/1'},new AbortController()));
@@ -39,6 +40,7 @@ test('settings login reveals both switches only to the owner; sign-out restores 
   assert.equal(el('map-provider').value,'standard');
   el('soviet-provider').value='nakarte';el('soviet-provider').dispatchEvent(new dom.window.Event('change'));
   assert.equal(settings.nakarte,true); assert.ok(layers.has('admin-nakarte'));
+  assert.equal(sources.get('admin-nakarte').attribution, 'AtloMaps');
   el('admin-login').click(); await new Promise(resolve=>setImmediate(resolve));
   assert.equal(el('admin-providers').hidden,true);assert.equal(settings.nakarte,false);
   assert.equal(el('soviet-provider').value,'indian');assert.equal(layers.size,0);dom.window.close();
