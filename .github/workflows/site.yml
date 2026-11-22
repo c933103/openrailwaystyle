@@ -669,6 +669,19 @@ jobs:
             echo '{}' > styles/imagery-config.json
             echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
           fi
+      - name: Configure administrator sign-in
+        env:
+          FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
+          GOOGLE_MAPS_API_KEY: ${{ vars.GOOGLE_MAPS_API_KEY }}
+          OWNER_ID: ${{ github.event.repository.owner.id }}
+        run: |
+          node --input-type=module <<'JS'
+          import {writeFileSync} from 'node:fs';
+          const {FIREBASE_WEB_CONFIG, GOOGLE_MAPS_API_KEY, OWNER_ID} = process.env;
+          const web = JSON.parse(FIREBASE_WEB_CONFIG || '{}');
+          const firebase = Object.fromEntries(['apiKey','authDomain','projectId','appId'].filter(k => typeof web[k] === 'string').map(k => [k, web[k]]));
+          writeFileSync('styles/admin-config.json', JSON.stringify({firebase, ownerId:OWNER_ID, googleMapsKey:GOOGLE_MAPS_API_KEY || ''}));
+          JS
       # Fail closed before removing/uploading anything: the previous deployed
       # site remains live until all four immutable release tables are verified.
       # On the first merge the publisher may still be running; after it succeeds,
