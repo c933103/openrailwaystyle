@@ -211,3 +211,5 @@ body[data-ui="watch"] #pwa-install{display:none!important}
    nine lines' worth, after which it wraps into further columns to
    the right instead of stretching the panel. */
 .atlas-mongolian{writing-mode:vertical-lr;display:inline-block;vertical-align:top;max-inline-size:9.5em;font-family:"Atlas Mongolian","Noto Sans Mongolian",sans-serif}
+
+#admin-login{justify-self:start}

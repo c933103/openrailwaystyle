@@ -32,7 +32,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261122-public-soviet-1" rel="stylesheet">
+  <link href="app.css?v=20261122-admin-settings-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -110,6 +110,12 @@
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         </fieldset>
+        <button type="button" id="admin-login">Administrator login</button>
+        <fieldset id="admin-providers" hidden><legend>Map providers</legend>
+          <label>Map and satellite <select id="map-provider"><option value="standard">Standard</option><option value="google">Google Maps</option></select></label>
+          <label>Soviet topo <select id="soviet-provider"><option value="indian">Indian Open Maps</option><option value="alternate">Alternate source</option></select></label>
+        </fieldset>
+        <p id="admin-notice" class="small" role="status" hidden>Administrator login is unavailable.</p>
       </div>
     </section>
     </div>
@@ -240,6 +246,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261122-public-soviet-1"></script>
+  <script type="module" src="app.mjs?v=20261122-admin-settings-1"></script>
 </body>
 </html>
