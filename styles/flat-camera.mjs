@@ -56,5 +56,16 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
     }
     return tiles;
   };
-  return {center: worldToLngLat([cx, cy]), zoom, bearing, width, height, project, unproject, panBy, zoomAt, visibleTiles};
+  // Affine transformation from a normalized local tile (0..1) to CSS
+  // screen pixels. Keep the unwrapped x to place copies at the date line.
+  const tileTransform = ({z, x, y, worldX = x}) => {
+    const n = 2 ** z;
+    if (!Number.isInteger(z) || z < 0 || z > 26 || !Number.isSafeInteger(worldX) ||
+        !Number.isInteger(y) || y < 0 || y >= n) throw new RangeError('Invalid flat map tile');
+    const [tx, ty] = worldToPoint([worldX / n, y / n]);
+    const sc = scale / n;
+    return [c * sc, -s * sc, s * sc, c * sc, tx, ty];
+  };
+  return {center: worldToLngLat([cx, cy]), zoom, bearing, width, height,
+    project, unproject, panBy, zoomAt, visibleTiles, tileTransform};
 }
