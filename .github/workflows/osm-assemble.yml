@@ -296,12 +296,31 @@ jobs:
           if ! git push --force origin HEAD:axle-load-extract-data; then
             test "$(git ls-remote origin refs/heads/axle-load-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      # The lifecycle dataset also carries the polar caps beyond 85°
+      # (build-polar.mjs in snapshot.yml: ETOPO relief and Overpass features,
+      # none in the extract filter). They are taken unchanged from the
+      # Overpass build's published branch, with its commit; without them
+      # the extract build stays not complete.
+      - name: Take the polar caps from rail-data
+        run: |
+          status=0
+          git ls-remote --exit-code --heads origin rail-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin rail-data
+            if git cat-file -e FETCH_HEAD:polar; then
+              mkdir -p /tmp/rail-polar
+              git archive FETCH_HEAD polar | tar -x -C /tmp/rail-polar
+              echo "POLAR_COMMIT=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+            fi
+          elif [ "$status" != 2 ]; then
+            exit "$status"
+          fi
       - name: Build planned, construction and former railways from the extract
         # One read of the ways, each converted as read. The world in a local
         # run (2026-11-10 index): 179 s, 5.7 GB peak; then the tiles packed
         # by scripts/pack-snapshot.py, as snapshot.yml packs them.
         run: |
-          node --max-old-space-size=6144 scripts/build-extract-lifecycle.mjs assembled.osm.pbf assembled.osm.pbf.json lifecycle-extract | tee lifecycle-extract.json
+          node --max-old-space-size=6144 scripts/build-extract-lifecycle.mjs assembled.osm.pbf assembled.osm.pbf.json lifecycle-extract ${POLAR_COMMIT:+/tmp/rail-polar/polar "$POLAR_COMMIT"} | tee lifecycle-extract.json
           pip install pmtiles==3.8.1
           (cd lifecycle-extract && python ../scripts/pack-snapshot.py)
           { echo '# Planned, construction and former railways from the extract'; echo; echo '```json'; node -e 'const {parts, regression, ...m} = JSON.parse(require("fs").readFileSync("lifecycle-extract/snapshot/manifest.json", "utf8")); console.log(JSON.stringify({...m, regressionWays: regression.ways}, null, 2))'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
@@ -309,8 +328,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         # The rail-data layout: manifest.json, the loading-gauge list, and
         # the archive and table in 80 MB parts (Git blobs stay under the
-        # hosting limit), with source.json. The polar caps are not made here,
-        # so source.json says not complete.
+        # hosting limit), with source.json, and the polar caps from rail-data
+        # when they were found (otherwise source.json says not complete).
         run: |
           mkdir /tmp/lifecycle-publish
           cd /tmp/lifecycle-publish
@@ -324,6 +343,10 @@ jobs:
           split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.pmtiles" lifecycle.pmtiles.part-
           split -b 80M -d -a 3 "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/lifecycle.geojson.gz" lifecycle.geojson.gz.part-
           git add manifest.json loading-gauge.json source.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          if [ -d "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/polar" ]; then
+            cp -r "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/polar" polar
+            git add polar
+          fi
           git commit -q -m "Planned, construction and former railways from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:lifecycle-extract-data; then
             test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
