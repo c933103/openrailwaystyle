@@ -49,7 +49,11 @@ come from [Jigmo](https://kamichikoichi.github.io/jigmo/) release 20250912
 SHA-256 and cuts its `Jigmo2.ttf` and `Jigmo3.ttf` into one WOFF2 file per 256
 code points: 295 slices, 74,942 characters, about 20 MB in all, about 60 kB
 each. The site workflow builds them into `rare-han-v1/` at deploy time (cached
-on the script's hash); they are not committed. Slice names are immutable: a new
+on the script's hash); they are not committed. It takes the archive from this
+repository's own copy, the `font-sources` release, which `font-sources.yml`
+keeps (run it by hand after changing the pinned release); only without that
+copy does it download from the Jigmo site, with a warning. So the site can be
+built while the Jigmo site is unavailable and the Actions cache has expired. Slice names are immutable: a new
 release or a different cut needs a new directory name in the script, in
 `styles/app.mjs` and in `styles/sw.js`.
 
