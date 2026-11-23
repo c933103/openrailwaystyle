@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {flatVectorTile} from '../styles/flat-vector.mjs';
+import {flatVectorTile,offsetFlatPath} from '../styles/flat-vector.mjs';
 import {flatVectorFixture} from './fixtures/flat-vector.mjs';
 
 test('CPU vector tile reads exact source layers, ID, geometry and feature properties', () => {
@@ -20,4 +20,15 @@ test('CPU vector tile reads exact source layers, ID, geometry and feature proper
     assert.deepEqual(tile.layer('constructor'),[]);
   }
   assert.deepEqual(flatVectorTile(new ArrayBuffer(0)).layer('rail'),[]);
+});
+
+test('line offsets translate right on screen and maintain bounded joins',()=>{
+  assert.deepEqual(offsetFlatPath([[0,0],[12,0]],4),[[0,4],[12,4]]);
+  assert.deepEqual(offsetFlatPath([[0,0],[0,12]],4),[[-4,0],[-4,12]]);
+  const turn=offsetFlatPath([[0,0],[12,0],[12,0],[12,12]],2);
+  assert.deepEqual(turn.map(p=>p.map(x=>Math.round(x))),[[0,2],[10,2],[10,12]]);
+  const turnback=offsetFlatPath([[0,0],[12,0],[0,0.01]],3);
+  assert.ok(Math.hypot(turnback[1][0]-12,turnback[1][1])<=6.001);
+  const square=offsetFlatPath([[0,0],[12,0],[12,12],[0,12],[0,0]],2,true);
+  assert.deepEqual(square.map(p=>p.map(x=>Math.round(x))),[[2,2],[10,2],[10,10],[2,10]]);
 });

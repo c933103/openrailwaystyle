@@ -44,8 +44,13 @@ try {
       {id:'rail',type:'line','source-layer':'rail',filter:['==',['get','railway'],'rail'],
         paint:{'line-color':['match',['get','name'],'Fixture Line','#c80000','#ffffff'],
           'line-width':['interpolate',['linear'],['zoom'],0,5,2,9]}},
-      {id:'station',type:'circle','source-layer':'station',paint:{'circle-color':'#008000','circle-radius':6}},
+      {id:'casing',type:'line','source-layer':'rail',paint:{'line-color':'#000080','line-width':2,'line-gap-width':10}},
+      {id:'right',type:'line','source-layer':'rail',paint:{'line-color':'#cc8800','line-width':3,'line-offset':10}},
+      {id:'left',type:'line','source-layer':'rail',paint:{'line-color':'#8800cc','line-width':3,'line-offset':-10}},
+      {id:'station',type:'circle','source-layer':'station',paint:{'circle-color':'#008000','circle-radius':6,
+        'circle-stroke-width':3,'circle-stroke-color':'#202020'}},
     ];
+    context.fillStyle='#faecd0';context.fillRect(116,146,24,22);
     for(const layer of layers.map(compileFlatGeometryStyle)) {
       if(!layer.visibleAt(camera.zoom)) continue;
       for(const feature of features.layer(layer.sourceLayer)) {
@@ -54,8 +59,10 @@ try {
       }
     }
     const pixel=(x,y)=>[...context.getImageData(x,y,1,1).data];
-    return {gl,rail:pixel(128,56),outsideRail:pixel(128,63),fill:pixel(64,120),hole:pixel(150,150),station:pixel(128,156)};
+    return {gl,rail:pixel(128,56),outsideRail:pixel(128,72),right:pixel(128,66),left:pixel(128,46),
+      casing1:pixel(128,50),casing2:pixel(128,62),fill:pixel(64,120),hole:pixel(150,150),station:pixel(128,156),outline:pixel(135,156),underlay:pixel(138,156)};
   });
-  assert.deepEqual(found,{gl:false,rail:[200,0,0,255],outsideRail:[0,0,0,0],fill:[0,85,170,255],hole:[0,0,0,0],station:[0,128,0,255]});
+  assert.deepEqual(found,{gl:false,rail:[200,0,0,255],outsideRail:[0,0,0,0],right:[204,136,0,255],left:[136,0,204,255],
+    casing1:[0,0,128,255],casing2:[0,0,128,255],fill:[0,85,170,255],hole:[0,0,0,0],station:[0,128,0,255],outline:[32,32,32,255],underlay:[250,236,208,255]});
   console.log('Firefox WebGL disabled: MVT line, polygon hole and station actual pixels passed');
 } finally {await browser?.close();server.close();}
