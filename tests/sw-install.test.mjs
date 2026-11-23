@@ -152,7 +152,18 @@ test('installation drains response bodies without exhausting its three network s
   assert.equal(await app.clone().text(), `new: ${scope}app.mjs?v=new`);
 });
 
-for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
+test('a staged Canvas renderer is available from the exact warm shell version offline', async () => {
+  const worker=startWorker({version:'canvas-shell'});
+  await bounded(worker.lifecycle('install'));
+  await worker.lifecycle('activate');
+  const path='vendor/flat-browser.js';
+  const current=path+'?v=canvas-shell';
+  worker.setOffline();
+  assert.equal(await (await worker.request(current)).text(), 'canvas-shell: '+scope+current);
+  await assert.rejects(worker.request(path+'?v=other-shell'));
+});
+
+for (const fail of ['map-model.mjs', 'flat-browser.js', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
   test(`a truncated ${fail} response cannot publish or activate an incomplete shell`, async () => {
     const worker = startWorker({fail});
     await assert.rejects(bounded(worker.lifecycle('install')), /truncated response/);
