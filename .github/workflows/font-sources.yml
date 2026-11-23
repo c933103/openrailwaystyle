@@ -1,0 +1,36 @@
+name: Keep copies of pinned font sources
+# The site build cuts its rare Han glyph slices from a pinned Jigmo archive
+# (CC0; scripts/build-rare-han.py). This keeps a copy of that exact archive
+# in this repository's font-sources release, so the site can be built while
+# the upstream site is unavailable. Run by hand after the pinned release
+# changes; an archive already kept is not downloaded again.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: font-sources
+  cancel-in-progress: false
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep the pinned Jigmo archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          read -r name url sha < <(python3 scripts/build-rare-han.py --source)
+          if gh release view font-sources --json assets --jq '.assets[].name' 2>/dev/null | grep -Fxq "$name"; then
+            echo "$name is already kept in release font-sources"
+            exit 0
+          fi
+          curl -fsSL --proto '=https' --max-time 600 -A 'RailwayAtlas-font-sources/1 (+https://github.com/c933103/openrailwaystyle)' -o "/tmp/$name" "$url"
+          echo "$sha  /tmp/$name" | sha256sum -c -
+          gh release view font-sources >/dev/null 2>&1 || gh release create font-sources --target "$GITHUB_SHA" --prerelease \
+            --title 'Pinned font sources' \
+            --notes 'Exact copies of the pinned upstream font archives the site build uses (Jigmo: CC0 1.0, https://kamichikoichi.github.io/jigmo/), so the site can be built while an upstream site is unavailable. Checked against the SHA-256 pinned in scripts/build-rare-han.py.'
+          gh release upload font-sources "/tmp/$name"

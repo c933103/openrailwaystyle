@@ -9,9 +9,14 @@ directory name (rare-han-v2) in this script, the app and the service worker.
 
     pip install fonttools brotli
     python scripts/build-rare-han.py [Jigmo zip] [output directory]
+    python scripts/build-rare-han.py --source
 
 Without a zip argument the pinned release is downloaded. Its SHA-256 is
-checked either way, so a changed upstream file stops the build.
+checked either way, so a changed upstream file stops the build. --source
+prints the archive's file name, URL and SHA-256 (no fontTools needed), for
+the site workflow, which first takes this repository's own copy (release
+font-sources, kept by font-sources.yml), so a build does not depend on the
+upstream site staying online.
 """
 import hashlib
 import io
@@ -21,11 +26,9 @@ import zipfile
 from pathlib import Path
 from urllib.request import urlopen
 
-from fontTools import subset
-from fontTools.ttLib import TTFont
-
 RELEASE = "20250912"
-URL = f"https://kamichikoichi.github.io/jigmo/Jigmo-{RELEASE}.zip"
+NAME = f"Jigmo-{RELEASE}.zip"
+URL = f"https://kamichikoichi.github.io/jigmo/{NAME}"
 SHA256 = "5744c7386d129475d87607ca66d043c8793c65448adeaedc921b6931890e5d0b"
 FIRST, LAST = 0x20000, 0x3FFFF
 FILES = ("Jigmo2.ttf", "Jigmo3.ttf")
@@ -33,6 +36,8 @@ FILES = ("Jigmo2.ttf", "Jigmo3.ttf")
 
 def slices(font_bytes):
     """(block, woff2 bytes) for every 256-code-point block with glyphs."""
+    from fontTools import subset
+    from fontTools.ttLib import TTFont
     cmap = TTFont(io.BytesIO(font_bytes), lazy=True).getBestCmap()
     blocks = {}
     for code in cmap:
@@ -58,6 +63,9 @@ def slices(font_bytes):
 
 
 def main():
+    if sys.argv[1:] == ["--source"]:
+        print(NAME, URL, SHA256)
+        return
     source = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     output = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parents[1] / "styles/fonts/rare-han-v1"
     archive = source.read_bytes() if source else urlopen(URL, timeout=120).read()
