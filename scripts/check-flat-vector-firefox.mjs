@@ -6,7 +6,8 @@ import {flatVectorFixture} from '../tests/fixtures/flat-vector.mjs';
 
 const {outputFiles: [{text: script}]} = await build({
   stdin: {contents: `export {flatCamera} from './flat-camera.mjs';
-    export {flatVectorTile, drawFlatVectorLayer} from './flat-vector.mjs';`,
+    export {flatVectorTile, drawFlatVectorLayer} from './flat-vector.mjs';
+    export {compileFlatGeometryStyle} from './flat-style.mjs';`,
     resolveDir: new URL('../styles/', import.meta.url).pathname, sourcefile: 'flat-vector-fixture.mjs'},
   bundle:true, format:'esm', write:false,
 });
@@ -29,19 +30,32 @@ try {
   const found = await page.evaluate(async () => {
     const gl=Boolean(document.createElement('canvas').getContext('webgl2')||
       document.createElement('canvas').getContext('webgl'));
-    const {flatCamera, flatVectorTile, drawFlatVectorLayer}=await import('/map.mjs');
+    const {flatCamera, flatVectorTile, drawFlatVectorLayer, compileFlatGeometryStyle}=await import('/map.mjs');
     const context=document.querySelector('canvas').getContext('2d');
     const camera=flatCamera({center:[-90,66.51326044311186],zoom:0,width:256,height:256});
     const tile={z:1,x:0,y:0};
     const response=await fetch('/fixture.pbf');
     if(!response.ok)throw new Error('Fixture tile unavailable');
     const features=flatVectorTile(await response.arrayBuffer());
-    drawFlatVectorLayer(context,camera,tile,features.layer('area'),{type:'fill',color:'#0055aa'});
-    drawFlatVectorLayer(context,camera,tile,features.layer('rail'),{type:'line',color:'#c80000',width:5});
-    drawFlatVectorLayer(context,camera,tile,features.layer('station'),{type:'circle',color:'#008000',radius:6});
+    const layers=[
+      {id:'area',type:'fill','source-layer':'area',paint:{'fill-color':'#0055aa'}},
+      {id:'excluded',type:'line','source-layer':'rail',filter:['==',['get','railway'],'tram'],
+        paint:{'line-color':'#ffffff','line-width':22}},
+      {id:'rail',type:'line','source-layer':'rail',filter:['==',['get','railway'],'rail'],
+        paint:{'line-color':['match',['get','name'],'Fixture Line','#c80000','#ffffff'],
+          'line-width':['interpolate',['linear'],['zoom'],0,5,2,9]}},
+      {id:'station',type:'circle','source-layer':'station',paint:{'circle-color':'#008000','circle-radius':6}},
+    ];
+    for(const layer of layers.map(compileFlatGeometryStyle)) {
+      if(!layer.visibleAt(camera.zoom)) continue;
+      for(const feature of features.layer(layer.sourceLayer)) {
+        const paint=layer.resolve({zoom:camera.zoom},feature,{},tile);
+        if(paint)drawFlatVectorLayer(context,camera,tile,[feature],paint);
+      }
+    }
     const pixel=(x,y)=>[...context.getImageData(x,y,1,1).data];
-    return {gl,rail:pixel(128,56),fill:pixel(64,120),hole:pixel(150,150),station:pixel(128,156)};
+    return {gl,rail:pixel(128,56),outsideRail:pixel(128,63),fill:pixel(64,120),hole:pixel(150,150),station:pixel(128,156)};
   });
-  assert.deepEqual(found,{gl:false,rail:[200,0,0,255],fill:[0,85,170,255],hole:[0,0,0,0],station:[0,128,0,255]});
+  assert.deepEqual(found,{gl:false,rail:[200,0,0,255],outsideRail:[0,0,0,0],fill:[0,85,170,255],hole:[0,0,0,0],station:[0,128,0,255]});
   console.log('Firefox WebGL disabled: MVT line, polygon hole and station actual pixels passed');
 } finally {await browser?.close();server.close();}
