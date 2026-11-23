@@ -246,11 +246,24 @@ jobs:
         with:
           path: styles/fonts/rare-han-v1
           key: rare-han-${{ hashFiles('scripts/build-rare-han.py') }}
+      # The pinned archive comes from this repository's own copy (release
+      # font-sources, kept by font-sources.yml) when it exists, so the build
+      # does not depend on the upstream site; otherwise from upstream. The
+      # script checks its SHA-256 either way.
       - name: Build rare Han glyph slices
         if: steps.rare-han.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           pip install fonttools==4.66.1 brotli==1.2.0
-          python scripts/build-rare-han.py
+          read -r name url sha < <(python scripts/build-rare-han.py --source)
+          mkdir -p /tmp/font-sources
+          if gh release download font-sources --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir /tmp/font-sources; then
+            python scripts/build-rare-han.py "/tmp/font-sources/$name"
+          else
+            echo "::warning::No copy of $name in release font-sources; downloading $url (run font-sources.yml to keep one)"
+            python scripts/build-rare-han.py
+          fi
       # World label font slices (styles/world-font.mjs): the packaged Noto
       # designs for the local scripts of common languages, cut per family,
       # weight and 256 characters, so glyphs the remote glyph source does
