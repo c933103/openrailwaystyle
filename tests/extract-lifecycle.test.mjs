@@ -5,7 +5,8 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {buildExtractLifecycle, checkPolar, isGaugeWay, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS, POLAR_INDEXES} from '../scripts/build-extract-lifecycle.mjs';
+import {buildExtractLifecycle, checkPolar, isGaugeWay, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS, POLAR_CAPS, polarFiles} from '../scripts/build-extract-lifecycle.mjs';
+import {createHash} from 'node:crypto';
 import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
 import {fileURLToPath} from 'node:url';
 import {lifecycleRegression, stateCounts, writeLifecycleSnapshot} from '../scripts/lifecycle-files.mjs';
@@ -104,22 +105,36 @@ test('the snapshot in the Overpass layout, with source.json naming what is not m
 });
 
 // The polar caps (build-polar.mjs: ETOPO and Overpass features beyond 85°,
-// none in the extract filter) are taken unchanged from rail-data.
+// none in the extract filter) are taken unchanged from rail-data, and only
+// when every file their indexes need is there.
 const COMMIT = 'a'.repeat(40);
-async function polarDir(dir, files = {'north-index.json': '{"cap":"north"}', 'south-index.json': '{"cap":"south"}', 'north-relief.png': 'png bytes'}) {
+const SATELLITE = Buffer.from('satellite jpeg bytes');
+const capIndex = (cap, {satellite = true} = {}) => ({cap, radius: 550,
+  units: Object.fromEntries(['metric', 'imperial'].map(units => [units, [{from: 0, n: 1, tiles: cap === 'south' ? ['0-0'] : []}, {from: 9, n: 2, tiles: ['0-0', '1-1']}, {from: 11, n: 4, tiles: ['2-3']}]])),
+  relief: {size: 741}, depth: {format: 'rg8-metres-water-mask-v1'}, carto: {from: 10, n: 4, tiles: ['1-1', '2-2']},
+  ...(satellite ? {satellite: {format: 'gibs-blue-marble-polar-v1', sha256: createHash('sha256').update(SATELLITE).digest('hex')}} : {})});
+// A complete pair in build-polar.mjs's layout: 28 files the indexes need,
+// plus SATELLITE-SOURCES.md, which nothing needs.
+async function polarDir(dir, {satellite = true} = {}) {
   const polar = join(dir, 'rail-polar');
   await mkdir(polar, {recursive: true});
-  for (const [name, text] of Object.entries(files)) await writeFile(join(polar, name), text);
+  await writeFile(join(polar, 'SATELLITE-SOURCES.md'), 'sources');
+  for (const cap of ['north', 'south']) {
+    const index = capIndex(cap, {satellite});
+    await writeFile(join(polar, `${cap}-index.json`), JSON.stringify(index));
+    for (const name of polarFiles(cap, index).slice(1)) await writeFile(join(polar, name), name.endsWith('-satellite.jpg') ? SATELLITE : `${name} bytes`);
+  }
   return polar;
 }
 test('with the polar caps from rail-data the build is complete, and they are copied unchanged with their commit', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-polar-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
   const polar = await polarDir(dir), out = join(dir, 'lifecycle');
-  const manifest = await buildExtractLifecycle('x', report(), out, {read: fakeRead(), polar: {dir: polar, commit: COMMIT}});
-  assert.deepEqual(manifest.polar, {from: 'rail-data', commit: COMMIT, files: 3});
-  assert.deepEqual((await readdir(join(out, 'snapshot', 'polar'))).sort(), ['north-index.json', 'north-relief.png', 'south-index.json']);
-  assert.equal(await readFile(join(out, 'snapshot', 'polar', 'north-relief.png'), 'utf8'), 'png bytes');
+  const manifest = await buildExtractLifecycle('x', report(), out, {read: fakeRead(), now: () => new Date('2026-11-23T08:00:00Z'), polar: {dir: polar, commit: COMMIT}});
+  assert.deepEqual(manifest.polar, {from: 'rail-data', commit: COMMIT, files: 28, copied: '2026-11-23T08:00:00.000Z'});
+  const copied = (await readdir(join(out, 'snapshot', 'polar'))).sort();
+  assert.deepEqual(copied, (await readdir(polar)).sort(), 'every file, the unneeded one too');
+  assert.equal(await readFile(join(out, 'snapshot', 'polar', 'north-carto-2-2.json'), 'utf8'), 'north-carto-2-2.json bytes');
   assert.deepEqual(JSON.parse(await readFile(join(out, 'snapshot', 'manifest.json'), 'utf8')).polar, manifest.polar);
   const marker = await readFile(join(out, 'source.json'), 'utf8');
   assert.deepEqual(JSON.parse(marker), {schema: 1, dataset: 'lifecycle', source: 'extract', complete: true, osmTimestamp: '2026-11-03T21:24:23Z'});
@@ -129,19 +144,45 @@ test('with the polar caps from rail-data the build is complete, and they are cop
   await buildExtractLifecycle('x', report({missingRegions: ['gap/0_0_45_45']}), partial, {read: fakeRead(), polar: {dir: polar, commit: COMMIT}});
   assert.equal(JSON.parse(await readFile(join(partial, 'source.json'), 'utf8')).complete, false);
 });
-test('polar caps without both indexes, with an unreadable index or without their commit are refused', async t => {
+test('the files the polar indexes need: each contour band\'s and Carto tile, relief, features, and depth and satellite only when indexed', () => {
+  const north = polarFiles('north', capIndex('north'));
+  assert.deepEqual(north.slice(0, 3), ['north-index.json', 'north-relief.png', 'north-features.json']);
+  assert.ok(north.includes('north-metric-1-1-1.json') && north.includes('north-imperial-2-2-3.json'), 'named by the band\'s position, as build-polar writes them');
+  assert.ok(!north.some(name => name.startsWith('north-metric-0-')), 'an empty band needs no tile');
+  assert.ok(polarFiles('south', capIndex('south')).includes('south-metric-0-0-0.json'));
+  assert.ok(north.includes('north-carto-1-1.json') && north.includes('north-depth.png') && north.includes('north-satellite.jpg'));
+  assert.ok(!polarFiles('north', capIndex('north', {satellite: false})).includes('north-satellite.jpg'), 'satellite imagery is optional in build-polar');
+  assert.throws(() => polarFiles('north', capIndex('south')), /names cap "south"/);
+  assert.throws(() => polarFiles('north', {...capIndex('north'), carto: undefined}), /no Carto tiles/);
+  assert.throws(() => polarFiles('north', {...capIndex('north'), units: {metric: []}}), /no metric contour bands/);
+});
+test('polar caps missing one indexed tile, with an empty file, a wrong satellite image or no commit are refused, and no complete marker is written', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-polar-bad-'));
   t.after(() => rm(dir, {recursive: true, force: true}));
-  assert.deepEqual(POLAR_INDEXES, ['north-index.json', 'south-index.json']);
-  const half = await polarDir(join(dir, 'half'), {'north-index.json': '{}'});
-  await assert.rejects(checkPolar(half, COMMIT), /lack south-index\.json/);
-  await assert.rejects(buildExtractLifecycle('x', report(), join(dir, 'out'), {read: () => assert.fail('nothing read'), polar: {dir: half, commit: COMMIT}}), /lack south-index\.json/);
-  const broken = await polarDir(join(dir, 'broken'), {'north-index.json': '{}', 'south-index.json': '{'});
-  await assert.rejects(checkPolar(broken, COMMIT), SyntaxError);
+  assert.deepEqual(POLAR_CAPS, ['north', 'south']);
+  const broken = async (name, change) => {
+    const polar = await polarDir(join(dir, name));
+    await change(polar);
+    const out = join(dir, `${name}-out`);
+    await assert.rejects(buildExtractLifecycle('x', report(), out, {read: () => assert.fail('nothing read'), polar: {dir: polar, commit: COMMIT}}));
+    await assert.rejects(readFile(join(out, 'source.json')), {code: 'ENOENT'}, 'no marker at all, let alone a complete one');
+    return polar;
+  };
+  const tile = await broken('tile', polar => rm(join(polar, 'south-imperial-2-2-3.json')));
+  await assert.rejects(checkPolar(tile, COMMIT), /lack south-imperial-2-2-3\.json, which the south index needs/);
+  const carto = await broken('carto', polar => rm(join(polar, 'north-carto-1-1.json')));
+  await assert.rejects(checkPolar(carto, COMMIT), /lack north-carto-1-1\.json/);
+  const empty = await broken('empty', polar => writeFile(join(polar, 'north-relief.png'), ''));
+  await assert.rejects(checkPolar(empty, COMMIT), /north-relief\.png is empty/);
+  const index = await broken('index', polar => rm(join(polar, 'south-index.json')));
+  await assert.rejects(checkPolar(index, COMMIT), /lack a readable south-index\.json/);
+  const image = await broken('image', polar => writeFile(join(polar, 'north-satellite.jpg'), 'other bytes'));
+  await assert.rejects(checkPolar(image, COMMIT), /north-satellite\.jpg does not match/);
   const good = await polarDir(join(dir, 'good'));
   await assert.rejects(checkPolar(good, 'main'), /need their rail-data commit/);
   await assert.rejects(checkPolar(good, undefined), /need their rail-data commit/);
-  assert.equal(await checkPolar(good, COMMIT), 3);
+  assert.equal(await checkPolar(good, COMMIT), 28);
+  assert.equal(await checkPolar(await polarDir(join(dir, 'no-satellite'), {satellite: false}), COMMIT), 26, 'without satellite imagery in the indexes, none is needed');
 });
 test('the workflow step takes rail-data\'s polar caps with their commit, and nothing when the branch or the caps are absent', async t => {
   const workflow = await readFile(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
