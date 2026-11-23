@@ -1,39 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261122-admin-settings-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261122-admin-settings-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261122-admin-settings-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261122-admin-settings-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261122-admin-settings-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261122-admin-settings-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261123-shared-tile-dispatch-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261123-shared-tile-dispatch-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261123-shared-tile-dispatch-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261123-shared-tile-dispatch-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261123-shared-tile-dispatch-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261123-shared-tile-dispatch-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261122-admin-settings-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261122-admin-settings-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261122-admin-settings-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261122-admin-settings-1';
-import {createWorldFonts} from './world-font.mjs?v=20261122-admin-settings-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261122-admin-settings-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261123-shared-tile-dispatch-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261123-shared-tile-dispatch-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261123-shared-tile-dispatch-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261123-shared-tile-dispatch-1';
+import {createWorldFonts} from './world-font.mjs?v=20261123-shared-tile-dispatch-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261123-shared-tile-dispatch-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261122-admin-settings-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261122-admin-settings-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261123-shared-tile-dispatch-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261123-shared-tile-dispatch-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261122-admin-settings-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261122-admin-settings-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261122-admin-settings-1';
-import {departureItem} from './departures-ui.mjs?v=20261122-admin-settings-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261122-admin-settings-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261122-admin-settings-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261122-admin-settings-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261122-admin-settings-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261122-admin-settings-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261122-admin-settings-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261122-admin-settings-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261122-admin-settings-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261122-admin-settings-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261122-admin-settings-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261122-admin-settings-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261122-admin-settings-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261122-admin-settings-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261122-admin-settings-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261122-admin-settings-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261123-shared-tile-dispatch-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261123-shared-tile-dispatch-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261123-shared-tile-dispatch-1';
+import {departureItem} from './departures-ui.mjs?v=20261123-shared-tile-dispatch-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261123-shared-tile-dispatch-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261123-shared-tile-dispatch-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261123-shared-tile-dispatch-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261123-shared-tile-dispatch-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261123-shared-tile-dispatch-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261123-shared-tile-dispatch-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261123-shared-tile-dispatch-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261123-shared-tile-dispatch-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261123-shared-tile-dispatch-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261123-shared-tile-dispatch-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261123-shared-tile-dispatch-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261123-shared-tile-dispatch-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261123-shared-tile-dispatch-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261123-shared-tile-dispatch-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261123-shared-tile-dispatch-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261123-shared-tile-dispatch-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -90,7 +91,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261122-admin-settings-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261123-shared-tile-dispatch-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1497,9 +1498,11 @@ async function initialize() {
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
+  // Register providers once; MapLibre receives the same handlers the flat renderer can read.
+  const tileProtocols = createSharedTileProtocols({forward: maplibregl.addProtocol.bind(maplibregl)});
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
-  maplibregl.addProtocol('pmtiles', protocol.tile);
+  tileProtocols.addProtocol('pmtiles', protocol.tile);
   // Both the labelled basemap and bathymetry read the same PMTiles archive.
   // Create it with the timeout wrapper once, before either consumer can ask
   // Protocol.tile() to create an untimed default FetchSource for that URL.
@@ -1507,10 +1510,10 @@ async function initialize() {
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(basemapSource(url), 20000));
   const requestRefresh=createReferenceRefresh(()=>{if(ready)applyRailReferenceState();});
   worldGlyphFallback = labelCode.createGlyphFallback({worldFonts, language: () => settings.language});
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure, glyphFallback: worldGlyphFallback,
+  const labelProtocols = installLabelProtocols(tileProtocols,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure, glyphFallback: worldGlyphFallback,
     onRequestChange:requestRefresh.notify, isMoving:() => Boolean(map?.isMoving() || map?.isZooming())});
   const reference=createReferenceReader({root:new URL('./data/mainline-reference/',import.meta.url)});
-  maplibregl.addProtocol('mainlinetiles',async(params,controller)=>({
+  tileProtocols.addProtocol('mainlinetiles',async(params,controller)=>({
     data:await reference.tile(params.url.slice('mainlinetiles://'.length),controller.signal),
   }));
   stationTileFor=labelProtocols?.stationTile||null;
@@ -1519,13 +1522,13 @@ async function initialize() {
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
-  dem.setupMaplibre(maplibregl);
+  dem.setupMaplibre(tileProtocols);
   // Level crossings, branch lines, service routes and signals are served as
   // stored (names not localized); the rare Han in their text still loads.
   for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['conveyingtiles','conveying',false],['aerialwaytiles','aerialways']]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
-  maplibregl.addProtocol(scheme, async (params, controller) => {
+  tileProtocols.addProtocol(scheme, async (params, controller) => {
     const [key,query] = params.url.slice((scheme+'://').length).split('?');
     const lang = new URLSearchParams(query).get('lang') || 'local';
     if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid lifecycle tile');
@@ -1550,9 +1553,9 @@ async function initialize() {
   }
   // Historic areas come in bundles of tiles (tile-bundles.mjs); a snapshot in
   // the earlier one-file-per-tile layout, or none yet, still reads.
-  maplibregl.addProtocol('energynetwork',createEnergyNetworkProtocol({root:new URL('./data/energy-network/',import.meta.url),active:()=>settings.mode==='electrification'}));
+  tileProtocols.addProtocol('energynetwork',createEnergyNetworkProtocol({root:new URL('./data/energy-network/',import.meta.url),active:()=>settings.mode==='electrification'}));
   const heritage = createBundleReader({root:new URL('./data/heritage/', import.meta.url)});
-  maplibregl.addProtocol('heritagetiles', async (params, controller) => {
+  tileProtocols.addProtocol('heritagetiles', async (params, controller) => {
     const [key,query] = params.url.slice('heritagetiles://'.length).split('?');
     if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid historic area tile');
     const [z,x,y] = key.split('/').map(Number);
@@ -1563,9 +1566,9 @@ async function initialize() {
     return {data: localized};
   });
   installSovietStyle(style);
-  maplibregl.addProtocol('atlassoviet', sovietTile);
+  tileProtocols.addProtocol('atlassoviet', sovietTile);
   const imageryProtocol=createImageryProtocol({esriKey:imagery.esriKey}),eoxAttribution=style.sources.satellite.attribution;
-  maplibregl.addProtocol('atlasimagery',imageryProtocol.tile);
+  tileProtocols.addProtocol('atlasimagery',imageryProtocol.tile);
   applyImageryConfig(style.sources.satellite, imagery);
   // Independent fallback uses only existing basemap tiles and vetted hubs.
   // It is not a complete replacement for a worldwide station inventory.
@@ -1585,14 +1588,14 @@ async function initialize() {
   };
   const readWater = data => labelCode.readTile(data, ['water']);
   surfaceElevation = createSurfaceElevation(DEM_URL, {waterTile:readWaterTile, readTile:readWater});
-  installBathymetry(maplibregl, dem, {
+  installBathymetry(tileProtocols, dem, {
     isMoving:() => Boolean(map?.isMoving() || map?.isZooming()),
     waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
   });
   // Distinct 3D mesh: fine DEM loses sea depth above zoom 10. The original
   // repair and ocean polygons restore correct land and seabed heights.
-  installTerrain3D(maplibregl, dem, {
+  installTerrain3D(tileProtocols, dem, {
     waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/terrain-3d-worker.js?v=${assetVersion}`, import.meta.url)),
   });
@@ -1798,7 +1801,7 @@ async function initialize() {
   // Do not install or request the optional point tiles until the complete
   // release manifest and bundle index are verified against each other. A
   // partial/unpublished OSM crawl leaves the existing dot layers untouched.
-  stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl,
+  stationWorldLifecycle=installWorldStationLifecycle({map,maplibregl:tileProtocols,
     root:new URL('./data/station-points/',import.meta.url),fetcher:fetch,
     onChange:(active,styleReady)=>{
       stationWorldActive=active;
