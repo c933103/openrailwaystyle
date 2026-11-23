@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, readFile, readdir, rm, writeFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, readdir, rm, writeFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {buildExtractLifecycle, isGaugeWay, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS} from '../scripts/build-extract-lifecycle.mjs';
+import {buildExtractLifecycle, checkPolar, isGaugeWay, isLifecycleWay, lifecycleFeatures, LIFECYCLE_TRACKS, MISSING_PARTS, POLAR_INDEXES} from '../scripts/build-extract-lifecycle.mjs';
 import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
 import {fileURLToPath} from 'node:url';
 import {lifecycleRegression, stateCounts, writeLifecycleSnapshot} from '../scripts/lifecycle-files.mjs';
@@ -103,6 +103,87 @@ test('the snapshot in the Overpass layout, with source.json naming what is not m
   assert.match(checkMarker(marker, 'lifecycle'), /not complete/, 'the site keeps rail-data');
 });
 
+// The polar caps (build-polar.mjs: ETOPO and Overpass features beyond 85°,
+// none in the extract filter) are taken unchanged from rail-data.
+const COMMIT = 'a'.repeat(40);
+async function polarDir(dir, files = {'north-index.json': '{"cap":"north"}', 'south-index.json': '{"cap":"south"}', 'north-relief.png': 'png bytes'}) {
+  const polar = join(dir, 'rail-polar');
+  await mkdir(polar, {recursive: true});
+  for (const [name, text] of Object.entries(files)) await writeFile(join(polar, name), text);
+  return polar;
+}
+test('with the polar caps from rail-data the build is complete, and they are copied unchanged with their commit', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-polar-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  const polar = await polarDir(dir), out = join(dir, 'lifecycle');
+  const manifest = await buildExtractLifecycle('x', report(), out, {read: fakeRead(), polar: {dir: polar, commit: COMMIT}});
+  assert.deepEqual(manifest.polar, {from: 'rail-data', commit: COMMIT, files: 3});
+  assert.deepEqual((await readdir(join(out, 'snapshot', 'polar'))).sort(), ['north-index.json', 'north-relief.png', 'south-index.json']);
+  assert.equal(await readFile(join(out, 'snapshot', 'polar', 'north-relief.png'), 'utf8'), 'png bytes');
+  assert.deepEqual(JSON.parse(await readFile(join(out, 'snapshot', 'manifest.json'), 'utf8')).polar, manifest.polar);
+  const marker = await readFile(join(out, 'source.json'), 'utf8');
+  assert.deepEqual(JSON.parse(marker), {schema: 1, dataset: 'lifecycle', source: 'extract', complete: true, osmTimestamp: '2026-11-03T21:24:23Z'});
+  assert.equal(checkMarker(marker, 'lifecycle'), null, 'the site may take it once DATA_SOURCES selects it');
+  // An assembly that does not cover the world stays not complete, caps or not.
+  const partial = join(dir, 'partial');
+  await buildExtractLifecycle('x', report({missingRegions: ['gap/0_0_45_45']}), partial, {read: fakeRead(), polar: {dir: polar, commit: COMMIT}});
+  assert.equal(JSON.parse(await readFile(join(partial, 'source.json'), 'utf8')).complete, false);
+});
+test('polar caps without both indexes, with an unreadable index or without their commit are refused', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-polar-bad-'));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  assert.deepEqual(POLAR_INDEXES, ['north-index.json', 'south-index.json']);
+  const half = await polarDir(join(dir, 'half'), {'north-index.json': '{}'});
+  await assert.rejects(checkPolar(half, COMMIT), /lack south-index\.json/);
+  await assert.rejects(buildExtractLifecycle('x', report(), join(dir, 'out'), {read: () => assert.fail('nothing read'), polar: {dir: half, commit: COMMIT}}), /lack south-index\.json/);
+  const broken = await polarDir(join(dir, 'broken'), {'north-index.json': '{}', 'south-index.json': '{'});
+  await assert.rejects(checkPolar(broken, COMMIT), SyntaxError);
+  const good = await polarDir(join(dir, 'good'));
+  await assert.rejects(checkPolar(good, 'main'), /need their rail-data commit/);
+  await assert.rejects(checkPolar(good, undefined), /need their rail-data commit/);
+  assert.equal(await checkPolar(good, COMMIT), 3);
+});
+test('the workflow step takes rail-data\'s polar caps with their commit, and nothing when the branch or the caps are absent', async t => {
+  const workflow = await readFile(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
+  const command = workflow.split('      - name: Take the polar caps from rail-data\n        run: |\n')[1].split('\n      - ')[0]
+    .split('\n').map(line => line.replace(/^          /, '')).join('\n');
+  const git = (cwd, ...args) => { const r = spawnSync('git', args, {cwd, encoding: 'utf8'}); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+  const setup = async files => {
+    const dir = await mkdtemp(join(tmpdir(), 'extract-lifecycle-take-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    const origin = join(dir, 'origin');
+    await mkdir(origin);
+    git(origin, 'init', '-q', '-b', 'main');
+    git(origin, 'config', 'user.email', 'fixture@example.invalid'); git(origin, 'config', 'user.name', 'fixture');
+    await writeFile(join(origin, 'README'), 'main');
+    git(origin, 'add', '.'); git(origin, 'commit', '-q', '-m', 'main');
+    let commit;
+    if (files) {
+      git(origin, 'checkout', '-q', '--orphan', 'rail-data');
+      git(origin, 'rm', '-q', '-rf', '.');
+      for (const [name, text] of Object.entries(files)) { await mkdir(join(origin, name, '..'), {recursive: true}); await writeFile(join(origin, name), text); }
+      git(origin, 'add', '.'); git(origin, 'commit', '-q', '-m', 'rail-data');
+      commit = git(origin, 'rev-parse', 'HEAD');
+      git(origin, 'checkout', '-q', 'main');
+    }
+    const work = join(dir, 'work');
+    git(dir, 'clone', '-q', origin, work);
+    const env = join(dir, 'github-env');
+    await writeFile(env, '');
+    const result = spawnSync('bash', ['-e', '-c', command.replaceAll('/tmp/', `${dir}/tmp/`)], {cwd: work, encoding: 'utf8', env: {...process.env, GITHUB_ENV: env}});
+    return {dir, commit, result, env: await readFile(env, 'utf8')};
+  };
+  const taken = await setup({'polar/north-index.json': '{}', 'polar/south-index.json': '{}', 'manifest.json': '{}'});
+  assert.equal(taken.result.status, 0, taken.result.stderr);
+  assert.equal(taken.env, `POLAR_COMMIT=${taken.commit}\n`);
+  assert.deepEqual((await readdir(join(taken.dir, 'tmp', 'rail-polar', 'polar'))).sort(), ['north-index.json', 'south-index.json']);
+  const noCaps = await setup({'manifest.json': '{}'});
+  assert.equal(noCaps.result.status, 0, noCaps.result.stderr);
+  assert.equal(noCaps.env, '', 'no caps: the build stays not complete');
+  const noBranch = await setup();
+  assert.equal(noBranch.result.status, 0, noBranch.result.stderr);
+  assert.equal(noBranch.env, '');
+});
 test('the loading-gauge list: the Overpass build\'s selection and the same file it writes from the same ways', async t => {
   assert.deepEqual(ELEMENTS.filter(isGaugeWay).map(e => e.id), GAUGES);
   const source = await readFile(new URL('../scripts/build-loading-gauge-list.mjs', import.meta.url), 'utf8');
@@ -163,6 +244,13 @@ test('the assembly workflow builds and packs it after the axle-load lookup, and 
   assert.match(workflow, /git add manifest\.json loading-gauge\.json source\.json lifecycle\.pmtiles\.part-\* lifecycle\.geojson\.gz\.part-\*/);
   assert.match(workflow, /git push --force origin HEAD:lifecycle-extract-data/);
   assert.doesNotMatch(workflow, /HEAD:(refs\/heads\/)?rail-data\b/, 'the Overpass branch is never written');
+  // The polar caps: read from rail-data before the build, with their commit,
+  // and published with the rest when found.
+  const take = workflow.indexOf('- name: Take the polar caps from rail-data');
+  assert.ok(take > 0 && take < build, 'taken before the build');
+  assert.ok(workflow.includes('lifecycle-extract ${POLAR_COMMIT:+/tmp/rail-polar/polar "$POLAR_COMMIT"}'));
+  assert.match(workflow, /git archive FETCH_HEAD polar \| tar -x -C \/tmp\/rail-polar\n\s+echo "POLAR_COMMIT=\$\(git rev-parse FETCH_HEAD\)" >> "\$GITHUB_ENV"/);
+  assert.match(workflow, /cp -r "\$GITHUB_WORKSPACE\/lifecycle-extract\/snapshot\/polar" polar\n\s+git add polar/);
 });
 
 const osmium = spawnSync('osmium', ['--version'], {encoding: 'utf8'});
