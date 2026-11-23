@@ -38,7 +38,7 @@ try {
   const found = await page.evaluate(async bundlePath => {
     const probe=document.createElement('canvas');
     const gl=Boolean(probe.getContext('webgl2')||probe.getContext('webgl'));
-    const {flatCamera,flatVectorTile,compileFlatFrame}=await import(bundlePath);
+    const {flatCamera,flatVectorTile,compileFlatFrame,createFlatTileRequests}=await import(bundlePath);
     const context=document.querySelector('canvas').getContext('2d');
     const camera=flatCamera({center:[-90,66.51326044311186],zoom:0,width:256,height:256});
     const tile={z:1,x:0,y:0};
@@ -51,7 +51,27 @@ try {
     image.width=2;image.height=2;
     const imageContext=image.getContext('2d');
     imageContext.fillStyle='#ffff00';imageContext.fillRect(0,0,2,2);
-    const sources=new Map([['raster',[{tile,image}]],['vector',[{tile,vector}]]]);
+    const plan={key:'1/0/0',canonical:tile,copies:[tile]};
+    let releaseStale, staleSignal, disposed=0;
+    const requests=createFlatTileRequests({
+      load: ({source,revision,controller}) => {
+        if (revision==='stale') {
+          staleSignal=controller.signal;
+          return new Promise(resolve => {releaseStale=resolve;});
+        }
+        return source==='raster' ? {image} : {vector};
+      },
+      dispose: () => {disposed++;},
+    });
+    requests.update(new Map([['vector',{revision:'stale',tiles:[plan]}]]));
+    await Promise.resolve();
+    requests.update(new Map([['raster',{revision:'live',tiles:[plan]}],['vector',{revision:'live',tiles:[plan]}]]));
+    const retired=staleSignal.aborted;
+    releaseStale({vector:{layer(){throw new Error('Retired tile reached the renderer');}}});
+    await new Promise(resolve => setTimeout(resolve,0));
+    const staleDisposals=disposed;
+    const sources=requests.snapshot().frame;
+
     const draw=compileFlatFrame([
       {id:'background',type:'background',paint:{'background-color':'#001000'}},
       {id:'area',type:'fill',source:'vector','source-layer':'area',paint:{'fill-color':'#0055aa'}},
@@ -63,10 +83,14 @@ try {
     const frame=draw(context,camera,sources);
     const pixel=(x,y)=>[...context.getImageData(x,y,1,1).data];
     const first={rail:pixel(128,56),area:pixel(64,120),hole:pixel(150,150)};
-    draw(context,camera,new Map());
-    return {gl,first,empty:pixel(128,56),unsupported:frame.unsupported,counts,draws:[...frame.layerDraws]};
+    requests.update(new Map());
+    draw(context,camera,requests.snapshot().frame);
+    requests.close();
+    return {gl,first,retired,staleDisposals,empty:pixel(128,56),unsupported:frame.unsupported,counts,draws:[...frame.layerDraws]};
   },bundlePath);
   assert.equal(found.gl,false);
+  assert.equal(found.retired,true);
+  assert.equal(found.staleDisposals,1);
   assert.deepEqual(found.first.rail,[200,0,0,255]);
   assert.deepEqual(found.first.area,[128,170,85,255]);
   assert.deepEqual(found.first.hole,[128,136,0,255]);
@@ -98,5 +122,5 @@ try {
   },bundlePath);
   assert.deepEqual(pixels,[11,22,33,255]);
   assert.equal(bundleRequests,beforeOffline,'offline module import uses the exact precached version');
-  console.log('Firefox WebGL disabled: staged bundle paints fixture layers; the real service worker serves its exact bytes and paints again offline');
+  console.log('Firefox WebGL disabled: staged bundle drops late stale tiles and paints current fixture layers; the real service worker serves its exact bytes and paints again offline');
 } finally {await browser?.close();server.close();}
