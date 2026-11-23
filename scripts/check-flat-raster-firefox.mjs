@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
-const paths = new Set(['/flat-camera.mjs','/flat-raster.mjs']);
+const paths = new Set(['/flat-camera.mjs','/flat-raster.mjs','/shared-tile-protocols.mjs']);
 const server = createServer(async (req,res) => {
   if (req.url === '/') { res.setHeader('Content-Type','text/html'); res.end('<canvas width="256" height="256"></canvas>'); return; }
   if (!paths.has(req.url)) {res.statusCode=404;res.end();return}
@@ -19,19 +19,36 @@ try {
   const gl=Boolean(document.createElement('canvas').getContext('webgl2')||document.createElement('canvas').getContext('webgl'));
   const {flatCamera}=await import('/flat-camera.mjs');
   const {drawFlatRasterLayer}=await import('/flat-raster.mjs');
+  const {createSharedTileProtocols}=await import('/shared-tile-protocols.mjs');
   const camera=flatCamera({center:[180,0],zoom:0.34,bearing:37,width:256,height:256});
   const make=color=>{const c=document.createElement('canvas');c.width=c.height=8;const a=c.getContext('2d');a.fillStyle=color;a.fillRect(0,0,8,8);return c};
-  const bg=make('rgb(200,0,0)'),fg=make('rgb(0,0,200)'),yellow=make('rgb(200,200,0)');
-  const tiles=camera.visibleTiles(1);
-  const count=drawFlatRasterLayer(c,camera,tiles.map(tile=>({tile,image:tile.worldX<0?fg:bg})));
+  const fixtures = await Promise.all(['rgb(200,0,0)', 'rgb(0,0,200)'].map(color => new Promise((resolve, reject) =>
+    make(color).toBlob(blob => blob ? resolve(blob.arrayBuffer()) : reject(new Error('Fixture PNG encoding failed'))))));
+  const routes = createSharedTileProtocols();
+  const requests = [];
+  routes.addProtocol('fixtureimagery', ({url}) => {
+    requests.push(url);
+    const canonicalX = Number(new URL(url).pathname.split('/')[1]);
+    return {data: fixtures[canonicalX]};
+  });
+  const tiles = camera.visibleTiles(1);
+  const signal = new AbortController();
+  const decoded = await Promise.all(tiles.map(async tile => {
+    const url = `fixtureimagery://layer/${tile.x}/${tile.y}?variant=synthetic`;
+    const {data} = await routes.read({url, type: 'image'}, signal);
+    return {tile, image: await createImageBitmap(new Blob([data], {type: 'image/png'}))};
+  }));
+  const count=drawFlatRasterLayer(c,camera,decoded);
+  for (const {image} of decoded) image.close();
+  const yellow=make('rgb(200,200,0)');
   const target=tiles.find(tile=>tile.worldX===0&&tile.y===1);
   drawFlatRasterLayer(c,camera,[{tile:target,image:yellow}],{opacity:0.5});
   const sample=coordinates=>[...c.getImageData(...coordinates,1,1).data];
   const p1=camera.project([-170,-10]).map(Math.floor);
   const p2=camera.project([170,-10]).map(Math.floor);
-  return [gl,count,sample(p1),sample(p2)];
+  return [gl,count,sample(p1),sample(p2),requests.every(url => /^fixtureimagery:\/\/layer\/[01]\/[01]\?variant=synthetic$/.test(url))];
  });
  assert.equal(values[0],false);assert.ok(values[1]>=4);
- assert.deepEqual(values[2],[200,100,0,255]);assert.deepEqual(values[3],[0,0,200,255]);
+ assert.equal(values[4],true);assert.deepEqual(values[2],[200,100,0,255]);assert.deepEqual(values[3],[0,0,200,255]);
  console.log('Firefox WebGL disabled: Canvas raster actual pixels passed',JSON.stringify(values));
 } finally {await b?.close();server.close()}
