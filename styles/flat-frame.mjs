@@ -33,7 +33,7 @@ export function compileFlatFrame(layers) {
     if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
-  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,onSymbol} = {}) {
+  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,onSymbol,allowFeature} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
     const layerDraws = new Map(), labels=[];
@@ -65,7 +65,8 @@ export function compileFlatFrame(layers) {
             if(!decoded.has(vector))decoded.set(vector,new Map());
             const cached=decoded.get(vector),name=layer.label.sourceLayer;
             if(!cached.has(name))cached.set(name,vector.layer(name));
-            for(const candidate of flatLabelCandidates(layer.label,cached.get(name),tile,camera,global,
+            const features=allowFeature?cached.get(name).filter(feature=>allowFeature(id,feature,tile)):cached.get(name);
+            for(const candidate of flatLabelCandidates(layer.label,features,tile,camera,global,
               featureId=>featureState(source,name,featureId))) candidates.push(candidate);
           }
           labels.push({id,candidates,source,sourceLayer:layer.label.sourceLayer});
@@ -80,6 +81,7 @@ export function compileFlatFrame(layers) {
             const name = geometry.sourceLayer;
             if (!cached.has(name)) cached.set(name,vector.layer(name));
             for (const feature of cached.get(name)) {
+              if(allowFeature&&!allowFeature(id,feature,tile))continue;
               const paint = geometry.resolve(global,feature,featureState(source,name,feature.id) ?? {},canonical);
               if (paint) draws += drawFlatVectorLayer(context,camera,tile,[feature],paint);
             }

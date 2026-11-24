@@ -4,6 +4,7 @@ import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
+import {flatStationFallbackLayer,flatStationFallbackMask} from './flat-station-fallback.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
@@ -31,6 +32,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
+  let stationFallbackMask=()=>false;
+  const allowFeature=(id,feature,tile)=>!flatStationFallbackLayer(id)||stationFallbackMask(feature,tile);
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
   const drawingOverlay=flatDrawingAdapter(canvas,schedule);
   const icons=new Map();
@@ -84,9 +87,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   }
   function render() {
     frame=0;
-    const active = new Set(style.layers.filter(layer => layer.layout?.visibility !== 'none' &&
-      camera.zoom >= (layer.minzoom ?? -Infinity) && camera.zoom < (layer.maxzoom ?? Infinity) &&
-      tileLayer(layer)).map(layer=>layer.source));
+    const layers=style.layers.filter(layer=>layer.layout?.visibility!=='none'&&
+      camera.zoom>=(layer.minzoom??-Infinity)&&camera.zoom<(layer.maxzoom??Infinity)&&tileLayer(layer));
+    const checkStations=camera.zoom>=8&&layers.some(layer=>layer.source==='stations')&&layers.some(layer=>flatStationFallbackLayer(layer.id));
+    const fallbackLikely=checkStations&&(metadata.get('stations')?.error||queue.hasFailure('stations'));
+    const active=new Set(layers.filter(layer=>!flatStationFallbackLayer(layer.id)||fallbackLikely).map(layer=>layer.source));
     for (const [id,entry] of metadata) {
       if (!active.has(id)) {entry.controller.abort(); metadata.delete(id);}
     }
@@ -114,6 +119,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
     queue.update(plans);
     const tiles=queue.snapshot();
+    stationFallbackMask=flatStationFallbackMask(checkStations
+      ?{metadataFailed:Boolean(metadata.get('stations')?.error),tiles:tiles.errors.get('stations')}
+      :{});
     sourceFrame=new Map([...active].map(id=>{
       const entry=metadata.get(id), count=plans.get(id)?.tiles.length??0;
       const drawn=tiles.frame.get(id)??[];
@@ -123,7 +131,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }));
     for(const id of tiles.errors.keys()) errors.add(id);
     paintedSymbols=[];
-    draw(context,camera,tiles.frame,{getIcon,onSymbol:({id,source,sourceLayer},label,bounds)=>{
+    draw(context,camera,tiles.frame,{getIcon,allowFeature:layers.some(layer=>flatStationFallbackLayer(layer.id))?allowFeature:undefined,onSymbol:({id,source,sourceLayer},label,bounds)=>{
       if(!interactiveLayer?.(id))return;
       const [rawLng,lat]=camera.unproject([label.px,label.py]);
       const lng=((rawLng+180)%360+360)%360-180;
@@ -194,7 +202,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         if(line){onDrawingProfile(line);return;}
       }
       if(!onInspect)return;
-      const hits=query(camera,point,queue.snapshot().frame);
+      const hits=query(camera,point,queue.snapshot().frame,allowFeature);
       for(const symbol of paintedSymbols){
         if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
           hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});

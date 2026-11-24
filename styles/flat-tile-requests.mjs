@@ -114,5 +114,10 @@ export function createFlatTileRequests({load, dispose = () => {}, changed = () =
     retire(before, sources);
   }
 
-  return {update, snapshot, close};
+  const hasFailure=id=>{
+    for(const entry of sources.get(id)?.entries.values()??[])
+      if(entry.status==='failed')return true;
+    return false;
+  };
+  return {update, snapshot, hasFailure, close};
 }

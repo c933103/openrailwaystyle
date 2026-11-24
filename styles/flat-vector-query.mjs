@@ -33,7 +33,7 @@ export function compileFlatVectorQuery(layers, {include = () => true} = {}) {
   const order = layers.filter(layer => ['line','circle'].includes(layer.type) &&
     layer['source-layer'] != null && layer.paint?.['line-pattern'] == null &&
     include(layer.id)).map(layer=>({type:layer.type,...compileFlatGeometryStyle(layer)})).reverse();
-  return (camera, point, frame) => {
+  return (camera, point, frame, allowFeature) => {
     if (!point.every(Number.isFinite) || point[0]<0 || point[0]>camera.width ||
         point[1]<0 || point[1]>camera.height) return [];
     const hits=[],seen=new Map(),cache=new Map(),global={zoom:camera.zoom};
@@ -55,7 +55,7 @@ export function compileFlatVectorQuery(layers, {include = () => true} = {}) {
         const decoded=cache.get(vector);
         if(!decoded.has(layer.sourceLayer)) decoded.set(layer.sourceLayer,vector.layer(layer.sourceLayer));
         for (const feature of decoded.get(layer.sourceLayer)) {
-          if ((layer.type==='circle'?1:2)!==feature.type) continue;
+          if ((layer.type==='circle'?1:2)!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
           const paint=layer.resolve(global,feature,{}, {z:tile.z,x:tile.x,y:tile.y});
           if (!paint) continue;
           const paths=feature.paths.filter(path=>path.length>0).map(path=>path.map(({x,y})=>{

@@ -1766,12 +1766,14 @@ async function initialize() {
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   // Resolve the same initial visibility policy for both renderers. Canvas
   // can recompute it from source when a setting changes without remounting.
-  const applyInitialVisibility=style=>{
+  const applyInitialVisibility=(style,canvas=false)=>{
     for (const layer of style.layers) {
       const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
       // Station fallback names are used only after the ORM station source fails.
       // Avoid flashing fallback names during the first frame of a healthy load.
-      const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')?false:visible;
+      const independent=layer.id==='station-basemap-fallback-dots'||layer.id==='station-basemap-fallback-names';
+      const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')
+        ?canvas&&independent&&settings.stations&&settings.background!=='satellite':visible;
       if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
       if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
     }
@@ -1826,6 +1828,7 @@ async function initialize() {
     }
   }
   if (useFlat) {
+    applyInitialVisibility(style,true);
     const {mountFlatMap,connectFlatLocation,appendFlatCredits}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
@@ -1971,7 +1974,7 @@ async function initialize() {
       const next=structuredClone(flatTemplate);
       localizeStyle(next);
       next.sources.relief.tiles=[dem.sharedDemProtocolUrl];
-      applyInitialVisibility(next);
+      applyInitialVisibility(next,true);
       for(const layer of next.layers){
         const paint=stationViewPaint(layer,settings.mode,flat.getZoom());
         if(paint)Object.assign(layer.paint,paint);

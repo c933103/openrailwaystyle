@@ -56,15 +56,27 @@ const varints=values=>Buffer.from(values.flatMap(value=>{
   const out=[];while(value>127){out.push(value%128+128);value=Math.floor(value/128);}
   out.push(value);return out;
 }));
-const packed=gzipSync(nearbyMvt), dir=varints([1,zxyToTileId(14,xx,yy),1,packed.length,1]);
-const meta=Buffer.from('{}'), header=Buffer.alloc(127);
-header.write('PMTiles');header[7]=3;
-const begin=127+dir.length,end=begin+meta.length;
-for(const [offset,value] of [[8,127],[16,dir.length],[24,begin],[32,meta.length],[40,end],[48,0],
-  [56,end],[64,packed.length],[72,1],[80,1],[88,1]])header.writeBigUInt64LE(BigInt(value),offset);
-header[96]=1;header[97]=1;header[98]=2;header[99]=1;header[100]=14;header[101]=14;
-for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.writeInt32LE(value*1e7,offset);
-const nearbyArchive=Buffer.concat([header,dir,meta,packed]);
+function pointArchive(mvt,z,x,y){
+  const packed=gzipSync(mvt), dir=varints([1,zxyToTileId(z,x,y),1,packed.length,1]);
+  const meta=Buffer.from('{}'), header=Buffer.alloc(127);
+  header.write('PMTiles');header[7]=3;
+  const begin=127+dir.length,end=begin+meta.length;
+  for(const [offset,value] of [[8,127],[16,dir.length],[24,begin],[32,meta.length],[40,end],[48,0],
+    [56,end],[64,packed.length],[72,1],[80,1],[88,1]])header.writeBigUInt64LE(BigInt(value),offset);
+  header[96]=1;header[97]=1;header[98]=2;header[99]=1;header[100]=z;header[101]=z;
+  for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.writeInt32LE(value*1e7,offset);
+  return Buffer.concat([header,dir,meta,packed]);
+}
+const nearbyArchive=pointArchive(nearbyMvt,14,xx,yy);
+const stationPOI=vtPbf.fromGeojsonVt({poi:{features:[
+  {id:701,type:1,tags:{class:'railway',subclass:'station',name:'Fallback West'},geometry:[[1536,1024]]},
+  {id:702,type:1,tags:{class:'railway',subclass:'station',name:'Fallback East'},geometry:[[2560,1024]]},
+]}},{version:2,extent:4096});
+const fallbackArchive=pointArchive(stationPOI,7,64,64);
+const primaryStationMvt=vtPbf.fromGeojsonVt({station:{features:[
+  {id:705,type:1,tags:{feature:'station',name:'Primary East'},geometry:[[1024,2048]]},
+]}},{version:2,extent:4096});
+let stationFailureFixture='';
 const paths=[];
 let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
@@ -76,7 +88,17 @@ const server=createServer((req,res)=>{
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(pathname==='/world.style.json') {
-    const payload=fixtureCredits?{
+    const payload=stationFailureFixture?{
+      ...style,
+      sources:{...style.sources,
+        openmaptiles:{type:'vector',url:'pmtiles://data/station-fallback-fixture.pmtiles',maxzoom:7},
+        stations:{type:'vector',url:`http://127.0.0.1:${server.address().port}/station-failure-tilejson.json`,maxzoom:8}},
+      layers:[style.layers.find(layer=>layer.id==='fixture-bg'),...style.layers.filter(layer=>layer.id!=='fixture-bg'),
+        ...fixtureRasterBackgrounds.filter(layer=>layer.id==='satellite'),
+        {id:'station-primary-health-test',type:'circle',source:'stations','source-layer':'station',
+        minzoom:8,metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},
+        paint:{'circle-color':'#00dc20','circle-radius':5}}],
+    }:fixtureCredits?{
       ...style,
       sources:{...style.sources,entryRail:{...style.sources.entryRail,attribution:
         'Rail fixture · <a href="https://example.org/rail-credit" title="unused">Provider credit</a>'}},
@@ -85,6 +107,18 @@ const server=createServer((req,res)=>{
           ?[...fixtureRasterBackgrounds,{...layer,metadata:{'atlas:semantics-version':1,'atlas:group':'railway'}}]:[layer])],
     }:style;
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(payload));
+  } else if(pathname==='/data/station-fallback-fixture.pmtiles') {
+    const r=pmtilesBytesResponse(fallbackArchive,req.headers.range,'flat-station-fixture-v1');
+    res.writeHead(r.status,r.headers);res.end(r.body);
+  } else if(pathname==='/station-failure-tilejson.json') {
+    if(stationFailureFixture==='metadata'){res.writeHead(404).end();return;}
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
+      minzoom:8,maxzoom:8,tiles:[`http://127.0.0.1:${server.address().port}/station-failure/{z}/{x}/{y}.pbf`],
+    }));
+  } else if(pathname.startsWith('/station-failure/')) {
+    if(pathname==='/station-failure/8/128/128.pbf'){res.writeHead(404).end();return;}
+    res.writeHead(200,{'content-type':'application/x-protobuf'});
+    res.end(pathname==='/station-failure/8/129/128.pbf'?primaryStationMvt:Buffer.alloc(0));
   } else if(pathname==='/data/nearby-fixture.pmtiles') {
     const r=pmtilesBytesResponse(useElevationFixture?oceanFixtureArchive:nearbyArchive,
       req.headers.range,useElevationFixture?'measure-ocean-fixture-v1':'nearby-fixture-v1');
@@ -141,7 +175,7 @@ try {
     await page.route('**/*',r=>{
       const url=new URL(r.request().url());
       if(url.origin===origin) return r.continue();
-      if(fixtureCredits){
+      if(fixtureCredits||stationFailureFixture){
         const image={'tiles.maps.eox.at':landPng,'tile.openstreetmap.org':seabedPng,'indianopenmaps.com':historicalPng}[url.hostname];
         if(image) return r.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/png',body:image});
       }
@@ -647,6 +681,70 @@ try {
   } finally {
     fixtureCredits=false;
     await creditCase.context.close();
+  }
+  // Independent POIs must only appear in the missing primary coverage.
+  for(const failure of ['metadata','tile']){
+    const stationCase=await fresh(true);
+    stationFailureFixture=failure;
+    try {
+      const p=stationCase.page;
+      await p.goto(origin+'/#8/-0.703/1.40625');
+      const c=p.locator('canvas.atlas-flat-preview');
+      await c.waitFor();
+      const coverage=()=>{
+        const canvas=document.querySelector('canvas.atlas-flat-preview');
+        const {width,height,clientWidth:cssWidth,clientHeight:cssHeight}=canvas, ratio=width/cssWidth;
+        const d=canvas.getContext('2d').getImageData(0,0,width,height).data;
+        const groups={left:{dots:0,letters:0},right:{dots:0,letters:0}};
+        for(let y=Math.round(height*.34);y<Math.round(height*.69);y++)
+          for(let x=0;x<width;x++){
+            const i=(y*width+x)*4, group=x<width/2?groups.left:groups.right;
+            const px=cssWidth/2+(group===groups.left?-128:128),py=cssHeight/2;
+            // The shared thematic style uses a small unfilled grey station
+            // outline, not the fallback layer's seed orange paint.
+            if(Math.abs(x-px*ratio)<2*ratio&&Math.abs(y-py*ratio)<2*ratio&&d[i]>5&&d[i]<95&&
+                d[i+1]>=d[i]+12&&d[i+2]>=d[i+1]+5&&d[i+3]===255){
+              group.dots++;
+              group.dot=[px,py];
+            }
+            if(d[i]===8&&d[i+1]===101&&d[i+2]===192&&d[i+3]===255)group.letters++;
+          }
+        return groups;
+      };
+      for(let i=0;i<80;i++){
+        const shown=await p.evaluate(coverage);
+        if(shown.left.dots&&shown.left.letters&&shown.right.dots)break;
+        await new Promise(resolve=>setTimeout(resolve,150));
+      }
+      const shown=await p.evaluate(coverage);
+      assert.ok(shown.left.dots&&shown.left.letters,JSON.stringify(shown));
+      if(failure==='metadata')assert.ok(shown.right.dots&&shown.right.letters,JSON.stringify(shown));
+      else {
+        assert.ok(shown.right.dots>0,JSON.stringify(shown));
+        assert.equal(shown.right.letters,0);
+      }
+      await c.click({position:{x:shown.left.dot[0],y:shown.left.dot[1]}});
+      await p.getByRole('heading',{name:'Fallback West',exact:true}).waitFor();
+      await p.getByText(/departures are unavailable for this fallback marker/).waitFor();
+      await p.locator('#details .close').click();
+      if(failure==='tile'){
+        await c.click({position:{x:shown.right.dot[0],y:shown.right.dot[1]}});
+        await p.getByRole('heading',{name:'Primary East',exact:true}).waitFor();
+        assert.equal(await p.getByText(/departures are unavailable for this fallback marker/).count(),0);
+        await p.locator('#details .close').click();
+      }
+      if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
+      await p.locator('[data-background="satellite"]').click();
+      assert.equal((await p.evaluate(coverage)).left.dots,0);
+      await p.locator('[data-background="map"]').click();
+      for(let i=0;i<80&&!(await p.evaluate(coverage)).left.dots;i++)
+        await new Promise(resolve=>setTimeout(resolve,150));
+      assert.ok((await p.evaluate(coverage)).left.dots>0);
+      await p.locator('#settings-open').click();
+      await p.locator('#stations').uncheck();
+      assert.equal((await p.evaluate(coverage)).left.dots,0);
+      assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+    } finally {stationFailureFixture='';await stationCase.context.close();}
   }
   let current=await fresh(true);
   await current.page.goto(origin);
