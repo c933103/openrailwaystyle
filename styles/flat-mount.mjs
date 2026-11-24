@@ -63,7 +63,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     camera=next;
     measureOverlay.setCamera(next);drawingOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
-    onCamera?.();
+    onCamera?.(camera);
     updateReadout();
     if (navigate) {
       navigated=true;
@@ -277,7 +277,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const entry=sourceFrame.get(source);
     return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers,{filter,zoom:camera.zoom})};
   };
-  return {close,moveTo,zoomBy,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
+  const resetNorth=()=>{
+    if (disposed || gesture.active || toolDrag || camera.bearing===0) return;
+    setCamera(flatCamera({...camera,bearing:0}),true);
+  };
+  return {close,moveTo,zoomBy,resetNorth,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};

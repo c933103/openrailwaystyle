@@ -1583,7 +1583,8 @@ $('draw-file').addEventListener('change', async () => {
   } catch { $('draw-status').textContent = 'That file is not valid GeoJSON.'; }
 });
 addEventListener('keydown', event => {
-  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName) ||
+      event.target.closest?.('.atlas-flat-compass, .atlas-flat-zoom-button')) return;
   if (measuring?.active) { if (event.key === 'Enter') measuring.end(); if (event.key === 'Escape') measuring.clear(); return; }
   if (!drawing?.active) return;
   if (event.key === 'Enter') drawing.finish();
@@ -1831,10 +1832,20 @@ async function initialize() {
       zoom:startZoom,
       bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
     };
+    const compass=textNode('button','','atlas-flat-compass');
+    compass.type='button';
+    compass.title='Reset map to north';
+    compass.setAttribute('aria-label',compass.title);
+    const needle=textNode('span','↑');
+    needle.setAttribute('aria-hidden','true');
+    compass.append(needle);
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
-      onCamera:updateFlatScale,
+      onCamera({bearing}) {
+        needle.style.transform=`rotate(${-bearing}deg)`;
+        updateFlatScale();
+      },
       onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
       onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
       onInspect(hits,[lng,lat]) {
@@ -1900,7 +1911,8 @@ async function initialize() {
     const toolButtons=document.createElement('div');
     toolButtons.className='atlas-flat-tool-buttons';
     drawButton.setAttribute('aria-label','Drawing tools');
-    toolButtons.append(drawButton,measureButton);
+    compass.addEventListener('click',flat.resetNorth);
+    toolButtons.append(drawButton,measureButton,compass);
     for (const [symbol,label,delta] of [['+','Zoom in',1],['−','Zoom out',-1]]) {
       const button=textNode('button',symbol,'atlas-flat-zoom-button');
       button.type='button';

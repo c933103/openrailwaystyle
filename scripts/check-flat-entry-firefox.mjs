@@ -420,6 +420,71 @@ try {
     assert.deepEqual(await view(),{...wheelView,z:-0.5});
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {await readoutCase.context.close();}
+  // A rotated shared view keeps its orientation until the user resets it.
+  const compassCase=await fresh(true);
+  try {
+    const p=compassCase.page, rotated='#0/3/4/45', north='#0/3/4';
+    await p.addInitScript(()=>{
+      Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw new Error('clipboard unavailable');}}});
+    });
+    const copyLink=async()=>{
+      if(!(await p.locator('#share').isVisible()))await p.locator('#controls-open').click();
+      await p.getByRole('button',{name:'Copy map link',exact:true}).click();
+      const link=p.getByRole('textbox',{name:'map address'});
+      await link.waitFor();
+      return await link.inputValue();
+    };
+    await p.goto(origin+rotated);
+    const compass=p.getByRole('button',{name:'Reset map to north',exact:true});
+    const needle=()=>compass.locator('span').evaluate(el=>el.style.transform);
+    const center=()=>p.locator('#map').getAttribute('data-flat-center');
+    const redRows=minimum=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+      let widest=0;
+      for(let y=0;y<c.height;y++){
+        let red=0;
+        for(let x=0;x<c.width;x++){
+          const i=(y*c.width+x)*4;
+          if(d[i]===255&&d[i+1]===0&&d[i+2]===0&&d[i+3]===255) red++;
+        }
+        widest=Math.max(widest,red);
+      }
+      return widest>=minimum;
+    };
+    await compass.waitFor();
+    await ready(p);
+    assert.equal(await needle(),'rotate(-45deg)');
+    assert.equal(await p.evaluate(redRows,100),false,'Rotated red line does not fill a horizontal row');
+    const before=await center();
+    assert.equal(new URL(await copyLink()).hash,rotated);
+    await compass.click();
+    assert.equal(await needle(),'rotate(0deg)');
+    assert.equal(await center(),before);
+    assert.equal(await p.evaluate(()=>location.hash),'');
+    const saved=await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+    assert.equal(saved.b,0);
+    assert.equal(saved.z,0);
+    assert.ok(Math.abs(saved.c[0]-4)<1e-9 && Math.abs(saved.c[1]-3)<1e-9);
+    await p.waitForFunction(redRows,500);
+    const link=await copyLink();
+    assert.equal(new URL(link).hash,north);
+    await p.reload();
+    await compass.waitFor();
+    assert.equal(await needle(),'rotate(0deg)');
+    assert.equal(await center(),before);
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+    // Follow the exact copied link from a fresh browser context.
+    const recipient=await fresh(true);
+    try {
+      await recipient.page.goto(link);
+      const received=recipient.page.getByRole('button',{name:'Reset map to north',exact:true});
+      await received.waitFor();
+      assert.equal(await received.locator('span').evaluate(el=>el.style.transform),'rotate(0deg)');
+      assert.equal(await recipient.page.locator('#map').getAttribute('data-flat-center'),before);
+      assert.deepEqual(await recipient.page.evaluate(()=>window.webglAttempts),[]);
+    } finally {await recipient.context.close();}
+  } finally {await compassCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
@@ -666,6 +731,10 @@ try {
   assert.equal(await hg.locator('#draw-toolbar').isVisible(),false);
   for(const point of coords)await clickAt(point);
   await hg.waitForFunction(()=>!document.querySelector('#measure-finish').disabled);
+  for(const name of ['Reset map to north','Zoom in','Zoom out']){
+    await hg.getByRole('button',{name,exact:true}).press('Enter');
+    assert.equal(await hg.locator('#measure-finish').isEnabled(),true,'Map control activation leaves measurement unfinished');
+  }
   if(!(await hg.locator('#settings-open').isVisible()))await hg.locator('#controls-open').click();
   await hg.locator('#settings-open').click();
   await Promise.all([hg.waitForEvent('load'),hg.locator('#disable-webgl').click()]);
