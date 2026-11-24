@@ -97,8 +97,8 @@ let browser;
 try {
   browser=chromiumSwitch ? await launchBrowser({executablePath:process.env.CHROMIUM_EXECUTABLE})
     : await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
-  const fresh=async (off=false,heights=false,painterFault=false)=>{
-    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:chromiumSwitch?1:3,serviceWorkers:'block'});
+  const fresh=async (off=false,heights=false,painterFault=false,hasTouch=false)=>{
+    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:chromiumSwitch?1:3,hasTouch,serviceWorkers:'block'});
     await context.addInitScript(({off,painterFault})=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
@@ -160,6 +160,82 @@ try {
     for(let i=0;i<a.length;i+=4) if(a[i]===255&&a[i+1]===0&&a[i+2]===0&&a[i+3]===255) return true;
     return false;
   },null,{timeout:15000});
+  // In Chromium, CDP supplies trusted touch pointers and the browser performs
+  // real capture/release. Unlike the Firefox DOM fixture, no methods on
+  // the canvas or native event ordering are replaced.
+  async function trustedCanvasTouch() {
+    const {page,context}=await fresh(true,false,false,true);
+    const events=()=>page.evaluate(()=>window.atlasTouchEvents);
+    const view=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+    const center=()=>page.locator('#map').getAttribute('data-flat-center');
+    try {
+      await page.goto(origin);
+      await ready(page);
+      const canvas=page.locator('canvas.atlas-flat-preview');
+      const bounds=await canvas.boundingBox();
+      assert.ok(bounds);
+      const x=Math.round(bounds.x+bounds.width*.72),y=Math.round(bounds.y+bounds.height*.58);
+      const points=(span,dy=0)=>[{x:x-span,y:y+dy,id:1},{x:x+span,y:y+dy,id:2}];
+      assert.equal(await canvas.evaluate((node,args)=>args.every(p=>document.elementFromPoint(p.x,p.y)===node),points(90)),true);
+      await canvas.evaluate(node=>{
+        window.atlasTouchEvents=[];
+        for(const type of ['pointerdown','pointermove','pointerup','pointercancel','gotpointercapture','lostpointercapture','click'])
+          node.addEventListener(type,event=>window.atlasTouchEvents.push({
+            type, id:event.pointerId, pointerType:event.pointerType, trusted:event.isTrusted,
+            captured:node.hasPointerCapture(event.pointerId),
+          }),{passive:true});
+      });
+      const session=await context.newCDPSession(page);
+      const dispatch=(type,touchPoints=[])=>session.send('Input.dispatchTouchEvent',{type,touchPoints});
+      const initial=await view();
+      await dispatch('touchStart',points(45));
+      await dispatch('touchMove',points(90));
+      await dispatch('touchEnd');
+      await page.waitForFunction(z=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z-z)<1e-6,initial.z+1);
+      await page.waitForFunction(()=>window.atlasTouchEvents.filter(e=>e.type==='lostpointercapture').length===2);
+      const zoomed=await view(), committed=await center();
+      const first=await events();
+      const assertCapture=(trace,end)=>{
+        const byType=type=>trace.filter(e=>e.type===type);
+        const began=byType('pointerdown');
+        assert.equal(began.length,2);
+        const ids=began.map(e=>e.id).sort();
+        assert.equal(new Set(ids).size,2);
+        assert.ok(trace.every(e=>e.trusted&&e.pointerType==='touch'));
+        assert.ok(byType('pointermove').length>=2);
+        for(const type of ['gotpointercapture',end,'lostpointercapture'])
+          assert.deepEqual(byType(type).map(e=>e.id).sort(),ids);
+        assert.ok(byType('gotpointercapture').every(e=>e.captured));
+        assert.ok(byType('lostpointercapture').every(e=>!e.captured));
+        assert.equal(byType('click').length,0);
+      };
+      assertCapture(first,'pointerup');
+      await dispatch('touchStart',points(45));
+      await dispatch('touchMove',points(90,34));
+      assert.notEqual(await center(),committed);
+      assert.deepEqual(await view(),zoomed);
+      await dispatch('touchCancel');
+      await page.waitForFunction(previous=>document.querySelector('#map').dataset.flatCenter===previous,committed);
+      await page.waitForFunction(()=>window.atlasTouchEvents.filter(e=>e.type==='lostpointercapture').length===4);
+      const cancelled=(await events()).slice(first.length);
+      assertCapture(cancelled,'pointercancel');
+      assert.deepEqual(await view(),zoomed);
+      assert.equal(await page.getByRole('heading',{name:'Fixture Station'}).isVisible(),false);
+
+      // A subsequent gesture must start normally and commit after cancellation.
+      await dispatch('touchStart',points(90));
+      await dispatch('touchMove',points(45));
+      await dispatch('touchEnd');
+      await page.waitForFunction(z=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z-z)<1e-6,initial.z);
+      const recovered=await view();
+      assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
+      await page.reload();
+      await ready(page);
+      assert.deepEqual(await view(),recovered);
+      assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
+      return {initial,zoomed,recovered,completedEvents:first,cancelledEvents:cancelled};
+    } finally {await context.close();}
+  }
   if(chromiumSwitch){
     await mkdir(proofDir,{recursive:true});
     const {page,context}=await fresh(false,true);
@@ -268,7 +344,8 @@ try {
       await page.locator('#measure-finish').click();
       assert.match(await status.textContent(),/over 2 segments\./);
       assert.equal(await page.locator('#measure-finish').isDisabled(),true);
-      await writeFile(proofDir+'/result.json',JSON.stringify({frames,drawingVertices:3,measurementSegments:2},null,2));
+      const trustedTouch=await trustedCanvasTouch();
+      await writeFile(proofDir+'/result.json',JSON.stringify({frames,drawingVertices:3,measurementSegments:2,trustedTouch},null,2));
       console.log('Chromium renderer switch passed: WebGL → Canvas → WebGL; captured railway pixels and finished both drafts.');
     } catch(error) {
       await page.screenshot({path:proofDir+'/failure.png',timeout:3000}).catch(()=>{});
