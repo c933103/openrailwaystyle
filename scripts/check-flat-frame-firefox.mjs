@@ -38,13 +38,22 @@ try {
   const found = await page.evaluate(async bundlePath => {
     const probe=document.createElement('canvas');
     const gl=Boolean(probe.getContext('webgl2')||probe.getContext('webgl'));
-    const {flatCamera,flatVectorTile,compileFlatFrame,createFlatTileRequests}=await import(bundlePath);
+    const {flatCamera,compileFlatFrame,createFlatTileRequests,createFlatSourceLoader}=await import(bundlePath);
     const context=document.querySelector('canvas').getContext('2d');
     const camera=flatCamera({center:[-90,66.51326044311186],zoom:0,width:256,height:256});
     const tile={z:1,x:0,y:0};
-    const response=await fetch('/fixture.pbf');
-    if(!response.ok) throw new Error('Fixture tile unavailable');
-    const decoded=flatVectorTile(await response.arrayBuffer());
+    const providerCalls=[];
+    const loader=createFlatSourceLoader({protocols:{async read({url,type},controller){
+      providerCalls.push([url,type]);
+      if(type==='json') return {data:{tiles:['fixture://rail/{z}/{x}/{y}'],scheme:'tms'}};
+      const response=await fetch('/fixture.pbf',{signal:controller.signal});
+      if(!response.ok) throw new Error('Fixture tile unavailable');
+      return {data:await response.arrayBuffer()};
+    }}});
+    const controller=new AbortController();
+    const options={controller,baseURL:location.href};
+    const resolved=await loader.resolve({type:'vector',url:'fixture://rail'},options);
+    const {vector:decoded}=await loader.load(resolved,tile,options);
     const counts={};
     const vector={layer(name){counts[name]=(counts[name]??0)+1;return decoded.layer(name);}};
     const image=document.createElement('canvas');
@@ -86,9 +95,10 @@ try {
     requests.update(new Map());
     draw(context,camera,requests.snapshot().frame);
     requests.close();
-    return {gl,first,retired,staleDisposals,empty:pixel(128,56),unsupported:frame.unsupported,counts,draws:[...frame.layerDraws]};
+    return {gl,first,providerCalls,retired,staleDisposals,empty:pixel(128,56),unsupported:frame.unsupported,counts,draws:[...frame.layerDraws]};
   },bundlePath);
   assert.equal(found.gl,false);
+  assert.deepEqual(found.providerCalls,[['fixture://rail','json'],['fixture://rail/1/0/1','arrayBuffer']]);
   assert.equal(found.retired,true);
   assert.equal(found.staleDisposals,1);
   assert.deepEqual(found.first.rail,[200,0,0,255]);

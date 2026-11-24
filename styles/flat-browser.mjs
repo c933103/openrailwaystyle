@@ -6,3 +6,4 @@ export {compileFlatPointQuery} from './flat-point-query.mjs';
 export {planFlatSourceTiles} from './flat-source-plan.mjs';
 export {createFlatTileRequests} from './flat-tile-requests.mjs';
 export {flatVectorTile} from './flat-vector.mjs';
+export {createFlatSourceLoader, flatTileURL} from './flat-source-loader.mjs';
