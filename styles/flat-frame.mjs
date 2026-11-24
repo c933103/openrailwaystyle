@@ -2,7 +2,7 @@ import {latest, normalizePropertyExpression} from '@maplibre/maplibre-gl-style-s
 import {drawFlatRasterLayer} from './flat-raster.mjs';
 import {compileFlatGeometryStyle} from './flat-style.mjs';
 import {drawFlatVectorLayer} from './flat-vector.mjs';
-import {compileFlatPointLabel,drawFlatPointLabels,flatLabelCandidates} from './flat-labels.mjs';
+import {compileFlatTextLabel,drawFlatTextLabels,flatLabelCandidates} from './flat-labels.mjs';
 
 function paintExpression(layer, name) {
   const spec = latest['paint_' + layer.type][name];
@@ -30,7 +30,7 @@ export function compileFlatFrame(layers) {
         return {...compiled, type:'unsupported'};
       compiled.geometry = compileFlatGeometryStyle(layer);
     }
-    if (type==='symbol') compiled.label=compileFlatPointLabel(layer);
+    if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
   return function draw(context, camera, sources, {featureState = () => undefined} = {}) {
@@ -93,7 +93,7 @@ export function compileFlatFrame(layers) {
       // Station labels get their places before basemap labels; otherwise
       // a dense city background can hide the railway names entirely.
       labels.sort((a,b)=>Number(b.id.startsWith('station-'))-Number(a.id.startsWith('station-')));
-      if(labels.length)for(const [id,count] of drawFlatPointLabels(context,camera,labels))layerDraws.set(id,count);
+      if(labels.length)for(const [id,count] of drawFlatTextLabels(context,camera,labels))layerDraws.set(id,count);
     } finally { context.restore(); }
     return {layerDraws,unsupported};
   };

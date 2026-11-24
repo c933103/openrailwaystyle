@@ -14,6 +14,9 @@ style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',paint:{'circle-color':'#00dc20','circle-radius':6}},
+  {id:'fixture-track-names',type:'symbol',source:'entryRail','source-layer':'rail',layout:{
+    'text-field':['get','name'],'symbol-placement':'line','text-size':20,'text-offset':[0,-1.2],
+  },paint:{'text-color':'#ffff00'}},
   {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',layout:{
     'text-field':['get','name'],'text-size':18,'text-anchor':'top','text-offset':[0,0.9],
   },paint:{'text-color':'#ff00ff'}},
@@ -94,6 +97,12 @@ try {
     return d.some((value,i)=>i%4===0&&value===255&&d[i+1]===0&&d[i+2]===255&&d[i+3]===255);
   },null,{timeout:10000});
   assert.ok(paths.includes('/label/0/0/0.pbf'),'symbol-only source supplied the visibly painted name');
+  await current.page.waitForFunction(()=>{
+    const c=document.querySelector('canvas.atlas-flat-preview');
+    const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+    return d.some((value,i)=>i%4===0&&value===255&&d[i+1]===255&&d[i+2]===0&&d[i+3]===255);
+  },null,{timeout:10000});
+
 
   assert.ok(!paths.some(path=>path.includes('/vendor/maplibre-gl-')||path.startsWith('/never-request/')));
   const screenFeature=async (color)=>{
@@ -231,5 +240,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

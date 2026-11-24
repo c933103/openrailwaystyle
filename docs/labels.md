@@ -4,7 +4,9 @@
 
 ## Shared selector
 
-One shared language selector controls map, station and railway labels. Western languages fall back to English and recorded Latin names before native names. Russian prefers recorded Cyrillic names, then English. Chinese tries Chinese variants and available ideographic names, including ordinary Japanese, Korean Hanja (`name:ko-Hani`) and Vietnamese Chữ Nôm (`name:vi-Hani`), before English; a Japanese name recorded as “kana (kanji)” or “kanji (kana)” shows only the kanji. Japanese prioritizes ideographic names over kana-only names.
+The preferred-language selector applies to names the Atlas renders itself, including vector basemap, station and railway names. It can only choose among recorded names. Labels printed on raster basemap tiles (for example, Carto) do not change.
+
+Western languages fall back to English and recorded Latin names before native names. Russian prefers recorded Cyrillic names, then English. Chinese tries Chinese variants and available ideographic names, including ordinary Japanese, Korean Hanja (`name:ko-Hani`) and Vietnamese Chữ Nôm (`name:vi-Hani`), before English; a Japanese name recorded as “kana (kanji)” or “kanji (kana)” shows only the kanji. Japanese prioritizes ideographic names over kana-only names.
 
 ## Chinese tag selection
 
