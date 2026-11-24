@@ -36,10 +36,7 @@ style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id))
 ];
 assert.equal(new Set(style.layers.map(layer=>layer.id)).size,style.layers.length,'Fixture layer IDs must be unique');
 style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
-style.sources.entryRail={type:'vector',url:'/entry-tilejson.json',maxzoom:0};
-style.sources.stationFixture={type:'vector',tiles:['/fixture/{z}/{x}/{y}.pbf'],maxzoom:0};
-style.sources.labelFixture={type:'vector',tiles:['/label/{z}/{x}/{y}.pbf'],maxzoom:0};
-style.sources.hiddenRail={type:'vector',tiles:['/never-request/{z}/{x}/{y}.pbf']};
+
 const bytes=Buffer.from(flatVectorFixture());
 // A single archived bus interchange roughly 90 m from the fixture station.
 const nearbyLngLat=[-0.1017,51.501], n=2**14;
@@ -78,13 +75,19 @@ const server=createServer((req,res)=>{
       req.headers.range,useElevationFixture?'measure-ocean-fixture-v1':'nearby-fixture-v1');
     res.writeHead(r.status,r.headers);res.end(r.body);
   } else if(pathname==='/entry-tilejson.json') {
-    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:['/fixture/{z}/{x}/{y}.pbf']}));
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:[railTemplate],minzoom:0,maxzoom:0}));
   } else if(pathname==='/fixture/0/0/0.pbf'||pathname==='/label/0/0/0.pbf') {
     res.writeHead(200,{'content-type':'application/x-protobuf'});res.end(bytes);
   } else preview(req,res);
 });
 await new Promise((ok,fail)=>server.once('error',fail).listen(0,'127.0.0.1',ok));
 const origin='http://127.0.0.1:'+server.address().port;
+const railTemplate=origin+'/fixture/{z}/{x}/{y}.pbf';
+const labelTemplate=origin+'/label/{z}/{x}/{y}.pbf';
+style.sources.entryRail={type:'vector',url:origin+'/entry-tilejson.json',maxzoom:0};
+style.sources.stationFixture={type:'vector',tiles:[railTemplate],maxzoom:0};
+style.sources.labelFixture={type:'vector',tiles:[labelTemplate],maxzoom:0};
+style.sources.hiddenRail={type:'vector',tiles:[origin+'/never-request/{z}/{x}/{y}.pbf']};
 const chromiumSwitch=process.argv.includes('--chromium-switch');
 const proofDir='browser-review/renderer-switch';
 let browser;
