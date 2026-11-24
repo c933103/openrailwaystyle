@@ -102,6 +102,7 @@ try {
     await context.addInitScript(({off,painterFault})=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
+      window.atlasTestIncomingWork=sessionStorage.getItem('atlas_renderer_work_v1');
       const get=HTMLCanvasElement.prototype.getContext;
       window.webglAttempts=[];
       window.atlasTestPaintContext=null;
@@ -223,6 +224,7 @@ try {
       assert.equal(await page.locator('#disable-webgl').isChecked(),off);
     };
     const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'{"features":[]}'));
+    const incoming=()=>page.evaluate(()=>JSON.parse(window.atlasTestIncomingWork));
     const consumed=()=>page.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')===null);
     try {
       await page.goto(origin);
@@ -235,6 +237,7 @@ try {
       assert.equal((await saved()).features.length,0);
       await switchMode(true);
       await painted('canvas','after-canvas');
+      assert.equal((await incoming()).drawing.points.length,2);
       assert.equal(await consumed(),true);
       assert.equal(await page.locator('[data-draw="line"]').getAttribute('aria-pressed'),'true');
       assert.equal(await page.locator('#draw-dash').inputValue(),'dotted');
@@ -249,14 +252,19 @@ try {
       await page.getByRole('button',{name:'Measure',exact:true}).click();
       await clickMap('canvas',.14,.52);await clickMap('canvas',.84,.46);
       const status=page.locator('#measure-status');
-      assert.match(await status.textContent(),/over 1 segment · double-click to end/);
+      // While pointing at the map, status also counts a live cursor segment.
+      // The handoff below must contain only the two committed vertices.
+      assert.equal(await page.locator('#measure-finish').isEnabled(),true);
       await switchMode(false);
       await painted('webgl','after-webgl');
+      const transferred=(await incoming()).measurement;
+      assert.equal(transferred.mode,'distance');
+      assert.equal(transferred.points.length,2);
+      assert.equal(transferred.ended,false);
       assert.equal(await consumed(),true);
       assert.match(await status.textContent(),/over 1 segment · double-click to end/);
       assert.deepEqual(await saved(),finished);
       await clickMap('webgl',.15,.61);
-      assert.match(await status.textContent(),/over 2 segments · double-click to end/);
       await page.locator('#measure-finish').click();
       assert.match(await status.textContent(),/over 2 segments\./);
       assert.equal(await page.locator('#measure-finish').isDisabled(),true);
