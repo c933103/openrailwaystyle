@@ -325,6 +325,10 @@ try{
   await page.locator('#relief').check();
   await page.locator('#settings-close').click();
   assert.equal(await page.locator('.language-picker select').count(),1);
+  const languageControl=page.getByRole('combobox',{name:'Preferred language'});
+  assert.equal(await languageControl.count(),1);
+  assert.equal(await languageControl.getAttribute('aria-describedby'),'language-source-note');
+  assert.match(await page.locator('#language-source-note').innerText(),/when available.*background tiles do not change/);
   assert.equal(await page.locator('#region').count(),0);
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
