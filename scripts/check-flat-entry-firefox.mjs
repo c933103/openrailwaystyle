@@ -485,6 +485,90 @@ try {
       assert.deepEqual(await recipient.page.evaluate(()=>window.webglAttempts),[]);
     } finally {await recipient.context.close();}
   } finally {await compassCase.context.close();}
+  // Browser-provided synthetic positions, never an operator's actual location.
+  const locationCase=await fresh(true);
+  try {
+    const {page:p,context}=locationCase;
+    await context.grantPermissions(['geolocation'],{origin});
+    await context.setGeolocation({longitude:114,latitude:22,accuracy:18});
+    await p.goto(origin);
+    await ready(p);
+    const button=p.getByRole('button',{name:'My location',exact:true});
+    const state=()=>button.getAttribute('data-location-state');
+    const center=()=>p.locator('#map').getAttribute('data-flat-center');
+    const assertCenter=async (lng,lat)=>{
+      const [x,y]=(await center()).split(',').map(Number);
+      assert.ok(Math.abs(x-lng)<1e-8 && Math.abs(y-lat)<1e-8, `${x},${y} is not ${lng},${lat}`);
+    };
+    const waitCenter=([lng,lat])=>p.waitForFunction(([lng,lat])=>{
+      const [x,y]=document.querySelector('#map').dataset.flatCenter.split(',').map(Number);
+      return Math.abs(x-lng)<1e-8&&Math.abs(y-lat)<1e-8;
+    },[lng,lat]);
+    const blueAtCenter=()=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data;
+      return d[0]===21&&d[1]===118&&d[2]===229&&d[3]===255;
+    };
+    assert.equal(await state(),'off');
+    await assertCenter(0,0);
+    await button.press('Enter');
+    await waitCenter([114,22]);
+    await p.waitForFunction(blueAtCenter);
+    assert.equal(await state(),'following');
+    assert.match(await p.locator('.atlas-flat-readout').textContent(),/zoom 15\.0/);
+    assert.deepEqual(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c),[0,0]);
+    await context.setGeolocation({longitude:114.001,latitude:22.001,accuracy:20});
+    await waitCenter([114.001,22.001]);
+    const canvas=p.locator('canvas.atlas-flat-preview');
+    await canvas.press('ArrowRight');
+    assert.equal(await state(),'paused');
+    const paused=await center();
+    await context.setGeolocation({longitude:114.003,latitude:22.002,accuracy:20});
+    // The fix moves the visible dot about 33 px right and 50 px up but
+    // does not recenter the camera while follow is paused.
+    await p.waitForFunction(()=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const density=c.width/c.clientWidth;
+      const d=c.getContext('2d').getImageData(c.width/2+27*density,c.height/2-57*density,16*density,16*density).data;
+      return d.some((v,i)=>i%4===0&&v===21&&d[i+1]===118&&d[i+2]===229&&d[i+3]===255);
+    });
+    assert.equal(await center(),paused);
+    assert.equal(await state(),'paused');
+    await button.click();
+    await waitCenter([114.003,22.002]);
+    assert.equal(await state(),'following');
+    assert.notEqual(await center(),paused);
+    await button.click();
+    assert.equal(await state(),'off');
+    await p.waitForFunction(()=>document.querySelector('.atlas-flat-location-status').textContent.includes('stopped'));
+    await p.waitForFunction(()=>{const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data;
+      return d[0]!==21||d[1]!==118||d[2]!==229;
+    });
+    await context.setGeolocation({longitude:115,latitude:21,accuracy:10});
+    await canvas.press('Equal');
+    await assertCenter(114.003,22.002);
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+  } finally {await locationCase.context.close();}
+  const deniedLocation=await fresh(true);
+  try {
+    const p=deniedLocation.page;
+    await p.setViewportSize({width:280,height:440});
+    await p.addInitScript(()=>{
+      Object.defineProperty(navigator,'geolocation',{value:{
+        watchPosition(_success,failure){setTimeout(()=>failure({code:1}),0);return 7;},
+        clearWatch(id){window.clearedLocationWatch=id;},
+      }});
+    });
+    await p.goto(origin);
+    await p.locator('canvas.atlas-flat-preview').waitFor();
+    const tools=await p.locator('.atlas-flat-tool-buttons').boundingBox();
+    assert.ok(tools.x>=65 && tools.x+tools.width<=280);
+    await p.getByRole('button',{name:'My location',exact:true}).click();
+    await p.getByText('Location permission was denied.',{exact:true}).waitFor();
+    assert.equal(await p.getByRole('button',{name:'My location',exact:true}).getAttribute('aria-pressed'),'false');
+    assert.equal(await p.evaluate(()=>window.clearedLocationWatch),7);
+  } finally {await deniedLocation.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});

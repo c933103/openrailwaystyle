@@ -1584,7 +1584,7 @@ $('draw-file').addEventListener('change', async () => {
 });
 addEventListener('keydown', event => {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName) ||
-      event.target.closest?.('.atlas-flat-compass, .atlas-flat-zoom-button')) return;
+      event.target.closest?.('.atlas-flat-compass, .atlas-flat-zoom-button, .atlas-flat-location')) return;
   if (measuring?.active) { if (event.key === 'Enter') measuring.end(); if (event.key === 'Escape') measuring.clear(); return; }
   if (!drawing?.active) return;
   if (event.key === 'Enter') drawing.finish();
@@ -1826,7 +1826,7 @@ async function initialize() {
     }
   }
   if (useFlat) {
-    const {mountFlatMap}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const {mountFlatMap,connectFlatLocation}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
       zoom:startZoom,
@@ -1839,6 +1839,7 @@ async function initialize() {
     const needle=textNode('span','↑');
     needle.setAttribute('aria-hidden','true');
     compass.append(needle);
+    let flatLocation;
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
@@ -1857,11 +1858,13 @@ async function initialize() {
         feature.clickLngLat={lng,lat};
         showDetails(feature);
       },
-      onNavigate(view) {
+      onNavigate(view,reason) {
         flatCurrentView=view;
+        if(reason!=='location' && reason!=='rotation') flatLocation?.pause();
         scheduleNearbyTransport();
         linkedViewHash='';
-        try {localStorage.setItem(VIEW_STORE,JSON.stringify(view));} catch {}
+        // Location following changes the live view but does not write position history.
+        if(reason!=='location') try {localStorage.setItem(VIEW_STORE,JSON.stringify(view));} catch {}
         if (parseViewHash(location.hash)) {
           const url=new URL(location.href);url.hash='';
           history.replaceState(history.state,'',url);
@@ -1921,6 +1924,16 @@ async function initialize() {
       button.addEventListener('click',()=>flat.zoomBy(delta));
       toolButtons.append(button);
     }
+    const locateButton=textNode('button','⌾','atlas-flat-location');
+    locateButton.type='button';
+    locateButton.setAttribute('aria-label','My location');
+    const locationStatus=textNode('div','','atlas-flat-location-status');
+    locationStatus.setAttribute('role','status');
+    flatLocation=connectFlatLocation({
+      button:locateButton,status:locationStatus,window,geolocation:navigator.geolocation,
+      showFix:flat.showLocation,followFix:flat.followLocation,
+    });
+    toolButtons.append(locateButton,locationStatus);
     $('map').append(toolButtons);
     restoreRendererWork();
     const action=pendingDraw;pendingDraw=undefined;action?.();

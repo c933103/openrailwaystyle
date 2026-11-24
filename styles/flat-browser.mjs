@@ -8,3 +8,4 @@ export {createFlatTileRequests} from './flat-tile-requests.mjs';
 export {flatVectorTile} from './flat-vector.mjs';
 export {createFlatSourceLoader, flatTileURL} from './flat-source-loader.mjs';
 export {mountFlatMap} from './flat-mount.mjs';
+export {connectFlatLocation} from './flat-location.mjs';

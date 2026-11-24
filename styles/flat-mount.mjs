@@ -29,7 +29,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
-  let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null;
+  let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
   const drawingOverlay=flatDrawingAdapter(canvas,schedule);
@@ -59,7 +59,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   function updateReadout() {
     if (camera && onReadout) onReadout(readoutPoint ? camera.unproject(readoutPoint) : camera.center, camera.zoom);
   }
-  function setCamera(next, navigate=false) {
+  function setCamera(next, navigate=false, reason='manual') {
     camera=next;
     measureOverlay.setCamera(next);drawingOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
@@ -67,7 +67,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     updateReadout();
     if (navigate) {
       navigated=true;
-      onNavigate({c:camera.center,z:camera.zoom,b:camera.bearing,p:0,g:false,t:false});
+      onNavigate({c:camera.center,z:camera.zoom,b:camera.bearing,p:0,g:false,t:false},reason);
     }
     schedule();
   }
@@ -133,6 +133,21 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }});
     drawingOverlay.draw(context);
     measureOverlay.draw(context,camera);
+    if(locationFix){
+      const [x,y]=camera.project(locationFix.coordinates);
+      const latitude=Math.min(85,Math.abs(locationFix.coordinates[1]));
+      const radius=locationFix.accuracy*512*2**camera.zoom/(40075017*Math.cos(latitude*Math.PI/180));
+      context.save();
+      if(Number.isFinite(radius)&&radius>7){
+        context.fillStyle='#1576e522';
+        context.strokeStyle='#1576e577';
+        context.beginPath();context.arc(x,y,Math.min(radius,1e7),0,2*Math.PI);
+        context.fill();context.stroke();
+      }
+      context.fillStyle='#1576e5';context.strokeStyle='#fff';context.lineWidth=2;
+      context.beginPath();context.arc(x,y,6,0,2*Math.PI);context.fill();context.stroke();
+      context.restore();
+    }
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
     onStatus({errors:[...errors],painting,loading,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
@@ -279,9 +294,17 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   };
   const resetNorth=()=>{
     if (disposed || gesture.active || toolDrag || camera.bearing===0) return;
-    setCamera(flatCamera({...camera,bearing:0}),true);
+    setCamera(flatCamera({...camera,bearing:0}),true,'rotation');
   };
-  return {close,moveTo,zoomBy,resetNorth,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
+  const showLocation=fix=>{locationFix=fix;schedule();};
+  const followLocation=({coordinates})=>{
+    if(disposed || gesture.active || toolDrag) return;
+    const zoom=Math.max(15,camera.zoom);
+    const next=flatCamera({...camera,center:coordinates,zoom});
+    if(next.zoom===camera.zoom && next.center.every((n,i)=>n===camera.center[i])) return;
+    setCamera(next,true,'location');
+  };
+  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};
