@@ -31,7 +31,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
-  <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+  <link id="maplibre-css" data-href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
   <link href="app.css?v=20261123-shared-tile-dispatch-1" rel="stylesheet">
 </head>
 <body>
@@ -81,6 +81,7 @@
     <section id="settings-view" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
+        <label id="flat-preview-preference" hidden><input type="checkbox" id="disable-webgl"> Disable WebGL (Canvas preview)</label>
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="stationImportanceColors"> Different colours by station importance at zooms 3–6</label>

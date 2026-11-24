@@ -168,13 +168,43 @@ function restoreCachedMapStyle() {
     link.after(style);
   })();
 }
-// The link's error may precede module execution, so check its sheet now as
-// well as listening for a later failure. Both copies have the same pinned
-// version; a slow successful first-party link can safely finish afterwards.
-$('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
-restoreCachedMapStyle().catch(() => {});
+// The preview server opts in through its copy of the real page. Do not expose
+// the partial renderer as a released feature before the other controls work.
+const stagedFlatEntry = document.documentElement.dataset.flatEntry === 'staged';
+const RENDERER_STORE = 'atlas_disable_webgl';
+let explicitFlat = false;
+try { explicitFlat = stagedFlatEntry && localStorage.getItem(RENDERER_STORE) === '1'; } catch {}
+function webglAvailable() {
+  try {
+    const probe = document.createElement('canvas');
+    const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {return false;}
+}
+const useFlat = stagedFlatEntry && (explicitFlat || !webglAvailable());
+if (stagedFlatEntry) {
+  $('flat-preview-preference').hidden=false;
+  const toggle=$('disable-webgl');
+  toggle.checked=explicitFlat;
+  toggle.addEventListener('change',()=>{
+    try {localStorage.setItem(RENDERER_STORE,toggle.checked?'1':'0');}
+    catch {
+      status.textContent='The browser could not save the WebGL preference.';
+      toggle.checked=explicitFlat;return;
+    }
+    location.reload();
+  });
+}
+if (!useFlat) {
+  const link=$('maplibre-css');
+  link?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once:true});
+  if (link?.dataset.href) link.href=link.dataset.href;
+  restoreCachedMapStyle().catch(() => {});
+}
 const libraries = Promise.all([
-  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  !useFlat && loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
   loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
@@ -508,14 +538,15 @@ function saveSettings() {
   if (hasView) linkedViewHash = url.hash;
   // Normalize shared links once, not on every pan/zoom. Preserve unrelated
   // query parameters, non-map anchors and the current browser history state.
-  if (hasSettings || hasView) {
+  if (hasSettings || (hasView && !useFlat)) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
     url.searchParams.delete('terrain3d');
-    if (hasView) url.hash = '';
+    if (hasView && !useFlat) url.hash = '';
     history.replaceState(history.state, '', url);
   }
 }
 // Build a link on demand rather than writing each map position into history.
+let flatCurrentView;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -523,6 +554,10 @@ function shareURL() {
   if (map) {
     const {lat, lng} = map.getCenter();
     url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
+  } else if (flatCurrentView) {
+    const {c:[lng,lat],z:zoom,b:bearing}=flatCurrentView;
+    url.searchParams.set('terrain3d','0');
+    url.hash=viewHash({zoom,lat,lng,bearing,pitch:0});
   } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
     url.hash = linkedViewHash;
@@ -1495,11 +1530,11 @@ async function initialize() {
   const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
-  if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
+  if ((!useFlat && !window.maplibregl) || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
   // Register providers once; MapLibre receives the same handlers the flat renderer can read.
-  const tileProtocols = createSharedTileProtocols({forward: maplibregl.addProtocol.bind(maplibregl)});
+  const tileProtocols = createSharedTileProtocols(useFlat ? {} : {forward: maplibregl.addProtocol.bind(maplibregl)});
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   tileProtocols.addProtocol('pmtiles', protocol.tile);
@@ -1637,6 +1672,35 @@ async function initialize() {
   for(const layer of style.layers){
     const paint=stationViewPaint(layer,settings.mode,Number.isFinite(start.z)?start.z:1.8);
     if(paint)Object.assign(layer.paint,paint);
+  }
+  if (useFlat) {
+    const {mountFlatMap}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const requestedView={
+      center:linked?linkedView.center:validCenter?start.c:[15,23],
+      zoom:startZoom,
+      bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
+    };
+    mountFlatMap({
+      mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
+      onNavigate(view) {
+        flatCurrentView=view;
+        linkedViewHash='';
+        try {localStorage.setItem(VIEW_STORE,JSON.stringify(view));} catch {}
+        if (parseViewHash(location.hash)) {
+          const url=new URL(location.href);url.hash='';
+          history.replaceState(history.state,'',url);
+        }
+      },
+      onStatus({errors,loading,clamped}) {
+        status.classList.toggle('error',errors.length>0);
+        status.textContent=errors.length
+          ? 'Canvas preview: some visible tile data could not load.'
+          : loading?'Canvas preview: loading railway tiles…'
+          : clamped?'Canvas preview: the requested polar position is beyond the flat map edge.'
+          :'Canvas preview: drag or use the arrow keys to move.';
+      },
+    });
+    return;
   }
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
