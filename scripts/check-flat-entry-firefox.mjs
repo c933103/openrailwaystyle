@@ -57,13 +57,14 @@ header[96]=1;header[97]=1;header[98]=2;header[99]=1;header[100]=14;header[101]=1
 for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.writeInt32LE(value*1e7,offset);
 const nearbyArchive=Buffer.concat([header,dir,meta,packed]);
 const paths=[];
-let failStyle=false, activateStaging=true,useElevationFixture=false;
+let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
 const terrainRequests=[];
 const server=createServer((req,res)=>{
   const {pathname}=new URL(req.url,'http://127.0.0.1');
   paths.push(pathname);
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
+  else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(pathname==='/world.style.json') {
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(style));
   } else if(pathname==='/data/nearby-fixture.pmtiles') {
@@ -559,6 +560,20 @@ try {
   assert.ok(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]>10));
   await current.context.close();
 
+  for(const missing of ['/vendor/maplibre-gl-5.24.0-atlas.4.js','/vendor/maplibre-gl-5.24.0.css']){
+    missingWebGLAsset=missing;
+    current=await fresh(false,false,true);
+    const start=paths.length;
+    await current.page.goto(origin);
+    await ready(current.page);
+    assert.ok(paths.slice(start).includes(missing));
+    assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'probe passed, but painter was not attempted');
+    assert.match(await current.page.locator('#map-status').textContent(),/the WebGL renderer files could not load/);
+    assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null);
+    await current.context.close();
+  }
+  missingWebGLAsset=null;
+
   failStyle=true;
   current=await fresh(false,false,true);
   await current.page.goto(origin);
@@ -576,5 +591,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal recovered without reloading, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal and separate missing renderer JS/CSS recovered without reloading, and style errors surfaced.');
 } finally {await browser?.close();server.close();}
