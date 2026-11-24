@@ -57,3 +57,21 @@ test('search replaced while queued does not consume a geocoder request or overwr
  const h=searchHarness();
  try{await h.submit('First');const old=h.submit('Queued');await flush();const latest=h.submit('Latest');await h.advance(1000);await Promise.all([old,latest]);assert.equal(h.status(),noMatches);assert.deepEqual(h.calls.filter(c=>!facility(c.url)).map(c=>c.url.searchParams.get('q')),['First','Latest']);}finally{h.close();}
 });
+
+test('nearby station nodes with matching names and operator use visible street disambiguation', async()=>{
+ const north={...station,osm_id:9004,name:'Central',operator:'Metro',network:'Metro',ref:null,'addr:street':'North Street'};
+ const south={...north,osm_id:9005,latitude:51.5005,'addr:street':'South Street'};
+ const h=searchHarness({fetcher: async url=>response(facility(url)?[north,north,south]:[])});
+ try {
+  await h.submit('Central');
+  assert.equal(h.status(),'2 railway results, 0 places');
+  const buttons=[...h.results().querySelectorAll('button')];
+  assert.equal(buttons.length,2);
+  assert.match(buttons[0].textContent,/Central.*North Street/);
+  assert.match(buttons[1].textContent,/Central.*South Street/);
+  buttons[1].click();
+  assert.equal(h.details[0].properties.osm_id,9005);
+  assert.deepEqual([...h.navigation[0].options.center],[-0.1,51.5005]);
+  assert.equal(h.calls.length,2,'no extra lookup for station context');
+ } finally { h.close(); }
+});
