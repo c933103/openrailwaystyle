@@ -9,12 +9,13 @@ import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
 import {contextIcon} from './context.mjs';
 import {flatMeasureAdapter} from './flat-measure.mjs';
+import {flatDrawingAdapter, drawingLines} from './flat-drawing.mjs';
 
 const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -29,8 +30,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let camera, frame = 0, disposed = false, navigated = false;
-  let sourceFrame=new Map(), paintedSymbols=[], measure=null, dragId=null;
+  let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
+  const drawingOverlay=flatDrawingAdapter(canvas,schedule);
   const icons=new Map();
   const getIcon=id=>{
     if(!icons.has(id)){
@@ -56,7 +58,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   }
   function setCamera(next, navigate=false) {
     camera=next;
-    measureOverlay.setCamera(next);
+    measureOverlay.setCamera(next);drawingOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
     if (navigate) {
       navigated=true;
@@ -124,6 +126,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         layer:{id,type:'symbol',source},geometry:{type:'Point',coordinates:[lng,lat]},
       }});
     }});
+    drawingOverlay.draw(context);
     measureOverlay.draw(context,camera);
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
@@ -135,59 +138,77 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const rect=canvas.getBoundingClientRect();
     return [e.clientX-rect.left,e.clientY-rect.top];
   };
+  const activeTool=()=>measure?.active?measure:drawing?.active&&!drawing.paused?drawing:null;
+  const overlayFor=tool=>tool===measure?measureOverlay:drawingOverlay;
+  function mapPosition(point,tool) {
+    const [raw,lat]=camera.unproject(point);
+    return {lng:tool===drawing?((raw+180)%360+360)%360-180:raw,lat};
+  }
+  const screenPoint=([x,y])=>({x,y});
+  const clickTool=(tool,point)=>tool.click(mapPosition(point,tool),screenPoint(point));
   const gesture=createFlatGesture({
     preview:setCamera,
     commit:next=>setCamera(next,true),
     inspect:point=>{
-      if(measure?.active){
-        const [lng,lat]=camera.unproject(point);
-        measure.click({lng,lat},{x:point[0],y:point[1]});
-        return;
-      }
-      if(!onInspect) return;
-      const hits=query(camera,point,queue.snapshot().frame);
+      const tool=activeTool();
+      if(tool){clickTool(tool,point);return;}
       const [x,y]=point;
+      if(drawing && !drawing.active && onDrawingProfile){
+        const hit=drawingOverlay.map.queryRenderedFeatures([[x-5,y-5],[x+5,y+5]],{layers:drawingLines})
+          .find(f=>f.geometry.type==='LineString');
+        const line=hit&&drawing.features.find(f=>f.id===hit.properties.drawing);
+        if(line){onDrawingProfile(line);return;}
+      }
+      if(!onInspect)return;
+      const hits=query(camera,point,queue.snapshot().frame);
       for(const symbol of paintedSymbols){
         if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
           hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});
       }
-      if(hits.length) onInspect(hits,camera.unproject(point));
+      if(hits.length)onInspect(hits,camera.unproject(point));
     },
   });
-  const measureEvent=(e,mouse,touch)=>measureOverlay.emit(e.pointerType==='touch'?touch:mouse,localPoint(e),e);
+  const toolEvent=(tool,e,mouse,touch)=>overlayFor(tool).emit(e.pointerType==='touch'?touch:mouse,localPoint(e),e);
   listen('pointerdown',e=>{
-    if(e.button!==0 || dragId!==null)return;
-    if(measure?.active&&!gesture.active&&measureEvent(e,'mousedown','touchstart')){
-      dragId=e.pointerId;
+    if(e.button!==0||toolDrag)return;
+    const tool=activeTool();
+    if(tool&&tool.mode!=='erase'&&!gesture.active&&toolEvent(tool,e,'mousedown','touchstart')){
+      toolDrag={id:e.pointerId,tool};
       canvas.setPointerCapture(e.pointerId);return;
     }
     if(gesture.start(e.pointerId,e.pointerType,localPoint(e),camera))canvas.setPointerCapture(e.pointerId);
   });
   listen('pointermove',e=>{
-    if(e.pointerId===dragId){measureEvent(e,'mousemove','touchmove');return;}
+    if(e.pointerId===toolDrag?.id){
+      if(toolDrag.tool===activeTool())toolEvent(toolDrag.tool,e,'mousemove','touchmove');
+      return;
+    }
     gesture.move(e.pointerId,localPoint(e));
-    if(measure?.active&&!gesture.active&&e.pointerType==='mouse'){
-      const [lng,lat]=camera.unproject(localPoint(e));measure.move({lng,lat});
+    const tool=activeTool();
+    if(tool&&!gesture.active&&e.pointerType==='mouse'&&!e.buttons) {
+      if(tool===drawing)toolEvent(tool,e,'mousemove','touchmove');
+      tool.move(mapPosition(localPoint(e),tool));
     }
   });
   function endPointer(e,cancel=false){
-    if(e.pointerId===dragId){
-      dragId=null;
-      measureEvent(e,'mouseup',cancel?'touchcancel':'touchend');
-      if(!cancel){
-        const point=localPoint(e), [lng,lat]=camera.unproject(point);
-        measure?.click({lng,lat},{x:point[0],y:point[1]});
-      }
+    if(e.pointerId===toolDrag?.id){
+      const {tool}=toolDrag;toolDrag=null;
+      toolEvent(tool,e,'mouseup',cancel?'touchcancel':'touchend');
+      if(!cancel&&tool===activeTool())clickTool(tool,localPoint(e));
     }else if(cancel)gesture.cancel(e.pointerId);
     else gesture.end(e.pointerId,localPoint(e));
   }
   listen('pointerup',e=>endPointer(e));
   listen('pointercancel',e=>endPointer(e,true));
   listen('lostpointercapture',e=>endPointer(e,true));
-  listen('dblclick',e=>{if(measure?.mode==='distance'){e.preventDefault();measure.end();}});
+  listen('dblclick',e=>{
+    const tool=activeTool();
+    if(tool===measure&&tool?.mode==='distance'){e.preventDefault();tool.end();}
+    if(tool===drawing&&tool?.multiPoint){e.preventDefault();tool.finish();}
+  });
   listen('wheel',e=>{
     e.preventDefault();
-    if(gesture.active || dragId!==null || !e.deltaY) return;
+    if(gesture.active || toolDrag || !e.deltaY) return;
     const zoom=Math.max(-0.5,Math.min(22,camera.zoom-Math.sign(e.deltaY)*0.25));
     if(zoom===camera.zoom) return;
     const rect=canvas.getBoundingClientRect();
@@ -195,7 +216,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   },{passive:false});
   listen('keydown',e=>{
     const pan={ArrowLeft:[-60,0],ArrowRight:[60,0],ArrowUp:[0,-60],ArrowDown:[0,60]}[e.key];
-    if (!pan || gesture.active || dragId!==null || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (!pan || gesture.active || toolDrag || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
   });
@@ -238,7 +259,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const entry=sourceFrame.get(source);
     return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers,{filter,zoom:camera.zoom})};
   };
-  return {close,moveTo,setStyle,readSourcePoints,measurementMap:measureOverlay.map,
+  return {close,moveTo,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
+    connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center,getLayers:()=>style.layers};
 }

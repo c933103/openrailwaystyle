@@ -253,11 +253,12 @@ export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.features = []; this.draft = []; this.draftCurved = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
-    this.curved = false; this.selected = null; this.extending = null; this.lastAdd = 0;
+    this.curved = false; this.selected = null; this.extending = null; this.lastAdd = 0; this.handleGeneration = 0;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
     this.dragging = dragPoints(map, 'drawing-handle-targets', {
-      enabled: () => this.mode !== null && !this.paused,
+      enabled: () => this.mode !== null && this.mode !== 'erase' && !this.paused,
+      valid: p => p.generation === this.handleGeneration,
       move: (handle, p) => {
         // Dragging a segment's middle handle inserts a point there, then
         // moves it.
@@ -329,7 +330,7 @@ export class Drawing {
   handleCollection() {
     if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
     const handle = (coordinates, drawing, index, color, curved) => ({type:'Feature', geometry:{type:'Point', coordinates},
-      properties:{drawing, index, color, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
+      properties:{drawing, index, color, generation:this.handleGeneration, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
     // On a curve, the middle of the segment's own stretch of the drawn line
     // (curved: the line's curve flags, or none for an area).
     const middles = (drawing, color, points, closed, curved) => {
@@ -337,8 +338,10 @@ export class Drawing {
       const nodes = [], drawn = curved ? buildLine(points, curved, nodes) : [];
       return points.slice(0, closed ? points.length : -1).map((p, i) => {
         const q = points[(i + 1) % points.length], [j, k] = [nodes[i], nodes[i + 1]];
-        const at = curved && k - j >= 2 ? drawn[(j + k) >> 1] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-        return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color}};
+        const delta = q[0] - p[0];
+        const lng = Math.abs(delta) <= 180 ? (p[0] + q[0]) / 2 : p[0] + ((delta % 360 + 540) % 360 - 180) / 2;
+        const at = curved && k - j >= 2 ? drawn[(j + k) >> 1] : [lng, (p[1] + q[1]) / 2];
+        return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color, generation:this.handleGeneration}};
       });
     };
     return {type:'FeatureCollection', features:[
@@ -451,6 +454,7 @@ export class Drawing {
   setStyle(style) { this.style = {...this.style, ...drawingStyle({...this.style, ...style})}; this.refresh(); }
   setCurved(curved) { this.curved = Boolean(curved); this.refresh(); this.changed(); }
   setMode(mode) {
+    this.handleGeneration++;
     this.finish();
     // Curve is the line tool starting with curve points on.
     if (mode === 'curve') { this.curved = true; mode = 'line'; }
@@ -464,6 +468,7 @@ export class Drawing {
   // Pause input so the map can be moved without leaving the drawing tools or
   // losing a shape in progress.
   setPaused(paused) {
+    this.handleGeneration++;
     this.paused = paused;
     this.cursor = null; this.selected = null;
     if (this.multiPoint && !paused) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();

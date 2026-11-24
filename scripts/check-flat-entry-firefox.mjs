@@ -276,6 +276,60 @@ try {
     const c=document.querySelector('canvas.atlas-flat-preview'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
     return d.some((v,i)=>i%4===0&&v===224&&d[i+1]===112&&d[i+2]===27&&d[i+3]===255);
   },null,{timeout:10000});
+  await hg.locator('#details-close').click();
+  await hg.locator('#measure-close').click();
+  await hg.getByRole('button',{name:'Drawing tools',exact:true}).click();
+  const drawing=()=>hg.evaluate(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')));
+  const sketch=await hCanvas.evaluate(c=>{
+    const r=c.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+105;
+    return {a:[x-18,y],b:[x+128,y],mid:[x+55,y],drag:[x+57,y+44],
+      point:[x+83,y-30],area:[[x+150,y-34],[x+220,y-37],[x+185,y+18]]};
+  });
+  const clickAt=async point=>{
+    assert.ok(await hg.evaluate(([x,y])=>document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),point),
+      'The click must reach the real map at '+point);
+    await hg.mouse.click(...point);
+  };
+  await hg.locator('[data-draw="line"]').click();
+  await hg.locator('#draw-dash').selectOption('dashed');
+  await clickAt(sketch.a);await clickAt(sketch.b);
+  await hg.locator('#draw-finish').click();
+  let saved=await drawing();
+  assert.deepEqual(saved.features.map(f=>[f.geometry.type,f.properties.dash]),[['LineString','dashed']]);
+  await hg.waitForFunction(([x,y])=>{
+    const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect();
+    const rgb=c.getContext('2d').getImageData(Math.round((x-r.left-10)*c.width/r.width),
+      Math.round((y-r.top-4)*c.height/r.height),Math.round(20*c.width/r.width),Math.round(8*c.height/r.height)).data;
+    return rgb.some((v,i)=>i%4===0&&v===194&&rgb[i+1]===24&&rgb[i+2]===91);
+  },sketch.mid);
+  await hg.mouse.move(...sketch.mid);await hg.mouse.down();await hg.mouse.move(...sketch.drag,{steps:5});await hg.mouse.up();
+  saved=await drawing();
+  assert.equal(saved.features[0].geometry.coordinates.length,3,'midpoint drag inserts exactly one vertex');
+  assert.ok(saved.features[0].geometry.coordinates[1][1]<saved.features[0].geometry.coordinates[0][1]);
+  await hg.locator('#draw-close').click();
+  await clickAt(sketch.drag);
+  await hg.getByRole('img',{name:'Elevation along the line'}).waitFor({timeout:10000});
+  assert.match(await hg.locator('#detail-content dl').innerText(),/-20 m/);
+  await hg.locator('#details-close').click();
+  await hg.getByRole('button',{name:'Drawing tools',exact:true}).click();
+  await hg.locator('[data-draw="point"]').click();
+  await clickAt(sketch.point);
+  await hg.locator('[data-draw="area"]').click();
+  for(const p of sketch.area)await clickAt(p);
+  await hg.locator('#draw-finish').click();
+  assert.deepEqual((await drawing()).features.map(f=>f.geometry.type),['LineString','Point','Polygon']);
+  await hg.reload();
+  await hCanvas.waitFor();
+  await hg.getByRole('button',{name:'Drawing tools',exact:true}).click();
+  await hg.locator('[data-draw="erase"]').click();
+  await clickAt(sketch.point);
+  assert.deepEqual((await drawing()).features.map(f=>f.geometry.type),['LineString','Polygon']);
+  const [exported]=await Promise.all([hg.waitForEvent('download'),hg.locator('#draw-save').click()]);
+  const exportedFile=await exported.path();
+  assert.deepEqual(JSON.parse(await readFile(exportedFile,'utf8')),await drawing());
+  await hg.locator('#draw-file').setInputFiles(exportedFile);
+  await hg.getByText('Opened 2 drawings.',{exact:true}).waitFor();
+  assert.deepEqual((await drawing()).features.map(f=>f.geometry.type),['LineString','Polygon','LineString','Polygon']);
   assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),[]);
   await current.context.close();
   useElevationFixture=false;
@@ -439,5 +493,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

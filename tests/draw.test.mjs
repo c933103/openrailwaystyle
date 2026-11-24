@@ -259,7 +259,8 @@ test('drawing points are selected, then moved, deleted, curved or extended', asy
   assert.deepEqual(d.features.at(-1).properties.curved, [0,1,1,0,1,0,0,0], 'between an end and a curve point: part of the curve');
   // Dragging a middle handle inserts the point, then moves it.
   at(9, 9);
-  const target = {drawing: line.id, after: 6, mid: 1};
+  const target = {...sources['atlas-drawing-handles'].data.features
+    .find(f => f.properties.drawing === line.id && f.properties.mid && f.properties.after === 6).properties};
   handlers['mousedown drawing-handle-targets']({features: [{properties: target}], point: {x: 0, y: 0}, originalEvent: {button: 0}, preventDefault() {}});
   handlers['mousemove ']({point: {x: 50, y: 0}, lngLat: {lng: -0.8, lat: 0.2}});
   handlers['mousemove ']({point: {x: 60, y: 0}, lngLat: {lng: -0.8, lat: 0.3}});
