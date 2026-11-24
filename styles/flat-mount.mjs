@@ -15,7 +15,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -29,7 +29,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
-  let camera, frame = 0, disposed = false, navigated = false;
+  let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
   const drawingOverlay=flatDrawingAdapter(canvas,schedule);
@@ -56,10 +56,14 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   function schedule() {
     if (!disposed && !frame) frame=window.requestAnimationFrame(render);
   }
+  function updateReadout() {
+    if (camera && onReadout) onReadout(readoutPoint ? camera.unproject(readoutPoint) : camera.center, camera.zoom);
+  }
   function setCamera(next, navigate=false) {
     camera=next;
     measureOverlay.setCamera(next);drawingOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
+    updateReadout();
     if (navigate) {
       navigated=true;
       onNavigate({c:camera.center,z:camera.zoom,b:camera.bearing,p:0,g:false,t:false});
@@ -178,7 +182,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
     if(gesture.start(e.pointerId,e.pointerType,localPoint(e),camera))canvas.setPointerCapture(e.pointerId);
   });
+  listen('pointerleave',()=>{readoutPoint=null;updateReadout();});
   listen('pointermove',e=>{
+    if(e.pointerType==='mouse'){readoutPoint=localPoint(e);updateReadout();}
     if(e.pointerId===toolDrag?.id){
       if(toolDrag.tool===activeTool())toolEvent(toolDrag.tool,e,'mousemove','touchmove');
       return;

@@ -1298,9 +1298,17 @@ function localizeStyle(style) {
 // without one, as on a touch screen) and the zoom, where More detail adds the
 // scale the map is drawn at. Turned off in the settings.
 const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
-let readoutPoint = null;
+let readoutPoint = null, flatReadout;
 function updateReadout() {
-  if (!map || readout.hidden) return;
+  if (readout.hidden) return;
+  if (useFlat) {
+    if (flatReadout) {
+      const [[lng,lat],zoom]=flatReadout;
+      readout.textContent=formatReadout({lng,lat},zoom,0);
+    }
+    return;
+  }
+  if (!map) return;
   const center=map.getCenter(),zoom=map.getProjection()?.type==='globe'?readoutZoom(map.getZoom(),center.lat):map.getZoom();
   readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : center, zoom, settings.detail);
 }
@@ -1815,6 +1823,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
+      onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
       onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
       onInspect(hits,[lng,lat]) {
         if (settings.ui==='watch') return;
@@ -1848,6 +1857,9 @@ async function initialize() {
     });
     flatNavigation=flat.moveTo;
     flatSourceContext=flat;
+    readout.classList.add('atlas-flat-readout');
+    $('map').append(readout);
+    updateReadout();
     measuring=new Measure(flat.measurementMap,{
       units:()=>settings.units,
       status:text=>{$('measure-status').textContent=text;},

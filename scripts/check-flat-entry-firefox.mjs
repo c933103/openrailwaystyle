@@ -276,6 +276,34 @@ try {
       throw error;
     } finally {await context.close();}
   } else {
+  // The normal coordinate setting must work on a browser with no WebGL.
+  const readoutCase=await fresh(true);
+  try {
+    const p=readoutCase.page;
+    await p.goto(origin);
+    await ready(p);
+    const value=p.locator('.atlas-flat-readout');
+    await value.waitFor();
+    const center=await value.textContent();
+    assert.match(center,/0\.00000.*0\.00000.*zoom 0\.0/);
+    await p.mouse.move(90,100);
+    await p.waitForFunction(before=>document.querySelector('.atlas-flat-readout').textContent!==before,center);
+    await p.mouse.move(40,30); // The brand button is above the Canvas.
+    await p.waitForFunction(before=>document.querySelector('.atlas-flat-readout').textContent===before,center);
+    if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
+    await p.locator('#settings-open').click();
+    await p.locator('#readout').uncheck();
+    assert.equal(await value.isVisible(),false);
+    await p.reload();
+    await ready(p);
+    assert.equal(await value.isVisible(),false);
+    if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
+    await p.locator('#settings-open').click();
+    await p.locator('#readout').check();
+    await value.waitFor();
+    assert.equal(await value.textContent(),center);
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+  } finally {await readoutCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
