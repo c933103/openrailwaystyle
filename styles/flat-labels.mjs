@@ -1,9 +1,13 @@
 import {featureFilter,latest,normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 
+const contextPoint = layer => layer.layout?.['symbol-placement'] == null &&
+  /^context-(transport|destinations|constraints)-.+-label$/.test(layer.id) &&
+  typeof layer.layout?.['icon-image'] === 'string' && layer.layout['icon-image'].startsWith('context-');
+
 export function flatTextLabel(layer) {
   return layer.type==='symbol' && layer['source-layer']!=null &&
     ['point','line','line-center'].includes(layer.layout?.['symbol-placement']??'point') &&
-    layer.layout?.['text-field']!=null && layer.layout?.['icon-image']==null;
+    layer.layout?.['text-field']!=null && (layer.layout?.['icon-image']==null || contextPoint(layer));
 }
 const properties={
   text:['layout','text-field'], size:['layout','text-size'], font:['layout','text-font'],
@@ -23,6 +27,14 @@ export function compileFlatTextLabel(layer) {
     const spec=latest[section+'_symbol'][name];
     return [key,normalizePropertyExpression(layer[section]?.[name]??spec.default,spec)];
   });
+  const iconName=contextPoint(layer)?layer.layout['icon-image']:null;
+  const iconExpressions=iconName?Object.entries({
+    iconSize:['layout','icon-size'],iconPadding:['layout','icon-padding'],
+    iconOpacity:['paint','icon-opacity'],
+  }).map(([key,[section,name]])=>{
+    const spec=latest[section+'_symbol'][name];
+    return [key,normalizePropertyExpression(layer[section]?.[name]??spec.default,spec)];
+  }):[];
   return {
     sourceLayer:layer['source-layer'],placement,
     resolve(global,feature,canonical,state={}) {
@@ -33,10 +45,12 @@ export function compileFlatTextLabel(layer) {
       let label=values.text?.toString()??'';
       if(usesLegacyTokens)label=label.replace(/\{([^{}]+)\}/g,(_,key)=>String(feature.properties[key]??''));
       label=label.trim();
-      if(!label || !(values.size>0) || !(values.opacity>0))return null;
+      if(!(values.size>0) || !(values.opacity>0)) label='';
+      if(!label&&!iconName)return null;
       if(values.transform==='uppercase')label=label.toUpperCase();
       else if(values.transform==='lowercase')label=label.toLowerCase();
-      return {...values,label};
+      const icon=iconName?Object.fromEntries(iconExpressions.map(([k,e])=>[k,e.evaluate(global,feature,state,canonical)])):null;
+      return {...values,label,...(icon?{iconName,...icon}:{})};
     },
   };
 }
@@ -65,7 +79,7 @@ export function flatLabelCandidates(compiled,features,tile,camera,global,feature
       const px=a*u+c*v+tx,py=b*u+d*v+ty;
       if(px< -64||px>camera.width+64||py< -64||py>camera.height+64)continue;
       if(label===undefined)label=compiled.resolve(global,feature,canonical,featureState(id)??{});
-      if(label)candidates.push({...label,px,py});
+      if(label)candidates.push({...label,px,py,...(label.iconName?{feature}: {})});
     }
   }
   return candidates;
@@ -102,7 +116,7 @@ function flatVisibleSegment(paths,project,extent,camera){
   return best;
 }
 
-export function drawFlatTextLabels(context,camera,groups) {
+export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{}}={}) {
   const cell=64,buckets=new Map(), counts=new Map(),drawn=[];
   const visit=(rect,fn)=>{
     const minX=Math.max(0,Math.floor(rect.left/cell)), maxX=Math.min(Math.floor(camera.width/cell),Math.floor(rect.right/cell));
@@ -126,10 +140,30 @@ export function drawFlatTextLabels(context,camera,groups) {
       let count=0;
       for(const label of candidates.sort((a,b)=>(a.sort??0)-(b.sort??0))){
         const {label:text,size,px,py,haloWidth,padding=0}=label;
+        let icon,iconRect,iconBlock,iconWidth,iconHeight;
+        if(label.iconName){
+          icon=getIcon(label.iconName);
+          if(!icon || !(label.iconSize>0) || !(label.iconOpacity>0))continue;
+          iconWidth=icon.width*label.iconSize/2;
+          iconHeight=icon.height*label.iconSize/2;
+          iconRect={left:px-iconWidth/2,right:px+iconWidth/2,top:py-iconHeight/2,bottom:py+iconHeight/2};
+          const [top,right,bottom,left]=label.iconPadding.values;
+          iconBlock={left:iconRect.left-left,right:iconRect.right+right,top:iconRect.top-top,bottom:iconRect.bottom+bottom};
+          if(iconRect.right<=0||iconRect.left>=camera.width||iconRect.bottom<=0||iconRect.top>=camera.height||collides(iconBlock))continue;
+        }
+        const pushIcon=(textRect)=>{
+          if(!icon)return;
+          add(iconBlock);
+          drawn.push({label,icon,iconRect,iconWidth,iconHeight});
+          onSymbol(id,label,[iconRect,...(textRect?[textRect]:[])]);
+        };
         context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px sans-serif';
         const lines=text.split(/\n/).filter(Boolean), widths=lines.map(line=>context.measureText(line).width);
         const width=Math.max(...widths), lineHeight=size*1.2,height=lines.length*lineHeight;
-        if(!Number.isFinite(width)||!width)continue;
+        if(!Number.isFinite(width)||!width){
+          if(icon){pushIcon();count++;}
+          continue;
+        }
         const margin=Math.max(0,haloWidth)+padding;
         const [ox,oy]=label.xOffset??[0,0];
         if(label.angle!==undefined){
@@ -148,6 +182,7 @@ export function drawFlatTextLabels(context,camera,groups) {
           continue;
         }
         const anchors=label.variable?.length?label.variable:[label.anchor];
+        let textRect;
         for(const anchor of anchors){
           const sideX=anchor?.includes('left')?1:anchor?.includes('right')?-1:0;
           const sideY=anchor?.includes('top')?1:anchor?.includes('bottom')?-1:0;
@@ -159,15 +194,22 @@ export function drawFlatTextLabels(context,camera,groups) {
           if(!label.allow&&collides(rect))continue;
           if(!label.ignore)add(rect);
           drawn.push({label,lines,widths,width,x,y,lineHeight,font:context.font});
-          count++;
+          textRect={left:x,right:x+width,top:y,bottom:y+height};
           break;
         }
+        pushIcon(textRect);
+        if(icon||textRect)count++;
       }
       counts.set(id,count);
     }
     // Placement priority is independent of paint order: accepted labels
     // from a higher-priority group remain on top if overlap is allowed.
-    for(const {label,lines,widths,width,x,y,lineHeight,font} of drawn.reverse()){
+    for(const {label,lines,widths,width,x,y,lineHeight,font,icon,iconRect,iconWidth,iconHeight} of drawn.reverse()){
+      if(icon){
+        context.globalAlpha=alpha*label.iconOpacity;
+        context.drawImage(icon,iconRect.left,iconRect.top,iconWidth,iconHeight);
+        continue;
+      }
       const rotated=label.angle!==undefined;
       if(rotated){context.save();context.translate(label.px,label.py);context.rotate(label.angle);}
       context.font=font;

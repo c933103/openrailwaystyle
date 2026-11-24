@@ -13,7 +13,7 @@ const camera={width:256,height:256,zoom:4,tileTransform:()=>[256,0,0,256,0,0]};
 const context=()=>{
   const draws=[];
   return {draws,globalAlpha:1,save(){},restore(){},clearRect(){},translate(x,y){draws.push(['translate',x,y]);},rotate(a){draws.push(['rotate',a]);},
-    fillText(...p){draws.push(['fill',...p]);},strokeText(...p){draws.push(['halo',...p]);},
+    drawImage(...p){draws.push(['image',...p]);},fillText(...p){draws.push(['fill',...p]);},strokeText(...p){draws.push(['halo',...p]);},
     measureText:text=>({width:text.length*5})};
 };
 
@@ -67,4 +67,30 @@ test('puts a line label on a visible segment, keeps reverse track text upright, 
   const angle=ctx.draws.find(l=>l[0]==='rotate')[1];
   assert.ok(angle<0&&angle> -Math.PI/2);
   assert.deepEqual(ctx.draws.filter(l=>l[0]==='fill').map(l=>l[1]),['Main route']);
+});
+
+
+test('draws only accepted context markers, including unnamed facilities, and exposes just their painted hits',()=>{
+  const ctx=context(), sprite={width:48,height:48};
+  const transport=layer('context-transport-bus-label',{'icon-image':'context-bus','icon-size':0.75,
+    'text-variable-anchor':['left','right'],'text-radial-offset':1.1,'text-optional':true});
+  transport.filter=['==',['get','class'],'bus_station'];
+  const point=(id,x,y,properties)=>({type:1,id,extent:256,paths:[[{x,y}]],properties});
+  const bus={class:'bus_station'};
+  const data=[point(1,45,55,{...bus,name:'Transit'}),point(2,45,55,{...bus,name:'Hidden'}),
+    point(3,180,200,bus),point(4,200,80,{class:'taxi',name:'Wrong category'}),
+    point(5,256,80,{...bus,name:'Buffered'})];
+  const hits=[];
+  const out=compileFlatFrame([transport])(ctx,camera,new Map([['demo',[{
+    vector:{layer:()=>data},tile:{x:0,y:0,z:0}}]]]),{
+    getIcon:id=>id==='context-bus'?sprite:null,
+    onSymbol:(group,el,rects)=>hits.push([group.id,el.feature.id,rects]),
+  });
+  assert.deepEqual(out.unsupported,[]);
+  assert.equal(out.layerDraws.get(transport.id),2);
+  assert.deepEqual(ctx.draws.filter(r=>r[0]==='image'),[['image',sprite,171,191,18,18],['image',sprite,36,46,18,18]]);
+  assert.deepEqual(ctx.draws.filter(r=>r[0]==='fill').map(r=>r[1]),['Transit']);
+  assert.deepEqual(hits.map(([id,feature,bounds])=>[id,feature,bounds.length]),[
+    [transport.id,1,2],[transport.id,3,1],
+  ]);
 });

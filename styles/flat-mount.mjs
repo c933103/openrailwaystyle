@@ -7,6 +7,7 @@ import {createFlatTileRequests} from './flat-tile-requests.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
+import {contextIcon} from './context.mjs';
 
 const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
@@ -27,7 +28,21 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let camera, frame = 0, disposed = false, navigated = false;
-  let sourceFrame=new Map();
+  let sourceFrame=new Map(), paintedSymbols=[];
+  const icons=new Map();
+  const getIcon=id=>{
+    if(!icons.has(id)){
+      const image=contextIcon(id,document);
+      let sprite=null;
+      if(image){
+        sprite=document.createElement('canvas');
+        sprite.width=image.width;sprite.height=image.height;
+        sprite.getContext('2d').putImageData(image,0,0);
+      }
+      icons.set(id,sprite);
+    }
+    return icons.get(id);
+  };
   const queue = createFlatTileRequests({
     load:({revision,canonical,controller})=>loader.load(revision,canonical,{pixelRatio,controller}),
     dispose:tile=>tile.image?.close?.(),
@@ -95,7 +110,17 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         tiles.errors.has(id)?'failed':!entry?.value||seen<count?'loading':'ready'}];
     }));
     for(const id of tiles.errors.keys()) errors.add(id);
-    draw(context,camera,tiles.frame);
+    paintedSymbols=[];
+    draw(context,camera,tiles.frame,{getIcon,onSymbol:({id,source,sourceLayer},label,bounds)=>{
+      if(!interactiveLayer?.(id))return;
+      const [rawLng,lat]=camera.unproject([label.px,label.py]);
+      const lng=((rawLng+180)%360+360)%360-180;
+      const feature=label.feature;
+      paintedSymbols.push({bounds,px:label.px,py:label.py,hit:{
+        type:'Feature',id:feature.id,properties:feature.properties,source,sourceLayer,
+        layer:{id,type:'symbol',source},geometry:{type:'Point',coordinates:[lng,lat]},
+      }});
+    }});
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
     onStatus({errors:[...errors],painting,loading,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
@@ -112,6 +137,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     inspect:point=>{
       if(!onInspect) return;
       const hits=query(camera,point,queue.snapshot().frame);
+      const [x,y]=point;
+      for(const symbol of paintedSymbols){
+        if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
+          hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});
+      }
       if(hits.length) onInspect(hits,camera.unproject(point));
     },
   });

@@ -24,8 +24,8 @@ style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,
   {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},layout:{
     'text-field':['get','name'],'text-size':18,'text-anchor':'top','text-offset':[0,0.9],
   },paint:{'text-color':'#ff00ff'}},
-  {id:'fixture-nearby-poi',type:'circle',source:'openmaptiles','source-layer':'poi',minzoom:14,
-    metadata:{'atlas:semantics-version':1,'atlas:settings':['transport']},paint:{'circle-color':'#447755'}},
+  {...style.layers.find(layer=>layer.id==='context-transport-bus-label'),
+    metadata:{'atlas:semantics-version':1,'atlas:settings':['transport']}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
 ];
 style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
@@ -241,6 +241,29 @@ try {
   assert.ok(Math.abs(camera.c[0]-nearbyLngLat[0])<0.00002&&Math.abs(camera.c[1]-nearbyLngLat[1])<0.00002&&camera.z===14);
 
   await current.page.locator('#details-close').click();
+  // After nearby recentering, open the same facility from its actual icon.
+  const paintedBus=expected=>current.page.waitForFunction(expected=>{
+    const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect();
+    const x=Math.round(c.width/2),y=Math.round(c.height/2);
+    const d=c.getContext('2d').getImageData(x-15,y-15,31,31).data;
+    const visible=d.some((v,i)=>i%4===0&&v===255&&d[i+1]===254&&d[i+2]===248&&d[i+3]===255);
+    return visible===expected?[r.left+x*r.width/c.width,r.top+y*r.height/c.height]:null;
+  },expected,{timeout:10000});
+  const clickPoint=await (await paintedBus(true)).jsonValue();
+  await current.page.mouse.click(...clickPoint);
+  await current.page.getByRole('heading',{name:'Fixture Bus Interchange'}).waitFor();
+  await current.page.locator('#details-close').click();
+  if(!(await current.page.locator('#settings-open').isVisible()))await current.page.locator('#controls-open').click();
+  await current.page.locator('#settings-open').click();
+  await current.page.locator('#transport').uncheck();
+  await paintedBus(false);
+  await current.page.locator('#settings-close').click();
+  await current.page.mouse.click(...clickPoint);
+  assert.equal(await current.page.getByRole('heading',{name:'Fixture Bus Interchange'}).isVisible(),false);
+  await current.page.locator('#settings-open').click();
+  await current.page.locator('#transport').check();
+  await current.page.locator('#settings-close').click();
+  await paintedBus(true);
   await submit();
   await current.page.getByRole('button',{name:/Demo town/}).click();
   camera=await view();
@@ -322,5 +345,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

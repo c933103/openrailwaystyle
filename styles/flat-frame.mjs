@@ -33,7 +33,7 @@ export function compileFlatFrame(layers) {
     if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
-  return function draw(context, camera, sources, {featureState = () => undefined} = {}) {
+  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,onSymbol} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
     const layerDraws = new Map(), labels=[];
@@ -68,7 +68,7 @@ export function compileFlatFrame(layers) {
             for(const candidate of flatLabelCandidates(layer.label,cached.get(name),tile,camera,global,
               featureId=>featureState(source,name,featureId))) candidates.push(candidate);
           }
-          labels.push({id,candidates});
+          labels.push({id,candidates,source,sourceLayer:layer.label.sourceLayer});
           continue;
         } else if (geometry) {
           for (const {tile,vector} of tiles) {
@@ -93,7 +93,10 @@ export function compileFlatFrame(layers) {
       // Station labels get their places before basemap labels; otherwise
       // a dense city background can hide the railway names entirely.
       labels.sort((a,b)=>Number(b.id.startsWith('station-'))-Number(a.id.startsWith('station-')));
-      if(labels.length)for(const [id,count] of drawFlatTextLabels(context,camera,labels))layerDraws.set(id,count);
+      const groups=new Map(labels.map(group=>[group.id,group]));
+      if(labels.length)for(const [id,count] of drawFlatTextLabels(context,camera,labels,{getIcon,
+        onSymbol:(id,label,bounds)=>onSymbol?.(groups.get(id),label,bounds),
+      }))layerDraws.set(id,count);
     } finally { context.restore(); }
     return {layerDraws,unsupported};
   };
