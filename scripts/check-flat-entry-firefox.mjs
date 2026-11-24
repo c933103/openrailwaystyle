@@ -54,7 +54,21 @@ try {
     const page=await context.newPage();
     page.on('pageerror',error=>console.error(error.message));
     page.on('console',msg=>{if(msg.type()==='error') console.error(msg.text());});
-    await page.route('**/*',r=>r.request().url().startsWith(origin+'/')?r.continue():r.abort());
+    await page.route('**/*',r=>{
+      const url=new URL(r.request().url());
+      if(url.origin===origin) return r.continue();
+      const json=(rows)=>r.fulfill({status:200,headers:{'access-control-allow-origin':'*'},json:rows});
+      if(url.hostname==='api.openrailwaymap.org') return json([
+        {osm_id:9001,name:'Demo station',latitude:51.5,longitude:-0.1,railway:'station',operator:'Line One'},
+        {osm_id:9003,name:'Demo station',latitude:51.501,longitude:-0.103,railway:'station',operator:'Line Two'},
+      ]);
+      if(url.hostname==='nominatim.openstreetmap.org') return json([
+        {osm_type:'relation',osm_id:9002,name:'Demo town',lat:'51.6',lon:'-0.2',type:'town',
+          display_name:'Demo town, Fixture region',boundingbox:['51.55','51.65','-0.25','-0.15']},
+      ]);
+      if(url.hostname==='api.transitous.org') return json([]);
+      return r.abort();
+    });
     return {page,context};
   };
   const ready=page=>page.waitForFunction(()=>{
@@ -123,6 +137,32 @@ try {
   await current.page.waitForFunction(()=>localStorage.getItem('atlas_disable_webgl')==='1' && window.webglAttempts?.length===0);
   await current.context.close();
 
+  current=await fresh(true);
+  await current.page.goto(origin);
+  await ready(current.page);
+  const openControls=async()=>{
+    if(!(await current.page.locator('#search-input').isVisible())) await current.page.locator('#controls-open').click();
+  };
+  const submit=async()=>{
+    await openControls();
+    await current.page.locator('#search-input').fill('Demo');
+    await current.page.locator('#search-input').press('Enter');
+    await current.page.getByRole('button',{name:/Demo station.*Line Two/}).waitFor();
+  };
+  const view=()=>current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+  await submit();
+  await current.page.getByRole('button',{name:/Demo station.*Line Two/}).click();
+  let camera=await view();
+  assert.ok(Math.abs(camera.c[0]+0.103)<1e-8&&Math.abs(camera.c[1]-51.501)<1e-8&&camera.z===14);
+  await current.page.getByRole('heading',{name:'Demo station'}).waitFor();
+  await current.page.locator('#details-close').click();
+  await submit();
+  await current.page.getByRole('button',{name:/Demo town/}).click();
+  camera=await view();
+  assert.ok(Math.abs(camera.c[0]+0.2)<1e-8&&Math.abs(camera.c[1]-51.6)<0.001&&camera.z>=8&&camera.z<14);
+  assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),[]);
+  await current.context.close();
+
   failStyle=true;
   current=await fresh();
   await current.page.goto(origin);
@@ -139,5 +179,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, pan committed, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

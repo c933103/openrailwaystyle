@@ -45,3 +45,14 @@ test('fractional rotation, overzoom and invalid inputs cannot start an unbounded
   assert.throws(() => flatCamera({...base, center: [NaN, 1]}), RangeError);
   assert.throws(() => flatCamera({...base, width: 0}), RangeError);
 });
+
+test('Canvas fits antimeridian bounds at the current bearing without zooming to the whole world',async()=>{
+  const {fitFlatBounds}=await import('../styles/flat-camera.mjs');
+  const camera=flatCamera({center:[0,0],zoom:1,width:630,height:460,bearing:30});
+  const fitted=fitFlatBounds(camera,[[175,14],[-174,22]]);
+  assert.ok(Math.abs(fitted.center[0])>175);
+  assert.ok(fitted.zoom>3 && fitted.bearing===30);
+  const corners=[[175,14],[-174,22],[-174,14],[175,22]].map(c=>fitted.project(c));
+  for(const [x,y] of corners) assert.ok(x>=39.99999 && x<=590.00001 && y>=39.99999 && y<=420.00001);
+  assert.equal(fitFlatBounds(camera,[[10,20],[11,19]]),null);
+});

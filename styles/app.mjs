@@ -546,7 +546,7 @@ function saveSettings() {
   }
 }
 // Build a link on demand rather than writing each map position into history.
-let flatCurrentView;
+let flatCurrentView, flatNavigation, pendingFlatNavigation;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -1681,7 +1681,7 @@ async function initialize() {
       zoom:startZoom,
       bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
     };
-    mountFlatMap({
+    const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
       onInspect(hits,[lng,lat]) {
@@ -1711,6 +1711,8 @@ async function initialize() {
           :'Canvas preview: drag or use the arrow keys to move.';
       },
     });
+    flatNavigation=flat.moveTo;
+    if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
     return;
   }
   map = new maplibregl.Map({
@@ -2380,6 +2382,19 @@ $('search-form').addEventListener('submit', async e => {
       li.append(button); results.append(li);
     };
     const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const navigate=(center,zoom,bounds)=>{
+      if(useFlat) {
+        const next={center,zoom,bounds};
+        if(flatNavigation) flatNavigation(next);
+        else pendingFlatNavigation=next; // only the newest selection is relevant
+        return;
+      }
+      whenReady(()=>{
+        const duration=reduced()?0:1000;
+        if(bounds) map.fitBounds(bounds,{maxZoom:15,padding:40,duration});
+        else map.flyTo({center,zoom,duration});
+      });
+    };
     for (const item of rail) {
       try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
     }
@@ -2387,7 +2402,7 @@ $('search-form').addEventListener('submit', async e => {
       entry(title, detail, () => {
           const coordinates = [item.longitude, item.latitude];
           // Before the map has loaded, go there as soon as it has.
-          whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: reduced() ? 0 : 1000 }));
+          navigate(coordinates,14);
           showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
         });
     }
@@ -2395,11 +2410,11 @@ $('search-form').addEventListener('submit', async e => {
       const heading = textNode('li', 'Places · Nominatim / © OpenStreetMap contributors', 'search-heading'); heading.setAttribute('role', 'presentation'); results.append(heading);
       for (const item of other) {
         try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
-        entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => whenReady(() => {
+        entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => {
           const [south, north, west, east] = item.boundingbox || [];
-          if ([south, north, west, east].every(Number.isFinite) && north > south) map.fitBounds([[west, south], [east, north]], { maxZoom: 15, padding: 40, duration: reduced() ? 0 : 1000 });
-          else map.flyTo({ center: [item.longitude, item.latitude], zoom: 13, duration: reduced() ? 0 : 1000 });
-        }));
+          const bounds=[south,north,west,east].every(Number.isFinite)&&north>south?[[west,south],[east,north]]:undefined;
+          navigate([item.longitude,item.latitude],13,bounds);
+        });
       }
     }
     const count = rail.length + other.length;

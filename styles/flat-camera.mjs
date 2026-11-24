@@ -69,3 +69,20 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
   return {center: worldToLngLat([cx, cy]), zoom, bearing, width, height,
     project, unproject, panBy, zoomAt, visibleTiles, tileTransform};
 }
+
+// A provider's geographic bounding box may cross the antimeridian. Fit the
+// rectangle in world space, including the current map rotation and padding.
+export function fitFlatBounds(camera, [[west,south],[east,north]], {padding=40,maxZoom=15,minZoom=-0.5}={}) {
+  if (![west,south,east,north].every(Number.isFinite) || south>=north ||
+      west < -180 || west > 180 || east < -180 || east > 180 || south < -90 || north > 90)
+    return null;
+  if (east<west) east+=360;
+  const [x0,y0]=lngLatToWorld([west,north]),[x1,y1]=lngLatToWorld([east,south]);
+  const w=x1-x0,h=y1-y0;
+  const c=Math.abs(Math.cos(camera.bearing*RAD)),s=Math.abs(Math.sin(camera.bearing*RAD));
+  const availableX=Math.max(1,camera.width-2*Math.min(padding,camera.width/4));
+  const availableY=Math.max(1,camera.height-2*Math.min(padding,camera.height/4));
+  const span=Math.min(availableX/(w*c+h*s),availableY/(w*s+h*c))/WORLD;
+  const zoom=clamp(Math.log2(span),minZoom,maxZoom);
+  return flatCamera({center:worldToLngLat([(x0+x1)/2,(y0+y1)/2]),zoom,width:camera.width,height:camera.height,bearing:camera.bearing});
+}

@@ -1,4 +1,4 @@
-import {flatCamera} from './flat-camera.mjs';
+import {flatCamera, fitFlatBounds} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
@@ -143,5 +143,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     queue.close();canvas.remove();
   };
   window.addEventListener('pagehide',event=>{if(!event.persisted) close();},{signal});
-  return {close};
+  const moveTo=({center,zoom,bounds})=>{
+    if(disposed) return;
+    const next=bounds?fitFlatBounds(camera,bounds):null;
+    setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing:camera.bearing}),true);
+  };
+  return {close,moveTo};
 }
