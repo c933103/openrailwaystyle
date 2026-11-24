@@ -216,7 +216,7 @@ export const withPoints = (feature, points) => withNodes(feature, points);
 export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
   paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
 function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
-  let drag = null, quietUntil = 0;
+  let drag = null, quiet = null;
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
@@ -231,14 +231,14 @@ function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
     drag.moved = true;
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { if (drag?.moved && valid(drag.properties)) { quietUntil = Date.now() + 700; done(); } drag = null; };
+  const end = () => { if (drag?.moved && valid(drag.properties)) { quiet = {until: Date.now() + 700, properties: drag.properties}; done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
   map.on('mouseup', end); map.on('touchend', end); map.on('touchcancel', end);
   map.on('mouseenter', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'move'; });
   map.on('mouseleave', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'crosshair'; });
-  return () => Date.now() < quietUntil;
+  return () => Boolean(quiet && Date.now() < quiet.until && valid(quiet.properties));
 }
 const EDIT_HINT = ' Click a point to select it; drag a point to move it.';
 const DRAW_EDIT_HINT = EDIT_HINT.slice(0, -1) + '; click or drag the small dot in the middle of a segment to add a point there.';

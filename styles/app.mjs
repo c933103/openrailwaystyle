@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-station-search-identity-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-station-search-identity-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-station-search-identity-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261124-station-search-identity-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261124-station-search-identity-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-station-search-identity-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-canvas-measure-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-canvas-measure-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-canvas-measure-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261124-canvas-measure-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261124-canvas-measure-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-canvas-measure-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-station-search-identity-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-station-search-identity-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-station-search-identity-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-station-search-identity-1';
-import {createWorldFonts} from './world-font.mjs?v=20261124-station-search-identity-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-station-search-identity-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-canvas-measure-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-canvas-measure-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-canvas-measure-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-canvas-measure-1';
+import {createWorldFonts} from './world-font.mjs?v=20261124-canvas-measure-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-canvas-measure-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-station-search-identity-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-station-search-identity-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-canvas-measure-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-canvas-measure-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-station-search-identity-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-station-search-identity-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-station-search-identity-1';
-import {departureItem} from './departures-ui.mjs?v=20261124-station-search-identity-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-station-search-identity-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-station-search-identity-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-station-search-identity-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-station-search-identity-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-station-search-identity-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-station-search-identity-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-station-search-identity-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261124-station-search-identity-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-station-search-identity-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-station-search-identity-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261124-station-search-identity-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261124-station-search-identity-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-station-search-identity-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-station-search-identity-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-station-search-identity-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-station-search-identity-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-canvas-measure-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-canvas-measure-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-canvas-measure-1';
+import {departureItem} from './departures-ui.mjs?v=20261124-canvas-measure-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-canvas-measure-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-canvas-measure-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-canvas-measure-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-canvas-measure-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-canvas-measure-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-canvas-measure-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-canvas-measure-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261124-canvas-measure-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-canvas-measure-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-canvas-measure-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261124-canvas-measure-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261124-canvas-measure-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-canvas-measure-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-canvas-measure-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-canvas-measure-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-canvas-measure-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -91,7 +91,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-station-search-identity-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-canvas-measure-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1310,6 +1310,7 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+measureButton.setAttribute('aria-label','Measure');
 // Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
 // rather than rendering the literal text "3D" in a MapLibre icon button.
 const terrainButton = Object.assign(document.createElement('button'), {
@@ -1406,6 +1407,8 @@ function updateDrawing() {
   }
   $('measure-delete').hidden = measuring?.selected === null || measuring?.selected === undefined;
   $('measure-profile').hidden = !measuring?.profileCoordinates();
+  $('measure-finish').hidden = measuring?.mode !== 'distance';
+  $('measure-finish').disabled = !(measuring?.points.length >= 2) || measuring.ended;
   if ($('measure-retry')) $('measure-retry').hidden = !measuring?.canRetryHeights;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
@@ -1423,7 +1426,8 @@ drawButton.addEventListener('click', () => openTools('draw-toolbar'));
 measureButton.addEventListener('click', () => openTools('measure-toolbar'));
 $('draw-close').addEventListener('click', () => openTools(null));
 $('measure-close').addEventListener('click', () => openTools(null));
-document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
+document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => measuring?.setMode(b.dataset.measure)));
+$('measure-finish').addEventListener('click', () => measuring?.end());
 $('measure-undo').addEventListener('click', () => measuring?.undo());
 $('measure-clear').addEventListener('click', () => measuring?.clear());
 $('measure-retry')?.addEventListener('click', () => measuring?.retryHeights());
@@ -1733,6 +1737,17 @@ async function initialize() {
     });
     flatNavigation=flat.moveTo;
     flatSourceContext=flat;
+    measuring=new Measure(flat.measurementMap,{
+      units:()=>settings.units,
+      status:text=>{$('measure-status').textContent=text;},
+      changed:updateDrawing,
+      geometryChanged:()=>{if(profileFromMeasure)closeDetails();},
+      heights:(points,options)=>surfaceElevation.heights(points,options),
+    });
+    flat.connectMeasure(measuring);
+    measureButton.classList.add('atlas-flat-measure-button');
+    $('map').append(measureButton);
+    updateDrawing();
     let applied=JSON.stringify(settings);
     flatRefreshStyle=()=>{
       const signature=JSON.stringify(settings);
@@ -1746,6 +1761,7 @@ async function initialize() {
         if(paint)Object.assign(layer.paint,paint);
       }
       flat.setStyle(next);
+      if(measuring?.active)measuring.refresh();
       applied=signature;
     };
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
@@ -2200,6 +2216,7 @@ const elevation = createElevation(DEM_URL);
 let surfaceElevation = elevation;
 let profileMarker, profileController, profileRequest = 0, profileFromMeasure = false;
 function cancelProfile() {
+  flatSourceContext?.setProfileMarker?.(null);
   profileFromMeasure = false;
   profileRequest++; profileController?.abort(); profileController = null; profileMarker?.remove();
 }
@@ -2262,10 +2279,12 @@ function profileChart(profile, km, units) {
     const p = profile.reduce((a, b) => Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a);
     cursor.setAttribute('x1', x(p.at)); cursor.setAttribute('x2', x(p.at)); cursor.setAttribute('visibility', 'visible');
     readout.textContent = `${formatLength(p.at, units)} · ${Number.isFinite(p.height) ? `${Math.round(p.height * k)} ${unit}` : 'Height unavailable'}`;
-    profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
-    profileMarker.setLngLat(p.point).addTo(map);
+    if(map){
+      profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
+      profileMarker.setLngLat(p.point).addTo(map);
+    }else flatSourceContext?.setProfileMarker?.(p.point);
   });
-  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
+  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); flatSourceContext?.setProfileMarker?.(null); });
   return svg;
 }
 function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }

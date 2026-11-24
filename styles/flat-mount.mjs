@@ -8,6 +8,7 @@ import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
 import {contextIcon} from './context.mjs';
+import {flatMeasureAdapter} from './flat-measure.mjs';
 
 const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
@@ -28,7 +29,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let camera, frame = 0, disposed = false, navigated = false;
-  let sourceFrame=new Map(), paintedSymbols=[];
+  let sourceFrame=new Map(), paintedSymbols=[], measure=null, dragId=null;
+  const measureOverlay=flatMeasureAdapter(canvas,schedule);
   const icons=new Map();
   const getIcon=id=>{
     if(!icons.has(id)){
@@ -54,6 +56,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   }
   function setCamera(next, navigate=false) {
     camera=next;
+    measureOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
     if (navigate) {
       navigated=true;
@@ -121,6 +124,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         layer:{id,type:'symbol',source},geometry:{type:'Point',coordinates:[lng,lat]},
       }});
     }});
+    measureOverlay.draw(context,camera);
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
     onStatus({errors:[...errors],painting,loading,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
@@ -135,6 +139,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     preview:setCamera,
     commit:next=>setCamera(next,true),
     inspect:point=>{
+      if(measure?.active){
+        const [lng,lat]=camera.unproject(point);
+        measure.click({lng,lat},{x:point[0],y:point[1]});
+        return;
+      }
       if(!onInspect) return;
       const hits=query(camera,point,queue.snapshot().frame);
       const [x,y]=point;
@@ -145,17 +154,40 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       if(hits.length) onInspect(hits,camera.unproject(point));
     },
   });
+  const measureEvent=(e,mouse,touch)=>measureOverlay.emit(e.pointerType==='touch'?touch:mouse,localPoint(e),e);
   listen('pointerdown',e=>{
-    if(e.button===0 && gesture.start(e.pointerId,e.pointerType,localPoint(e),camera))
-      canvas.setPointerCapture(e.pointerId);
+    if(e.button!==0 || dragId!==null)return;
+    if(measure?.active&&!gesture.active&&measureEvent(e,'mousedown','touchstart')){
+      dragId=e.pointerId;
+      canvas.setPointerCapture(e.pointerId);return;
+    }
+    if(gesture.start(e.pointerId,e.pointerType,localPoint(e),camera))canvas.setPointerCapture(e.pointerId);
   });
-  listen('pointermove',e=>gesture.move(e.pointerId,localPoint(e)));
-  listen('pointerup',e=>gesture.end(e.pointerId,localPoint(e)));
-  listen('pointercancel',e=>gesture.cancel(e.pointerId));
-  listen('lostpointercapture',e=>gesture.cancel(e.pointerId));
+  listen('pointermove',e=>{
+    if(e.pointerId===dragId){measureEvent(e,'mousemove','touchmove');return;}
+    gesture.move(e.pointerId,localPoint(e));
+    if(measure?.active&&!gesture.active&&e.pointerType==='mouse'){
+      const [lng,lat]=camera.unproject(localPoint(e));measure.move({lng,lat});
+    }
+  });
+  function endPointer(e,cancel=false){
+    if(e.pointerId===dragId){
+      dragId=null;
+      measureEvent(e,'mouseup',cancel?'touchcancel':'touchend');
+      if(!cancel){
+        const point=localPoint(e), [lng,lat]=camera.unproject(point);
+        measure?.click({lng,lat},{x:point[0],y:point[1]});
+      }
+    }else if(cancel)gesture.cancel(e.pointerId);
+    else gesture.end(e.pointerId,localPoint(e));
+  }
+  listen('pointerup',e=>endPointer(e));
+  listen('pointercancel',e=>endPointer(e,true));
+  listen('lostpointercapture',e=>endPointer(e,true));
+  listen('dblclick',e=>{if(measure?.mode==='distance'){e.preventDefault();measure.end();}});
   listen('wheel',e=>{
     e.preventDefault();
-    if(gesture.active || !e.deltaY) return;
+    if(gesture.active || dragId!==null || !e.deltaY) return;
     const zoom=Math.max(-0.5,Math.min(22,camera.zoom-Math.sign(e.deltaY)*0.25));
     if(zoom===camera.zoom) return;
     const rect=canvas.getBoundingClientRect();
@@ -163,7 +195,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   },{passive:false});
   listen('keydown',e=>{
     const pan={ArrowLeft:[-60,0],ArrowRight:[60,0],ArrowUp:[0,-60],ArrowDown:[0,60]}[e.key];
-    if (!pan || gesture.active || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (!pan || gesture.active || dragId!==null || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
   });
@@ -173,7 +205,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   observer.observe(mount);
   const close=()=>{
     if(disposed) return;
-    disposed=true; lifetime.abort(); observer.disconnect();
+    disposed=true;
+    if(measure?.active)measure.setMode(measure.mode);
+    lifetime.abort(); observer.disconnect();
     if(frame) window.cancelAnimationFrame(frame);
     for(const entry of metadata.values()) entry.controller.abort();
     queue.close();canvas.remove();
@@ -204,6 +238,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const entry=sourceFrame.get(source);
     return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers,{filter,zoom:camera.zoom})};
   };
-  return {close,moveTo,setStyle,readSourcePoints,getZoom:()=>camera.zoom,
+  return {close,moveTo,setStyle,readSourcePoints,measurementMap:measureOverlay.map,
+    connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center,getLayers:()=>style.layers};
 }

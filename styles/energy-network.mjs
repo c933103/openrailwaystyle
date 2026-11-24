@@ -1,5 +1,5 @@
-import {createBundleReader} from './tile-bundles.mjs?v=20261124-station-search-identity-1';
-import {ENERGY_TIERS} from './energy-network-schema.mjs?v=20261124-station-search-identity-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261124-canvas-measure-1';
+import {ENERGY_TIERS} from './energy-network-schema.mjs?v=20261124-canvas-measure-1';
 export {ENERGY_TIERS};
 export const ENERGY_DOMAINS=Object.freeze({electricity:{color:'#99000d',mark:'E',label:'Civil electricity'},fuel:{color:'#b35806',mark:'F',label:'Fuel supply chain'},coal:{color:'#8c510a',mark:'C',label:'Coal supply chain'},water:{color:'#41b6c4',mark:'W',label:'Water and steam supply'},battery:{color:'#008a83',mark:'B',label:'Battery storage'},hydrogen:{color:'#00acc1',mark:'H',label:'Hydrogen supply'},servicing:{color:'#6f7b82',mark:'S',label:'Rail servicing'}});
 export const ENERGY_NETWORK_LINES=Object.freeze([

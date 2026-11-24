@@ -11,7 +11,7 @@ const end = app.indexOf("\n$('details-close').addEventListener", begin);
 assert.ok(begin >= 0 && end > begin, 'actual profile block delimiters exist');
 // Execute the production profile controller and SVG renderer with real DOM
 // nodes. Only terrain responses and the map marker are fixtures; no network.
-export function profileHarness({heights = points => points.map((_, i) => i), units = 'metric'} = {}) {
+export function profileHarness({heights = points => points.map((_, i) => i), units = 'metric', flatSourceContext=null} = {}) {
   const dom = new JSDOM('<section id="details" hidden><div id="detail-content"></div></section>');
   const document = dom.window.document, $ = id => document.getElementById(id), markers = [];
   const textNode = (tag, text, className) => {
@@ -20,7 +20,7 @@ export function profileHarness({heights = points => points.map((_, i) => i), uni
     return node;
   };
   const context = vm.createContext({...elevation, document, $, AbortController, frequencyExpiry: null, settings: {units}, currentFeature: null,
-    lengthKm, formatLength, climb, formatClimb, textNode, map: {}, DEM_URL: 'fixture-only',
+    lengthKm, formatLength, climb, formatClimb, textNode, map: flatSourceContext?null:{}, flatSourceContext, DEM_URL: 'fixture-only',
     createElevation: () => ({heights}),
     row: (dl, label, value) => dl.append(textNode('dt', label), textNode('dd', value)),
     maplibregl: {Marker: class {

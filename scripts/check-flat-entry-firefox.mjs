@@ -177,6 +177,45 @@ try {
   await current.page.locator('#details-close').click();
   await screenFeature(null);
   await current.page.getByRole('heading',{name:'Fixture Station'}).waitFor();
+  await current.page.locator('#details-close').click();
+  const page=current.page, canvas=page.locator('canvas.atlas-flat-preview');
+  await page.getByRole('button',{name:'Measure',exact:true}).click();
+  assert.equal(await page.locator('[data-measure="distance"]').getAttribute('aria-pressed'),'true');
+  const positions=await canvas.evaluate(c=>{
+    const r=c.getBoundingClientRect();
+    // Stay out of the settings panel and change the measured line's direction.
+    return [[.57,.22],[.70,.30],[.63,.35],[.75,.23]].map(([x,y])=>[r.left+x*r.width,r.top+y*r.height]);
+  });
+  assert.ok(await page.evaluate(points=>points.every(([x,y])=>document.elementFromPoint(x,y)?.matches("canvas.atlas-flat-preview")),positions));
+  for(const xy of positions.slice(0,2))await page.mouse.click(...xy);
+  await page.locator('#measure-finish').click();
+  await page.waitForFunction(()=>/Distance: .+ over 1 segment\./.test(document.querySelector('#measure-status').textContent));
+  await page.waitForFunction(positions=>{
+    const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect(),cx=c.getContext('2d');
+    return positions.slice(0,2).every(([x,y])=>{
+      const rgb=cx.getImageData(Math.round((x-r.left)*c.width/r.width),Math.round((y-r.top)*c.height/r.height),1,1).data;
+      return rgb[0]===255&&rgb[1]===254&&rgb[2]===248;
+    });
+  },positions);
+  const prior=await page.locator('#measure-status').textContent();
+  assert.equal(await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),positions[1]),true);
+  await page.mouse.move(...positions[1]);await page.mouse.down();await page.mouse.move(...positions[3],{steps:5});await page.mouse.up();
+  assert.notEqual(await page.locator('#measure-status').textContent(),prior,'moving a handle updates the measure');
+  await page.locator('#measure-profile').click();
+  await page.getByRole('heading',{name:'Distance elevation profile'}).waitFor();
+  await page.getByText('The terrain tiles could not load here.',{exact:true}).waitFor();
+  await page.locator('#details-close').click();
+  await page.locator('[data-measure="radius"]').click();
+  for(const xy of positions.slice(0,3))await page.mouse.click(...xy);
+  await page.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('Curve radius ≈'));
+  await page.locator('#measure-undo').click();
+  assert.match(await page.locator('#measure-status').textContent(),/1 more point/);
+  await page.locator('[data-measure="elevation"]').click();
+  await page.mouse.click(...positions[0]);
+  await page.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('Elevation: unavailable'));
+  await page.locator('#measure-close').click();
+  assert.equal(await page.locator('#measure-toolbar').isVisible(),false);
+  assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
   const stored=await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
   assert.deepEqual(stored.c,[0,0]);
   await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');

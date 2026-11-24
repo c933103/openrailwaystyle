@@ -213,3 +213,6 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 .atlas-mongolian{writing-mode:vertical-lr;display:inline-block;vertical-align:top;max-inline-size:9.5em;font-family:"Atlas Mongolian","Noto Sans Mongolian",sans-serif}
 
 #admin-login{justify-self:start}
+
+.atlas-flat-measure-button{position:absolute;inset:10px 10px auto auto;min-width:40px;min-height:40px;background:var(--paper);box-shadow:0 2px 12px #203c4426}
+body[data-ui="watch"] .atlas-flat-measure-button{display:none}
