@@ -8,6 +8,7 @@ import vtPbf from 'vt-pbf';
 import {pmtilesBytesResponse} from './pmtiles-browser-fixture.mjs';
 import {createPreviewServer} from './serve.mjs';
 import {flatVectorFixture} from '../tests/fixtures/flat-vector.mjs';
+import {oceanFixtureArchive,terrariumFixturePng} from './bathymetry-browser-fixture.mjs';
 
 const preview=createPreviewServer().listeners('request')[0];
 const root=new URL('../styles/',import.meta.url);
@@ -56,7 +57,9 @@ header[96]=1;header[97]=1;header[98]=2;header[99]=1;header[100]=14;header[101]=1
 for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.writeInt32LE(value*1e7,offset);
 const nearbyArchive=Buffer.concat([header,dir,meta,packed]);
 const paths=[];
-let failStyle=false, activateStaging=true;
+let failStyle=false, activateStaging=true,useElevationFixture=false;
+const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
+const terrainRequests=[];
 const server=createServer((req,res)=>{
   const {pathname}=new URL(req.url,'http://127.0.0.1');
   paths.push(pathname);
@@ -64,7 +67,8 @@ const server=createServer((req,res)=>{
   else if(pathname==='/world.style.json') {
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(style));
   } else if(pathname==='/data/nearby-fixture.pmtiles') {
-    const r=pmtilesBytesResponse(nearbyArchive,req.headers.range,'nearby-fixture-v1');
+    const r=pmtilesBytesResponse(useElevationFixture?oceanFixtureArchive:nearbyArchive,
+      req.headers.range,useElevationFixture?'measure-ocean-fixture-v1':'nearby-fixture-v1');
     res.writeHead(r.status,r.headers);res.end(r.body);
   } else if(pathname==='/entry-tilejson.json') {
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:['/fixture/{z}/{x}/{y}.pbf']}));
@@ -77,7 +81,7 @@ const origin='http://127.0.0.1:'+server.address().port;
 let browser;
 try {
   browser=await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
-  const fresh=async (off=false)=>{
+  const fresh=async (off=false,heights=false)=>{
     const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:3,serviceWorkers:'block'});
     await context.addInitScript(off=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
@@ -95,6 +99,12 @@ try {
     await page.route('**/*',r=>{
       const url=new URL(r.request().url());
       if(url.origin===origin) return r.continue();
+      if(heights && url.hostname==='s3.amazonaws.com'){
+        const m=/^\/elevation-tiles-prod\/terrarium\/(\d+)\/\d+\/\d+\.png$/.exec(url.pathname);
+        if(!m) throw new Error('Unexpected elevation fixture request');
+        const z=Number(m[1]);terrainRequests.push(z);
+        return r.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/png',body:z>10?landPng:seabedPng});
+      }
       if(['api.openrailwaymap.org','nominatim.openstreetmap.org'].includes(url.hostname) &&
         url.searchParams.get('q')==='Fixture Station')
         return r.fulfill({status:503,headers:{'access-control-allow-origin':'*'},body:''});
@@ -224,6 +234,51 @@ try {
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
   assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),[]);
   await current.context.close();
+
+  // The missing-data case above does not show whether Canvas passes valid
+  // heights through the native browser PNG decoder and the actual profile.
+  useElevationFixture=true;
+  current=await fresh(true,true);
+  await current.context.addInitScript(()=>{
+    const n=2**14,x=8180,y=7200;
+    const c=[(x+.5)*360/n-180,Math.atan(Math.sinh(Math.PI*(1-2*(y+.5)/n)))*180/Math.PI];
+    localStorage.setItem('atlas_view',JSON.stringify({c,z:14,b:0,p:0,g:false,t:false}));
+  });
+  await current.page.goto(origin);
+  const hg=current.page, hCanvas=hg.locator('canvas.atlas-flat-preview');
+  await hCanvas.waitFor();
+  await hg.getByRole('button',{name:'Measure',exact:true}).click();
+  const coords=await hCanvas.evaluate(c=>{
+    const r=c.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2-43;
+    return [[x,y],[x+112,y]];
+  });
+  assert.ok(await hg.evaluate(points=>points.every(([x,y])=>document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview')),coords));
+  await hg.locator('[data-measure="elevation"]').click();
+  await hg.mouse.click(...coords[0]);
+  await hg.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('123 m above sea level'),null,{timeout:10000}).catch(async e=>{console.error('Positive elevation probe',await hg.locator('#measure-status').textContent(),terrainRequests,paths.filter(x=>x.includes('nearby-fixture')).slice(-20),await hg.locator('#map').getAttribute('data-flat-center'));throw e;});
+  await hg.mouse.click(...coords[1]);
+  await hg.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('20 m below sea level'),null,{timeout:10000});
+  assert.ok(terrainRequests.includes(14)&&terrainRequests.includes(10),'land and seabed use the intended tile scales');
+  await hg.locator('[data-measure="distance"]').click();
+  for(const xy of coords)await hg.mouse.click(...xy);
+  await hg.locator('#measure-finish').click();
+  await hg.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('End to end: −143 m'),null,{timeout:10000});
+  await hg.locator('#measure-profile').click();
+  await hg.getByRole('img',{name:'Elevation along the line'}).waitFor({timeout:10000});
+  const summary=await hg.locator('#detail-content dl').innerText();
+  assert.match(summary,/-20 m/);assert.match(summary,/123 m/);
+  await hg.getByRole('img',{name:'Elevation along the line'}).evaluate(svg=>{
+    const r=svg.getBoundingClientRect();
+    svg.dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+r.width*.3,clientY:r.top+r.height*.4}));
+  });
+  await hg.locator('.profile-cursor[visibility="visible"]').waitFor({state:'attached'});
+  await hg.waitForFunction(()=>{
+    const c=document.querySelector('canvas.atlas-flat-preview'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+    return d.some((v,i)=>i%4===0&&v===224&&d[i+1]===112&&d[i+2]===27&&d[i+3]===255);
+  },null,{timeout:10000});
+  assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),[]);
+  await current.context.close();
+  useElevationFixture=false;
 
   current=await fresh();
   await current.page.goto(origin+'/#0/89/5');

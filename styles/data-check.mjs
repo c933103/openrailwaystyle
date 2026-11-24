@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261124-canvas-measure-1';
+import {SEARCH_API} from './map-model.mjs?v=20261124-canvas-elevation-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
