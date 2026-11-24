@@ -1,4 +1,5 @@
 import {flatCamera} from './flat-camera.mjs';
+import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
@@ -8,7 +9,7 @@ const tileLayer = layer => layer.type === 'raster' ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -18,6 +19,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
   const draw = compileFlatFrame(style.layers);
+  const query = compileFlatVectorQuery(style.layers,{include:interactiveLayer});
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
@@ -105,6 +107,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const start=drag.start,moved=drag.moved;
     drag=null;
     if(moved) setCamera(commit?camera:start,commit);
+    else if(commit && onInspect) {
+      const rect=canvas.getBoundingClientRect();
+      const point=[e.clientX-rect.left,e.clientY-rect.top];
+      const hits=query(camera,point,queue.snapshot().frame);
+      if(hits.length) onInspect(hits,camera.unproject(point));
+    }
   }
   listen('pointerup',e=>finishDrag(e,true));
   listen('pointercancel',e=>finishDrag(e,false));

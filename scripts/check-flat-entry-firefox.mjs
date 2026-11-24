@@ -12,10 +12,12 @@ const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"'
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
-  {id:'fixture-visible',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
+  {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
+  {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',paint:{'circle-color':'#00dc20','circle-radius':6}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
 ];
 style.sources.entryRail={type:'vector',url:'/entry-tilejson.json',maxzoom:0};
+style.sources.stationFixture={type:'vector',tiles:['/fixture/{z}/{x}/{y}.pbf'],maxzoom:0};
 style.sources.hiddenRail={type:'vector',tiles:['/never-request/{z}/{x}/{y}.pbf']};
 const bytes=Buffer.from(flatVectorFixture());
 const paths=[];
@@ -38,7 +40,7 @@ let browser;
 try {
   browser=await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
   const fresh=async (off=false)=>{
-    const context=await browser.newContext({viewport:{width:700,height:440},serviceWorkers:'block'});
+    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:3,serviceWorkers:'block'});
     await context.addInitScript(off=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off) localStorage.setItem('atlas_disable_webgl','1');
@@ -69,6 +71,26 @@ try {
   assert.equal(await current.page.locator('#disable-webgl').isChecked(),true);
   assert.ok(paths.includes('/entry-tilejson.json')&&paths.includes('/fixture/0/0/0.pbf'));
   assert.ok(!paths.some(path=>path.includes('/vendor/maplibre-gl-')||path.startsWith('/never-request/')));
+  const screenFeature=async (color)=>{
+    const point=await current.page.waitForFunction(color=>{
+      const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect();
+      const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+      for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) {
+        const i=4*(y*c.width+x),sx=r.left+(x+0.5)*r.width/c.width,sy=r.top+(y+0.5)*r.height/c.height;
+        // Real startup applies the standard translucent station stroke, not the fixture's nominal fill.
+        const marked=color ? color.every((value,j)=>d[i+j]===value) :
+          d[i]>2 && d[i]<100 && d[i+1]>19 && d[i+1]<130 && d[i+2]>27 && d[i+2]<130;
+        if(marked&&document.elementFromPoint(sx,sy)===c)return [sx,sy];
+      }
+      return null;
+    },color,{timeout:10000});
+    await current.page.mouse.click(...await point.jsonValue());
+  };
+  await screenFeature([255,0,0,255]);
+  await current.page.getByRole('heading',{name:'Fixture Line'}).waitFor();
+  await current.page.locator('#details-close').click();
+  await screenFeature(null);
+  await current.page.getByRole('heading',{name:'Fixture Station'}).waitFor();
   const stored=await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
   assert.deepEqual(stored.c,[0,0]);
   await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');
@@ -117,5 +139,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, pan committed, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, pan committed, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

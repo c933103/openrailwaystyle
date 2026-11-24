@@ -1077,6 +1077,7 @@ function updateNearbyTransport() {
   if (!target || currentFeature?.geometry?.type !== 'Point') return;
   target.replaceChildren(textNode('h3','Nearby transport'));
   if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
+  if (useFlat) { target.append(textNode('p','Nearby transport is not available in this Canvas preview.','small')); return; }
   if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
   const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
   const nearby = nearbyTransport(currentFeature.geometry.coordinates,features,500,map.getZoom());
@@ -1682,6 +1683,16 @@ async function initialize() {
     };
     mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
+      interactiveLayer:isClickable,
+      onInspect(hits,[lng,lat]) {
+        if (settings.ui==='watch') return;
+        const feature=hits.sort((a,b)=>featurePickRank(a)-featurePickRank(b)||
+          stationRank(a.properties)-stationRank(b.properties)||a.distance-b.distance)[0];
+        if (!feature) return;
+        feature.properties=feature.properties.atlas_han?feature.properties:{...feature.properties,...locate(lng,lat)};
+        feature.clickLngLat={lng,lat};
+        showDetails(feature);
+      },
       onNavigate(view) {
         flatCurrentView=view;
         linkedViewHash='';
