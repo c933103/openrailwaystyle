@@ -85,7 +85,7 @@ try {
     const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:3,serviceWorkers:'block'});
     await context.addInitScript(off=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
-      if(off) localStorage.setItem('atlas_disable_webgl','1');
+      if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
       const get=HTMLCanvasElement.prototype.getContext;
       window.webglAttempts=[];
       HTMLCanvasElement.prototype.getContext=function(type,...args){
@@ -329,8 +329,48 @@ try {
   assert.deepEqual(JSON.parse(await readFile(exportedFile,'utf8')),await drawing());
   await hg.locator('#draw-file').setInputFiles(exportedFile);
   await hg.getByText('Opened 2 drawings.',{exact:true}).waitFor();
-  assert.deepEqual((await drawing()).features.map(f=>f.geometry.type),['LineString','Polygon','LineString','Polygon']);
+  const beforeSwitch=await drawing();
+  assert.deepEqual(beforeSwitch.features.map(f=>f.geometry.type),['LineString','Polygon','LineString','Polygon']);
   assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),[]);
+  await hg.locator('[data-draw="line"]').click();
+  await hg.locator('#draw-dash').selectOption('dotted');
+  await hg.locator('#draw-width').selectOption('5');
+  const draftPoints=await hCanvas.evaluate(c=>{
+    const r=c.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+62;
+    return [[x+12,y],[x+91,y+3],[x+145,y+32]];
+  });
+  for(const p of draftPoints.slice(0,2))await clickAt(p);
+  if(!(await hg.locator('#settings-open').isVisible()))await hg.locator('#controls-open').click();
+  await hg.locator('#settings-open').click();
+  // Refusing transient storage must not silently reload or lose this draft.
+  await hg.evaluate(()=>{
+    const old=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(key,value){
+      if(this===sessionStorage&&key==='atlas_renderer_drawing_v1')throw new DOMException('Unavailable','QuotaExceededError');
+      old.call(this,key,value);
+    };
+    window.restoreDrawingStorage=()=>{Storage.prototype.setItem=old;};
+  });
+  await hg.locator('#disable-webgl').click();
+  await hg.getByText('The browser could not keep this drawing across a renderer switch. Finish the drawing before switching.').waitFor();
+  assert.equal(await hg.locator('#disable-webgl').isChecked(),true);
+  assert.deepEqual(await drawing(),beforeSwitch);
+  await hg.evaluate(()=>window.restoreDrawingStorage());
+  await Promise.all([hg.waitForEvent('load'),hg.locator('#disable-webgl').click()]);
+  await hCanvas.waitFor();
+  await hg.locator('#draw-toolbar').waitFor();
+  assert.equal(await hg.locator('[data-draw="line"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await hg.locator('#draw-dash').inputValue(),'dotted');
+  assert.equal(await hg.locator('#draw-width').inputValue(),'5');
+  assert.equal(await hg.evaluate(()=>sessionStorage.getItem('atlas_renderer_drawing_v1')),null);
+  assert.deepEqual(await drawing(),beforeSwitch,'renderer preference reload does not commit the draft');
+  await clickAt(draftPoints[2]);
+  await hg.locator('#draw-finish').click();
+  const completed=(await drawing()).features.at(-1);
+  assert.equal(completed.geometry.coordinates.length,3);
+  assert.equal(completed.properties.dash,'dotted');
+  assert.equal(completed.properties.width,5);
+  assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),['webgl2','webgl']);
   await current.context.close();
   useElevationFixture=false;
 

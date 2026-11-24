@@ -270,6 +270,47 @@ export class Drawing {
   }
   get active() { return this.mode !== null; }
   get multiPoint() { return this.mode === 'line' || this.mode === 'area'; }
+  // Hand off an unfinished drawing without committing its temporary geometry.
+  // Rendered hover and drag state belongs to the old renderer and is not saved.
+  rendererDraft() {
+    const extension = this.extending && {
+      at:this.extending.at,original:readDrawing(this.extending.feature)[0],
+    };
+    return {mode:this.mode, paused:this.paused, style:{...this.style}, curved:this.curved,
+      points:this.draft.map(p=>[...p]), flags:[...this.draftCurved],
+      selected:this.selected?.drawing===0?this.selected.index:null, extension};
+  }
+  restoreRendererDraft(state) {
+    if (!state || ![null,'point','line','area','erase'].includes(state.mode) ||
+        !Array.isArray(state.points) || !state.points.every(finite) ||
+        !Array.isArray(state.flags) || state.flags.length!==state.points.length ||
+        !state.flags.every(value=>value===0||value===1) ||
+        (state.points.length>0 && !['line','area'].includes(state.mode))) return false;
+    if (state.extension) {
+      const {at,original}=state.extension;
+      if(state.mode!=='line'||state.points.length<2||original?.geometry?.type!=='LineString'||
+          !Number.isSafeInteger(at)||at<0)return false;
+      // The other renderer loaded original saved GeoJSON, with fresh IDs.
+      // Match the persisted original rather than looking it up by an old ID.
+      const key=JSON.stringify(readDrawing(original)[0]);
+      const matches=feature=>key&&JSON.stringify(readDrawing(feature)[0])===key;
+      const index=matches(this.features[at])?at:this.features.findIndex(matches);
+      if(index<0)return false; // another tab replaced the original
+      const [feature]=this.features.splice(index,1);
+      const {line_points,curved,measure,drawing,...properties}=feature.properties;
+      this.extending={feature,at,properties};
+    }
+    this.mode=state.mode; this.paused=Boolean(state.paused&&state.mode);this.cursor=null;
+    this.curved=Boolean(state.curved);this.style={...this.style,...drawingStyle(state.style || {})};
+    this.draft=state.points.map(p=>p.slice(0,2)); this.draftCurved=[...state.flags];
+    const index=state.selected;
+    this.selected=Number.isSafeInteger(index)&&index>=0&&index<this.draft.length&&!this.paused ? {drawing:0,index} : null;
+    this.handleGeneration++;
+    if(this.multiPoint&&!this.paused)this.map.doubleClickZoom.disable();else this.map.doubleClickZoom.enable();
+    this.map.getCanvas().style.cursor=this.mode&&!this.paused?'crosshair':'';
+    this.refresh();this.changed();
+    return true;
+  }
   // Sources and layers are re-added after every style replacement.
   install() {
     const map = this.map;

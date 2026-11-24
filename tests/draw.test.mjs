@@ -330,3 +330,42 @@ test('erase deletes a drawing even when clicked on one of its points', async () 
   d.click({lng: 1, lat: 1}, {x: 1, y: 1});
   assert.equal(d.features.length, 0);
 });
+
+test('renderer handoff keeps a draft and curve flags without silently finishing it',()=>{
+  const create=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const before=create();
+  before.setMode('area');
+  for(const [lng,lat] of [[0,0],[1,0],[0,1]])before.click({lng,lat},{x:lng,y:lat});
+  before.setStyle({color:'#345678',dash:'dotted',width:5});
+  before.setPaused(true);
+  const snapshot=JSON.parse(JSON.stringify(before.rendererDraft()));
+  const after=create();
+  assert.equal(after.restoreRendererDraft(snapshot),true);
+  assert.equal(after.paused,true);
+  assert.deepEqual(after.style,{color:'#345678',dash:'dotted',width:5});
+  assert.equal(after.collection().features.length,0,'a renderer switch cannot commit the draft');
+  assert.deepEqual(after.draft,[[0,0],[1,0],[0,1]]);
+  after.setPaused(false);after.finish();
+  assert.deepEqual(after.features[0].geometry.coordinates,[[[0,0],[1,0],[0,1],[0,0]]]);
+  assert.equal(after.restoreRendererDraft({...snapshot,flags:[]}),false);
+});
+
+test('renderer handoff preserves extension semantics and refuses to replace an independently changed original',()=>{
+  const create=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const geo={type:'Feature',properties:{color:'#345678',name:'Route'},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+  const before=create();before.add([geo],false);before.setMode('line');
+  before.select({drawing:before.features[0].id,index:1});before.extendSelected();
+  before.setCurved(true);before.click({lng:2,lat:1},{x:2,y:1});
+  const snapshot=JSON.parse(JSON.stringify(before.rendererDraft()));
+  const after=create();after.add(readDrawing(before.collection()),false);
+  assert.equal(after.restoreRendererDraft(snapshot),true);
+  assert.equal(after.features.length,0,'the original is not duplicated alongside its draft');
+  assert.equal(after.collection().features.length,1,'Save still includes the unmodified original');
+  assert.deepEqual(after.draftCurved,[0,0,1]);
+  after.cancel();
+  assert.deepEqual(readDrawing(after.collection()),readDrawing(geo));
+  const modified=create();
+  modified.add([{...geo,geometry:{type:'LineString',coordinates:[[0,0],[8,0]]}}],false);
+  assert.equal(modified.restoreRendererDraft(snapshot),false);
+  assert.deepEqual(modified.features[0].geometry.coordinates,[[0,0],[8,0]]);
+});
