@@ -2,6 +2,7 @@ import {latest, normalizePropertyExpression} from '@maplibre/maplibre-gl-style-s
 import {drawFlatRasterLayer} from './flat-raster.mjs';
 import {compileFlatGeometryStyle} from './flat-style.mjs';
 import {drawFlatVectorLayer} from './flat-vector.mjs';
+import {compileFlatPointLabel,drawFlatPointLabels,flatLabelCandidates} from './flat-labels.mjs';
 
 function paintExpression(layer, name) {
   const spec = latest['paint_' + layer.type][name];
@@ -29,12 +30,13 @@ export function compileFlatFrame(layers) {
         return {...compiled, type:'unsupported'};
       compiled.geometry = compileFlatGeometryStyle(layer);
     }
+    if (type==='symbol') compiled.label=compileFlatPointLabel(layer);
     return compiled;
   });
   return function draw(context, camera, sources, {featureState = () => undefined} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
-    const layerDraws = new Map();
+    const layerDraws = new Map(), labels=[];
     // Shared within one frame so repeated layers reuse the MVT decoding
     // for each canonical source layer and all its wrapped copies.
     const decoded = new Map();
@@ -56,6 +58,18 @@ export function compileFlatFrame(layers) {
           draws = 1;
         } else if (type === 'raster') {
           draws = drawFlatRasterLayer(context,camera,tiles,{opacity:layer.opacity.evaluate(global)});
+        } else if (layer.label) {
+          const candidates=[];
+          for (const {tile,vector} of tiles){
+            if(!vector)continue;
+            if(!decoded.has(vector))decoded.set(vector,new Map());
+            const cached=decoded.get(vector),name=layer.label.sourceLayer;
+            if(!cached.has(name))cached.set(name,vector.layer(name));
+            for(const candidate of flatLabelCandidates(layer.label,cached.get(name),tile,camera,global,
+              featureId=>featureState(source,name,featureId))) candidates.push(candidate);
+          }
+          labels.push({id,candidates});
+          continue;
         } else if (geometry) {
           for (const {tile,vector} of tiles) {
             if (!vector) continue;
@@ -76,6 +90,10 @@ export function compileFlatFrame(layers) {
         }
         layerDraws.set(id,draws);
       }
+      // Station labels get their places before basemap labels; otherwise
+      // a dense city background can hide the railway names entirely.
+      labels.sort((a,b)=>Number(b.id.startsWith('station-'))-Number(a.id.startsWith('station-')));
+      if(labels.length)for(const [id,count] of drawFlatPointLabels(context,camera,labels))layerDraws.set(id,count);
     } finally { context.restore(); }
     return {layerDraws,unsupported};
   };

@@ -5,8 +5,9 @@ import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
+import {flatPointLabel} from './flat-labels.mjs';
 
-const tileLayer = layer => layer.type === 'raster' ||
+const tileLayer = layer => layer.type === 'raster' || flatPointLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 

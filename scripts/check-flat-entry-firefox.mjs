@@ -14,10 +14,14 @@ style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',paint:{'circle-color':'#00dc20','circle-radius':6}},
+  {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',layout:{
+    'text-field':['get','name'],'text-size':18,'text-anchor':'top','text-offset':[0,0.9],
+  },paint:{'text-color':'#ff00ff'}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
 ];
 style.sources.entryRail={type:'vector',url:'/entry-tilejson.json',maxzoom:0};
 style.sources.stationFixture={type:'vector',tiles:['/fixture/{z}/{x}/{y}.pbf'],maxzoom:0};
+style.sources.labelFixture={type:'vector',tiles:['/label/{z}/{x}/{y}.pbf'],maxzoom:0};
 style.sources.hiddenRail={type:'vector',tiles:['/never-request/{z}/{x}/{y}.pbf']};
 const bytes=Buffer.from(flatVectorFixture());
 const paths=[];
@@ -30,7 +34,7 @@ const server=createServer((req,res)=>{
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(style));
   } else if(pathname==='/entry-tilejson.json') {
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:['/fixture/{z}/{x}/{y}.pbf']}));
-  } else if(pathname==='/fixture/0/0/0.pbf') {
+  } else if(pathname==='/fixture/0/0/0.pbf'||pathname==='/label/0/0/0.pbf') {
     res.writeHead(200,{'content-type':'application/x-protobuf'});res.end(bytes);
   } else preview(req,res);
 });
@@ -84,6 +88,13 @@ try {
   assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),[]);
   assert.equal(await current.page.locator('#disable-webgl').isChecked(),true);
   assert.ok(paths.includes('/entry-tilejson.json')&&paths.includes('/fixture/0/0/0.pbf'));
+  await current.page.waitForFunction(()=>{
+    const c=document.querySelector('canvas.atlas-flat-preview');
+    const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+    return d.some((value,i)=>i%4===0&&value===255&&d[i+1]===0&&d[i+2]===255&&d[i+3]===255);
+  },null,{timeout:10000});
+  assert.ok(paths.includes('/label/0/0/0.pbf'),'symbol-only source supplied the visibly painted name');
+
   assert.ok(!paths.some(path=>path.includes('/vendor/maplibre-gl-')||path.startsWith('/never-request/')));
   const screenFeature=async (color)=>{
     const point=await current.page.waitForFunction(color=>{
