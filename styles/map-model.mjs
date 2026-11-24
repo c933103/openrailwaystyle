@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261123-shared-tile-dispatch-1';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261123-shared-tile-dispatch-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261124-station-search-identity-1';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261124-station-search-identity-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261123-shared-tile-dispatch-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261123-shared-tile-dispatch-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261124-station-search-identity-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261124-station-search-identity-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -64,9 +64,34 @@ export function samePlaceName(a, b) {
   const rest = sides.join('');
   return LATIN.test(a) ? !LATIN.test(rest) : !OTHER_LETTER.test(rest);
 }
-// Facility API results and geocoder results → {rail, places}. A geocoded
-// station joins the railway results unless the facility API already gave it
-// (the same node, or the same name within about 400 m).
+// Only a real, typed OSM identity proves an exact duplicate. Missing IDs
+// never compare equal. Treat distinct IDs of the same type as separate
+// objects even when their names and coordinates are close.
+const stationIdentity = (row, defaultType) => {
+  const type = row.osm_type ?? defaultType, id = row.osm_id;
+  const number = typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? String(id) : id;
+  return ['node', 'way', 'relation'].includes(type) && typeof number === 'string' &&
+    /^[1-9][0-9]*$/.test(number) ? {type, number} : null;
+};
+const stationRef = row => [row.railway_ref, row['railway:ref'], row.ref]
+  .find(value => typeof value === 'string' && value.trim())?.trim();
+const stationText = value => typeof value === 'string' ? value.trim() : '';
+const stationOperator = row => Array.isArray(row.operator)
+  ? row.operator.map(stationText).filter(Boolean).join(', ') : stationText(row.operator);
+const nearStation = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 &&
+  Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) *
+    Math.cos(a.latitude * Math.PI / 180) < 0.004;
+function stationAlreadyPresent(a, b, namesAgree) {
+  const aId = stationIdentity(a, 'node'), bId = stationIdentity(b);
+  if (aId && bId && aId.type === bId.type) return aId.number === bId.number;
+  // A station node and an area can still describe the same facility, but
+  // disagreement on supplied line/reference or operator data stops the fold.
+  const conflicts = (a, b) => a && b && a.normalize('NFKC').toLowerCase() !== b.normalize('NFKC').toLowerCase();
+  return !conflicts(stationRef(a), stationRef(b)) &&
+    !conflicts(stationOperator(a), stationOperator(b)) &&
+    !conflicts(stationText(a.network), stationText(b.network)) &&
+    nearStation(a, b) && namesAgree();
+}
 // Stations drawn in the map's own tiles whose name a search matches, for
 // the stations neither search service finds: the facility search holds
 // station nodes only, and the geocoder matches whole names ("Sha tin" finds
@@ -81,7 +106,6 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   if (q.length < 2) return [];
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
   // Names in a language (name:en, name:zh-Hant, name:ja_kana), not name:etymology and the like.
   const namesOf = p => Object.entries(p).filter(([key, value]) => (/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key) || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
   const [cx, cy] = centre || [0, 0], matches = new Map();
@@ -96,8 +120,8 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
     const [longitude, latitude] = coordinates, key = object ? object[0] : `${p.name}@${longitude.toFixed(4)},${latitude.toFixed(4)}`;
     if (matches.has(key)) continue;
     const item = {...p, latitude, longitude, railway: kind, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
-    // The facility search returns nodes; a way or relation with the same number is another object.
-    if (found.some(r => (object && object[1] === (r.osm_type ?? 'node') && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
+    if (found.some(r => stationAlreadyPresent(r, item,
+      () => namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
     const exact = names.some(n => samePlaceName(n, q)), dx = ((longitude - cx) % 360 + 540) % 360 - 180, distance = Math.hypot(dx * Math.cos(latitude * Math.PI / 180), latitude - cy);
     matches.set(key, {item, exact, distance});
   }
@@ -159,8 +183,14 @@ export function searchResponse(rows, source) {
 export function searchResults(facilities, places) {
   // Remote facility rows are validated at the response boundary. Drawn local
   // stations may legitimately use a wrapped-world longitude outside ±180.
-  const rail = facilities.filter(item => searchRecord(item) && Number.isFinite(item.longitude) && Number.isFinite(item.latitude)), others = [];
-  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(((a.longitude - b.longitude) % 360 + 540) % 360 - 180) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const rail = [], others = [], seen = new Set();
+  for (const item of facilities) {
+    if (!searchRecord(item) || !Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+    const id = stationIdentity(item, 'node'), key = id && `${id.type}/${id.number}`;
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    rail.push(item);
+  }
   const names = item => new Set(Object.entries(item).filter(([key, value]) => (key === 'name' || key.startsWith('name:')) && typeof value === 'string').map(([, value]) => value.toLowerCase()));
   for (const place of searchResponse(places, 'place').items) {
     const details = place.namedetails || {};
@@ -170,12 +200,53 @@ export function searchResults(facilities, places) {
     if (isRailPlace(place)) {
       const own = names(item);
       const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
-      // The same OSM object, by type and number (facility results are nodes).
-      if (rail.some(r => (place.osm_type === (r.osm_type ?? 'node') && String(r.osm_id) === String(place.osm_id)) || (near(r, item) && sameName(r)))) continue;
-      rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
+      // Keep any real distinction present in the existing geocoder response.
+      const railItem = {...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type,
+        ...(place.extratags?.ref && {ref: place.extratags.ref}),
+        ...(place.extratags?.['railway:ref'] && {'railway:ref': place.extratags['railway:ref']}),
+        ...(place.extratags?.operator && {operator: place.extratags.operator}),
+        ...(place.extratags?.network && {network: place.extratags.network})};
+      if (rail.some(r => stationAlreadyPresent(r, railItem, () => sameName(r)))) continue;
+      rail.push(railItem);
     } else others.push({...item, place: place.addresstype || place.type});
   }
   return {rail, places: others};
+}
+// Disambiguate equal displayed titles using data already returned by the
+// providers. Never invent a line name or make another request per result.
+export function railwaySearchRows(rail, titleOf) {
+  const rows = rail.map(item => {
+    const title = titleOf(item) || stationRef(item) || 'Unnamed facility';
+    const context = [stationText(item.network), stationText(item['addr:street']), stationText(item.area)];
+    const detail = [item.station || item.feature || item.railway, stationRef(item), stationOperator(item)]
+      .map(stationText).filter(Boolean).join(' · ');
+    return {item, title, detail, context};
+  });
+  const normalized = text => text.normalize('NFKC').trim().toLowerCase();
+  const groups = new Map();
+  for (const row of rows) {
+    const key = normalized(row.title);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const base = group.map(row => row.detail);
+    const shared = (value, values) => values.filter(other => normalized(value) === normalized(other)).length > 1;
+    group.forEach((row, i) => {
+      if (!shared(base[i], base)) return;
+      const peers = group.filter((_, j) => normalized(base[i]) === normalized(base[j]));
+      const clue = row.context.find((value, k) => value && !shared(value, peers.map(peer => peer.context[k])));
+      const point = `${row.item.latitude.toFixed(6)}, ${row.item.longitude.toFixed(6)}`;
+      const id = stationIdentity(row.item, 'node');
+      const coincident = peers.some(peer => peer !== row &&
+        peer.item.latitude.toFixed(6) === row.item.latitude.toFixed(6) &&
+        peer.item.longitude.toFixed(6) === row.item.longitude.toFixed(6));
+      row.detail = [row.detail, clue || (coincident && id ? `OSM ${id.type} ${id.number}` : point)]
+        .filter(Boolean).join(' · ');
+    });
+  }
+  return rows.map(({item, title, detail}) => ({item, title, detail}));
 }
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
@@ -521,7 +592,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export {ownerColor} from './owner-color.mjs?v=20261123-shared-tile-dispatch-1';
+export {ownerColor} from './owner-color.mjs?v=20261124-station-search-identity-1';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the

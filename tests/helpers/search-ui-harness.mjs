@@ -24,7 +24,7 @@ export function searchHarness({fetcher=async()=>response(), local=[], language='
   $('search-form').addEventListener=(type,fn,...args)=>{if(type==='submit')submit=fn;return original(type,fn,...args);};
   const settings={language}, map={getZoom:()=>14,getCenter:()=>({toArray:()=>[0,0]}),getStyle:()=>({layers:[{id:'station-fixture-names',type:'symbol',source:'fixture','source-layer':'stations'}]}),getSource:()=>({}),querySourceFeatures:()=>structuredClone(local),flyTo:options=>navigation.push({type:'flyTo',options}),fitBounds:(bounds,options)=>navigation.push({type:'fitBounds',bounds,options})};
   const context=vm.createContext({document,$,URL,AbortController,settings,map,ready:Boolean(local.length),majorStationSearchData:null,
-    whenReady:fn=>fn(),showDetails:item=>details.push(item),searchResponse:model.searchResponse,searchResults:model.searchResults,tileStations:model.tileStations,drawnStationQueries:model.drawnStationQueries,displayName:model.displayName,
+    whenReady:fn=>fn(),showDetails:item=>details.push(item),searchResponse:model.searchResponse,searchResults:model.searchResults,railwaySearchRows:model.railwaySearchRows,tileStations:model.tileStations,drawnStationQueries:model.drawnStationQueries,displayName:model.displayName,
     SEARCH_API:model.SEARCH_API,PLACE_SEARCH_API:model.PLACE_SEARCH_API,matchMedia:()=>({matches:false}),locate:()=>({}),
     textNode:(tag,text,className)=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;},
     // app.mjs's nameNode, with its real segmentation and fragment code;
