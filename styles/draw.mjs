@@ -645,6 +645,28 @@ export class Measure {
   currentHandle({index, generation} = {}) {
     return generation === this.handleGeneration && Number.isInteger(index) && index >= 0 && index < this.points.length;
   }
+  // Transfer input geometry, not an old renderer's pointer or terrain request.
+  rendererMeasurement() {
+    if (!this.points.length && !this.spot) return null;
+    return {mode:this.mode, points:this.points.map(p=>[...p]), ended:this.ended,
+      selected:this.selected, spot:this.spot ? [...this.spot.point] : null};
+  }
+  restoreRendererMeasurement(state) {
+    if (!state || !['distance','radius','elevation'].includes(state.mode) ||
+        !Array.isArray(state.points) || !state.points.every(finite) ||
+        (state.mode==='elevation' ? !finite(state.spot)||state.points.length>0
+          : state.spot!==null||state.points.length===0)) return false;
+    this.spot?.controller?.abort();this.spot=null;this.climb?.controller?.abort();this.climb=null;
+    this.mode=state.mode;this.cursor=null;this.lastAdd=0;this.handleGeneration++;
+    this.points=state.points.map(p=>p.slice(0,2));
+    this.ended=state.mode==='distance'&&this.points.length>=2&&state.ended===true;
+    this.selected=Number.isInteger(state.selected)&&state.selected>=0&&state.selected<this.points.length ? state.selected : null;
+    if(this.mode==='distance')this.map.doubleClickZoom.disable();else this.map.doubleClickZoom.enable();
+    this.map.getCanvas().style.cursor='crosshair';
+    if(this.mode==='elevation')this.tap(state.spot.slice(0,2));
+    else {this.geometryChanged();this.refresh();this.changed();}
+    return true;
+  }
   // Use the actual measured polyline or the fitted, visible curve arc.
   // A radius is not a straight chord through the three control points.
   profileCoordinates() {

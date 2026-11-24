@@ -369,3 +369,37 @@ test('renderer handoff preserves extension semantics and refuses to replace an i
   assert.equal(modified.restoreRendererDraft(snapshot),false);
   assert.deepEqual(modified.features[0].geometry.coordinates,[[0,0],[8,0]]);
 });
+
+test('renderer handoff keeps unfinished distance points and restores a selected radius point',()=>{
+  const make=()=>new Measure(editingMap({}, {}, ()=>null));
+  const source=make();source.setMode('distance');
+  for(const [lng,lat] of [[0,0],[1,0]])source.click({lng,lat});
+  const target=make();
+  assert.equal(target.restoreRendererMeasurement(JSON.parse(JSON.stringify(source.rendererMeasurement()))),true);
+  assert.equal(target.ended,false);
+  assert.deepEqual(target.points,[[0,0],[1,0]]);
+  target.click({lng:1,lat:1});target.end();
+  assert.deepEqual(target.profileCoordinates(),[[0,0],[1,0],[1,1]]);
+  source.setMode('radius');
+  for(const [lng,lat] of [[0,0],[1,1],[2,0]])source.click({lng,lat});
+  source.select(1);
+  assert.equal(target.restoreRendererMeasurement(source.rendererMeasurement()),true);
+  assert.equal(target.mode,'radius');assert.equal(target.selected,1);
+  assert.deepEqual(target.profileCoordinates(),source.profileCoordinates());
+  target.deleteSelected();assert.deepEqual(target.points,[[0,0],[2,0]]);
+});
+
+test('renderer handoff requests elevation anew from the restored coordinate',async()=>{
+  const pre=new Measure(editingMap({}, {}, ()=>null));pre.setMode('elevation');pre.click({lng:-179.8,lat:23});
+  const received=[];
+  const target=new Measure(editingMap({}, {}, ()=>null),{heights:async points=>{received.push(points);return [-20];}});
+  const state=JSON.parse(JSON.stringify(pre.rendererMeasurement()));
+  assert.deepEqual(state.spot,[-179.8,23]);
+  assert.equal(target.restoreRendererMeasurement(state),true);
+  assert.equal(target.spot.pending,true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(received,[[[-179.8,23]]]);
+  assert.equal(target.spot.value,-20);
+  assert.equal(target.restoreRendererMeasurement({...state,spot:null}),false);
+  assert.equal(target.spot.value,-20,'invalid storage does not disturb the current result');
+});

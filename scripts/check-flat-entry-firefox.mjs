@@ -346,7 +346,7 @@ try {
   await hg.evaluate(()=>{
     const old=Storage.prototype.setItem;
     Storage.prototype.setItem=function(key,value){
-      if(this===sessionStorage&&key==='atlas_renderer_drawing_v1')throw new DOMException('Unavailable','QuotaExceededError');
+      if(this===sessionStorage&&key==='atlas_renderer_work_v1')throw new DOMException('Unavailable','QuotaExceededError');
       old.call(this,key,value);
     };
     window.restoreDrawingStorage=()=>{Storage.prototype.setItem=old;};
@@ -362,7 +362,7 @@ try {
   assert.equal(await hg.locator('[data-draw="line"]').getAttribute('aria-pressed'),'true');
   assert.equal(await hg.locator('#draw-dash').inputValue(),'dotted');
   assert.equal(await hg.locator('#draw-width').inputValue(),'5');
-  assert.equal(await hg.evaluate(()=>sessionStorage.getItem('atlas_renderer_drawing_v1')),null);
+  assert.equal(await hg.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')),null);
   assert.deepEqual(await drawing(),beforeSwitch,'renderer preference reload does not commit the draft');
   await clickAt(draftPoints[2]);
   await hg.locator('#draw-finish').click();
@@ -371,6 +371,23 @@ try {
   assert.equal(completed.properties.dash,'dotted');
   assert.equal(completed.properties.width,5);
   assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),['webgl2','webgl']);
+  await hg.getByRole('button',{name:'Measure',exact:true}).click();
+  assert.equal(await hg.locator('#draw-toolbar').isVisible(),false);
+  for(const point of coords)await clickAt(point);
+  await hg.waitForFunction(()=>!document.querySelector('#measure-finish').disabled);
+  if(!(await hg.locator('#settings-open').isVisible()))await hg.locator('#controls-open').click();
+  await hg.locator('#settings-open').click();
+  await Promise.all([hg.waitForEvent('load'),hg.locator('#disable-webgl').click()]);
+  await hCanvas.waitFor();await hg.locator('#measure-toolbar').waitFor();
+  assert.equal(await hg.locator('[data-measure="distance"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await hg.locator('#draw-toolbar').isVisible(),false);
+  assert.equal(await hg.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')),null);
+  assert.match(await hg.locator('#measure-status').textContent(),/over 1 segment · double-click to end/);
+  await hg.locator('#measure-finish').click();
+  await hg.waitForFunction(()=>document.querySelector('#measure-status').textContent.includes('End to end: −143 m'),null,{timeout:10000});
+  await hg.locator('#measure-profile').click();
+  await hg.getByRole('img',{name:'Elevation along the line'}).waitFor({timeout:10000});
+  assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),[]);
   await current.context.close();
   useElevationFixture=false;
 
@@ -533,5 +550,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

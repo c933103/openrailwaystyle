@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-renderer-draft-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-renderer-draft-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-renderer-draft-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261124-renderer-draft-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261124-renderer-draft-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-renderer-draft-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-renderer-work-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-renderer-work-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-renderer-work-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261124-renderer-work-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261124-renderer-work-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-renderer-work-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-renderer-draft-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-renderer-draft-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-renderer-draft-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-renderer-draft-1';
-import {createWorldFonts} from './world-font.mjs?v=20261124-renderer-draft-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-renderer-draft-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-renderer-work-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-renderer-work-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-renderer-work-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-renderer-work-1';
+import {createWorldFonts} from './world-font.mjs?v=20261124-renderer-work-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-renderer-work-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-renderer-draft-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-renderer-draft-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-renderer-work-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-renderer-work-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-renderer-draft-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-renderer-draft-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-renderer-draft-1';
-import {departureItem} from './departures-ui.mjs?v=20261124-renderer-draft-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-renderer-draft-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-renderer-draft-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-renderer-draft-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-renderer-draft-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-renderer-draft-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-renderer-draft-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-renderer-draft-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261124-renderer-draft-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-renderer-draft-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-renderer-draft-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261124-renderer-draft-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261124-renderer-draft-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-renderer-draft-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-renderer-draft-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-renderer-draft-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-renderer-draft-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-renderer-work-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-renderer-work-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-renderer-work-1';
+import {departureItem} from './departures-ui.mjs?v=20261124-renderer-work-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-renderer-work-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-renderer-work-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-renderer-work-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-renderer-work-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-renderer-work-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-renderer-work-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-renderer-work-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261124-renderer-work-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-renderer-work-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-renderer-work-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261124-renderer-work-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261124-renderer-work-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-renderer-work-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-renderer-work-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-renderer-work-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-renderer-work-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -91,7 +91,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-renderer-draft-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-renderer-work-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -172,7 +172,7 @@ function restoreCachedMapStyle() {
 // the partial renderer as a released feature before the other controls work.
 const stagedFlatEntry = document.documentElement.dataset.flatEntry === 'staged';
 const RENDERER_STORE = 'atlas_disable_webgl';
-const RENDERER_DRAW_HANDOFF = 'atlas_renderer_drawing_v1';
+const RENDERER_WORK_HANDOFF = 'atlas_renderer_work_v1';
 let explicitFlat = false;
 try { explicitFlat = stagedFlatEntry && localStorage.getItem(RENDERER_STORE) === '1'; } catch {}
 function webglAvailable() {
@@ -190,16 +190,19 @@ if (stagedFlatEntry) {
   const toggle=$('disable-webgl');
   toggle.checked=explicitFlat;
   toggle.addEventListener('change',()=>{
-    const transferring = drawing && (drawing.draft.length > 0 || drawing.extending);
+    const drawingDraft = drawing && (drawing.draft.length > 0 || drawing.extending) ? drawing.rendererDraft() : null;
+    const measurement = measuring?.rendererMeasurement();
+    const transferring = drawingDraft || measurement;
     try {
-      if (transferring) sessionStorage.setItem(RENDERER_DRAW_HANDOFF, JSON.stringify(drawing.rendererDraft()));
+      if (transferring) sessionStorage.setItem(RENDERER_WORK_HANDOFF, JSON.stringify({drawing:drawingDraft,measurement}));
     } catch {
-      $('draw-status').textContent='The browser could not keep this drawing across a renderer switch. Finish the drawing before switching.';
+      if(drawingDraft) $('draw-status').textContent='The browser could not keep this drawing across a renderer switch. Finish the drawing before switching.';
+      else $('measure-status').textContent='The browser could not keep this measurement across a renderer switch. Clear the measurement before switching.';
       toggle.checked=explicitFlat;return;
     }
     try {localStorage.setItem(RENDERER_STORE,toggle.checked?'1':'0');}
     catch {
-      if(transferring)try{sessionStorage.removeItem(RENDERER_DRAW_HANDOFF);}catch{}
+      if(transferring)try{sessionStorage.removeItem(RENDERER_WORK_HANDOFF);}catch{}
       status.textContent='The browser could not save the WebGL preference.';
       toggle.checked=explicitFlat;return;
     }
@@ -1467,17 +1470,26 @@ function drawStyle(style) {
   whenMap(() => drawing.setStyle(style));
   if (style.color) reflectDrawingColor(style.color);
 }
-function restoreRendererDrawing() {
+function restoreRendererWork() {
   if (!stagedFlatEntry) return;
-  let draft;
+  let state;
   try {
-    const pending=sessionStorage.getItem(RENDERER_DRAW_HANDOFF);
+    const pending=sessionStorage.getItem(RENDERER_WORK_HANDOFF);
     if (pending===null) return;
-    sessionStorage.removeItem(RENDERER_DRAW_HANDOFF);
-    draft=JSON.parse(pending);
+    sessionStorage.removeItem(RENDERER_WORK_HANDOFF);
+    state=JSON.parse(pending);
   } catch {return;}
+  if (state?.measurement && !state.drawing) {
+    $('measure-toolbar').hidden=false;
+    if(!measuring.restoreRendererMeasurement(state.measurement)){
+      $('measure-status').textContent='The measurement could not be resumed.';
+      updateDrawing();
+    }
+    return;
+  }
+  if (!state?.drawing) return;
   $('draw-toolbar').hidden=false;
-  if(!drawing.restoreRendererDraft(draft)){
+  if(!drawing.restoreRendererDraft(state.drawing)){
     $('draw-status').textContent='The unfinished drawing could not be resumed. Saved drawings remain unchanged.';
     updateDrawing();
     return;
@@ -1792,7 +1804,7 @@ async function initialize() {
     drawButton.setAttribute('aria-label','Drawing tools');
     toolButtons.append(drawButton,measureButton);
     $('map').append(toolButtons);
-    restoreRendererDrawing();
+    restoreRendererWork();
     const action=pendingDraw;pendingDraw=undefined;action?.();
     updateDrawing();
     let applied=JSON.stringify(settings);
@@ -1992,7 +2004,7 @@ async function initialize() {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
   });
-  restoreRendererDrawing();
+  restoreRendererWork();
   const action = pendingDraw; pendingDraw = undefined; action?.();
   let recoveryRemoved = false, recoveryStatusPending = false;
   stationFailures = createStationFallbackState(map);
