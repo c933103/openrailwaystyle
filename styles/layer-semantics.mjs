@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261118-fusion-energy-1';
+import { MODES } from './map-model.mjs?v=20261123-shared-tile-dispatch-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -93,7 +93,8 @@ export function layerVisibility(layer, settings) {
   const requirements = semantics['atlas:settings'] || [];
   let visible = runtime ? undefined : (!views.length || views.includes(settings.mode)) && requirements.every(key => settings[key]);
   const background = semantics['atlas:background'];
-  if (background === 'carto') visible = settings.background === 'carto';
+  if (background === 'soviet') visible = settings.background === 'soviet';
+  else if (background === 'carto') visible = settings.background === 'carto';
   else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;

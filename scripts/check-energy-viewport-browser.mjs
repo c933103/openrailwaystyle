@@ -54,16 +54,28 @@ try{
    assert.ok(observed.center.every((value,i)=>Math.abs(value-camera.center[i])<1e-6),'camera centre changed');assert.ok(Math.abs(observed.zoom-camera.zoom)<1e-6,'camera zoom changed');assert.ok(Math.abs(observed.pitch-camera.pitch)<1e-6,'camera pitch changed');assert.ok(Math.abs(observed.bearing-camera.bearing)<1e-6,'camera bearing changed');assert.equal(observed.projection,camera.projection);
    // Feature picking can return zero above the horizon even when the
    // framebuffer contains geometry. Read actual pixels inside the render event.
+   const requestsBeforeCapture=requests.length;
    observed.energyPixels=await page.evaluate(()=>new Promise((resolve,reject)=>{
-    energyMap.once('render',()=>{try{
+    let count;
+    const cleanup=()=>{clearTimeout(timer);energyMap.off('render',capture);energyMap.off('idle',settle);};
+    const capture=()=>{try{
      const gl=energyMap.getCanvas().getContext('webgl2'),pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);
      gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
-     let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&pixels[i]>pixels[i+1]+8&&pixels[i]>pixels[i+2]+8)count++;
-     resolve(count);
-    }catch(error){reject(error);}});energyMap.triggerRepaint();
+     count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&pixels[i]>pixels[i+1]+8&&pixels[i]>pixels[i+2]+8)count++;
+    }catch(error){cleanup();reject(error);}};
+    const settle=()=>{
+     if(count===undefined||!energyMap.loaded()||!energyMap.areTilesLoaded()||energyPending!==0)return;
+     cleanup();resolve(count);
+    };
+    const timer=setTimeout(()=>{cleanup();reject(new Error('pixel capture did not reach a fresh settled frame'));},15000);
+    // render dispatch precedes MapLibre's transition bookkeeping. Wait for a new
+    // idle from this repaint, not the sticky flag from the initial load.
+    energyMap.once('render',capture);energyMap.on('idle',settle);energyMap.triggerRepaint();
    }));
    observed.afterCapture=await page.evaluate(()=>({loaded:energyMap.loaded(),styleDirty:energyMap._styleDirty,sourcesDirty:energyMap._sourcesDirty,styleLoaded:energyMap.style?.loaded(),styleInitialized:energyMap.style?._loaded,updatedSources:Object.keys(energyMap.style?._updatedSources||{}),imagesLoaded:energyMap.style?.imageManager?.isLoaded(),tilesLoaded:energyMap.areTilesLoaded(),pending:energyPending,protocolRequests:[...energyCalls],errors:[...energyErrors]}));
    assert.ok(observed.afterCapture.loaded&&observed.afterCapture.tilesLoaded&&observed.afterCapture.pending===0,'pixel capture must retain settled tile demand');
+   assert.deepEqual(observed.afterCapture.protocolRequests,observed.protocolRequests,'pixel capture changed protocol demand');
+   assert.equal(requests.length,requestsBeforeCapture,'pixel capture fetched another fixture response');
    observed.protocolRequests=await page.evaluate(()=>energyCalls);observed.errors=await page.evaluate(()=>energyErrors);
    if(!candidate)assertEnergyFixturePixels(observed.energyPixels,active);
    if(camera.expectedBundle&&active)assert.ok(requests.some(r=>r.path===camera.expectedBundle),'candidate hotspot bundle was not fetched');

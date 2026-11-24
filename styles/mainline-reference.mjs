@@ -32,7 +32,20 @@ async function digest(bytes){
  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');
 }
 export async function decompressReference(data,maxBytes=MAX_DECODED){
- const reader=new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+ // Feed verified compressed bytes in bounded, predictable chunks. The Blob
+ // stream intermittently stalled WebKit's native gzip pipeline in repeated
+ // reader-only and map camera replays; retain the native decoder and output cap.
+ const bytes=ArrayBuffer.isView(data)
+  ?new Uint8Array(data.buffer,data.byteOffset,data.byteLength):new Uint8Array(data);
+ let inputOffset=0;
+ const input=new ReadableStream({
+  pull(controller){
+   if(inputOffset===bytes.byteLength){controller.close();return;}
+   const end=Math.min(inputOffset+64*1024,bytes.byteLength);
+   controller.enqueue(bytes.subarray(inputOffset,end));inputOffset=end;
+  }
+ });
+ const reader=input.pipeThrough(new DecompressionStream('gzip')).getReader();
  const chunks=[];let size=0;
  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;
    if(size>maxBytes){await reader.cancel();throw Error('Oversized decoded OSM reference tile')}chunks.push(value)}}

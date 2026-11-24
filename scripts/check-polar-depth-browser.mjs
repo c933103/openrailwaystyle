@@ -99,6 +99,25 @@ try {
         map.addLayer(layer);map.jumpTo({center:[0,${latitude}],zoom:15+Math.log2(Math.cos(${latitude}*Math.PI/180))});
       });
       window.frame=()=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Polar terrain frame did not settle within 30 seconds')),30000);map.once('idle',()=>{clearTimeout(timeout);map.getCanvas().getContext('webgl2').finish();resolve();});map.triggerRepaint();});
+      // The following fixture-only state changes do not mutate the camera,
+      // style or sources. They need a fresh GPU frame, not a new global
+      // source-idle transition. The render event is emitted after map paint.
+      // Camera and style operations still go through frame() above.
+      window.paintPolarState=label=>new Promise((resolve,reject)=>{
+        const onRender=()=>{
+          clearTimeout(timer);
+          map.off('render',onRender);
+          try {map.getCanvas().getContext('webgl2').finish();resolve();}
+          catch(error){reject(error);}
+        };
+        const timer=setTimeout(()=>{
+          map.off('render',onRender);
+          reject(new Error('Polar paint did not render in 30 seconds: '+label+
+            '; loaded='+map.loaded()+'; tilesLoaded='+map.areTilesLoaded()+'; draws='+window.draws));
+        },30000);
+        map.on('render',onRender);
+        map.triggerRepaint();
+      });
       // The polar shader draws the zero-altitude globe surface. map.project
       // includes terrain elevation and can point at a different (synthetic
       // seabed) surface at high pitch. Sample the actual cap coordinate,
@@ -167,7 +186,7 @@ try {
     await page.evaluate(async()=>{window.map.removeLayer('terrain-bathymetry');await window.frame();});
     const removed=await page.evaluate(()=>window.pixel());
     assert.deepEqual(removed,withoutDepth,'removing the style layer must hide depth instead of reverting to fallback depth paint');
-    await page.evaluate(async()=>{window.background='carto';await window.frame();});
+    await page.evaluate(async label=>{window.background='carto';await window.paintPolarState(label);},`${cap} Carto at ${depth}m`);
     const carto=await page.evaluate(()=>window.pixel());
     const cartoFill=cap==='north'?[170,211,223]:[242,239,233];
     for(let i=0;i<3;i++)assert.ok(Math.abs(carto[i]-cartoFill[i])<=5,
@@ -179,8 +198,8 @@ try {
     const imageryExpected=depth===20?[25,74,122]:[9,34,63];
     for(const mode of ['satellite','hybrid']) {
       const before=await page.evaluate(()=>window.draws);
-      await page.evaluate(async mode=>{window.background=mode;await window.frame();},mode)
-        .catch(error=>{throw new Error(`${cap} ${mode} at ${depth} m: ${error.message}`,{cause:error});});
+      await page.evaluate(async ({mode,label})=>{window.background=mode;await window.paintPolarState(label);},
+        {mode,label:`${cap} ${mode} at ${depth}m`});
       const imagery=await page.evaluate(()=>({pixel:window.pixel(),draws:window.draws}));
       assert.ok(imagery.draws>before,`${cap} ${mode}: current frame must draw depth`);
       for(let i=0;i<3;i++)assert.ok(Math.abs(imagery.pixel[i]-imageryExpected[i])<=5,
@@ -188,11 +207,12 @@ try {
       assert.equal(imagery.pixel[3],255);
       // Disabling only the depth texture must reveal the underlying cap,
       // proving that a retained framebuffer or a flat fill cannot pass.
-      const fallback=await page.evaluate(async cap=>{
+      const fallback=await page.evaluate(async ({cap,label})=>{
         window.layer.caps[cap].depthFailed=true;
-        await window.frame();const pixel=window.pixel();
-        window.layer.caps[cap].depthFailed=false;await window.frame();return pixel;
-      },cap);
+        await window.paintPolarState(label+' without depth');const pixel=window.pixel();
+        window.layer.caps[cap].depthFailed=false;
+        await window.paintPolarState(label+' restored');return pixel;
+      },{cap,label:`${cap} ${mode} at ${depth}m`});
       const fallbackExpected=cap==='north'?[5,22,43]:[230,238,245];
       for(let i=0;i<3;i++)assert.ok(Math.abs(fallback[i]-fallbackExpected[i])<=5,
         `${cap} ${mode}: missing depth must reveal terrain fallback, got ${fallback}`);

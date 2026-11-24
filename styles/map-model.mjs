@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261118-fusion-energy-1';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261118-fusion-energy-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261123-shared-tile-dispatch-1';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261123-shared-tile-dispatch-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261118-fusion-energy-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261118-fusion-energy-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261123-shared-tile-dispatch-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261123-shared-tile-dispatch-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -179,7 +179,7 @@ export function searchResults(facilities, places) {
 }
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
-export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto'];
+export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto', 'soviet'];
 // Standard OSM tiles: ordinary browser caching, no offline/prefetch support.
 export const CARTO_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service', 'owner', 'axle'];
@@ -521,7 +521,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export {ownerColor} from './owner-color.mjs?v=20261118-fusion-energy-1';
+export {ownerColor} from './owner-color.mjs?v=20261123-shared-tile-dispatch-1';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the
