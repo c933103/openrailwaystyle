@@ -1200,6 +1200,7 @@ function fitScale() {
 }
 function applyUnits() {
   fitScale();
+  updateFlatScale();
   if (!ready) return;
   const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
@@ -1298,7 +1299,17 @@ function localizeStyle(style) {
 // without one, as on a touch screen) and the zoom, where More detail adds the
 // scale the map is drawn at. Turned off in the settings.
 const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
-let readoutPoint = null, flatReadout;
+let readoutPoint = null, flatReadout, flatScale;
+function updateFlatScale() {
+  if (!flatScale) return;
+  const bar = flatSourceContext.scaleBar(settings.units);
+  flatScale.hidden = !bar;
+  if (!bar) return;
+  const label = bar.value + ' ' + bar.unit;
+  const width = bar.width.toFixed(2) + 'px';
+  if (flatScale.textContent !== label) flatScale.textContent = label;
+  if (flatScale.style.width !== width) flatScale.style.width = width;
+}
 function updateReadout() {
   if (readout.hidden) return;
   if (useFlat) {
@@ -1823,6 +1834,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
+      onCamera:updateFlatScale,
       onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
       onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
       onInspect(hits,[lng,lat]) {
@@ -1857,9 +1869,19 @@ async function initialize() {
     });
     flatNavigation=flat.moveTo;
     flatSourceContext=flat;
+    const corner = textNode('div', '', 'atlas-flat-map-tools');
     readout.classList.add('atlas-flat-readout');
-    $('map').append(readout);
+    flatScale = textNode('div', '', 'atlas-flat-scale');
+    const scaleLabel = textNode('span', 'Map scale', 'sr-only');
+    scaleLabel.id = 'flat-scale-label';
+    flatScale.setAttribute('role', 'group');
+    flatScale.setAttribute('aria-labelledby', scaleLabel.id);
+    corner.append(scaleLabel, flatScale, readout);
+    $('map').append(corner);
     updateReadout();
+    updateFlatScale();
+    controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'), corner,
+      panel: document.querySelector('.panel'), status, readout, details: $('details')});
     measuring=new Measure(flat.measurementMap,{
       units:()=>settings.units,
       status:text=>{$('measure-status').textContent=text;},

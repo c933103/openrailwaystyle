@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {flatCamera} from '../styles/flat-camera.mjs';
+import {flatCamera, flatScaleBar} from '../styles/flat-camera.mjs';
 
 const close = (actual, expected, delta = 1e-8) => {
   assert.equal(actual.length, expected.length);
@@ -55,4 +55,27 @@ test('Canvas fits antimeridian bounds at the current bearing without zooming to 
   const corners=[[175,14],[-174,22],[-174,14],[175,22]].map(c=>fitted.project(c));
   for(const [x,y] of corners) assert.ok(x>=39.99999 && x<=590.00001 && y>=39.99999 && y<=420.00001);
   assert.equal(fitFlatBounds(camera,[[10,20],[11,19]]),null);
+});
+
+test('Canvas scale bar measures CSS pixels with the camera latitude and zoom', () => {
+  const camera = (lat,zoom,width=800,bearing=0) => flatCamera({center:[179.99,lat],zoom,width,height:500,bearing});
+  const ground = (bar, factor) => bar.value * factor / bar.width;
+  const equator = flatScaleBar(camera(0,0),'metric');
+  assert.equal(equator.value,5000);
+  assert.equal(equator.unit,'km');
+  assert.ok(Math.abs(equator.width - 63.95) < .01);
+  const north = flatScaleBar(camera(60,0,800,175),'metric');
+  const closer = flatScaleBar(camera(0,1),'metric');
+  assert.ok(Math.abs(ground(north,1000) / ground(equator,1000) - .5) < 1e-10);
+  assert.equal(ground(closer,1000) / ground(equator,1000),.5);
+  for (const lat of [0,22,85,-85]) for (const zoom of [-.5,0,14.3,24,26]) {
+    for (const units of ['metric','imperial']) {
+      const bar = flatScaleBar(camera(lat,zoom),units);
+      assert.ok(bar.value > 0 && Number.isFinite(bar.width) && bar.width <= 100);
+    }
+  }
+  assert.equal(flatScaleBar(camera(0,0),'imperial').unit,'mi');
+  assert.equal(flatScaleBar(camera(0,18),'imperial').unit,'ft');
+  assert.equal(flatScaleBar(camera(0,18),'metric').unit,'m');
+  assert.equal(flatScaleBar(camera(0,0,25),'metric'),null);
 });

@@ -291,9 +291,16 @@ try {
     await p.mouse.move(40,30); // The brand button is above the Canvas.
     await p.waitForFunction(before=>document.querySelector('.atlas-flat-readout').textContent===before,center);
     if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
+    const scale=p.getByRole('group',{name:'Map scale'});
+    await scale.waitFor();
+    assert.equal(await scale.textContent(),'5000 km');
+    assert.ok(Math.abs((await scale.boundingBox()).width-63.95)<.03);
+    await p.locator('#units').selectOption('imperial');
+    assert.equal(await scale.textContent(),'2000 mi');
     await p.locator('#settings-open').click();
     await p.locator('#readout').uncheck();
     assert.equal(await value.isVisible(),false);
+    assert.equal(await scale.isVisible(),true);
     await p.reload();
     await ready(p);
     assert.equal(await value.isVisible(),false);
@@ -302,6 +309,17 @@ try {
     await p.locator('#readout').check();
     await value.waitFor();
     assert.equal(await value.textContent(),center);
+    await scale.waitFor();
+    assert.equal(await scale.textContent(),'2000 mi');
+    await p.locator('#settings-close').click();
+    await p.locator('#units').selectOption('metric');
+    assert.equal(await scale.textContent(),'5000 km');
+    await p.mouse.move(470,210);
+    await p.mouse.wheel(0,-120); // One wheel event changes the camera by 0.25 zoom.
+    await p.waitForFunction(()=>parseFloat(document.querySelector('.atlas-flat-scale').style.width)>72);
+    assert.equal(await scale.textContent(),'5000 km'); // Same round distance, longer bar.
+    for(let i=0;i<3;i++)await p.mouse.wheel(0,-120);
+    await p.waitForFunction(()=>document.querySelector('.atlas-flat-scale').textContent==='2000 km');
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {await readoutCase.context.close();}
   let current=await fresh(true);

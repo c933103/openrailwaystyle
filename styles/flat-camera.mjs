@@ -70,6 +70,21 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
     project, unproject, panBy, zoomAt, visibleTiles, tileTransform};
 }
 
+// Local ground resolution at the centre of the Mercator camera. Use CSS
+// pixels (not device pixels); bearing does not change Mercator's local scale.
+export function flatScaleBar(camera, units, maxWidth = 100) {
+  const width = Math.min(maxWidth, camera.width - 20);
+  if (!(width >= 12)) return null;
+  const metresPerPixel = 2 * Math.PI * 6371008.8 * Math.cos(camera.center[1] * RAD) / (WORLD * 2 ** camera.zoom);
+  const metres = width * metresPerPixel;
+  const [factor, unit] = units === 'imperial'
+    ? (metres >= 1609.344 ? [1609.344, 'mi'] : [.3048, 'ft'])
+    : (metres >= 1000 ? [1000, 'km'] : [1, 'm']);
+  const available = metres / factor, order = 10 ** Math.floor(Math.log10(available));
+  const value = Number(([5,2,1,.5].find(n => n * order <= available) * order).toPrecision(8));
+  return {value, unit, width: value * factor / metresPerPixel};
+}
+
 // A provider's geographic bounding box may cross the antimeridian. Fit the
 // rectangle in world space, including the current map rotation and padding.
 export function fitFlatBounds(camera, [[west,south],[east,north]], {padding=40,maxZoom=15,minZoom=-0.5}={}) {

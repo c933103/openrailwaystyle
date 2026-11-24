@@ -18,7 +18,7 @@ export function installHiddenTileMaskGuard(map) {
 
 // DOM layout for the map's controls. All measurements are in visible CSS
 // pixels: More detail scales the map and counter-scales its control container.
-export function installControlLayout({frame, mapElement, panel, status, readout, details}) {
+export function installControlLayout({frame, mapElement, panel, status, readout, details, corner}) {
   const document = frame.ownerDocument, window = document.defaultView, root = document.documentElement;
   const inset = document.createElement('div');
   inset.className = 'map-control-insets'; inset.setAttribute('aria-hidden', 'true');
@@ -31,6 +31,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     const next = `${Math.max(0, Math.round(value * 100) / 100)}px`;
     if (root.style.getPropertyValue(name) !== next) root.style.setProperty(name, next);
   };
+  const currentCorner = () => corner ?? mapElement.querySelector('.maplibregl-ctrl-bottom-left');
   const visible = element => {
     if (!element || element.hidden) return null;
     const style = window.getComputedStyle(element), rect = element.getBoundingClientRect();
@@ -59,11 +60,11 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     set('--map-info-right', f.right - right + Math.max(10, sr));
     set('--map-info-bottom', f.bottom - low);
     set('--map-info-width', Math.max(1, right - left - Math.max(10, sl) - Math.max(10, sr)));
-    const corner = mapElement.querySelector('.maplibregl-ctrl-bottom-left');
-    if (!corner) return;
+    const stackElement = currentCorner();
+    if (!stackElement) return;
     // Measure the actual stack after its available width is applied. A long
     // readout can wrap; its height is not a fixed 80-pixel clearance.
-    const stack = corner.getBoundingClientRect(), height = stack.height;
+    const stack = stackElement.getBoundingClientRect(), height = stack.height;
     const detail = visible(details);
     const horizontalOverlap = rect => rect && rect.left < x + stack.width + gap && rect.right > x - gap;
     const desktopDetail = !bottomSheet && horizontalOverlap(detail);
@@ -96,11 +97,10 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     queued = request(() => { queued = undefined; update(); });
   }
   const resizer = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(schedule) : null;
-  const corner = mapElement.querySelector('.maplibregl-ctrl-bottom-left');
   const attribution = mapElement.querySelector('.maplibregl-ctrl-attrib');
   // The inset probe has an empty content box; padding changes its border box.
   resizer?.observe(inset, {box: 'border-box'});
-  for (const element of [frame, panel, status, readout, details, corner, attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
+  for (const element of [frame, panel, status, readout, details, currentCorner(), attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
     if (element) resizer?.observe(element);
   // New status text can wrap the pill onto more lines: lay out at once, so
   // the corner never waits for a later frame's resize notification. The map

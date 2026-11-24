@@ -1,4 +1,4 @@
-import {flatCamera, fitFlatBounds} from './flat-camera.mjs';
+import {flatCamera, flatScaleBar, fitFlatBounds} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
@@ -15,7 +15,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -63,6 +63,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     camera=next;
     measureOverlay.setCamera(next);drawingOverlay.setCamera(next);
     mount.dataset.flatCenter=camera.center.join(',');
+    onCamera?.();
     updateReadout();
     if (navigate) {
       navigated=true;
@@ -268,5 +269,5 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   return {close,moveTo,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
-    getCenter:()=>camera.center,getLayers:()=>style.layers};
+    getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};
 }
