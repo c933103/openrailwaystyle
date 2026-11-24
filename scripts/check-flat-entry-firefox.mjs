@@ -16,7 +16,11 @@ const root=new URL('../styles/',import.meta.url);
 const standardPage=await readFile(new URL('index.html',root),'utf8');
 const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
-style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
+// Replace the original production layers with the same IDs. Canvas could
+// tolerate the duplicates, but MapLibre rejects the whole invalid fixture.
+const replacing=new Set(['infrastructure-tracks','context-transport-bus-label']);
+style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id))
+  .map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},paint:{'circle-color':'#00dc20','circle-radius':6}},
@@ -30,6 +34,7 @@ style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,
     metadata:{'atlas:semantics-version':1,'atlas:settings':['transport']}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
 ];
+assert.equal(new Set(style.layers.map(layer=>layer.id)).size,style.layers.length,'Fixture layer IDs must be unique');
 style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
 style.sources.entryRail={type:'vector',url:'/entry-tilejson.json',maxzoom:0};
 style.sources.stationFixture={type:'vector',tiles:['/fixture/{z}/{x}/{y}.pbf'],maxzoom:0};
