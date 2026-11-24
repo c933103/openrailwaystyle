@@ -40,7 +40,7 @@ const atlas3MapLibre=Buffer.from(buildAtlas3Text(
 // at headers, but its slot is only released when the response body is consumed.
 // highWaterMark:0 makes this distinction explicit instead of eagerly buffering
 // every mock response (which would hide the installation deadlock).
-function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false, assetBodies = new Map()} = {}) {
+function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false, assetBodies = new Map(), canvasEntry = false} = {}) {
   const handlers = new Map(), queue = [], writes = [], requests = [];
   const counts = {active: 0, peak: 0, started: 0, finished: 0};
   let offline = false, skipped = false, claimed = false;
@@ -85,7 +85,7 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
       ? {body:priorMapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
       ? {body:previousMapLibre,type:'application/javascript'} : legacyDistributions.get(url) ?? (new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0.js')
       ? legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js') : null);
-    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
+    const body = page ? `${canvasEntry?'<html data-flat-entry="staged">':''}<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
       pull(controller) {
@@ -161,6 +161,28 @@ test('a staged Canvas renderer is available from the exact warm shell version of
   worker.setOffline();
   assert.equal(await (await worker.request(current)).text(), 'canvas-shell: '+scope+current);
   await assert.rejects(worker.request(path+'?v=other-shell'));
+});
+
+test('a staged Canvas shell installs without either half of the WebGL pair but keeps common inputs strict',async()=>{
+  const worker = startWorker({canvasEntry:true,fail:'maplibre-gl-5.24.0-atlas.4.js'});
+  await bounded(worker.lifecycle('install'));await worker.lifecycle('activate');
+  worker.setOffline();
+  assert.match(await (await worker.request('./',true)).text(),/data-flat-entry="staged"/);
+  assert.match(await (await worker.request('vendor/flat-browser.js?v=new')).text(),/flat-browser/);
+  await assert.rejects(worker.request('vendor/maplibre-gl-5.24.0-atlas.4.js'));
+  await assert.rejects(worker.request('vendor/maplibre-gl-5.24.0.css'));
+  const missing = startWorker({canvasEntry:true,fail:'pmtiles-4.2.1.js'});
+  await assert.rejects(bounded(missing.lifecycle('install')), /truncated response/);
+  assert.equal(missing.skipped,false);
+});
+
+test('a staged Canvas shell keeps the complete immutable WebGL pair when reachable',async()=>{
+  const worker=startWorker({canvasEntry:true});
+  await bounded(worker.lifecycle('install'));await worker.lifecycle('activate');
+  worker.setOffline();
+  for(const asset of ['vendor/maplibre-gl-5.24.0-atlas.4.js','vendor/maplibre-gl-5.24.0.css']){
+    assert.ok((await worker.request(asset)).ok,asset);
+  }
 });
 
 for (const fail of ['map-model.mjs', 'flat-browser.js', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
