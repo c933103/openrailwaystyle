@@ -20,7 +20,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
   canvas.tabIndex = 0;
-  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move; pinch to zoom.');
+  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom.');
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
@@ -213,17 +213,28 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(tool===measure&&tool?.mode==='distance'){e.preventDefault();tool.end();}
     if(tool===drawing&&tool?.multiPoint){e.preventDefault();tool.finish();}
   });
+  function zoomBy(delta, anchor) {
+    if (disposed || gesture.active || toolDrag || !delta) return;
+    const zoom=Math.max(-0.5,Math.min(22,camera.zoom+delta));
+    if (zoom===camera.zoom) return;
+    setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
+  }
   listen('wheel',e=>{
     e.preventDefault();
-    if(gesture.active || toolDrag || !e.deltaY) return;
-    const zoom=Math.max(-0.5,Math.min(22,camera.zoom-Math.sign(e.deltaY)*0.25));
-    if(zoom===camera.zoom) return;
     const rect=canvas.getBoundingClientRect();
-    setCamera(camera.zoomAt(zoom,[e.clientX-rect.left,e.clientY-rect.top]),true);
+    zoomBy(-Math.sign(e.deltaY)*0.25,[e.clientX-rect.left,e.clientY-rect.top]);
   },{passive:false});
   listen('keydown',e=>{
+    if (gesture.active || toolDrag || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+    // Plus commonly requires Shift, whereas arrow panning remains unmodified.
+    const delta=e.key==='+' || (e.key==='=' && !e.shiftKey) ? 1 : e.key==='-' && !e.shiftKey ? -1 : 0;
+    if (delta) {
+      e.preventDefault();
+      zoomBy(delta);
+      return;
+    }
     const pan={ArrowLeft:[-60,0],ArrowRight:[60,0],ArrowUp:[0,-60],ArrowDown:[0,60]}[e.key];
-    if (!pan || gesture.active || toolDrag || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (!pan || e.shiftKey) return;
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
   });
@@ -266,7 +277,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const entry=sourceFrame.get(source);
     return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers,{filter,zoom:camera.zoom})};
   };
-  return {close,moveTo,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
+  return {close,moveTo,zoomBy,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};

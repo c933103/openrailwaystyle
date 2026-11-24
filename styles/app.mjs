@@ -1901,6 +1901,14 @@ async function initialize() {
     toolButtons.className='atlas-flat-tool-buttons';
     drawButton.setAttribute('aria-label','Drawing tools');
     toolButtons.append(drawButton,measureButton);
+    for (const [symbol,label,delta] of [['+','Zoom in',1],['−','Zoom out',-1]]) {
+      const button=textNode('button',symbol,'atlas-flat-zoom-button');
+      button.type='button';
+      button.title=label;
+      button.setAttribute('aria-label',label);
+      button.addEventListener('click',()=>flat.zoomBy(delta));
+      toolButtons.append(button);
+    }
     $('map').append(toolButtons);
     restoreRendererWork();
     const action=pendingDraw;pendingDraw=undefined;action?.();

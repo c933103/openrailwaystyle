@@ -216,6 +216,7 @@ body[data-ui="watch"] #pwa-install{display:none!important}
 
 .atlas-flat-tool-buttons{position:absolute;inset:10px 10px auto auto;display:flex;gap:6px}
 .atlas-flat-tool-buttons button{min-width:40px;min-height:40px;background:var(--paper);box-shadow:0 2px 12px #203c4426}
+.atlas-flat-tool-buttons .atlas-flat-zoom-button{font-size:20px;line-height:1;padding:0}
 body[data-ui="watch"] .atlas-flat-tool-buttons{display:none}
 
 .atlas-flat-map-tools{position:absolute;left:var(--map-control-left,10px);bottom:var(--map-control-bottom,10px);pointer-events:none;max-width:var(--map-control-width,calc(100% - 62px));display:flex;flex-direction:column;align-items:flex-start;gap:3px}

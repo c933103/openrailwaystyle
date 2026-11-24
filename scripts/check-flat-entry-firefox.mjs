@@ -397,6 +397,27 @@ try {
     assert.equal(await scale.textContent(),'5000 km'); // Same round distance, longer bar.
     for(let i=0;i<3;i++)await p.mouse.wheel(0,-120);
     await p.waitForFunction(()=>document.querySelector('.atlas-flat-scale').textContent==='2000 km');
+    const view=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+    const wheelView=await view();
+    assert.equal(wheelView.z,1);
+    await p.getByRole('button',{name:'Zoom in',exact:true}).click();
+    assert.deepEqual(await view(),{...wheelView,z:2});
+    await p.getByRole('button',{name:'Zoom out',exact:true}).press('Enter');
+    assert.deepEqual(await view(),wheelView);
+    const canvas=p.locator('canvas.atlas-flat-preview');
+    await canvas.press('Shift+Equal');
+    assert.deepEqual(await view(),{...wheelView,z:2});
+    await canvas.press('Minus');
+    assert.deepEqual(await view(),wheelView);
+    await canvas.press('Equal');
+    assert.deepEqual(await view(),{...wheelView,z:2});
+    await p.reload();
+    await canvas.waitFor();
+    await value.waitFor();
+    assert.match(await value.textContent(),/zoom 2\.0/);
+    assert.deepEqual(await view(),{...wheelView,z:2});
+    for(let i=0;i<4;i++)await canvas.press('Minus');
+    assert.deepEqual(await view(),{...wheelView,z:-0.5});
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {await readoutCase.context.close();}
   let current=await fresh(true);
