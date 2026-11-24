@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-renderer-work-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-renderer-work-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-renderer-work-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261124-renderer-work-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261124-renderer-work-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-renderer-work-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261124-context-fallback-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261124-context-fallback-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261124-context-fallback-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261124-context-fallback-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261124-context-fallback-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261124-context-fallback-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-renderer-work-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-renderer-work-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-renderer-work-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-renderer-work-1';
-import {createWorldFonts} from './world-font.mjs?v=20261124-renderer-work-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-renderer-work-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261124-context-fallback-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261124-context-fallback-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261124-context-fallback-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261124-context-fallback-1';
+import {createWorldFonts} from './world-font.mjs?v=20261124-context-fallback-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261124-context-fallback-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-renderer-work-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-renderer-work-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261124-context-fallback-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261124-context-fallback-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-renderer-work-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-renderer-work-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-renderer-work-1';
-import {departureItem} from './departures-ui.mjs?v=20261124-renderer-work-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-renderer-work-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-renderer-work-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-renderer-work-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-renderer-work-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-renderer-work-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-renderer-work-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-renderer-work-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261124-renderer-work-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-renderer-work-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-renderer-work-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261124-renderer-work-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261124-renderer-work-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-renderer-work-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-renderer-work-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-renderer-work-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-renderer-work-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-context-fallback-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-context-fallback-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-context-fallback-1';
+import {departureItem} from './departures-ui.mjs?v=20261124-context-fallback-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-context-fallback-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-context-fallback-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-context-fallback-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261124-context-fallback-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer} from './layer-semantics.mjs?v=20261124-context-fallback-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261124-context-fallback-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261124-context-fallback-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261124-context-fallback-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261124-context-fallback-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261124-context-fallback-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261124-context-fallback-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261124-context-fallback-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-context-fallback-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-context-fallback-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-context-fallback-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-context-fallback-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -91,7 +91,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-renderer-work-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261124-context-fallback-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -184,7 +184,8 @@ function webglAvailable() {
     return true;
   } catch {return false;}
 }
-const useFlat = stagedFlatEntry && (explicitFlat || !webglAvailable());
+let useFlat = stagedFlatEntry && (explicitFlat || !webglAvailable());
+let webglStartupFailure = false;
 if (stagedFlatEntry) {
   $('flat-preview-preference').hidden=false;
   const toggle=$('disable-webgl');
@@ -1701,7 +1702,7 @@ async function initialize() {
     waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/terrain-3d-worker.js?v=${assetVersion}`, import.meta.url)),
   });
-  const flatTemplate=useFlat?structuredClone(style):null;
+  const flatTemplate=stagedFlatEntry?structuredClone(style):null;
   // Apply language before constructing the map, avoiding an initial duplicate
   // station-tile download in the wrong language.
   // This also sets the contour sources (unitStyle). Relief and all contours
@@ -1742,6 +1743,33 @@ async function initialize() {
     const paint=stationViewPaint(layer,settings.mode,Number.isFinite(start.z)?start.z:1.8);
     if(paint)Object.assign(layer.paint,paint);
   }
+  if (!useFlat) {
+    // MapLibre adds DOM and a scroll handler before its actual context
+    // request. Keep a failed staged attempt off the shared map element.
+    const container = stagedFlatEntry ? document.createElement('div') : 'map';
+    if (stagedFlatEntry) {
+      Object.assign(container.style,{position:'absolute',inset:'0'});
+      $('map').append(container);
+    }
+    try {
+      map = new maplibregl.Map({
+        container, style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
+        center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+        maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
+        renderWorldCopies: true, attributionControl: false,
+      });
+    } catch (error) {
+      if (!stagedFlatEntry) throw error;
+      container.remove();
+      const failure = error?.message;
+      let detail;
+      try { detail = JSON.parse(failure); } catch {}
+      if (failure !== 'Failed to initialize WebGL' && detail?.message !== 'Failed to initialize WebGL') throw error;
+      $('maplibre-css')?.removeAttribute('href');
+      webglStartupFailure = true;
+      useFlat = true;
+    }
+  }
   if (useFlat) {
     const {mountFlatMap}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
@@ -1775,11 +1803,12 @@ async function initialize() {
       onStatus({errors,loading,clamped}) {
         scheduleNearbyTransport();
         status.classList.toggle('error',errors.length>0);
-        status.textContent=errors.length
-          ? 'Canvas preview: some visible tile data could not load.'
-          : loading?'Canvas preview: loading railway tiles…'
-          : clamped?'Canvas preview: the requested polar position is beyond the flat map edge.'
-          :'Canvas preview: drag or use the arrow keys to move.';
+        const state=errors.length?'some visible tile data could not load.'
+          : loading?'loading railway tiles…'
+          : clamped?'the requested polar position is beyond the flat map edge.'
+          :'drag or use the arrow keys to move.';
+        status.textContent=webglStartupFailure
+          ? 'Canvas preview: the WebGL map could not start; '+state : 'Canvas preview: '+state;
       },
     });
     flatNavigation=flat.moveTo;
@@ -1827,12 +1856,6 @@ async function initialize() {
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
     return;
   }
-  map = new maplibregl.Map({
-    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
-    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
-    maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
-    renderWorldCopies: true, attributionControl: false,
-  });
   installImageryAttribution(map,imageryProtocol,{eoxAttribution,polarImagery:()=>
     ['satellite','hybrid'].includes(settings.background) && Boolean(polarLayer &&
       ['north','south'].some(cap=>polarLayer.visible()[cap] && polarLayer.caps[cap]?.satellite && !polarLayer.caps[cap]?.satelliteFailed))});

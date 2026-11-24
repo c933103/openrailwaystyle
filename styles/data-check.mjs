@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261124-renderer-work-1';
+import {SEARCH_API} from './map-model.mjs?v=20261124-context-fallback-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

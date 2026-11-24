@@ -81,18 +81,27 @@ const origin='http://127.0.0.1:'+server.address().port;
 let browser;
 try {
   browser=await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
-  const fresh=async (off=false,heights=false)=>{
+  const fresh=async (off=false,heights=false,painterFault=false)=>{
     const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:3,serviceWorkers:'block'});
-    await context.addInitScript(off=>{
+    await context.addInitScript(({off,painterFault})=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
       const get=HTMLCanvasElement.prototype.getContext;
       window.webglAttempts=[];
       HTMLCanvasElement.prototype.getContext=function(type,...args){
-        if(type.startsWith('webgl')) window.webglAttempts.push(type);
+        if(type.startsWith('webgl')) {
+          window.webglAttempts.push(type);
+          if(painterFault){
+            if(!this.matches('canvas.maplibregl-canvas'))return {getExtension:()=>null};
+            const a=args[0];
+            window.painterAttributes={alpha:a.alpha,depth:a.depth,stencil:a.stencil,premultipliedAlpha:a.premultipliedAlpha};
+            this.dispatchEvent(new Event('webglcontextcreationerror'));
+            return null;
+          }
+        }
         return get.call(this,type,...args);
       };
-    },off);
+    },{off,painterFault});
     const page=await context.newPage();
     page.on('pageerror',error=>console.error(error.message));
     page.on('console',msg=>{if(msg.type()==='error') console.error(msg.text());});
@@ -534,10 +543,27 @@ try {
   assert.ok(Math.abs(localView.c[0])<1e-8&&localView.c[1]<-35&&localView.c[1]>-38);
   await current.context.close();
 
+  // The narrow fault is at the actual MapLibre canvas, not the startup probe.
+  current=await fresh(false,false,true);
+  const start=paths.length;
+  await current.page.goto(origin);
+  await ready(current.page);
+  assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2','webgl2','webgl']);
+  assert.deepEqual(await current.page.evaluate(()=>window.painterAttributes),
+    {alpha:true,depth:true,stencil:true,premultipliedAlpha:true});
+  assert.equal(await current.page.locator('.maplibregl-canvas-container').count(),0,'no partial map DOM');
+  assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null,'automatic fallback is not a user preference');
+  assert.equal(paths.slice(start).filter(path=>path==='/world.style.json').length,1,'shared initialization did not restart');
+  assert.match(await current.page.locator('#map-status').textContent(),/the WebGL map could not start/);
+  await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');
+  assert.ok(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]>10));
+  await current.context.close();
+
   failStyle=true;
-  current=await fresh();
+  current=await fresh(false,false,true);
   await current.page.goto(origin);
   await current.page.getByText('The map style could not load. Reload to try again.').waitFor();
+  assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'broken shared style never attempts the painter');
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
   failStyle=false;
@@ -550,5 +576,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal recovered without reloading, and style errors surfaced.');
 } finally {await browser?.close();server.close();}
