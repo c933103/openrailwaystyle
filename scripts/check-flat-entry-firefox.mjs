@@ -223,7 +223,7 @@ try {
     try {
       await page.goto(origin);
       await painted('webgl','before');
-      await page.getByRole('button',{name:'Drawing tools',exact:true}).click();
+      await page.getByTitle('Drawing tools',{exact:true}).click();
       await page.locator('[data-draw="line"]').click();
       await page.locator('#draw-dash').selectOption('dotted');
       await clickMap('webgl',.35,.43);await clickMap('webgl',.48,.44);
