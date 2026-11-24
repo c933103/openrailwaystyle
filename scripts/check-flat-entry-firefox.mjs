@@ -163,6 +163,47 @@ try {
   assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),[]);
   await current.context.close();
 
+  current=await fresh(true);
+  await current.page.goto(origin);
+  await ready(current.page);
+  const touches=await current.page.evaluate(()=>{
+    const canvas=document.querySelector('canvas.atlas-flat-preview'),r=canvas.getBoundingClientRect();
+    const x=r.left+r.width/2,y=r.top+r.height/2,captures=[];
+    // Firefox's fixture driver cannot inject simultaneous native touches.
+    // DOM events exercise the actual entry, listeners and storage; only native capture is substituted.
+    canvas.setPointerCapture=id=>captures.push(id);
+    const emit=(type,id,dx,dy)=>canvas.dispatchEvent(new PointerEvent(type,{
+      pointerId:id,pointerType:'touch',button:type==='pointermove'?-1:0,clientX:x+dx,clientY:y+dy,
+    }));
+    const persisted=()=>JSON.parse(localStorage.getItem('atlas_view'));
+    const center=()=>document.querySelector('#map').dataset.flatCenter;
+    const initial=persisted();
+    emit('pointerdown',1,-50,0);emit('pointerdown',2,50,0);
+    emit('pointermove',1,-100,0);emit('pointermove',2,100,0);
+    emit('pointerup',1,-100,0);
+    const firstUp=persisted();
+    emit('lostpointercapture',1,-100,0);
+    emit('pointerup',2,100,0);
+    const zoomed=persisted(),beforeCancel=center();
+    emit('pointerdown',3,-50,0);emit('pointerdown',4,50,0);
+    emit('pointermove',3,-80,40);emit('pointermove',4,140,40);
+    const duringCancel=center();
+    emit('pointercancel',4,140,40);emit('pointerup',3,-80,40);
+    return {captures,initial,firstUp,zoomed,beforeCancel,duringCancel,afterCancel:center(),persisted:persisted()};
+  });
+  assert.deepEqual(touches.captures,[1,2,3,4]);
+  assert.deepEqual(touches.firstUp,touches.initial);
+  assert.equal(touches.zoomed.z,1);
+  assert.ok(touches.zoomed.c.every(value=>Math.abs(value)<0.001));
+  assert.notEqual(touches.duringCancel,touches.beforeCancel);
+  assert.equal(touches.afterCancel,touches.beforeCancel);
+  assert.deepEqual(touches.persisted,touches.zoomed);
+  assert.equal(await current.page.getByRole('heading',{name:'Fixture Station'}).isVisible(),false);
+  await current.page.reload();
+  await current.page.locator("canvas.atlas-flat-preview").waitFor();
+  assert.deepEqual(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view'))),touches.zoomed);
+  await current.context.close();
+
   failStyle=true;
   current=await fresh();
   await current.page.goto(origin);
@@ -179,5 +220,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

@@ -4,6 +4,7 @@ import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
+import {createFlatGesture} from './flat-gesture.mjs';
 
 const tileLayer = layer => layer.type === 'raster' ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
@@ -14,7 +15,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
   canvas.tabIndex = 0;
-  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move.');
+  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move; pinch to zoom.');
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
@@ -23,7 +24,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
-  let camera, frame = 0, drag, disposed = false, navigated = false;
+  let camera, frame = 0, disposed = false, navigated = false;
   const queue = createFlatTileRequests({
     load:({revision,canonical,controller})=>loader.load(revision,canonical,{pixelRatio,controller}),
     dispose:tile=>tile.image?.close?.(),
@@ -45,6 +46,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   function resize() {
     const width=Math.max(1,mount.clientWidth),height=Math.max(1,mount.clientHeight);
     if (camera?.width===width && camera.height===height) return;
+    gesture.cancel();
     canvas.width=Math.round(width*pixelRatio); canvas.height=Math.round(height*pixelRatio);
     context.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);
     setCamera(flatCamera({center:camera?.center??requestedView.center,zoom:camera?.zoom??requestedView.zoom,
@@ -90,36 +92,30 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   }
 
   const listen=(type,fn,opts)=>canvas.addEventListener(type,fn,{...opts,signal});
-  listen('pointerdown',e=>{
-    if(e.button!==0 || drag) return;
-    drag={id:e.pointerId,x:e.clientX,y:e.clientY,start:camera,moved:false};
-    canvas.setPointerCapture(e.pointerId);
-  });
-  listen('pointermove',e=>{
-    if(e.pointerId!==drag?.id) return;
-    const dx=drag.x-e.clientX,dy=drag.y-e.clientY;
-    if(!drag.moved && Math.hypot(dx,dy)<3) return;
-    drag.moved=true;
-    setCamera(drag.start.panBy([dx,dy]));
-  });
-  function finishDrag(e,commit) {
-    if(e.pointerId!==drag?.id) return;
-    const start=drag.start,moved=drag.moved;
-    drag=null;
-    if(moved) setCamera(commit?camera:start,commit);
-    else if(commit && onInspect) {
-      const rect=canvas.getBoundingClientRect();
-      const point=[e.clientX-rect.left,e.clientY-rect.top];
+  const localPoint=e=>{
+    const rect=canvas.getBoundingClientRect();
+    return [e.clientX-rect.left,e.clientY-rect.top];
+  };
+  const gesture=createFlatGesture({
+    preview:setCamera,
+    commit:next=>setCamera(next,true),
+    inspect:point=>{
+      if(!onInspect) return;
       const hits=query(camera,point,queue.snapshot().frame);
       if(hits.length) onInspect(hits,camera.unproject(point));
-    }
-  }
-  listen('pointerup',e=>finishDrag(e,true));
-  listen('pointercancel',e=>finishDrag(e,false));
-  listen('lostpointercapture',e=>finishDrag(e,false));
+    },
+  });
+  listen('pointerdown',e=>{
+    if(e.button===0 && gesture.start(e.pointerId,e.pointerType,localPoint(e),camera))
+      canvas.setPointerCapture(e.pointerId);
+  });
+  listen('pointermove',e=>gesture.move(e.pointerId,localPoint(e)));
+  listen('pointerup',e=>gesture.end(e.pointerId,localPoint(e)));
+  listen('pointercancel',e=>gesture.cancel(e.pointerId));
+  listen('lostpointercapture',e=>gesture.cancel(e.pointerId));
   listen('wheel',e=>{
     e.preventDefault();
-    if(drag || !e.deltaY) return;
+    if(gesture.active || !e.deltaY) return;
     const zoom=Math.max(-0.5,Math.min(22,camera.zoom-Math.sign(e.deltaY)*0.25));
     if(zoom===camera.zoom) return;
     const rect=canvas.getBoundingClientRect();
@@ -127,7 +123,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   },{passive:false});
   listen('keydown',e=>{
     const pan={ArrowLeft:[-60,0],ArrowRight:[60,0],ArrowUp:[0,-60],ArrowDown:[0,60]}[e.key];
-    if (!pan || drag || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (!pan || gesture.active || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
   });
@@ -145,6 +141,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   window.addEventListener('pagehide',event=>{if(!event.persisted) close();},{signal});
   const moveTo=({center,zoom,bounds})=>{
     if(disposed) return;
+    gesture.cancel();
     const next=bounds?fitFlatBounds(camera,bounds):null;
     setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing:camera.bearing}),true);
   };
