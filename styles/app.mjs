@@ -546,7 +546,7 @@ function saveSettings() {
   }
 }
 // Build a link on demand rather than writing each map position into history.
-let flatCurrentView, flatNavigation, pendingFlatNavigation;
+let flatCurrentView, flatNavigation, flatRefreshStyle, pendingFlatNavigation;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -728,6 +728,7 @@ function applySettings() {
     if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   if (ready) { pruneModeTiles(map, previousTileMode, settings.mode); previousTileMode = settings.mode; }
+  else flatRefreshStyle?.();
   // Clear the previous view's values before drawing the legend: if the new
   // view has nothing in view, the in-view list never changes and the legend
   // would keep the old rows.
@@ -1638,21 +1639,26 @@ async function initialize() {
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
   }
+  const flatTemplate=useFlat?structuredClone(style):null;
   // Apply language before constructing the map, avoiding an initial duplicate
   // station-tile download in the wrong language.
   // This also sets the contour sources (unitStyle). Relief and all contours
   // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
-  // Hidden sources must stay hidden before MapLibre starts its first requests.
-  for (const layer of style.layers) {
-    const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
-    // Station fallback names are used only after the ORM station source fails.
-    // Avoid flashing fallback names during the first frame of a healthy load.
-    const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')?false:visible;
-    if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
-    if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
-  }
+  // Resolve the same initial visibility policy for both renderers. Canvas
+  // can recompute it from source when a setting changes without remounting.
+  const applyInitialVisibility=style=>{
+    for (const layer of style.layers) {
+      const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
+      // Station fallback names are used only after the ORM station source fails.
+      // Avoid flashing fallback names during the first frame of a healthy load.
+      const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')?false:visible;
+      if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
+      if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
+    }
+  };
+  applyInitialVisibility(style);
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
   const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
@@ -1712,6 +1718,21 @@ async function initialize() {
       },
     });
     flatNavigation=flat.moveTo;
+    let applied=JSON.stringify(settings);
+    flatRefreshStyle=()=>{
+      const signature=JSON.stringify(settings);
+      if(applied===signature)return;
+      const next=structuredClone(flatTemplate);
+      localizeStyle(next);
+      next.sources.relief.tiles=[dem.sharedDemProtocolUrl];
+      applyInitialVisibility(next);
+      for(const layer of next.layers){
+        const paint=stationViewPaint(layer,settings.mode,flat.getZoom());
+        if(paint)Object.assign(layer.paint,paint);
+      }
+      flat.setStyle(next);
+      applied=signature;
+    };
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
     return;
   }
@@ -2122,12 +2143,13 @@ function reloadLanguage() {
     ensureCjkChoice(cjkScript(settings.language));
     updateDetailGlyphs();
     if(ready) reloadLanguage();
+    else flatRefreshStyle?.();
     saveSettings();
   });
 }
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
-  applyUnits(); updateInView(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
+  applyUnits(); flatRefreshStyle?.(); updateInView(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (profileFromMeasure) closeDetails();
   if (currentFeature) showDetails(currentFeature);
 });

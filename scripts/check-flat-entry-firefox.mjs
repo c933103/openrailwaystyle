@@ -13,11 +13,11 @@ const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
-  {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',paint:{'circle-color':'#00dc20','circle-radius':6}},
+  {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},paint:{'circle-color':'#00dc20','circle-radius':6}},
   {id:'fixture-track-names',type:'symbol',source:'entryRail','source-layer':'rail',layout:{
     'text-field':['get','name'],'symbol-placement':'line','text-size':20,'text-offset':[0,-1.2],
   },paint:{'text-color':'#ffff00'}},
-  {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',layout:{
+  {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},layout:{
     'text-field':['get','name'],'text-size':18,'text-anchor':'top','text-offset':[0,0.9],
   },paint:{'text-color':'#ff00ff'}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
@@ -105,6 +105,24 @@ try {
 
 
   assert.ok(!paths.some(path=>path.includes('/vendor/maplibre-gl-')||path.startsWith('/never-request/')));
+  // A settings change must affect the current canvas, not just storage or
+  // the next load. The other rail source stays installed without refetching.
+  const railReads=paths.filter(path=>path==='/entry-tilejson.json').length;
+  await current.page.locator('canvas.atlas-flat-preview').evaluate(canvas=>canvas.dataset.optionProbe='current');
+  if(!(await current.page.locator('#settings-open').isVisible()))await current.page.locator('#controls-open').click();
+  await current.page.locator('#settings-open').click();
+  const labelVisible=expected=>current.page.waitForFunction(expected=>{
+    const c=document.querySelector('canvas.atlas-flat-preview');
+    const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+    return d.some((value,i)=>i%4===0&&value===255&&d[i+1]===0&&d[i+2]===255&&d[i+3]===255)===expected;
+  },expected,{timeout:10000});
+  await current.page.locator('#stations').uncheck();await labelVisible(false);await ready(current.page);
+  await current.page.locator('#stations').check();await labelVisible(true);await ready(current.page);
+  await current.page.locator('#settings-close').click();
+  assert.equal(await current.page.locator('canvas.atlas-flat-preview').getAttribute('data-option-probe'),'current');
+  assert.equal(paths.filter(path=>path==='/entry-tilejson.json').length,railReads);
+  assert.deepEqual(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c),[0,0]);
+
   const screenFeature=async (color)=>{
     const point=await current.page.waitForFunction(color=>{
       const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect();
@@ -240,5 +258,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

@@ -20,8 +20,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
-  const draw = compileFlatFrame(style.layers);
-  const query = compileFlatVectorQuery(style.layers,{include:interactiveLayer});
+  let draw = compileFlatFrame(style.layers);
+  let query = compileFlatVectorQuery(style.layers,{include:interactiveLayer});
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
@@ -146,5 +146,20 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const next=bounds?fitFlatBounds(camera,bounds):null;
     setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing:camera.bearing}),true);
   };
-  return {close,moveTo};
+  const setStyle=next=>{
+    if(disposed) return;
+    const nextDraw=compileFlatFrame(next.layers);
+    const nextQuery=compileFlatVectorQuery(next.layers,{include:interactiveLayer});
+    for(const [id,entry] of metadata) {
+      if(JSON.stringify(style.sources[id])!==JSON.stringify(next.sources[id])){
+        entry.controller.abort();
+        metadata.delete(id);
+      }
+    }
+    style=next;draw=nextDraw;query=nextQuery;
+    // Install the new plan before a tap can inspect old pixels/data.
+    if(frame)window.cancelAnimationFrame(frame);
+    render();
+  };
+  return {close,moveTo,setStyle,getZoom:()=>camera.zoom};
 }
