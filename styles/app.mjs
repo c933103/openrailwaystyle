@@ -546,7 +546,7 @@ function saveSettings() {
   }
 }
 // Build a link on demand rather than writing each map position into history.
-let flatCurrentView, flatNavigation, flatRefreshStyle, pendingFlatNavigation;
+let flatCurrentView, flatNavigation, flatRefreshStyle, flatSourceContext, pendingFlatNavigation;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -1078,18 +1078,30 @@ function updateNearbyTransport() {
   if (!target || currentFeature?.geometry?.type !== 'Point') return;
   target.replaceChildren(textNode('h3','Nearby transport'));
   if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
-  if (useFlat) { target.append(textNode('p','Nearby transport is not available in this Canvas preview.','small')); return; }
-  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
-  const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
-  const nearby = nearbyTransport(currentFeature.geometry.coordinates,features,500,map.getZoom());
+  const zoom=useFlat?flatSourceContext?.getZoom():ready?map.getZoom():undefined;
+  if (!(zoom>=14)) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
+  const sourceLayers=['poi','aerodrome_label'];
+  const context=useFlat?flatSourceContext.readSourcePoints('openmaptiles',sourceLayers):{
+    state:map.isSourceLoaded('openmaptiles')?'ready':'loading',
+    features:sourceLayers.flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer})
+      .map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer}))),
+  };
+  const nearby=nearbyTransport(currentFeature.geometry.coordinates,context.features,500,zoom);
   if (!nearby.length) {
-    target.append(textNode('p',map.isSourceLoaded('openmaptiles') ? 'No nearby transport facility appears in the loaded map data.' : 'Loading nearby transport…','small')); return;
+    const messages={
+      inactive:'Nearby transport data is not loaded in this view.',
+      failed:'Nearby transport data could not be loaded.',
+      ready:'No nearby transport facility appears in the loaded map data.',
+      loading:'Loading nearby transport…',
+    };
+    target.append(textNode('p',messages[context.state],'small')); return;
   }
   const list = document.createElement('ul');list.className='nearby-list';
   for (const {feature,category,distance} of nearby) {
     const item = document.createElement('li'), button = textNode('button',displayName(feature.properties,settings.language) || category.label);
     button.type='button';button.addEventListener('click',()=>{
-      map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
+      if(useFlat)flatNavigation?.({center:feature.geometry.coordinates,zoom:Math.max(14,zoom)});
+      else map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
       showDetails({...feature,source:'openmaptiles',layer:{id:`context-transport-${category.id}-label`}});
     });
     item.append(button,textNode('span',`${category.label} · ${settings.units === 'imperial' ? Math.round(distance*3.28084/50)*50+' ft' : Math.round(distance/10)*10+' m'}`,'small'));
@@ -1701,6 +1713,7 @@ async function initialize() {
       },
       onNavigate(view) {
         flatCurrentView=view;
+        scheduleNearbyTransport();
         linkedViewHash='';
         try {localStorage.setItem(VIEW_STORE,JSON.stringify(view));} catch {}
         if (parseViewHash(location.hash)) {
@@ -1709,6 +1722,7 @@ async function initialize() {
         }
       },
       onStatus({errors,loading,clamped}) {
+        scheduleNearbyTransport();
         status.classList.toggle('error',errors.length>0);
         status.textContent=errors.length
           ? 'Canvas preview: some visible tile data could not load.'
@@ -1718,6 +1732,7 @@ async function initialize() {
       },
     });
     flatNavigation=flat.moveTo;
+    flatSourceContext=flat;
     let applied=JSON.stringify(settings);
     flatRefreshStyle=()=>{
       const signature=JSON.stringify(settings);

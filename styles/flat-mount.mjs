@@ -6,6 +6,7 @@ import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
+import {flatSourcePoints} from './flat-source-points.mjs';
 
 const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
@@ -26,6 +27,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let camera, frame = 0, disposed = false, navigated = false;
+  let sourceFrame=new Map();
   const queue = createFlatTileRequests({
     load:({revision,canonical,controller})=>loader.load(revision,canonical,{pixelRatio,controller}),
     dispose:tile=>tile.image?.close?.(),
@@ -85,6 +87,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
     queue.update(plans);
     const tiles=queue.snapshot();
+    sourceFrame=new Map([...active].map(id=>{
+      const entry=metadata.get(id), count=plans.get(id)?.tiles.length??0;
+      const drawn=tiles.frame.get(id)??[];
+      const seen=new Set(drawn.map(({tile:{x,y,z}})=>z+'/'+x+'/'+y)).size;
+      return [id,{tiles:drawn,state:errors.has(id)||entry?.error?'failed':
+        tiles.errors.has(id)?'failed':!entry?.value||seen<count?'loading':'ready'}];
+    }));
     for(const id of tiles.errors.keys()) errors.add(id);
     draw(context,camera,tiles.frame);
     const painting=[...tiles.frame.values()].some(items=>items.length);
@@ -161,5 +170,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(frame)window.cancelAnimationFrame(frame);
     render();
   };
-  return {close,moveTo,setStyle,getZoom:()=>camera.zoom};
+  const readSourcePoints=(source,sourceLayers)=>{
+    const entry=sourceFrame.get(source);
+    return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers)};
+  };
+  return {close,moveTo,setStyle,readSourcePoints,getZoom:()=>camera.zoom};
 }

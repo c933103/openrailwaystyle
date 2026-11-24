@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
+import {gzipSync} from 'node:zlib';
+import {zxyToTileId} from 'pmtiles';
+import vtPbf from 'vt-pbf';
+import {pmtilesBytesResponse} from './pmtiles-browser-fixture.mjs';
 import {createPreviewServer} from './serve.mjs';
 import {flatVectorFixture} from '../tests/fixtures/flat-vector.mjs';
 
@@ -20,13 +24,37 @@ style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,
   {id:'station-fixture-names',type:'symbol',source:'labelFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},layout:{
     'text-field':['get','name'],'text-size':18,'text-anchor':'top','text-offset':[0,0.9],
   },paint:{'text-color':'#ff00ff'}},
+  {id:'fixture-nearby-poi',type:'circle',source:'openmaptiles','source-layer':'poi',minzoom:14,
+    metadata:{'atlas:semantics-version':1,'atlas:settings':['transport']},paint:{'circle-color':'#447755'}},
   {id:'fixture-hidden',type:'line',source:'hiddenRail','source-layer':'rail',metadata:{'atlas:semantics-version':1,'atlas:views':['fixture-off']}},
 ];
+style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
 style.sources.entryRail={type:'vector',url:'/entry-tilejson.json',maxzoom:0};
 style.sources.stationFixture={type:'vector',tiles:['/fixture/{z}/{x}/{y}.pbf'],maxzoom:0};
 style.sources.labelFixture={type:'vector',tiles:['/label/{z}/{x}/{y}.pbf'],maxzoom:0};
 style.sources.hiddenRail={type:'vector',tiles:['/never-request/{z}/{x}/{y}.pbf']};
 const bytes=Buffer.from(flatVectorFixture());
+// A single archived bus interchange roughly 90 m from the fixture station.
+const nearbyLngLat=[-0.1017,51.501], n=2**14;
+const mx=(nearbyLngLat[0]+180)/360*n,my=(1-Math.asinh(Math.tan(nearbyLngLat[1]*Math.PI/180))/Math.PI)/2*n;
+const xx=Math.floor(mx),yy=Math.floor(my);
+const local=[Math.round((mx-xx)*4096),Math.round((my-yy)*4096)];
+const nearbyMvt=vtPbf.fromGeojsonVt({poi:{features:[
+  {id:611,type:1,tags:{class:'bus_station',name:'Fixture Bus Interchange'},geometry:[local]},
+]}},{version:2,extent:4096});
+const varints=values=>Buffer.from(values.flatMap(value=>{
+  const out=[];while(value>127){out.push(value%128+128);value=Math.floor(value/128);}
+  out.push(value);return out;
+}));
+const packed=gzipSync(nearbyMvt), dir=varints([1,zxyToTileId(14,xx,yy),1,packed.length,1]);
+const meta=Buffer.from('{}'), header=Buffer.alloc(127);
+header.write('PMTiles');header[7]=3;
+const begin=127+dir.length,end=begin+meta.length;
+for(const [offset,value] of [[8,127],[16,dir.length],[24,begin],[32,meta.length],[40,end],[48,0],
+  [56,end],[64,packed.length],[72,1],[80,1],[88,1]])header.writeBigUInt64LE(BigInt(value),offset);
+header[96]=1;header[97]=1;header[98]=2;header[99]=1;header[100]=14;header[101]=14;
+for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.writeInt32LE(value*1e7,offset);
+const nearbyArchive=Buffer.concat([header,dir,meta,packed]);
 const paths=[];
 let failStyle=false, activateStaging=true;
 const server=createServer((req,res)=>{
@@ -35,6 +63,9 @@ const server=createServer((req,res)=>{
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(pathname==='/world.style.json') {
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(style));
+  } else if(pathname==='/data/nearby-fixture.pmtiles') {
+    const r=pmtilesBytesResponse(nearbyArchive,req.headers.range,'nearby-fixture-v1');
+    res.writeHead(r.status,r.headers);res.end(r.body);
   } else if(pathname==='/entry-tilejson.json') {
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:['/fixture/{z}/{x}/{y}.pbf']}));
   } else if(pathname==='/fixture/0/0/0.pbf'||pathname==='/label/0/0/0.pbf') {
@@ -193,6 +224,19 @@ try {
   let camera=await view();
   assert.ok(Math.abs(camera.c[0]+0.103)<1e-8&&Math.abs(camera.c[1]-51.501)<1e-8&&camera.z===14);
   await current.page.getByRole('heading',{name:'Demo station'}).waitFor();
+  const nearby=current.page.locator('#nearby-transport');
+  await nearby.getByRole('button',{name:'Fixture Bus Interchange'}).waitFor({timeout:10000}).catch(async error=>{
+    console.error('Nearby state:',await nearby.textContent(), 'Map:',await current.page.locator('#map-status').textContent(),
+      'Archives:',paths.filter(path=>path.endsWith('.pmtiles')));throw error;
+  });
+  assert.match(await nearby.innerText(),/Bus \/ coach interchange · 90 m/);
+  assert.match(await nearby.innerText(),/Within 500 m in a straight line/);
+  assert.ok(paths.includes('/data/nearby-fixture.pmtiles'));
+  await nearby.getByRole('button',{name:'Fixture Bus Interchange'}).click();
+  await current.page.getByRole('heading',{name:'Fixture Bus Interchange'}).waitFor();
+  camera=await view();
+  assert.ok(Math.abs(camera.c[0]-nearbyLngLat[0])<0.00002&&Math.abs(camera.c[1]-nearbyLngLat[1])<0.00002&&camera.z===14);
+
   await current.page.locator('#details-close').click();
   await submit();
   await current.page.getByRole('button',{name:/Demo town/}).click();
@@ -258,5 +302,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected and nearby transport opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}
