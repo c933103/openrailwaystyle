@@ -1,0 +1,31 @@
+name: Verify staged Railway Atlas renderer switch
+on:
+  push:
+    branches: [work/canvas-entry-501]
+    paths:
+      - '.github/workflows/canvas-renderer-switch-501.yml'
+      - 'scripts/check-flat-entry-firefox.mjs'
+permissions:
+  contents: read
+jobs:
+  renderer-switch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+");'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Switch renderers with unfinished work
+        run: timeout 240s node scripts/check-flat-entry-firefox.mjs --chromium-switch
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canvas-renderer-switch
+          path: browser-review/renderer-switch/
+          if-no-files-found: warn

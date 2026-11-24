@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {readFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import {gzipSync} from 'node:zlib';
 import {zxyToTileId} from 'pmtiles';
 import vtPbf from 'vt-pbf';
@@ -79,16 +80,20 @@ const server=createServer((req,res)=>{
 });
 await new Promise((ok,fail)=>server.once('error',fail).listen(0,'127.0.0.1',ok));
 const origin='http://127.0.0.1:'+server.address().port;
+const chromiumSwitch=process.argv.includes('--chromium-switch');
+const proofDir='browser-review/renderer-switch';
 let browser;
 try {
-  browser=await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
+  browser=chromiumSwitch ? await launchBrowser({executablePath:process.env.CHROMIUM_EXECUTABLE})
+    : await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
   const fresh=async (off=false,heights=false,painterFault=false)=>{
-    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:3,serviceWorkers:'block'});
+    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:chromiumSwitch?1:3,serviceWorkers:'block'});
     await context.addInitScript(({off,painterFault})=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
       const get=HTMLCanvasElement.prototype.getContext;
       window.webglAttempts=[];
+      window.atlasTestPaintContext=null;
       HTMLCanvasElement.prototype.getContext=function(type,...args){
         if(type.startsWith('webgl')) {
           window.webglAttempts.push(type);
@@ -100,7 +105,11 @@ try {
             return null;
           }
         }
-        return get.call(this,type,...args);
+        const context=get.call(this,type,...args);
+        if(type.startsWith('webgl') && this.matches('canvas.maplibregl-canvas') &&
+          (context instanceof WebGL2RenderingContext || context instanceof WebGLRenderingContext))
+          window.atlasTestPaintContext=context;
+        return context;
       };
     },{off,painterFault});
     const page=await context.newPage();
@@ -139,6 +148,110 @@ try {
     for(let i=0;i<a.length;i+=4) if(a[i]===255&&a[i+1]===0&&a[i+2]===0&&a[i+3]===255) return true;
     return false;
   },null,{timeout:15000});
+  if(chromiumSwitch){
+    await mkdir(proofDir,{recursive:true});
+    const {page,context}=await fresh(false,true);
+    const canvas=kind=>page.locator(kind==='webgl'?'canvas.maplibregl-canvas':'canvas.atlas-flat-preview');
+    const frames=[];
+    const painted=async (kind, phase)=>{
+      const c=canvas(kind);
+      await c.waitFor({timeout:15000});
+      if(kind==='webgl') await page.waitForFunction(()=>window.atlasTestPaintContext &&
+        !window.atlasTestPaintContext.isContextLost(),null,{timeout:15000});
+      else {
+        await ready(page);
+        assert.equal(await page.locator('canvas.maplibregl-canvas').count(),0);
+        assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
+      }
+      const end=Date.now()+15000;
+      let shot;
+      do {
+        shot=await c.screenshot({timeout:4000});
+        const seen=await page.evaluate(async png=>{
+          const b=await createImageBitmap(await (await fetch('data:image/png;base64,'+png)).blob());
+          const probe=new OffscreenCanvas(b.width,b.height).getContext('2d');
+          probe.drawImage(b,0,0);
+          const rgba=probe.getImageData(0,0,b.width,b.height).data;
+          let pixels=0;
+          for(let i=0;i<rgba.length;i+=4)
+            if(rgba[i]>=244&&rgba[i+1]<18&&rgba[i+2]<18&&rgba[i+3]===255) pixels++;
+          return pixels;
+        },shot.toString('base64'));
+        if(seen>32){
+          await writeFile(proofDir+'/'+phase+'.png',shot);
+          const gl=await page.evaluate(()=>{
+            const c=window.atlasTestPaintContext;
+            if(!c)return null;
+            const ext=c.getExtension('WEBGL_debug_renderer_info');
+            return ext?c.getParameter(ext.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER);
+          });
+          frames.push({phase,renderer:kind,gl,railPixels:seen});
+          return;
+        }
+      }while(Date.now()<end);
+      await writeFile(proofDir+'/'+phase+'-missing-rail.png',shot);
+      throw new Error('Synthetic red railway was not painted by '+kind+' in '+phase);
+    };
+    const clickMap=async(kind,x,y)=>{
+      const box=await canvas(kind).boundingBox();
+      const point=[Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)];
+      const target=await page.evaluate(([left,top])=>document.elementFromPoint(left,top)?.className,point);
+      assert.match(target,kind==='webgl'?/maplibregl-canvas/:/atlas-flat-preview/);
+      await page.mouse.click(...point);
+    };
+    const switchMode=async off=>{
+      if(!(await page.locator('#settings-open').isVisible()))await page.locator('#controls-open').click();
+      await page.locator('#settings-open').click();
+      const toggle=page.locator('#disable-webgl');
+      assert.equal(await toggle.isChecked(),!off);
+      await Promise.all([page.waitForEvent('load'),toggle.click()]);
+      assert.equal(await page.locator('#disable-webgl').isChecked(),off);
+    };
+    const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'{"features":[]}'));
+    const consumed=()=>page.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')===null);
+    try {
+      await page.goto(origin);
+      await painted('webgl','before');
+      await page.getByRole('button',{name:'Drawing tools',exact:true}).click();
+      await page.locator('[data-draw="line"]').click();
+      await page.locator('#draw-dash').selectOption('dotted');
+      await clickMap('webgl',.35,.43);await clickMap('webgl',.48,.44);
+      assert.equal((await saved()).features.length,0);
+      await switchMode(true);
+      await painted('canvas','after-canvas');
+      assert.equal(await consumed(),true);
+      assert.equal(await page.locator('[data-draw="line"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('#draw-dash').inputValue(),'dotted');
+      assert.equal((await saved()).features.length,0);
+      await clickMap('canvas',.65,.58);
+      await page.locator('#draw-finish').click();
+      const finished=await saved();
+      assert.equal(finished.features.length,1);
+      assert.equal(finished.features[0].geometry.coordinates.length,3);
+      assert.equal(finished.features[0].properties.dash,'dotted');
+
+      await page.getByRole('button',{name:'Measure',exact:true}).click();
+      await clickMap('canvas',.35,.52);await clickMap('canvas',.52,.46);
+      const status=page.locator('#measure-status');
+      assert.match(await status.textContent(),/over 1 segment · double-click to end/);
+      await switchMode(false);
+      await painted('webgl','after-webgl');
+      assert.equal(await consumed(),true);
+      assert.match(await status.textContent(),/over 1 segment · double-click to end/);
+      assert.deepEqual(await saved(),finished);
+      await clickMap('webgl',.65,.56);
+      assert.match(await status.textContent(),/over 2 segments · double-click to end/);
+      await page.locator('#measure-finish').click();
+      assert.match(await status.textContent(),/over 2 segments\./);
+      assert.equal(await page.locator('#measure-finish').isDisabled(),true);
+      await writeFile(proofDir+'/result.json',JSON.stringify({frames,drawingVertices:3,measurementSegments:2},null,2));
+      console.log('Chromium renderer switch passed: WebGL → Canvas → WebGL; captured railway pixels and finished both drafts.');
+    } catch(error) {
+      await page.screenshot({path:proofDir+'/failure.png',timeout:3000}).catch(()=>{});
+      await writeFile(proofDir+'/failure.json',JSON.stringify({frames,error:error.message,paths:paths.slice(-40)},null,2));
+      throw error;
+    } finally {await context.close();}
+  } else {
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
@@ -616,4 +729,5 @@ try {
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
   console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal and separate missing renderer JS/CSS recovered without reloading, and style errors surfaced.');
+  }
 } finally {await browser?.close();server.close();}
