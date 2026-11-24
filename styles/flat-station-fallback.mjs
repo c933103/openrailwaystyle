@@ -1,7 +1,7 @@
 // The Canvas queue selects one effective canonical zoom for a source, so a
 // failed tile needs only its own exact extent, not the WebGL mixed-LOD mask.
 export const flatStationFallbackLayer=id=>
-  id==='station-basemap-fallback-dots'||id==='station-basemap-fallback-names';
+  id==='station-basemap-fallback-dots'||id==='station-basemap-fallback-names'||id==='station-curated-fallback-dots';
 
 export function flatStationFallbackMask({metadataFailed=false,tiles=[]}={}) {
   if(!metadataFailed&&!tiles.length)return ()=>false;
@@ -18,4 +18,28 @@ export function flatStationFallbackMask({metadataFailed=false,tiles=[]}={}) {
       return failed.has(z+'/'+x+'/'+y);
     });
   };
+}
+
+// The z7 curated points are already in the style; no additional provider
+// or archive is needed. Adapt only these small Point features so they share
+// Canvas tile projection, clipping, filtering and picking.
+export function compileFlatCuratedStations(collection) {
+  const layer='curated-stations', z=7, n=2**z, extent=4096, buckets=new Map();
+  for(const entry of collection?.features??[]){
+    const coordinates=entry.geometry?.coordinates;
+    if(entry.geometry?.type!=='Point'||!Array.isArray(coordinates)||coordinates.length<2)continue;
+    const [lng,lat]=coordinates;
+    if(!Number.isFinite(lng)||Math.abs(lng)>180||!Number.isFinite(lat)||Math.abs(lat)>85.05112878)continue;
+    const x=((lng+180)/360*n)%n;
+    const y=Math.max(0,Math.min(n-n*Number.EPSILON,(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n));
+    const tx=Math.floor(x),ty=Math.floor(y),key=tx+'/'+ty;
+    const feature={id:entry.id,type:1,properties:entry.properties??{},extent,
+      paths:[[{x:(x-tx)*extent,y:(y-ty)*extent}]]};
+    if(!buckets.has(key))buckets.set(key,[]);
+    buckets.get(key).push(feature);
+  }
+  return camera=>camera.visibleTiles(z).flatMap(tile=>{
+    const points=buckets.get(tile.x+'/'+tile.y);
+    return points?.length?[{tile,vector:{layer:name=>name===layer?points:[]}}]:[];
+  });
 }

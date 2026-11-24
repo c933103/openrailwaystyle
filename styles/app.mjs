@@ -1771,7 +1771,7 @@ async function initialize() {
       const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
       // Station fallback names are used only after the ORM station source fails.
       // Avoid flashing fallback names during the first frame of a healthy load.
-      const independent=layer.id==='station-basemap-fallback-dots'||layer.id==='station-basemap-fallback-names';
+      const independent=['station-basemap-fallback-dots','station-basemap-fallback-names','station-curated-fallback-dots'].includes(layer.id);
       const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')
         ?canvas&&independent&&settings.stations&&settings.background!=='satellite':visible;
       if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
@@ -1857,6 +1857,7 @@ async function initialize() {
     let creditSignature;
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
+      curatedStationData:majorStationData,
       interactiveLayer:isClickable,
       imageryCredit(url,tile){
         if(!url.startsWith('atlasimagery://'))return;

@@ -4,7 +4,7 @@ import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
-import {flatStationFallbackLayer,flatStationFallbackMask} from './flat-station-fallback.mjs';
+import {flatStationFallbackLayer,flatStationFallbackMask,compileFlatCuratedStations} from './flat-station-fallback.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
@@ -16,7 +16,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -25,8 +25,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
-  let draw = compileFlatFrame(style.layers);
-  let query = compileFlatVectorQuery(style.layers,{include:interactiveLayer});
+  const frameLayers=style=>style.layers.map(layer=>layer.id==='station-curated-fallback-dots'
+    ?{...layer,maxzoom:8,'source-layer':'curated-stations'}:layer);
+  let compiledLayers=frameLayers(style);
+  let draw=compileFlatFrame(compiledLayers);
+  let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer});
+  const curatedStations=compileFlatCuratedStations(curatedStationData);
+  let visibleFrame=new Map();
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
@@ -87,11 +92,15 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   }
   function render() {
     frame=0;
-    const layers=style.layers.filter(layer=>layer.layout?.visibility!=='none'&&
+    const layers=compiledLayers.filter(layer=>layer.layout?.visibility!=='none'&&
       camera.zoom>=(layer.minzoom??-Infinity)&&camera.zoom<(layer.maxzoom??Infinity)&&tileLayer(layer));
-    const checkStations=camera.zoom>=8&&layers.some(layer=>layer.source==='stations')&&layers.some(layer=>flatStationFallbackLayer(layer.id));
-    const fallbackLikely=checkStations&&(metadata.get('stations')?.error||queue.hasFailure('stations'));
-    const active=new Set(layers.filter(layer=>!flatStationFallbackLayer(layer.id)||fallbackLikely).map(layer=>layer.source));
+    const stationSource=camera.zoom>=8?'stations':camera.zoom>=7?'stationMed':null;
+    const fallbackLayers=layers.some(layer=>flatStationFallbackLayer(layer.id));
+    const checkStations=stationSource&&fallbackLayers&&layers.some(layer=>layer.source===stationSource);
+    const metadataFailed=checkStations&&Boolean(metadata.get(stationSource)?.error);
+    const fallbackLikely=checkStations&&(metadataFailed||queue.hasFailure(stationSource));
+    const active=new Set(layers.filter(layer=>layer.source!=='stationMajor'&&
+      (!flatStationFallbackLayer(layer.id)||fallbackLikely)).map(layer=>layer.source));
     for (const [id,entry] of metadata) {
       if (!active.has(id)) {entry.controller.abort(); metadata.delete(id);}
     }
@@ -118,10 +127,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       } catch {errors.add(id);}
     }
     queue.update(plans);
-    const tiles=queue.snapshot();
-    stationFallbackMask=flatStationFallbackMask(checkStations
-      ?{metadataFailed:Boolean(metadata.get('stations')?.error),tiles:tiles.errors.get('stations')}
-      :{});
+    const tiles=queue.snapshot(),failedTiles=checkStations?tiles.errors.get(stationSource):null;
+    stationFallbackMask=flatStationFallbackMask(checkStations?{metadataFailed,tiles:failedTiles??[]}: {});
+    const curated=stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
+      ?curatedStations(camera):[];
+    if(curated.length)tiles.frame.set('stationMajor',curated);
+    visibleFrame=tiles.frame;
     sourceFrame=new Map([...active].map(id=>{
       const entry=metadata.get(id), count=plans.get(id)?.tiles.length??0;
       const drawn=tiles.frame.get(id)??[];
@@ -131,7 +142,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }));
     for(const id of tiles.errors.keys()) errors.add(id);
     paintedSymbols=[];
-    draw(context,camera,tiles.frame,{getIcon,allowFeature:layers.some(layer=>flatStationFallbackLayer(layer.id))?allowFeature:undefined,onSymbol:({id,source,sourceLayer},label,bounds)=>{
+    draw(context,camera,tiles.frame,{getIcon,allowFeature:fallbackLayers?allowFeature:undefined,onSymbol:({id,source,sourceLayer},label,bounds)=>{
       if(!interactiveLayer?.(id))return;
       const [rawLng,lat]=camera.unproject([label.px,label.py]);
       const lng=((rawLng+180)%360+360)%360-180;
@@ -202,7 +213,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         if(line){onDrawingProfile(line);return;}
       }
       if(!onInspect)return;
-      const hits=query(camera,point,queue.snapshot().frame,allowFeature);
+      const hits=query(camera,point,visibleFrame,allowFeature);
       for(const symbol of paintedSymbols){
         if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
           hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});
@@ -297,15 +308,16 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   };
   const setStyle=next=>{
     if(disposed) return;
-    const nextDraw=compileFlatFrame(next.layers);
-    const nextQuery=compileFlatVectorQuery(next.layers,{include:interactiveLayer});
+    const nextLayers=frameLayers(next);
+    const nextDraw=compileFlatFrame(nextLayers);
+    const nextQuery=compileFlatVectorQuery(nextLayers,{include:interactiveLayer});
     for(const [id,entry] of metadata) {
       if(JSON.stringify(style.sources[id])!==JSON.stringify(next.sources[id])){
         entry.controller.abort();
         metadata.delete(id);
       }
     }
-    style=next;draw=nextDraw;query=nextQuery;
+    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;
     // Install the new plan before a tap can inspect old pixels/data.
     if(frame)window.cancelAnimationFrame(frame);
     render();

@@ -92,12 +92,20 @@ const server=createServer((req,res)=>{
       ...style,
       sources:{...style.sources,
         openmaptiles:{type:'vector',url:'pmtiles://data/station-fallback-fixture.pmtiles',maxzoom:7},
+        stationMed:{type:'vector',url:`http://127.0.0.1:${server.address().port}/station-medium-fixture.json`,maxzoom:7},
+        stationMajor:{...style.sources.stationMajor,data:{type:'FeatureCollection',features:[
+          {type:'Feature',id:706,geometry:{type:'Point',coordinates:[0.25,-0.25]},
+            properties:{feature:'station',tier:'medium',name:'Curated Hub',curated:true}},
+        ]}},
         stations:{type:'vector',url:`http://127.0.0.1:${server.address().port}/station-failure-tilejson.json`,maxzoom:8}},
       layers:[style.layers.find(layer=>layer.id==='fixture-bg'),...style.layers.filter(layer=>layer.id!=='fixture-bg'),
         ...fixtureRasterBackgrounds.filter(layer=>layer.id==='satellite'),
         {id:'station-primary-health-test',type:'circle',source:'stations','source-layer':'station',
         minzoom:8,metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},
-        paint:{'circle-color':'#00dc20','circle-radius':5}}],
+        paint:{'circle-color':'#00dc20','circle-radius':5}},
+        {id:'station-primary-medium-test',type:'circle',source:'stationMed','source-layer':'station',
+          minzoom:7,maxzoom:8,metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},
+          paint:{'circle-color':'#00dc20','circle-radius':5}}],
     }:fixtureCredits?{
       ...style,
       sources:{...style.sources,entryRail:{...style.sources.entryRail,attribution:
@@ -110,6 +118,13 @@ const server=createServer((req,res)=>{
   } else if(pathname==='/data/station-fallback-fixture.pmtiles') {
     const r=pmtilesBytesResponse(fallbackArchive,req.headers.range,'flat-station-fixture-v1');
     res.writeHead(r.status,r.headers);res.end(r.body);
+  } else if(pathname==='/station-medium-fixture.json') {
+    if(stationFailureFixture==='curated'){res.writeHead(404).end();return;}
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
+      minzoom:7,maxzoom:7,tiles:[`http://127.0.0.1:${server.address().port}/station-medium/{z}/{x}/{y}.pbf`],
+    }));
+  } else if(pathname.startsWith('/station-medium/')) {
+    res.writeHead(200,{'content-type':'application/x-protobuf'}).end();
   } else if(pathname==='/station-failure-tilejson.json') {
     if(stationFailureFixture==='metadata'){res.writeHead(404).end();return;}
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
@@ -746,6 +761,35 @@ try {
       assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
     } finally {stationFailureFixture='';await stationCase.context.close();}
   }
+  const curatedCase=await fresh(true);
+  stationFailureFixture='curated';
+  try {
+    const p=curatedCase.page;
+    await p.goto(origin+'/#7.5/-0.25/0.25');
+    const canvas=p.locator('canvas.atlas-flat-preview');
+    await canvas.waitFor();
+    const hasCuratedOutline=()=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(c.width/2-4,c.height/2-4,9,9).data;
+      return d.some((v,i)=>i%4===0&&v>5&&v<95&&d[i+1]>=v+12&&d[i+2]>=d[i+1]+5&&d[i+3]===255);
+    };
+    await p.waitForFunction(hasCuratedOutline);
+    assert.ok(paths.includes('/station-medium-fixture.json'));
+    await canvas.click({position:{x:350,y:220}});
+    await p.getByRole('heading',{name:'Curated Hub',exact:true}).waitFor();
+    await p.locator('#details .close').click();
+    if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
+    await p.locator('#settings-open').click();
+    await p.locator('#stations').uncheck();
+    assert.equal(await p.evaluate(hasCuratedOutline),false);
+    stationFailureFixture='curated-healthy';
+    await p.locator('#stations').check();
+    for(let i=0;i<80&&!paths.some(path=>path.startsWith('/station-medium/'));i++)
+      await new Promise(resolve=>setTimeout(resolve,150));
+    assert.ok(paths.some(path=>path.startsWith('/station-medium/')));
+    assert.equal(await p.evaluate(hasCuratedOutline),false);
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+  } finally {stationFailureFixture='';await curatedCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
