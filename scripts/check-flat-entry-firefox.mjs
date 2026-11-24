@@ -15,6 +15,7 @@ const preview=createPreviewServer().listeners('request')[0];
 const root=new URL('../styles/',import.meta.url);
 const standardPage=await readFile(new URL('index.html',root),'utf8');
 const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
+const chromiumSwitch=process.argv.includes('--chromium-switch');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 // Replace the original production layers with the same IDs. Canvas could
 // tolerate the duplicates, but MapLibre rejects the whole invalid fixture.
@@ -37,7 +38,10 @@ style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id))
 assert.equal(new Set(style.layers.map(layer=>layer.id)).size,style.layers.length,'Fixture layer IDs must be unique');
 style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
 
-const bytes=Buffer.from(flatVectorFixture());
+// MapLibre clamps the persisted world view to z1. The Firefox z0 fixture
+// rail lies north of the 700×440 viewport at z1, despite its tile loading.
+// Place the same deterministic rail closer to the equator for this proof.
+const bytes=Buffer.from(flatVectorFixture({railY:chromiumSwitch?1600:900}));
 // A single archived bus interchange roughly 90 m from the fixture station.
 const nearbyLngLat=[-0.1017,51.501], n=2**14;
 const mx=(nearbyLngLat[0]+180)/360*n,my=(1-Math.asinh(Math.tan(nearbyLngLat[1]*Math.PI/180))/Math.PI)/2*n;
@@ -88,7 +92,6 @@ style.sources.entryRail={type:'vector',url:origin+'/entry-tilejson.json',maxzoom
 style.sources.stationFixture={type:'vector',tiles:[railTemplate],maxzoom:0};
 style.sources.labelFixture={type:'vector',tiles:[labelTemplate],maxzoom:0};
 style.sources.hiddenRail={type:'vector',tiles:[origin+'/never-request/{z}/{x}/{y}.pbf']};
-const chromiumSwitch=process.argv.includes('--chromium-switch');
 const proofDir='browser-review/renderer-switch';
 let browser;
 try {
