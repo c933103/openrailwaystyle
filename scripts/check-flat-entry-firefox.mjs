@@ -95,6 +95,9 @@ try {
     await page.route('**/*',r=>{
       const url=new URL(r.request().url());
       if(url.origin===origin) return r.continue();
+      if(['api.openrailwaymap.org','nominatim.openstreetmap.org'].includes(url.hostname) &&
+        url.searchParams.get('q')==='Fixture Station')
+        return r.fulfill({status:503,headers:{'access-control-allow-origin':'*'},body:''});
       const json=(rows)=>r.fulfill({status:200,headers:{'access-control-allow-origin':'*'},json:rows});
       if(url.hostname==='api.openrailwaymap.org') return json([
         {osm_id:9001,name:'Demo station',latitude:51.5,longitude:-0.1,railway:'station',operator:'Line One'},
@@ -286,6 +289,23 @@ try {
   assert.deepEqual(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view'))),touches.zoomed);
   await current.context.close();
 
+  current=await fresh(true);
+  await current.page.goto(origin);
+  await ready(current.page);
+  const localInput=current.page.getByRole('searchbox',{name:'Find a station, railway facility or place'});
+  if(!await localInput.isVisible())await current.page.locator('#controls-open').click();
+  // The map's own vector tile should work even with both search endpoints down.
+  await localInput.fill('Fixture Station');await localInput.press('Enter');
+  const localResult=current.page.locator('#search-results').getByRole('button',{name:/Fixture Station/});
+  await localResult.waitFor({timeout:15000});
+  assert.equal(await localResult.count(),1);
+  await localResult.click();
+  await current.page.getByRole('heading',{name:'Fixture Station'}).waitFor();
+  const localView=await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+  assert.equal(localView.z,14);
+  assert.ok(Math.abs(localView.c[0])<1e-8&&localView.c[1]<-35&&localView.c[1]>-38);
+  await current.context.close();
+
   failStyle=true;
   current=await fresh();
   await current.page.goto(origin);
@@ -302,5 +322,5 @@ try {
   assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
   assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
   await current.context.close();
-  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected and nearby transport opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
+  console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport opened, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, and style errors surfaced.');
 } finally {await browser?.close();server.close();}

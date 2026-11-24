@@ -2403,11 +2403,16 @@ $('search-form').addEventListener('submit', async e => {
     // neither service finds (stations mapped as areas, partial names).
     // Below zoom 7 the curated principal stations are drawn too.
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
-    const zoom = ready ? map.getZoom() : 0;
-    const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
-      source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
-        : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
-    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value?.items || []) : [];
+    const flat=useFlat?flatSourceContext:null;
+    const zoom=flat?flat.getZoom():ready?map.getZoom():0;
+    const drawn=flat
+      ? drawnStationQueries(flat.getLayers(),zoom).flatMap(({source,sourceLayer,filter})=>
+          sourceLayer?flat.readSourcePoints(source,[sourceLayer],filter).features:[])
+      : ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
+          source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+            : map.getSource(source) ? map.querySourceFeatures(source,{sourceLayer,filter}) : []) : [];
+    const local = flat||ready
+      ? tileStations(drawn,q,flat?flat.getCenter():map.getCenter().toArray(),facilities.value?.items||[]) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
     const {rail, places: other} = searchResults([...(facilities.value?.items || []), ...local], places.value?.items || []);
     const results = $('search-results'); results.replaceChildren();

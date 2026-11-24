@@ -16,3 +16,13 @@ test('uses only canonical loaded vector points, not wrapped copies or buffered n
   assert.equal(points[0].geometry.coordinates[0],-90);
   assert.ok(Math.abs(points[0].geometry.coordinates[1]-66.51326044)<1e-7);
 });
+
+test('respects station layer filters on decoded features',()=>{
+  const tile={z:1,x:0,y:0,worldX:0}, feature={type:1,extent:100,paths:[[{x:50,y:50}]]};
+  const vector={layer:()=>[
+    {...feature,id:7,properties:{feature:'station',name:'Included'}},
+    {...feature,id:8,properties:{feature:'tram_stop',name:'Not in this view'}},
+  ]};
+  const result=flatSourcePoints([{tile,vector}],['station'],{filter:['==',['get','feature'],'station'],zoom:8});
+  assert.deepEqual(result.map(f=>f.id),[7]);
+});

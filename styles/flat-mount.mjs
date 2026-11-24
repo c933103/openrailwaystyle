@@ -170,9 +170,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(frame)window.cancelAnimationFrame(frame);
     render();
   };
-  const readSourcePoints=(source,sourceLayers)=>{
+  const readSourcePoints=(source,sourceLayers,filter)=>{
     const entry=sourceFrame.get(source);
-    return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers)};
+    return {state:entry?.state??'inactive',features:flatSourcePoints(entry?.tiles??[],sourceLayers,{filter,zoom:camera.zoom})};
   };
-  return {close,moveTo,setStyle,readSourcePoints,getZoom:()=>camera.zoom};
+  return {close,moveTo,setStyle,readSourcePoints,getZoom:()=>camera.zoom,
+    getCenter:()=>camera.center,getLayers:()=>style.layers};
 }
