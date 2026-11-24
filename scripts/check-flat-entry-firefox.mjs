@@ -206,8 +206,12 @@ try {
     const clickMap=async(kind,x,y)=>{
       const box=await canvas(kind).boundingBox();
       const point=[Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)];
-      const target=await page.evaluate(([left,top])=>document.elementFromPoint(left,top)?.className,point);
-      assert.match(target,kind==='webgl'?/maplibregl-canvas/:/atlas-flat-preview/);
+      const target=await page.evaluate(([left,top])=>{
+        const node=document.elementFromPoint(left,top);
+        return node?{tag:node.tagName,id:node.id,className:node.getAttribute('class')}:null;
+      },point);
+      assert.match(target?.className||'',kind==='webgl'?/maplibregl-canvas/:/atlas-flat-preview/,
+        'Map click '+point.join(',')+' hit '+JSON.stringify(target));
       await page.mouse.click(...point);
     };
     const switchMode=async off=>{
@@ -226,7 +230,8 @@ try {
       await page.getByTitle('Drawing tools',{exact:true}).click();
       await page.locator('[data-draw="line"]').click();
       await page.locator('#draw-dash').selectOption('dotted');
-      await clickMap('webgl',.35,.43);await clickMap('webgl',.48,.44);
+      // The compact toolbars cover the centre of this viewport.
+      await clickMap('webgl',.14,.42);await clickMap('webgl',.84,.44);
       assert.equal((await saved()).features.length,0);
       await switchMode(true);
       await painted('canvas','after-canvas');
@@ -234,7 +239,7 @@ try {
       assert.equal(await page.locator('[data-draw="line"]').getAttribute('aria-pressed'),'true');
       assert.equal(await page.locator('#draw-dash').inputValue(),'dotted');
       assert.equal((await saved()).features.length,0);
-      await clickMap('canvas',.65,.58);
+      await clickMap('canvas',.15,.56);
       await page.locator('#draw-finish').click();
       const finished=await saved();
       assert.equal(finished.features.length,1);
@@ -242,7 +247,7 @@ try {
       assert.equal(finished.features[0].properties.dash,'dotted');
 
       await page.getByRole('button',{name:'Measure',exact:true}).click();
-      await clickMap('canvas',.35,.52);await clickMap('canvas',.52,.46);
+      await clickMap('canvas',.14,.52);await clickMap('canvas',.84,.46);
       const status=page.locator('#measure-status');
       assert.match(await status.textContent(),/over 1 segment · double-click to end/);
       await switchMode(false);
@@ -250,7 +255,7 @@ try {
       assert.equal(await consumed(),true);
       assert.match(await status.textContent(),/over 1 segment · double-click to end/);
       assert.deepEqual(await saved(),finished);
-      await clickMap('webgl',.65,.56);
+      await clickMap('webgl',.15,.61);
       assert.match(await status.textContent(),/over 2 segments · double-click to end/);
       await page.locator('#measure-finish').click();
       assert.match(await status.textContent(),/over 2 segments\./);
