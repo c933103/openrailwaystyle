@@ -276,6 +276,11 @@ export class Drawing {
     const extension = this.extending && {
       at:this.extending.at,original:readDrawing(this.extending.feature)[0],
     };
+    if (extension) {
+      const key = JSON.stringify(extension.original);
+      extension.unambiguous = Boolean(key) &&
+        !this.features.some(feature => JSON.stringify(readDrawing(feature)[0]) === key);
+    }
     return {mode:this.mode, paused:this.paused, style:{...this.style}, curved:this.curved,
       points:this.draft.map(p=>[...p]), flags:[...this.draftCurved],
       selected:this.selected?.drawing===0?this.selected.index:null, extension};
@@ -290,13 +295,13 @@ export class Drawing {
       const {at,original}=state.extension;
       if(state.mode!=='line'||state.points.length<2||original?.geometry?.type!=='LineString'||
           !Number.isSafeInteger(at)||at<0)return false;
-      // The other renderer loaded original saved GeoJSON, with fresh IDs.
-      // Match the persisted original rather than looking it up by an old ID.
+      // Saved GeoJSON has no stable ID. Never adopt an identical line at a
+      // different position, or replace a line with ambiguous saved identity.
       const key=JSON.stringify(readDrawing(original)[0]);
       const matches=feature=>key&&JSON.stringify(readDrawing(feature)[0])===key;
-      const index=matches(this.features[at])?at:this.features.findIndex(matches);
-      if(index<0)return false; // another tab replaced the original
-      const [feature]=this.features.splice(index,1);
+      if(state.extension.unambiguous!==true||!matches(this.features[at])||
+          this.features.some((feature,index)=>index!==at&&matches(feature)))return false;
+      const [feature]=this.features.splice(at,1);
       const {line_points,curved,measure,drawing,...properties}=feature.properties;
       this.extending={feature,at,properties};
     }
@@ -310,6 +315,10 @@ export class Drawing {
     this.map.getCanvas().style.cursor=this.mode&&!this.paused?'crosshair':'';
     this.refresh();this.changed();
     return true;
+  }
+  recoverRendererLine(state) {
+    if (!state?.extension || state.mode !== 'line' || !Array.isArray(state.points) || state.points.length < 2) return false;
+    return this.restoreRendererDraft({...state, extension:null});
   }
   // Sources and layers are re-added after every style replacement.
   install() {
@@ -348,7 +357,8 @@ export class Drawing {
     // Rendered copies carry an id for erasing and their measurement; saved
     // files carry neither. A line being extended is saved as it was until
     // the extension is finished.
-    const features = !withMeasure && this.extending ? [...this.features, this.extending.feature] : this.features;
+    const features = !withMeasure && this.extending ? [...this.features] : this.features;
+    if (!withMeasure && this.extending) features.splice(this.extending.at, 0, this.extending.feature);
     return {type:'FeatureCollection', features:features.map(({id, ...f}) => withMeasure ? {...f, properties:{...f.properties, drawing:id, measure:measure(f.geometry, units)}} : f)};
   }
   // The shape being drawn, including the pointer position.

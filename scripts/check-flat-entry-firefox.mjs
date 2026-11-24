@@ -398,6 +398,30 @@ try {
   await hg.locator('#measure-profile').click();
   await hg.getByRole('img',{name:'Elevation along the line'}).waitFor({timeout:10000});
   assert.deepEqual(await hg.evaluate(()=>window.webglAttempts),[]);
+  // Simulate the saved state read on renderer reload after a second tab
+  // changed the original while an identical neighbour remained untouched.
+  const conflict=await hg.evaluate(()=>{
+    const original={type:'Feature',properties:{color:'#345678',dash:'dotted',width:5},
+      geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+    const changed={...original,geometry:{type:'LineString',coordinates:[[0,0],[8,0]]}};
+    const saved={type:'FeatureCollection',features:[changed,original]};
+    localStorage.setItem('openrailwayatlas-drawing',JSON.stringify(saved));
+    const points=[[0,0],[1,0],[2,1]];
+    sessionStorage.setItem('atlas_renderer_work_v1',JSON.stringify({drawing:{
+      mode:'line',paused:false,style:original.properties,curved:false,points,flags:[0,0,0],
+      selected:null,extension:{at:0,original,unambiguous:false},
+    }}));
+    return {saved,points};
+  });
+  await hg.reload();
+  await hCanvas.waitFor();
+  await hg.getByText('The original line could not be identified.',{exact:false}).waitFor();
+  assert.deepEqual(await drawing(),conflict.saved);
+  assert.equal(await hg.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')),null);
+  await hg.locator('#draw-finish').click();
+  const recovered=await drawing();
+  assert.deepEqual(recovered.features.slice(0,2).map(f=>f.geometry),conflict.saved.features.map(f=>f.geometry));
+  assert.deepEqual(recovered.features[2].geometry.coordinates,conflict.points);
   await current.context.close();
   useElevationFixture=false;
 

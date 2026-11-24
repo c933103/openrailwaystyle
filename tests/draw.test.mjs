@@ -370,6 +370,29 @@ test('renderer handoff preserves extension semantics and refuses to replace an i
   assert.deepEqual(modified.features[0].geometry.coordinates,[[0,0],[8,0]]);
 });
 
+test('renderer handoff never adopts an identical neighbour and recovers as a separate draft',()=>{
+  const make=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const geo={type:'Feature',properties:{color:'#345678',dash:'dotted',width:5},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+  const source=make();source.add(readDrawing({type:'FeatureCollection',features:[geo,geo]}),false);
+  source.setMode('line');source.select({drawing:source.features[0].id,index:1});source.extendSelected();
+  source.click({lng:2,lat:1},{x:2,y:1});
+  const draft=JSON.parse(JSON.stringify(source.rendererDraft()));
+  assert.equal(draft.extension.unambiguous,false);
+  const changed={...geo,geometry:{type:'LineString',coordinates:[[0,0],[8,0]]}};
+  const target=make();target.add(readDrawing({type:'FeatureCollection',features:[changed,geo]}),false);
+  const saved=target.collection();
+  assert.equal(target.restoreRendererDraft(draft),false);
+  // Even an unambiguous-at-origin (or legacy) payload cannot adopt a match at another position.
+  assert.equal(target.restoreRendererDraft({...draft,extension:{...draft.extension,unambiguous:true}}),false);
+  assert.equal(target.recoverRendererLine({...draft,flags:[]}),false);
+  assert.equal(target.recoverRendererLine(draft),true);
+  assert.deepEqual(target.collection(),saved);
+  assert.deepEqual(target.style,{color:'#345678',dash:'dotted',width:5});
+  target.finish();
+  assert.deepEqual(target.collection().features.slice(0,2),saved.features);
+  assert.deepEqual(target.collection().features[2].geometry.coordinates,[[0,0],[1,0],[2,1]]);
+});
+
 test('renderer handoff keeps unfinished distance points and restores a selected radius point',()=>{
   const make=()=>new Measure(editingMap({}, {}, ()=>null));
   const source=make();source.setMode('distance');
