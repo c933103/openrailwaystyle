@@ -15,7 +15,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -48,7 +48,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     return icons.get(id);
   };
   const queue = createFlatTileRequests({
-    load:({revision,canonical,controller})=>loader.load(revision,canonical,{pixelRatio,controller}),
+    load:({revision,canonical,controller})=>loader.load(revision,canonical,{
+      pixelRatio,controller,rasterCredit:imageryCredit,
+    }),
     dispose:tile=>tile.image?.close?.(),
     changed:schedule,
   });
@@ -147,6 +149,18 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       context.fillStyle='#1576e5';context.strokeStyle='#fff';context.lineWidth=2;
       context.beginPath();context.arc(x,y,6,0,2*Math.PI);context.fill();context.stroke();
       context.restore();
+    }
+    if(onCredits){
+      const credits=[];
+      for(const [id,items] of tiles.frame){
+        if(!items.length)continue;
+        if(id==='satellite'){
+          const delivered=items.map(item=>item.credit);
+          if(delivered.every(Boolean)){credits.push(...delivered);continue;}
+        }
+        credits.push(metadata.get(id)?.value?.attribution||style.sources[id]?.attribution);
+      }
+      onCredits(credits);
     }
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;

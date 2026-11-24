@@ -33,7 +33,7 @@ import {createBundleReader} from './tile-bundles.mjs?v=20261124-drawing-conflict
 import {createReferenceReader} from './mainline-reference.mjs?v=20261124-drawing-conflict-1';
 import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261124-drawing-conflict-1';
 import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261124-drawing-conflict-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261124-drawing-conflict-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261124-drawing-conflict-1';
 import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261124-drawing-conflict-1';
 
 const $ = id => document.getElementById(id);
@@ -784,7 +784,7 @@ function applySettings() {
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
-let attribution, attributionStateCleanup, controlLayout, servedBuild;
+let attribution, flatCredits, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -1826,7 +1826,7 @@ async function initialize() {
     }
   }
   if (useFlat) {
-    const {mountFlatMap,connectFlatLocation}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const {mountFlatMap,connectFlatLocation,appendFlatCredits}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
       zoom:startZoom,
@@ -1840,9 +1840,35 @@ async function initialize() {
     needle.setAttribute('aria-hidden','true');
     compass.append(needle);
     let flatLocation;
+    const creditsBox=textNode('details','','atlas-flat-credit-box');
+    creditsBox.open=settings.attributionOpen;
+    creditsBox.addEventListener('toggle',()=>{
+      if(settings.attributionOpen===creditsBox.open)return;
+      settings.attributionOpen=creditsBox.open;
+      saveSettings();
+    });
+    const creditSummary=textNode('summary','Map credits');
+    flatCredits=textNode('div','','atlas-flat-credit-content');
+    creditsBox.append(creditSummary,flatCredits);
+    const buildCredit=codeAttribution();
+    let creditSignature;
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       interactiveLayer:isClickable,
+      imageryCredit(url,tile){
+        if(!url.startsWith('atlasimagery://'))return;
+        const provider=imageryProtocol.providerFor(tile);
+        return provider==='EOX'?eoxAttribution:PROVIDER_ATTRIBUTION[provider];
+      },
+      onCredits(inUse) {
+        const credits=[...new Set(inUse.filter(Boolean))].sort();
+        const signature=JSON.stringify(credits);
+        if(signature===creditSignature)return;
+        creditSignature=signature;
+        appendFlatCredits(flatCredits,[...credits,buildCredit],location.href);
+        creditSummary.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
+          ? '© OpenStreetMap · Map credits' : 'Map credits';
+      },
       onCamera({bearing}) {
         needle.style.transform=`rotate(${-bearing}deg)`;
         updateFlatScale();
@@ -1891,7 +1917,7 @@ async function initialize() {
     flatScale.setAttribute('role', 'group');
     flatScale.setAttribute('aria-labelledby', scaleLabel.id);
     corner.append(scaleLabel, flatScale, readout);
-    $('map').append(corner);
+    $('map').append(corner,creditsBox);
     updateReadout();
     updateFlatScale();
     controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'), corner,
@@ -2734,7 +2760,7 @@ function openWatchMenu(page='main') {
     if(page==='layers')for(const [key,label] of [['stations','Stations'],['names','Route names'],['labels','Value labels'],['trackCounts','Track counts'],['inactive','Inactive railways'],['transport','Transport'],['destinations','Destinations'],['constraints','Boundaries'],['relief','Terrain']]){
       const b=button(label,()=>{settings[key]=!settings[key];commit();},scroll);b.setAttribute('aria-pressed',String(settings[key]));
     }else {
-      const credits=attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
+      const credits=flatCredits||attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
       else scroll.append(textNode('p','Railway Atlas · OpenStreetMap contributors · Open Railway Styles'));
       if(status.classList.contains('error'))scroll.append(textNode('p',status.textContent));
       scroll.append(textNode('p','Hold the map for controls. Drag to pan; pinch or double tap to zoom.'));

@@ -17,6 +17,8 @@ const standardPage=await readFile(new URL('index.html',root),'utf8');
 const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
 const chromiumSwitch=process.argv.includes('--chromium-switch');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
+const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
+let fixtureCredits=false;
 // Replace the original production layers with the same IDs. Canvas could
 // tolerate the duplicates, but MapLibre rejects the whole invalid fixture.
 const replacing=new Set(['infrastructure-tracks','context-transport-bus-label']);
@@ -66,6 +68,7 @@ const nearbyArchive=Buffer.concat([header,dir,meta,packed]);
 const paths=[];
 let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
+const historicalPng=terrariumFixturePng(()=>63);
 const terrainRequests=[];
 const server=createServer((req,res)=>{
   const {pathname}=new URL(req.url,'http://127.0.0.1');
@@ -73,7 +76,15 @@ const server=createServer((req,res)=>{
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(pathname==='/world.style.json') {
-    res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(style));
+    const payload=fixtureCredits?{
+      ...style,
+      sources:{...style.sources,entryRail:{...style.sources.entryRail,attribution:
+        'Rail fixture · <a href="https://example.org/rail-credit" title="unused">Provider credit</a>'}},
+      layers:[style.layers.find(layer=>layer.id==='fixture-bg'),
+        ...style.layers.flatMap(layer=>layer.id==='fixture-bg'?[]:layer.id==='infrastructure-tracks'
+          ?[...fixtureRasterBackgrounds,{...layer,metadata:{'atlas:semantics-version':1,'atlas:group':'railway'}}]:[layer])],
+    }:style;
+    res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(payload));
   } else if(pathname==='/data/nearby-fixture.pmtiles') {
     const r=pmtilesBytesResponse(useElevationFixture?oceanFixtureArchive:nearbyArchive,
       req.headers.range,useElevationFixture?'measure-ocean-fixture-v1':'nearby-fixture-v1');
@@ -130,6 +141,10 @@ try {
     await page.route('**/*',r=>{
       const url=new URL(r.request().url());
       if(url.origin===origin) return r.continue();
+      if(fixtureCredits){
+        const image={'tiles.maps.eox.at':landPng,'tile.openstreetmap.org':seabedPng,'indianopenmaps.com':historicalPng}[url.hostname];
+        if(image) return r.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/png',body:image});
+      }
       if(heights && url.hostname==='s3.amazonaws.com'){
         const m=/^\/elevation-tiles-prod\/terrarium\/(\d+)\/\d+\/\d+\.png$/.exec(url.pathname);
         if(!m) throw new Error('Unexpected elevation fixture request');
@@ -569,6 +584,70 @@ try {
     assert.equal(await p.getByRole('button',{name:'My location',exact:true}).getAttribute('aria-pressed'),'false');
     assert.equal(await p.evaluate(()=>window.clearedLocationWatch),7);
   } finally {await deniedLocation.context.close();}
+  // The five real controls and data paths, with intercepted fixture imagery.
+  const creditCase=await fresh(true);
+  fixtureCredits=true;
+  try {
+    const p=creditCase.page;
+    await p.goto(origin);
+    await ready(p);
+    const credits=p.locator('.atlas-flat-credit-content');
+    await p.locator('.atlas-flat-credit-box summary').click();
+    assert.equal(await credits.isVisible(),true);
+    const select=async key=>{
+      const choice=p.locator(`[data-background="${key}"]`);
+      if(!await choice.isVisible())await p.locator('#controls-open').click();
+      await choice.click();
+      assert.equal(await choice.getAttribute('aria-pressed'),'true');
+    };
+    const pixel=rgba=>p.waitForFunction(rgba=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data;
+      return rgba.every((n,i)=>n===d[i]);
+    },rgba,{timeout:12000});
+    const has=href=>credits.locator(`a[href="${href}"]`).count();
+    const rail='https://example.org/rail-credit', eox='https://cloudless.eox.at/',
+      carto='https://www.openstreetmap.org/copyright',topo='https://github.com/ramSeraph/russian_world_topo_maps';
+    await pixel([2,19,27,255]);
+    assert.equal(await has(rail),1);
+    assert.equal(await credits.locator('a[title="unused"]').count(),0);
+    await select('satellite');
+    await pixel([128,123,0,255]);
+    assert.equal(await has(rail),0);
+    assert.equal(await has(eox),1);
+    assert.equal(await has('https://www.esri.com/'),0);
+    assert.equal(await has('https://nasa-gibs.github.io/gibs-api-docs/'),0);
+    await select('hybrid');
+    await pixel([128,123,0,255]);
+    await ready(p);
+    assert.equal(await has(rail),1);
+    assert.equal(await has(eox),1);
+    await select('carto');
+    await pixel([127,236,0,255]);
+    assert.equal(await has(carto),1);
+    assert.equal(await has(eox),0);
+    await select('soviet');
+    // The historical raster can have a masked coverage gap at the map center.
+    await p.waitForFunction(()=>{
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+      return d.some((v,i)=>i%4===0&&v===128&&d[i+1]===63&&d[i+2]===0&&d[i+3]===255);
+    },null,{timeout:12000});
+    assert.equal(await has(topo),1);
+    assert.equal(await has(rail),1);
+    assert.equal(await has(eox),0);
+    await select('map');
+    await pixel([2,19,27,255]);
+    assert.equal(await has(topo),0);
+    await p.reload();
+    await ready(p);
+    assert.equal(await credits.isVisible(),true);
+    assert.equal(await has(rail),1);
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+  } finally {
+    fixtureCredits=false;
+    await creditCase.context.close();
+  }
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});

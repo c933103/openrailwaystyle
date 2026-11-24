@@ -54,7 +54,8 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // The ruler and readout stay in the bottom-left corner; the menu above
     // them is shortened instead of pushing them into the middle of the map.
     const x = left + Math.max(10, sl);
-    const available = Math.max(1, right - Math.max(10, sr) - x - 42);
+    const creditDock = visible(mapElement.querySelector('.atlas-flat-credit-box'));
+    const available = Math.max(1, right - Math.max(10, sr) - x - (creditDock ? creditDock.width + gap : 42));
     set('--map-control-left', x - f.left);
     set('--map-control-width', available);
     set('--map-info-right', f.right - right + Math.max(10, sr));
@@ -77,7 +78,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // The status pill, bottom sheets and expanded credits are obstacles only
     // where they share the corner's column.
     let floor = low;
-    for (const obstacle of [visible(status), bottomSheet ? detail : null, visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
+    for (const obstacle of [visible(status), bottomSheet ? detail : null, visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner, .atlas-flat-credit-box[open] .atlas-flat-credit-content'))]) {
       if (horizontalOverlap(obstacle) && obstacle.top < floor + gap && obstacle.bottom > floor - height - gap)
         floor = Math.min(floor, obstacle.top - gap);
     }
@@ -97,10 +98,10 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     queued = request(() => { queued = undefined; update(); });
   }
   const resizer = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(schedule) : null;
-  const attribution = mapElement.querySelector('.maplibregl-ctrl-attrib');
+  const attribution = mapElement.querySelector('.maplibregl-ctrl-attrib, .atlas-flat-credit-box');
   // The inset probe has an empty content box; padding changes its border box.
   resizer?.observe(inset, {box: 'border-box'});
-  for (const element of [frame, panel, status, readout, details, currentCorner(), attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
+  for (const element of [frame, panel, status, readout, details, currentCorner(), mapElement.querySelector('.atlas-flat-credit-box'), attribution?.querySelector('.maplibregl-ctrl-attrib-inner, .atlas-flat-credit-content')])
     if (element) resizer?.observe(element);
   // New status text can wrap the pill onto more lines: lay out at once, so
   // the corner never waits for a later frame's resize notification. The map

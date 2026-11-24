@@ -78,15 +78,17 @@ export function createFlatSourceLoader({protocols, fetcher = fetch, decodeRaster
       selected.tiles = selected.tiles.map(t => absoluteTemplate(t,source.tiles != null ? styleBase : metadata.url));
       return selected;
     },
-    async load(source, tile, {controller, pixelRatio}) {
-      const {data} = await request(flatTileURL(source,tile,{pixelRatio}),'arrayBuffer',controller);
+    async load(source, tile, {controller, pixelRatio, rasterCredit}) {
+      const url=flatTileURL(source,tile,{pixelRatio});
+      const {data} = await request(url,'arrayBuffer',controller);
       if (source.type === 'vector') return {vector:flatVectorTile(data)};
+      const credit=rasterCredit?.(url,tile);
       const image = await decodeRaster(data);
       if (controller.signal.aborted) {
         image.close?.();
         controller.signal.throwIfAborted();
       }
-      return {image};
+      return credit ? {image,credit} : {image};
     },
   };
 }
