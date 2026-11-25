@@ -111,6 +111,7 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    map.zoom=2;
    button.click();
    assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.equal(map.lastEase.duration,0,'3D entry must not render intermediate terrain cameras');
    assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
      'initial 60° pitch must not enable the over-65° horizon budget');
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
@@ -126,8 +127,8 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
      'tilt beyond 65° enables coarser horizon tiles for all sources');
    assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
      '3D DEM uses a stronger distant-tile LOD budget');
-   // Mock the intermediate frames of MapLibre's 750 ms exit animation.
-   // They must not reselect 3D merely because their pitch remains nonzero.
+   // Inject pitch events while the exit is applying the new view. A stale
+   // nonzero pitch event must not reselect the terrain mode.
    const nativeEase=map.easeTo.bind(map);
    map.easeTo=options=>{
      if(options.pitch!==0)return nativeEase(options);
