@@ -345,10 +345,9 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   const entry=pending.has(preferredEdge)?[preferredEdge,pending.get(preferredEdge)]:pending.entries().next().value;if(!entry)return;
   const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
   const timeout=setTimeout(()=>requestController.abort(),5000);
-  let tileStarted=false;
   async function tryTileLength(){
    if(!edgeGeometry||key!==preferredEdge||!requested.anchor||requestController.signal.aborted)return false;
-   clearTimeout(timeout);tileStarted=true;inflightTile=true;
+   clearTimeout(timeout);inflightTile=true;
    const length=await edgeGeometry.measureCompleteEdge(requested.id,requested.anchor,requestController.signal).catch(()=>null);
    if(disposed||requestController.signal.aborted||key!==preferredEdge||!desired.get(key)?.url)return false;
    if(!(length>0)){if(cache.get(key)?.apiMissing)remember(key,{...cache.get(key),tileTried:true});return false;}
@@ -377,12 +376,16 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   // this same key before its abort rejection settles. That cancellation is
   // not a provider failure; genuine failures and request timeouts still pause.
   catch(error){
-   const unreadable=error instanceof TypeError&&!requestController.signal.aborted;
-   if(unreadable&&await tryTileLength())return;
-   if(error.platformBudget){remember(key,{...cache.get(key),fetched:true});draw();}
-   else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed){
-    pause(retryDelay,unreadable&&requested.kind==='edge'?{key,started:tileStarted}:null);
+   const current=!disposed&&requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url;
+   if(current&&error instanceof TypeError&&!requestController.signal.aborted){
+    // Record the failed API request before awaiting the independent tile
+    // estimate. Success or cancellation must not restart the API queue.
+    pause(retryDelay,requested.kind==='edge'?{key,started:false}:null);
+    if(canMeasureDuringPause(key,requested)){transientMiss.started=true;await tryTileLength();}
+    return;
    }
+   if(error.platformBudget){remember(key,{...cache.get(key),fetched:true});draw();}
+   else if(current)pause(retryDelay);
   }
   // A reappearing key was skipped while it was inflight. Refresh desired and
   // pending entries after releasing it so it can be requested without a move.

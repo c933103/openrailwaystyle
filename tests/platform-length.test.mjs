@@ -196,6 +196,30 @@ test('selection cancellation aborts a cooldown estimate, and a 429 never starts 
  }
 });
 
+test('immediate success or cancellation of a selected edge estimate does not restart the paused API',async()=>{
+ for(const kind of ['success','cancelled']){
+  const calls=[];
+  const selected={...edge(23),source:'platformEdges'},started=Promise.withResolvers(),settled=Promise.withResolvers();
+  const map={getZoom:()=>19,queryRenderedFeatures:()=>[selected,edge(24)],getSource:()=>null};
+  const p=createPlatformLengths(map,{delay:0,retryDelay:30000,
+   fetcher:async url=>{const id=url.split('/').at(-1);calls.push(id);
+    if(id==='23')throw new TypeError('Failed to fetch');
+    return {ok:true,json:async()=>({properties:{length:100}})};},
+   edgeGeometry:{measureCompleteEdge:(_id,_anchor,signal)=>{started.resolve();
+    if(kind==='success')return Promise.resolve(246.86);
+    return new Promise((_,reject)=>signal.addEventListener('abort',()=>{settled.resolve();reject(signal.reason);},{once:true}));}},
+   onLength:()=>settled.resolve(),
+  });
+  try{
+   p.prioritizeEdge(selected);p.update();await started.promise;
+   if(kind==='cancelled')p.prioritizeEdge(null);
+   await settled.promise;await new Promise(resolve=>setTimeout(resolve,30));
+   assert.deepEqual(calls,['23'],kind+' must not wake unrelated feature requests');
+   assert.equal(p.enrich(selected).properties.platform_length,kind==='success'?246.86:undefined);
+  }finally{p.destroy();}
+ }
+});
+
 test('platform requests leave the queue when panned away and respect a rate-limit response',async()=>{
  let features=[edge(),edge(2)],requests=0;const map={getZoom:()=>19,queryRenderedFeatures:()=>features,getSource:()=>({setData(){}})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:false,status:429};}});
