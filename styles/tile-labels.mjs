@@ -1,4 +1,4 @@
-export {createBasemapSourceFactory} from './basemap-range-source.mjs';
+export {createBasemapSourceFactory, warmInitialBasemapArchive} from './basemap-range-source.mjs';
 export {createGlyphFallback, emptyGlyphRangePbf} from './glyph-fallback.mjs';
 import {waitForViewport} from './viewport-settle.mjs';
 import {createRequestPool} from './request-pool.mjs';
