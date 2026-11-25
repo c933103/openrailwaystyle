@@ -20,7 +20,7 @@ export function profileHarness({heights = points => points.map((_, i) => i), uni
     return node;
   };
   const context = vm.createContext({...elevation, document, $, AbortController, frequencyExpiry: null, settings: {units}, currentFeature: null,
-    lengthKm, formatLength, climb, formatClimb, textNode, map: flatSourceContext?null:{}, flatSourceContext, DEM_URL: 'fixture-only',
+    lengthKm, formatLength, climb, formatClimb, textNode, map: flatSourceContext?null:{}, flatSourceContext, useFlat:Boolean(flatSourceContext), platformLengths:null, DEM_URL: 'fixture-only',
     createElevation: () => ({heights}),
     row: (dl, label, value) => dl.append(textNode('dt', label), textNode('dd', value)),
     maplibregl: {Marker: class {

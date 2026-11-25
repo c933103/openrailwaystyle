@@ -8,6 +8,7 @@ on:
       - 'scripts/check-flat-platform-firefox.mjs'
       - 'styles/platform-length.mjs'
       - 'tests/ci-node-runtime-security.test.mjs'
+      - 'tests/helpers/profile-ui-harness.mjs'
       - 'styles/app.mjs'
       - 'styles/app.css'
       - 'styles/flat-*.mjs'
