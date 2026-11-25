@@ -62,6 +62,7 @@ let terrain3DSelected = linkedTerrainMode === '1' ? true : linkedTerrainMode ===
 // Ignore intermediate pitch frames while explicitly switching back to 2D.
 // A later manual tilt may enable 3D, but a top-down view never disables it.
 let terrain3DExitPending = false;
+let deferStatusCensus = false;
 let restoringTerrainView = false;
 // Capture the latest valid map link before URL normalization, including
 // explicit navigation while libraries or startup data are still loading.
@@ -1179,7 +1180,7 @@ function applyStationFallbackState() {
 }
 function updateStatus() {
   updateMapStatus({railRecovery, stationFailures, errors, sourceFailureStates,
-    applyRailReferenceState, applyStationFallbackState, status, map, ready, settings, terrain3DSelected});
+    applyRailReferenceState, applyStationFallbackState, status, map, ready, settings, terrain3DSelected, deferStatusCensus});
 }
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle|text):\/\//,'');
 function localizeStyle(style) {
@@ -1328,6 +1329,12 @@ terrainButton.addEventListener('click', () => {
   if (!map) return;
   const was3D = terrain3DEnabled(settings.relief, terrain3DSelected);
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  if (was3D && !deferStatusCensus) {
+    // moveend may run synchronously from stop() or from the flat camera.
+    // The previous frame still contains the terrain depth framebuffer.
+    deferStatusCensus = true;
+    map.once('render', () => { deferStatusCensus = false; updateStatus(); });
+  }
   // easeTo stops any older camera animation and emits its moveend first.
   // Finish that animation before arming suppression for the new 2D exit.
   map.stop?.();

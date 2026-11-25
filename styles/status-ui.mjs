@@ -40,11 +40,14 @@ export function updateMapStatus(context) {
   if (errors.size || railFailed || ['stations','stationMed'].some(id=>stationFailures?.hasSourceFailure(id))) {
     status.classList.add('error'); status.textContent = mapErrorMessage(context); return;
   }
+  // Keep the last complete non-error status until the camera's frame is ready.
+  // Live source errors are reconciled above even during this transition.
+  if (context.deferStatusCensus && !status.classList.contains('error')) return;
   status.classList.remove('error');
   status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · click a line' : 'Explore the rail network · click a line or station';
   // Early source events may precede style.load; status text is safe then,
   // but rendered-feature queries require the style to be ready.
-  if (!ready) return;
+  if (!ready || context.deferStatusCensus) return;
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
