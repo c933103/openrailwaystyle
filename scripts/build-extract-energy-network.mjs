@@ -3,7 +3,10 @@
 import {access,mkdir,mkdtemp,readFile,rename,rm,writeFile} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {gzipSync} from 'node:zlib';
+import {createWriteStream} from 'node:fs';
+import {Readable} from 'node:stream';
+import {pipeline} from 'node:stream/promises';
+import {createGzip} from 'node:zlib';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {checkAssembly,coversWorld} from './build-extract-branch-lines.mjs';
@@ -24,43 +27,83 @@ export function networkTiles(data,{minZoom=6,maxZoom=8}={}) {
   }
   return tiles;
 }
-export async function buildExtractEnergyNetwork(pbf,report,out,{read=readElements,subset=osmiumSubset,now=()=>new Date()}={}) {
+function* featureCollectionJson(features) {
+  yield '{"type":"FeatureCollection","features":[';
+  for (let i=0;i<features.length;i++) {
+    if(i)yield ',';
+    yield JSON.stringify(features[i]);
+  }
+  yield ']}';
+}
+
+export async function buildExtractEnergyNetwork(pbf,report,out,{
+  read=readElements,subset=osmiumSubset,now=()=>new Date(),observe=()=>{}
+}={}) {
   checkAssembly(report);
   if(!coversWorld(report))return null;
-  // A complete older report cannot certify tags its filter never selected.
   if(report.selectionFilters?.region!==currentFilter('region')||report.selectionFilters?.gap!==currentFilter('gap/0'))throw new Error('Energy network needs an assembly with current selection filters');
+  // Keep the previous candidate intact, even if a later tier or the export fails.
+  try {await access(out);throw new Error('Energy output already exists; use a fresh output directory');}catch(error){if(error.code!=='ENOENT')throw error;}
+  const phase=(stage,counts={})=>observe({stage,...counts,...process.memoryUsage()});
   const elements=[],relations=[];
+  phase('input:start');
   const counts=await read(pbf,{keep:isEnergyNetworkElement,onElement:e=>(e.type==='relation'?relations:elements).push(e)});
+  phase('input:done',{elements:elements.length,relations:relations.length});
+  phase('relations:start');
   const shaped=await shapeEnergyRelations(pbf,relations,{read,subset});
   if(counts.withoutGeometry||shaped.counts.memberWaysWithoutGeometry)throw new Error('Energy network has missing geometry');
-  elements.push(...shaped.relations);
+  for(const relation of shaped.relations)elements.push(relation);
+  relations.length=0;
+  phase('relations:done',{shaped:shaped.relations.length});
+  shaped.relations.length=0;
+  phase('classification:start');
   const data=energyNetworkGeoJSON(elements);
+  elements.length=0;
+  phase('classification:done',{features:data.features.length});
   if(!data.features.length)throw new Error('Refusing empty worldwide energy network');
-  const tiers=Object.entries(ENERGY_TIERS).map(([name,{minzoom,maxzoom,bundleZoom}])=>({name,zoom:bundleZoom,tiles:networkTiles({...data,features:data.features.filter(f=>f.properties.energy_minzoom<=maxzoom)},{minZoom:minzoom,maxZoom:maxzoom})}));
-  const bundles=new Map(tiers.flatMap(tier=>[...heritageBundles(tier.tiles,tier.zoom)].map(([key,bytes])=>[`${tier.name}/${key}`,bytes])));
-  const manifest={schema:2,dataset:'energy-network',complete:true,built:now().toISOString(),source:'OpenStreetMap via Geofabrik extracts and bounded gap tiles',license:'ODbL-1.0',oldestSource:report.oldestTimestamp,newestSource:report.newestTimestamp,features:data.features.length,format:BUNDLE_FORMAT,minzoom:5,maxzoom:14,tiers:tiers.map(({name,zoom})=>({name,bundleZoom:zoom})),bundles:bundles.size,bytes:[...bundles.values()].reduce((n,b)=>n+b.length,0),largestBundleBytes:Math.max(...[...bundles.values()].map(b=>b.length)),selectionFilters:report.selectionFilters};
-  // Bound individual requests, never discard features to make a budget pass.
-  // Viewport budgets require the later client integration's measured tile count.
-  if(manifest.largestBundleBytes>=350000)throw new Error('Energy bundle exceeds 350 KB; increase spatial partitioning before publication');
-  // Publish locally only after every file is written. An existing snapshot is
-  // never overwritten in place or left with its old complete manifest.
-  try {await access(out);throw new Error('Energy output already exists; use a fresh output directory');}catch(error){if(error.code!=='ENOENT')throw error;}
   const destination=out;
   await mkdir(dirname(out),{recursive:true});
-  out=await mkdtemp(join(dirname(out),'.energy-network-'));
+  const staging=await mkdtemp(join(dirname(out),'.energy-network-'));
+  const tiers=[];
+  let bundles=0,bytes=0,largestBundleBytes=0;
   try {
-  for(const [key,bytes] of bundles){const path=join(out,key+'.bundle.gz');await mkdir(join(path,'..'),{recursive:true});await writeFile(path,bytes);}
-  await writeFile(join(out,'energy-network.geojson.gz'),gzipSync(JSON.stringify(data)));
-  for(const tier of tiers){
-    await mkdir(join(out,tier.name),{recursive:true});
-    await writeFile(join(out,tier.name,'index.json'),JSON.stringify({format:BUNDLE_FORMAT,zoom:tier.zoom,bundles:[...bundles.keys()].filter(k=>k.startsWith(tier.name+'/')).map(k=>k.split('/').slice(2).join('/'))}));
-  }
-  await writeFile(join(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
-  await rename(out,destination);
-  return manifest;
-  } finally {await rm(out,{recursive:true,force:true});}
+    // Retain at most one tier of PBF plus compressed bundles, instead of
+    // retaining three tiers while serializing and compressing the world.
+    for(const [name,{minzoom,maxzoom,bundleZoom}] of Object.entries(ENERGY_TIERS)) {
+      phase('tier:start',{tier:name});
+      const tiles=networkTiles({...data,features:data.features.filter(f=>f.properties.energy_minzoom<=maxzoom)},{minZoom:minzoom,maxZoom:maxzoom});
+      phase('tier:tiles',{tier:name,tiles:tiles.size});
+      const grouped=heritageBundles(tiles,bundleZoom);
+      tiles.clear();
+      phase('tier:bundles',{tier:name,bundles:grouped.size});
+      const index=[];
+      for(const [key,body] of grouped) {
+        // Bound individual requests without dropping features to fit.
+        if(body.length>=350000)throw new Error('Energy bundle exceeds 350 KB; increase spatial partitioning before publication');
+        const path=join(staging,name,key+'.bundle.gz');
+        await mkdir(dirname(path),{recursive:true});
+        await writeFile(path,body);
+        index.push(key.slice(key.indexOf('/')+1));
+        bundles++;
+        bytes+=body.length;
+        largestBundleBytes=Math.max(largestBundleBytes,body.length);
+      }
+      grouped.clear();
+      await mkdir(join(staging,name),{recursive:true});
+      await writeFile(join(staging,name,'index.json'),JSON.stringify({format:BUNDLE_FORMAT,zoom:bundleZoom,bundles:index}));
+      tiers.push({name,bundleZoom});
+      phase('tier:done',{tier:name,bundles:index.length});
+    }
+    phase('export:start');
+    await pipeline(Readable.from(featureCollectionJson(data.features)),createGzip(),createWriteStream(join(staging,'energy-network.geojson.gz')));
+    phase('export:done');
+    const manifest={schema:2,dataset:'energy-network',complete:true,built:now().toISOString(),source:'OpenStreetMap via Geofabrik extracts and bounded gap tiles',license:'ODbL-1.0',oldestSource:report.oldestTimestamp,newestSource:report.newestTimestamp,features:data.features.length,format:BUNDLE_FORMAT,minzoom:5,maxzoom:14,tiers,bundles,bytes,largestBundleBytes,selectionFilters:report.selectionFilters};
+    await writeFile(join(staging,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+    await rename(staging,destination);
+    return manifest;
+  } finally {await rm(staging,{recursive:true,force:true});}
 }
 if(import.meta.url===pathToFileURL(process.argv[1]||'').href){
   const [pbf,report,out]=process.argv.slice(2);if(!pbf||!report||!out)throw new Error('Usage: build-extract-energy-network.mjs <assembly.pbf> <report.json> <output>');
-  console.log(await buildExtractEnergyNetwork(pbf,JSON.parse(await readFile(report,'utf8')),out));
+  console.log(await buildExtractEnergyNetwork(pbf,JSON.parse(await readFile(report,'utf8')),out,{observe:record=>console.error(JSON.stringify(record))}));
 }

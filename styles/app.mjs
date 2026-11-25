@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-canvas-main-sync-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-canvas-main-sync-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-canvas-main-sync-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261125-canvas-main-sync-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261125-canvas-main-sync-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-canvas-main-sync-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-canvas-terrain-sync-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-canvas-terrain-sync-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-canvas-terrain-sync-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261125-canvas-terrain-sync-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261125-canvas-terrain-sync-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-canvas-terrain-sync-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-canvas-main-sync-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-canvas-main-sync-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-canvas-main-sync-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-canvas-main-sync-1';
-import {createWorldFonts} from './world-font.mjs?v=20261125-canvas-main-sync-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-canvas-main-sync-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-canvas-terrain-sync-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-canvas-terrain-sync-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-canvas-terrain-sync-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-canvas-terrain-sync-1';
+import {createWorldFonts} from './world-font.mjs?v=20261125-canvas-terrain-sync-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-canvas-terrain-sync-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-canvas-main-sync-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-canvas-main-sync-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-canvas-terrain-sync-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-canvas-terrain-sync-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-canvas-main-sync-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-canvas-main-sync-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-canvas-main-sync-1';
-import {departureItem} from './departures-ui.mjs?v=20261125-canvas-main-sync-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-canvas-main-sync-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-canvas-main-sync-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-canvas-main-sync-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-canvas-main-sync-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-canvas-main-sync-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-canvas-main-sync-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-canvas-main-sync-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261125-canvas-main-sync-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-canvas-main-sync-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-canvas-main-sync-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261125-canvas-main-sync-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261125-canvas-main-sync-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-canvas-main-sync-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-canvas-main-sync-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261125-canvas-main-sync-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-canvas-main-sync-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-canvas-terrain-sync-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-canvas-terrain-sync-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-canvas-terrain-sync-1';
+import {departureItem} from './departures-ui.mjs?v=20261125-canvas-terrain-sync-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-canvas-terrain-sync-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-canvas-terrain-sync-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-canvas-terrain-sync-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-canvas-terrain-sync-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-canvas-terrain-sync-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-canvas-terrain-sync-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-canvas-terrain-sync-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261125-canvas-terrain-sync-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-canvas-terrain-sync-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-canvas-terrain-sync-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261125-canvas-terrain-sync-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261125-canvas-terrain-sync-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-canvas-terrain-sync-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-canvas-terrain-sync-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261125-canvas-terrain-sync-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-canvas-terrain-sync-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -62,6 +62,7 @@ let terrain3DSelected = linkedTerrainMode === '1' ? true : linkedTerrainMode ===
 // Ignore intermediate pitch frames while explicitly switching back to 2D.
 // A later manual tilt may enable 3D, but a top-down view never disables it.
 let terrain3DExitPending = false;
+let deferStatusCensus = false;
 let restoringTerrainView = false;
 // Capture the latest valid map link before URL normalization, including
 // explicit navigation while libraries or startup data are still loading.
@@ -91,7 +92,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-canvas-main-sync-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-canvas-terrain-sync-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1299,7 +1300,7 @@ function applyStationFallbackState() {
 }
 function updateStatus() {
   updateMapStatus({railRecovery, stationFailures, errors, sourceFailureStates,
-    applyRailReferenceState, applyStationFallbackState, status, map, ready, settings, terrain3DSelected});
+    applyRailReferenceState, applyStationFallbackState, status, map, ready, settings, terrain3DSelected, deferStatusCensus});
 }
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle|text):\/\//,'');
 function localizeStyle(style) {
@@ -1467,6 +1468,12 @@ terrainButton.addEventListener('click', () => {
   if (!map) return;
   const was3D = terrain3DEnabled(settings.relief, terrain3DSelected);
   if (!settings.relief) {settings.relief = true; applySettings(); saveSettings();}
+  if (was3D && !deferStatusCensus) {
+    // moveend may run synchronously from stop() or from the flat camera.
+    // The previous frame still contains the terrain depth framebuffer.
+    deferStatusCensus = true;
+    map.once('render', () => { deferStatusCensus = false; updateStatus(); });
+  }
   // easeTo stops any older camera animation and emits its moveend first.
   // Finish that animation before arming suppression for the new 2D exit.
   map.stop?.();
@@ -1477,7 +1484,9 @@ terrainButton.addEventListener('click', () => {
   saveView();
   const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
     globe:onGlobe(), latitude:map.getCenter().lat});
-  map.easeTo({...view,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+  // A cancel must apply the flat camera even while terrain work is holding
+  // up MapLibre's next render frame. Keep the inspection animation on entry.
+  map.easeTo({...view,duration:was3D||matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
 });
 updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;

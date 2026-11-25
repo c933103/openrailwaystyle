@@ -1,4 +1,4 @@
-import {gridSize, series} from './soviet-coverage.mjs?v=20261125-canvas-main-sync-1';
+import {gridSize, series} from './soviet-coverage.mjs?v=20261125-canvas-terrain-sync-1';
 
 const empty = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
 const transparent = () => ({data: empty.slice().buffer});

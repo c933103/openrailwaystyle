@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-canvas-main-sync-1';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-canvas-terrain-sync-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

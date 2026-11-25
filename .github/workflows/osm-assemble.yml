@@ -59,15 +59,37 @@ jobs:
           df -h . | tail -1
           { echo '# Assembled extract'; echo; echo '```json'; cat assembled.osm.pbf.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Build and measure complete optional energy context
-        # Candidate failures remain visible while independent datasets build.
+        # A failed optional candidate must not block independent datasets, but
+        # the build must report the actual outcome, not a softened Jobs status.
         continue-on-error: true
         run: |
-          node --max-old-space-size=6144 scripts/build-extract-energy-network.mjs assembled.osm.pbf assembled.osm.pbf.json energy-network-extract
+          set -eo pipefail
+          energy_stage=build
+          energy_result=incomplete
+          report_energy_outcome() {
+            local code=$?
+            printf '### Optional energy candidate: %s (stage: %s, exit: %s)\n' "$energy_result" "$energy_stage" "$code" | tee -a "$GITHUB_STEP_SUMMARY" energy-network-diagnostic.log
+            return "$code"
+          }
+          trap report_energy_outcome EXIT
+          node --max-old-space-size=6144 scripts/build-extract-energy-network.mjs assembled.osm.pbf assembled.osm.pbf.json energy-network-extract 2>&1 | tee energy-network-diagnostic.log
           if test -f energy-network-extract/manifest.json; then
+            energy_stage=validation
             node scripts/validate-energy-network.mjs energy-network-extract
+            energy_stage=measurement
             node scripts/measure-energy-network.mjs energy-network-extract > energy-network-viewport.json
             cat energy-network-viewport.json >> "$GITHUB_STEP_SUMMARY"
+            energy_result=validated-and-measured
+          else
+            energy_result=not-produced
           fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: energy-network-diagnostic
+          path: energy-network-diagnostic.log
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -195,6 +217,21 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -q --orphan traction-extract-data
           cp -r "$GITHUB_WORKSPACE/traction-extract/." .
+          # The site reads the power GeoJSON as gzip only (site.yml removes
+          # the raw copies). The extract's expanded power methods are over
+          # GitHub's 100 MiB file limit as raw GeoJSON (107.27 MB on
+          # 2026-11-25), so only the gzip copies are published here.
+          for raw in power/*.geojson; do
+            [ -e "$raw" ] || continue
+            test -f "$raw.gz"
+            rm "$raw"
+          done
+          # Name a file GitHub would refuse, rather than fail at the push.
+          large=$(find . -path ./.git -prune -o -type f -size +104857600c -print)
+          if [ -n "$large" ]; then
+            echo "::error::Over GitHub's 100 MiB file limit: $large"
+            exit 1
+          fi
           git add .
           git commit -q -m "Traction data from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:traction-extract-data; then
