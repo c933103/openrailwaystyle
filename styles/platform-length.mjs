@@ -300,9 +300,12 @@ function platformTextAnchor(map,coordinates,ref,length){
 // before any API response. Platform lengths are measured from the provider's
 // platform tiles (createPlatformTileGeometry), one platform at a time.
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,geometry=null,edgeGeometry=null,onLength=()=>{},onPlatform=()=>{}}={}){
- const cache=new Map(),pending=new Map(),drawn=new Map(),readTiles=new Map();let desired=new Map(),preferredEdge,timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=null,measureController,measureTimer;const measureRetry=new Map();let pausedUntil=0;
+ const cache=new Map(),pending=new Map(),drawn=new Map(),readTiles=new Map();let desired=new Map(),preferredEdge,timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=null,inflightTile=false,measureController,measureTimer;const measureRetry=new Map();let pausedUntil=0,transientMiss=null;
  const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries){const old=cache.keys().next().value;cache.delete(old);readTiles.delete(old);}};
- const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
+ const pause=(duration,unreadable=null)=>{
+  pausedUntil=Date.now()+duration;transientMiss=unreadable;clearTimeout(wakeTimer);
+  wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;transientMiss=null;update();},duration);
+ };
  const draw=()=>{
   if(disposed)return;
   const edges=[],platforms=[];
@@ -328,13 +331,24 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   const previous=cache.get(key);
   return !!(edgeGeometry&&key===preferredEdge&&entry?.url&&entry.anchor&&previous?.apiMissing&&!previous.tileTried);
  };
+ // An unreadable response (including CORS) is temporary, unlike 404/410.
+ // Only the explicitly selected edge may try its tile route during that
+ // cooldown. No feature API call, other edge, or HTTP 429 bypasses the pause.
+ const canMeasureDuringPause=(key,entry)=>!!(
+  edgeGeometry&&key===preferredEdge&&entry?.url&&entry.anchor&&
+  transientMiss?.key===key&&!transientMiss.started&&Date.now()<pausedUntil
+ );
+ const canRunPending=()=>Date.now()>=pausedUntil||
+  (pending.has(preferredEdge)&&canMeasureDuringPause(preferredEdge,desired.get(preferredEdge)));
  async function next(){
-  if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.has(preferredEdge)?[preferredEdge,pending.get(preferredEdge)]:pending.entries().next().value;if(!entry)return;
+  if(busy||disposed||!canRunPending())return;
+  const entry=pending.has(preferredEdge)?[preferredEdge,pending.get(preferredEdge)]:pending.entries().next().value;if(!entry)return;
   const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
   const timeout=setTimeout(()=>requestController.abort(),5000);
+  let tileStarted=false;
   async function tryTileLength(){
    if(!edgeGeometry||key!==preferredEdge||!requested.anchor||requestController.signal.aborted)return false;
-   clearTimeout(timeout);
+   clearTimeout(timeout);tileStarted=true;inflightTile=true;
    const length=await edgeGeometry.measureCompleteEdge(requested.id,requested.anchor,requestController.signal).catch(()=>null);
    if(disposed||requestController.signal.aborted||key!==preferredEdge||!desired.get(key)?.url)return false;
    if(!(length>0)){if(cache.get(key)?.apiMissing)remember(key,{...cache.get(key),tileTried:true});return false;}
@@ -342,6 +356,9 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    draw();onLength(requested.id,length);return true;
   }
   try {
+   if(canMeasureDuringPause(key,requested)){
+    transientMiss.started=true;await tryTileLength();return;
+   }
    if(cache.get(key)?.apiMissing){await tryTileLength();return;}
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
    if(r.status===404||r.status===410){
@@ -359,12 +376,19 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   // A pan, view change or temporary zoom reduction can hide and then reveal
   // this same key before its abort rejection settles. That cancellation is
   // not a provider failure; genuine failures and request timeouts still pause.
-  catch(error){if(error instanceof TypeError&&await tryTileLength())return;if(error.platformBudget){remember(key,{...cache.get(key),fetched:true});draw();}else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
+  catch(error){
+   const unreadable=error instanceof TypeError&&!requestController.signal.aborted;
+   if(unreadable&&await tryTileLength())return;
+   if(error.platformBudget){remember(key,{...cache.get(key),fetched:true});draw();}
+   else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed){
+    pause(retryDelay,unreadable&&requested.kind==='edge'?{key,started:tileStarted}:null);
+   }
+  }
   // A reappearing key was skipped while it was inflight. Refresh desired and
   // pending entries after releasing it so it can be requested without a move.
-  finally{clearTimeout(timeout);busy=false;inflight=undefined;controller=undefined;update();}
+  finally{clearTimeout(timeout);busy=false;inflight=undefined;inflightTile=false;controller=undefined;update();}
  }
- function schedule(){if(timer||busy||disposed||!pending.size||Date.now()<pausedUntil)return;timer=setTimeout(()=>{timer=undefined;next();},delay);}
+ function schedule(){if(timer||busy||disposed||!pending.size||!canRunPending())return;timer=setTimeout(()=>{timer=undefined;next();},delay);}
  function update(){
   if(disposed)return;desired=new Map();
   if(active()&&map.getZoom()>=17){
@@ -401,7 +425,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    for(const [key,tiles] of seeds)if(desired.has(key))desired.get(key).seeds=[...tiles.values()];
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
-  for(const [key,entry] of desired){const wanted=entry.url&&(!cache.get(key)?.fetched||needsNegativeFallback(key,entry));if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
+  for(const [key,entry] of desired){const wanted=entry.url&&(!cache.get(key)?.fetched||needsNegativeFallback(key,entry));if(!wanted)pending.delete(key);else if(key!==inflight&&(Date.now()>=pausedUntil||canMeasureDuringPause(key,entry)))pending.set(key,entry.url);else if(Date.now()<pausedUntil)pending.delete(key);}
   if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
   if(measuring&&(map.getZoom()<19||!desired.has(measuring)))measureController?.abort(OBSOLETE_REQUEST);
   draw();schedule();measureNext();
@@ -452,10 +476,12 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  function prioritizeEdge(feature){
   const id=feature&&platformIdentity(feature),nextKey=id?'edge/'+id:undefined;
   if(preferredEdge===nextKey)return;
-  if(cache.get(preferredEdge)?.apiMissing)pending.delete(preferredEdge);
+  if(cache.get(preferredEdge)?.apiMissing||Date.now()<pausedUntil)pending.delete(preferredEdge);
   preferredEdge=nextKey;
+  if(inflightTile&&inflight!==preferredEdge)controller?.abort(OBSOLETE_REQUEST);
   const entry=desired.get(preferredEdge);
-  if(preferredEdge!==inflight&&needsNegativeFallback(preferredEdge,entry)){
+  if(preferredEdge!==inflight&&
+   (needsNegativeFallback(preferredEdge,entry)||canMeasureDuringPause(preferredEdge,entry))){
    pending.set(preferredEdge,entry.url);schedule();
   }
  }
