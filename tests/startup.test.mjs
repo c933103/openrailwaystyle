@@ -22,6 +22,31 @@ for (const styleLoaded of [false, true]) test(`startup observes ${styleLoaded ? 
   } finally {maps[0]?.handlers.remove?.();dom.window.close();}
 });
 
+test('Globe view reports selected projection without renaming the control or moving the camera', async () => {
+  const {dom,window,maps,errors}=await start({search:'?autoGlobe=0&relief=0',
+    savedView:{c:[20,35],z:9.2,b:20,p:0,g:false}});
+  try {
+    const map=maps[0];map.handlers['style.load']();
+    const control=map.controls.find(control=>control.buttons?.some(button=>button.id==='globe-toggle'));
+    assert.ok(control);
+    window.document.body.append(control.onAdd());
+    const button=window.document.getElementById('globe-toggle');
+    const view=()=>[map.getCenter(),map.getZoom(),map.getBearing()];
+    const baseline=view();
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    for(const [projection,pressed] of [['globe','true'],['mercator','false']]){
+      button.click();
+      assert.equal(map.getProjection().type,projection);
+      assert.equal(button.getAttribute('aria-pressed'),pressed);
+      assert.equal(button.getAttribute('aria-label'),'Globe view');
+      assert.equal(button.textContent,'🌍');
+      assert.match(button.getAttribute('aria-description'),/Zoom out.*Close views render flat/);
+      assert.deepEqual(view(),baseline);
+    }
+    assert.deepEqual(errors,[]);
+  }finally{maps[0]?.handlers.remove?.();dom.window.close();}
+});
+
 test('pitch activates 3D terrain and overhead preserves mode until explicitly disabled', async () => {
   const {dom,window,maps,errors}=await start();
   try {

@@ -67,6 +67,11 @@ label-based matching rules. Contradictory identity fields therefore deny this
 shortcut, not every possible legacy label match. This does not establish full
 cross-source train identity or resolve the broader identity audit.
 
+If one matching timetable loads before another, the station panel shows its
+departures as a provisional list. The app still reconciles both timetables before
+offering full train schedules. An empty first response does not establish that
+there are no departures.
+
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. This includes malformed rows or wrong-typed fields consumed by the
 board. Each selected board is parsed independently; one invalid row rejects that
@@ -117,7 +122,7 @@ The atlas can be installed on a phone, tablet or computer from the browser (for 
 
 The compass resets north. The location button shows your position (the browser asks first; the position stays in the browser) and follows it as it moves, with the direction of travel where the device reports one; moving the map stops following, and pressing the button again resumes it. The “more detail” button cycles through 100%, 50% and 25%: the next zoom level is drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features. Its tooltip reports the scale.
 
-The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian. Beyond 85° (the polar caps) it turns as a ball and carries on over the pole, including close-up views, after which the map is the other way up. The planet keeps its size as the view moves.
+The map reopens where it was left, on the globe or flat map as last used. The Globe view button (🌍) stays highlighted when globe mode is selected. Zoom out to see curvature; at close zoom the map gradually renders flat even while globe mode remains selected. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian. Beyond 85° (the polar caps) it turns as a ball and carries on over the pole, including close-up views, after which the map is the other way up. The planet keeps its size as the view moves.
 
 The map switches to the globe automatically below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S. This can be turned off in the settings. Polar coverage and its resolution are described in the [data maintenance guide](data-maintenance.md#polar-caps).
 
