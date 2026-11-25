@@ -28,12 +28,31 @@ const fixtureElectricitySignals=gzipSync(JSON.stringify(electricitySignalsGeoJSO
   {type:'node',id:88101,lon:0.001,lat:0.001,tags:{railway:'signal',ref:'P1','railway:signal:electricity':'lower_pantograph'}},
   {type:'node',id:88102,lon:0.006,lat:0.001,tags:{railway:'signal',ref:'P2','railway:signal:electricity':'lower_pantograph','railway:signal:electricity:deactivated':'yes'}},
 ]})));
-const fixtureElectricityLayers=style.layers.filter(layer=>layer.source==='electricSignals');
+const fixturePowerSources=new Set(['electricSignals','electricFacilities','electricMethods']);
+const fixturePowerLayers=style.layers.filter(layer=>fixturePowerSources.has(layer.source));
+const facilitySnapshot='/data/traction/power/power-facilities.geojson.gz',
+  methodSnapshot='/data/traction/power/power-methods.geojson.gz';
+const mapped=(id, type, coordinates, properties)=>({id,type:'Feature',geometry:{type,coordinates},properties});
+const packed=features=>gzipSync(JSON.stringify({type:'FeatureCollection',features}));
+const ring=(x,y,r)=>[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r],[x-r,y-r]];
+const powerFixtureFiles={
+ [facilitySnapshot]:packed([
+  mapped('way-88103','Polygon',[ring(.985,1.004,.007),ring(.985,1.004,.002).reverse()],
+   {osm_type:'way',osm_id:'88103',name:'Fixture power yard',power_kind:'traction_substation',power_state:'present',power_minzoom:10}),
+  mapped('node-88104','Point',[1.015,1.010],
+   {osm_type:'node',osm_id:'88104',name:'Fixture power marker',power_kind:'traction_substation',power_state:'present',power_minzoom:10}),
+ ]),
+ [methodSnapshot]:packed([
+  mapped('way-88105','LineString',[[.983,.989],[1.017,.989]],
+   {osm_type:'way',osm_id:'88105',power_state:'present',power_method:'rail',power_method_label:'Fixture conductor rail',
+    method_rail:true,voltage:750,frequency:0}),
+ ]),
+};
 const replacing=new Set(['infrastructure-tracks','context-transport-bus-label']);
-style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id)&&layer.source!=='electricSignals')
+style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id)&&!fixturePowerSources.has(layer.source))
   .map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
-  ...fixtureElectricityLayers,
+  ...fixturePowerLayers,
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},paint:{'circle-color':'#00dc20','circle-radius':6}},
   {id:'fixture-track-names',type:'symbol',source:'entryRail','source-layer':'rail',layout:{
@@ -108,6 +127,7 @@ const server=createServer((req,res)=>{
   paths.push(pathname);
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
+  else if(powerFixtureFiles[pathname]) {res.writeHead(200,{'content-type':'application/gzip'}).end(powerFixtureFiles[pathname]);}
   else if(pathname===fixtureElectricityPath) {res.writeHead(200,{'content-type':'application/gzip'}).end(fixtureElectricitySignals);}
   else if(pathname==='/world.style.json') {
     const payload=railFailureFixture?{
@@ -950,6 +970,55 @@ try {
     assert.deepEqual(await sp.evaluate(()=>window.webglAttempts),[]);
     console.log('Canvas Power: painted current/former electrification signals, real detail panels, zoom gate and cached snapshot.');
   } finally {await signalCase.context.close();}
+  const geometryCase=await fresh(true), gp=geometryCase.page;
+  try {
+    const count=path=>paths.filter(p=>p===path).length;
+    const initial=[facilitySnapshot,methodSnapshot,fixtureElectricityPath].map(count);
+    await gp.goto(origin+'/#12/1/1');
+    const canvas=gp.locator('canvas.atlas-flat-preview');
+    await canvas.waitFor();
+    if(!(await gp.locator('#settings-open').isVisible()))await gp.locator('#controls-open').click();
+    assert.deepEqual([facilitySnapshot,methodSnapshot,fixtureElectricityPath].map(count),initial);
+    const power=gp.locator('[data-mode="electrification"]');
+    const targets=[[.980,1.004],[.985,1.004],[1.015,1.010],[1,.989]];
+    const coords=await gp.evaluate(targets=>{
+      const mercY=lat=>(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2, world=512*2**12;
+      return targets.map(([lon,lat])=>[350+(lon-1)/360*world,220+(mercY(lat)-mercY(1))*world]);
+    },targets);
+    const pixelRows=(coords)=>coords.map(([x,y])=>{
+      const c=document.querySelector('.atlas-flat-preview'), sx=c.width/c.clientWidth, sy=c.height/c.clientHeight;
+      return Array.from(c.getContext('2d').getImageData(Math.round(sx*x)-8,Math.round(sy*y)-8,17,17).data).join(',');
+    });
+    await gp.waitForFunction(coords=>{const c=document.querySelector('.atlas-flat-preview');return c.getContext('2d').getImageData(Math.round(coords[0][0]*c.width/c.clientWidth),Math.round(coords[0][1]*c.height/c.clientHeight),1,1).data[3]===255;},coords);
+    const baseline=await gp.evaluate(pixelRows,coords);
+    await power.click();
+    for(let i=0;i<70;i++){
+      const seen=await gp.evaluate(pixelRows,coords);
+      if([0,2,3].every(i=>seen[i]!==baseline[i]))break;
+      await new Promise(resolve=>setTimeout(resolve,150));
+    }
+    const present=await gp.evaluate(pixelRows,coords);
+    for(const i of [0,2,3])assert.notEqual(present[i],baseline[i],'Power feature painted at fixture pixel '+i);
+    assert.equal(present[1],baseline[1],'polygon hole stays clear');
+    assert.deepEqual([facilitySnapshot,methodSnapshot,fixtureElectricityPath].map(count),[initial[0]+1,initial[1]+1,initial[2]]);
+    await gp.locator('#collapse').click();
+    await canvas.click({position:{x:coords[1][0],y:coords[1][1]}});
+    assert.equal(await gp.locator('#details').isVisible(),false,'polygon hole is not a hit');
+    for(const [i,name,osm] of [[0,'Fixture power yard','way/88103'],[2,'Fixture power marker','node/88104'],[3,'Fixture conductor rail','way/88105']]){
+      await canvas.click({position:{x:coords[i][0],y:coords[i][1]}});
+      await gp.getByRole('heading',{name,exact:true}).waitFor();
+      await gp.locator('#detail-content a[href="https://www.openstreetmap.org/'+osm+'"]').waitFor();
+      await gp.locator('#details .close').click();
+    }
+    if(!(await gp.locator('#settings-open').isVisible()))await gp.locator('#controls-open').click();
+    await gp.locator('[data-mode="infrastructure"]').click();
+    assert.deepEqual(await gp.evaluate(pixelRows,coords),baseline);
+    await power.click();
+    assert.deepEqual(await gp.evaluate(pixelRows,coords),present);
+    assert.deepEqual([facilitySnapshot,methodSnapshot,fixtureElectricityPath].map(count),[initial[0]+1,initial[1]+1,initial[2]]);
+    assert.deepEqual(await gp.evaluate(()=>window.webglAttempts),[]);
+    console.log('Canvas Power: production facility polygon with clear/unselectable hole, facility point and conductor rail paint and open details; snapshots are gated and cached.');
+  } finally {await geometryCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});

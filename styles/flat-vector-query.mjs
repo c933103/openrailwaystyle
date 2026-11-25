@@ -15,6 +15,16 @@ function hitDistance(type, point, paths, paint) {
     for(const path of paths) for(const [x,y] of path) best=Math.min(best,Math.hypot(x-point[0],y-point[1]));
     return best<=limit?best:Infinity;
   }
+  if(type===3){
+    if(paint.opacity<=0)return Infinity;
+    const [x,y]=point;
+    let inside=false;
+    for(const ring of paths)for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const [a,b]=ring[i], [c,d]=ring[j];
+      if((b>y)!==(d>y) && x<(c-a)*(y-b)/(d-b)+a)inside=!inside;
+    }
+    return inside?0:Infinity;
+  }
   if (paint.width<=0 || paint.opacity<=0) return Infinity;
   const side=(paint.gapWidth+paint.width)/2;
   const offsets=paint.gapWidth>0?[paint.offset-side,paint.offset+side]:[paint.offset];
@@ -26,11 +36,10 @@ function hitDistance(type, point, paths, paint) {
   return best<=paint.width/2+7?best:Infinity;
 }
 
-// Query the same decoded tile frame and paint/filter rules used for display.
-// This first pass supports tiled station points and rail lines. It deliberately
-// does not invent hits for symbol text, polygons or overlays on other sources.
-export function compileFlatVectorQuery(layers, {include = () => true} = {}) {
-  const order = layers.filter(layer => ['line','circle'].includes(layer.type) &&
+// Query the same clipped frame and paint/filter rules used for display.
+// Areas are opt-in for prepared feature snapshots with actual detail panels.
+export function compileFlatVectorQuery(layers, {include = () => true, includeFill = () => false} = {}) {
+  const order = layers.filter(layer => (['line','circle'].includes(layer.type)||layer.type==='fill'&&includeFill(layer)) &&
     layer['source-layer'] != null && layer.paint?.['line-pattern'] == null &&
     include(layer.id)).map(layer=>({type:layer.type,...compileFlatGeometryStyle(layer)})).reverse();
   return (camera, point, frame, allowFeature) => {
@@ -49,13 +58,14 @@ export function compileFlatVectorQuery(layers, {include = () => true} = {}) {
         // Render clips MVT geometry at tile edges. Tolerance may graze an
         // adjacent tile, but must not select a buffered feature beyond it.
         if(u < -pad || u > 1+pad || v < -pad || v > 1+pad) continue;
+        if(layer.type==='fill'&&(u<0||u>1||v<0||v>1))continue;
         const query=[a*Math.max(0,Math.min(1,u))+c*Math.max(0,Math.min(1,v))+tx,
           b*Math.max(0,Math.min(1,u))+d*Math.max(0,Math.min(1,v))+ty];
         if(!cache.has(vector)) cache.set(vector,new Map());
         const decoded=cache.get(vector);
         if(!decoded.has(layer.sourceLayer)) decoded.set(layer.sourceLayer,vector.layer(layer.sourceLayer));
         for (const feature of decoded.get(layer.sourceLayer)) {
-          if ((layer.type==='circle'?1:2)!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
+          if (({circle:1,line:2,fill:3}[layer.type])!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
           const paint=layer.resolve(global,feature,{}, {z:tile.z,x:tile.x,y:tile.y});
           if (!paint) continue;
           const paths=feature.paths.filter(path=>path.length>0).map(path=>path.map(({x,y})=>{
@@ -76,6 +86,7 @@ export function compileFlatVectorQuery(layers, {include = () => true} = {}) {
           hits.push({type:'Feature',id:feature.id,properties:feature.properties,
             source:layer.source,sourceLayer:layer.sourceLayer,layer:{id:layer.id,type:layer.type,source:layer.source},
             geometry:points ? (points.length===1?{type:'Point',coordinates:points[0]}:{type:'MultiPoint',coordinates:points})
+              : feature.type===3?{type:'Polygon',coordinates:geo}
               : (geo.length===1?{type:'LineString',coordinates:geo[0]}:{type:'MultiLineString',coordinates:geo}),
             distance:proximity});
         }

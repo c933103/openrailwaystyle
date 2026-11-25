@@ -567,6 +567,27 @@ function updateInView() {
 // The same drawing as on the map: a neutral outlined area or a plain dot,
 // with its faint dashed planned/former form beside it when that is shown.
 // A position within a facility's extent (points, lines and areas alike).
+function makePowerLoaders(adapter,active,{glyphs,reportError=()=>{}}={}) {
+  const source=(id,file,zoom,message,options)=>createPowerFacilityLoader(adapter,{
+    sourceId:id,url:new URL(file,import.meta.url),active:()=>active(zoom),
+    onError(error){reportError(id);console.warn(message,error.message);},...options,
+  });
+  const language=()=>settings.language;
+  return [
+    source('electricFacilities','./data/traction/power/power-facilities.geojson.gz',10,'Railway energy supplies unavailable:',{
+      language,glyphs,localize:(data,lang)=>({...data,features:data.features.map(f=>{
+        const properties={...f.properties,...locate(...shapeCenter(f.geometry))};
+        return {...f,properties:{...properties,atlas_name:chooseName(properties,lang),atlas_language:lang}};
+      })}),
+    }),
+    source('electricMethods','./data/traction/power/power-methods.geojson.gz',10,'Conductor rails and railway charging unavailable:',{
+      language,glyphs,localize:(data,lang)=>({...data,features:data.features.map(f=>
+        ({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,lang)}}))}),
+    }),
+    source('electricSignals','./data/traction/power/electricity-signals.geojson.gz',13,'Electrification signals unavailable:'),
+  ];
+}
+
 function shapeCenter(geometry) {
   if (geometry.type==='Point') return geometry.coordinates;
   const box=[Infinity,Infinity,-Infinity,-Infinity];
@@ -1847,7 +1868,7 @@ async function initialize() {
     const needle=textNode('span','↑');
     needle.setAttribute('aria-hidden','true');
     compass.append(needle);
-    let flatLocation, flatElectricitySignals;
+    let flatLocation, refreshFlatPower;
     const creditsBox=textNode('details','','atlas-flat-credit-box');
     creditsBox.open=settings.attributionOpen;
     creditsBox.addEventListener('toggle',()=>{
@@ -1864,6 +1885,7 @@ async function initialize() {
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,
       pointSources:{electricSignals:13},
+      shapeSources:['electricFacilities','electricMethods'],
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
       legendLayers:()=>IN_VIEW[settings.mode] ? new Set(inViewLegendLayers(settings.mode)) : undefined,
@@ -1885,7 +1907,7 @@ async function initialize() {
       onCamera({bearing}) {
         needle.style.transform=`rotate(${-bearing}deg)`;
         updateFlatScale();
-        void flatElectricitySignals?.();
+        refreshFlatPower?.();
       },
       onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
       onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
@@ -1922,11 +1944,11 @@ async function initialize() {
           ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
       },
     });
-    flatElectricitySignals=createPowerFacilityLoader(flat,{sourceId:'electricSignals',
-      url:new URL('./data/traction/power/electricity-signals.geojson.gz',import.meta.url),
-      active:()=>settings.mode==='electrification'&&settings.background!=='satellite'&&flat.getZoom()>=13,
-      onError(error){flat.getSource('electricSignals')?.setError();console.warn('Electrification signals unavailable:',error.message);},
+    const flatPowerLoaders=makePowerLoaders(flat,zoom=>settings.mode==='electrification'&&
+      settings.background!=='satellite'&&flat.getZoom()>=zoom,{
+      reportError(id){flat.getSource(id)?.setError();},
     });
+    refreshFlatPower=()=>{for(const refresh of flatPowerLoaders)void refresh();};
     flatNavigation=flat.moveTo;
     flatSourceContext=flat;
     const corner = textNode('div', '', 'atlas-flat-map-tools');
@@ -1997,13 +2019,13 @@ async function initialize() {
         if(paint)Object.assign(layer.paint,paint);
       }
       flat.setStyle(next);
-      void flatElectricitySignals();
+      refreshFlatPower();
       drawing.refresh();
       if(measuring?.active)measuring.refresh();
       applied=signature;
     };
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
-    void flatElectricitySignals();
+    refreshFlatPower();
     return;
   }
   installImageryAttribution(map,imageryProtocol,{eoxAttribution,polarImagery:()=>
@@ -2039,19 +2061,10 @@ async function initialize() {
   // Reset the temporary suppression even if the 2D transition is interrupted
   // before reaching 0°; a later intentional tilt may enter 3D as normal.
   map.on('moveend', () => { terrain3DExitPending = false; });
-  powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+  [powerFacilities,powerMethods,electricitySignals]=makePowerLoaders(map,zoom=>ready&&
+    settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=zoom,{
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
-    fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
-  powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language)}}))}),
-    glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
-    onError:error=>console.warn('Conductor rails and railway charging unavailable:',error.message)});
-  electricitySignals=createPowerFacilityLoader(map,{sourceId:'electricSignals',url:new URL('./data/traction/power/electricity-signals.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=13,
-    onError:error=>console.warn('Electrification signals unavailable:',error.message)});
+  });
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
   // linked there is applied again once that is allowed. So is any view
