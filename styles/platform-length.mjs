@@ -254,7 +254,7 @@ function platformTextAnchor(map,coordinates,ref,length){
 // before any API response. Platform lengths are measured from the provider's
 // platform tiles (createPlatformTileGeometry), one platform at a time.
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,geometry=null,onLength=()=>{},onPlatform=()=>{}}={}){
- const cache=new Map(),pending=new Map(),drawn=new Map(),readTiles=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=null,measureController,measureTimer;const measureRetry=new Map();let pausedUntil=0;
+ const cache=new Map(),pending=new Map(),drawn=new Map(),readTiles=new Map();let desired=new Map(),preferredEdge,timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=null,measureController,measureTimer;const measureRetry=new Map();let pausedUntil=0;
  const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries){const old=cache.keys().next().value;cache.delete(old);readTiles.delete(old);}};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
  const draw=()=>{
@@ -279,7 +279,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   }
  };
  async function next(){
-  if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
+  if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.has(preferredEdge)?[preferredEdge,pending.get(preferredEdge)]:pending.entries().next().value;if(!entry)return;
   const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
   const timeout=setTimeout(()=>requestController.abort(),5000);
   try {
@@ -383,7 +383,13 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   const values=cache.get((object?'platform/':'edge/')+id)||{},length=Number(values.length);
   return {...feature,properties:{...p,...values,ref:platformReference(values.ref??p.ref),osm_type:object?.type||'way',osm_id:object?.id||id,feature:object?'platform':'platform_edge',...(length>0?{platform_length:length}:{})}};
  }
- return {update,destroy,enrich};
+ // Favor an open inspector without interrupting in-flight work, adding a
+ // request, or changing the zoom, visibility, cooldown and retry gates.
+ function prioritizeEdge(feature){
+  const id=feature&&platformIdentity(feature);
+  preferredEdge=id?'edge/'+id:undefined;
+ }
+ return {update,destroy,enrich,prioritizeEdge};
 }
 // Prefer the largest visible fragment of a tiled platform, rather than whichever
 // fragment happens to be returned first. It is used for label placement only.

@@ -888,6 +888,7 @@ function stationObject(osmId) {
 }
 function showDetails(feature) {
   cancelProfile();
+  if(useFlat)platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   // Track power methods; chargers in the same source (any mapped shape) carry power_kind.
@@ -2603,7 +2604,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); flatSourceContext?.setProfileMarker?.(null); });
   return svg;
 }
-function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; if(useFlat)platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 // The data dates are read each time Help opens, so a page left open shows

@@ -73,6 +73,29 @@ test('platform API uses full length, deduplicates edge IDs, caches values and st
   p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);features=[];p.update();assert.equal(data.features.length,0);
  }finally{p.destroy();}
 });
+test('an open edge is requested first after zooming in, without dropping or duplicating neighbours',async()=>{
+ let zoom=18;
+ const requests=[],started=new Map(),replies=new Map();
+ const waitFor=id=>{
+  if(requests.includes(id))return Promise.resolve();
+  return new Promise(resolve=>started.set(id,resolve));
+ };
+ const map={getZoom:()=>zoom,queryRenderedFeatures:()=>[edge(2),edge(1),edge(3)],getSource:()=>null};
+ const p=createPlatformLengths(map,{delay:0,fetcher:url=>{
+  const id=url.split('/').at(-1);requests.push(id);started.get(id)?.();
+  return new Promise(resolve=>replies.set(id,()=>resolve({ok:true,json:async()=>({properties:{length:350}})})));
+ }});
+ try{
+  p.update();p.prioritizeEdge(edge(1));assert.deepEqual(requests,[]);
+  zoom=19;p.update();
+  await waitFor('1');assert.deepEqual(requests,['1']);
+  p.prioritizeEdge(null);replies.get('1')();
+  await waitFor('2');assert.deepEqual(requests,['1','2']);
+  p.update();replies.get('2')();
+  await waitFor('3');assert.deepEqual(requests,['1','2','3']);
+ }finally{p.destroy();for(const reply of replies.values())reply();}
+});
+
 test('platform requests leave the queue when panned away and respect a rate-limit response',async()=>{
  let features=[edge(),edge(2)],requests=0;const map={getZoom:()=>19,queryRenderedFeatures:()=>features,getSource:()=>({setData(){}})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:false,status:429};}});
