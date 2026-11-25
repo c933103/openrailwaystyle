@@ -7,6 +7,7 @@ on:
       - 'scripts/check-flat-entry-firefox.mjs'
       - 'scripts/check-flat-platform-firefox.mjs'
       - 'styles/platform-length.mjs'
+      - 'tests/ci-node-runtime-security.test.mjs'
       - 'styles/app.mjs'
       - 'styles/app.css'
       - 'styles/flat-*.mjs'
