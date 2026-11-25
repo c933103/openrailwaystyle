@@ -105,8 +105,8 @@ test('selected boards preserve same-source trains, request limits and separate s
     const requests = [], signal = new AbortController().signal;
     const fetch = async (value, options) => {
       const url = new URL(value); requests.push({url, options});
-      const body = url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
-        type:'STOP', id:`feed_${id}`, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) :
+      const body = url.pathname.endsWith('/map/stops') ? order.map(id => ({
+        type:'STOP', stopId:`feed_${id}`, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) :
         {stopTimes:[url.searchParams.get('stopId') === 'feed_a' ? a : b]};
       return {ok:true, json:async () => body};
     };

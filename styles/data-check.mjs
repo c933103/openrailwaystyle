@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261125-terrain-camera-1';
+import {SEARCH_API} from './map-model.mjs?v=20261125-departure-spatial-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

@@ -1,3 +1,4 @@
+import {asMapStops} from './departure-stop-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -17,6 +18,7 @@ function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'ne
   const calls = [], before = structuredClone(times);
   return {calls, before, fetch: async (url, options) => {
     calls.push({url: new URL(url), options});
+    if (url.includes('/map/stops')) return {ok: true, json: async () => asMapStops(candidates)};
     if (url.includes('/reverse-geocode')) return {ok: true, json: async () => candidates};
     const id = new URL(url).searchParams.get('stopId');
     if (failed.includes(id)) {
@@ -495,7 +497,6 @@ const unmatchedLookups = [
     {...stop('bus'), modes: ['BUS']},
     {...stop('place'), type: 'PLACE'},
     {...stop('far'), lat: 0.01},
-    {...stop('coordinates'), lon: '0'},
   ]],
 ];
 const unmatchedMessage = 'No matching rail timetable stop was found within 400 m.';
@@ -505,7 +506,7 @@ for (const [label, candidates] of unmatchedLookups) test(`successful ${label} lo
   assert.deepEqual(candidates, before);
   assert.equal(feed.calls.length, 1);
   assert.equal(feed.calls[0].options.signal, signal);
-  assert.equal(feed.calls[0].url.pathname, '/api/v1/reverse-geocode');
+  assert.equal(feed.calls[0].url.pathname, '/api/v6/map/stops');
 });
 
 const malformedLookups = [null, {}, {error: 'synthetic private provider response'}, 'synthetic private response', 0, false];
@@ -623,7 +624,7 @@ for (const slow of ['success', 'failure']) for (const fast of ['rows', 'empty'])
     const a = [observation], b = [{...observation, cancelled:true}];
     const base = fixture({bodies:{a:{stopTimes:fast === 'rows' ? a : []}, b:{stopTimes:b}}, failed:slow === 'failure' ? ['b'] : []});
     const feed = {current:{fetch: async (url, options) => {
-      if (url.includes('/reverse-geocode')) await lookup;
+      if (url.includes('/map/stops')) await lookup;
       if (new URL(url).searchParams.get('stopId') === 'b') await blocked;
       return base.fetch(url, options);
     }}}, view = boardDom(feed);

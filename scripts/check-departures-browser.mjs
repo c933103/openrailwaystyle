@@ -37,9 +37,9 @@ try {
         intermediateStops:[stop('上野 Ueno','before'),stop('末廣町 Suehirocho','selected',{track:'1'})],
         to:stop('浅草 Asakusa','terminus')}]};
       let fail=true;
-      await context.route('https://api.transitous.org/api/v1/**',route=>{
+      await context.route('https://api.transitous.org/api/**',route=>{
         const url=new URL(route.request().url());requests.push(url.pathname);
-        if(url.pathname.endsWith('/reverse-geocode'))return route.fulfill({json:[{type:'STOP',name:'Suehirocho',id:'selected',lat:35.7,lon:139.77,modes:['SUBWAY']}]});
+        if(url.pathname.endsWith('/map/stops'))return route.fulfill({json:[{type:'STOP',name:'Suehirocho',stopId:'selected',lat:35.7,lon:139.77,modes:['SUBWAY']}]});
         if(url.pathname.endsWith('/stoptimes'))return route.fulfill({json:{stopTimes:[
           {mode:'SUBWAY',displayName:'G',headsign:'浅草 Asakusa',tripId:'fixture_train&one',realTime:false,place:stop('Suehirocho','selected')},
           {mode:'SUBWAY',displayName:'G',headsign:'渋谷 Shibuya',tripId:'fixture_retry',realTime:false,place:stop('Suehirocho','selected')},
@@ -107,10 +107,10 @@ try {
       // All responses below are synthetic; the loopback transport guard remains.
       const boardRequests = [], boardStopIds = [];
       let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {}, blockedBoard;
-      await context.route('https://api.transitous.org/api/v1/**', async route => {
+      await context.route('https://api.transitous.org/api/**', async route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
-        if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
-          ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
+        if (url.pathname.endsWith('/map/stops')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
+          ({type:'STOP', name:boardName, stopId:id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
         assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
         assert.equal(url.searchParams.get('n'), '30');
         const id = url.searchParams.get('stopId');
@@ -239,9 +239,9 @@ try {
         permutations(items.filter((_, j) => j !== i)).map(rest => [item, ...rest]));
       for (const [name, other] of [['Terminal 1','Terminal 10'], ['Central','Central Park'], ['中央','中央公園']]) {
         const candidates = [
-          {type:'STOP',name,id:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
-          {type:'STOP',name,id:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
-          {type:'STOP',name:other,id:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name,stopId:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name,stopId:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:other,stopId:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
         ];
         boardBodies = Object.fromEntries(['a','b','wrong'].map(id => [id, {stopTimes:[
           {...row,displayName:id === 'wrong' ? 'WRONG' : `RIGHT-${id}`,tripId:id},
@@ -249,7 +249,7 @@ try {
         for (const order of permutations(candidates)) {
           lookupResponse = order;
           const before = boardRequests.length, beforeIds = boardStopIds.length;
-          const properties = {id:`name-match-${name}-${order.map(c => c.id).join('-')}`};
+          const properties = {id:`name-match-${name}-${order.map(c => c.stopId).join('-')}`};
           await openStation(name, properties); await waitBoard();
           assert.equal(boardRequests.length - before, 3);
           assert.deepEqual(boardStopIds.slice(beforeIds), ['a','b']);
@@ -267,14 +267,14 @@ try {
       }
       for (const composite of ['München Hbf / Munich','München (Munich)']) for (const supplied of [true,false]) {
         const candidates = [
-          {type:'STOP',name:'München Hbf',id:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
-          {type:'STOP',name:composite,id:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
-          {type:'STOP',name:'Munich Park',id:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:'München Hbf',stopId:'a',lat:35.701,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:composite,stopId:'b',lat:35.7011,lon:139.77,modes:['SUBWAY']},
+          {type:'STOP',name:'Munich Park',stopId:'wrong',lat:35.7001,lon:139.77,modes:['SUBWAY']},
         ];
         for (const order of permutations(candidates)) {
           lookupResponse = order;
           const before = boardRequests.length, beforeIds = boardStopIds.length;
-          const properties = {id:`same-script-${composite}-${supplied}-${order.map(c => c.id).join('-')}`,
+          const properties = {id:`same-script-${composite}-${supplied}-${order.map(c => c.stopId).join('-')}`,
             ...(supplied ? {'name:en':'Munich'} : {})};
           await openStation('München Hbf', properties); await waitBoard();
           assert.deepEqual(boardStopIds.slice(beforeIds), supplied ? ['a','b'] : ['a']);
@@ -366,8 +366,8 @@ try {
       for (const [label, candidates] of [
         ['empty', []],
         ['filtered', [
-          {type:'STOP', name:'Nearby bus', id:'bus', lat:35.7, lon:139.77, modes:['BUS']},
-          {type:'STOP', name:'Distant rail', id:'far', lat:35.71, lon:139.77, modes:['SUBWAY']},
+          {type:'STOP', name:'Nearby bus', stopId:'bus', lat:35.7, lon:139.77, modes:['BUS']},
+          {type:'STOP', name:'Distant rail', stopId:'far', lat:35.71, lon:139.77, modes:['SUBWAY']},
         ]],
       ]) {
         boardName = `No matched stop ${label}`; lookupResponse = candidates;
@@ -476,10 +476,10 @@ try {
         const held = new Promise(resolve => {release = resolve;});
         const started = new Promise(resolve => {requested = resolve;});
         const closeRequests = [], name = `Close pending partial ${withRows ? 'rows' : 'empty'}`;
-        await context.route('https://api.transitous.org/api/v1/**', async route => {
+        await context.route('https://api.transitous.org/api/**', async route => {
           const url = new URL(route.request().url()); closeRequests.push(url.pathname);
-          if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json:['a','b'].map(id =>
-            ({type:'STOP', name, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
+          if (url.pathname.endsWith('/map/stops')) return route.fulfill({json:['a','b'].map(id =>
+            ({type:'STOP', name, stopId:id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
           assert.equal(url.pathname, '/api/v1/stoptimes');
           if (url.searchParams.get('stopId') === 'b') {
             requested(); await held;
