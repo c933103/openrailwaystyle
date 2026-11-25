@@ -1,4 +1,4 @@
-import {waitForViewport} from './viewport-settle.mjs?v=20261125-hybrid-rail-2';
+import {waitForViewport} from './viewport-settle.mjs?v=20261125-blank-depth-tile-1';
 // Colour sea elevations from the existing, repaired terrain cache. ETOPO1
 // bathymetry disappears from the provider's finer tiles, so depth requests
 // stop at zoom 10. Coastlines still use the basemap's detailed water polygons.
@@ -117,6 +117,12 @@ export function oceanPolygons(tile) {
     .filter(f => f.type === 3 && f.properties.class === 'ocean')
     .map(f => ({extent: f.extent || water.extent, rings: f.loadGeometry()}));
 }
+// A transparent 1×1 RGBA PNG. Encoding a fresh canvas here can stall
+// the page while the WebGL renderer is busy drawing the terrain.
+const blankDepthTile = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='),
+  character => character.charCodeAt(0),
+).buffer;
 const canvas = size => typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(size, size)
   : Object.assign(document.createElement('canvas'), {width: size, height: size});
 const png = image => image.convertToBlob ? image.convertToBlob({type: 'image/png'})
@@ -195,15 +201,6 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, createWor
     workerAttempted = true;
     if (createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined') try { worker = depthWorker(createWorker); } catch { worker = null; }
   };
-  let blank;
-  const empty = () => {
-    if (!blank) {
-      const image = canvas(1);
-      image.getContext('2d'); // OffscreenCanvas needs a context before encoding.
-      blank = png(image).then(blob => blob.arrayBuffer());
-    }
-    return blank;
-  };
   maplibre.addProtocol('atlas-depth', async ({url}, controller) => {
     const match = /^atlas-depth:\/\/(\d+)\/(\d+)\/(\d+)$/.exec(url);
     if (!match) throw new Error('Invalid depth tile');
@@ -223,7 +220,7 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, createWor
     // In the worker while it works; on the page without one, or after it failed.
     const inWorker = async () => {
       const {ocean} = await worker.send({key: requestKey, water: water.data ?? new ArrayBuffer(0)}, controller.signal);
-      if (!ocean) return empty(); // No extra DEM request inland.
+      if (!ocean) return blankDepthTile; // No extra DEM request inland.
       const tile = depthTile(z, x, y);
       let heights;
       try { heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller); controller.signal.throwIfAborted(); }
@@ -233,7 +230,7 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, createWor
     };
     const onPage = async () => {
       const polygons = water.data?.byteLength ? oceanPolygons(readTile(water.data)) : [];
-      if (!polygons.length) return empty(); // No extra DEM request inland.
+      if (!polygons.length) return blankDepthTile; // No extra DEM request inland.
       const tile = depthTile(z, x, y), heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
       controller.signal.throwIfAborted();
       const image = canvas(256), context = image.getContext('2d');

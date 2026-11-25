@@ -1,4 +1,4 @@
-import {gridSize, series} from './soviet-coverage.mjs?v=20261125-hybrid-rail-2';
+import {gridSize, series} from './soviet-coverage.mjs?v=20261125-blank-depth-tile-1';
 
 const empty = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
 const transparent = () => ({data: empty.slice().buffer});

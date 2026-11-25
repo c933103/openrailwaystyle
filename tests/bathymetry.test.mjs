@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {inflateSync} from 'node:zlib';
 import {createExpression} from '@maplibre/maplibre-gl-style-spec';
 import {DEPTH_ZOOM, depthColour, depthTile, colourPixels, oceanPolygons, installBathymetry, shareArchiveRequests, seabedContourOpacity} from '../styles/bathymetry.mjs';
 
@@ -87,10 +88,10 @@ test('depth shading stays below islands, contours and railways and respects the 
 });
 
 test('with a worker, depth tiles are drawn there: land needs no terrain, a cancelled tile is dropped', async t => {
-  // Node has no OffscreenCanvas or Worker; minimal ones stand in (the
-  // canvas for the 1-pixel land tile the page encodes itself).
   const had = [globalThis.OffscreenCanvas, globalThis.Worker];
-  globalThis.OffscreenCanvas = class { getContext() { return {}; } convertToBlob() { return Promise.resolve(new Blob([new Uint8Array([7])])); } };
+  globalThis.OffscreenCanvas = class {
+    constructor() { assert.fail('inland depth tiles must not create or encode a canvas'); }
+  };
   globalThis.Worker ??= class {};
   t.after(() => { [globalThis.OffscreenCanvas, globalThis.Worker] = had; });
   const posted = [];
@@ -111,7 +112,17 @@ test('with a worker, depth tiles are drawn there: land needs no terrain, a cance
     createWorker: () => new FakeWorker(),
   });
   const land = await protocol({url: 'atlas-depth://5/1/3'}, new AbortController());
-  assert.deepEqual([...new Uint8Array(land.data)], [7]);
+  const png = Buffer.from(land.data);
+  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(png.readUInt32BE(16), 1);
+  assert.equal(png.readUInt32BE(20), 1);
+  assert.deepEqual([...png.subarray(24, 26)], [8, 6], '8-bit RGBA');
+  assert.equal(png.toString('ascii', 37, 41), 'IDAT');
+  assert.deepEqual([...inflateSync(png.subarray(41, 41 + png.readUInt32BE(33)))], [0, 0, 0, 0, 0],
+    'no PNG row filter and one transparent pixel');
+  png.fill(0);
+  const fallback = await protocol({url: 'atlas-depth://5/1/3'}, new AbortController());
+  assert.equal(new Uint8Array(fallback.data)[0], 137, 'returned bytes cannot mutate the cached tile');
   assert.equal(demRequests, 0, 'no terrain tile for land');
   const sea = await protocol({url: 'atlas-depth://5/2/3'}, new AbortController());
   assert.match(new TextDecoder().decode(sea.data), /^atlas-depth:\/\/5\/2\/3#\d+$/);

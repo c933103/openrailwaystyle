@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-hybrid-rail-2';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-blank-depth-tile-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
