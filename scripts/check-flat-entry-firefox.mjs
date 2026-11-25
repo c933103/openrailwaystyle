@@ -134,6 +134,8 @@ const legendRail=vtPbf.fromGeojsonVt({rail:{features:[
 ]}},{version:2,extent:4096});
 let railFailureFixture='';
 let stationFailureFixture='';
+const fixtureDepartures=[];
+const fixtureDepartureAt=new Date(Date.now()+600_000).toISOString();
 const paths=[];
 let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
@@ -307,7 +309,27 @@ try {
         {osm_type:'relation',osm_id:9002,name:'Demo town',lat:'51.6',lon:'-0.2',type:'town',
           display_name:'Demo town, Fixture region',boundingbox:['51.55','51.65','-0.25','-0.15']},
       ]);
-      if(url.hostname==='api.transitous.org') return json([]);
+      if(url.hostname==='api.transitous.org') {
+        if(stationFailureFixture!=='tile')return json([]);
+        const op=url.pathname.split('/').at(-1);
+        fixtureDepartures.push(op);
+        const place=(name,stopId)=>({name,stopId,tz:'Etc/UTC',departure:fixtureDepartureAt,arrival:fixtureDepartureAt});
+        if(op==='reverse-geocode'){
+          const [lat,lon]=url.searchParams.get('place').split(',').map(Number);
+          assert.ok(Number.isFinite(lat)&&Number.isFinite(lon));
+          assert.equal(url.searchParams.get('type'),'STOP');
+          return json([{type:'STOP',id:'east-station',name:'Primary East',lat,lon,modes:['REGIONAL_RAIL']}]);
+        }
+        if(op==='stoptimes'){
+          assert.equal(url.searchParams.get('stopId'),'east-station');
+          return json({stopTimes:[{mode:'REGIONAL_RAIL',displayName:'R1',headsign:'Fixture Terminus',
+            tripId:'canvas-east-trip',realTime:false,place:place('Primary East','east-station')}]});
+        }
+        assert.equal(op,'trip');
+        assert.equal(url.searchParams.get('tripId'),'canvas-east-trip');
+        return json({legs:[{mode:'REGIONAL_RAIL',realTime:false,from:place('Previous Station','before'),
+          intermediateStops:[place('Primary East','east-station')],to:place('Fixture Terminus','end')}]});
+      }
       return r.abort();
     });
     return {page,context};
@@ -865,11 +887,23 @@ try {
       await c.click({position:{x:shown.left.dot[0],y:shown.left.dot[1]}});
       await p.getByRole('heading',{name:'Fallback West',exact:true}).waitFor();
       await p.getByText(/departures are unavailable for this fallback marker/).waitFor();
+      assert.equal(fixtureDepartures.length,0,'fallback-only marker must not ask for guessed departures');
       await p.locator('#details .close').click();
       if(failure==='tile'){
         await c.click({position:{x:shown.right.dot[0],y:shown.right.dot[1]}});
         await p.getByRole('heading',{name:'Primary East',exact:true}).waitFor();
         assert.equal(await p.getByText(/departures are unavailable for this fallback marker/).count(),0);
+        const summary=p.locator('.departure-summary').filter({hasText:'Fixture Terminus'});
+        await summary.waitFor();
+        await p.getByText(/Timetabled times: no live data/).waitFor();
+        assert.deepEqual(fixtureDepartures,['reverse-geocode','stoptimes']);
+        await summary.click();
+        await p.locator('.trip-stops').waitFor();
+        assert.deepEqual(await p.locator('.trip-stops tbody th').allTextContents(),
+          ['Previous Station','Primary East','Fixture Terminus']);
+        assert.deepEqual(fixtureDepartures,['reverse-geocode','stoptimes','trip']);
+        assert.equal(await p.locator('.trip-current-stop').count(),1);
+        console.log('Firefox staged Canvas: clicked painted station, loaded a timetabled board, and opened the correct train schedule without prefetch.');
         await p.locator('#details .close').click();
       }
       if(!(await p.locator('#settings-open').isVisible()))await p.locator('#controls-open').click();
