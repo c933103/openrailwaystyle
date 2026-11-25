@@ -1,3 +1,5 @@
+import {isNeutralRailReference} from './railway-visibility.mjs';
+import {flatRailReferenceClip} from './flat-rail-reference.mjs';
 import {flatCamera, flatScaleBar, fitFlatBounds} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
@@ -16,7 +18,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -99,8 +101,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const checkStations=stationSource&&fallbackLayers&&layers.some(layer=>layer.source===stationSource);
     const metadataFailed=checkStations&&Boolean(metadata.get(stationSource)?.error);
     const fallbackLikely=checkStations&&(metadataFailed||queue.hasFailure(stationSource));
+    const railLayer=railTrackLayer?.(camera.zoom);
+    const railSource=layers.find(layer=>layer.id===railLayer)?.source;
+    const railError=railSource&&Boolean(metadata.get(railSource)?.error);
+    const railReferenceLikely=railSource&&(railError||queue.hasFailure(railSource));
     const active=new Set(layers.filter(layer=>layer.source!=='stationMajor'&&
-      (!flatStationFallbackLayer(layer.id)||fallbackLikely)).map(layer=>layer.source));
+      (!flatStationFallbackLayer(layer.id)||fallbackLikely)&&
+      (!isNeutralRailReference(layer)||railReferenceLikely)).map(layer=>layer.source));
     for (const [id,entry] of metadata) {
       if (!active.has(id)) {entry.controller.abort(); metadata.delete(id);}
     }
@@ -142,7 +149,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }));
     for(const id of tiles.errors.keys()) errors.add(id);
     paintedSymbols=[];
-    draw(context,camera,tiles.frame,{getIcon,allowFeature:fallbackLayers?allowFeature:undefined,onSymbol:({id,source,sourceLayer},label,bounds)=>{
+    const railClip=flatRailReferenceClip(camera,{metadataFailed:railError,failed:tiles.errors.get(railSource),planned:plans.get(railSource)?.tiles});
+    const rendered=draw(context,camera,tiles.frame,{getIcon,allowFeature:fallbackLayers?allowFeature:undefined,
+      layerClip:id=>isNeutralRailReference({id})?railClip:null,onSymbol:({id,source,sourceLayer},label,bounds)=>{
       if(!interactiveLayer?.(id))return;
       const [rawLng,lat]=camera.unproject([label.px,label.py]);
       const lng=((rawLng+180)%360+360)%360-180;
@@ -183,7 +192,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
     const painting=[...tiles.frame.values()].some(items=>items.length);
     const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
-    onStatus({errors:[...errors],painting,loading,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
+    const railFallback=layers.some(layer=>isNeutralRailReference(layer)&&(rendered.layerDraws.get(layer.id)??0)>0);
+    onStatus({errors:[...errors],painting,loading,railFallback,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
   }
 
   const listen=(type,fn,opts)=>canvas.addEventListener(type,fn,{...opts,signal});

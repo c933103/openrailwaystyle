@@ -76,6 +76,13 @@ const fallbackArchive=pointArchive(stationPOI,7,64,64);
 const primaryStationMvt=vtPbf.fromGeojsonVt({station:{features:[
   {id:705,type:1,tags:{feature:'station',name:'Primary East'},geometry:[[1024,2048]]},
 ]}},{version:2,extent:4096});
+const neutralRail=pointArchive(vtPbf.fromGeojsonVt({transportation:{features:[
+  {id:711,type:2,tags:{class:'rail',subclass:'rail'},geometry:[[[0,1024],[4096,1024]]]},
+]}},{version:2,extent:4096}),7,64,64);
+const healthyRail=vtPbf.fromGeojsonVt({rail:{features:[
+  {id:712,type:2,tags:{feature:'rail'},geometry:[[[0,2368],[4096,2368]]]},
+]}},{version:2,extent:4096});
+let railFailureFixture='';
 let stationFailureFixture='';
 const paths=[];
 let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
@@ -88,7 +95,20 @@ const server=createServer((req,res)=>{
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(pathname==='/world.style.json') {
-    const payload=stationFailureFixture?{
+    const payload=railFailureFixture?{
+      ...style,
+      sources:{...style.sources,entryRail:{type:'vector',url:`http://127.0.0.1:${server.address().port}/rail-health.json`,maxzoom:8},
+        openmaptiles:{type:'vector',url:'pmtiles://data/rail-reference-fixture.pmtiles',maxzoom:7}},
+      layers:[style.layers.find(layer=>layer.id==='fixture-bg'),...style.layers.flatMap(layer=>{
+        if(layer.id==='fixture-bg'||layer.id==='fixture-track-names')return [];
+        if(layer.id==='rail-basemap-reference')return [{id:layer.id,type:'line',
+          source:'openmaptiles','source-layer':'transportation',minzoom:8,
+          paint:{'line-color':'#00b0ff','line-width':7}}];
+        if(layer.id==='infrastructure-tracks')return [{...layer,minzoom:8,
+          metadata:{'atlas:semantics-version':1,'atlas:views':['infrastructure']}}];
+        return [layer];
+      })],
+    }:stationFailureFixture?{
       ...style,
       sources:{...style.sources,
         openmaptiles:{type:'vector',url:'pmtiles://data/station-fallback-fixture.pmtiles',maxzoom:7},
@@ -115,6 +135,17 @@ const server=createServer((req,res)=>{
           ?[...fixtureRasterBackgrounds,{...layer,metadata:{'atlas:semantics-version':1,'atlas:group':'railway'}}]:[layer])],
     }:style;
     res.writeHead(failStyle?503:200,{'content-type':'application/json'});res.end(failStyle?'{}':JSON.stringify(payload));
+  } else if(pathname==='/data/rail-reference-fixture.pmtiles') {
+    const r=pmtilesBytesResponse(neutralRail,req.headers.range,'flat-rail-reference-fixture-v1');
+    res.writeHead(r.status,r.headers);res.end(r.body);
+  } else if(pathname==='/rail-health.json') {
+    if(railFailureFixture==='metadata'){res.writeHead(404).end();return;}
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
+      minzoom:8,maxzoom:8,tiles:[`http://127.0.0.1:${server.address().port}/rail-health/{z}/{x}/{y}.pbf`],
+    }));
+  } else if(pathname.startsWith('/rail-health/')) {
+    if(railFailureFixture==='tile'&&pathname==='/rail-health/8/128/128.pbf'){res.writeHead(404).end();return;}
+    res.writeHead(200,{'content-type':'application/x-protobuf'}).end(pathname.endsWith('/129/128.pbf')?healthyRail:undefined);
   } else if(pathname==='/data/station-fallback-fixture.pmtiles') {
     const r=pmtilesBytesResponse(fallbackArchive,req.headers.range,'flat-station-fixture-v1');
     res.writeHead(r.status,r.headers);res.end(r.body);
@@ -790,6 +821,39 @@ try {
     assert.equal(await p.evaluate(hasCuratedOutline),false);
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {stationFailureFixture='';await curatedCase.context.close();}
+  for(const failure of ['metadata','tile','healthy']){
+    const railCase=await fresh(true), p=railCase.page;
+    railFailureFixture=failure;
+    try{
+      const before=paths.length;
+      await p.goto(origin+'/#8/-0.7031/1.40625');
+      const errors=[];p.on('pageerror',error=>errors.push(error.message));
+      await p.locator('canvas.atlas-flat-preview').waitFor().catch(async error=>{
+        console.error(failure,errors,await p.locator('#map-status').textContent(),paths.slice(before));throw error;});
+      const colors=()=>{
+        const c=document.querySelector('canvas.atlas-flat-preview'), g=c.getContext('2d');
+        const contains=(x,y,test)=>g.getImageData(x-5,y-6,11,13).data.some((r,i,d)=>i%4===0&&test(r,d[i+1],d[i+2]));
+        const blue=(r,g,b)=>r<25&&g>140&&b>220,red=(r,g,b)=>r>225&&g<30&&b<30;
+        const x=c.width/2,y=c.height/2,sx=c.width/c.clientWidth,sy=c.height/c.clientHeight;
+        return {west:contains(x-90*sx,y,blue),east:contains(x+90*sx,y,blue),
+          primary:contains(x+90*sx,y+40*sy,red)};
+      };
+      const expected={west:failure!=='healthy',east:failure==='metadata',primary:failure!=='metadata'};
+      for(let i=0;i<80&&JSON.stringify(await p.evaluate(colors))!==JSON.stringify(expected);i++)
+        await new Promise(resolve=>setTimeout(resolve,125));
+      const observed=await p.evaluate(colors);
+      if(JSON.stringify(observed)!==JSON.stringify(expected))console.error(failure,paths.slice(before),errors,
+        await p.locator('#map-status').textContent(),await p.evaluate(()=>{
+          const c=document.querySelector('canvas.atlas-flat-preview'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+          const reds=[];for(let i=0;i<d.length;i+=4)if(d[i]>225&&d[i+1]<30&&d[i+2]<30&&reds.length<10)reds.push([(i/4)%c.width,Math.floor(i/4/c.width)]);
+          return {size:[c.width,c.height],reds,center:document.querySelector('#map').dataset.flatCenter};}));
+      assert.deepEqual(observed,expected,failure);
+      assert.ok(paths.slice(before).includes('/rail-health.json'));
+      if(failure==='healthy')assert.ok(!paths.slice(before).includes('/data/rail-reference-fixture.pmtiles'));
+      else await p.getByText(/Neutral reference lines, where shown/).waitFor();
+      assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+    }finally {railFailureFixture='';await railCase.context.close();}
+  }
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});

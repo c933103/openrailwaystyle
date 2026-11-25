@@ -1768,7 +1768,7 @@ async function initialize() {
   // can recompute it from source when a setting changes without remounting.
   const applyInitialVisibility=(style,canvas=false)=>{
     for (const layer of style.layers) {
-      const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
+      const visible=isNeutralRailReference(layer)&&!canvas ? false : layerVisibility(layer, settings);
       // Station fallback names are used only after the ORM station source fails.
       // Avoid flashing fallback names during the first frame of a healthy load.
       const independent=['station-basemap-fallback-dots','station-basemap-fallback-names','station-curated-fallback-dots'].includes(layer.id);
@@ -1858,6 +1858,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,
+      railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
       imageryCredit(url,tile){
         if(!url.startsWith('atlasimagery://'))return;
@@ -1900,10 +1901,11 @@ async function initialize() {
           history.replaceState(history.state,'',url);
         }
       },
-      onStatus({errors,loading,clamped}) {
+      onStatus({errors,loading,clamped,railFallback}) {
         scheduleNearbyTransport();
         status.classList.toggle('error',errors.length>0);
-        const state=errors.length?'some visible tile data could not load.'
+        const state=railFallback?'some railway tiles could not load. Neutral reference lines, where shown, do not show the selected view’s values.'
+          : errors.length?'some visible tile data could not load.'
           : loading?'loading railway tiles…'
           : clamped?'the requested polar position is beyond the flat map edge.'
           :'drag or use the arrow keys to move.';
