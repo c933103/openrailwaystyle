@@ -79,6 +79,37 @@ try {
     assert.ok(Math.abs(view.distance-420)<2,`${input} preserves drag speed: ${JSON.stringify(view)}`);
     console.log(`PASS ${input}: ${sign>0?'north':'south'} pole crossing`);
   }
+  // The selected projection and actual rendered weight are different states.
+  // A view around z9.2 is not beyond the renderer's flat cutoff at base detail.
+  for(const raw of [9.2,11.5,12.2]){
+    const sample=type=>page.evaluate(async ({raw,type})=>{
+      const map=window.map;
+      map.setProjection({type});map.jumpTo({center:[0,0],zoom:raw,bearing:0,pitch:0});
+      const read=()=>map.style.projection.transitionState;
+      const expected=type==='mercator'||raw>=12?weight=>Math.abs(weight)<1e-6:
+        raw<11?weight=>Math.abs(weight-1)<1e-6:weight=>weight>0&&weight<1;
+      let weight;
+      for(let i=0;i<120;i++){
+        await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+        weight=read();
+        if(expected(weight))break;
+      }
+      const span=360*380/(512*2**raw);
+      const points=[[span,span],[-span,span],[span,-span]].map(point=>{
+        const {x,y}=map.project(point);return [x,y];
+      });
+      return {selected:map.getProjection().type,raw:map.getZoom(),displayed:map.getZoom(),detail:0,weight,points};
+    },{raw,type});
+    const flat=await sample('mercator'), globe=await sample('globe');
+    const gap=Math.max(...flat.points.map(([x,y],i)=>Math.hypot(x-globe.points[i][0],y-globe.points[i][1])));
+    console.log('Globe selection versus rendered projection',JSON.stringify({raw,flat,globe,gap}));
+    assert.ok(Math.abs(flat.raw-raw)<1e-6&&Math.abs(globe.raw-raw)<1e-6,'probe must retain the same raw camera zoom');
+    assert.equal(flat.selected,'mercator');assert.equal(flat.weight,0);
+    assert.equal(globe.selected,'globe');
+    if(raw<11)assert.ok(Math.abs(globe.weight-1)<1e-6,'globe still spherical at raw z9.2');
+    else if(raw<12)assert.ok(globe.weight>0&&globe.weight<1,'globe blends at raw z11.5');
+    else {assert.equal(globe.weight,0,'high zoom renders flat without losing selection');assert.ok(gap<0.05);}
+  }
   // Switching back to Mercator must restore its normal latitude constraint
   // and native panning; the polar override belongs only to the globe.
   await page.evaluate(()=>window.map.setProjection({type:'mercator'}));
