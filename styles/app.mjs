@@ -1926,7 +1926,8 @@ async function initialize() {
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,
       pointSources:{electricSignals:13},
-      shapeSources:['electricFacilities','electricMethods'],
+      shapeSources:['electricFacilities','electricMethods','platformLengths'],
+      onPlatformFrame:()=>platformLengths?.update(),
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
       legendLayers:()=>settings.mode==='service'?new Set(['service-routes']):
@@ -1997,6 +1998,18 @@ async function initialize() {
           ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
       },
     });
+    platformLengths=createPlatformLengths({
+      ...flat.platformProjection,getZoom:flat.getZoom,getSource:flat.getSource,
+      getLayer:id=>id==='platform-edges',
+      queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?flat.platformEdgeCandidates():[],
+    },{
+      active:()=>settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',
+      onLength:(id,length)=>{
+        if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&
+          String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);
+      },
+    });
+    addEventListener('pagehide',event=>{if(!event.persisted)platformLengths.destroy();});
     const flatPowerLoaders=makePowerLoaders(flat,zoom=>settings.mode==='electrification'&&
       settings.background!=='satellite'&&flat.getZoom()>=zoom,{
       reportError(id){flat.getSource(id)?.setError();},

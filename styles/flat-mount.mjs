@@ -11,6 +11,9 @@ import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {compileFlatLocalGeometry} from './flat-local-geometry.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
+import {compileFlatGeometryStyle} from './flat-style.mjs';
+import {flatLineIntersectsViewport} from './flat-vector.mjs';
+import {PLATFORM_GEOMETRY_LIMITS,PLATFORM_UPDATE_LIMITS,tileToLngLat} from './platform-length.mjs';
 import {contextIcon} from './context.mjs';
 import {flatMeasureAdapter} from './flat-measure.mjs';
 import {flatDrawingAdapter, drawingLines} from './flat-drawing.mjs';
@@ -19,7 +22,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, pointSources={}, shapeSources=[]}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, pointSources={}, shapeSources=[]}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -42,10 +45,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const frameLayers=style=>style.layers.map(layer=>layer.id==='station-curated-fallback-dots'
     ?{...layer,maxzoom:8,'source-layer':'curated-stations'}
     :style.sources[layer.source]?.type==='geojson'&&localData.has(layer.source)&&
-       (layer.type==='circle'||localData.get(layer.source).shapes&&['fill','line'].includes(layer.type))
+       (layer.type==='circle'||localData.get(layer.source).shapes&&['fill','line','symbol'].includes(layer.type))
       ?{...layer,'source-layer':layer.source}:layer);
   let compiledLayers=frameLayers(style);
   let draw=compileFlatFrame(compiledLayers);
+  const platformLayerFor=layers=>{const layer=layers.find(l=>l.id==='platform-edges');return layer&&compileFlatGeometryStyle(layer);};
+  let platformEdgeLayer=platformLayerFor(compiledLayers);
   let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer,includeFill:layer=>localData.get(layer.source)?.shapes===true});
   const curatedStations=compileFlatCuratedStations(curatedStationData);
   let visibleFrame=new Map();
@@ -155,8 +160,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const curated=stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
       ?curatedStations(camera):[];
     if(curated.length)tiles.frame.set('stationMajor',curated);
-    for(const [id,entry] of localData)if(active.has(id)&&entry.draw)tiles.frame.set(id,entry.draw(camera));
     visibleFrame=tiles.frame;
+    // Compute labels for the current zoom before painting local sources, so a
+    // cached length cannot flash in a frame below its display threshold.
+    onPlatformFrame?.();
+    for(const [id,entry] of localData)if(active.has(id)&&entry.draw)tiles.frame.set(id,entry.draw(camera));
     sourceFrame=new Map([...active].map(id=>{
       const entry=metadata.get(id), count=plans.get(id)?.tiles.length??0;
       const point=localData.get(id);
@@ -351,10 +359,31 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         metadata.delete(id);
       }
     }
-    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;
+    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;platformEdgeLayer=platformLayerFor(nextLayers);
     // Install the new plan before a tap can inspect old pixels/data.
     if(frame)window.cancelAnimationFrame(frame);
     render();
+  };
+  const platformEdgeCandidates=()=>{
+    const layer=platformEdgeLayer,result=[];
+    if(!layer?.visibleAt(camera.zoom))return result;
+    let count=0,vertices=0;
+    for(const {tile,vector} of visibleFrame.get(layer.source)??[]){
+      if(!vector)continue;
+      for(const f of vector.layer(layer.sourceLayer)){
+        if(++count>PLATFORM_UPDATE_LIMITS.candidates)return result;
+        if(f.type!==2||!layer.resolve({zoom:camera.zoom},f,{},tile))continue;
+        const paths=f.paths.filter(path=>path.length>=2);
+        const size=paths.reduce((sum,path)=>sum+path.length,0);
+        if(!size||size>PLATFORM_GEOMETRY_LIMITS.vertices||vertices+size>PLATFORM_UPDATE_LIMITS.vertices||
+          !flatLineIntersectsViewport(camera,tile,f))continue;
+        vertices+=size;
+        const lines=paths.map(path=>path.map(({x,y})=>tileToLngLat(tile.z,tile.x,tile.y,f.extent,[x,y])));
+        result.push({id:f.id,properties:f.properties,geometry:lines.length===1
+          ?{type:'LineString',coordinates:lines[0]}:{type:'MultiLineString',coordinates:lines}});
+      }
+    }
+    return result;
   };
   const readSourcePoints=(source,sourceLayers,filter)=>{
     const entry=sourceFrame.get(source);
@@ -372,7 +401,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(next.zoom===camera.zoom && next.center.every((n,i)=>n===camera.center[i])) return;
     setCamera(next,true,'location');
   };
-  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,
+  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformEdgeCandidates,
+    platformProjection:{getContainer:()=>mount,project:lngLat=>{const [x,y]=camera.project(lngLat);return {x,y};},
+      unproject:point=>{const [lng,lat]=camera.unproject(point);return {lng,lat};}},
     getSource:id=>style.sources[id]?.type==='geojson'?localData.get(id)?.source:undefined,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
