@@ -1,6 +1,6 @@
 {
   "source": "OpenStreetMap ODbL; complete way 349685435, verified 2026-10-01",
-  "apiURL": "https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platform_edges/349685435",
+  "apiURL": "https://openrailwaymap.app/api/feature/openrailwaymap_platforms/standard_railway_platform_edges/349685435",
   "feature": {
     "type": "Feature",
     "properties": {

@@ -1,7 +1,10 @@
 // Length of the complete mapped boarding edge, from the provider's feature
 // API. Tile geometry is clipped and cannot supply that length reliably.
 export const PLATFORM_SOURCE='standard_railway_platform_edges';
-export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap_standard/'+PLATFORM_SOURCE+'/';
+// OpenRailwayMap now groups these layer detail endpoints under the
+// dedicated platforms source; the vector tile layer names did not change.
+const PLATFORM_FEATURE_API='https://openrailwaymap.app/api/feature/openrailwaymap_platforms/';
+export const PLATFORM_API=PLATFORM_FEATURE_API+PLATFORM_SOURCE+'/';
 const OBSOLETE_REQUEST=Symbol('obsolete platform request');
 export const PLATFORM_GEOMETRY_LIMITS={elements:4096,members:64,vertices:1024,responseBytes:2*1024*1024};
 export const PLATFORM_UPDATE_LIMITS={candidates:2048,features:512,vertices:16384,work:4*1024*1024};
@@ -332,7 +335,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
     if(!previous&&desired.size>=PLATFORM_UPDATE_LIMITS.features)continue;
     const tiles=seeds.get(key)||new Map();for(const t of platformTilesFor(f.geometry?.coordinates))tiles.set(t.join('/'),t);seeds.set(key,tiles);
-    if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,url:'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+    if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,url:PLATFORM_FEATURE_API+'standard_railway_platforms/'+object.key});
    }
    for(const [key,tiles] of seeds)if(desired.has(key))desired.get(key).seeds=[...tiles.values()];
   }

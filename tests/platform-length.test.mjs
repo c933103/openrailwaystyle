@@ -55,7 +55,7 @@ test('visible platform areas get lengths from tiles at zoom 19 and keep their AP
   p.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.platform_length,undefined);assert.equal(tiles.requests.length,0,'no tiles read below zoom 19');
   zoom=19;p.update();await new Promise(r=>setTimeout(r,30));
   assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6);assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.length_estimated,true);
-  assert.deepEqual(requests,['https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/way-23'],'only the provider reference lookup; nothing goes to OSM');
+  assert.deepEqual(requests,['https://openrailwaymap.app/api/feature/openrailwaymap_platforms/standard_railway_platforms/way-23'],'only the provider reference lookup; nothing goes to OSM');
   assert.deepEqual(osmObject(data.features[0]),{type:'way',id:'23'});
   const read=tiles.requests.length;zoom=18;p.update();assert.equal(data.features[0].properties.platform_length,undefined);zoom=22;p.update();await new Promise(r=>setTimeout(r,20));
   assert.equal(tiles.requests.length,read,'measured once');assert.ok(data.features[0].properties.platform_length>444);
@@ -82,6 +82,7 @@ test('an open edge is requested first after zooming in, without dropping or dupl
  };
  const map={getZoom:()=>zoom,queryRenderedFeatures:()=>[edge(2),edge(1),edge(3)],getSource:()=>null};
  const p=createPlatformLengths(map,{delay:0,fetcher:url=>{
+  assert.match(url,/^https:\/\/openrailwaymap\.app\/api\/feature\/openrailwaymap_platforms\/standard_railway_platform_edges\/\d+$/);
   const id=url.split('/').at(-1);requests.push(id);started.get(id)?.();
   return new Promise(resolve=>replies.set(id,()=>resolve({ok:true,json:async()=>({properties:{length:350}})})));
  }});
