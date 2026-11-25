@@ -195,6 +195,21 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -q --orphan traction-extract-data
           cp -r "$GITHUB_WORKSPACE/traction-extract/." .
+          # The site reads the power GeoJSON as gzip only (site.yml removes
+          # the raw copies). The extract's expanded power methods are over
+          # GitHub's 100 MiB file limit as raw GeoJSON (107.27 MB on
+          # 2026-11-25), so only the gzip copies are published here.
+          for raw in power/*.geojson; do
+            [ -e "$raw" ] || continue
+            test -f "$raw.gz"
+            rm "$raw"
+          done
+          # Name a file GitHub would refuse, rather than fail at the push.
+          large=$(find . -path ./.git -prune -o -type f -size +104857600c -print)
+          if [ -n "$large" ]; then
+            echo "::error::Over GitHub's 100 MiB file limit: $large"
+            exit 1
+          fi
           git add .
           git commit -q -m "Traction data from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:traction-extract-data; then
