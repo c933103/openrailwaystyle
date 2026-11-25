@@ -1,8 +1,8 @@
-import {ENERGY_DOMAINS,ENERGY_NETWORK_LINES} from './energy-network.mjs?v=20261125-hybrid-rail-1';
-import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261125-hybrid-rail-1';
-import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261125-hybrid-rail-1';
-import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261125-hybrid-rail-1';
-import {serviceCoverageMessages} from './service-status.mjs?v=20261125-hybrid-rail-1';
+import {ENERGY_DOMAINS,ENERGY_NETWORK_LINES} from './energy-network.mjs?v=20261125-hybrid-rail-2';
+import {speedBands, INFRASTRUCTURE, currentKey, NOT_ELECTRIFIED, NO_PROTECTION, UNKNOWN_COLOR, AERIALWAY_KINDS, AERIALWAY_CABLE, AERIALWAY_TICK, CONVEYING_COLOUR, INACTIVE_STATES, LIFECYCLE_PATTERNS} from './map-model.mjs?v=20261125-hybrid-rail-2';
+import {POWER_FACILITY_SYMBOL, POWER_METHOD_STROKES, POWER_FACILITY_LEGEND, ELECTRICITY_SIGNAL_STYLE, ELECTRICITY_SIGNAL_NOTE, POWER_FACILITY_LIMITS} from './power-facilities.mjs?v=20261125-hybrid-rail-2';
+import {FREQUENCY_LABELS, selectedFrequencyProfile, frequencyWidth} from './service-frequency.mjs?v=20261125-hybrid-rail-2';
+import {serviceCoverageMessages} from './service-status.mjs?v=20261125-hybrid-rail-2';
 
 // State is retained by the application; each render reads current settings and coverage.
 export function renderLegendUI({document, $, textNode, settings, inView, legendState,

@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261125-hybrid-rail-1';
+import {SEARCH_API} from './map-model.mjs?v=20261125-hybrid-rail-2';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

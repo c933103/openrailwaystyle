@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-hybrid-rail-1';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-hybrid-rail-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -125,7 +125,9 @@ export function installHybridRailCasings(style) {
       paint:{
         'line-color':'#fffdf2',
         'line-opacity':['case',['==',['get','tunnel'],true],0.66,0.92],
-        'line-width':width.map((v,i)=>i>=4&&i%2===0?['+',mode==='control'?['max',2.4,v]:v,1.65]:v),
+        // Leave 1.5 CSS px per side before antialiasing. A subpixel
+        // edge can blend into dark imagery on a 1x device.
+        'line-width':width.map((v,i)=>i>=4&&i%2===0?['+',mode==='control'?['max',2.4,v]:v,3]:v),
       },
     });
   }

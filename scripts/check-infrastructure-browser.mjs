@@ -111,8 +111,8 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   await page.evaluate(()=>window.reviewMap.jumpTo({center:[121.5654,25.033],zoom:11.2}));
   if(await page.locator('#settings-close').isVisible())await page.locator('#settings-close').click();
   if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
-  const switchBackground= async mode=>{
-   await page.locator(`[data-background="${mode}"]`).click();
+  const sampleBackground=async mode=>{
+   if(mode!=='noEdge')await page.locator(`[data-background="${mode}"]`).click();
    return page.evaluate(async ([point,mode])=>{
     const map=window.reviewMap, canvas=map.getCanvas();
     const lines='infrastructure-tracks', casing='hybrid-infrastructure-tracks-casing';
@@ -134,26 +134,35 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
       photo:matches(line,(r,g,b)=>Math.abs(r-85)<3&&Math.abs(g-85)<3&&Math.abs(b-85)<3),
      };
     };
-    let result;
-    for(let i=0;i<70;i++){
-     result=collect();
-     if(mode==='hybrid'?result.rail&&result.casing&&result.blue&&result.pale&&result.photo:
-        mode==='satellite'?!result.rail&&!result.casing&&!result.blue&&result.photo:
-        result.rail&&!result.casing&&result.blue)return result;
-     await new Promise(resolve=>setTimeout(resolve,200));
-    }
-    return result;
+    // A same-scene negative control: remove only the edge, not the
+    // photograph or the coloured track. Restore it before switching views.
+    if(mode==='noEdge')map.setLayoutProperty(casing,'visibility','none');
+    try {
+     let result;
+     for(let i=0;i<70;i++){
+      result=collect();
+      if(mode==='hybrid'?result.rail&&result.casing&&result.blue&&result.pale&&result.photo:
+         mode==='noEdge'?result.rail&&!result.casing&&result.blue&&!result.pale&&result.photo:
+         mode==='satellite'?!result.rail&&!result.casing&&!result.blue&&result.photo:
+         result.rail&&!result.casing&&result.blue)return result;
+      await new Promise(resolve=>setTimeout(resolve,200));
+     }
+     const px=ctx.getImageData(x,yc-dy,1,dy*2+1).data;
+     return {...result,profile:Array.from({length:dy*2+1},(_,i)=>Array.from(px.slice(i*4,i*4+3)))};
+    } finally {if(mode==='noEdge')map.setLayoutProperty(casing,'visibility','visible');}
    },[railPoint,mode]);
   };
-  const map=await switchBackground('map');
+  const map=await sampleBackground('map');
   assert.ok(map.rail&&map.blue&&!map.casing,JSON.stringify({map}));
-  const satellite=await switchBackground('satellite');
+  const satellite=await sampleBackground('satellite');
   assert.ok(satellite.photo&&!satellite.rail&&!satellite.casing&&!satellite.blue,JSON.stringify({satellite}));
-  const hybrid=await switchBackground('hybrid');
+  const hybrid=await sampleBackground('hybrid');
   assert.ok(hybrid.rail&&hybrid.casing&&hybrid.blue&&hybrid.pale&&hybrid.photo,JSON.stringify({hybrid}));
-  const carto=await switchBackground('carto');
+  const noEdge=await sampleBackground('noEdge');
+  assert.ok(noEdge.rail&&noEdge.blue&&noEdge.photo&&!noEdge.casing&&!noEdge.pale,JSON.stringify({noEdge}));
+  const carto=await sampleBackground('carto');
   assert.ok(carto.rail&&carto.blue&&!carto.casing,JSON.stringify({carto}));
-  console.log('Hybrid rail pixel check at z11.2',JSON.stringify({map,satellite,hybrid,carto}));
+  console.log('Hybrid rail pixel check at z11.2',JSON.stringify({map,satellite,hybrid,noEdge,carto}));
  }
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} real vector rendering, typed platform references, full lengths, mapped point links, labels and view switching`);await page.close();
 }}finally{await browser.close();}
