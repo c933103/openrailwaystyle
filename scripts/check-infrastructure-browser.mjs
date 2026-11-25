@@ -20,7 +20,9 @@ const datasets={
  ],
  railway_signals:[feature({id:9004,railway:'signal',ref:'S12',caption:'Main signal',category0:'main',deactivated0:false,azimuth:90},'Point',[139.76650,35.68175]),feature({id:9999,railway:'buffer_stop',ref:'Buffer'},'Point',[139.766,35.68175])],
  standard_station_entrances:[feature({id:9005,label:'East entrance'},'Point',[139.76650,35.6812])],
- railway_line_high:[feature({id:9100,railway:'rail',usage:'main',service:'',feature:'rail'},'LineString',edge.feature.geometry.coordinates.map(([x,y])=>[x+.00005,y]))],
+ railway_line_high:[feature({id:9100,railway:'rail',usage:'main',service:'',feature:'rail'},'LineString',edge.feature.geometry.coordinates.map(([x,y])=>[x+.00005,y])),
+  feature({id:9101,railway:'rail',usage:'main',service:'',feature:'rail'},'LineString',[[121.4354,25.033],[121.6954,25.033]]),
+ ],
 };
 const indexes=Object.fromEntries(Object.entries(datasets).map(([key,features])=>[key,geojsonvt({type:'FeatureCollection',features},{maxZoom:22,indexMaxZoom:17,extent:4096})]));
 const refs={'relation-9001':['1','2'],'way-9002':['3'],'node-9003':['9']};
@@ -30,7 +32,7 @@ for(const [offset,value] of [[8,127],[16,1],[24,128],[32,2],[40,130],[56,130]])a
 archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
 for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
 archive.write('{}',128);
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
+const gray=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMIDQ39DwAEAQH/NTimpQAAAABJRU5ErkJggg==','base64');
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -61,7 +63,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   assert.ok(response,'Recognized local fixture tile URL');
   return route.fulfill(response);
  });
- await page.route('https://tiles.maps.eox.at/**',route=>route.fulfill({body:png,contentType:'image/png'}));
+ await page.route('https://tiles.maps.eox.at/**',route=>route.fulfill({body:gray,contentType:'image/png'}));
  await page.route(/api\.openstreetmap\.org\/api\/0\.6\/(way|relation)|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});
  await page.goto(base+'?mode=infrastructure&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#17/35.6815/139.7664',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:60000});
@@ -104,5 +106,54 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.evaluate(()=>window.reviewMap.jumpTo({zoom:18}));
  await waitUntil(page,async()=>{const data=await window.reviewMap.getSource('platformLengths').getData();return data.features.some(f=>f.properties.ref==='1')&&data.features.every(f=>!f.properties.platform_length);});
  assert.equal(requests.filter(path=>path.includes('standard_railway_platform_edges')).length,lengthRequests,'the complete length is not fetched again');
+ if(kind==='desktop'){
+  const railPoint=[121.594,25.033];
+  await page.evaluate(()=>window.reviewMap.jumpTo({center:[121.5654,25.033],zoom:11.2}));
+  if(await page.locator('#settings-close').isVisible())await page.locator('#settings-close').click();
+  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
+  const switchBackground= async mode=>{
+   await page.locator(`[data-background="${mode}"]`).click();
+   return page.evaluate(async ([point,mode])=>{
+    const map=window.reviewMap, canvas=map.getCanvas();
+    const lines='infrastructure-tracks', casing='hybrid-infrastructure-tracks-casing';
+    const p=map.project(point);
+    const probe=document.createElement('canvas');probe.width=canvas.width;probe.height=canvas.height;
+    const ctx=probe.getContext('2d',{willReadFrequently:true});
+    const dpr=canvas.width/canvas.clientWidth;
+    const x=Math.round(p.x*dpr), yc=Math.round(p.y*dpr), dy=Math.ceil(9*dpr);
+    const matches=(row,colour)=>row.reduce((n,v,i)=>i%4===0&&colour(v,row[i+1],row[i+2])?n+1:n,0);
+    const collect=()=>{
+     ctx.clearRect(0,0,probe.width,probe.height);
+     ctx.drawImage(canvas,0,0);
+     const line=ctx.getImageData(x,yc-dy,1,dy*2+1).data;
+     const rendered=id=>map.queryRenderedFeatures({layers:[id]}).length;
+     return {
+      rail:rendered(lines),casing:rendered(casing),
+      blue:matches(line,(r,g,b)=>r<60&&g>65&&g<115&&b>145),
+      pale:matches(line,(r,g,b)=>r>175&&g>175&&b>160),
+      photo:matches(line,(r,g,b)=>Math.abs(r-85)<3&&Math.abs(g-85)<3&&Math.abs(b-85)<3),
+     };
+    };
+    let result;
+    for(let i=0;i<70;i++){
+     result=collect();
+     if(mode==='hybrid'?result.rail&&result.casing&&result.blue&&result.pale&&result.photo:
+        mode==='satellite'?!result.rail&&!result.casing&&!result.blue&&result.photo:
+        result.rail&&!result.casing&&result.blue)return result;
+     await new Promise(resolve=>setTimeout(resolve,200));
+    }
+    return result;
+   },[railPoint,mode]);
+  };
+  const map=await switchBackground('map');
+  assert.ok(map.rail&&map.blue&&!map.casing,JSON.stringify({map}));
+  const satellite=await switchBackground('satellite');
+  assert.ok(satellite.photo&&!satellite.rail&&!satellite.casing&&!satellite.blue,JSON.stringify({satellite}));
+  const hybrid=await switchBackground('hybrid');
+  assert.ok(hybrid.rail&&hybrid.casing&&hybrid.blue&&hybrid.pale&&hybrid.photo,JSON.stringify({hybrid}));
+  const carto=await switchBackground('carto');
+  assert.ok(carto.rail&&carto.blue&&!carto.casing,JSON.stringify({carto}));
+  console.log('Hybrid rail pixel check at z11.2',JSON.stringify({map,satellite,hybrid,carto}));
+ }
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} real vector rendering, typed platform references, full lengths, mapped point links, labels and view switching`);await page.close();
 }}finally{await browser.close();}

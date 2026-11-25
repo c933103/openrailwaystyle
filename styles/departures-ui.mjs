@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261125-departures-globe-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261125-hybrid-rail-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
