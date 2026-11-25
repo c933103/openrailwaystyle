@@ -94,3 +94,25 @@ test('draws only accepted context markers, including unnamed facilities, and exp
     [transport.id,1,2],[transport.id,3,1],
   ]);
 });
+
+test('vertical Mongolian point layout keeps words joined, wraps right, and reserves only painted spans',()=>{
+  const ctx=context(), won='ᠮᠣᠩᠭᠣᠯ', to='ᠪᠢᠴᠢᠭ',
+    base={color:'black',halo:'white',haloWidth:0,size:10,anchor:'top-left',opacity:1,padding:0};
+  const primary={...base,label:'Монгол '+won+' '+to,px:60,py:40,maxWidth:4,feature:{id:1,properties:{}}};
+  const labels=[{id:'station-mixed',candidates:[primary]}, {id:'others',candidates:[
+    {...base,label:'overlap',px:100,py:60}, {...base,label:'clear',px:60,py:83},
+  ]}];
+  const hits=[];
+  const out=drawFlatTextLabels(ctx,camera,labels,{getMongolianFont:()=> '10px "Atlas Mongolian"',
+    onSymbol:(layer,feature,rects)=>hits.push({layer,rects})});
+  assert.equal(out.get('station-mixed'),1);
+  assert.equal(out.get('others'),1);
+  assert.equal(hits[0].rects.length,3);
+  assert.ok(hits[0].rects[1].left < hits[0].rects[2].left);
+  assert.ok(hits[0].rects[1].bottom > hits[0].rects[0].bottom);
+  assert.equal(ctx.draws.filter(a=>a[0]==='rotate'&&a[1]===Math.PI/2).length,2);
+  assert.deepEqual(ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]),['clear','Монгол ',won,to]);
+  const pending=context();
+  assert.equal(drawFlatTextLabels(pending,camera,[labels[0]]).get('station-mixed'),0);
+  assert.equal(pending.draws.length,0,'No misleading horizontal fallback while the packaged font is pending');
+});

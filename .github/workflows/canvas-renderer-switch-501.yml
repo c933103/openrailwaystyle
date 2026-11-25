@@ -6,6 +6,8 @@ on:
       - '.github/workflows/canvas-renderer-switch-501.yml'
       - 'scripts/check-flat-entry-firefox.mjs'
       - 'scripts/check-flat-platform-firefox.mjs'
+      - 'scripts/check-flat-mongolian-firefox.mjs'
+      - 'tests/fixtures/mongolian-font/**'
       - 'styles/platform-length.mjs'
       - 'tests/ci-node-runtime-security.test.mjs'
       - 'tests/helpers/profile-ui-harness.mjs'
@@ -62,3 +64,5 @@ jobs:
         run: timeout 150s node scripts/check-flat-platform-firefox.mjs --platform-area
       - name: Isolate selected edge tile fallback from area feature API failures
         run: timeout 150s node scripts/check-flat-platform-firefox.mjs --platform-area-and-edge
+      - name: Verify joined vertical Mongolian in Canvas point labels
+        run: timeout 150s node scripts/check-flat-mongolian-firefox.mjs

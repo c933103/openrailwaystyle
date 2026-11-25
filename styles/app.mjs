@@ -10,7 +10,7 @@ import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, i
 import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-canvas-terrain-sync-1';
 import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-canvas-terrain-sync-1';
 import {createWorldFonts} from './world-font.mjs?v=20261125-canvas-terrain-sync-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-canvas-terrain-sync-1';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-canvas-terrain-sync-1';
 
 import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-canvas-terrain-sync-1';
 import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-canvas-terrain-sync-1';
@@ -283,7 +283,8 @@ const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import
 // arrives after its glyphs were drawn without it drops the cached
 // glyphs and redraws the labels, like a rare Han slice.
 let worldGlyphFallback;
-const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshCjkFont();}});
+let refreshFlatLabels;
+const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshFlatLabels?.();refreshCjkFont();}});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
 // Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
@@ -1941,9 +1942,21 @@ async function initialize() {
     creditsBox.append(creditSummary,flatCredits);
     const buildCredit=codeAttribution();
     let creditSignature;
+    const requestedMongolian=new Set();
+    const getMongolianFont=(text,size)=>{
+      const blocks=mongolianBlocks(text);
+      const keys=[...blocks].map(block=>({family:'mongolian',weight:400,block}));
+      const missing=keys.filter(key=>!worldFonts.isLoaded(key));
+      const request=missing.filter(key=>!requestedMongolian.has(key.block));
+      if(request.length){
+        for(const key of request)requestedMongolian.add(key.block);
+        void worldFonts.ensure(new Set(request)).then(()=>refreshFlatLabels?.());
+      }
+      return missing.length?null:`${size}px "Atlas Mongolian"`;
+    };
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
-      curatedStationData:majorStationData,
+      curatedStationData:majorStationData,getMongolianFont,
       pointSources:{electricSignals:13},
       shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],
       onPlatformFrame:()=>platformLengths?.update(),
@@ -2017,6 +2030,7 @@ async function initialize() {
           ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
       },
     });
+    refreshFlatLabels=flat.invalidateLabels;
     platformLengths=createPlatformLengths({
       ...flat.platformProjection,getZoom:flat.getZoom,getSource:flat.getSource,
       getLayer:flat.getPlatformLayer,

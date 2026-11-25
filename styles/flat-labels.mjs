@@ -1,3 +1,5 @@
+import {flatMongolianLayout} from './flat-mongolian-label.mjs';
+import {hasMongolian} from './mongolian-text.mjs';
 import {featureFilter,latest,normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 
 const contextPoint = layer => layer.layout?.['symbol-placement'] == null &&
@@ -10,7 +12,7 @@ export function flatTextLabel(layer) {
     layer.layout?.['text-field']!=null && (layer.layout?.['icon-image']==null || contextPoint(layer));
 }
 const properties={
-  text:['layout','text-field'], size:['layout','text-size'], font:['layout','text-font'],
+  text:['layout','text-field'], maxWidth:['layout','text-max-width'], size:['layout','text-size'], font:['layout','text-font'],
   sort:['layout','symbol-sort-key'], anchor:['layout','text-anchor'], variable:['layout','text-variable-anchor'],
   xOffset:['layout','text-offset'], radial:['layout','text-radial-offset'], padding:['layout','text-padding'],
   transform:['layout','text-transform'], allow:['layout','text-allow-overlap'], ignore:['layout','text-ignore-placement'],
@@ -79,7 +81,7 @@ export function flatLabelCandidates(compiled,features,tile,camera,global,feature
       const px=a*u+c*v+tx,py=b*u+d*v+ty;
       if(px< -64||px>camera.width+64||py< -64||py>camera.height+64)continue;
       if(label===undefined)label=compiled.resolve(global,feature,canonical,featureState(id)??{});
-      if(label)candidates.push({...label,px,py,...(label.iconName?{feature}: {})});
+      if(label)candidates.push({...label,px,py,feature});
     }
   }
   return candidates;
@@ -116,7 +118,7 @@ function flatVisibleSegment(paths,project,extent,camera){
   return best;
 }
 
-export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{}}={}) {
+export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{},getMongolianFont=()=>null}={}) {
   const cell=64,buckets=new Map(), counts=new Map(),drawn=[];
   const visit=(rect,fn)=>{
     const minX=Math.max(0,Math.floor(rect.left/cell)), maxX=Math.min(Math.floor(camera.width/cell),Math.floor(rect.right/cell));
@@ -151,15 +153,21 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           iconBlock={left:iconRect.left-left,right:iconRect.right+right,top:iconRect.top-top,bottom:iconRect.bottom+bottom};
           if(iconRect.right<=0||iconRect.left>=camera.width||iconRect.bottom<=0||iconRect.top>=camera.height||collides(iconBlock))continue;
         }
-        const pushIcon=(textRect)=>{
+        const pushIcon=(textRects=[])=>{
           if(!icon)return;
           add(iconBlock);
           drawn.push({label,icon,iconRect,iconWidth,iconHeight});
-          onSymbol(id,label,[iconRect,...(textRect?[textRect]:[])]);
+          onSymbol(id,label,[iconRect,...textRects]);
         };
         context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px sans-serif';
-        const lines=text.split(/\n/).filter(Boolean), widths=lines.map(line=>context.measureText(line).width);
-        const width=Math.max(...widths), lineHeight=size*1.2,height=lines.length*lineHeight;
+        const pointMongolian=label.angle===undefined&&hasMongolian(text);
+        const layout=pointMongolian?flatMongolianLayout(context,text,size,context.font,
+          getMongolianFont(text,size),label.maxWidth):null;
+        // Don't flash a horizontally rendered Mongolian label while its
+        // font loads. Icons and non-Mongolian labels need not wait.
+        if(pointMongolian&&!layout){if(icon){pushIcon();count++;}continue;}
+        const lines=layout?[]:text.split(/\n/).filter(Boolean), widths=lines.map(line=>context.measureText(line).width);
+        const width=layout?.width??Math.max(...widths), lineHeight=size*1.2,height=layout?.height??lines.length*lineHeight;
         if(!Number.isFinite(width)||!width){
           if(icon){pushIcon();count++;}
           continue;
@@ -182,7 +190,7 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           continue;
         }
         const anchors=label.variable?.length?label.variable:[label.anchor];
-        let textRect;
+        let textRects;
         for(const anchor of anchors){
           const sideX=anchor?.includes('left')?1:anchor?.includes('right')?-1:0;
           const sideY=anchor?.includes('top')?1:anchor?.includes('bottom')?-1:0;
@@ -190,21 +198,25 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           const x=px+ox*size+(sideX-1)*width/2+sideX*radial;
           const y=py+oy*size+(sideY-1)*height/2+sideY*radial;
           if(x+width<=0||x>=camera.width||y+height<=0||y>=camera.height) continue;
-          const rect={left:x-margin,right:x+width+margin,top:y-margin,bottom:y+height+margin};
-          if(!label.allow&&collides(rect))continue;
-          if(!label.ignore)add(rect);
-          drawn.push({label,lines,widths,width,x,y,lineHeight,font:context.font});
-          textRect={left:x,right:x+width,top:y,bottom:y+height};
+          const hits=layout?layout.pieces.filter(piece=>piece.text.trim()).map(({rect})=>({
+            left:x+rect.left,right:x+rect.right,top:y+rect.top,bottom:y+rect.bottom,
+          })):[{left:x,right:x+width,top:y,bottom:y+height}];
+          const rects=hits.map(rect=>({left:rect.left-margin,right:rect.right+margin,top:rect.top-margin,bottom:rect.bottom+margin}));
+          if(!label.allow&&rects.some(collides))continue;
+          if(!label.ignore)for(const rect of rects)add(rect);
+          drawn.push({label,lines,widths,width,x,y,lineHeight,font:context.font,layout});
+          textRects=hits;
+          if(layout&&!icon&&label.feature)onSymbol(id,label,hits);
           break;
         }
-        pushIcon(textRect);
-        if(icon||textRect)count++;
+        pushIcon(textRects);
+        if(icon||textRects)count++;
       }
       counts.set(id,count);
     }
     // Placement priority is independent of paint order: accepted labels
     // from a higher-priority group remain on top if overlap is allowed.
-    for(const {label,lines,widths,width,x,y,lineHeight,font,icon,iconRect,iconWidth,iconHeight} of drawn.reverse()){
+    for(const {label,lines,widths,width,x,y,lineHeight,font,layout,icon,iconRect,iconWidth,iconHeight} of drawn.reverse()){
       if(icon){
         context.globalAlpha=alpha*label.iconOpacity;
         context.drawImage(icon,iconRect.left,iconRect.top,iconWidth,iconHeight);
@@ -215,14 +227,22 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
       context.font=font;
       context.globalAlpha=alpha*label.opacity;
       context.fillStyle=label.color.toString();
-      lines.forEach((line,i)=>{
-        const left=x+(width-widths[i])/2,midY=y+(i+0.5)*lineHeight;
+      const textAt=(line,left,midY)=>{
+
         if(label.haloWidth>0){
           context.lineJoin='round';context.lineWidth=2*label.haloWidth;
           context.strokeStyle=label.halo.toString();context.strokeText(line,left,midY);
         }
         context.fillText(line,left,midY);
-      });
+      };
+      if(layout)for(const piece of layout.pieces){
+        context.font=piece.font;
+        if(piece.rotated){
+          context.save();context.translate(x+piece.x,y+piece.y);context.rotate(Math.PI/2);
+          textAt(piece.text,0,0);context.restore();
+        }else textAt(piece.text,x+piece.x,y+piece.y);
+      }
+      else lines.forEach((line,i)=>textAt(line,x+(width-widths[i])/2,y+(i+.5)*lineHeight));
       if(rotated)context.restore();
     }
   } finally {context.restore();}
