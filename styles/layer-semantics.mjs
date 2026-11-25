@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261125-globe-selection-1';
+import { MODES } from './map-model.mjs?v=20261125-departures-globe-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

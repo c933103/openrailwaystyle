@@ -67,6 +67,11 @@ label-based matching rules. Contradictory identity fields therefore deny this
 shortcut, not every possible legacy label match. This does not establish full
 cross-source train identity or resolve the broader identity audit.
 
+If one matching timetable loads before another, the station panel shows its
+departures as a provisional list. The app still reconciles both timetables before
+offering full train schedules. An empty first response does not establish that
+there are no departures.
+
 An invalid departure-board response counts as a loading failure, not an empty
 timetable. This includes malformed rows or wrong-typed fields consumed by the
 board. Each selected board is parsed independently; one invalid row rejects that

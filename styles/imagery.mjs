@@ -46,7 +46,7 @@ function interior(point,polygons) {
 let regionData;
 export async function regionalImagery(z,x,y) {
   if(z<15 || z>IMAGERY_MAX_ZOOM)return null;
-  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261125-globe-selection-1'));
+  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261125-departures-globe-1'));
   const w=x/2**z*360-180,e=(x+1)/2**z*360-180,n=tileLatitude(z,y),s=tileLatitude(z,y+1);
   for(const provider of REGIONAL) {
     const [west,south,east,north]=provider.bounds;
