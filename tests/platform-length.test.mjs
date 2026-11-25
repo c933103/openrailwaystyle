@@ -30,6 +30,23 @@ test('platform areas and lines are measured from provider tiles across tile edge
  assert.equal(new Set(requests).size,2,'tiles are cached');
  const text=createExpression(platformLengthLabel()).value.evaluate({zoom:19},{type:1,properties:{ref:'1 / 2',platform_length:444.78,length_estimated:true}});assert.equal(text,'1 / 2 · ≈445 m');
 });
+test('boarding-edge estimation requires both matching pieces at a tile seam',async()=>{
+ const line=(id,west,east)=>({type:'Feature',properties:{id},geometry:{type:'LineString',coordinates:[[west,.002],[east,.002]]}});
+ const {geometry,requests}=providerTiles([line(301,.003,.005),line(302,.0095,.0135),line(303,.010984,.010986)]);
+ assert.ok(Math.abs(await geometry.measureCompleteEdge(301,[.004,.002])-222.4)<.6);
+ assert.ok(Math.abs(await geometry.measureCompleteEdge(302,[.010,.002])-444.78)<.6);
+ assert.equal(await geometry.measureCompleteEdge(303,[.010984,.002]),null);
+ assert.equal(await geometry.measureCompleteEdge(304,[.004,.002]),null);
+ assert.equal(requests.length,2,'only the selected tile and its verified neighbour');
+ const isolated=createPlatformTileGeometry({tileURL:()=>'https://tiles.test/{z}/{x}/{y}',decode:()=>[{id:402,type:2,extent:4096,geometry:[[[2000,100],[4170,100]]]}],
+  fetcher:async url=>url.endsWith('/16385/16383')?{ok:false,status:404}:{ok:true,arrayBuffer:async()=>new ArrayBuffer(0)}});
+ assert.equal(await isolated.measureCompleteEdge(402,[.010,.002]),null,'missing seam partner may not produce a shortened length');
+ const mismatched=createPlatformTileGeometry({tileURL:()=>'https://tiles.test/{z}/{x}/{y}',
+  fetcher:async url=>({ok:true,arrayBuffer:async()=>url}),
+  decode:url=>[{id:402,type:2,extent:4096,geometry:[url.endsWith('/16385/16383')?[[-64,400],[1000,400]]:[[2000,100],[4160,100]]]}]});
+ assert.equal(await mismatched.measureCompleteEdge(402,[.010,.002]),null,'the same id alone does not prove that the pieces connect');
+});
+
 test('a platform needing more tiles than the limit gets no length rather than a short one',async()=>{
  const long={type:'Feature',properties:{id:'way-25'},geometry:{type:'LineString',coordinates:[[.0005,.001],[.0005+.011*(PLATFORM_TILE_LIMIT+2),.001]]}};
  const {geometry,requests}=providerTiles([long]);
@@ -55,7 +72,7 @@ test('visible platform areas get lengths from tiles at zoom 19 and keep their AP
   p.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.platform_length,undefined);assert.equal(tiles.requests.length,0,'no tiles read below zoom 19');
   zoom=19;p.update();await new Promise(r=>setTimeout(r,30));
   assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6);assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.length_estimated,true);
-  assert.deepEqual(requests,['https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/way-23'],'only the provider reference lookup; nothing goes to OSM');
+  assert.deepEqual(requests,['https://openrailwaymap.app/api/feature/openrailwaymap_platforms/standard_railway_platforms/way-23'],'only the provider reference lookup; nothing goes to OSM');
   assert.deepEqual(osmObject(data.features[0]),{type:'way',id:'23'});
   const read=tiles.requests.length;zoom=18;p.update();assert.equal(data.features[0].properties.platform_length,undefined);zoom=22;p.update();await new Promise(r=>setTimeout(r,20));
   assert.equal(tiles.requests.length,read,'measured once');assert.ok(data.features[0].properties.platform_length>444);
@@ -73,6 +90,30 @@ test('platform API uses full length, deduplicates edge IDs, caches values and st
   p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);features=[];p.update();assert.equal(data.features.length,0);
  }finally{p.destroy();}
 });
+test('an open edge is requested first after zooming in, without dropping or duplicating neighbours',async()=>{
+ let zoom=18;
+ const requests=[],started=new Map(),replies=new Map();
+ const waitFor=id=>{
+  if(requests.includes(id))return Promise.resolve();
+  return new Promise(resolve=>started.set(id,resolve));
+ };
+ const map={getZoom:()=>zoom,queryRenderedFeatures:()=>[edge(2),edge(1),edge(3)],getSource:()=>null};
+ const p=createPlatformLengths(map,{delay:0,fetcher:url=>{
+  assert.match(url,/^https:\/\/openrailwaymap\.app\/api\/feature\/openrailwaymap_platforms\/standard_railway_platform_edges\/\d+$/);
+  const id=url.split('/').at(-1);requests.push(id);started.get(id)?.();
+  return new Promise(resolve=>replies.set(id,()=>resolve({ok:true,json:async()=>({properties:{length:350}})})));
+ }});
+ try{
+  p.update();p.prioritizeEdge(edge(1));assert.deepEqual(requests,[]);
+  zoom=19;p.update();
+  await waitFor('1');assert.deepEqual(requests,['1']);
+  p.prioritizeEdge(null);replies.get('1')();
+  await waitFor('2');assert.deepEqual(requests,['1','2']);
+  p.update();replies.get('2')();
+  await waitFor('3');assert.deepEqual(requests,['1','2','3']);
+ }finally{p.destroy();for(const reply of replies.values())reply();}
+});
+
 test('platform requests leave the queue when panned away and respect a rate-limit response',async()=>{
  let features=[edge(),edge(2)],requests=0;const map={getZoom:()=>19,queryRenderedFeatures:()=>features,getSource:()=>({setData(){}})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:false,status:429};}});

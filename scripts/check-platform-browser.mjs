@@ -44,6 +44,7 @@ async function savePlatformThresholdFailure(page,evidence){
  await writeFile(`browser-review/platform-${evidence.kind}-threshold-failure.json`,JSON.stringify(evidence,null,2)+'\n').catch(error=>console.error('Cannot save platform diagnostics:',error.message));
  await page.screenshot({path:`browser-review/platform-${evidence.kind}-threshold-failure.png`,timeout:5000}).catch(error=>console.error('Cannot capture platform failure:',error.message));
 }
+const tileFallback=process.env.ATLAS_PLATFORM_TILE_FALLBACK==='1';
 const fixture=JSON.parse(await readFile(new URL('../tests/fixtures/platform-edge.json',import.meta.url)));
 const edges=geojsonvt({type:'FeatureCollection',features:[fixture.feature]},{maxZoom:22,indexMaxZoom:17,extent:4096});
 // An empty, valid basemap keeps this focused check independent of planet
@@ -55,7 +56,7 @@ archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
 for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
 archive.write('{}',128);
 const glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
-const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // The app gives up on a provider request after 5 s and tries again 30 s
@@ -79,7 +80,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   const direct=ormVectorFixture(path,{'standard_railway_platform_edges':edges});
   if(direct)return route.fulfill(direct);
   if(path.startsWith('/api/feature/')){
-   if(path.includes('standard_railway_platform_edges/')&&path.split('/').at(-1)==='349685435'){requests++;await route.fulfill({json:fixture.response});}
+   if(path.includes('standard_railway_platform_edges/')&&path.split('/').at(-1)==='349685435'){requests++;if(tileFallback)await route.abort('failed');else await route.fulfill({json:fixture.response});}
    else await route.fulfill({status:404,body:''});
   }else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-platform-tiles${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
  });
@@ -92,8 +93,9 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});
  await page.evaluate(async()=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;});
  await settle(()=>window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']}).some(f=>f.properties.ref==='1'));
- if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();const first=await page.evaluate(()=>{const map=window.reviewMap,label=map.queryRenderedFeatures({layers:['platform-lengths']}).find(f=>f.properties.ref==='1'),p=map.project(label.geometry.coordinates);return {x:p.x,y:p.y};});await page.locator('#map canvas').click({position:first});await page.waitForSelector('#details:not([hidden])');assert.ok(!(await page.locator('#detail-content').innerText()).includes('Boarding edge length'));assert.equal(requests,0,'references appear before the length lookup threshold');await page.evaluate(()=>window.reviewMap.jumpTo({zoom:19}));await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('247 m'),undefined,{timeout:45000});await page.locator('#details-close').click();
- const ready=()=>settle(()=>{const map=window.reviewMap;return map.queryRenderedFeatures({layers:['platform-lengths']}).some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001);},{timeout:45000});await ready();const fetched=requests;assert.ok(fetched===1||fetched===2,`one length request, or one and its retry: ${fetched}`);
+ if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();const first=await page.evaluate(()=>{const map=window.reviewMap,label=map.queryRenderedFeatures({layers:['platform-lengths']}).find(f=>f.properties.ref==='1'),p=map.project(label.geometry.coordinates);return {x:p.x,y:p.y};});await page.locator('#map canvas').click({position:first});await page.waitForSelector('#details:not([hidden])');assert.ok(!(await page.locator('#detail-content').innerText()).includes('Boarding edge length'));assert.equal(requests,0,'references appear before the length lookup threshold');await page.evaluate(()=>window.reviewMap.jumpTo({zoom:19}));await page.waitForFunction(expected=>document.querySelector('#detail-content').textContent.includes(expected),tileFallback?'≈247 m':'247 m',{timeout:45000});await page.locator('#details-close').click();
+ const expectedDetails=tileFallback?'some(f=>f.properties.length_estimated&&Math.round(f.properties.platform_length)===247)':'some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001)';
+ const ready=()=>settle(`()=>window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']}).${expectedDetails}`,{timeout:45000});await ready();const fetched=requests;assert.ok(fetched===1||fetched===2,`one length request, or one and its retry: ${fetched}`);
  if(await page.locator('#controls').isHidden()){const open=page.locator('#controls-open');if(await open.count())await open.click();else await page.locator('#collapse').click();}
  assert.equal(await page.locator('#units').evaluate(e=>e.closest('#main-view')!==null&&e.parentElement.previousElementSibling?.classList.contains('language-picker')),true);
  await page.selectOption('#units','imperial');await page.waitForFunction(()=>{const map=window.reviewMap;return JSON.stringify(map.getLayoutProperty('platform-lengths','text-field')).includes(' ft');});await ready();
@@ -114,6 +116,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   throw error;
  }
  assert.equal(requests,fetched,'below zoom 19 the length is not fetched again');console.log(`PASS: ${kind} platform reference, length, unit conversion/cache and threshold`);
+ if(tileFallback){await page.close();continue;}
  await page.locator('[data-mode="axle"]').click();
  await page.evaluate(()=>{const map=window.reviewMap;map.jumpTo({center:[10,50],zoom:5});for(const l of map.getStyle().layers)if(l.id.startsWith('axle-')&&l.id!=='axle-overview')map.setLayoutProperty(l.id,'visibility','none');const layer={...map.getStyle().layers.find(l=>l.id==='axle-overview')};map.removeLayer(layer.id);delete layer['source-layer'];layer.source='reviewAxle';map.addSource('reviewAxle',{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{axle_load:'22500 kg',axle_tonnes:22.5},geometry:{type:'LineString',coordinates:[[9,50],[11,50]]}},{type:'Feature',properties:{axle_load:'50000 lb',axle_tonnes:22.6796185},geometry:{type:'LineString',coordinates:[[9,50.5],[11,50.5]]}}]}});map.addLayer(layer);map.fire('moveend');});
  await settle(()=>window.reviewMap.queryRenderedFeatures({layers:['axle-overview']}).filter(f=>f.source==='reviewAxle').length===2);await page.evaluate(()=>window.reviewMap.fire('moveend'));

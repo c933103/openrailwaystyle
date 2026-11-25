@@ -1,4 +1,4 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261125-terrain-cancel-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261125-boarding-edge-1';
 export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261125-terrain-cancel-1';
 
 export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261125-terrain-cancel-1';
