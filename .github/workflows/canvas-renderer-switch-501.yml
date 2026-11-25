@@ -54,3 +54,5 @@ jobs:
       - run: npx playwright install --with-deps firefox
       - name: Verify Canvas platform edge details and labels
         run: timeout 150s node scripts/check-flat-platform-firefox.mjs
+      - name: Verify a complete platform edge when the browser cannot read the feature API
+        run: timeout 150s node scripts/check-flat-platform-firefox.mjs --tile-fallback

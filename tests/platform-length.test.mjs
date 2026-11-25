@@ -30,6 +30,23 @@ test('platform areas and lines are measured from provider tiles across tile edge
  assert.equal(new Set(requests).size,2,'tiles are cached');
  const text=createExpression(platformLengthLabel()).value.evaluate({zoom:19},{type:1,properties:{ref:'1 / 2',platform_length:444.78,length_estimated:true}});assert.equal(text,'1 / 2 · ≈445 m');
 });
+test('boarding-edge estimation requires both matching pieces at a tile seam',async()=>{
+ const line=(id,west,east)=>({type:'Feature',properties:{id},geometry:{type:'LineString',coordinates:[[west,.002],[east,.002]]}});
+ const {geometry,requests}=providerTiles([line(301,.003,.005),line(302,.0095,.0135),line(303,.010984,.010986)]);
+ assert.ok(Math.abs(await geometry.measureCompleteEdge(301,[.004,.002])-222.4)<.6);
+ assert.ok(Math.abs(await geometry.measureCompleteEdge(302,[.010,.002])-444.78)<.6);
+ assert.equal(await geometry.measureCompleteEdge(303,[.010984,.002]),null);
+ assert.equal(await geometry.measureCompleteEdge(304,[.004,.002]),null);
+ assert.equal(requests.length,2,'only the selected tile and its verified neighbour');
+ const isolated=createPlatformTileGeometry({tileURL:()=>'https://tiles.test/{z}/{x}/{y}',decode:()=>[{id:402,type:2,extent:4096,geometry:[[[2000,100],[4170,100]]]}],
+  fetcher:async url=>url.endsWith('/16385/16383')?{ok:false,status:404}:{ok:true,arrayBuffer:async()=>new ArrayBuffer(0)}});
+ assert.equal(await isolated.measureCompleteEdge(402,[.010,.002]),null,'missing seam partner may not produce a shortened length');
+ const mismatched=createPlatformTileGeometry({tileURL:()=>'https://tiles.test/{z}/{x}/{y}',
+  fetcher:async url=>({ok:true,arrayBuffer:async()=>url}),
+  decode:url=>[{id:402,type:2,extent:4096,geometry:[url.endsWith('/16385/16383')?[[-64,400],[1000,400]]:[[2000,100],[4160,100]]]}]});
+ assert.equal(await mismatched.measureCompleteEdge(402,[.010,.002]),null,'the same id alone does not prove that the pieces connect');
+});
+
 test('a platform needing more tiles than the limit gets no length rather than a short one',async()=>{
  const long={type:'Feature',properties:{id:'way-25'},geometry:{type:'LineString',coordinates:[[.0005,.001],[.0005+.011*(PLATFORM_TILE_LIMIT+2),.001]]}};
  const {geometry,requests}=providerTiles([long]);

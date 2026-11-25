@@ -12,19 +12,22 @@ import {flatCamera} from '../styles/flat-camera.mjs';
 
 const preview=createPreviewServer({root:'styles'});
 const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const tileFallback=process.argv.includes('--tile-fallback');
 const fixture=JSON.parse(await readFile(new URL('../tests/fixtures/platform-edge.json',import.meta.url)));
 const edges=geojsonvt({type:'FeatureCollection',features:[fixture.feature]},{maxZoom:22,indexMaxZoom:17,extent:4096});
 const baseStyle=JSON.parse(await readFile('styles/world.style.json','utf8'));
+let measurementTiles=0;
 const server=http.createServer((req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
   if(path==='/'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'}).end(html);return;}
   if(path==='/world.style.json'){
     const style={...baseStyle,sources:{...baseStyle.sources,platformEdges:{
-      ...baseStyle.sources.platformEdges,url:undefined,tiles:[origin+'/standard_railway_platform_edges/{z}/{x}/{y}.pbf'],
+      ...baseStyle.sources.platformEdges,url:undefined,tiles:['atlasrail://'+origin+'/standard_railway_platform_edges/{z}/{x}/{y}.pbf'],
     }}};
     res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify(style));return;
   }
   if(path.startsWith('/standard_railway_platform_edges/')){
+    if(path.startsWith('/standard_railway_platform_edges/17/'))measurementTiles++;
     const tile=ormVectorFixture(path,{'standard_railway_platform_edges':edges});
     assert.ok(tile);res.writeHead(200,{'content-type':tile.contentType}).end(tile.body);return;
   }
@@ -40,8 +43,8 @@ try {
   await installEmptyMapProviders(context,origin+'/',{firstParty:'network'});
   let requests=0, fulfill;
   const reply=new Promise(resolve=>fulfill=resolve);
-  await context.route(fixture.apiURL,async route=>{requests++;await reply;await route.fulfill({json:fixture.response});});
-  const page=await context.newPage(),errors=[];
+  await context.route(fixture.apiURL,async route=>{requests++;await reply;if(tileFallback)await route.abort('failed');else await route.fulfill({json:fixture.response});});
+  const page=await context.newPage(),errors=[],approx=tileFallback?'≈':'';
   page.on('pageerror',error=>errors.push(error.message));
   await page.addInitScript(()=>{
     localStorage.setItem('atlas_disable_webgl','1');
@@ -75,29 +78,31 @@ try {
   await link.waitFor({timeout:1500});
   assert.doesNotMatch(await panel.innerText(),/Boarding edge length/);
   assert.equal(requests,0);
+  assert.equal(measurementTiles,0);
   await page.waitForFunction(()=>window.platformLabels.includes('1'),null,{timeout:7000});
   await canvas.press('+');
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z===19);
   const start=Date.now();while(!requests&&Date.now()-start<8000)await new Promise(r=>setTimeout(r,100));
   assert.equal(requests,1,'At zoom 19 request the full mapped edge, not the clipped piece');
   fulfill();
-  await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('247 m'),null,{timeout:5000});
-  await page.waitForFunction(()=>window.platformLabels.includes('1 · 247 m'),null,{timeout:5000});
+  await page.waitForFunction(value=>document.querySelector('#detail-content').textContent.includes(value),approx+'247 m',{timeout:8000});
+  await page.waitForFunction(value=>window.platformLabels.includes(value),'1 · '+approx+'247 m',{timeout:5000});
+  assert.equal(measurementTiles,tileFallback?2:0);
   assert.equal(await link.count(),1,'Length enriches the already-open exact edge');
   await page.locator('#details-close').click();
   if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
   await page.selectOption('#units','imperial');
-  await page.waitForFunction(()=>window.platformLabels.includes('1 · 810 ft'),null,{timeout:5000});
+  await page.waitForFunction(value=>window.platformLabels.includes(value),'1 · '+approx+'810 ft',{timeout:5000});
   assert.equal(requests,1,'Unit conversion reuses the full length');
   await page.evaluate(()=>{window.platformLabels=[];});
   await canvas.press('-');
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z===18);
   await page.waitForFunction(()=>window.platformLabels.includes('1'),null,{timeout:5000});
-  assert.equal(await page.evaluate(()=>window.platformLabels.includes('1 · 810 ft')),false);
+  assert.equal(await page.evaluate(value=>window.platformLabels.includes(value),'1 · '+approx+'810 ft'),false);
   assert.equal(requests,1,'No new API request below zoom 19');
   assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
   assert.deepEqual(errors,[]);
-  console.log('Firefox Canvas platform: reference at z18, full edge fetched once at z19, open inspector and label update, metric/imperial cache reuse.');
+  console.log(tileFallback?'Firefox platform source failure: recovered the complete mapped edge across the tile seam, labeled approximate.':'Firefox Canvas platform: reference at z18, full edge fetched once at z19, open inspector and label update, metric/imperial cache reuse.');
 } finally {
   await context?.close();
   await rm(profile,{recursive:true,force:true});

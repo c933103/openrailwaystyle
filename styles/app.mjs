@@ -888,7 +888,7 @@ function stationObject(osmId) {
 }
 function showDetails(feature) {
   cancelProfile();
-  if(useFlat)platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
+  platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   // Track power methods; chargers in the same source (any mapped shape) carry power_kind.
@@ -926,7 +926,13 @@ function showDetails(feature) {
   row(dl, 'Type', p.feature || (isBasemapStation ? p.subclass : p.railway) || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || (isBasemapStation ? 'Not verified by this source' : 'present'));
   row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
-  if(isPlatform){row(dl,p.feature==='platform_edge'?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',formatPlatformLength(Number(p.platform_length),settings.units));if(p.length_estimated)panel.append(textNode('p','Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));row(dl,'Platform',p.ref);}
+  if(isPlatform){
+    const edge=p.feature==='platform_edge',tileEdge=edge&&p.length_basis==='complete_edge_tile';
+    const length=formatPlatformLength(Number(p.platform_length),settings.units);
+    row(dl,edge?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',tileEdge&&length?`≈${length}`:length);
+    if(p.length_estimated)panel.append(textNode('p',tileEdge?'Approximate length of the complete mapped edge from the map tile.':'Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));
+    row(dl,'Platform',p.ref);
+  }
   else if (isStation) {
     row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
     if(isBasemapStation) panel.append(textNode('p','Station location from basemap POI data. Its operating status and identity match with timetable stops have not been verified; departures are unavailable for this fallback marker.','small'));
@@ -1735,6 +1741,17 @@ async function initialize() {
   tileProtocols.addProtocol('mainlinetiles',async(params,controller)=>({
     data:await reference.tile(params.url.slice('mainlinetiles://'.length),controller.signal),
   }));
+  // Reuse the renderer's rail provider protocol: it resolves the published
+  // composite tile path, validates vector data and shares the request cache.
+  const edgeGeometryFor=tileURL=>createPlatformTileGeometry({
+    zoom:17,tileURL,
+    fetcher:async(url,{signal})=>{
+      const protocolURL=url.startsWith('atlasrail://')||url.startsWith('atlastext://')?url:'atlasrail://'+url;
+      const {data}=await tileProtocols.read({url:protocolURL,type:'arrayBuffer'},{signal});
+      return {ok:true,arrayBuffer:async()=>data};
+    },
+    decode:data=>labelCode.platformTilePieces(data,'standard_railway_platform_edges'),
+  });
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -2005,6 +2022,7 @@ async function initialize() {
       queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?flat.platformEdgeCandidates():[],
     },{
       active:()=>settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',
+      edgeGeometry:edgeGeometryFor(()=>flat.getTileTemplate('platformEdges')),
       onLength:(id,length)=>{
         if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&
           String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);
@@ -2365,7 +2383,7 @@ async function initialize() {
   // Cached tiles can re-enter the inventory after moveend without a source
   // event. Recheck retry demand once that render has settled, as well as status.
   map.on('idle', wakeRailRecovery);
-  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{edgeGeometry:edgeGeometryFor(()=>map.getSource('platformEdges')?.tiles?.[0]),geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;
@@ -2604,7 +2622,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); flatSourceContext?.setProfileMarker?.(null); });
   return svg;
 }
-function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; if(useFlat)platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 // The data dates are read each time Help opens, so a page left open shows
