@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {flatVectorTile,offsetFlatPath,flatLineIntersectsViewport} from '../styles/flat-vector.mjs';
+import {flatVectorTile,offsetFlatPath,flatLineIntersectsViewport,flatPlatformIntersectsViewport,flatPolygonGeometry} from '../styles/flat-vector.mjs';
 import {flatVectorFixture} from './fixtures/flat-vector.mjs';
 
 test('CPU vector tile reads exact source layers, ID, geometry and feature properties', () => {
@@ -40,4 +40,24 @@ test('legend line observation excludes offscreen and tile-buffer-only geometry u
   assert.equal(flatLineIntersectsViewport(camera,tile,feature([0,99],[100,99])),false);
   assert.equal(flatLineIntersectsViewport(camera,tile,feature([0,-5],[100,-5])),false);
   assert.equal(flatLineIntersectsViewport(camera,tile,feature([-20,10],[20,10])),false);
+});
+
+
+test('platform visibility considers interior, holes, and canonical tile clipping',()=>{
+  const tile={}, feature=(...paths)=>({type:3,extent:100,paths:paths.map(p=>p.map(([x,y])=>({x,y})))});
+  const ring=(l,t,r,b)=>[[l,t],[r,t],[r,b],[l,b],[l,t]];
+  const camera={width:30,height:30,tileTransform:()=>[100,0,0,100,-35,-35]};
+  assert.equal(flatPlatformIntersectsViewport(camera,tile,feature(ring(10,10,90,90))),true);
+  assert.equal(flatPlatformIntersectsViewport(camera,tile,feature(ring(10,10,90,90),ring(30,30,70,70).reverse())),false);
+  assert.equal(flatPlatformIntersectsViewport(camera,tile,feature(ring(10,40,50,50))),true);
+  assert.equal(flatPlatformIntersectsViewport({...camera,tileTransform:()=>[100,0,0,100,10,0]},tile,feature(ring(-10,0,-1,50))),false);
+  assert.equal(flatPlatformIntersectsViewport({...camera,tileTransform:()=>[0,100,-100,0,60,-35]},tile,feature(ring(10,10,90,90))),true);
+});
+
+test('platform polygons retain holes and disconnected shells even at small coordinate scales',()=>{
+  const ring=(l,b,s)=>[[l,b],[l+s,b],[l+s,b+s],[l,b+s],[l,b]];
+  const exterior=ring(139.7,35.6,1e-7),hole=ring(139.70000001,35.60000001,1e-8).reverse(),separate=ring(139.71,35.6,1e-7);
+  assert.deepEqual(flatPolygonGeometry([exterior,hole,separate]),{
+    type:'MultiPolygon',coordinates:[[exterior,hole],[separate]],
+  });
 });

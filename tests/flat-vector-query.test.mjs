@@ -35,3 +35,12 @@ test('Canvas picks the shifted stroke, not the unshifted centre line',()=>{
   assert.deepEqual(query(camera,[128,56],frame),[]);
   assert.equal(query(camera,[128,81],frame)[0]?.id,83);
 });
+
+
+test('a platform fill picks its mapped area, not a hole',()=>{
+  const area={id:'platform-areas',type:'fill',source:'v','source-layer':'area',paint:{'fill-color':'red'}};
+  const query=compileFlatVectorQuery([area],{includeFill:l=>l.id==='platform-areas'});
+  assert.equal(query(camera,[128,128],frame).length,0);
+  assert.equal(query(camera,[65,100],frame)[0]?.geometry.type,'Polygon');
+  assert.equal(query(camera,[65,100],frame)[0]?.geometry.coordinates.length,2);
+});

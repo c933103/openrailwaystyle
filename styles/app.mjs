@@ -1743,15 +1743,16 @@ async function initialize() {
   }));
   // Reuse the renderer's rail provider protocol: it resolves the published
   // composite tile path, validates vector data and shares the request cache.
-  const edgeGeometryFor=tileURL=>createPlatformTileGeometry({
-    zoom:17,tileURL,
+  const platformGeometryFor=(tileURL,source,zoom)=>createPlatformTileGeometry({
+    zoom,tileURL,
     fetcher:async(url,{signal})=>{
       const protocolURL=url.startsWith('atlasrail://')||url.startsWith('atlastext://')?url:'atlasrail://'+url;
       const {data}=await tileProtocols.read({url:protocolURL,type:'arrayBuffer'},{signal});
       return {ok:true,arrayBuffer:async()=>data};
     },
-    decode:data=>labelCode.platformTilePieces(data,'standard_railway_platform_edges'),
+    decode:data=>labelCode.platformTilePieces(data,source),
   });
+  const edgeGeometryFor=tileURL=>platformGeometryFor(tileURL,'standard_railway_platform_edges',17);
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -1944,7 +1945,7 @@ async function initialize() {
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,
       pointSources:{electricSignals:13},
-      shapeSources:['electricFacilities','electricMethods','platformLengths'],
+      shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],
       onPlatformFrame:()=>platformLengths?.update(),
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
@@ -2018,11 +2019,15 @@ async function initialize() {
     });
     platformLengths=createPlatformLengths({
       ...flat.platformProjection,getZoom:flat.getZoom,getSource:flat.getSource,
-      getLayer:id=>id==='platform-edges',
-      queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?flat.platformEdgeCandidates():[],
+      getLayer:flat.getPlatformLayer,
+      queryRenderedFeatures:({layers})=>flat.platformCandidates(layers),
     },{
       active:()=>settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',
       edgeGeometry:edgeGeometryFor(()=>flat.getTileTemplate('platformEdges')),
+      geometry:platformGeometryFor(()=>flat.getTileTemplate('platforms'),'standard_railway_platforms'),
+      onPlatform:id=>{
+        if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);
+      },
       onLength:(id,length)=>{
         if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&
           String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);

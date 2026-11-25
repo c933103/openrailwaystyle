@@ -58,7 +58,7 @@ function clipSegment(x,y,dx,dy,left,top,right,bottom) {
 }
 
 export function flatLineIntersectsViewport(camera,tile,feature,padding=0) {
-  if(feature.type!==2)return false;
+  if(feature.type!==2&&feature.type!==3)return false;
   const [a,b,c,d,tx,ty]=camera.tileTransform(tile),extent=feature.extent;
   for(const path of feature.paths)for(let i=1;i<path.length;i++) {
     const x=path[i-1].x/extent,y=path[i-1].y/extent;
@@ -72,6 +72,62 @@ export function flatLineIntersectsViewport(camera,tile,feature,padding=0) {
       -padding,-padding,camera.width+padding,camera.height+padding))return true;
   }
   return false;
+}
+
+// Keep exterior and interior rings associated by MVT winding and order.
+export function flatPolygonGeometry(paths) {
+  let exterior, group;
+  const polygons=[];
+  for(const ring of paths){
+    if(ring.length<4)continue;
+    const [x,y]=ring[0];
+    let area=0;
+    for(let i=1;i<ring.length;i++)area+=(ring[i-1][0]-x)*(ring[i][1]-y)-(ring[i][0]-x)*(ring[i-1][1]-y);
+    if(!area)continue;
+    const winding=area>0;
+    exterior??=winding;
+    if(winding===exterior){group=[ring];polygons.push(group);}
+    else group?.push(ring);
+  }
+  return polygons.length===1?{type:'Polygon',coordinates:polygons[0]}:{type:'MultiPolygon',coordinates:polygons};
+}
+
+export function flatRingsContain(paths,[x,y]) {
+  let inside=false;
+  for(const ring of paths)for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const [a,b]=ring[i],[c,d]=ring[j];
+    if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)inside=!inside;
+  }
+  return inside;
+}
+
+// Intersection with the actually painted part, not the MVT buffer.
+// An area can cover the whole visible tile without any visible polygon edge.
+export function flatPlatformIntersectsViewport(camera,tile,feature) {
+  if(feature.type===2)return flatLineIntersectsViewport(camera,tile,feature);
+  const [a,b,c,d,tx,ty]=camera.tileTransform(tile),extent=feature.extent;
+  const screen=([x,y])=>[a*x+c*y+tx,b*x+d*y+ty];
+  const insideScreen=([x,y])=>x>=0&&x<=camera.width&&y>=0&&y<=camera.height;
+  if(feature.type===1)return feature.paths.some(path=>path.some(({x,y})=>
+    x>=0&&x<=extent&&y>=0&&y<=extent&&insideScreen(screen([x/extent,y/extent]))));
+  if(feature.type!==3)return false;
+  if(flatLineIntersectsViewport(camera,tile,feature))return true;
+  const paths=feature.paths.map(path=>path.map(({x,y})=>[x/extent,y/extent]));
+  const corners=[[0,0],[1,0],[1,1],[0,1]];
+  if(corners.some(p=>insideScreen(screen(p))&&flatRingsContain(paths,p)))return true;
+  const det=a*d-b*c;
+  if(!det)return false;
+  const quad=corners.map(([x,y])=>{
+    const px=x*camera.width-tx,py=y*camera.height-ty;
+    return [(d*px-c*py)/det,(a*py-b*px)/det];
+  });
+  return quad.some(([x,y],i)=>{
+    const [nextX,nextY]=quad[(i+1)%4],dx=nextX-x,dy=nextY-y;
+    const span=clipSegment(x,y,dx,dy,0,0,1,1);
+    if(!span)return false;
+    const t=(span[0]+span[1])/2;
+    return flatRingsContain(paths,[x+t*dx,y+t*dy]);
+  });
 }
 
 // Paint values here are resolved CSS-pixel values. Evaluating the style,

@@ -12,7 +12,7 @@ import {flatTextLabel} from './flat-labels.mjs';
 import {compileFlatLocalGeometry} from './flat-local-geometry.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
 import {compileFlatGeometryStyle} from './flat-style.mjs';
-import {flatLineIntersectsViewport} from './flat-vector.mjs';
+import {flatPlatformIntersectsViewport,flatPolygonGeometry} from './flat-vector.mjs';
 import {PLATFORM_GEOMETRY_LIMITS,PLATFORM_UPDATE_LIMITS,tileToLngLat} from './platform-length.mjs';
 import {contextIcon} from './context.mjs';
 import {flatMeasureAdapter} from './flat-measure.mjs';
@@ -49,9 +49,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       ?{...layer,'source-layer':layer.source}:layer);
   let compiledLayers=frameLayers(style);
   let draw=compileFlatFrame(compiledLayers);
-  const platformLayerFor=layers=>{const layer=layers.find(l=>l.id==='platform-edges');return layer&&compileFlatGeometryStyle(layer);};
-  let platformEdgeLayer=platformLayerFor(compiledLayers);
-  let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer,includeFill:layer=>localData.get(layer.source)?.shapes===true});
+  const platformLayersFor=layers=>new Map(layers.filter(l=>['platform-edges','platform-areas','platform-outlines','platform-points'].includes(l.id))
+    .map(l=>[l.id,{type:l.type,...compileFlatGeometryStyle(l)}]));
+  let platformLayers=platformLayersFor(compiledLayers);
+  const includeFill=layer=>layer.id==='platform-areas'||localData.get(layer.source)?.shapes===true;
+  let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer,includeFill});
   const curatedStations=compileFlatCuratedStations(curatedStationData);
   let visibleFrame=new Map();
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
@@ -352,35 +354,46 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(disposed) return;
     const nextLayers=frameLayers(next);
     const nextDraw=compileFlatFrame(nextLayers);
-    const nextQuery=compileFlatVectorQuery(nextLayers,{include:interactiveLayer,includeFill:layer=>localData.get(layer.source)?.shapes===true});
+    const nextQuery=compileFlatVectorQuery(nextLayers,{include:interactiveLayer,includeFill});
     for(const [id,entry] of metadata) {
       if(JSON.stringify(style.sources[id])!==JSON.stringify(next.sources[id])){
         entry.controller.abort();
         metadata.delete(id);
       }
     }
-    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;platformEdgeLayer=platformLayerFor(nextLayers);
+    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;platformLayers=platformLayersFor(nextLayers);
     // Install the new plan before a tap can inspect old pixels/data.
     if(frame)window.cancelAnimationFrame(frame);
     render();
   };
-  const platformEdgeCandidates=()=>{
-    const layer=platformEdgeLayer,result=[];
-    if(!layer?.visibleAt(camera.zoom))return result;
-    let count=0,vertices=0;
-    for(const {tile,vector} of visibleFrame.get(layer.source)??[]){
-      if(!vector)continue;
-      for(const f of vector.layer(layer.sourceLayer)){
-        if(++count>PLATFORM_UPDATE_LIMITS.candidates)return result;
-        if(f.type!==2||!layer.resolve({zoom:camera.zoom},f,{},tile))continue;
-        const paths=f.paths.filter(path=>path.length>=2);
-        const size=paths.reduce((sum,path)=>sum+path.length,0);
-        if(!size||size>PLATFORM_GEOMETRY_LIMITS.vertices||vertices+size>PLATFORM_UPDATE_LIMITS.vertices||
-          !flatLineIntersectsViewport(camera,tile,f))continue;
-        vertices+=size;
-        const lines=paths.map(path=>path.map(({x,y})=>tileToLngLat(tile.z,tile.x,tile.y,f.extent,[x,y])));
-        result.push({id:f.id,properties:f.properties,geometry:lines.length===1
-          ?{type:'LineString',coordinates:lines[0]}:{type:'MultiLineString',coordinates:lines}});
+  const platformCandidates=ids=>{
+    const result=[],decoded=new WeakMap();
+    let count=0,vertices=0,work=0;
+    for(const id of ids){
+      const layer=platformLayers.get(id);
+      if(!layer?.visibleAt(camera.zoom))continue;
+      for(const {tile,vector} of visibleFrame.get(layer.source)??[]){
+        if(!vector)continue;
+        if(!decoded.has(vector))decoded.set(vector,new Map());
+        const layers=decoded.get(vector);
+        if(!layers.has(layer.sourceLayer))layers.set(layer.sourceLayer,vector.layer(layer.sourceLayer));
+        const type={circle:1,line:2,fill:3}[layer.type];
+        for(const f of layers.get(layer.sourceLayer)){
+          if(f.type!==type)continue;
+          if(++count>PLATFORM_UPDATE_LIMITS.candidates)return result;
+          if(!layer.resolve({zoom:camera.zoom},f,{},tile))continue;
+          const paths=f.paths.filter(path=>path.length>=(f.type===3?4:f.type===2?2:1));
+          const size=paths.reduce((sum,path)=>sum+path.length,0);
+          const cost=f.type===3?3*size*size:size;
+          if(!size||size>PLATFORM_GEOMETRY_LIMITS.vertices||vertices+size>PLATFORM_UPDATE_LIMITS.vertices||
+            work+cost>PLATFORM_UPDATE_LIMITS.work||!flatPlatformIntersectsViewport(camera,tile,f))continue;
+          vertices+=size;work+=cost;
+          const geo=paths.map(path=>path.map(({x,y})=>tileToLngLat(tile.z,tile.x,tile.y,f.extent,[x,y])));
+          const geometry=f.type===3?flatPolygonGeometry(geo):f.type===1
+            ?{type:'Point',coordinates:geo[0][0]}
+            :geo.length===1?{type:'LineString',coordinates:geo[0]}:{type:'MultiLineString',coordinates:geo};
+          if(geometry.coordinates.length)result.push({id:f.id,properties:f.properties,geometry});
+        }
       }
     }
     return result;
@@ -401,7 +414,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(next.zoom===camera.zoom && next.center.every((n,i)=>n===camera.center[i])) return;
     setCamera(next,true,'location');
   };
-  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformEdgeCandidates,
+  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformCandidates,
+    getPlatformLayer:id=>platformLayers.has(id),
     platformProjection:{getContainer:()=>mount,project:lngLat=>{const [x,y]=camera.project(lngLat);return {x,y};},
       unproject:point=>{const [lng,lat]=camera.unproject(point);return {lng,lat};}},
     getTileTemplate:id=>metadata.get(id)?.value?.tiles?.[0],

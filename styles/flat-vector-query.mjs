@@ -1,5 +1,5 @@
 import {compileFlatGeometryStyle} from './flat-style.mjs';
-import {offsetFlatPath} from './flat-vector.mjs';
+import {offsetFlatPath,flatPolygonGeometry,flatRingsContain} from './flat-vector.mjs';
 
 const distance = ([x,y],[ax,ay],[bx,by]) => {
   const dx=bx-ax,dy=by-ay,length=dx*dx+dy*dy;
@@ -7,7 +7,7 @@ const distance = ([x,y],[ax,ay],[bx,by]) => {
   return Math.hypot(x-ax-t*dx,y-ay-t*dy);
 };
 
-function hitDistance(type, point, paths, paint) {
+function hitDistance(type, point, paths, paint, closed=false) {
   if (type===1) {
     const limit=paint.radius+(paint.strokeOpacity>0?Math.max(0,paint.strokeWidth):0)+7;
     if (paint.radius<=0 || (paint.opacity<=0 && !(paint.strokeOpacity>0&&paint.strokeWidth>0))) return Infinity;
@@ -17,20 +17,15 @@ function hitDistance(type, point, paths, paint) {
   }
   if(type===3){
     if(paint.opacity<=0)return Infinity;
-    const [x,y]=point;
-    let inside=false;
-    for(const ring of paths)for(let i=0,j=ring.length-1;i<ring.length;j=i++){
-      const [a,b]=ring[i], [c,d]=ring[j];
-      if((b>y)!==(d>y) && x<(c-a)*(y-b)/(d-b)+a)inside=!inside;
-    }
-    return inside?0:Infinity;
+    return flatRingsContain(paths,point)?0:Infinity;
   }
   if (paint.width<=0 || paint.opacity<=0) return Infinity;
   const side=(paint.gapWidth+paint.width)/2;
   const offsets=paint.gapWidth>0?[paint.offset-side,paint.offset+side]:[paint.offset];
   let best=Infinity;
   for(const raw of paths) for(const offset of offsets) {
-    const path=offsetFlatPath(raw,offset);
+    const shifted=offsetFlatPath(raw,offset,closed);
+    const path=closed&&shifted.length?[...shifted,shifted[0]]:shifted;
     for (let i=1;i<path.length;i++) best=Math.min(best,distance(point,path[i-1],path[i]));
   }
   return best<=paint.width/2+7?best:Infinity;
@@ -65,14 +60,15 @@ export function compileFlatVectorQuery(layers, {include = () => true, includeFil
         const decoded=cache.get(vector);
         if(!decoded.has(layer.sourceLayer)) decoded.set(layer.sourceLayer,vector.layer(layer.sourceLayer));
         for (const feature of decoded.get(layer.sourceLayer)) {
-          if (({circle:1,line:2,fill:3}[layer.type])!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
+          const polygonOutline=layer.type==='line'&&layer.id==='platform-outlines'&&feature.type===3;
+          if (!polygonOutline&&({circle:1,line:2,fill:3}[layer.type])!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
           const paint=layer.resolve(global,feature,{}, {z:tile.z,x:tile.x,y:tile.y});
           if (!paint) continue;
           const paths=feature.paths.filter(path=>path.length>0).map(path=>path.map(({x,y})=>{
             const nx=x/feature.extent,ny=y/feature.extent;
             return [a*nx+c*ny+tx,b*nx+d*ny+ty];
           }));
-          const proximity=hitDistance(feature.type,query,paths,paint);
+          const proximity=hitDistance(polygonOutline?2:feature.type,query,paths,paint,polygonOutline);
           if(!Number.isFinite(proximity)) continue;
           const identity=feature.properties.id ?? feature.id;
           const key=identity==null?null:JSON.stringify([layer.source,layer.sourceLayer,feature.type,identity]);
@@ -80,13 +76,13 @@ export function compileFlatVectorQuery(layers, {include = () => true, includeFil
           if(key!=null) seen.set(key,true);
           const geo=paths.map(path=>path.map(p=>{
             const [lng,lat]=camera.unproject(p);
-            return [clampLongitude(lng),lat];
+            return [feature.type===3?lng:clampLongitude(lng),lat];
           }));
           const points=feature.type===1?geo.flat():null;
           hits.push({type:'Feature',id:feature.id,properties:feature.properties,
             source:layer.source,sourceLayer:layer.sourceLayer,layer:{id:layer.id,type:layer.type,source:layer.source},
             geometry:points ? (points.length===1?{type:'Point',coordinates:points[0]}:{type:'MultiPoint',coordinates:points})
-              : feature.type===3?{type:'Polygon',coordinates:geo}
+              : feature.type===3?flatPolygonGeometry(geo)
               : (geo.length===1?{type:'LineString',coordinates:geo[0]}:{type:'MultiLineString',coordinates:geo}),
             distance:proximity});
         }

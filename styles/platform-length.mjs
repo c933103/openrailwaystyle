@@ -336,7 +336,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  // cooldown. No feature API call, other edge, or HTTP 429 bypasses the pause.
  const canMeasureDuringPause=(key,entry)=>!!(
   edgeGeometry&&key===preferredEdge&&entry?.url&&entry.anchor&&
-  transientMiss?.key===key&&!transientMiss.started&&Date.now()<pausedUntil
+  transientMiss&&(transientMiss.key===key||transientMiss.key===null)&&!transientMiss.started&&Date.now()<pausedUntil
  );
  const canRunPending=()=>Date.now()>=pausedUntil||
   (pending.has(preferredEdge)&&canMeasureDuringPause(preferredEdge,desired.get(preferredEdge)));
@@ -380,7 +380,9 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    if(current&&error instanceof TypeError&&!requestController.signal.aborted){
     // Record the failed API request before awaiting the independent tile
     // estimate. Success or cancellation must not restart the API queue.
-    pause(retryDelay,requested.kind==='edge'?{key,started:false}:null);
+    // An unreadable platform-area response can also pause the shared queue
+    // before zoom 19. Allow one selected edge to use tiles, not the API.
+    pause(retryDelay,{key:requested.kind==='edge'?key:null,started:false});
     if(canMeasureDuringPause(key,requested)){transientMiss.started=true;await tryTileLength();}
     return;
    }
