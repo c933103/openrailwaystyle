@@ -18,6 +18,7 @@ const root=new URL('../styles/',import.meta.url);
 const standardPage=await readFile(new URL('index.html',root),'utf8');
 const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
 const chromiumSwitch=process.argv.includes('--chromium-switch');
+const serviceOverlap=process.argv.includes('--service-overlap');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -36,7 +37,12 @@ const servicePoint=[1,1], serviceZoom=12, serviceN=2**serviceZoom;
 const localServicePoint=([lng,lat])=>[(lng+180)/360*serviceN,(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*serviceN];
 const [serviceX,serviceY]=localServicePoint(servicePoint).map(Math.floor);
 const serviceCoordinates=[[.990,1],[1.010,1]].map(p=>localServicePoint(p).map((u,i)=>Math.round(4096*(u-[serviceX,serviceY][i]))));
-const fixtureServiceMvt=vtPbf.fromGeojsonVt({service_routes:{features:[{
+const fixtureServiceMvt=vtPbf.fromGeojsonVt({service_routes:{features:serviceOverlap?[
+ {id:88106,type:2,geometry:[serviceCoordinates],tags:{id:'relation-101',kind:'rail',name:'Fixture red overlap',colour:'#ff2020',n:2,i:0,
+  group_relation_ids:'[101,102]',segment_relation_ids:'[101]',frequency_am:6,frequency_high_am:6,frequency_width_am:4,frequency_offset_am:-6,frequency_until:fixtureServiceEnd/1000}},
+ {id:88107,type:2,geometry:[serviceCoordinates],tags:{id:'relation-211',kind:'rail',name:'Fixture blue overlap',colour:'#0060ff',n:2,i:1,
+  group_relation_ids:'[211,212]',segment_relation_ids:'[211]',frequency_am:9,frequency_high_am:9,frequency_width_am:5,frequency_offset_am:6,frequency_until:fixtureServiceEnd/1000}},
+]: [{
   id:88106,type:2,geometry:[serviceCoordinates],tags:{name:'Fixture scheduled rail',colour:'#ff2020',n:1,i:0,
     frequency_am:6,frequency_high_am:6,frequency_width_am:8,frequency_offset_am:0,frequency_until:fixtureServiceEnd/1000},
 }]}},{version:2,extent:4096});
@@ -389,7 +395,36 @@ try {
       return {initial,zoomed,recovered,completedEvents:first,cancelledEvents:cancelled};
     } finally {await context.close();}
   }
-  if(chromiumSwitch){
+  if(serviceOverlap){
+   const service=await fresh(true),p=service.page;
+   try {
+    await p.clock.install({time:fixtureServiceStart});
+    await p.goto(origin+'/?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=am#12/1/1');
+    const canvas=p.locator('canvas.atlas-flat-preview');await canvas.waitFor();
+    const stripes=()=>{
+     const c=document.querySelector('.atlas-flat-preview'),scale=c.width/c.clientWidth,ctx=c.getContext('2d');
+     const red=[],blue=[];
+     for(let y=200;y<240;y++){
+      const [r,g,b]=ctx.getImageData(Math.round(c.width/2),Math.round(y*scale),1,1).data;
+      if(r>220&&g<60&&b<80)red.push(y);if(b>220&&g>60&&g<130&&r<50)blue.push(y);
+     }
+     return red.length&&blue.length?[red[Math.floor(red.length/2)],blue[Math.floor(blue.length/2)]]:null;
+    };
+    await p.waitForFunction(stripes);
+    const selected=await p.evaluate(stripes);
+    assert.ok(Math.abs(selected[0]-selected[1])>=5);
+    if(await p.locator('#collapse').isVisible())await p.locator('#collapse').click();
+    for(const [i,name,frequency,id] of [[0,'Fixture red overlap',6,101],[1,'Fixture blue overlap',9,211]]){
+     await canvas.click({position:{x:350,y:selected[i]}});
+     await p.getByRole('heading',{name,exact:true}).waitFor({timeout:5000});
+     await p.getByText(frequency+'/h/direction (scheduled)',{exact:true}).waitFor();
+     assert.equal(await p.locator('#detail-content [data-relation-scope="segment"] a').getAttribute('href'),'https://www.openstreetmap.org/relation/'+id);
+     await p.locator('#details-close').click();
+    }
+    assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+    console.log('PASS: two services sharing the same track paint as separate stripes and select the correct routes, schedules and segment relations in no-WebGL Firefox.');
+   } finally {await service.context.close();}
+  } else if(chromiumSwitch){
     await mkdir(proofDir,{recursive:true});
     const {page,context}=await fresh(false,true);
     const canvas=kind=>page.locator(kind==='webgl'?'canvas.maplibregl-canvas':'canvas.atlas-flat-preview');
