@@ -13,12 +13,49 @@ export const TRANSITOUS_SOURCES = 'https://transitous.org/sources/';
 // buses do not use up the requested number of departures.
 export const RAIL_MODES = new Set(['HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'SUBURBAN', 'RAIL', 'METRO', 'SUBWAY', 'TRAM', 'FUNICULAR', 'CABLE_CAR']);
 const RADIUS_M = 400;
+const EARTH_RADIUS_M = 6371000;
+const RAIL_STOP_MODES = ['RAIL', 'TRAM', 'FUNICULAR', 'CABLE_CAR'];
+const MAP_STOPS = 'https://api.transitous.org/api/v6/map/stops';
+const REVERSE_STOPS = `${TRANSITOUS_API}/reverse-geocode`;
+
+// Apply the same 400m circular test after a slightly padded enclosing box.
+// A box crossing the dateline or a pole is not representable in one ordered
+// request to /map/stops. Keep the point lookup for those exceptional views.
+function stopLookup({lat, lon}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90) throw new Error('Invalid station coordinates');
+  if (lon<-180 || lon>180) lon=((lon%360)+540)%360-180;
+  const degrees=180/Math.PI;
+  const dy=RADIUS_M/EARTH_RADIUS_M*degrees+0.00002;
+  const maxAbsLat=Math.abs(lat)+dy;
+  const dx=dy/Math.cos(maxAbsLat/degrees);
+  if (maxAbsLat>=90 || lon-dx<=-180 || lon+dx>=180) {
+    return {regional:false,url:`${REVERSE_STOPS}?place=${lat},${lon}&type=STOP&numResults=24`};
+  }
+  const url=new URL(MAP_STOPS);
+  url.searchParams.set('min',`${(lat-dy).toFixed(7)},${(lon-dx).toFixed(7)}`);
+  url.searchParams.set('max',`${(lat+dy).toFixed(7)},${(lon+dx).toFixed(7)}`);
+  url.searchParams.set('grouped','true');
+  for (const mode of RAIL_STOP_MODES)url.searchParams.append('modes',mode);
+  return {regional:true,url:url.href};
+}
+function stopCandidates(body, regional) {
+  if (!Array.isArray(body)) throw new Error('Invalid Transitous stop lookup response');
+  if (!regional) return body;
+  if (body.some(c=>!c || typeof c.stopId!=='string' || !c.stopId || typeof c.name!=='string' ||
+      !Number.isFinite(c.lat) || !Number.isFinite(c.lon) || !Array.isArray(c.modes))) {
+    throw new Error('Invalid Transitous map stop response');
+  }
+  // Translate provider schema only. Never substitute a parent ID, which may
+  // refer to a different ranked station; grouping is requested upstream.
+  return body.map(({stopId:id,name,lat,lon,modes})=>({type:'STOP',id,name,lat,lon,
+    modes:modes.map(m=>m==='AERIAL_LIFT'?'CABLE_CAR':m)}));
+}
 
 const metres = (a, b) => {
   // Use the short arc at the antimeridian, as for ordinary nearby stops.
   const dx = ((b.lon - a.lon) % 360 + 540) % 360 - 180;
   const r = Math.PI / 180, x = dx * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r;
-  return Math.hypot(x, y) * 6371000;
+  return Math.hypot(x, y) * EARTH_RADIUS_M;
 };
 const stationWords = /\b(station|bahnhof|hbf|gare|estación|stazione)\b|駅|站|역/g;
 const simplify = name => name.replace(stationWords, '').replace(/[\s\-‐–—()（）.,'’]/g, '');
@@ -54,6 +91,12 @@ function compatibleStopNames(a, b) {
   return a.names.some(name => b.names.includes(name));
 }
 
+function hasStopName(candidate, names, suppliedAliases) {
+  const own = stopName(candidate.name);
+  return names.some(name => compatibleStopNames(own, name)) ||
+    (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
+}
+
 // The timetable stops that are this station: rail stops within 400 m, those
 // named like the station first, then the nearest. Several timetables can
 // cover one station (two operators), so up to two are kept.
@@ -65,9 +108,7 @@ export function pickStops(candidates, station, limit = 2) {
   const scored = candidates
     .filter(c => c.type === 'STOP' && (c.modes || []).some(m => RAIL_MODES.has(m)) && Number.isFinite(c.lat) && Number.isFinite(c.lon))
     .map(c => {
-      const own = stopName(c.name), named = names.some(name => compatibleStopNames(own, name)) ||
-        (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
-      return {stop: c, distance: metres(station, c), named};
+      return {stop: c, distance: metres(station, c), named:hasStopName(c,names,suppliedAliases)};
     })
     .filter(c => c.distance <= RADIUS_M)
     .sort((a, b) => (b.named - a.named) || a.distance - b.distance);
@@ -393,13 +434,18 @@ export function plannerLink(direction, place, name) {
 // Fetch the selected stop boards for a station. Keep only safe per-stop
 // outcomes: fulfilled means that request loaded, not complete area coverage.
 // Empty rows alone do not establish that all selected boards loaded.
-export async function stationDepartures(station, {signal, fetch: get = fetch, onProgress} = {}) {
+export async function stationDepartures(station, {signal, fetch: get = fetch, onProgress, identifiedStops, onNamedStops} = {}) {
   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
-  const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
-  // Only an array is a successful lookup. A malformed response cannot establish
-  // that no nearby timetable stop matched the existing rail/distance filters.
-  if (!Array.isArray(candidates)) throw new Error('Invalid Transitous stop lookup response');
-  const stops = pickStops(candidates, station);
+  let stops = identifiedStops;
+  if (!stops) {
+    const lookup = stopLookup(station);
+    stops = pickStops(stopCandidates(await json(lookup.url), lookup.regional), station);
+    if (stops.length && onNamedStops) {
+      const names = (station.names || []).map(stopName);
+      const suppliedAliases = new Set(names.map(name => name.names[0]).filter(Boolean));
+      if (stops.every(stop=>hasStopName(stop,names,suppliedAliases)))onNamedStops(stops);
+    }
+  }
   if (!stops.length) return {stops, rows: [], stopResults: []};
   // Publish safe, provisional states without changing final reconciliation.
   // A successful but empty first board is not a quiet combined timetable.

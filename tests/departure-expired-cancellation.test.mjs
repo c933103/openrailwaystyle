@@ -146,8 +146,8 @@ test('selected boards preserve cancellation with the same bounded acquisition an
     const requests = [], signal = new AbortController().signal;
     const fetch = async (value, options) => {
       const url = new URL(value); requests.push({url, options});
-      const body = url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
-        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {stopTimes:[
+      const body = url.pathname.endsWith('/map/stops') ? order.map(id => ({
+        type:'STOP', stopId:id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {stopTimes:[
         url.searchParams.get('stopId') === 'a' ? observation('a', {cancelled:true}, {scheduledDeparture:scheduled, departure:scheduled})
           : delayed('b', {}, {scheduledDeparture:scheduled, departure})]};
       return {ok:true, json:async () => body};

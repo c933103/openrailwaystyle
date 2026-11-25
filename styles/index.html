@@ -32,12 +32,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261125-terrain-camera-1" rel="stylesheet">
+  <link href="app.css?v=20261125-departure-spatial-1" rel="stylesheet">
   <!-- Start first-party map inputs with HTML discovery, before the app's module graph.
        Keep fetch mode and URLs identical to the requests in app.mjs. -->
-  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261125-terrain-camera-1">
+  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261125-departure-spatial-1">
   <link rel="preload" as="script" href="vendor/maplibre-gl-5.24.0-atlas.4.js">
-  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261125-terrain-camera-1">
+  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261125-departure-spatial-1">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -252,6 +252,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261125-terrain-camera-1"></script>
+  <script type="module" src="app.mjs?v=20261125-departure-spatial-1"></script>
 </body>
 </html>

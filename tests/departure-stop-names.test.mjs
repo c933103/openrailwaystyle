@@ -1,3 +1,4 @@
+import {asMapStops} from './departure-stop-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pickStops, stationDepartures} from '../styles/departures.mjs';
@@ -78,7 +79,7 @@ test('stationDepartures retains a second same-script composite operator only wit
       const board = await stationDepartures(station(names), {fetch:async href => {
         const url = new URL(href); calls.push(url);
         const id = url.searchParams.get('stopId');
-        return {ok:true, json:async () => id === null ? order : {stopTimes:[{
+        return {ok:true, json:async () => id === null ? asMapStops(order) : {stopTimes:[{
           mode:'REGIONAL_RAIL', displayName:id, headsign:'Fixture terminus', tripId:id,
           place:{departure:'2099-01-01T12:00:00Z', scheduledDeparture:'2099-01-01T12:00:00Z', tz:'UTC'},
         }]}};
@@ -111,7 +112,7 @@ for (const [name, other] of [['Terminal 1', 'Terminal 10'], ['Central', 'Central
       const board = await stationDepartures(station([name]), {signal, fetch:async (url, options) => {
         calls.push(new URL(url)); assert.equal(options.signal, signal);
         const id = new URL(url).searchParams.get('stopId');
-        return {ok:true, json:async () => id === null ? order : {stopTimes:[{
+        return {ok:true, json:async () => id === null ? asMapStops(order) : {stopTimes:[{
           mode:'REGIONAL_RAIL', displayName:id === 'wrong' ? 'WRONG' : `RIGHT-${id}`,
           headsign:'Fixture terminus', tripId:id,
           place:{departure:'2099-01-01T12:00:00Z', scheduledDeparture:'2099-01-01T12:00:00Z', tz:'UTC'},
