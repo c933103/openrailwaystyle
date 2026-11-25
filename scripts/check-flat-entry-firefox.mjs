@@ -4,6 +4,8 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
 import {launchBrowser} from './browser.mjs';
 import {gzipSync} from 'node:zlib';
+import {electricitySignalsGeoJSON} from './electricity-signal-data.mjs';
+import {ELECTRICITY_SIGNAL_STYLE} from '../styles/power-facilities.mjs';
 import {zxyToTileId} from 'pmtiles';
 import vtPbf from 'vt-pbf';
 import {pmtilesBytesResponse} from './pmtiles-browser-fixture.mjs';
@@ -21,10 +23,17 @@ const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].
 let fixtureCredits=false;
 // Replace the original production layers with the same IDs. Canvas could
 // tolerate the duplicates, but MapLibre rejects the whole invalid fixture.
+const fixtureElectricityPath='/data/traction/power/electricity-signals.geojson.gz';
+const fixtureElectricitySignals=gzipSync(JSON.stringify(electricitySignalsGeoJSON({elements:[
+  {type:'node',id:88101,lon:0.001,lat:0.001,tags:{railway:'signal',ref:'P1','railway:signal:electricity':'lower_pantograph'}},
+  {type:'node',id:88102,lon:0.006,lat:0.001,tags:{railway:'signal',ref:'P2','railway:signal:electricity':'lower_pantograph','railway:signal:electricity:deactivated':'yes'}},
+]})));
+const fixtureElectricityLayers=style.layers.filter(layer=>layer.source==='electricSignals');
 const replacing=new Set(['infrastructure-tracks','context-transport-bus-label']);
-style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id))
+style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id)&&layer.source!=='electricSignals')
   .map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
+  ...fixtureElectricityLayers,
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},paint:{'circle-color':'#00dc20','circle-radius':6}},
   {id:'fixture-track-names',type:'symbol',source:'entryRail','source-layer':'rail',layout:{
@@ -99,6 +108,7 @@ const server=createServer((req,res)=>{
   paths.push(pathname);
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
+  else if(pathname===fixtureElectricityPath) {res.writeHead(200,{'content-type':'application/gzip'}).end(fixtureElectricitySignals);}
   else if(pathname==='/world.style.json') {
     const payload=railFailureFixture?{
       ...style,
@@ -891,6 +901,55 @@ try {
     assert.deepEqual(await lp.evaluate(()=>window.webglAttempts),[]);
     console.log('Canvas thematic legend follows visible, painted gauge; offscreen and transparent values are excluded.');
   } finally {railFailureFixture='';await legendCase.context.close();}
+  const signalCase=await fresh(true), sp=signalCase.page;
+  try {
+    const reads=()=>paths.filter(path=>path===fixtureElectricityPath).length;
+    const prior=reads();
+    await sp.goto(origin+'/?inactive=0#12/0.001/0.001');
+    const canvas=sp.locator('canvas.atlas-flat-preview');
+    await canvas.waitFor();
+    if(!(await sp.locator('#settings-open').isVisible()))await sp.locator('#controls-open').click();
+    const power=sp.locator('[data-mode="electrification"]');
+    await power.click();
+    assert.equal(reads(),prior,'Power below zoom 13 must not request the signal snapshot');
+    await canvas.press('+');
+    const painted=async (x,shape,expected)=>sp.waitForFunction(([x,shade,expected])=>{
+      const c=document.querySelector('.atlas-flat-preview'), scale=c.width/c.clientWidth;
+      const pixels=c.getContext('2d').getImageData(Math.round(c.width/2+x*scale)-2,Math.round(c.height/2)-2,5,5).data;
+      const rgb=shade.slice(1).match(/../g).map(v=>parseInt(v,16));
+      return pixels.some((r,i)=>i%4===0&&r===rgb[0]&&pixels[i+1]===rgb[1]&&pixels[i+2]===rgb[2])===expected;
+    },[x,ELECTRICITY_SIGNAL_STYLE[shape],expected]);
+    await painted(0,'color',true).catch(async error=>{
+      console.error('Electricity signal fixture:',reads(),paths.slice(-20),await sp.evaluate(()=>({
+        status:document.querySelector('#map-status').textContent,
+        pressed:document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),
+        center:document.querySelector('#map').dataset.flatCenter, view:localStorage.getItem('atlas_view'),
+      })));throw error;
+    });
+    assert.equal(reads(),prior+1);
+    await canvas.click({position:{x:350,y:220}});
+    await sp.getByRole('heading',{name:'Signal P1',exact:true}).waitFor();
+    await sp.locator('#detail-content a[href="https://www.openstreetmap.org/node/88101"]').waitFor();
+    await sp.locator('#details .close').click();
+    const x=512*2**13*0.005/360;
+    await painted(x,'paper',false);
+    if(!(await sp.locator('#settings-open').isVisible()))await sp.locator('#controls-open').click();
+    await sp.locator('#settings-open').click();
+    await sp.locator('#inactive').check();
+    await painted(x,'paper',true);
+    await sp.locator('#settings-close').click();
+    await canvas.click({position:{x:350+x,y:220}});
+    await sp.getByRole('heading',{name:'Signal P2',exact:true}).waitFor();
+    await sp.locator('#details .close').click();
+    if(!(await sp.locator('#settings-open').isVisible()))await sp.locator('#controls-open').click();
+    await sp.locator('[data-mode="infrastructure"]').click();
+    await painted(0,'color',false);
+    await power.click();
+    await painted(0,'color',true);
+    assert.equal(reads(),prior+1,'Power reuses the loaded snapshot across mode changes');
+    assert.deepEqual(await sp.evaluate(()=>window.webglAttempts),[]);
+    console.log('Canvas Power: painted current/former electrification signals, real detail panels, zoom gate and cached snapshot.');
+  } finally {await signalCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});

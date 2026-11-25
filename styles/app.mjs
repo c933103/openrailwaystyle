@@ -817,7 +817,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => /^energy-(?:overview|context|detail)(?:-former)?-(?:areas|civil-outlines|rail-outlines|points|badges|(?:grid|cable|traction|fuel|hydrogen|water|coal|other)-lines)$/.test(id) || /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|provider-cable|trolley-contact|rigid-contact|(?:steam|maglev|battery|hydrogen)-propulsion|dual-voltage-(?:primary|secondary)|charging-(?:areas|outlines|points)|signal-points)|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^energy-(?:overview|context|detail)(?:-former)?-(?:areas|civil-outlines|rail-outlines|points|badges|(?:grid|cable|traction|fuel|hydrogen|water|coal|other)-lines)$/.test(id) || /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|provider-cable|trolley-contact|rigid-contact|(?:steam|maglev|battery|hydrogen)-propulsion|dual-voltage-(?:primary|secondary)|charging-(?:areas|outlines|points)|(?:former-)?signal-points)|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 // A link to the feature's own OpenStreetMap object, or to its location when
 // the tiles do not identify one.
 function osmLink(panel, feature) {
@@ -1847,7 +1847,7 @@ async function initialize() {
     const needle=textNode('span','↑');
     needle.setAttribute('aria-hidden','true');
     compass.append(needle);
-    let flatLocation;
+    let flatLocation, flatElectricitySignals;
     const creditsBox=textNode('details','','atlas-flat-credit-box');
     creditsBox.open=settings.attributionOpen;
     creditsBox.addEventListener('toggle',()=>{
@@ -1863,6 +1863,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,
+      pointSources:{electricSignals:13},
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
       legendLayers:()=>IN_VIEW[settings.mode] ? new Set(inViewLegendLayers(settings.mode)) : undefined,
@@ -1884,6 +1885,7 @@ async function initialize() {
       onCamera({bearing}) {
         needle.style.transform=`rotate(${-bearing}deg)`;
         updateFlatScale();
+        void flatElectricitySignals?.();
       },
       onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
       onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
@@ -1919,6 +1921,11 @@ async function initialize() {
         status.textContent=webglStartupFailure
           ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
       },
+    });
+    flatElectricitySignals=createPowerFacilityLoader(flat,{sourceId:'electricSignals',
+      url:new URL('./data/traction/power/electricity-signals.geojson.gz',import.meta.url),
+      active:()=>settings.mode==='electrification'&&settings.background!=='satellite'&&flat.getZoom()>=13,
+      onError(error){flat.getSource('electricSignals')?.setError();console.warn('Electrification signals unavailable:',error.message);},
     });
     flatNavigation=flat.moveTo;
     flatSourceContext=flat;
@@ -1990,11 +1997,13 @@ async function initialize() {
         if(paint)Object.assign(layer.paint,paint);
       }
       flat.setStyle(next);
+      void flatElectricitySignals();
       drawing.refresh();
       if(measuring?.active)measuring.refresh();
       applied=signature;
     };
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
+    void flatElectricitySignals();
     return;
   }
   installImageryAttribution(map,imageryProtocol,{eoxAttribution,polarImagery:()=>

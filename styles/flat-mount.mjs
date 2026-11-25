@@ -6,7 +6,7 @@ import {compileFlatFrame} from './flat-frame.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
-import {flatStationFallbackLayer,flatStationFallbackMask,compileFlatCuratedStations} from './flat-station-fallback.mjs';
+import {flatStationFallbackLayer,flatStationFallbackMask,compileFlatCuratedStations,compileFlatPointCollection} from './flat-station-fallback.mjs';
 import {createFlatGesture} from './flat-gesture.mjs';
 import {flatTextLabel} from './flat-labels.mjs';
 import {flatSourcePoints} from './flat-source-points.mjs';
@@ -18,7 +18,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, pointSources={}}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -27,8 +27,18 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
+  const pointData=new Map(Object.entries(pointSources).map(([id,zoom])=>{
+    const entry={};
+    entry.source={
+      setData(collection){entry.draw=compileFlatPointCollection(collection,id,zoom);entry.failed=false;schedule();},
+      setError(){entry.failed=true;schedule();},
+    };
+    return [id,entry];
+  }));
   const frameLayers=style=>style.layers.map(layer=>layer.id==='station-curated-fallback-dots'
-    ?{...layer,maxzoom:8,'source-layer':'curated-stations'}:layer);
+    ?{...layer,maxzoom:8,'source-layer':'curated-stations'}
+    :layer.type==='circle'&&pointData.has(layer.source)&&style.sources[layer.source]?.type==='geojson'
+      ?{...layer,'source-layer':layer.source}:layer);
   let compiledLayers=frameLayers(style);
   let draw=compileFlatFrame(compiledLayers);
   let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer});
@@ -114,6 +124,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const plans=new Map(),errors=new Set();
     let resolvedTilesExpected=false;
     for (const id of active) {
+      if(pointData.has(id)){if(pointData.get(id).failed)errors.add(id);continue;}
       let entry=metadata.get(id);
       if (!entry) {
         const controller=new AbortController();
@@ -139,9 +150,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const curated=stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
       ?curatedStations(camera):[];
     if(curated.length)tiles.frame.set('stationMajor',curated);
+    for(const [id,entry] of pointData)if(active.has(id)&&entry.draw)tiles.frame.set(id,entry.draw(camera));
     visibleFrame=tiles.frame;
     sourceFrame=new Map([...active].map(id=>{
       const entry=metadata.get(id), count=plans.get(id)?.tiles.length??0;
+      const point=pointData.get(id);
+      if(point)return [id,{tiles:tiles.frame.get(id)??[],state:point.failed?'failed':point.draw?'ready':'loading'}];
       const drawn=tiles.frame.get(id)??[];
       const seen=new Set(drawn.map(({tile:{x,y,z}})=>z+'/'+x+'/'+y)).size;
       return [id,{tiles:drawn,state:errors.has(id)||entry?.error?'failed':
@@ -194,7 +208,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       onCredits(credits);
     }
     const painting=[...tiles.frame.values()].some(items=>items.length);
-    const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) || resolvedTilesExpected&&!painting&&!errors.size;
+    const loading=[...metadata.values()].some(entry=>!entry.value&&!entry.error) ||
+      [...pointData].some(([id,entry])=>active.has(id)&&!entry.draw&&!entry.failed) ||
+      resolvedTilesExpected&&!painting&&!errors.size;
     const railFallback=layers.some(layer=>isNeutralRailReference(layer)&&(rendered.layerDraws.get(layer.id)??0)>0);
     onStatus({errors:[...errors],painting,loading,railFallback,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
   }
@@ -351,7 +367,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(next.zoom===camera.zoom && next.center.every((n,i)=>n===camera.center[i])) return;
     setCamera(next,true,'location');
   };
-  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
+  return {close,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,
+    getSource:id=>style.sources[id]?.type==='geojson'?pointData.get(id)?.source:undefined,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
     connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
     getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};

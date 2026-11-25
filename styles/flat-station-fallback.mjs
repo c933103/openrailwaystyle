@@ -23,8 +23,10 @@ export function flatStationFallbackMask({metadataFailed=false,tiles=[]}={}) {
 // The z7 curated points are already in the style; no additional provider
 // or archive is needed. Adapt only these small Point features so they share
 // Canvas tile projection, clipping, filtering and picking.
-export function compileFlatCuratedStations(collection) {
-  const layer='curated-stations', z=7, n=2**z, extent=4096, buckets=new Map();
+export const compileFlatCuratedStations=collection=>compileFlatPointCollection(collection,'curated-stations',7);
+
+export function compileFlatPointCollection(collection,layer,z) {
+  const n=2**z, extent=4096, buckets=new Map();
   for(const entry of collection?.features??[]){
     const coordinates=entry.geometry?.coordinates;
     if(entry.geometry?.type!=='Point'||!Array.isArray(coordinates)||coordinates.length<2)continue;
