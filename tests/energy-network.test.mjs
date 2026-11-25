@@ -46,7 +46,15 @@ test('complete-only extract builder checks filter provenance and emits readable 
   assert.equal(await buildExtractEnergyNetwork('fixture',{...report,missingRegions:['gap']},dir,{read}),null);
   assert.deepEqual(await readdir(dir),[]);
   const output=join(dir,'snapshot');
-  const manifest=await buildExtractEnergyNetwork('fixture',report,output,{read});
+  const phases=[];
+  const manifest=await buildExtractEnergyNetwork('fixture',report,output,{read,observe:phase=>phases.push(phase)});
+  const fixtureElements=[area,{type:'node',id:20,lon:.0005,lat:.0005,tags:{power:'transformer'}}];
+  const exported=JSON.parse(gunzipSync(await readFile(join(output,'energy-network.geojson.gz'))).toString('utf8'));
+  assert.deepEqual(exported,energyNetworkGeoJSON(fixtureElements),'streamed GeoJSON preserves exact feature properties and ordering');
+  assert.deepEqual(phases.map(p=>p.stage),
+    ['input:start','input:done','relations:start','relations:done','classification:start','classification:done',
+      ...Array.from({length:3},()=>['tier:start','tier:tiles','tier:bundles','tier:done']).flat(),'export:start','export:done']);
+  assert.ok(phases.every(p=>p.rss>0&&p.heapUsed>0&&p.external>=0),'every phase records real process memory');
   await assert.rejects(buildExtractEnergyNetwork('fixture',report,output,{read}),/already exists/);
   const {validateEnergyNetwork}=await import('../scripts/validate-energy-network.mjs');
   assert.deepEqual(await validateEnergyNetwork(output),manifest);
