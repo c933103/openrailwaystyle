@@ -1,7 +1,9 @@
+import {flatFailure,flatRetryDue} from './flat-recovery.mjs';
+
 // Keep requests tied to the current Canvas viewport and source generation.
 // The caller owns source policy and decoding; an inactive/revoked source must
 // be omitted, and any change of URL, scope, or permissions gets a new revision.
-export function createFlatTileRequests({load, dispose = () => {}, changed = () => {}, concurrency = 8}) {
+export function createFlatTileRequests({load, dispose = () => {}, changed = () => {}, concurrency = 8, now = Date.now}) {
   if (!Number.isInteger(concurrency) || concurrency < 1 || typeof load !== 'function')
     throw new TypeError('Invalid flat tile request options');
 
@@ -36,7 +38,7 @@ export function createFlatTileRequests({load, dispose = () => {}, changed = () =
         });
       } catch (error) {
         if (entry.active) {
-          entry.error = error;
+          entry.failure = flatFailure(error,entry.retries??0,now());
           entry.status = 'failed';
           changed();
         }
@@ -45,6 +47,7 @@ export function createFlatTileRequests({load, dispose = () => {}, changed = () =
       if (!entry.active) dispose(value);
       else {
         entry.value = value;
+        delete entry.failure;
         entry.status = 'ready';
         changed();
       }
@@ -99,7 +102,7 @@ export function createFlatTileRequests({load, dispose = () => {}, changed = () =
       for (const [key, entry] of entries) {
         if (entry.status === 'ready') {
           for (const tile of positions.get(key)) ready.push({...entry.value, tile});
-        } else if (entry.status === 'failed') failed.push({tile:entry.canonical, error:entry.error});
+        } else if (entry.failure) failed.push({tile:entry.canonical, error:entry.failure.error});
       }
       frame.set(source, ready);
       if (failed.length) errors.set(source, failed);
@@ -116,8 +119,24 @@ export function createFlatTileRequests({load, dispose = () => {}, changed = () =
 
   const hasFailure=id=>{
     for(const entry of sources.get(id)?.entries.values()??[])
-      if(entry.status==='failed')return true;
+      if(entry.failure)return true;
     return false;
   };
-  return {update, snapshot, hasFailure, close};
+  function retryFailed(reconnect=false) {
+    if(closed)return;
+    const time=now();
+    let queued=false;
+    for(const {entries} of sources.values())for(const entry of entries.values()){
+      if(entry.status!=='failed'||!flatRetryDue(entry.failure,time,reconnect))continue;
+      entry.status='queued';entry.retries=(entry.retries??0)+1;queued=true;
+    }
+    if(queued){pump();changed();}
+  }
+  function nextRetry() {
+    let due=Infinity;
+    for(const {entries} of sources.values())for(const entry of entries.values())
+      if(entry.status==='failed')due=Math.min(due,entry.failure.due);
+    return due;
+  }
+  return {update,snapshot,hasFailure,retryFailed,nextRetry,close};
 }

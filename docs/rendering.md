@@ -35,6 +35,14 @@ differences at tile boundaries; it does not request neighbors just to shade
 an edge. The original elevation resolution is available to contours and
 profiles. The output is flat relief, not a pitched terrain mesh.
 
+The no-WebGL preview supports fixed-camera recovery for already visible
+failed tiles and metadata. A first transport failure can retry on the browser's
+reconnect signal. Otherwise transient failures retry with bounded delays and
+respect any provider Retry-After. Healthy and already in-flight data are
+left alone. The failure stays visible until the retry succeeds or the tile or
+source leaves the current view. An isolated bathymetry failure warns only
+about incomplete seabed shading.
+
 ## 3D land and seabed terrain
 
 The map's native MapLibre raster-DEM terrain mesh activates when the camera is

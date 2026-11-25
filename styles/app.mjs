@@ -1916,7 +1916,7 @@ async function initialize() {
   }
   if (useFlat) {
     applyInitialVisibility(style,true);
-    const {mountFlatMap,connectFlatLocation,appendFlatCredits}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const {mountFlatMap,connectFlatLocation,appendFlatCredits,canvasMapStatus}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
       zoom:startZoom,
@@ -2022,11 +2022,7 @@ async function initialize() {
       onStatus({errors,loading,clamped,railFallback}) {
         scheduleNearbyTransport();
         status.classList.toggle('error',errors.length>0);
-        const state=railFallback?'some railway tiles could not load. Neutral reference lines, where shown, do not show the selected view’s values.'
-          : errors.length?'some visible tile data could not load.'
-          : loading?'loading railway tiles…'
-          : clamped?'the requested polar position is beyond the flat map edge.'
-          :'drag or use the arrow keys to move.';
+        const state=canvasMapStatus({errors,loading,clamped,railFallback});
         status.textContent=webglStartupFailure
           ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
       },

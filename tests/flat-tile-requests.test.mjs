@@ -100,3 +100,30 @@ test('same-turn revocation prevents a load and synchronous failures stay bounded
   assert.equal(queue.snapshot().errors.get('rail').length,3);
   queue.close();
 });
+
+test('reconnect retries failed transport entries once without disturbing a ready or in-flight tile',async()=>{
+  let now=1000;
+  const requests=[];
+  const queue=createFlatTileRequests({now:()=>now,load:req=>new Promise((resolve,reject)=>requests.push({...req,resolve,reject}))});
+  queue.update(plans([tile(0),tile(1),tile(2)]));
+  await tick();
+  requests[0].resolve({vector:{}});requests[1].reject(new TypeError('NetworkError when attempting to fetch resource.'));
+  await tick();
+  assert.equal(queue.nextRetry(),6000);
+  queue.retryFailed(false);
+  assert.equal(requests.length,3);
+  queue.retryFailed(true);queue.retryFailed(true);
+  await tick();
+  assert.deepEqual(requests.map(x=>x.canonical.x),[0,1,2,1]);
+  assert.equal(queue.snapshot().errors.get('rail').length,1,'do not clear error while the retry is pending');
+  assert.equal(queue.snapshot().frame.get('rail').length,1);
+  assert.equal(requests[2].controller.signal.aborted,false);
+  requests[3].reject(new TypeError('Failed to fetch'));await tick();
+  assert.equal(queue.nextRetry(),16000);
+  queue.retryFailed(true);await tick();assert.equal(requests.length,4);
+  now=16000;queue.retryFailed(false);await tick();assert.equal(requests.length,5);
+  requests[4].resolve({vector:{}});await tick();
+  assert.equal(queue.snapshot().errors.has('rail'),false);
+  queue.update(new Map());queue.retryFailed(true);await tick();
+  assert.equal(requests.length,5);assert.equal(requests[2].controller.signal.aborted,true);queue.close();
+});

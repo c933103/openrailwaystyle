@@ -1,4 +1,5 @@
 import {flatVectorTile} from './flat-vector.mjs';
+import {flatHttpError} from './flat-recovery.mjs';
 
 const tiledTypes = new Set(['vector', 'raster', 'raster-dem']);
 const fields = ['tiles', 'minzoom', 'maxzoom', 'tileSize', 'bounds', 'scheme', 'attribution', 'encoding'];
@@ -53,7 +54,7 @@ export function createFlatSourceLoader({protocols, fetcher = fetch, decodeRaster
       return {data:result.data,url};
     }
     const result = await fetcher(url,{signal:controller.signal});
-    if (!result.ok) throw new Error('Tile '+type+' returned '+result.status);
+    if (!result.ok) throw flatHttpError(result,type);
     const data = await (type === 'json' ? result.json() : result.arrayBuffer());
     controller.signal.throwIfAborted();
     return {data,url:result.url || url};

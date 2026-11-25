@@ -4,6 +4,7 @@ import {flatCamera, flatScaleBar, fitFlatBounds} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {flatReliefPaint,flatReliefPixels} from './flat-relief.mjs';
+import {flatFailure,flatRetryDue} from './flat-recovery.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
@@ -63,6 +64,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
+  let wakeTimer=null, wakeDue=Infinity, recoveryWake=null;
   let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
   let stationFallbackMask=()=>false;
@@ -126,8 +128,45 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     setCamera(flatCamera({center:camera?.center??requestedView.center,zoom:camera?.zoom??requestedView.zoom,
       bearing:camera?.bearing??requestedView.bearing,width,height}));
   }
+  const canRetry=()=>!disposed&&document.visibilityState!=='hidden'&&window.navigator.onLine!==false;
+  function clearWake() {
+    if(wakeTimer!==null)window.clearTimeout(wakeTimer);
+    wakeTimer=null;wakeDue=Infinity;
+  }
+  function armRecovery() {
+    if(!canRetry()){clearWake();return;}
+    let due=queue.nextRetry();
+    for(const entry of metadata.values())if(!entry.pending&&entry.failure)due=Math.min(due,entry.failure.due);
+    if(due===wakeDue)return;
+    clearWake();
+    if(!Number.isFinite(due))return;
+    wakeDue=due;
+    wakeTimer=window.setTimeout(()=>{clearWake();recover(false);},Math.min(2147483647,Math.max(0,due-Date.now())));
+  }
+  function startSource(id,previous) {
+    const controller=new AbortController(), retries=previous?previous.retries+1:0;
+    const entry={controller,retries,pending:true,failure:previous?.failure,error:previous?.failure?.error};
+    metadata.set(id,entry);
+    loader.resolve(style.sources[id]??{},{baseURL:styleURL,controller}).then(value=>{
+      entry.value=value;delete entry.error;delete entry.failure;
+    },error=>{
+      if(!controller.signal.aborted){
+        entry.failure=flatFailure(error,retries,Date.now());entry.error=error;
+      }
+    }).finally(()=>{entry.pending=false;if(!controller.signal.aborted)schedule();});
+    return entry;
+  }
+  function recover(reconnect) {
+    if(!canRetry()){clearWake();return;}
+    recoveryWake=Boolean(recoveryWake||reconnect);
+    schedule();
+  }
   function render() {
     frame=0;
+    // Reconcile the current camera/settings before dispatching a recovery
+    // wake, so a concurrent pan or disabled layer cannot retry an old tile.
+    const retry=canRetry()?recoveryWake:null;
+    recoveryWake=null;
     const layers=compiledLayers.filter(layer=>layer.layout?.visibility!=='none'&&
       camera.zoom>=(layer.minzoom??-Infinity)&&camera.zoom<(layer.maxzoom??Infinity)&&tileLayer(layer));
     const stationSource=camera.zoom>=8?'stations':camera.zoom>=7?'stationMed':null;
@@ -149,17 +188,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     let resolvedTilesExpected=false;
     for (const id of active) {
       if(localData.has(id)){if(localData.get(id).failed)errors.add(id);continue;}
-      let entry=metadata.get(id);
-      if (!entry) {
-        const controller=new AbortController();
-        entry={controller};
-        metadata.set(id,entry);
-        loader.resolve(style.sources[id]??{},{baseURL:styleURL,controller}).then(value=>{
-          entry.value=value;
-        },error=>{
-          if (!controller.signal.aborted) entry.error=error;
-        }).finally(()=>{if (!controller.signal.aborted) schedule();});
-      }
+      let entry=metadata.get(id)??startSource(id);
+      if(retry!==null&&!entry.pending&&flatRetryDue(entry.failure,Date.now(),retry))entry=startSource(id,entry);
       if (entry.error) {errors.add(id);continue;}
       if (!entry.value) continue;
       try {
@@ -169,6 +199,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       } catch {errors.add(id);}
     }
     queue.update(plans);
+    if(retry!==null)queue.retryFailed(retry);
     const tiles=queue.snapshot(),failedTiles=checkStations?tiles.errors.get(stationSource):null;
     stationFallbackMask=flatStationFallbackMask(checkStations?{metadataFailed,tiles:failedTiles??[]}: {});
     const curated=stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
@@ -239,6 +270,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       [...localData].some(([id,entry])=>active.has(id)&&!entry.draw&&!entry.failed) ||
       resolvedTilesExpected&&!painting&&!errors.size;
     const railFallback=layers.some(layer=>isNeutralRailReference(layer)&&(rendered.layerDraws.get(layer.id)??0)>0);
+    armRecovery();
     onStatus({errors:[...errors],painting,loading,railFallback,clamped:Math.abs(requestedView.center[1])>85.05112878 && !navigated});
   }
 
@@ -350,11 +382,15 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(disposed) return;
     disposed=true;
     if(measure?.active)measure.setMode(measure.mode);
-    lifetime.abort(); observer.disconnect();
+    lifetime.abort(); observer.disconnect();clearWake();
     if(frame) window.cancelAnimationFrame(frame);
     for(const entry of metadata.values()) entry.controller.abort();
     queue.close();canvas.remove();
   };
+  window.addEventListener('online',()=>recover(true),{signal});
+  window.addEventListener('offline',clearWake,{signal});
+  document.addEventListener('visibilitychange',()=>recover(false),{signal});
+  window.addEventListener('pageshow',event=>{if(event.persisted)recover(false);},{signal});
   window.addEventListener('pagehide',event=>{if(!event.persisted) close();},{signal});
   const moveTo=({center,zoom,bounds})=>{
     if(disposed) return;
