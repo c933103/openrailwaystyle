@@ -165,3 +165,42 @@ test('the assembly workflow builds the traction dataset after the crossings, and
   assert.match(workflow, /git push --force origin HEAD:traction-extract-data/);
   assert.doesNotMatch(workflow, /HEAD:traction-data\b/, 'the Overpass branch is never written');
 });
+
+// The publish step's own shell: the power GeoJSON goes out as gzip only
+// (the site reads nothing else), and a file over GitHub's 100 MiB limit is
+// named before the push instead of being refused by it.
+test('traction-extract-data publishes the power GeoJSON as gzip only, and stops on a file over 100 MiB', async t => {
+  const {mkdtemp, mkdir, rm, writeFile, readdir, truncate} = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const {spawnSync} = await import('node:child_process');
+  const workflow = await readFile(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
+  const step = workflow.split('      - name: Publish traction-extract-data\n')[1].split('\n      - ')[0];
+  const lines = step.split('\n').map(line => line.replace(/^          /, ''));
+  const command = lines.slice(lines.findIndex(l => l.startsWith('cp -r "$GITHUB_WORKSPACE/traction-extract/."')) + 1, lines.indexOf('git add .')).join('\n');
+  assert.match(command, /rm "\$raw"/);
+  const fixture = async files => {
+    const dir = await mkdtemp(join(tmpdir(), 'traction-publish-'));
+    t.after(() => rm(dir, {recursive: true, force: true}));
+    for (const [name, size] of Object.entries(files)) {
+      await mkdir(join(dir, name, '..'), {recursive: true});
+      await writeFile(join(dir, name), 'x');
+      if (size) await truncate(join(dir, name), size);
+    }
+    const result = spawnSync('bash', ['-e', '-c', command], {cwd: dir, encoding: 'utf8'});
+    return {dir, result};
+  };
+  const ok = await fixture({'power/power-methods.geojson': 0, 'power/power-methods.geojson.gz': 0, 'power/power-facilities.geojson': 0, 'power/power-facilities.geojson.gz': 0, 'power/methods-manifest.json': 0, 'signals/index.json': 0});
+  assert.equal(ok.result.status, 0, ok.result.stderr);
+  assert.deepEqual((await readdir(join(ok.dir, 'power'))).sort(), ['methods-manifest.json', 'power-facilities.geojson.gz', 'power-methods.geojson.gz']);
+  assert.deepEqual(await readdir(join(ok.dir, 'signals')), ['index.json'], 'other folders untouched');
+  const noGzip = await fixture({'power/power-methods.geojson': 0});
+  assert.notEqual(noGzip.result.status, 0, 'a raw file without its gzip copy stops the publish');
+  const none = await fixture({'power/methods-manifest.json': 0});
+  assert.equal(none.result.status, 0, 'no raw GeoJSON at all is fine');
+  const atLimit = await fixture({'power/power-methods.geojson.gz': 104857600});
+  assert.equal(atLimit.result.status, 0, 'exactly 100 MiB is allowed');
+  const over = await fixture({'power/power-methods.geojson.gz': 104857601});
+  assert.notEqual(over.result.status, 0);
+  assert.match(over.result.stdout, /::error::Over GitHub's 100 MiB file limit: \.\/power\/power-methods\.geojson\.gz/);
+});
