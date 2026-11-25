@@ -106,8 +106,8 @@ try {
       // Partial board failures must survive the production cache and renderer.
       // All responses below are synthetic; the loopback transport guard remains.
       const boardRequests = [], boardStopIds = [];
-      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {};
-      await context.route('https://api.transitous.org/api/v1/**', route => {
+      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {}, blockedBoard;
+      await context.route('https://api.transitous.org/api/v1/**', async route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
         if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
           ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
@@ -115,6 +115,7 @@ try {
         assert.equal(url.searchParams.get('n'), '30');
         const id = url.searchParams.get('stopId');
         boardStopIds.push(id);
+        if (id === 'b' && blockedBoard) await blockedBoard;
         if (Object.hasOwn(boardBodies, id)) return route.fulfill({body:JSON.stringify(boardBodies[id]), contentType:'application/json'});
         return boardFailed.includes(id)
           ? route.fulfill({status:503, json:{error:'synthetic private provider response'}})
@@ -125,9 +126,35 @@ try {
         Date.now = () => window.__departureFixtureNow;
       });
       const waitBoard = () => page.waitForFunction(() =>
-        document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
+        document.querySelector('.departures') && !document.querySelector('.departure-progress') &&
+        !document.querySelector('.departures').textContent.includes('Loading departures…'));
       const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
         realTime:false, place:stop('Central','a',{arrival:'2099-01-01T12:00:00Z',departure:'2099-01-01T12:00:00Z'})};
+      // Hold the second board until the actual station panel renders the first;
+      // a translated redraw must share the pending request and cached rows.
+      for (const fails of [false, true]) {
+        boardName = `Progressive fixture ${fails}`; boardFailed = fails ? ['b'] : [];
+        boardBodies = {a:{stopTimes:[row]}};
+        let release;
+        blockedBoard = new Promise(resolve => {release = resolve;});
+        const before = boardRequests.length;
+        try {
+          await openStation(boardName);
+          await page.getByText('Departures from the first loaded timetable.', {exact:false}).waitFor();
+          assert.equal(await page.locator('.departure-list > li').count(), 1);
+          assert.equal(await page.locator('.departure-trip').count(), 0);
+          await page.locator('#details-close').click();
+          await openStation(boardName);
+          await page.getByText('Departures from the first loaded timetable.', {exact:false}).waitFor();
+          assert.equal(boardRequests.length - before, 3, 'in-flight reopen does not refetch');
+          release(); await waitBoard();
+          assert.equal(await page.locator('.departure-trip').count(), 1);
+          assert.equal(await page.locator('.departure-warning').count(), Number(fails));
+          assert.equal(boardRequests.length - before, 3);
+          await page.locator('#details-close').click();
+        } finally {release(); blockedBoard = undefined;}
+      }
+      boardBodies = {}; boardFailed = ['b'];
       // A scheduled cancellation can be old while another feed still predicts
       // the same train ahead. Exercise the production parser, board and cache.
       const expiredAt = new Date(await page.evaluate(() => Date.now() - 600_000)).toISOString();
@@ -461,7 +488,14 @@ try {
           return route.fulfill({json:{stopTimes:withRows ? [row] : []}});
         });
         await openStation(name); await started;
-        assert.match(await page.locator('.departures').textContent(), /Loading departures/);
+        const pending = page.locator('.departure-progress');
+        await pending.waitFor();
+        if (withRows) {
+          await page.getByText('Departures from the first loaded timetable.', {exact:false}).waitFor();
+        } else {
+          assert.match(await pending.textContent(), /Loading .*stop timetable/);
+        }
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No matching rail timetable stop/);
         await page.locator('#details-close').click();
         assert.equal(await page.locator('#details').isHidden(), true);
         release(); await waitBoard();
