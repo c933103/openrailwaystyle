@@ -18,7 +18,7 @@ const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -150,7 +150,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     for(const id of tiles.errors.keys()) errors.add(id);
     paintedSymbols=[];
     const railClip=flatRailReferenceClip(camera,{metadataFailed:railError,failed:tiles.errors.get(railSource),planned:plans.get(railSource)?.tiles});
-    const rendered=draw(context,camera,tiles.frame,{getIcon,allowFeature:fallbackLayers?allowFeature:undefined,
+    const targets=legendLayers?.(), legendFeatures=[];
+    const rendered=draw(context,camera,tiles.frame,{getIcon,legendLayers:targets,
+      onLegendFeature:targets?.size?properties=>legendFeatures.push({properties}):undefined,allowFeature:fallbackLayers?allowFeature:undefined,
       layerClip:id=>isNeutralRailReference({id})?railClip:null,onSymbol:({id,source,sourceLayer},label,bounds)=>{
       if(!interactiveLayer?.(id))return;
       const [rawLng,lat]=camera.unproject([label.px,label.py]);
@@ -161,6 +163,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         layer:{id,type:'symbol',source},geometry:{type:'Point',coordinates:[lng,lat]},
       }});
     }});
+    onLegendFrame?.(legendFeatures);
     drawingOverlay.draw(context);
     measureOverlay.draw(context,camera);
     if(locationFix){

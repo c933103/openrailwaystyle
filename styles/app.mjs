@@ -503,7 +503,7 @@ const {showAerialwayDetails, showRailwayPointDetails, showPowerFacilityDetails, 
 // Power, train control, gauge and loading gauge legends name exactly what
 // is drawn in the current view, most common first: systems are regional,
 // and a fixed list would be long and mostly irrelevant.
-let inView = [], legendTimer;
+let inView = [], legendTimer, flatLegendFeatures = [];
 // Waits for the view's tiles rather than map idle, which any slow tile
 // (e.g. relief) can hold back.
 function scheduleLegend() {
@@ -537,13 +537,18 @@ const IN_VIEW = {
 };
 const SERVICE_ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5}, SERVICE_UNCOLOURED = '#5d6b73';
 const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram',funicular:'Funicular'};
+function inViewLegendLayers(mode) {
+  // Aerialways and escalators carry their own owner, so they join the Owner list.
+  return mode === 'service' ? ['service-routes'] : [`${mode}-branch-overview`, `${mode}-overview`, `${mode}-tracks`, `${mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)];
+}
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
-  if (!ready || !describe) return;
-  // Aerialways and escalators carry their own owner, so they join the Owner list.
-  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)].filter(id => map.getLayer(id));
+  if ((!ready && !useFlat) || !describe) return;
+  const features = useFlat ? flatLegendFeatures : map.queryRenderedFeatures({
+    layers:inViewLegendLayers(settings.mode).filter(id=>map.getLayer(id)),
+  });
   const counts = new Map();
-  for (const f of map.queryRenderedFeatures({layers})) {
+  for (const f of features) {
     const described = describe(f.properties);
     if (!described) continue;
     for (const row of Array.isArray(described[0]) ? described : [described]) {
@@ -1860,6 +1865,8 @@ async function initialize() {
       curatedStationData:majorStationData,
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
+      legendLayers:()=>IN_VIEW[settings.mode] ? new Set(inViewLegendLayers(settings.mode)) : undefined,
+      onLegendFrame(features) {flatLegendFeatures=features;scheduleLegend();},
       imageryCredit(url,tile){
         if(!url.startsWith('atlasimagery://'))return;
         const provider=imageryProtocol.providerFor(tile);

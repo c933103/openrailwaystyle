@@ -43,6 +43,37 @@ export function offsetFlatPath(points, offset, closed = false, miterLimit = 2) {
   });
 }
 
+// Clip each MVT segment first to its canonical tile (not the buffer),
+// then test its projected centre line against the screen. This avoids
+// listing rail in an offscreen part of a loaded tile after pan or rotation.
+function clipSegment(x,y,dx,dy,left,top,right,bottom) {
+  let lo=0, hi=1;
+  for(const [start,change,min,max] of [[x,dx,left,right],[y,dy,top,bottom]]) {
+    if(!change) {if(start<min||start>max)return null;continue;}
+    const a=(min-start)/change,b=(max-start)/change;
+    lo=Math.max(lo,Math.min(a,b));hi=Math.min(hi,Math.max(a,b));
+    if(lo>hi)return null;
+  }
+  return [lo,hi];
+}
+
+export function flatLineIntersectsViewport(camera,tile,feature,padding=0) {
+  if(feature.type!==2)return false;
+  const [a,b,c,d,tx,ty]=camera.tileTransform(tile),extent=feature.extent;
+  for(const path of feature.paths)for(let i=1;i<path.length;i++) {
+    const x=path[i-1].x/extent,y=path[i-1].y/extent;
+    const dx=path[i].x/extent-x,dy=path[i].y/extent-y;
+    if(!dx&&!dy)continue;
+    const tileSpan=clipSegment(x,y,dx,dy,0,0,1,1);
+    if(!tileSpan)continue;
+    const [lo,hi]=tileSpan, ax=x+lo*dx, ay=y+lo*dy;
+    const ex=(hi-lo)*dx,ey=(hi-lo)*dy;
+    if(clipSegment(a*ax+c*ay+tx,b*ax+d*ay+ty,a*ex+c*ey,b*ex+d*ey,
+      -padding,-padding,camera.width+padding,camera.height+padding))return true;
+  }
+  return false;
+}
+
 // Paint values here are resolved CSS-pixel values. Evaluating the style,
 // ordering tiles/layers, labels and interactive queries belong to the caller.
 export function drawFlatVectorLayer(context, camera, tile, features, {

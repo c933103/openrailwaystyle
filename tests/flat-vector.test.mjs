@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {flatVectorTile,offsetFlatPath} from '../styles/flat-vector.mjs';
+import {flatVectorTile,offsetFlatPath,flatLineIntersectsViewport} from '../styles/flat-vector.mjs';
 import {flatVectorFixture} from './fixtures/flat-vector.mjs';
 
 test('CPU vector tile reads exact source layers, ID, geometry and feature properties', () => {
@@ -31,4 +31,13 @@ test('line offsets translate right on screen and maintain bounded joins',()=>{
   assert.ok(Math.hypot(turnback[1][0]-12,turnback[1][1])<=6.001);
   const square=offsetFlatPath([[0,0],[12,0],[12,12],[0,12],[0,0]],2,true);
   assert.deepEqual(square.map(p=>p.map(x=>Math.round(x))),[[2,2],[10,2],[10,10],[2,10]]);
+});
+
+test('legend line observation excludes offscreen and tile-buffer-only geometry under rotation',()=>{
+  const tile={}, feature=(...path)=>({type:2,extent:100,paths:[path.map(([x,y])=>({x,y}))]});
+  const camera={width:50,height:50,tileTransform:()=>[0,100,-100,0,40,-25]};
+  assert.equal(flatLineIntersectsViewport(camera,tile,feature([0,10],[100,10])),true);
+  assert.equal(flatLineIntersectsViewport(camera,tile,feature([0,99],[100,99])),false);
+  assert.equal(flatLineIntersectsViewport(camera,tile,feature([0,-5],[100,-5])),false);
+  assert.equal(flatLineIntersectsViewport(camera,tile,feature([-20,10],[20,10])),false);
 });

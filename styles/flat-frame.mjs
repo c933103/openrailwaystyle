@@ -1,7 +1,7 @@
 import {latest, normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {drawFlatRasterLayer} from './flat-raster.mjs';
 import {compileFlatGeometryStyle} from './flat-style.mjs';
-import {drawFlatVectorLayer} from './flat-vector.mjs';
+import {drawFlatVectorLayer,flatLineIntersectsViewport} from './flat-vector.mjs';
 import {compileFlatTextLabel,drawFlatTextLabels,flatLabelCandidates} from './flat-labels.mjs';
 
 function paintExpression(layer, name) {
@@ -33,7 +33,7 @@ export function compileFlatFrame(layers) {
     if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
-  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,onSymbol,allowFeature,layerClip} = {}) {
+  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,onSymbol,allowFeature,layerClip,legendLayers,onLegendFeature} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
     const layerDraws = new Map(), labels=[];
@@ -72,6 +72,7 @@ export function compileFlatFrame(layers) {
           labels.push({id,candidates,source,sourceLayer:layer.label.sourceLayer});
           continue;
         } else if (geometry) {
+          const observe=type==='line'&&legendLayers?.has(id)&&onLegendFeature;
           const clip=layerClip?.(id);
           if(clip===false)continue;
           if(clip)context.save();
@@ -88,7 +89,12 @@ export function compileFlatFrame(layers) {
               for (const feature of cached.get(name)) {
                 if(allowFeature&&!allowFeature(id,feature,tile))continue;
                 const paint = geometry.resolve(global,feature,featureState(source,name,feature.id) ?? {},canonical);
-                if (paint) draws += drawFlatVectorLayer(context,camera,tile,[feature],paint);
+                if (!paint)continue;
+                const count=drawFlatVectorLayer(context,camera,tile,[feature],paint);
+                draws+=count;
+                if(observe&&count&&flatLineIntersectsViewport(camera,tile,feature,
+                  paint.width+2*Math.abs(paint.offset)+(paint.gapWidth>0?paint.gapWidth+paint.width:0)))
+                  observe(feature.properties);
               }
             }
           } finally {if(clip)context.restore();}

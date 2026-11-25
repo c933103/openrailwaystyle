@@ -82,6 +82,11 @@ const neutralRail=pointArchive(vtPbf.fromGeojsonVt({transportation:{features:[
 const healthyRail=vtPbf.fromGeojsonVt({rail:{features:[
   {id:712,type:2,tags:{feature:'rail'},geometry:[[[0,2368],[4096,2368]]]},
 ]}},{version:2,extent:4096});
+const legendRail=vtPbf.fromGeojsonVt({rail:{features:[
+  {id:713,type:2,tags:{feature:'rail',gaugeint0:1435},geometry:[[[0,2368],[4096,2368]]]},
+  {id:714,type:2,tags:{feature:'rail',gaugeint0:1067},geometry:[[[0,4000],[4096,4000]]]},
+  {id:715,type:2,tags:{feature:'rail',gaugeint0:1000,hidden:true},geometry:[[[0,2200],[4096,2200]]]},
+]}},{version:2,extent:4096});
 let railFailureFixture='';
 let stationFailureFixture='';
 const paths=[];
@@ -104,6 +109,11 @@ const server=createServer((req,res)=>{
         if(layer.id==='rail-basemap-reference')return [{id:layer.id,type:'line',
           source:'openmaptiles','source-layer':'transportation',minzoom:8,
           paint:{'line-color':'#00b0ff','line-width':7}}];
+        if(railFailureFixture==='legend'&&layer.id==='gauge-tracks')return [{
+          id:layer.id,type:'line',minzoom:8,source:'entryRail','source-layer':'rail',
+          metadata:{'atlas:semantics-version':1,'atlas:views':['gauge']},
+          paint:{'line-color':'#ff0000','line-width':7,'line-opacity':['case',['boolean',['get','hidden'],false],0,1]},
+        }];
         if(layer.id==='infrastructure-tracks')return [{...layer,minzoom:8,
           metadata:{'atlas:semantics-version':1,'atlas:views':['infrastructure']}}];
         return [layer];
@@ -145,7 +155,7 @@ const server=createServer((req,res)=>{
     }));
   } else if(pathname.startsWith('/rail-health/')) {
     if(railFailureFixture==='tile'&&pathname==='/rail-health/8/128/128.pbf'){res.writeHead(404).end();return;}
-    res.writeHead(200,{'content-type':'application/x-protobuf'}).end(pathname.endsWith('/129/128.pbf')?healthyRail:undefined);
+    res.writeHead(200,{'content-type':'application/x-protobuf'}).end(pathname.endsWith('/129/128.pbf')?(railFailureFixture==='legend'?legendRail:healthyRail):undefined);
   } else if(pathname==='/data/station-fallback-fixture.pmtiles') {
     const r=pmtilesBytesResponse(fallbackArchive,req.headers.range,'flat-station-fixture-v1');
     res.writeHead(r.status,r.headers);res.end(r.body);
@@ -854,6 +864,33 @@ try {
       assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
     }finally {railFailureFixture='';await railCase.context.close();}
   }
+  railFailureFixture='legend';
+  const legendCase=await fresh(true), lp=legendCase.page;
+  try {
+    await lp.goto(origin+'/#8/-0.7031/1.40625');
+    await lp.locator('canvas.atlas-flat-preview').waitFor();
+    const gauge=lp.getByRole('button',{name:'Gauge',exact:true});
+    if(!(await gauge.isVisible()))await lp.locator('#controls-open').click();
+    await gauge.click();
+    const hasRed=()=> {
+      const c=document.querySelector('canvas.atlas-flat-preview');
+      const p=c.getContext('2d').getImageData(c.width/2+90*c.width/c.clientWidth-5,
+        c.height/2+40*c.height/c.clientHeight-6,11,13).data;
+      return p.some((r,i)=>i%4===0&&r>225&&p[i+1]<30&&p[i+2]<30);
+    };
+    await lp.waitForFunction(hasRed);
+    const legend=lp.locator('#legend');
+    await legend.getByText(/1[,.]?435 mm/).waitFor();
+    if(await legend.getByText(/1[,.]?067 mm|1[,.]?000 mm/).count())throw Error('Unpainted gauge appeared in legend');
+    const speed=lp.getByRole('button',{name:'Max speed',exact:true});
+    await speed.click();
+    await legend.getByText(/Mapped maximum speed/).waitFor();
+    assert.equal(await legend.getByText(/1[,.]?435 mm/).count(),0);
+    await gauge.click();
+    await legend.getByText(/1[,.]?435 mm/).waitFor();
+    assert.deepEqual(await lp.evaluate(()=>window.webglAttempts),[]);
+    console.log('Canvas thematic legend follows visible, painted gauge; offscreen and transparent values are excluded.');
+  } finally {railFailureFixture='';await legendCase.context.close();}
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
