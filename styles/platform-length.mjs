@@ -324,6 +324,10 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    if(source!==last?.source||signature!==last.signature){source.setData(data);drawn.set(id,{source,signature});}
   }
  };
+ const needsNegativeFallback=(key,entry)=>{
+  const previous=cache.get(key);
+  return !!(edgeGeometry&&key===preferredEdge&&entry?.url&&entry.anchor&&previous?.apiMissing&&!previous.tileTried);
+ };
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.has(preferredEdge)?[preferredEdge,pending.get(preferredEdge)]:pending.entries().next().value;if(!entry)return;
   const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
@@ -332,13 +336,19 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    if(!edgeGeometry||key!==preferredEdge||!requested.anchor||requestController.signal.aborted)return false;
    clearTimeout(timeout);
    const length=await edgeGeometry.measureCompleteEdge(requested.id,requested.anchor,requestController.signal).catch(()=>null);
-   if(!(length>0)||disposed||requestController.signal.aborted||key!==preferredEdge||!desired.get(key)?.url)return false;
-   remember(key,{...cache.get(key),fetched:true,length,length_estimated:true,length_basis:'complete_edge_tile'});
+   if(disposed||requestController.signal.aborted||key!==preferredEdge||!desired.get(key)?.url)return false;
+   if(!(length>0)){if(cache.get(key)?.apiMissing)remember(key,{...cache.get(key),tileTried:true});return false;}
+   remember(key,{...cache.get(key),fetched:true,tileTried:true,length,length_estimated:true,length_basis:'complete_edge_tile'});
    draw();onLength(requested.id,length);return true;
   }
   try {
+   if(cache.get(key)?.apiMissing){await tryTileLength();return;}
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
-   if(r.status===404||r.status===410){if(await tryTileLength())return;remember(key,{...cache.get(key),fetched:true});draw();return;}
+   if(r.status===404||r.status===410){
+    if(disposed||requestController.signal.aborted)return;
+    remember(key,{...cache.get(key),fetched:true,...(requested.kind==='edge'?{apiMissing:true}:{})});
+    if(!await tryTileLength())draw();return;
+   }
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
    const data=await readPlatformResponse(r),entry=requested;if(disposed)return;
    const raw=data.properties||{},length=Number(raw.length),properties={...cache.get(key),fetched:true,name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
@@ -391,7 +401,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    for(const [key,tiles] of seeds)if(desired.has(key))desired.get(key).seeds=[...tiles.values()];
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
-  for(const [key,entry] of desired){const wanted=entry.url&&!cache.get(key)?.fetched;if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
+  for(const [key,entry] of desired){const wanted=entry.url&&(!cache.get(key)?.fetched||needsNegativeFallback(key,entry));if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
   if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
   if(measuring&&(map.getZoom()<19||!desired.has(measuring)))measureController?.abort(OBSOLETE_REQUEST);
   draw();schedule();measureNext();
@@ -440,8 +450,14 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  // Favor an open inspector without interrupting in-flight work, adding a
  // request, or changing the zoom, visibility, cooldown and retry gates.
  function prioritizeEdge(feature){
-  const id=feature&&platformIdentity(feature);
-  preferredEdge=id?'edge/'+id:undefined;
+  const id=feature&&platformIdentity(feature),nextKey=id?'edge/'+id:undefined;
+  if(preferredEdge===nextKey)return;
+  if(cache.get(preferredEdge)?.apiMissing)pending.delete(preferredEdge);
+  preferredEdge=nextKey;
+  const entry=desired.get(preferredEdge);
+  if(preferredEdge!==inflight&&needsNegativeFallback(preferredEdge,entry)){
+   pending.set(preferredEdge,entry.url);schedule();
+  }
  }
  return {update,destroy,enrich,prioritizeEdge};
 }

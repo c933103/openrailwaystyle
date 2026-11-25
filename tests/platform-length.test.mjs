@@ -114,6 +114,28 @@ test('an open edge is requested first after zooming in, without dropping or dupl
  }finally{p.destroy();for(const reply of replies.values())reply();}
 });
 
+test('opening an edge after a negative background lookup measures it without repeating the API',async()=>{
+ for(const status of [404,410]){
+  let requests=0,measures=0;
+  const selected={...edge(23),source:'platformEdges'},done=Promise.withResolvers(),api=Promise.withResolvers();
+  const map={getZoom:()=>19,queryRenderedFeatures:()=>[selected],getSource:()=>null};
+  const p=createPlatformLengths(map,{delay:0,
+   fetcher:async()=>{requests++;api.resolve();return {ok:false,status};},
+   edgeGeometry:{measureCompleteEdge:async id=>{measures++;assert.equal(id,'23');return 246.86;}},
+   onLength:(id,length)=>done.resolve({id,length}),
+  });
+  try{
+   p.update();await api.promise;await new Promise(resolve=>setImmediate(resolve));
+   assert.equal(measures,0,'background missing API result must not trigger tile reads');
+   assert.equal(p.enrich(selected).properties.platform_length,undefined);
+   p.prioritizeEdge(selected);
+   assert.deepEqual(await Promise.race([done.promise,new Promise((_,reject)=>setTimeout(()=>reject(Error('no measurement after selection')),500).unref())]),{id:'23',length:246.86});
+   p.prioritizeEdge(null);p.prioritizeEdge(selected);p.update();
+   assert.equal(requests,1);assert.equal(measures,1);assert.equal(p.enrich(selected).properties.length_estimated,true);
+  }finally{p.destroy();}
+ }
+});
+
 test('platform requests leave the queue when panned away and respect a rate-limit response',async()=>{
  let features=[edge(),edge(2)],requests=0;const map={getZoom:()=>19,queryRenderedFeatures:()=>features,getSource:()=>({setData(){}})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:false,status:429};}});
