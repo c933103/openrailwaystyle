@@ -616,6 +616,7 @@ function saveSettings() {
 }
 // Build a link on demand rather than writing each map position into history.
 let flatCurrentView, flatNavigation, flatRefreshStyle, flatSourceContext, pendingFlatNavigation;
+let flatServiceFeatures=[], flatExpiryQueued=false;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -1888,8 +1889,20 @@ async function initialize() {
       shapeSources:['electricFacilities','electricMethods'],
       railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
       interactiveLayer:isClickable,
-      legendLayers:()=>IN_VIEW[settings.mode] ? new Set(inViewLegendLayers(settings.mode)) : undefined,
-      onLegendFrame(features) {flatLegendFeatures=features;scheduleLegend();},
+      legendLayers:()=>settings.mode==='service'?new Set(['service-routes']):
+        IN_VIEW[settings.mode]?new Set(inViewLegendLayers(settings.mode)):undefined,
+      onLegendFrame(features) {
+        const service=settings.mode==='service';
+        flatLegendFeatures=service?[]:features;
+        flatServiceFeatures=service?features:[];
+        scheduleLegend();
+        // Applying a style renders immediately. Schedule timer reconciliation
+        // after that frame rather than reentering it from the expiry callback.
+        if(!flatExpiryQueued&&(service||currentFeature?.layer?.id==='service-routes')){
+          flatExpiryQueued=true;
+          queueMicrotask(()=>{flatExpiryQueued=false;frequencyExpiry?.update();});
+        }
+      },
       imageryCredit(url,tile){
         if(!url.startsWith('atlasimagery://'))return;
         const provider=imageryProtocol.providerFor(tile);
@@ -2007,9 +2020,9 @@ async function initialize() {
     const action=pendingDraw;pendingDraw=undefined;action?.();
     updateDrawing();
     let applied=JSON.stringify(settings);
-    flatRefreshStyle=()=>{
+    flatRefreshStyle=(force=false)=>{
       const signature=JSON.stringify(settings);
-      if(applied===signature)return;
+      if(!force&&applied===signature)return;
       const next=structuredClone(flatTemplate);
       localizeStyle(next);
       next.sources.relief.tiles=[dem.sharedDemProtocolUrl];
@@ -2019,12 +2032,15 @@ async function initialize() {
         if(paint)Object.assign(layer.paint,paint);
       }
       flat.setStyle(next);
+      if(force)return; // Timer refresh does not change interactive tools or other datasets.
       refreshFlatPower();
       drawing.refresh();
       if(measuring?.active)measuring.refresh();
       applied=signature;
+      frequencyExpiry?.update();
     };
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
+    frequencyExpiry?.update();
     refreshFlatPower();
     return;
   }
@@ -2741,9 +2757,14 @@ $('search-form').addEventListener('submit', async e => {
   } finally { clearTimeout(timeout); }
 });
 frequencyExpiry=installFrequencyExpiry({
-  active:()=>ready&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
-  features:()=>[...map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
+  active:()=>Boolean(useFlat?flatSourceContext:ready)&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
+  features:()=>[...(useFlat?flatServiceFeatures:map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'})),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
   refresh:()=>{
+    if(useFlat){
+      flatRefreshStyle?.(true);
+      if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);
+      return;
+    }
     const p=serviceFrequencyPaint(settings);
     if(map.getStyle().layers.some(l=>l.id==='service-routes'))for(const [key,value] of [['line-width',p.width],['line-offset',p.offset],['line-opacity',p.opacity]])map.setPaintProperty('service-routes',key,value);
     if(map.getStyle().layers.some(l=>l.id==='service-names'))map.setLayoutProperty('service-names','text-offset',p.labelOffset);

@@ -30,6 +30,16 @@ const fixtureElectricitySignals=gzipSync(JSON.stringify(electricitySignalsGeoJSO
 ]})));
 const fixturePowerSources=new Set(['electricSignals','electricFacilities','electricMethods']);
 const fixturePowerLayers=style.layers.filter(layer=>fixturePowerSources.has(layer.source));
+const fixtureServiceLayer=style.layers.find(layer=>layer.id==='service-routes');
+const fixtureServiceStart=Date.parse('2026-06-01T08:00:00Z'), fixtureServiceEnd=fixtureServiceStart+60000;
+const servicePoint=[1,1], serviceZoom=12, serviceN=2**serviceZoom;
+const localServicePoint=([lng,lat])=>[(lng+180)/360*serviceN,(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*serviceN];
+const [serviceX,serviceY]=localServicePoint(servicePoint).map(Math.floor);
+const serviceCoordinates=[[.990,1],[1.010,1]].map(p=>localServicePoint(p).map((u,i)=>Math.round(4096*(u-[serviceX,serviceY][i]))));
+const fixtureServiceMvt=vtPbf.fromGeojsonVt({service_routes:{features:[{
+  id:88106,type:2,geometry:[serviceCoordinates],tags:{name:'Fixture scheduled rail',colour:'#ff2020',n:1,i:0,
+    frequency_am:6,frequency_high_am:6,frequency_width_am:8,frequency_offset_am:0,frequency_until:fixtureServiceEnd/1000},
+}]}},{version:2,extent:4096});
 const facilitySnapshot='/data/traction/power/power-facilities.geojson.gz',
   methodSnapshot='/data/traction/power/power-methods.geojson.gz';
 const mapped=(id, type, coordinates, properties)=>({id,type:'Feature',geometry:{type,coordinates},properties});
@@ -48,11 +58,12 @@ const powerFixtureFiles={
     method_rail:true,voltage:750,frequency:0}),
  ]),
 };
-const replacing=new Set(['infrastructure-tracks','context-transport-bus-label']);
+const replacing=new Set(['infrastructure-tracks','context-transport-bus-label','service-routes']);
 style.layers=[...style.layers.filter(layer=>!replacing.has(layer.id)&&!fixturePowerSources.has(layer.source))
   .map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),
   {id:'fixture-bg',type:'background',paint:{'background-color':'#02131b'}},
   ...fixturePowerLayers,
+  fixtureServiceLayer,
   {id:'infrastructure-tracks',type:'line',source:'entryRail','source-layer':'rail',paint:{'line-color':'#ff0000','line-width':7}},
   {id:'station-fixture-dots',type:'circle',source:'stationFixture','source-layer':'station',metadata:{'atlas:semantics-version':1,'atlas:settings':['stations']},paint:{'circle-color':'#00dc20','circle-radius':6}},
   {id:'fixture-track-names',type:'symbol',source:'entryRail','source-layer':'rail',layout:{
@@ -128,6 +139,12 @@ const server=createServer((req,res)=>{
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(powerFixtureFiles[pathname]) {res.writeHead(200,{'content-type':'application/gzip'}).end(powerFixtureFiles[pathname]);}
+  else if(pathname==='/data/service-routes/frequency-manifest.json')
+    res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({schema:3,profiles:['am']}));
+  else if(pathname.startsWith('/fixture-service/')) {
+    const hit=pathname===`/fixture-service/${serviceZoom}/${serviceX}/${serviceY}.pbf`;
+    res.writeHead(200,{'content-type':'application/x-protobuf'}).end(hit?fixtureServiceMvt:Buffer.alloc(0));
+  }
   else if(pathname===fixtureElectricityPath) {res.writeHead(200,{'content-type':'application/gzip'}).end(fixtureElectricitySignals);}
   else if(pathname==='/world.style.json') {
     const payload=railFailureFixture?{
@@ -219,6 +236,7 @@ await new Promise((ok,fail)=>server.once('error',fail).listen(0,'127.0.0.1',ok))
 const origin='http://127.0.0.1:'+server.address().port;
 const railTemplate=origin+'/fixture/{z}/{x}/{y}.pbf';
 const labelTemplate=origin+'/label/{z}/{x}/{y}.pbf';
+style.sources.serviceRoutes={type:'vector',tiles:[origin+'/fixture-service/{z}/{x}/{y}.pbf'],minzoom:serviceZoom,maxzoom:serviceZoom};
 style.sources.entryRail={type:'vector',url:origin+'/entry-tilejson.json',maxzoom:0};
 style.sources.stationFixture={type:'vector',tiles:[railTemplate],maxzoom:0};
 style.sources.labelFixture={type:'vector',tiles:[labelTemplate],maxzoom:0};
@@ -1019,6 +1037,36 @@ try {
     assert.deepEqual(await gp.evaluate(()=>window.webglAttempts),[]);
     console.log('Canvas Power: production facility polygon with clear/unselectable hole, facility point and conductor rail paint and open details; snapshots are gated and cached.');
   } finally {await geometryCase.context.close();}
+  for(const openPanel of [false,true]){
+    const service=await fresh(true), p=service.page;
+    try {
+      await p.clock.install({time:fixtureServiceStart});
+      await p.goto(origin+'/?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=am#12/1/1');
+      const canvas=p.locator('canvas.atlas-flat-preview');
+      await canvas.waitFor();
+      const showsFresh=(fresh)=>{
+        const c=document.querySelector('.atlas-flat-preview'),k=c.width/c.clientWidth;
+        const [r]=c.getContext('2d').getImageData(Math.round(c.width/2),Math.round(c.height/2+3*k),1,1).data;
+        return (r>200)===fresh;
+      };
+      await p.waitForFunction(showsFresh,true);
+      const openDetail=async ()=>{
+        if(await p.locator('#collapse').isVisible())await p.locator('#collapse').click();
+        await canvas.click({position:{x:350,y:220}});
+        await p.getByRole('heading',{name:'Fixture scheduled rail',exact:true}).waitFor();
+      };
+      if(openPanel){await openDetail();await p.getByText('6/h/direction (scheduled)').waitFor();}
+      const initialReads=paths.filter(path=>path.startsWith('/fixture-service/')).length;
+      await p.clock.fastForward(65000);
+      await p.waitForFunction(showsFresh,false);
+      if(!openPanel)await openDetail();
+      await p.getByText('Matched frequency profile has expired; current frequency is unknown.').waitFor();
+      assert.equal(paths.filter(path=>path.startsWith('/fixture-service/')).length,initialReads,
+        'Expiry should redraw existing service tiles, not request them again');
+      assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+    } finally {await service.context.close();}
+  }
+  console.log('Canvas Service: idle expiry refreshes the existing line and an open detail panel, without refetching.');
   let current=await fresh(true);
   await current.page.goto(origin);
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
