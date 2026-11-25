@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261125-departures-globe-1';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261125-hybrid-rail-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -99,6 +99,38 @@ export function layerVisibility(layer, settings) {
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  if (semantics['atlas:only-background'] && semantics['atlas:only-background'] !== settings.background) visible = false;
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
+}
+
+
+// A narrow, centred contrast edge supports the detailed track strokes on
+// imagery. Reuse their exact sources and filters, without duplicating offset
+// bands or altering the existing rail colour, widths or vector requests.
+export function installHybridRailCasings(style) {
+  const layers=style.layers;
+  const at=layers.findIndex(layer=>layer.id==='structure-bridge-edge');
+  if(at<0)return;
+  const byID=new Map(layers.map(layer=>[layer.id,layer]));
+  const width=railwayTrackWidth();
+  const casings=[];
+  for(const mode of MODES)for(const tier of ['tracks','metro-overview']) {
+    const base=byID.get(`${mode}-${tier}`);
+    if(!base || base.type!=='line' || byID.has(`hybrid-${base.id}-casing`))continue;
+    casings.push({
+      ...base, id:`hybrid-${base.id}-casing`,
+      metadata:{...getLayerSemantics(base),'atlas:only-background':'hybrid','atlas:initial-hidden':true},
+      layout:{...base.layout,visibility:'none'},
+      paint:{
+        'line-color':'#fffdf2',
+        'line-opacity':['case',['==',['get','tunnel'],true],0.66,0.92],
+        // Leave 1.5 CSS px per side before antialiasing. A subpixel
+        // edge can blend into dark imagery on a 1x device.
+        'line-width':width.map((v,i)=>i>=4&&i%2===0?['+',mode==='control'?['max',2.4,v]:v,3]:v),
+      },
+    });
+  }
+  // Existing parapets, tunnel dashes, stations and coloured lines stay above.
+  layers.splice(at,0,...casings);
 }
