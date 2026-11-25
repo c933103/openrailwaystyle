@@ -596,6 +596,8 @@ test('switching to 2D stops an older ease before arming exit suppression',async(
    map.easeTo=options=>{
      map.stop();
      assert.equal(options.pitch,0);
+     assert.equal(options.duration,0,'explicit cancellation must not wait on a rendered frame');
+     assert.equal('zoom' in options,false,'returning to 2D preserves the current zoom');
      for(const pitch of [60,35,0]) {
        map.setPitch(pitch);
        frames.push([pitch,map.getTerrain()]);
