@@ -646,6 +646,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     runs-on: ubuntu-latest
@@ -697,9 +698,16 @@ jobs:
       # Deploy-only reruns retain earlier artifacts. Give each attempt its own
       # package so Pages selects it unambiguously without deleting evidence.
       - uses: actions/upload-pages-artifact@v3
+        id: pages-upload
         with:
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: styles
+      - name: Wait for the just-uploaded Pages artifact
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_ID: ${{ steps.pages-upload.outputs.artifact_id }}
+        run: node scripts/await-pages-artifact.mjs
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
