@@ -488,7 +488,14 @@ try {
           return route.fulfill({json:{stopTimes:withRows ? [row] : []}});
         });
         await openStation(name); await started;
-        assert.match(await page.locator('.departures').textContent(), /Loading departures/);
+        const pending = page.locator('.departure-progress');
+        await pending.waitFor();
+        if (withRows) {
+          await page.getByText('Departures from the first loaded timetable.', {exact:false}).waitFor();
+        } else {
+          assert.match(await pending.textContent(), /Loading .*stop timetable/);
+        }
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No matching rail timetable stop/);
         await page.locator('#details-close').click();
         assert.equal(await page.locator('#details').isHidden(), true);
         release(); await waitBoard();
