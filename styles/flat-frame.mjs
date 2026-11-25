@@ -1,5 +1,6 @@
 import {latest, normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {drawFlatRasterLayer} from './flat-raster.mjs';
+import {flatReliefPaint} from './flat-relief.mjs';
 import {compileFlatGeometryStyle} from './flat-style.mjs';
 import {drawFlatVectorLayer,flatLineIntersectsViewport} from './flat-vector.mjs';
 import {compileFlatTextLabel,drawFlatTextLabels,flatLabelCandidates} from './flat-labels.mjs';
@@ -24,6 +25,8 @@ export function compileFlatFrame(layers) {
       compiled.opacity = paintExpression(layer,'background-opacity');
     } else if (type === 'raster') {
       compiled.opacity = paintExpression(layer,'raster-opacity');
+    } else if (type === 'hillshade' && !flatReliefPaint(layer)) {
+      return {...compiled,type:'unsupported'};
     } else if (type === 'fill' || type === 'line' || type === 'circle') {
       if (layer['source-layer'] == null) return {...compiled, type:'unsupported'};
       if (layer.paint?.['fill-pattern'] != null || layer.paint?.['line-pattern'] != null)
@@ -56,8 +59,8 @@ export function compileFlatFrame(layers) {
             context.fillRect(0,0,camera.width,camera.height);
           } finally { context.restore(); }
           draws = 1;
-        } else if (type === 'raster') {
-          draws = drawFlatRasterLayer(context,camera,tiles,{opacity:layer.opacity.evaluate(global)});
+        } else if (type === 'raster' || type === 'hillshade') {
+          draws = drawFlatRasterLayer(context,camera,tiles,{opacity:layer.opacity?.evaluate(global)??1});
         } else if (layer.label) {
           const candidates=[];
           for (const {tile,vector} of tiles){

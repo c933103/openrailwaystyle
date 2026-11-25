@@ -23,6 +23,18 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## Staged Canvas 2D shaded relief
+
+For the no-WebGL preview, the Terrain setting paints a map-anchored
+approximation of the existing hillshade in the same layer order. It computes
+uphill and downhill illumination from the shared repaired elevations rather
+than downloading a new relief dataset or reading the color of the basemap.
+The Canvas tile queue handles its lifetime; the contour path shares the
+same elevation cache. Shading is bounded at 128×128 pixels per canonical tile and uses one-sided
+differences at tile boundaries; it does not request neighbors just to shade
+an edge. The original elevation resolution is available to contours and
+profiles. The output is flat relief, not a pitched terrain mesh.
+
 ## 3D land and seabed terrain
 
 The map's native MapLibre raster-DEM terrain mesh activates when the camera is

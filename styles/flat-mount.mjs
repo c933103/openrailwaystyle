@@ -3,6 +3,7 @@ import {flatRailReferenceClip} from './flat-rail-reference.mjs';
 import {flatCamera, flatScaleBar, fitFlatBounds} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
+import {flatReliefPaint,flatReliefPixels} from './flat-relief.mjs';
 import {planFlatSourceTiles} from './flat-source-plan.mjs';
 import {createFlatSourceLoader} from './flat-source-loader.mjs';
 import {createFlatTileRequests} from './flat-tile-requests.mjs';
@@ -18,11 +19,11 @@ import {contextIcon} from './context.mjs';
 import {flatMeasureAdapter} from './flat-measure.mjs';
 import {flatDrawingAdapter, drawingLines} from './flat-drawing.mjs';
 
-const tileLayer = layer => layer.type === 'raster' || flatTextLabel(layer) ||
+const tileLayer = layer => layer.type === 'raster' || flatReliefPaint(layer) || flatTextLabel(layer) ||
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, pointSources={}, shapeSources=[]}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -47,7 +48,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     :style.sources[layer.source]?.type==='geojson'&&localData.has(layer.source)&&
        (layer.type==='circle'||localData.get(layer.source).shapes&&['fill','line','symbol'].includes(layer.type))
       ?{...layer,'source-layer':layer.source}:layer);
-  let compiledLayers=frameLayers(style);
+  const reliefFor=layers=>new Map(layers.flatMap(layer=>{
+    const paint=flatReliefPaint(layer);return paint?[[layer.source,paint]]:[];
+  }));
+  let compiledLayers=frameLayers(style), reliefBySource=reliefFor(compiledLayers);
   let draw=compileFlatFrame(compiledLayers);
   const platformLayersFor=layers=>new Map(layers.filter(l=>['platform-edges','platform-areas','platform-outlines','platform-points'].includes(l.id))
     .map(l=>[l.id,{type:l.type,...compileFlatGeometryStyle(l)}]));
@@ -80,9 +84,17 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     return icons.get(id);
   };
   const queue = createFlatTileRequests({
-    load:({revision,canonical,controller})=>loader.load(revision,canonical,{
-      pixelRatio,controller,rasterCredit:imageryCredit,
-    }),
+    async load({source,revision,canonical,controller}) {
+      if (revision.type!=='raster-dem') return loader.load(revision,canonical,{pixelRatio,controller,rasterCredit:imageryCredit});
+      const paint=reliefBySource.get(source);
+      if (!paint || !readDem) throw new Error('Canvas elevation reader is not available');
+      const heights=await readDem(canonical,controller);
+      controller.signal.throwIfAborted();
+      const {width,height,pixels}=flatReliefPixels(heights,canonical,paint);
+      const image=document.createElement('canvas');image.width=width;image.height=height;
+      image.getContext('2d').putImageData(new window.ImageData(pixels,width,height),0,0);
+      return {image};
+    },
     dispose:tile=>tile.image?.close?.(),
     changed:schedule,
   });
@@ -353,15 +365,16 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const setStyle=next=>{
     if(disposed) return;
     const nextLayers=frameLayers(next);
-    const nextDraw=compileFlatFrame(nextLayers);
+    const nextDraw=compileFlatFrame(nextLayers), nextRelief=reliefFor(nextLayers);
     const nextQuery=compileFlatVectorQuery(nextLayers,{include:interactiveLayer,includeFill});
     for(const [id,entry] of metadata) {
-      if(JSON.stringify(style.sources[id])!==JSON.stringify(next.sources[id])){
+      if(JSON.stringify(style.sources[id])!==JSON.stringify(next.sources[id])||
+         JSON.stringify(reliefBySource.get(id))!==JSON.stringify(nextRelief.get(id))){
         entry.controller.abort();
         metadata.delete(id);
       }
     }
-    style=next;compiledLayers=nextLayers;draw=nextDraw;query=nextQuery;platformLayers=platformLayersFor(nextLayers);
+    style=next;compiledLayers=nextLayers;reliefBySource=nextRelief;draw=nextDraw;query=nextQuery;platformLayers=platformLayersFor(nextLayers);
     // Install the new plan before a tap can inspect old pixels/data.
     if(frame)window.cancelAnimationFrame(frame);
     render();

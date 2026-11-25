@@ -1957,6 +1957,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
       curatedStationData:majorStationData,getMongolianFont,
+      readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
       pointSources:{electricSignals:13},
       shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],
       onPlatformFrame:()=>platformLengths?.update(),
