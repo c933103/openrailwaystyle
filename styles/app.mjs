@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-dem-budget-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-dem-budget-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-dem-budget-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261125-dem-budget-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261125-dem-budget-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-dem-budget-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-terrain-camera-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-terrain-camera-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-terrain-camera-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261125-terrain-camera-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261125-terrain-camera-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-terrain-camera-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-dem-budget-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-dem-budget-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-dem-budget-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-dem-budget-1';
-import {createWorldFonts} from './world-font.mjs?v=20261125-dem-budget-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-dem-budget-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-terrain-camera-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-terrain-camera-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-terrain-camera-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-terrain-camera-1';
+import {createWorldFonts} from './world-font.mjs?v=20261125-terrain-camera-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-terrain-camera-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-dem-budget-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-dem-budget-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-terrain-camera-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-terrain-camera-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-dem-budget-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-dem-budget-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-dem-budget-1';
-import {departureItem} from './departures-ui.mjs?v=20261125-dem-budget-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-dem-budget-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-dem-budget-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-dem-budget-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-dem-budget-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-dem-budget-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-dem-budget-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-dem-budget-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261125-dem-budget-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-dem-budget-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-dem-budget-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261125-dem-budget-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261125-dem-budget-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-dem-budget-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-dem-budget-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261125-dem-budget-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-dem-budget-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-terrain-camera-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-terrain-camera-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-terrain-camera-1';
+import {departureItem} from './departures-ui.mjs?v=20261125-terrain-camera-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-terrain-camera-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-terrain-camera-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-terrain-camera-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-terrain-camera-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-terrain-camera-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-terrain-camera-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-terrain-camera-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261125-terrain-camera-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-terrain-camera-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-terrain-camera-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261125-terrain-camera-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261125-terrain-camera-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-terrain-camera-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-terrain-camera-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261125-terrain-camera-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-terrain-camera-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -92,7 +92,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-dem-budget-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-terrain-camera-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -1352,9 +1352,11 @@ terrainButton.addEventListener('click', () => {
   saveView();
   const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
     globe:onGlobe(), latitude:map.getCenter().lat});
-  // A cancel must apply the flat camera even while terrain work is holding
-  // up MapLibre's next render frame. Keep the inspection animation on entry.
-  map.easeTo({...view,duration:was3D||matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+  // Intermediate 3D camera poses make MapLibre synchronously read terrain
+  // coordinates for scale and other map UI before the next frame. Apply the
+  // final camera in one input turn; normal terrain loading and diagnostics
+  // still run, and exiting keeps the current zoom as before.
+  map.easeTo({...view,duration:0});
 });
 updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
