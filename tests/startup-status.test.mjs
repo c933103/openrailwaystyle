@@ -590,21 +590,40 @@ test('switching to 2D stops an older ease before arming exit suppression',async(
    const map=maps[0];map.handlers['style.load']();map.setPitch(75);
    const button=map.controls.flatMap(control=>control.buttons||[]).find(button=>button.id==='terrain-toggle');
    let easing=true;const frames=[];
+   let censuses=0;
+   const query=map.queryRenderedFeatures.bind(map);
+   map.queryRenderedFeatures=(...args)=>{if(!args.length)censuses++;return query(...args);};
    // Pinned MapLibre easeTo begins with _stop(), whose previous ease emits
    // moveend synchronously. That must not clear the new exit's suppression.
    map.stop=()=>{if(easing){easing=false;map.handlers.moveend();}};
    map.easeTo=options=>{
      map.stop();
      assert.equal(options.pitch,0);
+     assert.equal(options.duration,0,'explicit cancellation must not wait on a rendered frame');
+     assert.equal('zoom' in options,false,'returning to 2D preserves the current zoom');
      for(const pitch of [60,35,0]) {
        map.setPitch(pitch);
        frames.push([pitch,map.getTerrain()]);
      }
+     map.handlers.moveend();
    };
    button.click();
    assert.deepEqual(frames,[[60,null],[35,null],[0,null]]);
    assert.equal(button.getAttribute('aria-pressed'),'false');
+   assert.equal(censuses,0,'neither moveend may read the previous terrain framebuffer');
+   const afterRender=map.onceHandlers?.render?.at(-1);
+   assert.ok(afterRender,'the rendered-feature census is deferred, not removed');
+   afterRender();
+   assert.equal(censuses,1,'the status is refreshed on the flat frame');
    assert.deepEqual(errors,[]);
+   map.setPitch(75);
+   button.click();
+   const beforeError=censuses;
+   map.handlers.error({sourceId:'bathymetry',error:new Error('fixture depth tile outage')});
+   const status=dom.window.document.getElementById('map-status');
+   assert.match(status.textContent,/Bathymetry tiles could not load/);
+   assert.equal(censuses,beforeError,'source warnings remain immediate without a GPU census');
+   assert.match(String(errors.at(-1)),/Map resource error/);
  }finally{dom.window.close();}
 });
 

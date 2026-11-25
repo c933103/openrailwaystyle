@@ -304,7 +304,7 @@ for (const [initialStatus, statusCode, coordinateOnly] of [[403, 403], [503, 503
     const status = dom.window.document.getElementById('status'), errors = new Map([['stations', {source: f.source(), stationOwned: true}]]);
     const update = new vm.Script(source + '\nupdateStatus;').runInNewContext({
       applyRailReferenceState: () => {}, // this fixture isolates station failure presentation
-      updateMapStatus, terrain3DSelected: false, map: f.map, ready: true, stationWorldActive: false, clickable: [], isClickable: id => id.startsWith('station-'), stationFailures: f.state, railRecovery: f.recovery, errors, sourceFailureStates: new Map(), status,
+      updateMapStatus, terrain3DSelected: false, deferStatusCensus: false, map: f.map, ready: true, stationWorldActive: false, clickable: [], isClickable: id => id.startsWith('station-'), stationFailures: f.state, railRecovery: f.recovery, errors, sourceFailureStates: new Map(), status,
       settings: {stations: true, background: 'map', mode: 'infrastructure'},
       stationFallbackFilter, stationFallbackMarkersEnabled, stationFallbackNamesEnabled,
     });
