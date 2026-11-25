@@ -14,6 +14,6 @@ self.addEventListener('message', ({data}) => {
   if (data?.type === 'atlas-viewport' && movement.has(data.managerId) && typeof data.moving === 'boolean') movement.set(data.managerId, data.moving);
 });
 class RepairingDispatch extends WorkerDispatch {
-  init = message => { movement.set(message.managerId, false); this.managers[message.managerId] = new LocalDemManager({...message, getTile:createDemTileLoader({isMoving:() => movement.get(message.managerId) === true})}); return Promise.resolve(); };
+  init = message => { movement.set(message.managerId, false); this.managers[message.managerId] = new LocalDemManager({...message, getTile:createDemTileLoader({timeoutMs:message.timeoutMs,isMoving:() => movement.get(message.managerId) === true})}); return Promise.resolve(); };
 }
 self.actor = new Actor(self, new RepairingDispatch());
