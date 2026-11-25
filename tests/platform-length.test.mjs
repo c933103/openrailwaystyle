@@ -136,6 +136,66 @@ test('opening an edge after a negative background lookup measures it without rep
  }
 });
 
+test('selection after an unreadable background reply measures tiles during API cooldown',async()=>{
+ let apiRequests=0,measurements=0;
+ const selected={...edge(23),source:'platformEdges'},failed=Promise.withResolvers(),measured=Promise.withResolvers();
+ const map={getZoom:()=>19,queryRenderedFeatures:()=>[selected,edge(24)],getSource:()=>null};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:30000,
+  fetcher:async()=>{apiRequests++;failed.resolve();throw new TypeError('Failed to fetch');},
+  edgeGeometry:{measureCompleteEdge:async id=>{measurements++;assert.equal(id,'23');return 246.86;}},
+  onLength:(id,length)=>measured.resolve({id,length}),
+ });
+ try{
+  p.update();await failed.promise;await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(measurements,0);
+  p.prioritizeEdge(edge(24));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(apiRequests,1,'selecting another edge cannot restart the paused queue');
+  p.prioritizeEdge(selected);
+  assert.deepEqual(await Promise.race([measured.promise,new Promise((_,reject)=>setTimeout(()=>reject(Error('did not measure during cooldown')),500).unref())]),{id:'23',length:246.86});
+  assert.equal(apiRequests,1);assert.equal(measurements,1);
+ }finally{p.destroy();}
+});
+
+test('a failed tile estimate after a transient API error does not negative-cache the edge',async()=>{
+ let apiRequests=0,measurements=0;
+ const selected={...edge(23),source:'platformEdges'},failed=Promise.withResolvers(),measured=Promise.withResolvers(),estimated=Promise.withResolvers();
+ const map={getZoom:()=>19,queryRenderedFeatures:()=>[selected],getSource:()=>null};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:180,
+  fetcher:async()=>{if(++apiRequests===1){failed.resolve();throw new TypeError('Failed to fetch');}
+   return {ok:true,json:async()=>({properties:{length:246.86}})};},
+  edgeGeometry:{measureCompleteEdge:async()=>{measurements++;estimated.resolve();return null;}},
+  onLength:(id,length)=>measured.resolve({id,length}),
+ });
+ try{
+  p.update();await failed.promise;await new Promise(resolve=>setImmediate(resolve));p.prioritizeEdge(selected);
+  await estimated.promise;
+  assert.equal(apiRequests,1);assert.equal(p.enrich(selected).properties.platform_length,undefined);
+  assert.deepEqual(await measured.promise,{id:'23',length:246.86});
+  assert.equal(apiRequests,2);assert.equal(measurements,1);assert.equal(p.enrich(selected).properties.length_estimated,undefined);
+ }finally{p.destroy();}
+});
+
+test('selection cancellation aborts a cooldown estimate, and a 429 never starts a tile-only request',async()=>{
+ for(const errorKind of ['unreadable','rate-limit']){
+  let requests=0,measurements=0;
+  const selected={...edge(23),source:'platformEdges'},returned=Promise.withResolvers(),started=Promise.withResolvers(),cancelled=Promise.withResolvers();
+  const map={getZoom:()=>19,queryRenderedFeatures:()=>[selected],getSource:()=>null};
+  const p=createPlatformLengths(map,{delay:0,retryDelay:30000,
+   fetcher:async()=>{requests++;returned.resolve();if(errorKind==='unreadable')throw new TypeError('Failed to fetch');
+    return {ok:false,status:429};},
+   edgeGeometry:{measureCompleteEdge:(_id,_anchor,signal)=>{measurements++;started.resolve();
+    return new Promise((_,reject)=>signal.addEventListener('abort',()=>{cancelled.resolve();reject(signal.reason);},{once:true}));}},
+  });
+  try{
+   p.update();await returned.promise;await new Promise(resolve=>setImmediate(resolve));p.prioritizeEdge(selected);
+   if(errorKind==='unreadable'){await started.promise;p.prioritizeEdge(null);await cancelled.promise;}
+   else {await new Promise(resolve=>setTimeout(resolve,20));assert.equal(measurements,0);}
+   assert.equal(requests,1);assert.equal(p.enrich(selected).properties.platform_length,undefined);
+  }finally{p.destroy();}
+ }
+});
+
 test('platform requests leave the queue when panned away and respect a rate-limit response',async()=>{
  let features=[edge(),edge(2)],requests=0;const map={getZoom:()=>19,queryRenderedFeatures:()=>features,getSource:()=>({setData(){}})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:false,status:429};}});
