@@ -1,4 +1,4 @@
-import {installBathymetryFixtures} from './bathymetry-browser-fixture.mjs';
+import {installBathymetryFixtures,depthFixturePng} from './bathymetry-browser-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir, readFile} from 'node:fs/promises';
@@ -9,7 +9,7 @@ const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?
 const app = await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
 const library = new URL(app.match(/loadScript\(new URL\('([^']+maplibre-gl[^']+\.js)'/)[1], base).href;
 const deadline=setTimeout(()=>{console.error('Bathymetry validation exceeded five minutes');process.exit(1);},300000);deadline.unref();
-const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,executablePath:process.env.BROWSER_PATH,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page = await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 const errors = [];
 page.on('pageerror',error=>errors.push(error.message));
@@ -17,6 +17,19 @@ page.on('requestfailed',request=>console.warn('Resource failed:',request.url(),r
 try {
   await installBathymetryFixtures(page.context(),JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8')));
   await page.route('**/__bathymetry-check',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><style>body{margin:0}#map{position:absolute;inset:0}</style><div id="map"></div>'}));
+  const slowCalls=[];
+  await page.route('**/__slow-dem/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    slowCalls.push(path);
+    if(path.includes('/10/')){
+      await new Promise(resolve=>setTimeout(resolve,16_050));
+      await route.fulfill({contentType:'image/png',body:depthFixturePng(10,982)});
+    }else{
+      // The optional z8 reference must not extend the primary deadline.
+      await new Promise(resolve=>setTimeout(resolve,8_000));
+      await route.abort('timedout').catch(()=>{});
+    }
+  });
   await page.goto(base+'__bathymetry-check');
   await page.addScriptTag({url:library});
   await page.addScriptTag({url:base+'vendor/pmtiles-4.2.1.js'});
@@ -61,6 +74,20 @@ try {
       return {key,shallow,deep,clear};
     }
     const tiles=await Promise.all(['10/982/478','10/837/479'].map(reviewTile));
+    // Same depth worker and rendered pixels, with an artificially late but
+    // valid PNG and a repair reference that will not arrive before deadline.
+    const slowDem=new mlcontour.DemSource({url:base+'__slow-dem/{z}/{x}/{y}.png',encoding:'terrarium',
+      maxzoom:15,worker:true,cacheSize:32,timeoutMs:20000,id:'deadline'});
+    const regularProtocol=depthProtocol;
+    installBathymetry({addProtocol:(_,callback)=>{depthProtocol=callback;}},slowDem,{
+      waterTile:(z,x,y,c)=>protocol.tile({url:`${style.sources.openmaptiles.url}/${z}/${x}/${y}`,type:'arrayBuffer'},c),
+      readTile:()=>{throw new Error('depth tiles must be decoded in the worker');},
+      createWorker:()=>new Worker(base+'vendor/depth-worker.js'),
+    });
+    const started=performance.now();
+    const slowDepth=await reviewTile('10/982/478');
+    const slowElapsed=Math.round(performance.now()-started);
+    depthProtocol=regularProtocol;
     // Retain the normal water/land context and contours; omit unrelated views.
     const layers=style.layers.filter(l=>l.type==='background'||l.source==='openmaptiles'&&l.type!=='symbol'||l.id.startsWith('terrain-')&&l.type!=='symbol');
     const sources=Object.fromEntries(['openmaptiles','relief','bathymetry','contours','seabedContours','seabedContoursClose'].map(id=>[id,style.sources[id]]));
@@ -71,7 +98,7 @@ try {
     sources.seabedContoursClose.tiles=[dem.contourProtocolUrl(contourOptions('metric','close'))];
     window.depthMap=new maplibregl.Map({container:'map',style:{version:8,sources,layers},center:[165.38,11.60],zoom:9.2,canvasContextAttributes:{preserveDrawingBuffer:true},attributionControl:false});
     await new Promise(resolve=>depthMap.once('load',resolve));
-    return {mask,tiles,inland};
+    return {mask,tiles,inland,slowDepth,slowElapsed};
   },base);
   assert.equal(checks.mask.island[3],0,'island must remain transparent');
   assert.equal(checks.mask.overlap[3],255,'overlapping ocean polygons must stay ocean');
@@ -82,6 +109,10 @@ try {
     assert.ok(tile.deep>1000,`${tile.key} must distinguish the deep basin`);
     assert.ok(tile.clear>1000,`${tile.key} must preserve the synthetic island hole`);
   }
+  assert.ok(slowCalls.some(path=>path.includes('/10/'))&&slowCalls.some(path=>path.includes('/8/')),JSON.stringify(slowCalls));
+  assert.deepEqual(checks.slowDepth,checks.tiles[0],'late usable DEM paints the same shallow/deep/clear pixel counts');
+  assert.ok(checks.slowElapsed>=16_000&&checks.slowElapsed<20_000,JSON.stringify(checks));
+  console.log('PASS: late primary PNG with stalled optional repair still paints the same depth tile in '+checks.slowElapsed+' ms');
   console.log('PASS: synthetic coastal depth tiles, drawn in the depth worker, contain distinct shallow/deep colours',JSON.stringify(checks));
   await mkdir('browser-review',{recursive:true});
   async function frame() {

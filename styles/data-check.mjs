@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261125-boarding-edge-1';
+import {SEARCH_API} from './map-model.mjs?v=20261125-dem-budget-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

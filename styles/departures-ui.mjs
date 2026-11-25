@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261125-boarding-edge-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261125-dem-budget-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
