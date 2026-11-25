@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-terrain-cancel-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-terrain-cancel-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-terrain-cancel-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261125-terrain-cancel-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261125-terrain-cancel-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-terrain-cancel-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-boarding-edge-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-boarding-edge-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-boarding-edge-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261125-boarding-edge-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261125-boarding-edge-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-boarding-edge-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-terrain-cancel-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-terrain-cancel-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-terrain-cancel-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-terrain-cancel-1';
-import {createWorldFonts} from './world-font.mjs?v=20261125-terrain-cancel-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-terrain-cancel-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-boarding-edge-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-boarding-edge-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-boarding-edge-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-boarding-edge-1';
+import {createWorldFonts} from './world-font.mjs?v=20261125-boarding-edge-1';
+import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-boarding-edge-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-terrain-cancel-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-terrain-cancel-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-boarding-edge-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-boarding-edge-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-terrain-cancel-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-terrain-cancel-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-terrain-cancel-1';
-import {departureItem} from './departures-ui.mjs?v=20261125-terrain-cancel-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-terrain-cancel-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-terrain-cancel-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-terrain-cancel-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-terrain-cancel-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-terrain-cancel-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-terrain-cancel-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-terrain-cancel-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261125-terrain-cancel-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-terrain-cancel-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-terrain-cancel-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261125-terrain-cancel-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261125-terrain-cancel-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-terrain-cancel-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-terrain-cancel-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261125-terrain-cancel-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-terrain-cancel-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-boarding-edge-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-boarding-edge-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-boarding-edge-1';
+import {departureItem} from './departures-ui.mjs?v=20261125-boarding-edge-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-boarding-edge-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-boarding-edge-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-boarding-edge-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-boarding-edge-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-boarding-edge-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-boarding-edge-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-boarding-edge-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261125-boarding-edge-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-boarding-edge-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-boarding-edge-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261125-boarding-edge-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261125-boarding-edge-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-boarding-edge-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-boarding-edge-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261125-boarding-edge-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-boarding-edge-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -92,7 +92,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-terrain-cancel-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-boarding-edge-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -782,6 +782,7 @@ function stationObject(osmId) {
 }
 function showDetails(feature) {
   cancelProfile();
+  platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   // Track power methods; chargers in the same source (any mapped shape) carry power_kind.
@@ -819,7 +820,13 @@ function showDetails(feature) {
   row(dl, 'Type', p.feature || (isBasemapStation ? p.subclass : p.railway) || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || (isBasemapStation ? 'Not verified by this source' : 'present'));
   row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
-  if(isPlatform){row(dl,p.feature==='platform_edge'?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',formatPlatformLength(Number(p.platform_length),settings.units));if(p.length_estimated)panel.append(textNode('p','Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));row(dl,'Platform',p.ref);}
+  if(isPlatform){
+    const edge=p.feature==='platform_edge',tileEdge=edge&&p.length_basis==='complete_edge_tile';
+    const length=formatPlatformLength(Number(p.platform_length),settings.units);
+    row(dl,edge?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',tileEdge&&length?`≈${length}`:length);
+    if(p.length_estimated)panel.append(textNode('p',tileEdge?'Approximate length of the complete mapped edge from the map tile.':'Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));
+    row(dl,'Platform',p.ref);
+  }
   else if (isStation) {
     row(dl, 'Station type', p.station || (isBasemapStation ? p.subclass : undefined));
     if(isBasemapStation) panel.append(textNode('p','Station location from basemap POI data. Its operating status and identity match with timetable stops have not been verified; departures are unavailable for this fallback marker.','small'));
@@ -1555,6 +1562,17 @@ async function initialize() {
   tileProtocols.addProtocol('mainlinetiles',async(params,controller)=>({
     data:await reference.tile(params.url.slice('mainlinetiles://'.length),controller.signal),
   }));
+  // Reuse the renderer's rail provider protocol: it resolves the published
+  // composite tile path, validates vector data and shares the request cache.
+  const edgeGeometryFor=tileURL=>createPlatformTileGeometry({
+    zoom:17,tileURL,
+    fetcher:async(url,{signal})=>{
+      const protocolURL=url.startsWith('atlasrail://')||url.startsWith('atlastext://')?url:'atlasrail://'+url;
+      const {data}=await tileProtocols.read({url:protocolURL,type:'arrayBuffer'},{signal});
+      return {ok:true,arrayBuffer:async()=>data};
+    },
+    decode:data=>labelCode.platformTilePieces(data,'standard_railway_platform_edges'),
+  });
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -1959,7 +1977,7 @@ async function initialize() {
   // Cached tiles can re-enter the inventory after moveend without a source
   // event. Recheck retry demand once that render has settled, as well as status.
   map.on('idle', wakeRailRecovery);
-  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{edgeGeometry:edgeGeometryFor(()=>map.getSource('platformEdges')?.tiles?.[0]),geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;
@@ -2194,7 +2212,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
   return svg;
 }
-function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 // The data dates are read each time Help opens, so a page left open shows
