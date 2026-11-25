@@ -104,8 +104,8 @@ test('selected stop-board acquisition preserves two same-minute trains and bound
     const requests = [];
     const fetch = async value => {
       const url = new URL(value); requests.push(url);
-      const body = url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
-        type: 'STOP', id, name: 'Central', lat: 0, lon: 0, modes: ['TRAM']})) : {stopTimes: [
+      const body = url.pathname.endsWith('/map/stops') ? order.map(id => ({
+        type: 'STOP', stopId:id, name: 'Central', lat: 0, lon: 0, modes: ['TRAM']})) : {stopTimes: [
         url.searchParams.get('stopId') === 'a' ? observation() : observation('2099-01-01T12:00:30Z', {tripId: 'feed-b_trip'})]};
       return {ok: true, json: async () => body};
     };
