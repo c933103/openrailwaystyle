@@ -351,10 +351,11 @@ test('DOM keeps all-failed rejection, eviction, and no-matching-stop messages', 
 test('detached DOM results cannot overwrite a newly opened station section', async () => {
   const feed = {current: fixture({failed: ['b'], times: [observation]})}, view = boardDom(feed);
   try {
-    view.show(); const detached = view.panel.firstChild;
+    view.show(); const detached = view.panel.firstChild, detachedText = detached.textContent;
     view.show(); await view.settle();
     assert.equal(detached.isConnected, false);
-    assert.match(detached.textContent, /Loading departures/);
+    assert.match(detachedText, /Loading|Still checking/);
+    assert.equal(detached.textContent, detachedText, 'detached board did not receive late updates');
     assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
     assert.equal(feed.current.calls.length, 3, 'concurrent redraw shares the in-flight result');
   } finally {view.dom.window.close();}
@@ -375,7 +376,7 @@ for (const times of [[], [observation]]) test(`late partial ${times.length ? 'ro
   const view = boardDom(feed);
   try {
     view.show('Previous station'); await requested;
-    const detached = view.panel.firstChild, previousPromise = [...view.departureBoards.values()][0].promise;
+    const detached = view.panel.firstChild, detachedText = detached.textContent, previousPromise = [...view.departureBoards.values()][0].promise;
     feed.current = fixture();
     view.show('Newer station');
     const currentPromise = [...view.departureBoards.values()][1].promise;
@@ -386,7 +387,8 @@ for (const times of [[], [observation]]) test(`late partial ${times.length ? 'ro
     release(); await previousPromise; await view.settle();
     assert.equal(view.panel.firstChild, currentSection);
     assert.equal(view.panel.textContent, currentText, 'late status and rows cannot overwrite the newer selection');
-    assert.match(detached.textContent, /Loading departures/);
+    assert.match(detachedText, /Loading|Still checking/);
+    assert.equal(detached.textContent, detachedText, 'detached board did not receive late updates');
     assert.equal(view.panel.querySelector('.departure-warning'), null);
     assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 3);
     view.show('Previous station'); await view.settle();
@@ -612,3 +614,38 @@ test('distinct lexical destinations open their own trip and highlight only their
     }
   }
 });
+
+for (const slow of ['success', 'failure']) for (const fast of ['rows', 'empty']) {
+  test(`DOM paints the first ${fast} board before slow ${slow}, shares it on redraw, and reconciles final rows`, async () => {
+    let release, lookedUp;
+    const blocked = new Promise(resolve => {release = resolve;});
+    const lookup = new Promise(resolve => {lookedUp = resolve;});
+    const a = [observation], b = [{...observation, cancelled:true}];
+    const base = fixture({bodies:{a:{stopTimes:fast === 'rows' ? a : []}, b:{stopTimes:b}}, failed:slow === 'failure' ? ['b'] : []});
+    const feed = {current:{fetch: async (url, options) => {
+      if (url.includes('/reverse-geocode')) await lookup;
+      if (new URL(url).searchParams.get('stopId') === 'b') await blocked;
+      return base.fetch(url, options);
+    }}}, view = boardDom(feed);
+    const redraw = () => new Promise(resolve => setImmediate(resolve));
+    try {
+      view.show();
+      assert.match(view.panel.textContent, /Loading departures/);
+      lookedUp(); await redraw();
+      assert.ok(view.panel.querySelector('.departure-progress'));
+      assert.doesNotMatch(view.panel.textContent, /No rail departures|No matching/);
+      assert.equal(view.panel.querySelectorAll('.departure-list > li').length, fast === 'rows' ? 1 : 0);
+      assert.equal(view.panel.querySelectorAll('.departure-list details').length, 0, 'provisional rows are not matched trip actions');
+      if (fast === 'rows') assert.match(view.panel.textContent, /first loaded timetable/);
+      view.language('ja'); view.show();
+      assert.ok(view.panel.querySelector('.departure-progress'), 'in-flight redraw replays the last partial snapshot');
+      assert.equal(base.calls.length, 2, 'only the blocked original request remains');
+      release(); await view.settle();
+      assert.equal(view.panel.querySelector('.departure-progress'), null);
+      assert.equal(view.panel.querySelector('.departure-warning')?.textContent, slow === 'failure' ? partialMessage : undefined);
+      assert.equal(view.panel.querySelectorAll('.departure-list details').length, (slow === 'success' || fast === 'rows') ? 1 : 0);
+      assert.equal(view.panel.querySelector('.departure-status')?.textContent, slow === 'success' ? 'Cancelled' : undefined);
+      assert.equal(base.calls.length, 3, 'no extra provider requests');
+    } finally { lookedUp(); release(); view.dom.window.close(); }
+  });
+}

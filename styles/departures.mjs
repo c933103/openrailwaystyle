@@ -393,7 +393,7 @@ export function plannerLink(direction, place, name) {
 // Fetch the selected stop boards for a station. Keep only safe per-stop
 // outcomes: fulfilled means that request loaded, not complete area coverage.
 // Empty rows alone do not establish that all selected boards loaded.
-export async function stationDepartures(station, {signal, fetch: get = fetch} = {}) {
+export async function stationDepartures(station, {signal, fetch: get = fetch, onProgress} = {}) {
   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
   const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
   // Only an array is a successful lookup. A malformed response cannot establish
@@ -401,12 +401,32 @@ export async function stationDepartures(station, {signal, fetch: get = fetch} = 
   if (!Array.isArray(candidates)) throw new Error('Invalid Transitous stop lookup response');
   const stops = pickStops(candidates, station);
   if (!stops.length) return {stops, rows: [], stopResults: []};
+  // Publish safe, provisional states without changing final reconciliation.
+  // A successful but empty first board is not a quiet combined timetable.
+  const settled = new Array(stops.length).fill(null);
+  const progress = () => {
+    if (!onProgress || settled.every(Boolean)) return;
+    const lists = settled.filter(result => result?.status === 'fulfilled').map(result => result.value);
+    onProgress({stops, rows: mergeDepartureRows(lists.flat()), stopResults: stops.map(({id}, i) =>
+      ({stopId: id, status: settled[i]?.status ?? 'pending'}))});
+  };
+  const record = (index, status, value) => {
+    settled[index] = {status, value};
+    progress();
+  };
+  progress();
   // Each stop's board on its own: one feed failing keeps the other's.
   const results = await Promise.allSettled(stops.map((s, list) => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => {
     // Reject malformed envelopes inside this stop's promise so another board
     // can still load. Only an explicit array establishes a successful board.
     if (!d || typeof d !== 'object' || Array.isArray(d) || !Array.isArray(d.stopTimes)) throw new Error('Invalid Transitous stop times response');
     return parseDepartureList(d.stopTimes, list);
+  }).then(rows => {
+    record(list, 'fulfilled', rows);
+    return rows;
+  }, error => {
+    record(list, 'rejected');
+    throw error;
   })));
   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   if (!lists.length) throw results[0].reason;

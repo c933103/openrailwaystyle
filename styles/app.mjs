@@ -17,8 +17,8 @@ import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTU
 
 import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261124-station-search-identity-1';
 import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261124-station-search-identity-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261124-station-search-identity-1';
-import {departureItem} from './departures-ui.mjs?v=20261124-station-search-identity-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-departure-progress-1';
+import {departureItem} from './departures-ui.mjs?v=20261125-departure-progress-1';
 import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261124-station-search-identity-1';
 import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261124-station-search-identity-1';
 import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261124-station-search-identity-1';
@@ -974,27 +974,46 @@ function showDepartures(panel, feature) {
   const key = departureBoardKey(feature, names);
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
-    board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
-    departureBoards.set(key, board);
-    board.promise.catch(() => departureBoards.delete(key));
+    const entry = {at: Date.now(), progress: null, listeners: new Set()};
+    entry.promise = stationDepartures({lat, lon, names}, {
+      signal: AbortSignal.timeout(15000), onProgress: progress => {
+        entry.progress = progress;
+        for (const listener of entry.listeners) {
+          try {listener(progress);} catch (error) {console.error('Could not render provisional departures', error);}
+        }
+      },
+    });
+    board = entry;
+    departureBoards.set(key, entry);
+    entry.promise.then(() => {entry.progress = null; entry.listeners.clear();}, () => {
+      entry.progress = null; entry.listeners.clear();
+      if (departureBoards.get(key) === entry) departureBoards.delete(key);
+    });
   }
-  board.promise.then(({stops, rows, stopResults}) => {
+  function render({stops, rows, stopResults}) {
     if (!section.isConnected) return;
     section.replaceChildren(textNode('h3', 'Departures'));
+    const pending = stopResults.filter(result => result.status === 'pending').length;
     const partial = stopResults.some(result => result.status === 'rejected');
+    if (pending) {
+      const status = textNode('p', rows.length ? 'Departures from the first loaded timetable. Still checking another stop…' :
+        pending === 1 ? 'Loading one stop timetable…' : 'Loading the matching stop timetables…', 'small departure-progress');
+      status.setAttribute('role', 'status'); section.append(status);
+    }
     if (partial) section.append(textNode('p', 'Some departures could not load. The board may be incomplete.', 'small departure-warning'));
-    if (!rows.length && !partial) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No matching rail timetable stop was found within 400 m.', 'small'));
+    if (!rows.length && !partial && !pending) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No matching rail timetable stop was found within 400 m.', 'small'));
     if (rows.length) {
       const live = rows.filter(r => r.live).length;
       section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
       if (settings.serviceWidth === 'frequency') section.append(textNode('p', 'These departure timetables are available independently of the map’s matched frequency profiles.', 'small'));
-      section.append(textNode('p', 'Click a departure to see its full train schedule. Drag over text to select and copy it.', 'small'));
+      if (!pending) section.append(textNode('p', 'Click a departure to see its full train schedule. Drag over text to select and copy it.', 'small'));
       const list = document.createElement('ol'); list.className = 'departure-list';
       for (const r of rows) {
-        list.append(departureItem(document, r));
+        list.append(departureItem(document, r, {provisional:pending>0}));
       }
       section.append(list);
     }
+    if (pending) return;
     const place = stops[0]?.id || `${lat},${lon}`, name = names[0];
     const links = textNode('p', '', 'departure-links');
     for (const [direction, label] of [['from', 'Journey from here ↗'], ['to', 'Journey to here ↗']]) {
@@ -1003,9 +1022,17 @@ function showDepartures(panel, feature) {
     const source = textNode('a', 'Transitous'); source.href = TRANSITOUS_SOURCES; source.target = '_blank'; source.rel = 'noopener';
     const credit = textNode('p', 'Timetables and live data: ', 'small'); credit.append(source, ' (see its sources and licences).');
     section.append(links, credit);
-  }).catch(() => {
+  }
+  const onProgress = progress => {
+    if (section.isConnected) render(progress);
+    else board.listeners.delete(onProgress);
+  };
+  if (board.progress) onProgress(board.progress);
+  board.listeners.add(onProgress);
+  board.promise.then(render).catch(() => {
     if (section.isConnected) section.replaceChildren(textNode('h3', 'Departures'), textNode('p', 'Departures could not load. Try again later.', 'small'));
-  });
+  }).finally(() => board.listeners.delete(onProgress));
+
 }
 // Level-crossing equipment as tagged on the OSM node, read from the
 // OpenStreetMap API when a crossing is opened (the crossing tiles hold only

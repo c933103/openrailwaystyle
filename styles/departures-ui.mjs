@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261124-station-search-identity-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261125-departure-progress-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
@@ -74,7 +74,7 @@ export function renderSchedule(container, stops, row) {
   table.append(body); container.append(table);
 }
 
-export function departureItem(document, row, {load = loadSchedule} = {}) {
+export function departureItem(document, row, {load = loadSchedule, provisional = false} = {}) {
   const item = document.createElement('li');
   const details = document.createElement('details'); details.className = 'departure-trip';
   const summary = document.createElement('summary'); summary.className = 'departure-summary';
@@ -86,6 +86,7 @@ export function departureItem(document, row, {load = loadSchedule} = {}) {
   if (row.track) summary.append(node(document, 'span', /^\w{1,4}$/.test(row.track) ? `Pl. ${row.track}` : row.track, 'departure-track'));
   const status = row.cancelled ? 'Cancelled' : row.live ? (row.delay > 0 ? `+${row.delay} min` : row.delay < 0 ? `${row.delay} min` : 'On time') : '';
   if (status) summary.append(node(document, 'span', status, `departure-status${row.cancelled || row.delay > 0 ? ' late' : ''}`));
+  if (provisional) {item.append(summary); return item;}
   const expand = node(document, 'span', '⌄', 'departure-expand');
   expand.setAttribute('aria-hidden', 'true'); summary.append(expand);
   summary.title = 'Open full train schedule';
