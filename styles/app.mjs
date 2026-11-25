@@ -955,6 +955,10 @@ function serviceSourceRelations(panel, feature) {
 // data, and journey links. Fetched once a minute at most per station (the
 // panel is redrawn when settings change).
 const departureBoards = new Map();
+// Station identity usually outlives a timetable snapshot. Keep only short-
+// lived, successful name matches in this tab, not timetable rows or guesses.
+const departureStopMatches = new Map();
+const STOP_MATCH_TTL = 15 * 60_000, STOP_MATCH_MAX = 128;
 function departureBoardKey(feature, names) {
   const p = feature.properties, object = osmObject(feature);
   const id = [p.id, p.osm_id, feature.id].find(value =>
@@ -983,7 +987,12 @@ function showDepartures(panel, feature) {
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     const entry = {at: Date.now(), progress: null, listeners: new Set()};
+    const match = departureStopMatches.get(key);
+    const identifiedStops = match && entry.at - match.at < STOP_MATCH_TTL ? match.stops : undefined;
+    if (!identifiedStops) departureStopMatches.delete(key);
+    let namedStops;
     entry.promise = stationDepartures({lat, lon, names}, {
+      identifiedStops, onNamedStops: stops => {namedStops=stops;},
       signal: AbortSignal.timeout(15000), onProgress: progress => {
         entry.progress = progress;
         for (const listener of entry.listeners) {
@@ -993,9 +1002,19 @@ function showDepartures(panel, feature) {
     });
     board = entry;
     departureBoards.set(key, entry);
-    entry.promise.then(() => {entry.progress = null; entry.listeners.clear();}, () => {
+    entry.promise.then(({stopResults}) => {
       entry.progress = null; entry.listeners.clear();
-      if (departureBoards.get(key) === entry) departureBoards.delete(key);
+      if (departureBoards.get(key) !== entry) return;
+      if (stopResults.some(r=>r.status==='rejected'))departureStopMatches.delete(key);
+      else if (namedStops) {
+        departureStopMatches.set(key,{at:entry.at,stops:namedStops});
+        while (departureStopMatches.size>STOP_MATCH_MAX)departureStopMatches.delete(departureStopMatches.keys().next().value);
+      }
+    }, () => {
+      entry.progress = null; entry.listeners.clear();
+      if (departureBoards.get(key) === entry) {
+        departureStopMatches.delete(key); departureBoards.delete(key);
+      }
     });
   }
   function render({stops, rows, stopResults}) {

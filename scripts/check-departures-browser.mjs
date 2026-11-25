@@ -106,11 +106,14 @@ try {
       // Partial board failures must survive the production cache and renderer.
       // All responses below are synthetic; the loopback transport guard remains.
       const boardRequests = [], boardStopIds = [];
-      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {}, blockedBoard;
+      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse, boardBodies = {}, blockedBoard, blockedLookup;
       await context.route('https://api.transitous.org/api/**', async route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
-        if (url.pathname.endsWith('/map/stops')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
-          ({type:'STOP', name:boardName, stopId:id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
+        if (url.pathname.endsWith('/map/stops')) {
+          if(blockedLookup)await blockedLookup;
+          return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
+            ({type:'STOP', name:boardName, stopId:id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
+        }
         assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
         assert.equal(url.searchParams.get('n'), '30');
         const id = url.searchParams.get('stopId');
@@ -130,6 +133,31 @@ try {
         !document.querySelector('.departures').textContent.includes('Loading departures…'));
       const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
         realTime:false, place:stop('Central','a',{arrival:'2099-01-01T12:00:00Z',departure:'2099-01-01T12:00:00Z'})};
+      // A board older than 60 s must still refresh the trains. A verified
+      // station match can skip an independently blocked location lookup;
+      // after 15 minutes it must look up the stop again.
+      {
+        boardName='Cache identity fixture';boardOrder=['a'];boardFailed=[];boardBodies={a:{stopTimes:[row]}};
+        const props={id:'cache-identity-fixture'}, start=boardRequests.length;
+        await openStation(boardName,props); await waitBoard();
+        assert.deepEqual(boardRequests.slice(start),['/api/v6/map/stops','/api/v1/stoptimes']);
+        let releaseLookup;
+        blockedLookup=new Promise(r=>{releaseLookup=r;});
+        try {
+          await page.evaluate(()=>{window.__departureFixtureNow+=60_001;});
+          await openStation(boardName,props); await waitBoard();
+          assert.equal(await page.locator('.departure-list > li').count(),1);
+          assert.deepEqual(boardRequests.slice(start+2),['/api/v1/stoptimes']);
+          await page.evaluate(()=>{window.__departureFixtureNow+=15*60_000-60_001;});
+          await openStation(boardName,props);
+          await page.locator('.departures').getByText('Loading departures…').waitFor();
+          assert.equal(await page.locator('.departure-list').count(),0);
+        } finally {releaseLookup();blockedLookup=undefined;}
+        await waitBoard();
+        assert.deepEqual(boardRequests.slice(start+3),['/api/v6/map/stops','/api/v1/stoptimes']);
+        console.log(`${engine}: a warm confirmed station skips a blocked identity lookup while refreshing departures, and looks it up again at TTL expiry.`);
+        boardOrder=['a','b'];boardFailed=['b'];boardBodies={};
+      }
       // Hold the second board until the actual station panel renders the first;
       // a translated redraw must share the pending request and cached rows.
       for (const fails of [false, true]) {

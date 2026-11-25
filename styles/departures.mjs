@@ -91,6 +91,12 @@ function compatibleStopNames(a, b) {
   return a.names.some(name => b.names.includes(name));
 }
 
+function hasStopName(candidate, names, suppliedAliases) {
+  const own = stopName(candidate.name);
+  return names.some(name => compatibleStopNames(own, name)) ||
+    (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
+}
+
 // The timetable stops that are this station: rail stops within 400 m, those
 // named like the station first, then the nearest. Several timetables can
 // cover one station (two operators), so up to two are kept.
@@ -102,9 +108,7 @@ export function pickStops(candidates, station, limit = 2) {
   const scored = candidates
     .filter(c => c.type === 'STOP' && (c.modes || []).some(m => RAIL_MODES.has(m)) && Number.isFinite(c.lat) && Number.isFinite(c.lon))
     .map(c => {
-      const own = stopName(c.name), named = names.some(name => compatibleStopNames(own, name)) ||
-        (own.aliases.length > 1 && own.aliases.every(alias => suppliedAliases.has(alias)));
-      return {stop: c, distance: metres(station, c), named};
+      return {stop: c, distance: metres(station, c), named:hasStopName(c,names,suppliedAliases)};
     })
     .filter(c => c.distance <= RADIUS_M)
     .sort((a, b) => (b.named - a.named) || a.distance - b.distance);
@@ -430,10 +434,18 @@ export function plannerLink(direction, place, name) {
 // Fetch the selected stop boards for a station. Keep only safe per-stop
 // outcomes: fulfilled means that request loaded, not complete area coverage.
 // Empty rows alone do not establish that all selected boards loaded.
-export async function stationDepartures(station, {signal, fetch: get = fetch, onProgress} = {}) {
+export async function stationDepartures(station, {signal, fetch: get = fetch, onProgress, identifiedStops, onNamedStops} = {}) {
   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
-  const lookup = stopLookup(station);
-  const stops = pickStops(stopCandidates(await json(lookup.url), lookup.regional), station);
+  let stops = identifiedStops;
+  if (!stops) {
+    const lookup = stopLookup(station);
+    stops = pickStops(stopCandidates(await json(lookup.url), lookup.regional), station);
+    if (stops.length && onNamedStops) {
+      const names = (station.names || []).map(stopName);
+      const suppliedAliases = new Set(names.map(name => name.names[0]).filter(Boolean));
+      if (stops.every(stop=>hasStopName(stop,names,suppliedAliases)))onNamedStops(stops);
+    }
+  }
   if (!stops.length) return {stops, rows: [], stopResults: []};
   // Publish safe, provisional states without changing final reconciliation.
   // A successful but empty first board is not a quiet combined timetable.

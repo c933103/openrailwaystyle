@@ -182,9 +182,9 @@ function boardDom(feed) {
     textNode: (tag, text, className = '') => {
       const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
     }});
-  const {showDepartures, departureBoards} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards})`, context);
+  const {showDepartures, departureBoards, departureStopMatches} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards, departureStopMatches})`, context);
   const panel = document.querySelector('#panel');
-  return {dom, panel, departureBoards, advance: ms => {now += ms;}, language: value => {settings.language = value;},
+  return {dom, panel, departureBoards, departureStopMatches, advance: ms => {now += ms;}, language: value => {settings.language = value;},
     show: (properties = 'Central', extra = {}) => {
       panel.replaceChildren();
       showDepartures(panel, {...extra, properties: typeof properties === 'string' ? {name: properties} : properties, geometry: extra.geometry || {coordinates: [0, 0]}});
@@ -215,7 +215,7 @@ test('DOM keeps numeric and lexical destination conflicts separate through cache
         assert.equal(feed.current.calls.length, 3, 'normal redraws do not request another board');
       }
       view.advance(60_001); view.show(station); await view.settle();
-      assert.equal(feed.current.calls.length, 6, 'normal expiry permits only the next bounded request set');
+      assert.equal(feed.current.calls.length, 5, 'normal expiry refreshes the boards, not their still-valid station identity');
       assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 2);
     } finally {view.dom.window.close();}
   }
@@ -650,3 +650,46 @@ for (const slow of ['success', 'failure']) for (const fast of ['rows', 'empty'])
     } finally { lookedUp(); release(); view.dom.window.close(); }
   });
 }
+
+test('DOM reuses a confirmed identity after board expiry but not after its own expiry', async ()=>{
+  const good = () => fixture({order:['a'], times:[observation]});
+  const feed={current:good()}, view=boardDom(feed);
+  try {
+    view.show(); await view.settle();
+    const paths=()=>feed.current.calls.map(x=>x.url.pathname);
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+    view.advance(60_001);feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v1/stoptimes']);
+    view.advance(15*60_000-60_001);feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});
+
+test('DOM does not keep an unmatched name or stale positive IDs after a failed board', async ()=>{
+  const good=()=>fixture({order:['a'], times:[observation]});
+  const feed={current:good()}, view=boardDom(feed);
+  const paths=()=>feed.current.calls.map(x=>x.url.pathname);
+  try {
+    view.show('Different name');await view.settle();
+    assert.equal(view.departureStopMatches.size,0);
+    view.advance(60_001);feed.current=good();view.show('Different name');await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+    feed.current=good();view.show();await view.settle();assert.equal(view.departureStopMatches.size,1);
+    view.advance(60_001);feed.current=fixture({order:['a'],failed:['a']});view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v1/stoptimes']);
+    assert.equal(view.departureStopMatches.size,0);
+    feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});
+
+test('DOM bounds successful stop matches to 128 per tab', async ()=>{
+  const feed={current:fixture({order:['a']})}, view=boardDom(feed);
+  try {
+    for(let i=0;i<130;i++){view.show({id:`station-${i}`,name:'Central'});await view.settle();}
+    assert.equal(view.departureStopMatches.size,128);
+    view.advance(60_001);feed.current=fixture({order:['a']});
+    view.show({id:'station-0',name:'Central'});await view.settle();
+    assert.deepEqual(feed.current.calls.map(x=>x.url.pathname),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});
