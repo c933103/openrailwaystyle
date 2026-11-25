@@ -44,7 +44,6 @@ try {
       if(kind.startsWith('webgl'))window.glAttempts++;
       return native.call(this,kind,...args);
     };
-    localStorage.setItem('atlas_disable_webgl','1');
   });
   let page=await context.newPage();
   page.on('pageerror',error=>console.error(error.message));
@@ -57,6 +56,13 @@ try {
       caches:await caches.keys()})),requests.slice(-20));
     throw error;
   });
+  assert.equal(await page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null);
+  if(!(await page.locator('#settings-open').isVisible()))await page.locator('#controls-open').click();
+  await page.locator('#settings-open').click();
+  assert.equal(await page.locator('#disable-webgl').isChecked(),false);
+  await Promise.all([page.waitForEvent('load'),page.locator('#disable-webgl').click()]);
+  await page.locator('canvas.atlas-flat-preview').waitFor({timeout:10000});
+  assert.equal(await page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),'1');
   const cached=await page.evaluate(async()=>{
     const keys=new Set();
     for(const name of await caches.keys()){
@@ -89,8 +95,11 @@ try {
   const mapPoint=await canvas.evaluate(node=>{const r=node.getBoundingClientRect();return [r.left+r.width*.70,r.top+r.height*.25];});
   await page.mouse.click(...mapPoint);
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')?.features.length===1);
-  assert.equal(requests.length,before,'offline reopen and drawing did not reach HTTPS server');
-  console.log('Firefox HTTPS: fresh no-WebGL install, exact cached shell, no-network reopen and new drawing passed.');
+  if(!(await page.locator('#settings-open').isVisible()))await page.locator('#controls-open').click();
+  await page.locator('#settings-open').click();
+  assert.equal(await page.locator('#disable-webgl').isChecked(),true);
+  assert.equal(requests.length,before,'offline reopen, preference and drawing did not reach HTTPS server');
+  console.log('Firefox HTTPS: automatic no-WebGL fallback, real Disable WebGL setting, exact cached shell, offline preference and new drawing passed.');
 } finally {
   await browser?.close();
   if(server)await new Promise(done=>server.close(done));
