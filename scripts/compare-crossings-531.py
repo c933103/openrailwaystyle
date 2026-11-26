@@ -37,10 +37,14 @@ b = iter(records(folder / "new.tsv.gz"))
 p, q = next(a, None), next(b, None)
 counts = defaultdict(Counter)
 removed_tiles = defaultdict(list)
+newer_area_only_overpass = []
 changed_kind = Counter()
 while p is not None or q is not None:
     if q is None or p is not None and p[0] < q[0]:
-        counts[evidence(p[1])]["only Overpass"] += 1
+        freshness = evidence(p[1])
+        counts[freshness]["only Overpass"] += 1
+        if freshness != "Overpass older than extract floor":
+            newer_area_only_overpass.append({"id":p[0],"lat":float(p[1][1]),"lon":float(p[1][2])})
         if tile(p[1]) in {"9/173/294", "9/408/208"}:
             removed_tiles[tile(p[1])].append(p[0])
         p = next(a, None)
@@ -63,6 +67,6 @@ assert merged["same row"] + merged["changed row"] + merged["only Overpass"] == 1
 assert merged["same row"] + merged["changed row"] + merged["only extract"] == 1233878, merged
 report = {"oldTimestampComparedTo": cutoff, "groups": counts,
           "coordinateOrClassification": {"/".join(k):v for k,v in changed_kind.items()},
-          "missingTileCanonicalNodeIDs": removed_tiles, "total": merged}
+          "missingTileCanonicalNodeIDs": removed_tiles, "laterOverpassOnly": newer_area_only_overpass, "total": merged}
 print("## Pinned level crossings data comparison")
 print("\n```json\n" + json.dumps(report, indent=2) + "\n```")
