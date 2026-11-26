@@ -28,6 +28,14 @@ test('every browser check is in fixture-safe site/diagnostic CI or explicitly lo
   assert.ok(GROUPS.some(g=>g.checks.includes('check-orm-fixture-browser.mjs')));
 });
 
+test('Firefox verification remains selected with its engine dependency and a live deployment check', () => {
+  const script = 'check-published-no-webgl-browser.mjs';
+  assert.deepEqual(plan(['scripts/'+script], read).groups, [{group:'controls', checks:[script]}]);
+  const workflow = read('.github/workflows/site.yml');
+  assert.ok(workflow.includes("contains(matrix.checks, '" + script + "')"));
+  assert.ok(workflow.includes('run: node scripts/' + script));
+});
+
 test('anything the site is built from runs every check', () => {
   for (const file of ['styles/app.mjs', 'styles/world.style.json', 'package-lock.json', '.github/workflows/site.yml', 'scripts/serve.mjs', 'scripts/browser.mjs', 'scripts/run-browser-checks.mjs', 'scripts/build-browser.mjs', 'scripts/rebuild-service-frequency.mjs', 'scripts/ci-plan.mjs'])
     assert.deepEqual(groupsFor([file]), everything, file);
