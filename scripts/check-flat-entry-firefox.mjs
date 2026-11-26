@@ -589,14 +589,18 @@ try {
     await canvas.evaluate(el=>el.dispatchEvent(new PointerEvent('pointercancel',{pointerId:window.boxPointer})));
     await release();
     assert.equal(await view(),initial,'pointer cancellation must not move the map');
-    const expected=await p.evaluate(async({box,points})=>{
-      const {flatCamera}=await import('/styles/flat-camera.mjs');
-      const camera=flatCamera({center:[121.56,25.04],zoom:9,bearing:40,width:box.width,height:box.height});
-      return {
-        center:camera.unproject([(points[0][0]+points[1][0])/2-box.x,(points[0][1]+points[1][1])/2-box.y]),
-        z:9+Math.log2(Math.min(box.width/(points[1][0]-points[0][0]),box.height/(points[1][1]-points[0][1]))),
-      };
-    },{box,points});
+    // Independent Mercator oracle in Node: the deployed entry serves the
+    // compiled renderer, not its source modules.
+    const angle=40*Math.PI/180, radians=Math.PI/180, world=512*2**9;
+    const dx=(points[0][0]+points[1][0]-box.width)/2-box.x;
+    const dy=(points[0][1]+points[1][1]-box.height)/2-box.y;
+    const xOffset=(dx*Math.cos(angle)-dy*Math.sin(angle))/world;
+    const yOffset=(dx*Math.sin(angle)+dy*Math.cos(angle))/world;
+    const northing=Math.asinh(Math.tan(25.04*radians))-2*Math.PI*yOffset;
+    const expected={
+      center:[121.56+360*xOffset, Math.atan(Math.sinh(northing))/radians],
+      z:9+Math.log2(Math.min(box.width/(points[1][0]-points[0][0]),box.height/(points[1][1]-points[0][1]))),
+    };
     await drag();
     assert.equal(await view(),initial,'preview must not move the camera before release');
     await release();
