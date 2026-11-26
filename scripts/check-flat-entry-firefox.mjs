@@ -1177,6 +1177,51 @@ try {
     await assertCenter(114.003,22.002);
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {await locationCase.context.close();}
+  // Inject movement headings through the geolocation callback, and sample the
+  // real canvas pixels. Playwright's setGeolocation does not expose heading.
+  const directionalLocation=await fresh(true);
+  try {
+    const {page:p}=directionalLocation;
+    await p.addInitScript(()=>{
+      Object.defineProperty(navigator,'geolocation',{value:{
+        watchPosition(success){window.emitHeading=heading=>success({
+          coords:{longitude:0,latitude:0,accuracy:1,heading},
+        });return 17;},
+        clearWatch(){},
+      }});
+    });
+    await p.goto(origin);
+    await ready(p);
+    const button=p.getByRole('button',{name:'My location',exact:true});
+    const canvas=p.locator('canvas.atlas-flat-preview');
+    await button.click();
+    const emit=heading=>p.evaluate(async heading=>{
+      window.emitHeading(heading);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    },heading);
+    const blue=([x,y])=>{
+      const c=document.querySelector('canvas.atlas-flat-preview'), density=c.width/c.clientWidth;
+      const d=c.getContext('2d').getImageData(c.width/2+x*density,c.height/2+y*density,1,1).data;
+      return d[0]===21&&d[1]===118&&d[2]===229&&d[3]===255;
+    };
+    await emit(0);
+    await p.waitForFunction(blue,[0,-15]);
+    await emit(90);
+    await p.waitForFunction(blue,[15,0]);
+    assert.equal(await p.evaluate(blue,[0,-15]),false);
+    for(let i=0;i<6;i++)await canvas.press('Shift+ArrowRight');
+    await p.waitForFunction(blue,[0,-15]);
+    assert.equal(await p.evaluate(blue,[15,0]),false);
+    await emit(null);
+    assert.equal(await p.evaluate(blue,[0,-15]),false,'missing heading must remove the arrow');
+    assert.equal(await p.evaluate(blue,[0,0]),true,'missing heading must keep the fix marker');
+    await emit(360);
+    assert.equal(await p.evaluate(blue,[0,-15]),false,'out-of-range headings must not draw');
+    if(await button.getAttribute('data-location-state')==='paused') await button.click();
+    await button.click();
+    assert.equal(await button.getAttribute('aria-pressed'),'false');
+  } finally {await directionalLocation.context.close();}
+
   const deniedLocation=await fresh(true);
   try {
     const p=deniedLocation.page;

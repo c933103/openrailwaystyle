@@ -1,3 +1,13 @@
+export function paintFlatHeading(context,x,y,heading,bearing) {
+  if(!Number.isFinite(heading))return;
+  // Geolocation heading is clockwise from north; project it onto the rotated map.
+  context.save();context.translate(x,y);
+  context.rotate((heading-bearing)*Math.PI/180);
+  context.beginPath();context.moveTo(0,-21);context.lineTo(6,-10);
+  context.lineTo(-6,-10);context.closePath();context.fill();context.stroke();
+  context.restore();
+}
+
 // Location is requested only on a user action. The application stores no
 // location history; the renderer uses the positions only for the live marker/view.
 export function connectFlatLocation({button,status,geolocation,window,showFix,followFix}) {
@@ -31,10 +41,11 @@ export function connectFlatLocation({button,status,geolocation,window,showFix,fo
     try {
       watch=geolocation.watchPosition(({coords})=>{
         if(current!==generation)return;
-        const {longitude,latitude,accuracy}=coords;
+        const {longitude,latitude,accuracy,heading}=coords;
         if(!Number.isFinite(longitude)||Math.abs(longitude)>180||
            !Number.isFinite(latitude)||Math.abs(latitude)>90)return;
-        fix={coordinates:[longitude,latitude],accuracy};
+        fix={coordinates:[longitude,latitude],accuracy,
+          heading:Number.isFinite(heading)&&heading>=0&&heading<360?heading:null};
         showFix(fix);
         if(state==='waiting')showState('following','Following your location.');
         if(state==='following')followFix(fix);

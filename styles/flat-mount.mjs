@@ -18,6 +18,7 @@ import {flatPlatformIntersectsViewport,flatPolygonGeometry} from './flat-vector.
 import {PLATFORM_GEOMETRY_LIMITS,PLATFORM_UPDATE_LIMITS,tileToLngLat} from './platform-length.mjs';
 import {contextIcon} from './context.mjs';
 import {flatMeasureAdapter} from './flat-measure.mjs';
+import {paintFlatHeading} from './flat-location.mjs';
 import {flatDrawingAdapter, drawingLines} from './flat-drawing.mjs';
 
 const tileLayer = layer => layer.type === 'raster' || flatReliefPaint(layer) || flatTextLabel(layer) ||
@@ -251,6 +252,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         context.fill();context.stroke();
       }
       context.fillStyle='#1576e5';context.strokeStyle='#fff';context.lineWidth=2;
+      paintFlatHeading(context,x,y,locationFix.heading,camera.bearing);
       context.beginPath();context.arc(x,y,6,0,2*Math.PI);context.fill();context.stroke();
       context.restore();
     }
