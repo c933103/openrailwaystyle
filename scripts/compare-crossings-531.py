@@ -64,7 +64,12 @@ while p is not None or q is not None:
         p, q = next(a, None), next(b, None)
 merged = sum(counts.values(), Counter())
 assert merged["same row"] + merged["changed row"] + merged["only Overpass"] == 1232432, merged
-assert merged["same row"] + merged["changed row"] + merged["only extract"] == 1233878, merged
+if len(sys.argv) == 2:
+    assert merged["same row"] + merged["changed row"] + merged["only extract"] == 1233878, merged
+elif sys.argv[2] == "fresh":
+    assert merged["same row"] + merged["changed row"] + merged["only extract"] > 1_200_000, merged
+else:
+    raise ValueError("unknown snapshot type")
 report = {"oldTimestampComparedTo": cutoff, "groups": counts,
           "coordinateOrClassification": {"/".join(k):v for k,v in changed_kind.items()},
           "missingTileCanonicalNodeIDs": removed_tiles, "laterOverpassOnly": newer_area_only_overpass, "total": merged}

@@ -36,3 +36,58 @@ jobs:
           git show "$BASE:source.json" > "$d/source.json"
           python3 scripts/compare-crossings-531.py "$d" > "$d/baseline.md"
           python3 scripts/compare-refreshed-crossings-531.py "$d" "$oldidx" "$newidx" | tee "$GITHUB_STEP_SUMMARY"
+  worldwide-crossings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Build crossings only from pinned published working copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+")'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          d="$(mktemp -d)"
+          trap 'rm -rf "$d"' EXIT
+          mkdir -p "$d/approved" "$d/regions" "$d/compare"
+          BUILD=cca7929a1f4b166de763f5a1c444829d50073a73
+          OLD=d5388a9c883f62ce636b29a47324a14221a066bc
+          git fetch --quiet --depth=1 --filter=blob:none origin "$BUILD" "$OLD"
+          git archive "$BUILD" scripts styles package.json package-lock.json | tar -x -C "$d/approved"
+          idx=index-20261126T161713Z-45852008906.json
+          gh release download osm-extract --pattern "$idx" --dir "$d"
+          python3 - "$d/$idx" > "$d/assets.tsv" <<'PY'
+          import json, re, sys
+          data=json.load(open(sys.argv[1]))
+          assert len(data["regions"]) == 175 and not data["missing"]
+          for info in data["regions"].values():
+              asset=info["asset"]
+              assert re.fullmatch(r"region-[0-9_a-z-]+\.osm\.pbf", asset), asset
+              assert re.fullmatch("[a-f0-9]{64}", info["sha256"])
+              print(asset, info["sha256"], sep="\t")
+          PY
+          export ASSET_DIR="$d/regions"
+          while IFS=$'\t' read -r asset digest; do
+            gh release download osm-extract --pattern "$asset" --dir "$ASSET_DIR"
+            printf '%s  %s\n' "$digest" "$ASSET_DIR/$asset" | sha256sum --check --status
+          done < "$d/assets.tsv"
+          pushd "$d/approved"
+          npm ci --ignore-scripts --no-audit --no-fund
+          node scripts/assemble-extracts.mjs "$d/$idx" "$ASSET_DIR" "$d/assembled.osm.pbf"
+          node --max-old-space-size=6144 scripts/build-extract-crossings.mjs "$d/assembled.osm.pbf" "$d/assembled.osm.pbf.json" "$d/rendered"
+          popd
+          git show "$OLD:crossings.tsv.gz" > "$d/compare/old.tsv.gz"
+          git show "$OLD:regions.json" > "$d/compare/regions.json"
+          cp "$d/rendered/crossings.tsv.gz" "$d/rendered/source.json" "$d/compare/"
+          mv "$d/compare/crossings.tsv.gz" "$d/compare/new.tsv.gz"
+          cat "$d/rendered/manifest.json"
+          python3 scripts/compare-crossings-531.py "$d/compare" fresh | tee "$GITHUB_STEP_SUMMARY"
