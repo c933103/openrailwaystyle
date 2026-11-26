@@ -480,6 +480,27 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
     failStyle=false;
+    // Real fragment history must update an already-mounted Canvas, without
+    // reloading or discarding either map link from browser history.
+    current=await fresh(true);
+    await current.page.goto(origin+'/#9/25.04/121.56/40');
+    await current.page.locator('canvas.atlas-flat-preview').waitFor();
+    const back='#8/35.68/139.77/-25';
+    const forward='#10/22.29/114.16/70';
+    const assertView=(hash,center,z,b)=>current.page.waitForFunction(({hash,center,z,b})=>{
+      const saved=JSON.parse(localStorage.getItem('atlas_view'));
+      return location.hash===hash && saved.z===z && saved.b===b &&
+        saved.c.every((n,i)=>Math.abs(n-center[i])<0.000002);
+    },{hash,center,z,b});
+    await current.page.evaluate(hash=>{location.hash=hash;},back);
+    await assertView(back,[139.77,35.68],8,-25);
+    await current.page.evaluate(hash=>{location.hash=hash;},forward);
+    await assertView(forward,[114.16,22.29],10,70);
+    await current.page.goBack();
+    await assertView(back,[139.77,35.68],8,-25);
+    await current.page.goForward();
+    await assertView(forward,[114.16,22.29],10,70);
+    await current.context.close();
     useRollbackEntry=true;
     current=await fresh(true);
     await current.page.goto(origin);

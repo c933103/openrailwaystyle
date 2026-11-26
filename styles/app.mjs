@@ -45,7 +45,8 @@ document.body.dataset.appStarted = 'true';
 installPwaInstall({window, document});
 // Installable as an app (manifest.webmanifest); the service worker keeps the
 // app's own files for opening without a connection.
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
+const atlasWorker = 'serviceWorker' in navigator && location.protocol === 'https:' ? navigator.serviceWorker : null;
+if (atlasWorker) atlasWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
 // Display settings are remembered in a cookie, not the address; settings in a
 // shared link apply once and are then saved and removed from the address.
 const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
@@ -2070,9 +2071,63 @@ async function initialize() {
       }
       return missing.length?null:`${size}px "Atlas Mongolian"`;
     };
+    // The committed catalogue supplies geometry, not most names. Hydrate only
+    // the hubs visible at their label tier, with the same provider and OSM
+    // identity/alias matching used by the WebGL overview.
+    let curatedLanguage,curatedBatch='',curatedTemplate;
+    const curatedNames=new Map(), curatedPending=new Map();
+    const renderCurated=()=>{
+      flat.setCuratedOverview({...majorStationData,features:majorStationData.features.map(feature=>{
+        const p=curatedNames.get(feature.id);
+        return p?{...feature,properties:{...feature.properties,name:p.name,localized_name:p.localized_name,
+          atlas_name:p.atlas_name,atlas_language:curatedLanguage,atlas_name_source:'provider'}}:feature;
+      })});
+    };
+    const loadCuratedTemplate=()=>curatedTemplate??=(async()=>{
+      const source=style.sources.stations;
+      const meta=source.tiles?.length?source:(await tileProtocols.read(
+        {url:source.url,type:'json'},stationsLifetime)).data;
+      const template=meta?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+      if(!template)throw new Error('No station name tile template');
+      return template;
+    })().catch(error=>{curatedTemplate=null;throw error;});
+    async function requestCuratedOverview(camera){
+      const language=settings.language;
+      if(curatedLanguage!==language){
+        curatedLanguage=language;curatedBatch='';curatedNames.clear();renderCurated();
+      }
+      if(!stationTileFor||!majorStationData?.features?.length)return;
+      const visible=majorStationData.features.filter(feature=>{
+        if((feature.properties.tier??7)>Math.floor(camera.zoom))return false;
+        const [x,y]=camera.project(feature.geometry.coordinates);
+        return x>=-32&&x<=camera.width+32&&y>=-32&&y<=camera.height+32;
+      });
+      const batch=visible.map(f=>f.id).join(',');
+      if(!batch||batch===curatedBatch)return;
+      curatedBatch=batch;
+      const wanted=visible.filter(feature=>!curatedNames.has(feature.id));
+      if(!wanted.length)return;
+      try{stationTileURL ||= await loadCuratedTemplate();}
+      catch{return;}
+      if(stationsLifetime.signal.aborted||curatedLanguage!==language||curatedBatch!==batch)return;
+      let index=0;
+      const lookup=async()=>{
+        while(index<wanted.length && curatedLanguage===language && curatedBatch===batch && !stationsLifetime.signal.aborted){
+          const feature=wanted[index++], key=language+'/'+feature.id;
+          if(!curatedPending.has(key))curatedPending.set(key,majorStationName(feature,language)
+            .catch(()=>null).finally(()=>curatedPending.delete(key)));
+          const name=await curatedPending.get(key);
+          if(name&&curatedLanguage===language&&!stationsLifetime.signal.aborted){
+            curatedNames.set(feature.id,name);
+            renderCurated();
+          }
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(4,wanted.length)},lookup));
+    }
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,initialDetail:settings.detail,
-      curatedStationData:majorStationData,getMongolianFont,
+      curatedStationData:majorStationData,onCuratedOverview:requestCuratedOverview,getMongolianFont,
       readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
       pointSources:{electricSignals:13},
       shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],
@@ -2127,10 +2182,10 @@ async function initialize() {
       onNavigate(view,reason) {
         if(reason!=='location' && reason!=='rotation') flatLocation?.pause();
         scheduleNearbyTransport();
-        linkedViewHash='';
+        if(reason!=='link') linkedViewHash='';
         // Location following changes the live view but does not write position history.
         if(reason!=='location') writeView(view,0);
-        if (parseViewHash(location.hash)) {
+        if (reason!=='link' && parseViewHash(location.hash)) {
           const url=new URL(location.href);url.hash='';
           history.replaceState(history.state,'',url);
         }
@@ -2174,6 +2229,12 @@ async function initialize() {
     });
     refreshFlatPower=()=>{for(const refresh of flatPowerLoaders)void refresh();};
     flatNavigation=flat.moveTo;
+    addEventListener('hashchange',()=>{
+      const view=parseViewHash(location.hash);
+      if(!view)return;
+      const zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,readoutZoom(view.zoom,view.center[1])-settings.detail));
+      flatNavigation({center:view.center,zoom,bearing:view.bearing,reason:'link'});
+    });
     flatSourceContext=flat;
     const corner = textNode('div', '', 'atlas-flat-map-tools');
     readout.classList.add('atlas-flat-readout');
@@ -2267,6 +2328,7 @@ async function initialize() {
     refreshFlatPower();
     return;
   }
+  void atlasWorker?.ready.then(registration=>registration.active?.postMessage('atlas:cache-webgl')).catch(()=>{});
   installImageryAttribution(map,imageryProtocol,{eoxAttribution,polarImagery:()=>
     ['satellite','hybrid'].includes(settings.background) && Boolean(polarLayer &&
       ['north','south'].some(cap=>polarLayer.visible()[cap] && polarLayer.caps[cap]?.satellite && !polarLayer.caps[cap]?.satelliteFailed))});

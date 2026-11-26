@@ -123,7 +123,12 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     assert.ok(result, `${path} must be handled by the worker`);
     return result;
   };
-  return {stores, counts, writes, requests, lifecycle, request, setOffline() { offline = true; },
+  const message = (data, source = {url:scope}) => {
+    let result;
+    handlers.get('message')({data,source,waitUntil(promise) { result=promise; }});
+    return result;
+  };
+  return {stores, counts, writes, requests, lifecycle, request, message, setOffline() { offline = true; },
     get skipped() { return skipped; }, get claimed() { return claimed; }};
 }
 
@@ -176,9 +181,16 @@ test('a staged Canvas shell installs without either half of the WebGL pair but k
   assert.equal(missing.skipped,false);
 });
 
-test('a staged Canvas shell keeps the complete immutable WebGL pair when reachable',async()=>{
+test('Canvas installation and navigation never fetch WebGL; an active WebGL page can explicitly warm the pair',async()=>{
   const worker=startWorker({canvasEntry:true});
   await bounded(worker.lifecycle('install'));await worker.lifecycle('activate');
+  await bounded(worker.request('./',true));
+  assert.ok(!worker.requests.some(url=>url.includes('maplibre-gl-')));
+  assert.equal(worker.message('atlas:cache-webgl',{url:'https://unrelated.test/'}),undefined);
+  assert.equal(worker.message('anything else'),undefined);
+  assert.ok(!worker.requests.some(url=>url.includes('maplibre-gl-')));
+  await bounded(worker.message('atlas:cache-webgl'));
+  assert.equal(worker.requests.filter(url=>url.includes('maplibre-gl-')).length,2);
   worker.setOffline();
   for(const asset of ['vendor/maplibre-gl-5.24.0-atlas.4.js','vendor/maplibre-gl-5.24.0.css']){
     assert.ok((await worker.request(asset)).ok,asset);

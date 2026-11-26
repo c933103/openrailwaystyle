@@ -28,7 +28,6 @@ try {
     const path=new URL(req.url,'https://127.0.0.1').pathname;
     requests.push(path);
     res.setHeader('cache-control','no-store');
-    if(assetPattern.test(path)) {res.writeHead(404).end();return;}
     if(path==='/'||path==='/index.html') {res.writeHead(200,{'content-type':'text/html'}).end(html);return;}
     if(path==='/world.style.json') {res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify(style));return;}
     preview(req,res);
@@ -75,7 +74,7 @@ try {
   for(const path of ['app.mjs','vendor/flat-browser.js','world.style.json','vendor/pmtiles-4.2.1.js'])
     assert.ok(cached.includes('/'+path+'?v='+version),path+' has its exact version in Cache Storage');
   assert.ok(!cached.some(path=>assetPattern.test(path.split('?')[0])));
-  assert.ok(requests.some(path=>assetPattern.test(path)),'the missing WebGL assets were observed by the worker');
+  assert.ok(!requests.some(path=>assetPattern.test(path)),'a Canvas page and its real worker must not request either available WebGL asset');
   const before=requests.length;
   // Turn off the origin itself. Firefox's DevTools offline emulation can
   // also deny top-level navigation before the Service Worker sees it.

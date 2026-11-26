@@ -12,6 +12,14 @@ import {encodeBundle} from '../styles/tile-bundles.mjs';
 
 const html=(await readFile('styles/index.html','utf8'));
 const preview=createPreviewServer({root:'styles'});
+const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
+const curated='Curated Hub';
+const curatedLon=7.03125;
+const curatedLat=Math.atan(Math.sinh(Math.PI*(1-2*7.5/16)))*180/Math.PI;
+style.sources.stationMajor.data={type:'FeatureCollection',features:[{
+  type:'Feature',id:'fixture-hub',geometry:{type:'Point',coordinates:[curatedLon,curatedLat]},
+  properties:{id:'node-46103',osm_type:'node',osm_id:'46103',tier:3,rank:1,feature:'station',station:'train'},
+}]};
 const manifest={complete:true,schema:1,license:'ODbL-1.0',minzoom:3,maxzoom:7,
   stations:1,tiles:2,bundles:1,polar:0,pendingRegions:0,completedRegions:32};
 const index={zoom:3,bundles:['4/3']};
@@ -34,6 +42,7 @@ const server=createServer((req,res)=>{
   const path=new URL(req.url,'http://local').pathname;
   const write=(type,body)=>res.writeHead(200,{'content-type':type,'cache-control':'no-store'}).end(body);
   if(path==='/')return write('text/html',html);
+  if(path==='/world.style.json')return write('application/json',JSON.stringify(style));
   if(path==='/major-stations.geojson')return write('application/json','{"type":"FeatureCollection","features":[]}');
   if(path.startsWith('/data/station-points/')){
     seen.push(path);
@@ -61,6 +70,12 @@ try{
       body:p.endsWith('/4/8/7')?Buffer.from(fallback):Buffer.alloc(0)});
     return route.fulfill({json:{minzoom:4,maxzoom:4,tiles:[origin+'/station-low-fixture/{z}/{x}/{y}.pbf']}});
   });
+  await browser.route(url=>/\/standard_railway_text_stations(?:$|\/)/.test(url.pathname),route=>{
+    const p=new URL(route.request().url()).pathname;
+    if(/\/\d+\/\d+\/\d+$/.test(p))return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
+      body:p.endsWith('/8/133/120')?Buffer.from(bytes('standard_railway_text_stations',46103,curated,[0,0])):Buffer.alloc(0)});
+    return route.fulfill({json:{minzoom:8,maxzoom:8,tiles:['https://openrailwaymap.app/standard_railway_text_stations/{z}/{x}/{y}']}});
+  });
   for(const [state,z] of [['complete',4],['complete',3],['incomplete',4],['broken-bundle',4]]){
     mode=state;seen.length=0;
     const p=await browser.newPage(),failures=[];
@@ -69,6 +84,12 @@ try{
       await p.addInitScript(()=>{
         localStorage.setItem('atlas_disable_webgl','1');
         window.glAttempts=0;
+        window.stationLabels=new Set();
+        const fillText=CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText=function(label,...args){
+          if(this.canvas.matches?.('canvas.atlas-flat-preview'))window.stationLabels.add(label);
+          return fillText.call(this,label,...args);
+        };
         const get=HTMLCanvasElement.prototype.getContext;
         HTMLCanvasElement.prototype.getContext=function(type,...args){
           if(type.startsWith('webgl'))window.glAttempts++;
@@ -78,6 +99,13 @@ try{
       await p.goto(origin+'/?names=0&stations=1&relief=0&transport=0&destinations=0&constraints=0&detail=0#'+z+'/'+lat+'/11.25');
       const canvas=p.locator('canvas.atlas-flat-preview');
       await canvas.waitFor();
+      await p.waitForFunction(label=>window.stationLabels.has(label),curated,{timeout:12000});
+      if(z===4&&state!=='complete'){
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        await p.locator('#details-close').click();
+      }
       const [px,py]=[state==='complete'?480:576,320];
       const name=state==='complete'?world:established;
       await p.waitForFunction(({px,py})=>{

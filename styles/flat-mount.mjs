@@ -25,7 +25,7 @@ const tileLayer = layer => layer.type === 'raster' || flatReliefPaint(layer) || 
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, initialDetail=0, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, initialDetail=0, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, onCuratedOverview, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -51,8 +51,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     };
     return [id,entry];
   }));
-  const frameLayers=style=>style.layers.map(layer=>layer.id==='station-curated-fallback-dots'
-    ?{...layer,maxzoom:8,'source-layer':'curated-stations'}
+  const frameLayers=style=>style.layers.map(layer=>layer.source==='stationMajor'
+    ?{...layer,...(layer.id==='station-curated-fallback-dots'?{maxzoom:8}:{}),'source-layer':'curated-stations'}
     :style.sources[layer.source]?.type==='geojson'&&localData.has(layer.source)&&
        (layer.type==='circle'||localData.get(layer.source).shapes&&['fill','line','symbol'].includes(layer.type))
       ?{...layer,'source-layer':layer.source}:layer);
@@ -66,7 +66,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   let platformLayers=platformLayersFor(compiledLayers);
   const includeFill=layer=>layer.id==='platform-areas'||localData.get(layer.source)?.shapes===true;
   let query=compileFlatVectorQuery(compiledLayers,{include:interactiveLayer,includeFill});
-  const curatedStations=compileFlatCuratedStations(curatedStationData);
+  const curatedFallback=compileFlatCuratedStations(curatedStationData);
+  let curatedOverview=compileFlatPointCollection(curatedStationData,'curated-stations',3);
+  const setCuratedOverview=collection=>{
+    curatedOverview=compileFlatPointCollection(collection,'curated-stations',3);
+    schedule();
+  };
   let visibleFrame=new Map();
   const loader = createFlatSourceLoader({protocols}), metadata = new Map();
   const lifetime = new AbortController(), signal = lifetime.signal;
@@ -213,9 +218,12 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(retry!==null)queue.retryFailed(retry);
     const tiles=queue.snapshot(),failedTiles=checkStations?tiles.errors.get(stationSource):null;
     stationFallbackMask=flatStationFallbackMask(checkStations?{metadataFailed,tiles:failedTiles??[]}: {});
-    const curated=stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
-      ?curatedStations(camera):[];
+    const overview=layers.some(layer=>layer.source==='stationMajor'&&!flatStationFallbackLayer(layer.id));
+    const curated=overview ? curatedOverview(camera)
+      : stationSource==='stationMed'&&checkStations&&(metadataFailed||failedTiles?.length)
+        ? curatedFallback(camera):[];
     if(curated.length)tiles.frame.set('stationMajor',curated);
+    if(overview && layers.some(layer=>layer.source==='stationMajor'&&layer.type==='symbol'))onCuratedOverview?.(camera);
     visibleFrame=tiles.frame;
     // Compute labels for the current zoom before painting local sources, so a
     // cached length cannot flash in a frame below its display threshold.
@@ -230,6 +238,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       return [id,{tiles:drawn,state:errors.has(id)||entry?.error?'failed':
         tiles.errors.has(id)?'failed':!entry?.value||seen<count?'loading':'ready'}];
     }));
+    if(curated.length)sourceFrame.set('stationMajor',{tiles:curated,state:'ready'});
     for(const id of tiles.errors.keys()) errors.add(id);
     paintedSymbols=[];
     const railClip=flatRailReferenceClip(camera,{metadataFailed:railError,failed:tiles.errors.get(railSource),planned:plans.get(railSource)?.tiles});
@@ -518,13 +527,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   document.addEventListener('visibilitychange',()=>recover(false),{signal});
   window.addEventListener('pageshow',event=>{if(event.persisted)recover(false);},{signal});
   window.addEventListener('pagehide',event=>{if(!event.persisted) close();},{signal});
-  const moveTo=({center,zoom,bounds})=>{
+  const moveTo=({center,zoom,bounds,bearing=camera.bearing,reason='manual'})=>{
     if(disposed) return;
     gesture.cancel();
     cancelBoxZoom();
     cancelMouseRotation();
     const next=bounds?fitFlatBounds(camera,bounds):null;
-    setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing:camera.bearing}),true);
+    setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing}),true,reason);
   };
   const setStyle=next=>{
     if(disposed) return;
@@ -605,6 +614,6 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     getTileTemplate:id=>metadata.get(id)?.value?.tiles?.[0],
     getSource:id=>style.sources[id]?.type==='geojson'?localData.get(id)?.source:undefined,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},
-    connectMeasure:tool=>{measure=tool;schedule();},setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
-    getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>style.layers};
+    connectMeasure:tool=>{measure=tool;schedule();},setCuratedOverview,setProfileMarker:measureOverlay.marker,getZoom:()=>camera.zoom,
+    getCenter:()=>camera.center, scaleBar:units=>flatScaleBar(camera,units),getLayers:()=>compiledLayers};
 }

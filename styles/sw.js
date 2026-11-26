@@ -8,7 +8,7 @@
 // page is shown once its required files are saved. Other files
 // come from the network first, the saved copy only when it fails. The map
 // libraries are hosted with this page. The staged Canvas entry can install
-// without the optional WebGL pair; the released entry still requires it.
+// without WebGL. The rollback entry still requires the renderer pair.
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
@@ -90,12 +90,7 @@ async function saveVersion(cache, version, page, canvasEntry = false) {
     return [key, response];
   };
   const needed = PRECACHE.filter(path => path !== './' && !(canvasEntry && GL_SHELL.has(path)));
-  const required = Promise.all(needed.map(readAsset));
-  // When available, keep the pair for normal WebGL and older open pages.
-  // Never publish just half a new optional pair as a complete GL shell.
-  const optional = canvasEntry ? Promise.allSettled([...GL_SHELL].map(readAsset)) : Promise.resolve([]);
-  const [files, webgl] = await Promise.all([required, optional]);
-  if (webgl.every(result => result.status === 'fulfilled')) files.push(...webgl.map(result => result.value));
+  const files = await Promise.all(needed.map(readAsset));
   for (const [key, response] of files) {
     await cache.put(versioned(key, version), response.clone());
     await cache.put(key, response);
@@ -167,6 +162,26 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
   for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
   await self.clients.claim();
 })()));
+// A page asks only after the WebGL renderer actually started. On the first
+// visit its assets may have loaded before this worker controlled the page.
+let webglWarmup;
+self.addEventListener('message', event => {
+  if (event.data !== 'atlas:cache-webgl' || !event.source?.url?.startsWith(self.registration.scope)) return;
+  if (!webglWarmup) webglWarmup = (async () => {
+    const cache = await caches.open(CACHE);
+    const files = await Promise.all([...GL_SHELL].map(async path => {
+      const key = new URL(path, self.registration.scope).href;
+      const saved = await cache.match(key);
+      if (saved?.ok) return null;
+      const response = await fetch(key, {cache: 'force-cache'});
+      if (!response.ok) throw new Error('WebGL asset unavailable');
+      await response.clone().arrayBuffer();
+      return [key, response];
+    }));
+    for (const item of files) if (item) await cache.put(...item);
+  })().catch(() => {}).finally(() => { webglWarmup = null; });
+  event.waitUntil(webglWarmup);
+});
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
   if (request.method === 'GET' && legacyMapLibre(url)) {
