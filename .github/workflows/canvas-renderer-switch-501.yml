@@ -27,6 +27,8 @@ on:
       - 'styles/app.mjs'
       - 'styles/app.css'
       - 'styles/flat-*.mjs'
+      - 'tests/flat-camera.test.mjs'
+      - 'tests/flat-gesture.test.mjs'
 permissions:
   contents: read
 jobs:
@@ -46,7 +48,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Verify Watch keyboard focus and native touch hold with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
-      - name: Verify Watch double-tap zoom in WebGL and Canvas with trusted touch
+      - name: Verify flat camera and pointer gesture transforms
+        run: node --test tests/flat-camera.test.mjs tests/flat-gesture.test.mjs
+      - name: Verify native Watch double-tap zoom and rotation in both renderers
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap
       - name: Keep drawing controls clear of the desktop sidebar with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --toolbar-clearance
