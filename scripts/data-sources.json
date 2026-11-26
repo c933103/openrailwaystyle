@@ -4,7 +4,7 @@
   "axle-load": "overpass",
   "street-running": "overpass",
   "station-points": "overpass",
-  "crossings": "overpass",
+  "crossings": "extract",
   "conveying": "overpass",
   "aerialways": "overpass",
   "heritage": "overpass",
