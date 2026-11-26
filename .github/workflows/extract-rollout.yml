@@ -57,10 +57,16 @@ jobs:
           # Only this change on trusted main can trigger the refresh. Removal
           # retires it; later unrelated pushes must not repeat it.
           [[ "$PUSH_BEFORE" =~ ^[a-f0-9]{40}$ && "$PUSH_AFTER" =~ ^[a-f0-9]{40}$ ]]
-          if ! git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$PUSH_BEFORE"
-          fi
-          if git diff --quiet "$PUSH_BEFORE" "$PUSH_AFTER" -- "$request"; then exit 0; fi
+          for sha in "$PUSH_BEFORE" "$PUSH_AFTER"; do
+            if ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$sha"
+            fi
+            git cat-file -e "$sha^{commit}"
+          done
+          status=0
+          git diff --quiet "$PUSH_BEFORE" "$PUSH_AFTER" -- "$request" || status=$?
+          if [ "$status" -eq 0 ]; then exit 0; fi
+          if [ "$status" -ne 1 ]; then exit "$status"; fi
           echo 'matched=true' >> "$GITHUB_OUTPUT"
           if ! git cat-file -e "$PUSH_AFTER:$request" 2>/dev/null; then exit 0; fi
           git show "$PUSH_AFTER:$request" > targeted-request.json
