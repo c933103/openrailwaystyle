@@ -21,6 +21,7 @@ const chromiumSwitch=process.argv.includes('--chromium-switch');
 const serviceOverlap=process.argv.includes('--service-overlap');
 const watchFocus=process.argv.includes('--watch-focus');
 const startupFallback=process.argv.includes('--startup-fallback');
+const detailState=process.argv.includes('--detail-state');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -483,7 +484,68 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(startupFallback){
+  if(detailState){
+    const {context,page}=await fresh(false);
+    await page.setViewportSize({width:1320,height:760});
+    try{
+      await page.addInitScript(()=>{
+        Object.defineProperty(navigator,'clipboard',{value:{writeText:async value=>{window.copiedMap=value;}}});
+      });
+      const canvas=page.locator('canvas.atlas-flat-preview');
+      const view=async()=>page.evaluate(()=>{
+        const map=document.querySelector('#map'),rect=map.getBoundingClientRect();
+        return {width:map.clientWidth,visualWidth:rect.width,height:map.clientHeight,visualHeight:rect.height,
+          center:map.dataset.flatCenter?.split(',').map(Number),scale:document.querySelector('.atlas-flat-scale')?.getBoundingClientRect().width};
+      });
+      const settingsPanel=async()=>{
+        if(!await page.locator('#settings-open').isVisible())await page.locator('#controls-open').click();
+        await page.locator('#settings-open').click();
+      };
+      const switchRenderer=async()=>{
+        await settingsPanel();await Promise.all([page.waitForEvent('load'),page.locator('#disable-webgl').click()]);
+      };
+      if(chromiumSwitch){
+        await page.goto(origin+'/#8/25.04/121.56');
+        await page.waitForSelector('body[data-map-ready=true]',{timeout:20000,state:'attached'});
+        const detail=page.getByRole('button',{name:/More detail:/});
+        await detail.click();await detail.click();
+        await page.waitForFunction(()=>document.querySelector('#map').classList.contains('detail-2'));
+        await switchRenderer();
+      }else await page.goto(origin+'/?detail=2&terrain3d=1#10/25.04/121.56/0/35');
+      await canvas.waitFor();
+      const size=await view();
+      const box=await canvas.boundingBox(),draw=page.getByRole('button',{name:'Drawing tools',exact:true});
+      await draw.click();await page.locator('[data-draw="point"]').click();
+      const at=[box.x+box.width/2,box.y+box.height/2];
+      assert.equal(await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.classList.contains("atlas-flat-preview"),at),true);
+      await page.mouse.click(...at);
+      const vertex=await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')
+        ?.features[0]?.geometry.coordinates).then(handle=>handle.jsonValue());
+      console.log(JSON.stringify({size,vertex,tools:(await draw.boundingBox()).width}));
+      assert.ok(Math.abs(vertex[0]-121.56)<0.002&&Math.abs(vertex[1]-25.04)<0.002,'center click must draw at the displayed center');
+      assert.equal(size.width,size.visualWidth);
+      assert.equal(size.height,size.visualHeight);
+      assert.ok(size.scale>25&&(await draw.boundingBox()).width>25);
+      if(!await page.locator('#share').isVisible())await page.locator('#controls-open').click();
+      await page.locator('#share').click();
+      const copied=new URL(await page.waitForFunction(()=>window.copiedMap).then(r=>r.jsonValue()));
+      assert.equal(copied.hash,'#8/25.04/121.56');
+      assert.equal(copied.searchParams.get('terrain3d'),'0');
+      assert.equal(copied.searchParams.get('detail'),'0');
+      assert.equal(await page.evaluate(()=>JSON.parse(decodeURIComponent(/(?:^|; )atlas_settings=([^;]+)/.exec(document.cookie)[1])).detail),2);
+      if(chromiumSwitch){
+        await switchRenderer();
+        await page.waitForSelector('body[data-map-ready=true]',{timeout:20000,state:'attached'});
+        assert.equal(await page.locator('#map').evaluate(el=>el.classList.contains('detail-2')),true);
+        const restored=await page.evaluate(async()=>{
+          const {map}=await import(document.querySelector('script[type=module]').src);
+          return {zoom:map.getZoom(),lng:map.getCenter().lng,lat:map.getCenter().lat};
+        });
+        assert.ok(Math.abs(restored.zoom-10)<0.02&&Math.abs(restored.lng-121.56)<0.002&&Math.abs(restored.lat-25.04)<0.002);
+      }
+      console.log('Detail state: center drawing and actual flat share correct; setting preserved'+(chromiumSwitch?' across WebGL round trip':' on opening a WebGL link'));
+    }finally{await context.close();}
+  } else if(startupFallback){
     assert.equal(chromiumSwitch,false,'This gate requires Firefox with WebGL disabled');
     await verifyStartupFallback();
     console.log('Firefox startup: no context, refused painter, missing JS, missing CSS, shared style error and non-staged behavior verified');

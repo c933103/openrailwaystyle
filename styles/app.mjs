@@ -13,7 +13,7 @@ import {createWorldFonts} from './world-font.mjs?v=20261126-canvas-basemap-sync-
 import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261126-canvas-basemap-sync-1';
 
 import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261126-canvas-basemap-sync-1';
-import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
+import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
 
 import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261126-canvas-basemap-sync-1';
 import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261126-canvas-basemap-sync-1';
@@ -72,10 +72,18 @@ function captureViewHash() {
   return linkedViewHash;
 }
 addEventListener('hashchange', captureViewHash);
+// In staged mode the recorded zoom may have come from either renderer.
+function writeView(view, detail) {
+  const tagged = stagedFlatEntry && (settings.detail > 0 || rememberedView.d != null);
+  try {
+    localStorage.setItem(VIEW_STORE, JSON.stringify(tagged ? {...view,d:detail} : view));
+    return true;
+  } catch {return false;}
+}
 function saveView() {
-  if (!map) return;
+  if (!map) return false;
   const c = map.getCenter();
-  try { localStorage.setItem(VIEW_STORE, JSON.stringify({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe(), t: terrain3DSelected})); } catch {}
+  return writeView({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe(), t: terrain3DSelected},settings.detail);
 }
 const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
@@ -212,8 +220,13 @@ if (stagedFlatEntry) {
       status.textContent='The browser could not save the WebGL preference.';
       toggle.checked=explicitFlat;return;
     }
-    // Traditional camera persistence is already shared by both renderers.
-    saveView();
+    // Transfer the displayed camera, rather than reapplying an old link when
+    // the staged renderer has already clamped or flattened it.
+    const viewSaved = useFlat && flatCurrentView ? writeView(flatCurrentView,0) : saveView();
+    if(viewSaved && parseViewHash(location.hash)){
+      const url=new URL(location.href);url.hash='';
+      history.replaceState(history.state,'',url);
+    }
     location.reload();
   });
 }
@@ -632,6 +645,7 @@ function shareURL() {
   } else if (flatCurrentView) {
     const {c:[lng,lat],z:zoom,b:bearing}=flatCurrentView;
     url.searchParams.set('terrain3d','0');
+    url.searchParams.set('detail','0');
     url.hash=viewHash({zoom,lat,lng,bearing,pitch:0});
   } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
@@ -1524,8 +1538,10 @@ updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(from = settings.detail) {
   const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
-  $('map').classList.toggle('detail', level > 0);
-  $('map').classList.toggle('detail-2', level === 2);
+  // The transformed layout belongs to MapLibre, whose camera/pointer/UI
+  // scale is compensated separately. It must never wrap the Canvas camera.
+  $('map').classList.toggle('detail', !useFlat && level > 0);
+  $('map').classList.toggle('detail-2', !useFlat && level === 2);
   detailButton.setAttribute('aria-pressed', String(level > 0));
   detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}%` : '100% (normal)'}.`;
   detailButton.setAttribute('aria-label', detailButton.title);
@@ -1949,7 +1965,11 @@ async function initialize() {
   applyInitialVisibility(style);
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView);
+  const savedDetail=detailLevel(rememberedView.d??remembered.detail);
+  const logicalSavedZoom=Number.isFinite(rememberedView.z) ? rememberedView.z-savedDetail : undefined;
+  const start = linked ? {} : stagedFlatEntry && logicalSavedZoom!==undefined
+    ? {...rememberedView,z:logicalSavedZoom+settings.detail} : rememberedView;
   if (linked && linkedTerrainMode === null && terrain3DSelectedForPitch(linkedView.pitch))
     terrain3DSelected = true;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
@@ -1996,11 +2016,13 @@ async function initialize() {
     }
   }
   if (useFlat) {
+    // Include asynchronous WebGL asset and constructor fallbacks in the reset.
+    applyDetail();
     applyInitialVisibility(style,true);
     const {mountFlatMap,connectFlatLocation,appendFlatCredits,canvasMapStatus}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
-      zoom:startZoom,
+      zoom:linked ? startZoom-settings.detail : logicalSavedZoom??startZoom,
       bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
     };
     const compass=textNode('button','','atlas-flat-compass');
@@ -2072,7 +2094,8 @@ async function initialize() {
         creditSummary.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
           ? '© OpenStreetMap · Map credits' : 'Map credits';
       },
-      onCamera({bearing}) {
+      onCamera({center,zoom,bearing}) {
+        flatCurrentView={c:center,z:zoom,b:bearing,p:0,g:false,t:false};
         needle.style.transform=`rotate(${-bearing}deg)`;
         updateFlatScale();
         refreshFlatPower?.();
@@ -2089,12 +2112,11 @@ async function initialize() {
         showDetails(feature);
       },
       onNavigate(view,reason) {
-        flatCurrentView=view;
         if(reason!=='location' && reason!=='rotation') flatLocation?.pause();
         scheduleNearbyTransport();
         linkedViewHash='';
         // Location following changes the live view but does not write position history.
-        if(reason!=='location') try {localStorage.setItem(VIEW_STORE,JSON.stringify(view));} catch {}
+        if(reason!=='location') writeView(view,0);
         if (parseViewHash(location.hash)) {
           const url=new URL(location.href);url.hash='';
           history.replaceState(history.state,'',url);

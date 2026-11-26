@@ -39,6 +39,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Verify Watch keyboard focus and native touch hold with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
+      - name: Preserve map coordinates when switching renderers with More detail
+        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --chromium-switch --detail-state
       - name: Switch renderers with unfinished work
         run: timeout 240s node scripts/check-flat-entry-firefox.mjs --chromium-switch
       - uses: actions/upload-artifact@v4
@@ -64,6 +66,8 @@ jobs:
       - run: npx playwright install --with-deps firefox
       - name: Verify automatic Canvas startup and distinguish shared-data errors
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
+      - name: Verify point placement and flat share from a WebGL-detail link
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --detail-state
       - name: Verify five public Canvas basemaps and Hybrid rail contrast
         run: timeout 100s node scripts/check-flat-basemaps-firefox.mjs
       - name: Verify Canvas platform edge details and labels
