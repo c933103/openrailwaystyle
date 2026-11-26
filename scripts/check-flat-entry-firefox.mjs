@@ -508,8 +508,8 @@ try {
   try {
     const {page:p}=mouseBearing;
     await p.goto(origin+'/?ui=watch#9/25.04/121.56/40');
-    await ready(p);
     const canvas=p.locator('canvas.atlas-flat-preview'), menu=p.locator('#watch-menu');
+    await canvas.waitFor();
     const box=await canvas.boundingBox();
     const x=Math.round(box.x+box.width*.59), y=Math.round(box.y+box.height*.58);
     const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
@@ -555,8 +555,8 @@ try {
     const {page:p}=boxCase;
     await p.setViewportSize({width:1200,height:760});
     await p.goto(origin+'/#9/25.04/121.56/40');
-    await ready(p);
     const canvas=p.locator('canvas.atlas-flat-preview'), overlay=p.locator('.atlas-flat-box-zoom');
+    await canvas.waitFor();
     const box=await canvas.boundingBox();
     const points=[[.54,.38],[.77,.57]].map(([x,y])=>[
       Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)]);
