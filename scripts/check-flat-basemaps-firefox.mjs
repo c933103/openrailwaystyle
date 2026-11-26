@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {mkdtemp,readFile,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {readFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {firefox} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import {zxyToTileId} from 'pmtiles';
 import vtPbf from 'vt-pbf';
 import {createPreviewServer} from './serve.mjs';
@@ -63,11 +61,11 @@ const lngLat=(dx,dy)=>{
   return [(x+dx/4096)/n*360-180,lat];
 };
 const home=lngLat(2048,2048);
-const profile=await mkdtemp(join(tmpdir(),'atlas-canvas-bases-'));
-let context;
+let browser;
 try{
-  context=await firefox.launchPersistentContext(profile,{headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,
-    viewport:{width:960,height:640},deviceScaleFactor:1,serviceWorkers:'block',firefoxUserPrefs:{'webgl.disabled':true}});
+  browser=await launchBrowser({engine:'firefox',executablePath:process.env.FIREFOX_EXECUTABLE,
+    firefoxUserPrefs:{'webgl.disabled':true}});
+  const context=await browser.newContext({viewport:{width:960,height:640},deviceScaleFactor:1});
   await installEmptyMapProviders(context,origin+'/',{firstParty:'network'});
   const requests={archive:0,rail:0,raster:0};
   await context.route('**/planet.pmtiles',route=>{
@@ -177,5 +175,6 @@ try{
   console.log('More detail: vector z11–13 and raster z12–14 visibly drive the same ground pixels; scale, centre and saved drawing are unchanged.');
   assert.deepEqual(errors,[]);
 } finally{
-  await context?.close();server.close();await rm(profile,{recursive:true,force:true});
+  try { await browser?.close(); }
+  finally { server.close(); }
 }

@@ -36,6 +36,13 @@ test('Firefox verification remains selected with its engine dependency and a liv
   assert.ok(workflow.includes('run: node scripts/' + script));
 });
 
+test('Firefox Canvas basemap fixture is wired to hosted CI and its engine', () => {
+  const gate = 'check-flat-basemaps-firefox-browser.mjs';
+  for (const script of [gate, 'check-flat-basemaps-firefox.mjs'])
+    assert.deepEqual(plan(['scripts/' + script], read).groups, [{group: 'controls', checks: [gate]}]);
+  assert.ok(read('.github/workflows/site.yml').includes("contains(matrix.checks, '" + gate + "')"));
+});
+
 test('anything the site is built from runs every check', () => {
   for (const file of ['styles/app.mjs', 'styles/world.style.json', 'package-lock.json', '.github/workflows/site.yml', 'scripts/serve.mjs', 'scripts/browser.mjs', 'scripts/run-browser-checks.mjs', 'scripts/build-browser.mjs', 'scripts/rebuild-service-frequency.mjs', 'scripts/ci-plan.mjs'])
     assert.deepEqual(groupsFor([file]), everything, file);
