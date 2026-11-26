@@ -53,7 +53,7 @@ jobs:
               return out
           assert len(wanted(root/"new.tsv.gz"))==15 and wanted(root/"new.tsv.gz")==wanted(root/"old.tsv.gz")
           lines=(root/"tree.txt").read_text().splitlines()
-          tiles=[p for p in lines if re.search(r"(?:^|/)\d+/\d+/\d+\.pbf$",p)]
+          tiles=[p for p in lines if re.search(r"(?:^|/)\d+/\d+/\d+\.pbf\.gz$",p)]
           assert len(tiles)==manifest["tiles"], (len(tiles),manifest["tiles"],lines[:20])
           print(f"Published extraction: {manifest['crossings']:,} rows, {len(tiles):,} indexed PBF tiles, 15/15 restored IDs aligned.")
           PY
