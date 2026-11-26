@@ -1,0 +1,23 @@
+{
+  "generated": "2026-11-26T18:16:07.784Z",
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "lines": 290838,
+  "tiles": 1548,
+  "tileBytes": 11943462,
+  "zooms": [
+    4,
+    9
+  ],
+  "source": "extract",
+  "complete": true,
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "waysWithoutGeometry": 0
+  },
+  "query": "way[railway~\"^(rail|narrow_gauge)$\"][usage=branch][!service] and way[railway=subway][!service], from the assembled Geofabrik extracts",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither."
+}
