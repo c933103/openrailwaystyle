@@ -116,3 +116,18 @@ test('vertical Mongolian point layout keeps words joined, wraps right, and reser
   assert.equal(drawFlatTextLabels(pending,camera,[labels[0]]).get('station-mixed'),0);
   assert.equal(pending.draws.length,0,'No misleading horizontal fallback while the packaged font is pending');
 });
+
+test('labels a densely sampled straight line, not bends, reversals or disjoint runs',()=>{
+  const ctx=context(), draw=compileFlatFrame([layer('relief-labels',{'symbol-placement':'line'})]);
+  const line=(id,name,points)=>({type:2,id,extent:256,properties:{name},
+    paths:points.map(path=>path.map(([x,y])=>({x,y})))});
+  const geometry=[
+    line(1,'500 m',[Array.from({length:61},(_,i)=>[10+i,65])]),
+    line(2,'corner',[[[10,100],[30,100],[30,120],[50,120]]]),
+    line(3,'reversal',[[[10,150],[30,150],[10,150],[30,150]]]),
+    line(4,'seam',[[[10,200],[25,200]],[[25,200],[40,200]]]),
+  ];
+  const frames=new Map([['demo',[{vector:{layer:()=>geometry},tile:{x:0,y:0,z:0}}]]]);
+  assert.equal(draw(ctx,camera,frames).layerDraws.get('relief-labels'),1);
+  assert.deepEqual(ctx.draws.filter(l=>l[0]==='fill').map(l=>l[1]),['500 m']);
+});

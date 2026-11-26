@@ -100,20 +100,45 @@ function flatVisibleSegment(paths,project,extent,camera){
     }
     return true;
   }
-  for(const path of paths) for(let i=1;i<path.length;i++){
-    const start=path[i-1],end=path[i];
-    const span=[0,1];
-    if(!clip(start.x,start.y,end.x-start.x,end.y-start.y,extent,extent,span)) continue;
-    const [x1,y1]=project(start.x/extent,start.y/extent),[x2,y2]=project(end.x/extent,end.y/extent);
-    const dx=x2-x1,dy=y2-y1;
-    if(!clip(x1,y1,dx,dy,camera.width,camera.height,span)) continue;
-    const length=Math.hypot(dx,dy)*(span[1]-span[0]);
-    if(length<=0||best&&length<=best.length)continue;
-    const t=(span[0]+span[1])/2;
+  const keep = run => {
+    if (!run) return;
+    const {left,top,right,bottom}=run,dx=right-left,dy=bottom-top,length=Math.hypot(dx,dy);
+    if (!length || best&&length<=best.length) return;
     let angle=Math.atan2(dy,dx);
     if(angle>Math.PI/2)angle-=Math.PI;
     if(angle< -Math.PI/2)angle+=Math.PI;
-    best={px:x1+dx*t,py:y1+dy*t,angle,length};
+    best={px:(left+right)/2,py:(top+bottom)/2,angle,length};
+  };
+  // DEM contours and some railway lines are densely sampled even along a
+  // straight section. Fit a label across consecutive visible segments, but
+  // keep bends, reversals and separately clipped pieces separate. A fixed
+  // starting direction bounds accumulated deviation along each candidate.
+  const subpixel=0.35, touch=1e-6;
+  for(const path of paths){
+    let run;
+    for(let i=1;i<path.length;i++){
+      const start=path[i-1],end=path[i];
+      if(start.x===end.x&&start.y===end.y)continue;
+      const span=[0,1];
+      if(!clip(start.x,start.y,end.x-start.x,end.y-start.y,extent,extent,span)){
+        keep(run);run=null;continue;
+      }
+      const [x1,y1]=project(start.x/extent,start.y/extent),[x2,y2]=project(end.x/extent,end.y/extent);
+      const dx=x2-x1,dy=y2-y1;
+      if(!clip(x1,y1,dx,dy,camera.width,camera.height,span)){
+        keep(run);run=null;continue;
+      }
+      const left=x1+span[0]*dx, top=y1+span[0]*dy, right=x1+span[1]*dx, bottom=y1+span[1]*dy;
+      const magnitude=Math.hypot(dx,dy);
+      if(magnitude<=touch) continue;
+      if(run&&Math.abs(left-run.right)<=touch&&Math.abs(top-run.bottom)<=touch&&
+         dx*run.ux+dy*run.uy>0&&Math.abs((right-run.left)*run.uy-(bottom-run.top)*run.ux)<=subpixel){
+        run.right=right;run.bottom=bottom;
+      }else{
+        keep(run);run={left,top,right,bottom,ux:dx/magnitude,uy:dy/magnitude};
+      }
+    }
+    keep(run);
   }
   return best;
 }
