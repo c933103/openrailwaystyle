@@ -9,6 +9,7 @@ on:
       - scripts/extract-rollout.mjs
       - .github/workflows/extract-rollout.yml
       - scripts/extract-refresh-requests/531.json
+      - scripts/extract-refresh-requests/531-assembly.json
   workflow_run:
     workflows: [Geofabrik region extracts]
     types: [completed]
@@ -45,8 +46,45 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/extract-release.mjs load index.json
-      - name: Read the reviewed two-region refresh request
+      - name: Check for the reviewed pinned assembly request
         if: github.event_name == 'push'
+        id: pinned
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          request=scripts/extract-refresh-requests/531-assembly.json
+          [[ "$PUSH_BEFORE" =~ ^[a-f0-9]{40}$ && "$PUSH_AFTER" =~ ^[a-f0-9]{40}$ ]]
+          for sha in "$PUSH_BEFORE" "$PUSH_AFTER"; do
+            if ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$sha"
+            fi
+            git cat-file -e "$sha^{commit}"
+          done
+          status=0
+          git diff --quiet "$PUSH_BEFORE" "$PUSH_AFTER" -- "$request" || status=$?
+          if [ "$status" -eq 0 ]; then exit 0; fi
+          if [ "$status" -ne 1 ]; then exit "$status"; fi
+          echo 'matched=true' >> "$GITHUB_OUTPUT"
+          if ! git cat-file -e "$PUSH_AFTER:$request" 2>/dev/null; then exit 0; fi
+          git show "$PUSH_AFTER:$request" | node -e '
+            const request=JSON.parse(require("node:fs").readFileSync(0,"utf8"));
+            if(request.schema!==1||request.reason!==531||request.asset!=="index-20261126T161713Z-45852008906.json")throw Error("Unexpected assembly input");
+            require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT,"asset="+request.asset+"\n");
+          '
+      - name: Dispatch the existing assembler on the reviewed index
+        if: steps.pinned.outputs.asset != '' && github.run_attempt == 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INDEX_ASSET: ${{ steps.pinned.outputs.asset }}
+        run: |
+          set -euo pipefail
+          [[ "$INDEX_ASSET" == "index-20261126T161713Z-45852008906.json" ]]
+          gh workflow run osm-assemble.yml --ref main -f "index_asset=$INDEX_ASSET"
+      - name: Read the reviewed two-region refresh request
+        if: github.event_name == 'push' && steps.pinned.outputs.matched != 'true'
         id: targeted
         env:
           PUSH_BEFORE: ${{ github.event.before }}
@@ -85,7 +123,7 @@ jobs:
           gh workflow run osm-extract.yml --ref main \
             -f "region_ids=$REGION_IDS" -f "source_date=$SOURCE_DATE" -f gaps_only=false
       - name: Check required continuation
-        if: steps.targeted.outputs.matched != 'true'
+        if: steps.targeted.outputs.matched != 'true' && steps.pinned.outputs.matched != 'true'
         id: readiness
         env:
           EVENT_NAME: ${{ github.event_name }}

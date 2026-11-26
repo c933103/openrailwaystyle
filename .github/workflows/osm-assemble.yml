@@ -21,6 +21,10 @@ on:
         description: Retry publication of already assembled data without running osmium or acquiring inputs.
         type: boolean
         default: false
+      index_asset:
+        description: Optional exact working-copy index asset from the osm-extract release.
+        type: string
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -51,12 +55,39 @@ jobs:
       - name: Load the index and its region files
         env:
           GH_TOKEN: ${{ github.token }}
+          INDEX_ASSET: ${{ inputs.index_asset }}
         run: |
-          node scripts/extract-release.mjs load index.json
+          set -euo pipefail
+          if [ -n "$INDEX_ASSET" ]; then
+            [[ "$INDEX_ASSET" =~ ^index-[0-9]{8}T[0-9]{6}Z-[1-9][0-9]*\.json$ ]]
+            mkdir -p pinned-index
+            gh release download osm-extract --pattern "$INDEX_ASSET" --dir pinned-index
+            mv "pinned-index/$INDEX_ASSET" index.json
+            node scripts/extract-release.mjs load latest-index.json
+            node --input-type=module -e '
+              import {readFileSync} from "node:fs";
+              import {extractReadiness} from "./scripts/extract-rollout.mjs";
+              const index=JSON.parse(readFileSync("index.json","utf8"));
+              const latest=JSON.parse(readFileSync("latest-index.json","utf8"));
+              if(JSON.stringify(index)!==JSON.stringify(latest))throw Error("Pinned index is no longer the current verified working-copy set");
+              if(process.env.INDEX_ASSET!=="index-"+index.generation+".json")throw Error("Pinned index generation mismatch");
+              const result=extractReadiness(index);
+              if(!result.ready)throw Error(result.reasons.join("; "));
+              for(const e of Object.values(index.regions)){
+                if(!/^region-[a-z0-9_-]+\.osm\.pbf$/.test(e.asset)||!/^[a-f0-9]{64}$/.test(e.sha256))
+                  throw Error("Invalid pinned working-copy receipt");
+              }
+            '
+          else
+            node scripts/extract-release.mjs load index.json
+          fi
           test -s index.json || { echo "No working copies yet"; exit 1; }
           mkdir -p regions
           node -e 'for (const e of Object.values(JSON.parse(require("fs").readFileSync("index.json","utf8")).regions)) console.log(e.asset)' > assets.txt
           while read -r asset; do gh release download osm-extract --pattern "$asset" --dir regions; done < assets.txt
+          if [ -n "$INDEX_ASSET" ]; then
+            node -e 'for(const e of Object.values(JSON.parse(require("fs").readFileSync("index.json","utf8")).regions)) console.log(e.sha256+"  regions/"+e.asset)' | sha256sum --check --quiet
+          fi
           echo "$(wc -l < assets.txt) region files, $(du -sh regions | cut -f1)"
       - name: Assemble
         run: |
