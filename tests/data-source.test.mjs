@@ -105,14 +105,11 @@ test('the site stages every dataset from the branch the resolver chose', () => {
   for (const name of used) assert.ok(job.indexOf(name) > resolver, `${name} is read after the resolver runs`);
 });
 
-test('the checked-in choice names every dataset and puts each on Overpass until a reviewed change moves it', async () => {
-  const text = readFileSync(SOURCES_FILE, 'utf8');
-  const file = parseFile(text);
+test('the checked-in choice is valid and names every dataset, whichever source each is set to', () => {
+  // Only validity: a switch is a one-entry change to this file, and must not
+  // need any test changed.
+  const file = parseFile(readFileSync(SOURCES_FILE, 'utf8'));
   assert.deepEqual(Object.keys(file), DATASETS.map(d => d.id), 'every dataset, in the resolver\'s order');
-  // Each switch to "extract" is its own pull request; this one moves none.
-  assert.deepEqual(Object.values(file), DATASETS.map(() => 'overpass'));
-  const choices = await resolve(settings(file), remote());
-  assert.ok(choices.every(c => c.setBy === 'file' && c.source === 'overpass' && c.reason === 'configured'));
 });
 
 test('the checked-in choice must be a JSON object naming every known dataset with a known source', () => {
@@ -160,10 +157,19 @@ test('a drill makes a complete extract branch fall back for that run only, and r
 });
 
 test('the resolver run by site.yml reads the checked-in file, the variable and the drill, and stops on a bad one before staging', () => {
-  const run = (env, script = new URL('../scripts/data-source.mjs', import.meta.url).pathname) => {
+  // The script beside a fixture file, so the checked-in choice can change
+  // without this test changing.
+  const script = (...extract) => {
+    const dir = mkdtempSync(join(tmpdir(), 'data-source-script-'));
+    copyFileSync(new URL('../scripts/data-source.mjs', import.meta.url), join(dir, 'data-source.mjs'));
+    writeFileSync(join(dir, 'data-sources.json'), fileText(...extract));
+    return join(dir, 'data-source.mjs');
+  };
+  const allOverpass = script();
+  const run = (env, file = allOverpass) => {
     const dir = mkdtempSync(join(tmpdir(), 'data-source-'));
     const githubEnv = join(dir, 'env');
-    const result = spawnSync(process.execPath, [script, 'resolve'],
+    const result = spawnSync(process.execPath, [file, 'resolve'],
       {encoding: 'utf8', env: {PATH: process.env.PATH, RUNNER_TEMP: dir, GITHUB_ENV: githubEnv, ...env}});
     let written = '';
     try { written = readFileSync(githubEnv, 'utf8'); } catch {}
@@ -171,6 +177,14 @@ test('the resolver run by site.yml reads the checked-in file, the variable and t
   };
   // Every dataset on Overpass: no branch is looked up, so this needs no remote.
   const plain = run({});
+  // A broken file stops the run as well.
+  const broken = mkdtempSync(join(tmpdir(), 'data-source-broken-'));
+  copyFileSync(new URL('../scripts/data-source.mjs', import.meta.url), join(broken, 'data-source.mjs'));
+  writeFileSync(join(broken, 'data-sources.json'), '{"heritage":"extract"}');
+  const missing = run({}, join(broken, 'data-source.mjs'));
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /must name every dataset/);
+  assert.equal(missing.written, '');
   assert.equal(plain.status, 0, plain.stderr);
   assert.match(plain.stdout, /\| heritage \| overpass \| file \| overpass \| `heritage-data` \| configured \|/);
   assert.equal(plain.written.trim().split('\n').length, DATASETS.length);
@@ -187,12 +201,9 @@ test('the resolver run by site.yml reads the checked-in file, the variable and t
     assert.match(failed.stderr, message);
     assert.equal(failed.written, '', 'nothing is handed to the staging steps');
   }
-  // A drill: the script beside a file that sets street running to extract.
-  // A drilled dataset is not looked up, so this needs no remote either.
-  const copy = mkdtempSync(join(tmpdir(), 'data-source-drill-'));
-  copyFileSync(new URL('../scripts/data-source.mjs', import.meta.url), join(copy, 'data-source.mjs'));
-  writeFileSync(join(copy, 'data-sources.json'), fileText('street-running'));
-  const drilled = run({DATA_SOURCES_DRILL: '["street-running"]'}, join(copy, 'data-source.mjs'));
+  // A drill on a file that sets street running to extract. A drilled
+  // dataset is not looked up, so this needs no remote either.
+  const drilled = run({DATA_SOURCES_DRILL: '["street-running"]'}, script('street-running'));
   assert.equal(drilled.status, 0, drilled.stderr);
   assert.match(drilled.stdout, /\| street-running \| extract \| file \| overpass \| `street-data` \| fell back: drill: street-running-extract-data treated as unusable for this run \|/);
   assert.ok(drilled.written.includes('DATA_BRANCH_STREET_RUNNING=street-data\n'));
