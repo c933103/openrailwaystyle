@@ -1,93 +1,59 @@
-name: Verify refreshed crossing source rows for PR 531
+name: Verify exact published crossing sources for PR 531
 on:
   push:
     branches: [evidence/crossings-source-parity-531]
 permissions:
   contents: read
 jobs:
-  compare:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Compare the 15 unresolved rows with the two pinned working copies
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Verify published branch tables, manifest, and the 15 restored IDs
         shell: bash
         run: |
           set -euo pipefail
           d="$(mktemp -d)"
           trap 'rm -rf "$d"' EXIT
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq osmium-tool
-          oldidx=index-20261125T021300Z-45510371095.json
-          newidx=index-20261126T161713Z-45852008906.json
-          for index in "$oldidx" "$newidx"; do
-            gh release download osm-extract --pattern "$index" --dir "$d"
-          done
           OLD=d5388a9c883f62ce636b29a47324a14221a066bc
-          BASE=176dabadeb74996089178c870775fb08b174287a
-          git fetch --quiet --depth=1 --filter=blob:none origin "$OLD" "$BASE"
+          NEW=be18b7432b5bf2d5bb3cbb2291e5c471317aa050
+          git fetch --quiet --depth=1 --filter=blob:none origin "$OLD" "$NEW"
           git show "$OLD:crossings.tsv.gz" > "$d/old.tsv.gz"
-          git show "$BASE:crossings.tsv.gz" > "$d/new.tsv.gz"
+          git show "$NEW:crossings.tsv.gz" > "$d/new.tsv.gz"
           git show "$OLD:regions.json" > "$d/regions.json"
-          git show "$BASE:source.json" > "$d/source.json"
-          python3 scripts/compare-crossings-531.py "$d" > "$d/baseline.md"
-          python3 scripts/compare-refreshed-crossings-531.py "$d" "$oldidx" "$newidx" | tee "$GITHUB_STEP_SUMMARY"
-  worldwide-crossings:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '26'
-          check-latest: true
-      - name: Build crossings only from pinned published working copies
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+")'
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq osmium-tool
-          d="$(mktemp -d)"
-          trap 'rm -rf "$d"' EXIT
-          mkdir -p "$d/approved" "$d/regions" "$d/compare"
-          BUILD=cca7929a1f4b166de763f5a1c444829d50073a73
-          OLD=d5388a9c883f62ce636b29a47324a14221a066bc
-          git fetch --quiet --depth=1 --filter=blob:none origin "$BUILD" "$OLD"
-          git archive "$BUILD" scripts styles package.json package-lock.json | tar -x -C "$d/approved"
-          idx=index-20261126T161713Z-45852008906.json
-          gh release download osm-extract --pattern "$idx" --dir "$d"
-          python3 - "$d/$idx" > "$d/assets.tsv" <<'PY'
-          import json, re, sys
-          data=json.load(open(sys.argv[1]))
-          assert len(data["regions"]) == 175 and not data["missing"]
-          for info in data["regions"].values():
-              asset=info["asset"]
-              assert re.fullmatch(r"region-[0-9_a-z-]+\.osm\.pbf", asset), asset
-              assert re.fullmatch("[a-f0-9]{64}", info["sha256"])
-              print(asset, info["sha256"], sep="\t")
+          git show "$NEW:source.json" > "$d/source.json"
+          git show "$NEW:manifest.json" > "$d/manifest.json"
+          git ls-tree -r --name-only "$NEW" > "$d/tree.txt"
+          sha256sum "$d/old.tsv.gz" "$d/new.tsv.gz"
+          python3 scripts/compare-crossings-531.py "$d" fresh | tee "$d/parity.md" "$GITHUB_STEP_SUMMARY"
+          python3 - "$d" <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import gzip, json, pathlib, re, sys
+          root=pathlib.Path(sys.argv[1])
+          source=json.loads((root/"source.json").read_text())
+          manifest=json.loads((root/"manifest.json").read_text())
+          audit=json.loads((root/"parity.md").read_text().split("```json\n")[1].split("\n```")[0])
+          assert source["complete"] and source["source"]=="extract" and source["dataset"]=="crossings"
+          assert source["inputSha256"]=="a6d2e6aa00644d58014f03ecd41c6a5a7b2d4c3b7bdb57e7aac52b21f4ee4407"
+          assert manifest["complete"] and manifest["tags"] and manifest["extract"]["index"]=="20261126T161713Z-45852008906"
+          assert manifest["extract"]["regions"]==175 and not manifest["extract"]["missingRegions"]
+          assert manifest["crossings"]==sum(audit["total"][k] for k in ("same row","changed row","only extract"))
+          assert not audit["laterOverpassOnly"], audit["laterOverpassOnly"]
+          ids=set(map(str,[1349624517,1349624562,1349626718,2589324210,2589324761,2589331165,2738435885,
+              3026539692,3331328143,6698312538,6698312572,13879432906,14385085973,14397335253,14397343785]))
+          def wanted(path):
+              out={}
+              with gzip.open(path,"rt") as f:
+                  for line in f:
+                      parts=line.rstrip("\n").split("\t")
+                      if parts[0] in ids:
+                          out[parts[0]]=tuple(map(float,parts[1:3]))+(parts[3],)
+              return out
+          assert len(wanted(root/"new.tsv.gz"))==15 and wanted(root/"new.tsv.gz")==wanted(root/"old.tsv.gz")
+          lines=(root/"tree.txt").read_text().splitlines()
+          tiles=[p for p in lines if re.search(r"(?:^|/)\d+/\d+/\d+\.pbf$",p)]
+          assert len(tiles)==manifest["tiles"], (len(tiles),manifest["tiles"],lines[:20])
+          print(f"Published extraction: {manifest['crossings']:,} rows, {len(tiles):,} indexed PBF tiles, 15/15 restored IDs aligned.")
           PY
-          export ASSET_DIR="$d/regions"
-          while IFS=$'\t' read -r asset digest; do
-            gh release download osm-extract --pattern "$asset" --dir "$ASSET_DIR"
-            printf '%s  %s\n' "$digest" "$ASSET_DIR/$asset" | sha256sum --check --status
-          done < "$d/assets.tsv"
-          pushd "$d/approved"
-          npm ci --ignore-scripts --no-audit --no-fund
-          node scripts/assemble-extracts.mjs "$d/$idx" "$ASSET_DIR" "$d/assembled.osm.pbf"
-          node --max-old-space-size=6144 scripts/build-extract-crossings.mjs "$d/assembled.osm.pbf" "$d/assembled.osm.pbf.json" "$d/rendered"
-          popd
-          git show "$OLD:crossings.tsv.gz" > "$d/compare/old.tsv.gz"
-          git show "$OLD:regions.json" > "$d/compare/regions.json"
-          cp "$d/rendered/crossings.tsv.gz" "$d/rendered/source.json" "$d/compare/"
-          mv "$d/compare/crossings.tsv.gz" "$d/compare/new.tsv.gz"
-          cat "$d/rendered/manifest.json"
-          python3 scripts/compare-crossings-531.py "$d/compare" fresh | tee "$GITHUB_STEP_SUMMARY"
