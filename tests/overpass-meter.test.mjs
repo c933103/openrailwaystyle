@@ -43,7 +43,7 @@ test('the meter counts each host\'s requests and the bytes read, and the builder
     const c = await fetch('${base}/empty'); if (c.status !== 204) throw new Error('changed status');
   `);
   assert.equal(result.code ?? 0, 0, String(result.stderr));
-  assert.deepEqual(usage, {script: 'build-fixture.mjs', bytes: 100015, requests: 3, unread: 0, unmeasured: 0, hosts: {[host]: {bytes: 100015, requests: 3, changes: {bytes: 0, requests: 0}}}});
+  assert.deepEqual(usage, {script: 'build-fixture.mjs', changeScope: 'adiff+crossing-rows-v1', bytes: 100015, requests: 3, unread: 0, unmeasured: 0, hosts: {[host]: {bytes: 100015, requests: 3, changes: {bytes: 0, requests: 0}}}});
   assert.match(summary, /^`OVERPASS_USAGE \{.*"bytes":100015/);
 });
 
@@ -63,7 +63,7 @@ test('a failing or cancelling builder still reports what it read', async t => {
 });
 
 test('a builder that fetches nothing reports zero; one that exits early still reports', async t => {
-  assert.deepEqual((await run(t, 'console.log("no requests");')).usage, {script: 'build-fixture.mjs', bytes: 0, requests: 0, unread: 0, unmeasured: 0, hosts: {}});
+  assert.deepEqual((await run(t, 'console.log("no requests");')).usage, {script: 'build-fixture.mjs', changeScope: 'adiff+crossing-rows-v1', bytes: 0, requests: 0, unread: 0, unmeasured: 0, hosts: {}});
   const base = await serve(t);
   const early = await run(t, `await (await fetch('${base}/json')).text(); process.exit(3);`);
   assert.equal(early.result.code, 3);
@@ -89,7 +89,26 @@ test('the change updates (augmented-diff queries) are counted apart from full do
   assert.deepEqual([usage.unread, usage.unmeasured], [1, 0]);
 });
 
-test('only an Overpass augmented diff counts as a change update', async () => {
+test('meter includes explicitly tagged crossing row lookups without counting dated full regions', async t => {
+  const base = await serve(t), host = new URL(base).host;
+  const crossing = new URL('../scripts/crossing-data.mjs', import.meta.url).href;
+  const {usage, result} = await run(t, `
+    const {crossingChangesQuery, crossingRowsQuery, regionQuery} = await import(${JSON.stringify(crossing)});
+    const until = '2026-11-21T00:00:00Z', since = '2026-11-20T00:00:00Z', box = [1,2,3,4];
+    const post = (path, query, followUp = false) => fetch('${base}' + path, {method: 'POST',
+      body: new URLSearchParams({data: query}), [Symbol.for('railway-atlas.overpass-change-follow-up')]: followUp});
+    await (await post('/json', crossingChangesQuery(box, since, until))).text();
+    await (await post('/json', crossingRowsQuery([123], until), true)).text();
+    await (await post('/json', regionQuery(box, until))).text();
+    const busy = await post('/busy', crossingRowsQuery([456], until), true);
+    if (busy.ok) throw new Error('fixture');
+  `);
+  assert.equal(result.code ?? 0, 0, String(result.stderr));
+  assert.deepEqual(usage.hosts[host], {bytes: 10045, requests: 4, changes: {bytes: 10030, requests: 3}});
+  assert.equal(usage.changeScope, 'adiff+crossing-rows-v1');
+});
+
+test('unmarked queries are classified by the augmented diff syntax', async () => {
   const {isChangeQuery} = await import(new URL('../scripts/overpass-meter.mjs', import.meta.url).href);
   assert.equal(isChangeQuery('[out:xml][adiff:"2026-11-20T00:00:00Z","2026-11-21T00:00:00Z"];node(1);out meta;'), true);
   for (const query of ['[out:json];way[railway](1,2,3,4);out geom;', '[out:xml][diff:"2026-11-20T00:00:00Z"];node(1);out meta;', 'adiff', '']) assert.equal(isChangeQuery(query), false, query);
