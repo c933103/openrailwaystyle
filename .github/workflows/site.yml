@@ -655,7 +655,7 @@ jobs:
         if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs') || contains(matrix.checks, 'check-mainline-reference-browser.mjs')
         run: npx playwright install --with-deps webkit
       - name: Install Firefox for the no-WebGL browser check
-        if: contains(matrix.checks, 'check-published-no-webgl-browser.mjs')
+        if: contains(matrix.checks, 'check-published-no-webgl-browser.mjs') || contains(matrix.checks, 'check-flat-basemaps-firefox-browser.mjs')
         run: npx playwright install --with-deps firefox
       - name: Start test server
         run: node scripts/serve.mjs &
