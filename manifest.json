@@ -1,0 +1,360 @@
+{
+  "version": 2,
+  "built": "2026-11-26T18:51:11.179Z",
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "license": "ODbL-1.0",
+  "complete": true,
+  "format": "atlas-tile-bundle-1",
+  "minzoom": 10,
+  "maxzoom": 12,
+  "bundleZoom": 8,
+  "areas": 71214,
+  "counts": {
+    "archaeological_site": 64489,
+    "world_heritage": 2345,
+    "cultural_protected_area": 3221,
+    "historic_district": 805,
+    "battlefield": 354
+  },
+  "tiles": 143213,
+  "bundles": 3146,
+  "bytes": 12350807,
+  "coverage": [
+    {
+      "bbox": [
+        -90,
+        -180,
+        -45,
+        -135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -135,
+        -45,
+        -90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -90,
+        -45,
+        -45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 9
+    },
+    {
+      "bbox": [
+        -90,
+        -45,
+        -45,
+        0
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        0,
+        -45,
+        45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        45,
+        -45,
+        90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 3
+    },
+    {
+      "bbox": [
+        -90,
+        90,
+        -45,
+        135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        135,
+        -45,
+        180
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 6
+    },
+    {
+      "bbox": [
+        -45,
+        -180,
+        0,
+        -135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 36
+    },
+    {
+      "bbox": [
+        -45,
+        -135,
+        0,
+        -90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 4
+    },
+    {
+      "bbox": [
+        -45,
+        -90,
+        0,
+        -45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 1941
+    },
+    {
+      "bbox": [
+        -45,
+        -45,
+        0,
+        0
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 40
+    },
+    {
+      "bbox": [
+        -45,
+        0,
+        0,
+        45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 54
+    },
+    {
+      "bbox": [
+        -45,
+        45,
+        0,
+        90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 50
+    },
+    {
+      "bbox": [
+        -45,
+        90,
+        0,
+        135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 244
+    },
+    {
+      "bbox": [
+        -45,
+        135,
+        0,
+        180
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 311
+    },
+    {
+      "bbox": [
+        0,
+        -180,
+        45,
+        -135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 21
+    },
+    {
+      "bbox": [
+        0,
+        -135,
+        45,
+        -90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 948
+    },
+    {
+      "bbox": [
+        0,
+        -90,
+        45,
+        -45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 1175
+    },
+    {
+      "bbox": [
+        0,
+        -45,
+        45,
+        0
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 4015
+    },
+    {
+      "bbox": [
+        0,
+        0,
+        45,
+        45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 12889
+    },
+    {
+      "bbox": [
+        0,
+        45,
+        45,
+        90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 1548
+    },
+    {
+      "bbox": [
+        0,
+        90,
+        45,
+        135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 2262
+    },
+    {
+      "bbox": [
+        0,
+        135,
+        45,
+        180
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 1105
+    },
+    {
+      "bbox": [
+        45,
+        -180,
+        90,
+        -135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 22
+    },
+    {
+      "bbox": [
+        45,
+        -135,
+        90,
+        -90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 195
+    },
+    {
+      "bbox": [
+        45,
+        -90,
+        90,
+        -45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 47
+    },
+    {
+      "bbox": [
+        45,
+        -45,
+        90,
+        0
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 31305
+    },
+    {
+      "bbox": [
+        45,
+        0,
+        90,
+        45
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 12419
+    },
+    {
+      "bbox": [
+        45,
+        45,
+        90,
+        90
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 462
+    },
+    {
+      "bbox": [
+        45,
+        90,
+        90,
+        135
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 98
+    },
+    {
+      "bbox": [
+        45,
+        135,
+        90,
+        180
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 18
+    }
+  ],
+  "downloadedBytes": 0,
+  "selection": "Areas tagged historic=archaeological_site, historic=battlefield or historic=district, protect_class=22, or heritage=1.",
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 65698635,
+    "kept": 73191,
+    "relations": 2835,
+    "memberNodes": 164,
+    "memberWays": 22097,
+    "membersRead": 22261,
+    "waysWithoutGeometry": 0
+  }
+}
