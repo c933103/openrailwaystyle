@@ -1,6 +1,6 @@
 import {isNeutralRailReference} from './railway-visibility.mjs';
 import {flatRailReferenceClip} from './flat-rail-reference.mjs';
-import {flatCamera, flatScaleBar, fitFlatBounds} from './flat-camera.mjs';
+import {flatCamera, flatScaleBar, fitFlatBounds, flatBoxRect, fitFlatScreenBox} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {flatReliefPaint,flatReliefPixels} from './flat-relief.mjs';
@@ -30,8 +30,14 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
   canvas.tabIndex = 0;
-  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom. Press Shift with Left or Right to rotate.');
+  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom. Shift-drag to zoom to an area. Press Shift with Left or Right to rotate.');
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
+  const boxOverlay=document.createElement('div');
+  boxOverlay.className='atlas-flat-box-zoom';
+  boxOverlay.hidden=true;
+  boxOverlay.setAttribute('aria-hidden','true');
+  Object.assign(boxOverlay.style,{position:'absolute',pointerEvents:'none',boxSizing:'border-box',
+    background:'#3399ff33',border:'2px solid #1773bd',boxShadow:'0 0 0 1px white'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
   const localData=new Map([...Object.entries(pointSources),...shapeSources.map(id=>[id,null])].map(([id,zoom])=>{
@@ -68,7 +74,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   let wakeTimer=null, wakeDue=Infinity, recoveryWake=null;
   let tileDetail=initialDetail;
   let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
-  let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
+  let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null, boxZoom=null;
   let stationFallbackMask=()=>false;
   const allowFeature=(id,feature,tile)=>!flatStationFallbackLayer(id)||stationFallbackMask(feature,tile);
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
@@ -125,6 +131,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const width=Math.max(1,mount.clientWidth),height=Math.max(1,mount.clientHeight);
     if (camera?.width===width && camera.height===height) return;
     gesture.cancel();
+    cancelBoxZoom();
     canvas.width=Math.round(width*pixelRatio); canvas.height=Math.round(height*pixelRatio);
     context.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);
     setCamera(flatCamera({center:camera?.center??requestedView.center,zoom:camera?.zoom??requestedView.zoom,
@@ -319,9 +326,22 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     },
   });
   const toolEvent=(tool,e,mouse,touch)=>overlayFor(tool).emit(e.pointerType==='touch'?touch:mouse,localPoint(e),e);
+  function cancelBoxZoom() {
+    if(!boxZoom)return;
+    const {id}=boxZoom;
+    boxZoom=null;
+    boxOverlay.hidden=true;
+    if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+  }
   listen('pointerdown',e=>{
-    if(e.button!==0||toolDrag)return;
+    if(e.button!==0||toolDrag||boxZoom)return;
     const tool=activeTool();
+    if(!tool&&!gesture.active&&e.pointerType==='mouse'&&e.shiftKey&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
+      boxZoom={id:e.pointerId,start:localPoint(e),camera};
+      canvas.focus({preventScroll:true});
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
     if(tool&&tool.mode!=='erase'&&!gesture.active&&toolEvent(tool,e,'mousedown','touchstart')){
       toolDrag={id:e.pointerId,tool};
       canvas.setPointerCapture(e.pointerId);return;
@@ -331,6 +351,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   listen('pointerleave',()=>{readoutPoint=null;updateReadout();});
   listen('pointermove',e=>{
     if(e.pointerType==='mouse'){readoutPoint=localPoint(e);updateReadout();}
+    if(boxZoom){
+      if(e.pointerId!==boxZoom.id)return;
+      const rect=flatBoxRect(boxZoom.camera,boxZoom.start,localPoint(e));
+      boxOverlay.hidden=!rect;
+      if(rect)for(const [name,value] of Object.entries(rect))boxOverlay.style[name]=value+'px';
+      return;
+    }
     if(e.pointerId===toolDrag?.id){
       if(toolDrag.tool===activeTool())toolEvent(toolDrag.tool,e,'mousemove','touchmove');
       return;
@@ -343,6 +370,15 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
   });
   function endPointer(e,cancel=false){
+    if(boxZoom){
+      if(e.pointerId!==boxZoom.id)return;
+      const {start,camera:initial}=boxZoom;
+      const next=!cancel&&initial===camera
+        ?fitFlatScreenBox(initial,flatBoxRect(initial,start,localPoint(e))):null;
+      cancelBoxZoom();
+      if(next)setCamera(next,true);
+      return;
+    }
     if(e.pointerId===toolDrag?.id){
       const {tool}=toolDrag;toolDrag=null;
       toolEvent(tool,e,'mouseup',cancel?'touchcancel':'touchend');
@@ -363,7 +399,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
   });
   function zoomBy(delta, anchor) {
-    if (disposed || gesture.active || toolDrag || !delta) return;
+    if (disposed || gesture.active || toolDrag || boxZoom || !delta) return;
     const zoom=Math.max(-0.5,Math.min(22,camera.zoom+delta));
     if (zoom===camera.zoom) return;
     setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
@@ -374,6 +410,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     zoomBy(-Math.sign(e.deltaY)*0.25,[e.clientX-rect.left,e.clientY-rect.top]);
   },{passive:false});
   listen('keydown',e=>{
+    if(boxZoom){
+      if(e.key==='Escape'){e.preventDefault();cancelBoxZoom();}
+      return;
+    }
     if (gesture.active || toolDrag || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
     // Plus commonly requires Shift, whereas arrow panning remains unmodified.
     const delta=e.key==='+' || (e.key==='=' && !e.shiftKey) ? 1 : e.key==='-' && !e.shiftKey ? -1 : 0;
@@ -395,19 +435,21 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
   });
-  mount.replaceChildren(canvas);
+  mount.replaceChildren(canvas,boxOverlay);
   resize();
   const observer=new window.ResizeObserver(resize);
   observer.observe(mount);
   const close=()=>{
     if(disposed) return;
+    cancelBoxZoom();
     disposed=true;
     if(measure?.active)measure.setMode(measure.mode);
     lifetime.abort(); observer.disconnect();clearWake();
     if(frame) window.cancelAnimationFrame(frame);
     for(const entry of metadata.values()) entry.controller.abort();
-    queue.close();canvas.remove();
+    queue.close();canvas.remove();boxOverlay.remove();
   };
+  window.addEventListener('blur',cancelBoxZoom,{signal});
   window.addEventListener('online',()=>recover(true),{signal});
   window.addEventListener('offline',clearWake,{signal});
   document.addEventListener('visibilitychange',()=>recover(false),{signal});

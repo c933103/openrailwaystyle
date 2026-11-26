@@ -75,6 +75,23 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
     project, unproject, panBy, zoomAt, visibleTiles, tileTransform};
 }
 
+// Fit the visible screen rectangle without widening a rotated geographic box.
+export function flatBoxRect(camera,start,end) {
+  const clamp=(value,limit)=>Math.max(0,Math.min(limit,value));
+  const x0=clamp(start[0],camera.width), x1=clamp(end[0],camera.width);
+  const y0=clamp(start[1],camera.height), y1=clamp(end[1],camera.height);
+  const width=Math.abs(x0-x1), height=Math.abs(y0-y1);
+  return width>=4&&height>=4?{left:Math.min(x0,x1),top:Math.min(y0,y1),width,height}:null;
+}
+
+export function fitFlatScreenBox(camera,rect,maxZoom=22) {
+  if(!rect)return null;
+  const {left,top,width,height}=rect;
+  const zoom=Math.min(maxZoom,camera.zoom+Math.log2(Math.min(camera.width/width,camera.height/height)));
+  if(zoom<=camera.zoom)return null;
+  return flatCamera({...camera,zoom,center:camera.unproject([left+width/2,top+height/2])});
+}
+
 // Local ground resolution at the centre of the Mercator camera. Use CSS
 // pixels (not device pixels); bearing does not change Mercator's local scale.
 export function flatScaleBar(camera, units, maxWidth = 100) {

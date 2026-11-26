@@ -1112,6 +1112,72 @@ try {
       assert.deepEqual(await recipient.page.evaluate(()=>window.webglAttempts),[]);
     } finally {await recipient.context.close();}
   } finally {await compassCase.context.close();}
+  // Native Shift-left drags on the real Canvas entry.
+  const boxCase=await fresh(true);
+  try {
+    const {page:p}=boxCase;
+    await p.setViewportSize({width:1200,height:760});
+    await p.goto(origin+'/#9/25.04/121.56/40');
+    await ready(p);
+    const canvas=p.locator('canvas.atlas-flat-preview'), overlay=p.locator('.atlas-flat-box-zoom');
+    const box=await canvas.boundingBox();
+    const points=[[.54,.38],[.77,.57]].map(([x,y])=>[
+      Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)]);
+    for(const point of points) assert.equal(await p.evaluate(([x,y])=>
+      document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),point),true);
+    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
+    const initial=await view();
+    const drag=async()=>{
+      await p.mouse.move(...points[0]);
+      await p.keyboard.down('Shift');
+      await p.mouse.down();
+      await p.mouse.move(...points[1],{steps:5});
+      await overlay.waitFor({state:'visible'});
+      const drawn=await overlay.boundingBox();
+      assert.ok(Math.abs(drawn.x-points[0][0])<1&&Math.abs(drawn.y-points[0][1])<1);
+      assert.ok(Math.abs(drawn.width-points[1][0]+points[0][0])<1);
+      assert.ok(Math.abs(drawn.height-points[1][1]+points[0][1])<1);
+    };
+    const release=async()=>{
+      await p.mouse.up();
+      await p.keyboard.up('Shift');
+      await overlay.waitFor({state:'hidden'});
+    };
+    await drag();
+    await p.keyboard.press('Escape');
+    await release();
+    assert.equal(await view(),initial,'Escape must not move the map');
+    await canvas.evaluate(el=>el.addEventListener('pointerdown',e=>window.boxPointer=e.pointerId,{once:true}));
+    await drag();
+    await canvas.evaluate(el=>el.dispatchEvent(new PointerEvent('pointercancel',{pointerId:window.boxPointer})));
+    await release();
+    assert.equal(await view(),initial,'pointer cancellation must not move the map');
+    const expected=await p.evaluate(async({box,points})=>{
+      const {flatCamera}=await import('/styles/flat-camera.mjs');
+      const camera=flatCamera({center:[121.56,25.04],zoom:9,bearing:40,width:box.width,height:box.height});
+      return {
+        center:camera.unproject([(points[0][0]+points[1][0])/2-box.x,(points[0][1]+points[1][1])/2-box.y]),
+        z:9+Math.log2(Math.min(box.width/(points[1][0]-points[0][0]),box.height/(points[1][1]-points[0][1]))),
+      };
+    },{box,points});
+    await drag();
+    assert.equal(await view(),initial,'preview must not move the camera before release');
+    await release();
+    const after=JSON.parse(await view());
+    assert.ok(Math.abs(after.z-expected.z)<0.001&&after.b===40);
+    assert.ok(after.c.every((v,i)=>Math.abs(v-expected.center[i])<0.000002));
+    await p.mouse.move(...points[0]);await p.mouse.down();
+    await p.mouse.move(...points[1],{steps:5});await p.mouse.up();
+    assert.equal(await overlay.isHidden(),true);
+    const panned=JSON.parse(await view());
+    assert.equal(panned.z,after.z);
+    assert.notDeepEqual(panned.c,after.c);
+    await p.keyboard.down('Shift');
+    await p.mouse.dblclick(...points[0]);
+    await p.keyboard.up('Shift');
+    assert.ok(Math.abs(JSON.parse(await view()).z-after.z+1)<0.001);
+  } finally {await boxCase.context.close();}
+
   // Browser-provided synthetic positions, never an operator's actual location.
   const locationCase=await fresh(true);
   try {
