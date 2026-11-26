@@ -654,6 +654,9 @@ jobs:
       - name: Install WebKit for Safari installation and timetable checks
         if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs') || contains(matrix.checks, 'check-mainline-reference-browser.mjs')
         run: npx playwright install --with-deps webkit
+      - name: Install Firefox for the no-WebGL browser check
+        if: matrix.group == 'controls'
+        run: npx playwright install --with-deps firefox
       - name: Start test server
         run: node scripts/serve.mjs &
       # Real dated feeds are test fixtures, never a production city list;
@@ -666,6 +669,10 @@ jobs:
         env:
           ATLAS_PWA_ENGINE: webkit
         run: node scripts/check-pwa-install-browser.mjs
+      - name: Verify the staged Atlas in Firefox without WebGL
+        if: matrix.group == 'controls'
+        timeout-minutes: 4
+        run: node scripts/check-published-no-webgl-browser.mjs
       - name: Run browser checks
         run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
       - name: Save browser review
@@ -827,6 +834,13 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Install Safari engine for deployed reference verification
         run: npx playwright install --with-deps webkit
+      - name: Install Firefox for the deployed no-WebGL check
+        run: npx playwright install --with-deps firefox
+      - name: Verify published Atlas in Firefox without WebGL
+        timeout-minutes: 4
+        env:
+          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/check-published-no-webgl-browser.mjs
       - name: Verify deployed independent OSM geometry with live overview unavailable
         timeout-minutes: 35
         env:
