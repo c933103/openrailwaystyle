@@ -1652,10 +1652,18 @@ try {
   assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
   const stored=await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
   assert.deepEqual(stored.c,[0,0]);
-  await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');
-  assert.ok(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]>10));
+  const keyCanvas=current.page.locator('canvas.atlas-flat-preview');
+  const keyView=()=>current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')));
+  await keyCanvas.press('Shift+ArrowRight');
+  const turned=await keyView();
+  assert.deepEqual({c:turned.c,z:turned.z,b:turned.b}, {c:stored.c,z:stored.z,b:15},'right rotation keeps the centre and zoom');
   await current.page.reload();
   await ready(current.page).catch(async e=>{console.error(await current.page.locator("#map-status").textContent(),paths.slice(-35));throw e;});
+  await keyCanvas.press('Shift+ArrowLeft');
+  const straight=await keyView();
+  assert.deepEqual({c:straight.c,z:straight.z,b:straight.b}, {c:stored.c,z:stored.z,b:0},'left rotation starts from the restored bearing');
+  await keyCanvas.press('ArrowRight');
+  assert.ok((await keyView()).c[0]>10,'unmodified right still pans');
   assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),[]);
   await current.context.close();
 

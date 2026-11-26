@@ -29,7 +29,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
   canvas.tabIndex = 0;
-  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom.');
+  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom. Press Shift with Left or Right to rotate.');
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not start Canvas 2D.');
@@ -381,6 +381,14 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       return;
     }
     const pan={ArrowLeft:[-60,0],ArrowRight:[60,0],ArrowUp:[0,-60],ArrowDown:[0,60]}[e.key];
+    if (e.shiftKey && pan?.[0]) {
+      // Match the WebGL keyboard's 15° bearing step, without changing pitch.
+      e.preventDefault();
+      const angle=camera.bearing+15*Math.sign(pan[0]);
+      const bearing=((angle+180)%360+360)%360-180;
+      setCamera(flatCamera({...camera,bearing}),true);
+      return;
+    }
     if (!pan || e.shiftKey) return;
     e.preventDefault();
     setCamera(camera.panBy(pan),true);
