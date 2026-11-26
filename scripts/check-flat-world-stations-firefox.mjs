@@ -70,7 +70,7 @@ try{
       body:p.endsWith('/4/8/7')?Buffer.from(fallback):Buffer.alloc(0)});
     return route.fulfill({json:{minzoom:4,maxzoom:4,tiles:[origin+'/station-low-fixture/{z}/{x}/{y}.pbf']}});
   });
-  await browser.route(url=>/\/standard_railway_text_stations(?:$|\/)/.test(url.pathname),route=>{
+  await browser.route(url=>/\/standard_railway_text_stations(?:$|[,/])/.test(url.pathname),route=>{
     const p=new URL(route.request().url()).pathname;
     curatedRequests.push(p);
     if(/\/\d+\/\d+\/\d+$/.test(p))return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
