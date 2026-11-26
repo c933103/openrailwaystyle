@@ -1,0 +1,20 @@
+name: Verify Watch double tap with native Chromium touch
+on:
+  push:
+    branches: [work/watch-double-tap-501]
+permissions:
+  contents: read
+jobs:
+  double-tap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap
