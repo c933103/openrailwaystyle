@@ -8,7 +8,7 @@
 // All external providers require explicit fixtures. The shared transport guard
 // rejects unmocked requests and redirects before egress, including attempts made
 // by later route handlers. First-party deployment assets remain actual HTTP reads.
-import {chromium, webkit} from 'playwright';
+import {chromium, firefox, webkit} from 'playwright';
 import {guardBrowserNetwork} from './browser-network-guard.mjs';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
@@ -28,10 +28,11 @@ const CACHED_STATUS = new Set([200, 204, 206]);
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
 
 export async function launchBrowser({engine = 'chromium', ...options} = {}) {
-  if (!['chromium', 'webkit'].includes(engine)) throw new Error('Unknown test browser engine');
+  if (!['chromium', 'firefox', 'webkit'].includes(engine)) throw new Error('Unknown test browser engine');
   const shared = process.env.BROWSER_WS_ENDPOINT;
   const browser = shared && engine === 'chromium' && !options.proxy && !options.executablePath
     ? await chromium.connect(shared)
+    : engine === 'firefox' ? await firefox.launch({headless: true, ...options})
     : engine === 'webkit' ? await webkit.launch({headless: true, ...options})
     : await chromium.launch({headless: true, ...options, args: [...new Set([...BROWSER_ARGS, ...(options.args || [])])]});
   const blocked = [];

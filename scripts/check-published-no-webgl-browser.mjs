@@ -4,18 +4,15 @@
 // provider traffic is sent. The browser profile and drawings are disposable.
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {firefox} from 'playwright';
-import {guardBrowserNetwork} from './browser-network-guard.mjs';
+import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 
 const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
 const destination = new URL('?mode=infrastructure&language=en&relief=0&transport=0#9/35.68/139.76', base).href;
-const failures = [];
-const browser = await firefox.launch({headless: true, executablePath: process.env.FIREFOX_EXECUTABLE,
+const browser = await launchBrowser({engine: 'firefox', executablePath: process.env.FIREFOX_EXECUTABLE,
   firefoxUserPrefs: {'webgl.disabled': true}});
 try {
   const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 1220, height: 800}});
-  await guardBrowserNetwork(context, {bases: [base], blocked: failures});
   await installEmptyMapProviders(context, base, {firstParty: 'network'});
   await context.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;
@@ -88,7 +85,6 @@ try {
   await openSettings();
   assert.equal(await toggle.isChecked(), true);
   assert.deepEqual(pageErrors, []);
-  assert.deepEqual(failures, []);
   await mkdir('browser-review', {recursive: true});
   await page.screenshot({path: 'browser-review/published-no-webgl-firefox.png'});
   console.log('PASS: Firefox native no-WebGL startup; live Canvas pixels, pan, persisted opt-out without WebGL assets, and saved drawing after reload');
