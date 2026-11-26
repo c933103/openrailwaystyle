@@ -11,6 +11,7 @@ on:
       - 'scripts/check-flat-contours-firefox.mjs'
       - 'scripts/check-flat-crossings-firefox.mjs'
       - 'scripts/check-flat-rail-symbols-firefox.mjs'
+      - 'scripts/check-flat-basemaps-firefox.mjs'
       - 'scripts/check-flat-recovery-firefox.mjs'
       - 'tests/fixtures/mongolian-font/**'
       - 'styles/platform-length.mjs'
@@ -63,6 +64,8 @@ jobs:
       - run: npx playwright install --with-deps firefox
       - name: Verify automatic Canvas startup and distinguish shared-data errors
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
+      - name: Verify five public Canvas basemaps and Hybrid rail contrast
+        run: timeout 100s node scripts/check-flat-basemaps-firefox.mjs
       - name: Verify Canvas platform edge details and labels
         run: timeout 150s node scripts/check-flat-platform-firefox.mjs
       - name: Verify a complete platform edge when the browser cannot read the feature API
