@@ -217,7 +217,7 @@ function flatVisibleSegment(paths,project,extent,camera){
   return best;
 }
 
-export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{},getMongolianFont=()=>null}={}) {
+export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{},getMongolianFont=()=>null,getCjkFont=()=>null}={}) {
   const cell=64,buckets=new Map(), counts=new Map(),drawn=[];
   const visit=(rect,fn)=>{
     const minX=Math.max(0,Math.floor(rect.left/cell)), maxX=Math.min(Math.floor(camera.width/cell),Math.floor(rect.right/cell));
@@ -277,7 +277,8 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           drawn.push({label,icon,iconRect,iconWidth,iconHeight});
           onSymbol(id,label,[iconRect,...textRects]);
         };
-        context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px sans-serif';
+        const family=getCjkFont(text)??'sans-serif';
+        context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px '+family;
         if(label.badge){
           const {fit:[top,right,bottom,left],collision:[ct,cr,cb,cl]}=label.badge;
           const half=context.measureText(text).width/2;

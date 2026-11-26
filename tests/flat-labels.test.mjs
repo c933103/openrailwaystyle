@@ -193,3 +193,18 @@ test('track-count badges preserve placement and leave another label visible at s
   assert.equal(result.layerDraws.get('infrastructure-station-tracks'),1);
   assert.deepEqual(ctx.draws.filter(d=>d[0]==='fill').map(d=>d[1]).sort(),['12','8','Station']);
 });
+
+test('CJK label measurement and painting use the supplied font fallback without switching Latin',()=>{
+  const ctx=context(), measurements=[], paint=[];
+  const measure=ctx.measureText;
+  ctx.measureText=function(text){measurements.push([text,this.font]);return measure(text);};
+  ctx.fillText=function(text){paint.push([text,this.font]);};
+  const candidates=[{type:1,id:12,extent:256,paths:[[{x:40,y:50}]],properties:{name:'𨋢駅'}},
+    {type:1,id:13,extent:256,paths:[[{x:190,y:120}]],properties:{name:'Latin'}}];
+  const family='"Atlas CJK TC","Atlas Rare Han",sans-serif';
+  const draw=compileFlatFrame([layer('station-font')]);
+  draw(ctx,camera,new Map([['demo',[{vector:{layer:()=>candidates},tile:{x:0,y:0,z:0}}]]]),
+    {getCjkFont:text=>/\p{Script=Han}/u.test(text)?family:null});
+  assert.ok(measurements.some(([text,font])=>text==='𨋢駅'&&font===`10px ${family}`));
+  assert.deepEqual(paint,[['Latin','10px sans-serif'],['𨋢駅',`10px ${family}`]]);
+});

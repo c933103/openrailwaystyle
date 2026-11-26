@@ -36,7 +36,7 @@ export function compileFlatFrame(layers) {
     if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
-  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,getMongolianFont,onSymbol,allowFeature,layerClip,legendLayers,onLegendFeature,stationPaint} = {}) {
+  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,getMongolianFont,getCjkFont,onSymbol,allowFeature,layerClip,legendLayers,onLegendFeature,stationPaint} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
     const layerDraws = new Map(), labels=[];
@@ -116,7 +116,7 @@ export function compileFlatFrame(layers) {
       // a dense city background can hide the railway names entirely.
       labels.sort((a,b)=>Number(b.id.startsWith('station-'))-Number(a.id.startsWith('station-')));
       const groups=new Map(labels.map(group=>[group.id,group]));
-      if(labels.length)for(const [id,count] of drawFlatTextLabels(context,camera,labels,{getIcon,getMongolianFont,
+      if(labels.length)for(const [id,count] of drawFlatTextLabels(context,camera,labels,{getIcon,getMongolianFont,getCjkFont,
         onSymbol:(id,label,bounds)=>onSymbol?.(groups.get(id),label,bounds),
       }))layerDraws.set(id,count);
     } finally { context.restore(); }

@@ -325,7 +325,7 @@ function cjkMeasure(){
   })().catch(()=>null);
   return probeMeasure;
 }
-function refreshCjkFont(){updateDetailGlyphs();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function refreshCjkFont(){updateDetailGlyphs();refreshFlatLabels?.();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
 function ensureCjkChoice(script){
   if(cjkChoices.has(script))return;
   cjkChoices.set(script,null);
@@ -336,15 +336,15 @@ function ensureCjkChoice(script){
     if(measure)await Promise.all(candidates.map(f=>document.fonts.load?.(`32px "${f}"`,Object.values(PROBE_SETS).join('')).catch(()=>{})));
     const choice=measure?chooseCjkFont(candidates,measure):null;
     cjkChoices.set(script,choice);
-    if(choice?.family&&cjkScript(settings.language)===script)refreshCjkFont();
+    if((choice?.family||useFlat)&&cjkScript(settings.language)===script)refreshCjkFont();
   });
 }
 // The packaged Chinese font is fetched only when Han labels or feature
 // details are shown and the installed font misses some character set. Japanese
 // and Korean keep their installed fonts: the packaged ones are Chinese designs.
-function loadCjkFont(script){
+function loadCjkFont(script,allowUnnamedFallback=false){
   const choice=cjkChoices.get(script);
-  if(!['zh-Hant','zh-Hans'].includes(script)||!choice?.family||choice.complete||!window.FontFace||!document.fonts)return;
+  if(!['zh-Hant','zh-Hans'].includes(script)||!choice||(!choice.family&&!allowUnnamedFallback)||choice.complete||!window.FontFace||!document.fonts)return;
   if(cjkFontLoads.has(script)||Date.now()<(cjkFontFailures.get(script)?.until??0))return;
   const code=script==='zh-Hant'?'tc':'sc',face=new FontFace(bundledCjkFamily(script),`url("${new URL(`fonts/atlas-cjk-${code}-v1.woff2`,import.meta.url).href}")`);
   document.fonts.add(face);
@@ -2071,6 +2071,18 @@ async function initialize() {
       }
       return missing.length?null:`${size}px "Atlas Mongolian"`;
     };
+    // Canvas measures and paints the same per-language fallback stack as
+    // feature names. Ask for a packaged Chinese font only for real Han text,
+    // including on systems with no usable installed family from the probe.
+    const getCjkFont=text=>{
+      if(!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/u.test(text))return null;
+      const script=cjkScript(settings.language);
+      ensureCjkChoice(script);
+      const blocks=rareHanBlocks(text);
+      if(blocks.size)void rareHanFonts.ensure(blocks);
+      if(/\p{Script=Han}/u.test(text))loadCjkFont(script,true);
+      return cjkFont(settings.language);
+    };
     // The committed catalogue supplies geometry, not most names. Hydrate only
     // the hubs visible at their label tier, with the same provider and OSM
     // identity/alias matching used by the WebGL overview.
@@ -2127,7 +2139,7 @@ async function initialize() {
     }
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,initialDetail:settings.detail,
-      curatedStationData:majorStationData,onCuratedOverview:requestCuratedOverview,getMongolianFont,
+      curatedStationData:majorStationData,onCuratedOverview:requestCuratedOverview,getMongolianFont,getCjkFont,
       stationPaint:(layer,zoom)=>stationViewPaint(layer,settings.mode,zoom),
       readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
       pointSources:{electricSignals:13},

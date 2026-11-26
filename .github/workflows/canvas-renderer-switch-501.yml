@@ -21,6 +21,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Check shipped entry discovery and WebGL startup
         run: timeout 110s node scripts/check-startup-preloads-browser.mjs
+      - name: Verify packaged entry separates optional and required assets
+        run: timeout 100s node scripts/check-deployed-fixture-browser.mjs --required-assets-only
       - name: Verify Watch keyboard focus and native touch hold with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
       - name: Verify flat camera and pointer gesture transforms

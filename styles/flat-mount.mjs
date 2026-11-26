@@ -25,7 +25,7 @@ const tileLayer = layer => layer.type === 'raster' || flatReliefPaint(layer) || 
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, initialDetail=0, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, onCuratedOverview, stationPaint, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, initialDetail=0, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, onCuratedOverview, stationPaint, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, getCjkFont, readDem, pointSources={}, shapeSources=[]}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -243,7 +243,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     paintedSymbols=[];
     const railClip=flatRailReferenceClip(camera,{metadataFailed:railError,failed:tiles.errors.get(railSource),planned:plans.get(railSource)?.tiles});
     const targets=legendLayers?.(), legendFeatures=[];
-    const rendered=draw(context,camera,tiles.frame,{getIcon,getMongolianFont,legendLayers:targets,stationPaint,
+    const rendered=draw(context,camera,tiles.frame,{getIcon,getMongolianFont,getCjkFont,legendLayers:targets,stationPaint,
       onLegendFeature:targets?.size?properties=>legendFeatures.push({properties}):undefined,allowFeature:fallbackLayers?allowFeature:undefined,
       layerClip:id=>isNeutralRailReference({id})?railClip:null,onSymbol:({id,source,sourceLayer},label,bounds)=>{
       if(!interactiveLayer?.(id))return;
