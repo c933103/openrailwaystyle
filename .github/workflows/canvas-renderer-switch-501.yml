@@ -26,6 +26,7 @@ on:
       - 'tests/helpers/profile-ui-harness.mjs'
       - 'styles/app.mjs'
       - 'styles/app.css'
+      - 'styles/sw.js'
       - 'styles/flat-*.mjs'
       - 'tests/flat-camera.test.mjs'
       - 'tests/flat-gesture.test.mjs'
@@ -79,6 +80,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps firefox
+      - name: Install and reload the Canvas PWA with WebGL missing and then offline
+        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --pwa-canvas-offline
       - name: Verify automatic Canvas startup and distinguish shared-data errors
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
       - name: Keep drawing controls clear of the desktop sidebar without WebGL

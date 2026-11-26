@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {createServer as createHttpsServer} from 'node:https';
+import {execFileSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {mkdir,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
 import {launchBrowser} from './browser.mjs';
 import {gzipSync} from 'node:zlib';
@@ -25,6 +29,7 @@ const detailState=process.argv.includes('--detail-state');
 const toolbarClearance=process.argv.includes('--toolbar-clearance');
 const doubleClickZoom=process.argv.includes('--double-click-zoom');
 const watchDoubleTap=process.argv.includes('--watch-double-tap');
+const pwaOffline=process.argv.includes('--pwa-canvas-offline');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -149,7 +154,16 @@ let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGL
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
 const historicalPng=terrariumFixturePng(()=>63);
 const terrainRequests=[];
-const server=createServer((req,res)=>{
+const certDir=pwaOffline?await mkdtemp(join(tmpdir(),'atlas-pwa-test-')):null;
+const serverOptions=pwaOffline? await (async()=>{
+  try{
+    const key=join(certDir,'key.pem'),cert=join(certDir,'cert.pem');
+    execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1',
+      '-subj','/CN=127.0.0.1','-addext','subjectAltName=IP:127.0.0.1','-keyout',key,'-out',cert],{stdio:'ignore'});
+    return {key:await readFile(key),cert:await readFile(cert)};
+  }catch(error){await rm(certDir,{recursive:true,force:true});throw error;}
+})():null;
+const server=(serverOptions?handler=>createHttpsServer(serverOptions,handler):createServer)((req,res)=>{
   const {pathname}=new URL(req.url,'http://127.0.0.1');
   paths.push(pathname);
   if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
@@ -165,7 +179,7 @@ const server=createServer((req,res)=>{
   else if(pathname==='/world.style.json') {
     const payload=railFailureFixture?{
       ...style,
-      sources:{...style.sources,entryRail:{type:'vector',url:`http://127.0.0.1:${server.address().port}/rail-health.json`,maxzoom:8},
+      sources:{...style.sources,entryRail:{type:'vector',url:`${origin}/rail-health.json`,maxzoom:8},
         openmaptiles:{type:'vector',url:'pmtiles://data/rail-reference-fixture.pmtiles',maxzoom:7}},
       layers:[style.layers.find(layer=>layer.id==='fixture-bg'),...style.layers.flatMap(layer=>{
         if(layer.id==='fixture-bg'||layer.id==='fixture-track-names')return [];
@@ -185,12 +199,12 @@ const server=createServer((req,res)=>{
       ...style,
       sources:{...style.sources,
         openmaptiles:{type:'vector',url:'pmtiles://data/station-fallback-fixture.pmtiles',maxzoom:7},
-        stationMed:{type:'vector',url:`http://127.0.0.1:${server.address().port}/station-medium-fixture.json`,maxzoom:7},
+        stationMed:{type:'vector',url:`${origin}/station-medium-fixture.json`,maxzoom:7},
         stationMajor:{...style.sources.stationMajor,data:{type:'FeatureCollection',features:[
           {type:'Feature',id:706,geometry:{type:'Point',coordinates:[0.25,-0.25]},
             properties:{feature:'station',tier:'medium',name:'Curated Hub',curated:true}},
         ]}},
-        stations:{type:'vector',url:`http://127.0.0.1:${server.address().port}/station-failure-tilejson.json`,maxzoom:8}},
+        stations:{type:'vector',url:`${origin}/station-failure-tilejson.json`,maxzoom:8}},
       layers:[style.layers.find(layer=>layer.id==='fixture-bg'),...style.layers.filter(layer=>layer.id!=='fixture-bg'),
         ...fixtureRasterBackgrounds.filter(layer=>layer.id==='satellite'),
         {id:'station-primary-health-test',type:'circle',source:'stations','source-layer':'station',
@@ -214,7 +228,7 @@ const server=createServer((req,res)=>{
   } else if(pathname==='/rail-health.json') {
     if(railFailureFixture==='metadata'){res.writeHead(404).end();return;}
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
-      minzoom:8,maxzoom:8,tiles:[`http://127.0.0.1:${server.address().port}/rail-health/{z}/{x}/{y}.pbf`],
+      minzoom:8,maxzoom:8,tiles:[`${origin}/rail-health/{z}/{x}/{y}.pbf`],
     }));
   } else if(pathname.startsWith('/rail-health/')) {
     if(railFailureFixture==='tile'&&pathname==='/rail-health/8/128/128.pbf'){res.writeHead(404).end();return;}
@@ -225,14 +239,14 @@ const server=createServer((req,res)=>{
   } else if(pathname==='/station-medium-fixture.json') {
     if(stationFailureFixture==='curated'){res.writeHead(404).end();return;}
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
-      minzoom:7,maxzoom:7,tiles:[`http://127.0.0.1:${server.address().port}/station-medium/{z}/{x}/{y}.pbf`],
+      minzoom:7,maxzoom:7,tiles:[`${origin}/station-medium/{z}/{x}/{y}.pbf`],
     }));
   } else if(pathname.startsWith('/station-medium/')) {
     res.writeHead(200,{'content-type':'application/x-protobuf'}).end();
   } else if(pathname==='/station-failure-tilejson.json') {
     if(stationFailureFixture==='metadata'){res.writeHead(404).end();return;}
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({
-      minzoom:8,maxzoom:8,tiles:[`http://127.0.0.1:${server.address().port}/station-failure/{z}/{x}/{y}.pbf`],
+      minzoom:8,maxzoom:8,tiles:[`${origin}/station-failure/{z}/{x}/{y}.pbf`],
     }));
   } else if(pathname.startsWith('/station-failure/')) {
     if(pathname==='/station-failure/8/128/128.pbf'){res.writeHead(404).end();return;}
@@ -249,7 +263,7 @@ const server=createServer((req,res)=>{
   } else preview(req,res);
 });
 await new Promise((ok,fail)=>server.once('error',fail).listen(0,'127.0.0.1',ok));
-const origin='http://127.0.0.1:'+server.address().port;
+const origin=(pwaOffline?'https':'http')+'://127.0.0.1:'+server.address().port;
 const railTemplate=origin+'/fixture/{z}/{x}/{y}.pbf';
 const labelTemplate=origin+'/label/{z}/{x}/{y}.pbf';
 style.sources.serviceRoutes={type:'vector',tiles:[origin+'/fixture-service/{z}/{x}/{y}.pbf'],minzoom:serviceZoom,maxzoom:serviceZoom};
@@ -263,7 +277,7 @@ try {
   browser=chromiumSwitch ? await launchBrowser({executablePath:process.env.CHROMIUM_EXECUTABLE})
     : await firefox.launch({headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,firefoxUserPrefs:{'webgl.disabled':true}});
   const fresh=async (off=false,heights=false,painterFault=false,hasTouch=false)=>{
-    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:chromiumSwitch?1:3,hasTouch,serviceWorkers:'block'});
+    const context=await browser.newContext({viewport:{width:700,height:440},deviceScaleFactor:chromiumSwitch?1:3,hasTouch,serviceWorkers:pwaOffline?'allow':'block',ignoreHTTPSErrors:pwaOffline});
     await context.addInitScript(({off,painterFault})=>{
       if(!localStorage.getItem('atlas_view')) localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z:0,b:0,p:0,g:false,t:false}));
       if(off&&localStorage.getItem('atlas_disable_webgl')===null) localStorage.setItem('atlas_disable_webgl','1');
@@ -487,7 +501,35 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(watchDoubleTap){
+  if(pwaOffline){
+    // Test an actual installed worker, not a network route pretending to be a cache.
+    const {context,page:p}=await fresh(true);
+    try{
+      missingWebGLAsset='/vendor/maplibre-gl-5.24.0-atlas.4.js';
+      await p.goto(origin+'/#9/25.04/121.56');
+      const canvas=p.locator('canvas.atlas-flat-preview');
+      await canvas.waitFor();
+      await p.waitForFunction(()=>!!navigator.serviceWorker.controller,undefined,{timeout:45000});
+      const cache=await p.evaluate(async()=>{
+        const keys=await caches.keys(), name=keys.find(x=>/^atlas-shell-\d+$/.test(x));
+        if(!name)return null;
+        const store=await caches.open(name),files=(await store.keys()).map(x=>new URL(x.url).pathname);
+        return {flat:files.includes('/vendor/flat-browser.js'),maplibre:files.includes('/vendor/maplibre-gl-5.24.0-atlas.4.js')};
+      });
+      assert.deepEqual(cache,{flat:true,maplibre:false},'the real worker must install without the missing optional WebGL script');
+      await context.setOffline(true);
+      await p.reload({waitUntil:'domcontentloaded'});
+      await canvas.waitFor();
+      assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
+      assert.equal(await p.evaluate(()=>navigator.onLine),false);
+      const marker=()=>p.locator('#map').getAttribute('data-flat-center');
+      const before=await marker();
+      await canvas.press('ArrowRight');
+      assert.notEqual(await marker(),before,'offline Canvas must still handle genuine keyboard navigation');
+      assert.equal(await p.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),'1');
+      console.log('Installed worker cached the Canvas shell without WebGL; offline reload and pan passed.');
+    }finally{await context.close();}
+  } else if(watchDoubleTap){
     assert.equal(chromiumSwitch,true,'Native touch gate uses Chromium CDP');
     for(const off of [false,true]){
       const {page,context}=await fresh(off,false,false,true);
@@ -2157,4 +2199,4 @@ try {
   await verifyStartupFallback();
   console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal and separate missing renderer JS/CSS recovered without reloading, and style errors surfaced.');
   }
-} finally {await browser?.close();server.close();}
+} finally {await browser?.close();server.close();if(certDir)await rm(certDir,{recursive:true,force:true});}
