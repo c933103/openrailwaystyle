@@ -2,7 +2,7 @@
   "lifecycle": "overpass",
   "traction": "overpass",
   "axle-load": "overpass",
-  "street-running": "overpass",
+  "street-running": "extract",
   "station-points": "overpass",
   "crossings": "overpass",
   "conveying": "overpass",
