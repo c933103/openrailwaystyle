@@ -59,3 +59,27 @@ test('nearly coincident touch does not jump; further motion respects zoom bounds
   gesture.move(2,[225,200]);assert.equal(previews.length,0);
   gesture.move(2,[300,200]);assert.equal(previews.at(-1).zoom,22);
 });
+
+test('twisting plus translation keeps the initial geographic midpoint under the fingers',()=>{
+  const {gesture,previews,commits}=fixture();
+  gesture.start(1,'touch',[160,170],camera);gesture.start(2,'touch',[280,170],camera);
+  gesture.move(1,[240,120]);gesture.move(2,[240,360]);
+  const view=previews.at(-1);
+  assert.equal(view.bearing,-54);
+  assert.equal(view.zoom,9);
+  near(view.project(camera.unproject([220,170])),[240,240]);
+  gesture.end(1,[240,120]);gesture.end(2,[240,360]);
+  assert.equal(commits.at(-1),view);
+});
+
+test('pinch jitter leaves bearing alone; cancelling a deliberate twist restores the original view',()=>{
+  const {gesture,previews,commits}=fixture();
+  gesture.start(1,'touch',[160,170],camera);gesture.start(2,'touch',[280,170],camera);
+  gesture.move(1,[150,169]);gesture.move(2,[290,174]);
+  assert.equal(previews.at(-1).bearing,camera.bearing);
+  gesture.move(1,[220,90]);gesture.move(2,[220,250]);
+  assert.notEqual(previews.at(-1).bearing,camera.bearing);
+  gesture.cancel(1);gesture.end(2,[220,250]);
+  assert.equal(previews.at(-1),camera);
+  assert.deepEqual(commits,[]);
+});

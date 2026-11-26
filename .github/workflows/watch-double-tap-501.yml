@@ -15,6 +15,7 @@ jobs:
           node-version: '26'
           check-latest: true
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test tests/flat-camera.test.mjs tests/flat-gesture.test.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap

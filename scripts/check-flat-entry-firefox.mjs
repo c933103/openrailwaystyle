@@ -511,8 +511,9 @@ try {
           const v=JSON.parse(localStorage.getItem('atlas_view'));
           const current=v.z>=9?v:{z:9,c:[121.56,25.04]};
           const scale=512*2**current.z, x=pt.x-box.x-box.width/2, y=pt.y-box.y-box.height/2;
-          return {z:current.z,anchor:[current.c[0]+360*x/scale,
-            Math.atan(Math.sinh(Math.asinh(Math.tan(current.c[1]*Math.PI/180))-2*Math.PI*y/scale))*180/Math.PI]};
+          const b=(current.b??0)*Math.PI/180,c=Math.cos(b),s=Math.sin(b);
+          return {z:current.z,anchor:[current.c[0]+360*(x*c-y*s)/scale,
+            Math.atan(Math.sinh(Math.asinh(Math.tan(current.c[1]*Math.PI/180))-2*Math.PI*(x*s+y*c)/scale))*180/Math.PI]};
         },{off,box,pt});
         const before=await read();
         assert.equal(before.z,9);
@@ -547,7 +548,12 @@ try {
         for(const angle of [0.15,0.30,0.50,0.75])await send('touchMove',twist(angle));
         await send('touchEnd');
         await page.waitForTimeout(650);
-        console.log(JSON.stringify({twist:off?'Canvas':'WebGL',initialBearing:b0,finalBearing:await bearing(),zoom:(await read()).z}));
+        const turned=await read(), b1=await bearing();
+        console.log(JSON.stringify({twist:off?'Canvas':'WebGL',initialBearing:b0,finalBearing:b1,zoom:turned.z,anchor:turned.anchor}));
+        assert.ok(b1-b0 < -20,'a clockwise two-finger twist must rotate the map clockwise');
+        assert.ok(Math.abs(turned.z-after.z)<0.04,'a near-constant span should not materially zoom');
+        if(off)assert.ok(turned.anchor.every((v,i)=>Math.abs(v-after.anchor[i])<0.00006),'Canvas twist should preserve the midpoint anchor');
+        assert.equal(await menu.isHidden(),true,'two-finger twist must not open Watch controls');
       }finally{await context.close();}
     }
   } else if(doubleClickZoom){

@@ -31,10 +31,15 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
     return worldToPoint([nearestWorld ? x + Math.round(cx - x) : x, y]);
   };
   const unproject = point => worldToLngLat(pointToWorld(point));
-  const zoomAt = (nextZoom, point) => {
+  const zoomAt = (nextZoom, point, nextBearing = bearing) => {
     const [x, y] = pointToWorld(point), factor = 2 ** (zoom - nextZoom);
-    return flatCamera({center: worldToLngLat([x - (x - cx) * factor, y - (y - cy) * factor]),
+    if(nextBearing===bearing)return flatCamera({
+      center: worldToLngLat([x - (x - cx) * factor, y - (y - cy) * factor]),
       zoom: nextZoom, bearing, width, height});
+    const [dx,dy]=[point[0]-mx,point[1]-my], nextScale=WORLD*2**nextZoom;
+    const nc=Math.cos(nextBearing*RAD),ns=Math.sin(nextBearing*RAD);
+    return flatCamera({center:worldToLngLat([x-(dx*nc-dy*ns)/nextScale,y-(dx*ns+dy*nc)/nextScale]),
+      zoom:nextZoom,bearing:nextBearing,width,height});
   };
   const panBy = ([dx, dy]) => flatCamera({center: unproject([mx + dx, my + dy]), zoom, bearing, width, height});
 
