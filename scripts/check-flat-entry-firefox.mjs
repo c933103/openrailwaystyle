@@ -520,6 +520,19 @@ try {
       const geo=await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')
         ?.features[0]?.geometry.coordinates).then(r=>r.jsonValue());
       assert.ok(Math.abs(geo[0]-121.56)<0.002&&Math.abs(geo[1]-25.04)<0.002);
+      if(!chromiumSwitch){
+        await page.setViewportSize({width:700,height:440});
+        await toolbar.locator('[data-draw="line"]').click();
+        await toolbar.locator('#draw-dash').selectOption('dashed');
+        const narrow=await page.evaluate(()=>{
+          const map=document.querySelector('#map').getBoundingClientRect();
+          const x=map.left+map.width/2-18,y=map.top+105;
+          const target=document.elementFromPoint(x,y);
+          return {x,y,canvas:target?.tagName==='CANVAS',target:target?.className};
+        });
+        assert.equal(narrow.canvas,true,'Narrow drawing area retained: '+JSON.stringify(narrow));
+        console.log('700 px × 440 px: drawing toolbar does not cover the upper map interaction point.');
+      }
       console.log('Point and Line clickable with expanded sidebar at 1001, 1100, 1240 and 1320 px; verified first saved point in '+(chromiumSwitch?'Chromium WebGL':'Firefox Canvas'));
     }finally{await context.close();}
   } else if(detailState){
@@ -1574,8 +1587,11 @@ try {
       point:[x+83,y-30],area:[[x+150,y-34],[x+220,y-37],[x+185,y+18]]};
   });
   const clickAt=async point=>{
-    assert.ok(await hg.evaluate(([x,y])=>document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),point),
-      'The click must reach the real map at '+point);
+    const blocked=await hg.evaluate(([x,y])=>{
+      const target=document.elementFromPoint(x,y);
+      return target?.matches('canvas.atlas-flat-preview') ? null : target?.tagName+'#'+target?.id;
+    },point);
+    assert.equal(blocked,null,'The click must reach the real map at '+point);
     await hg.mouse.click(...point);
   };
   await hg.locator('[data-draw="line"]').click();
