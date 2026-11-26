@@ -14,8 +14,7 @@ is not a claim that CI has tested that major.
 The package engine range and `engine-strict=true` in `.npmrc` reject unsupported
 runtimes during installation. Keep lifecycle scripts disabled with
 `npm ci --ignore-scripts`, as in CI. The commands below use a POSIX shell.
-Viewing the map requires an internet connection and a WebGL-capable browser;
-external tiles are not bundled for offline use.
+The map works in WebGL or Canvas 2D; remote tiles are not bundled for offline use.
 
 ## Build the application
 

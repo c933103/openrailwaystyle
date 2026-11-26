@@ -12,7 +12,7 @@ const seabed=process.argv.includes('--seabed');
 const close=process.argv.includes('--close');
 assert.ok(!close||seabed,'the close contour tier is a seabed case');
 const root=new URL('../styles/',import.meta.url);
-const html=(await readFile(new URL('index.html',root),'utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile(new URL('index.html',root),'utf8'));
 const source=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const ids=new Set(['terrain-contours','terrain-contour-labels','terrain-seabed-contours','terrain-seabed-contour-labels','terrain-seabed-contours-close','terrain-seabed-contour-labels-close']);
 assert.equal(source.layers.filter(layer=>ids.has(layer.id)).length,ids.size);

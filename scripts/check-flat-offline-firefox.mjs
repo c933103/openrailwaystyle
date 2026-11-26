@@ -10,7 +10,7 @@ import {firefox} from 'playwright';
 import {createPreviewServer} from './serve.mjs';
 
 const root=new URL('../styles/',import.meta.url);
-const html=(await readFile(new URL('index.html',root),'utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile(new URL('index.html',root),'utf8'));
 const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 style.layers=[...style.layers.map(layer=>({...layer,metadata:{...layer.metadata,'atlas:semantics-version':1,'atlas:views':['fixture-off']}})),

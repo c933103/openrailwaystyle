@@ -30,7 +30,7 @@ const index=geojsonvt({type:'FeatureCollection',features:[
 const fonts=process.env.ATLAS_MONGOLIAN_TEST_FONT ?? 'tests/fixtures/mongolian-font/mongolian-400-018.woff2';
 const woff=await readFile(fonts);
 const baseStyle=JSON.parse(await readFile('styles/world.style.json','utf8'));
-const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile('styles/index.html','utf8'));
 const preview=createPreviewServer({root:'styles'});
 const layer=(id,role,x=10)=>({type:'symbol',id,source:'stationScriptFixture','source-layer':'fixture_labels',
   layout:{'text-field':['get','name'],'text-size':20,'text-anchor':'top-left','text-max-width':x,'text-padding':0},

@@ -178,8 +178,8 @@ function restoreCachedMapStyle() {
     link.after(style);
   })();
 }
-// The preview server opts in through its copy of the real page. Do not expose
-// the partial renderer as a released feature before the other controls work.
+// The entry document enables renderer selection. Removing the marker is a
+// rollback to the previous WebGL-only startup without changing preferences.
 const stagedFlatEntry = document.documentElement.dataset.flatEntry === 'staged';
 const RENDERER_STORE = 'atlas_disable_webgl';
 const RENDERER_WORK_HANDOFF = 'atlas_renderer_work_v1';
@@ -2025,6 +2025,8 @@ async function initialize() {
     }
   }
   if (useFlat) {
+    const note=$('canvas-mode-note');
+    if(note)note.hidden=false;
     // Include asynchronous WebGL asset and constructor fallbacks in the reset.
     applyDetail();
     applyInitialVisibility(style,true);
@@ -2145,7 +2147,7 @@ async function initialize() {
         status.classList.toggle('error',errors.length>0);
         const state=canvasMapStatus({errors,loading,clamped,railFallback});
         status.textContent=webglStartupFailure
-          ? 'Canvas preview: '+webglStartupFailure+'; '+state : 'Canvas preview: '+state;
+          ? '2D map: '+webglStartupFailure+'; '+state : '2D map: '+state;
       },
     });
     refreshFlatLabels=flat.invalidateLabels;

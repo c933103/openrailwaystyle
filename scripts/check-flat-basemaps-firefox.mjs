@@ -13,7 +13,7 @@ import {pmtilesBytesResponse} from './pmtiles-browser-fixture.mjs';
 import {terrariumFixturePng} from './bathymetry-browser-fixture.mjs';
 import {flatCamera} from '../styles/flat-camera.mjs';
 
-const entry=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const entry=(await readFile('styles/index.html','utf8'));
 const preview=createPreviewServer({root:'styles'});
 const server=createServer((req,res)=>{
   if(new URL(req.url,'http://local').pathname==='/'){

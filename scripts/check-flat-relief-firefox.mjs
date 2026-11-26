@@ -9,7 +9,7 @@ import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {terrariumFixturePng} from './bathymetry-browser-fixture.mjs';
 
 const root=new URL('../styles/',import.meta.url);
-const html=(await readFile(new URL('index.html',root),'utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile(new URL('index.html',root),'utf8'));
 const source=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const hillshade=source.layers.find(layer=>layer.id==='terrain-relief');
 assert.equal(hillshade.type,'hillshade');

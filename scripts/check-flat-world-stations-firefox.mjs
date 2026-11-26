@@ -10,7 +10,7 @@ import {createPreviewServer} from './serve.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {encodeBundle} from '../styles/tile-bundles.mjs';
 
-const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile('styles/index.html','utf8'));
 const preview=createPreviewServer({root:'styles'});
 const manifest={complete:true,schema:1,license:'ODbL-1.0',minzoom:3,maxzoom:7,
   stations:1,tiles:2,bundles:1,polar:0,pendingRegions:0,completedRegions:32};

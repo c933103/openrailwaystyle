@@ -16,7 +16,8 @@ import {oceanFixtureArchive,terrariumFixturePng} from './bathymetry-browser-fixt
 const preview=createPreviewServer().listeners('request')[0];
 const root=new URL('../styles/',import.meta.url);
 const standardPage=await readFile(new URL('index.html',root),'utf8');
-const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
+assert.match(standardPage,/<html\b[^>]* data-flat-entry="staged">/,'the packaged entry must enable fallback');
+const rollbackPage=standardPage.replace(' data-flat-entry="staged"','');
 const chromiumSwitch=process.argv.includes('--chromium-switch');
 const serviceOverlap=process.argv.includes('--service-overlap');
 const watchFocus=process.argv.includes('--watch-focus');
@@ -146,14 +147,14 @@ let stationFailureFixture='';
 const fixtureDepartures=[];
 const fixtureDepartureAt=new Date(Date.now()+600_000).toISOString();
 const paths=[];
-let failStyle=false, activateStaging=true,useElevationFixture=false,missingWebGLAsset=null;
+let failStyle=false, useRollbackEntry=false,useElevationFixture=false,missingWebGLAsset=null;
 const landPng=terrariumFixturePng(()=>123),seabedPng=terrariumFixturePng(()=>-20);
 const historicalPng=terrariumFixturePng(()=>63);
 const terrainRequests=[];
 const server=createServer((req,res)=>{
   const {pathname}=new URL(req.url,'http://127.0.0.1');
   paths.push(pathname);
-  if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(activateStaging?pageSource:standardPage);}
+  if(pathname==='/') {res.writeHead(200,{'content-type':'text/html'});res.end(useRollbackEntry?rollbackPage:standardPage);}
   else if(missingWebGLAsset && pathname===missingWebGLAsset){res.writeHead(404).end();}
   else if(powerFixtureFiles[pathname]) {res.writeHead(200,{'content-type':'application/gzip'}).end(powerFixtureFiles[pathname]);}
   else if(pathname==='/data/service-routes/frequency-manifest.json')
@@ -434,6 +435,7 @@ try {
       const start=paths.length;
       await disabled.page.goto(origin);
       await ready(disabled.page);
+      assert.equal(await disabled.page.locator('#canvas-mode-note').getAttribute('hidden'),null,'the 2D limitation notice must be enabled');
       assert.deepEqual(await disabled.page.evaluate(()=>window.webglAttempts),['webgl2','webgl']);
       assert.ok(!paths.slice(start).some(path=>path.startsWith('/vendor/maplibre-gl-')),
         'browsers with no WebGL must not fetch either renderer asset');
@@ -478,13 +480,14 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
     failStyle=false;
-    activateStaging=false;
+    useRollbackEntry=true;
     current=await fresh(true);
     await current.page.goto(origin);
     await current.page.getByText('This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.').waitFor({timeout:15000});
     assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.js')));
     assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.css')));
     assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
+    assert.equal(await current.page.locator('#canvas-mode-note').getAttribute('hidden'),'');
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
@@ -898,7 +901,7 @@ try {
   } else if(startupFallback){
     assert.equal(chromiumSwitch,false,'This gate requires Firefox with WebGL disabled');
     await verifyStartupFallback();
-    console.log('Firefox startup: no context, refused painter, missing JS, missing CSS, shared style error and non-staged behavior verified');
+    console.log('Firefox startup: no context, refused painter, missing JS, missing CSS, shared style error and rollback entry verified');
   } else if(watchFocus){
     const {page,context}=await fresh(!chromiumSwitch,chromiumSwitch,false,chromiumSwitch);
     try {

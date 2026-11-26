@@ -10,7 +10,7 @@ import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 
 const root=new URL('../styles/',import.meta.url);
-const html=(await readFile(new URL('index.html',root),'utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile(new URL('index.html',root),'utf8'));
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const zoom=10,x=512,y=511,center=[.12,.12];
 const pathFor=id=>'/fixture/'+id+'/'+zoom+'/'+x+'/'+y;

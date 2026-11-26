@@ -11,7 +11,7 @@ import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {flatCamera} from '../styles/flat-camera.mjs';
 
 const preview=createPreviewServer({root:'styles'});
-const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile('styles/index.html','utf8'));
 const base=JSON.parse(await readFile('styles/world.style.json','utf8'));
 const crossing=(id,kind,coordinates)=>({type:'Feature',id,properties:{kind,osm_id:id},
   geometry:{type:'Point',coordinates}});

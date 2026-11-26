@@ -28,7 +28,7 @@ const indexes={conveying:index([
   badge(23,3,[470,470],{tunnel:true}),badge(24,8,[690,470],{station:true}),
 ])};
 const preview=createPreviewServer({root:'styles'});
-const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile('styles/index.html','utf8'));
 const base=JSON.parse(await readFile('styles/world.style.json','utf8'));
 const requests=[];
 const server=createServer((req,res)=>{

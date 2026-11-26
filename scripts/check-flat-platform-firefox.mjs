@@ -11,7 +11,7 @@ import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {flatCamera} from '../styles/flat-camera.mjs';
 
 const preview=createPreviewServer({root:'styles'});
-const html=(await readFile('styles/index.html','utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
+const html=(await readFile('styles/index.html','utf8'));
 const mixedMode=process.argv.includes('--platform-area-and-edge');
 const areaMode=mixedMode||process.argv.includes('--platform-area');
 const tileFallback=process.argv.includes('--tile-fallback');

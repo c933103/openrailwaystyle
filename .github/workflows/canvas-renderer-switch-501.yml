@@ -24,6 +24,9 @@ on:
       - 'styles/platform-length.mjs'
       - 'tests/ci-node-runtime-security.test.mjs'
       - 'tests/helpers/profile-ui-harness.mjs'
+      - 'styles/index.html'
+      - 'scripts/check-flat-offline-firefox.mjs'
+      - 'scripts/check-startup-preloads-browser.mjs'
       - 'styles/app.mjs'
       - 'styles/app.css'
       - 'styles/sw.js'
@@ -47,6 +50,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Check shipped entry discovery and WebGL startup
+        run: timeout 110s node scripts/check-startup-preloads-browser.mjs
       - name: Verify Watch keyboard focus and native touch hold with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
       - name: Verify flat camera and pointer gesture transforms

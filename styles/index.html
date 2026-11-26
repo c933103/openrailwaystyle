@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-flat-entry="staged">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -35,8 +35,8 @@
        Keep fetch mode and URLs identical to the requests in app.mjs. -->
   <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261126-canvas-basemap-sync-1">
   <script id="startup-renderer-preload">
-    // Production may prefetch MapLibre. The opt-in Canvas preview must not
-    // request it until renderer selection, including on a no-WebGL client.
+    // Only preload MapLibre for the legacy entry. The normal entry waits for
+    // renderer selection so WebGL-disabled browsers never download it.
     if (document.documentElement.dataset.flatEntry !== 'staged') {
       document.head.append(Object.assign(document.createElement('link'), {
         rel:'preload', as:'script', href:'vendor/maplibre-gl-5.24.0-atlas.4.js',
@@ -95,7 +95,8 @@
     <section id="settings-view" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
-        <label id="flat-preview-preference" hidden><input type="checkbox" id="disable-webgl"> Disable WebGL (Canvas preview)</label>
+        <label id="flat-preview-preference" hidden><input type="checkbox" id="disable-webgl"> Disable WebGL</label>
+        <p id="canvas-mode-note" class="small" hidden>Using the 2D map. Globe view and the 3D terrain mesh are unavailable in this mode. Flat terrain shading and contours still work.</p>
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="stationImportanceColors"> Different colours by station importance at zooms 3–6</label>
