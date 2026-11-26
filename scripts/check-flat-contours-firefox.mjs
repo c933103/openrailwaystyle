@@ -8,6 +8,9 @@ import {createPreviewServer} from './serve.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {terrariumFixturePng} from './bathymetry-browser-fixture.mjs';
 
+const seabed=process.argv.includes('--seabed');
+const close=process.argv.includes('--close');
+assert.ok(!close||seabed,'the close contour tier is a seabed case');
 const root=new URL('../styles/',import.meta.url);
 const html=(await readFile(new URL('index.html',root),'utf8')).replace(/<html\b/,'<html data-flat-entry="staged"');
 const source=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
@@ -15,10 +18,10 @@ const ids=new Set(['terrain-contours','terrain-contour-labels','terrain-seabed-c
 assert.equal(source.layers.filter(layer=>ids.has(layer.id)).length,ids.size);
 const style={...source,layers:[
   {id:'controlled-background',type:'background',paint:{'background-color':'#ffffff'}},
-  ...source.layers.map(layer=>ids.has(layer.id) ? layer : {...layer,metadata:{...layer.metadata,
+  ...source.layers.map(layer=>ids.has(layer.id)&&layer.id.includes('seabed')===seabed ? layer : {...layer,metadata:{...layer.metadata,
     'atlas:semantics-version':1,'atlas:views':['fixture-off']}}),
 ]};
-const slope=terrariumFixturePng(x=>-1200+Math.min(x,256-x)*23);
+const slope=terrariumFixturePng(x=>seabed?-240+Math.min(x,256-x)*1.5:-1200+Math.min(x,256-x)*23);
 const preview=createPreviewServer({root:'styles'});
 const server=createServer((req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
@@ -56,7 +59,7 @@ try{
   });
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  const url=origin+'/?relief=1&inactive=0&names=0&labels=1&stations=0#11/0.12/0.12';
+  const url=origin+'/?relief=1&inactive=0&names=0&labels=1&stations=0#'+(seabed&&!close?10:11)+'/0.12/0.12';
   const consoleErrors=[];
   page.on('console',entry=>{if(entry.type()==='error')consoleErrors.push(entry.text());});
   await page.goto(url,{waitUntil:'domcontentloaded'});
@@ -64,19 +67,19 @@ try{
     console.error(JSON.stringify({errors,consoleErrors, status:await page.locator('#map-status').textContent(), html:await page.locator('html').getAttribute('data-flat-entry')}));
     throw error;
   });
-  const pixels=()=>{const canvas=document.querySelector('#map canvas.atlas-flat-preview'),ctx=canvas?.getContext('2d');
+  const pixels=seabed=>{const canvas=document.querySelector('#map canvas.atlas-flat-preview'),ctx=canvas?.getContext('2d');
     if(!ctx)return null;
     const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
-    let land=0;
+    let contourPixels=0;
     for(let i=0;i<data.length;i+=4){const [r,g,b]=[data[i],data[i+1],data[i+2]];
-      if(r>g+6&&g>b+9)land++;}
-    return {land};
+      if(seabed ? b>g+6&&(g-r)>10 : r>g+6&&g>b+9)contourPixels++;}
+    return {contourPixels};
   };
   const evidence=async(u)=> {
-    await page.waitForFunction(({pixels,u})=>(0,eval)('('+pixels+')')()?.land>150&&window.atlasContourLabels.some(x=>x.endsWith(' '+u)),{pixels:pixels.toString(),u},{timeout:25000})
-      .catch(async e=>{console.error(JSON.stringify({pixels:await page.evaluate(pixels),labels:await page.evaluate(()=>window.atlasContourLabels.slice(-20)),dem:dem.length,status:await page.locator('#map-status').textContent(),errors,consoleErrors}));throw e;});
+    await page.waitForFunction(({pixels,u,seabed})=>(0,eval)('('+pixels+')')(seabed)?.contourPixels>150&&window.atlasContourLabels.some(x=>x.endsWith(' '+u)),{pixels:pixels.toString(),u,seabed},{timeout:25000})
+      .catch(async e=>{console.error(JSON.stringify({pixels:await page.evaluate(pixels,seabed),labels:await page.evaluate(()=>window.atlasContourLabels.slice(-20)),dem:dem.length,demZoom:[...new Set(dem.map(u=>new URL(u).pathname.split('/')[3]))],status:await page.locator('#map-status').textContent(),errors,consoleErrors}));throw e;});
     const labels=await page.evaluate(u=>[...new Set(window.atlasContourLabels.filter(x=>x.endsWith(' '+u)))],u);
-    return {pixels:await page.evaluate(pixels),labels,demRequests:dem.length};
+    return {pixels:await page.evaluate(pixels,seabed),labels,demRequests:dem.length};
   };
   const first=await evidence('m');
   assert.ok(dem.length>0,'contours use the existing elevation worker');
@@ -84,15 +87,25 @@ try{
   await page.locator('#units').selectOption('imperial');
   const second=await evidence('ft');
   assert.ok(dem.every(url=>/^https:\/\/s3\.amazonaws\.com\/elevation-tiles-prod\/terrarium\/\d+\/\d+\/\d+\.png$/.test(url)),'both unit systems use the same provider');
-  assert.ok(first.labels.some(label=>Number(label.split(' ')[0])>0&&Number(label.split(' ')[0])%250===0));
-  assert.ok(second.labels.some(label=>Number(label.split(' ')[0])>0&&Number(label.split(' ')[0])%500===0));
+  for (const [labels,interval] of [[first.labels,seabed?(close?50:100):250],[second.labels,seabed?(close?100:250):500]]){
+    assert.ok(labels.some(label=>{
+      const v=Number(label.split(' ')[0]);
+      return (seabed?v<0:v>0)&&v%interval===0;
+    }),'the expected major contour interval must actually appear');
+  }
   await page.locator('#settings-open').click();
   await page.locator('#relief').uncheck();
-  const off=await page.evaluate(pixels);
-  assert.equal(off.land,0,'disabling Terrain clears land contours');
+  const off=await page.evaluate(pixels,seabed);
+  assert.equal(off.contourPixels,0,'disabling Terrain clears contour lines');
   assert.deepEqual(await page.evaluate(()=>window.atlasTestWebgl),[]);
   assert.deepEqual(errors,[]);
-  console.log('Firefox Canvas contours and labels',JSON.stringify({first,second}));
+  const sourceZooms=[...new Set(dem.map(url=>Number(new URL(url).pathname.split('/')[3])))].sort((a,b)=>a-b);
+  if(seabed){
+    const expected=close?10:9;
+    assert.ok(sourceZooms.includes(expected)&&sourceZooms.every(z=>z<=expected),
+      'the requested seabed contour tier uses a DEM one zoom coarser');
+  }
+  console.log('Firefox Canvas contours and labels',JSON.stringify({seabed,close,first,second,sourceZooms}));
 }finally{
   await context?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
   await rm(profile,{recursive:true,force:true});

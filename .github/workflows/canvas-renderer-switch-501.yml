@@ -73,5 +73,9 @@ jobs:
         run: timeout 120s node scripts/check-flat-relief-firefox.mjs
       - name: Verify Canvas terrain contour lines and metric/imperial labels
         run: timeout 120s node scripts/check-flat-contours-firefox.mjs
+      - name: Verify Canvas seabed contour strokes and labels at shelf and close zooms
+        run: |
+          timeout 120s node scripts/check-flat-contours-firefox.mjs --seabed
+          timeout 120s node scripts/check-flat-contours-firefox.mjs --seabed --close
       - name: Verify fixed-camera reconnect, rail inspection and scoped auxiliary status
         run: timeout 150s node scripts/check-flat-recovery-firefox.mjs
