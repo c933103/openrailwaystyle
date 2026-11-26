@@ -817,6 +817,11 @@ jobs:
             }
           }
           JS
+      - name: Verify deployed crossings extract
+        timeout-minutes: 8
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/verify-deployed-crossings.mjs "$PAGE_URL" styles/data/level-crossings
       - uses: actions/checkout@v4
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
