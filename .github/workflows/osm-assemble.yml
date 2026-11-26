@@ -16,6 +16,11 @@
 name: Assemble Geofabrik region extracts
 on:
   workflow_dispatch:
+    inputs:
+      pages_only:
+        description: Retry publication of already assembled data without running osmium or acquiring inputs.
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -23,10 +28,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   assemble:
+    if: '!inputs.pages_only'
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    outputs:
-      refresh_pages: ${{ steps.pages_handoff.outputs.deploy }}
     # Only the publication of the extract builds writes, on main.
     permissions:
       contents: write
@@ -39,13 +43,6 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Record selected extract watermarks before publishing
-        if: github.ref == 'refs/heads/main'
-        id: pages_baseline
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
-        run: node scripts/extract-pages-handoff.mjs before
       - name: Install osmium
         run: |
           sudo apt-get update -qq
@@ -130,6 +127,8 @@ jobs:
           git checkout -q --orphan branch-lines-extract-data
           cp -r "$GITHUB_WORKSPACE/branch-lines-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Branch lines from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:branch-lines-extract-data; then
             test "$(git ls-remote origin refs/heads/branch-lines-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -155,6 +154,8 @@ jobs:
           git checkout -q --orphan service-routes-extract-data
           cp -r "$GITHUB_WORKSPACE/service-routes-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Service routes from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:service-routes-extract-data; then
             test "$(git ls-remote origin refs/heads/service-routes-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -178,6 +179,8 @@ jobs:
           git checkout -q --orphan station-points-extract-data
           cp -r "$GITHUB_WORKSPACE/station-points-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Station points from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:station-points-extract-data; then
             test "$(git ls-remote origin refs/heads/station-points-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -201,6 +204,8 @@ jobs:
           git checkout -q --orphan crossings-extract-data
           cp -r "$GITHUB_WORKSPACE/crossings-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Level crossings from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:crossings-extract-data; then
             test "$(git ls-remote origin refs/heads/crossings-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -242,6 +247,8 @@ jobs:
             exit 1
           fi
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Traction data from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:traction-extract-data; then
             test "$(git ls-remote origin refs/heads/traction-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -266,6 +273,8 @@ jobs:
             git checkout -q --orphan "$dataset-extract-data"
             cp -r "$GITHUB_WORKSPACE/conveying-extract/$dataset/." .
             git add .
+            node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+            git add source.json
             git commit -q -m "$dataset from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
             if ! git push --force origin "HEAD:$dataset-extract-data"; then
               test "$(git ls-remote origin "refs/heads/$dataset-extract-data" | cut -f1)" = "$(git rev-parse HEAD)"
@@ -290,6 +299,8 @@ jobs:
           git checkout -q --orphan street-running-extract-data
           cp -r "$GITHUB_WORKSPACE/street-running-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Street running from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:street-running-extract-data; then
             test "$(git ls-remote origin refs/heads/street-running-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -314,6 +325,8 @@ jobs:
           git checkout -q --orphan heritage-extract-data
           cp -r "$GITHUB_WORKSPACE/heritage-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Historic areas from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:heritage-extract-data; then
             test "$(git ls-remote origin refs/heads/heritage-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -338,6 +351,8 @@ jobs:
           git checkout -q --orphan axle-load-extract-data
           cp -r "$GITHUB_WORKSPACE/axle-load-extract/." .
           git add .
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Axle-load lookup from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:axle-load-extract-data; then
             test "$(git ls-remote origin refs/heads/axle-load-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
@@ -393,18 +408,12 @@ jobs:
             cp -r "$GITHUB_WORKSPACE/lifecycle-extract/snapshot/polar" polar
             git add polar
           fi
+          node "$GITHUB_WORKSPACE/scripts/extract-pages-handoff.mjs" stamp "$GITHUB_WORKSPACE/index.json"
+          git add source.json
           git commit -q -m "Planned, construction and former railways from the Geofabrik extracts $(date -u +%Y-%m-%dT%H:%MZ)"
           if ! git push --force origin HEAD:lifecycle-extract-data; then
             test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
-      - name: Check for advanced complete selected extracts
-        if: github.ref == 'refs/heads/main'
-        id: pages_handoff
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
-          PREVIOUS_WATERMARKS: ${{ steps.pages_baseline.outputs.watermarks }}
-        run: node scripts/extract-pages-handoff.mjs after
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -431,17 +440,29 @@ jobs:
           retention-days: 30
 
   refresh-pages:
-    # Use the normal main-only deployment checks, not direct publication here.
-    # This job alone may dispatch, and can be retried without building extracts.
-    if: github.ref == 'refs/heads/main' && needs.assemble.outputs.refresh_pages == 'true'
+    if: always() && !cancelled() && github.ref == 'refs/heads/main' && (needs.assemble.result == 'success' || inputs.pages_only)
     needs: assemble
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       actions: write
+      contents: read
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Compare selected input identities with verified Pages delivery
+        id: pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+        run: node scripts/extract-pages-handoff.mjs request
       - name: Dispatch the normal Pages workflow on main
+        if: steps.pending.outputs.generation != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh workflow run site.yml --ref main
+          GENERATION: ${{ steps.pending.outputs.generation }}
+        run: gh workflow run site.yml --ref main --field "extract_generation=$GENERATION"

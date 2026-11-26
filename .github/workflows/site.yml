@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      extract_generation:
+        description: Expected input identity from successful main extract assembly; leave blank for ordinary deployments.
+        required: false
+        default: ''
       drill:
         description: 'Fallback drill: JSON list of datasets set to extract whose extract branch this run treats as unusable, e.g. ["street-running"] (docs/data-maintenance.md)'
         required: false
@@ -160,6 +164,16 @@ jobs:
       # (scripts/data-source.mjs). Overpass is the fallback. The repository
       # variable DATA_SOURCES overrides the file for the datasets it names;
       # the drill input exercises the fallback.
+      - name: Pin the requested complete extract inputs
+        if: inputs.extract_generation != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+          EXPECTED_EXTRACT_GENERATION: ${{ inputs.extract_generation }}
+          EXTRACT_DRILL: ${{ inputs.drill }}
+        run: |
+          test -z "$EXTRACT_DRILL"
+          node scripts/extract-pages-handoff.mjs pin
       - name: Choose each dataset's source
         env:
           DATA_SOURCES: ${{ vars.DATA_SOURCES }}
@@ -550,6 +564,13 @@ jobs:
       # breakdown by dataset in the step summary.
       - name: Check the site size
         run: node scripts/check-site-size.mjs styles
+      - name: Verify the selected extract refs stayed fixed through staging
+        if: inputs.extract_generation != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+          EXPECTED_EXTRACT_GENERATION: ${{ inputs.extract_generation }}
+        run: node scripts/extract-pages-handoff.mjs check
       # Already-compressed tiles: zipping them again only costs time.
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
@@ -770,6 +791,9 @@ jobs:
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node scripts/check-orm-fixture-browser.mjs
+      - name: Retain verified extract generation ${{ inputs.extract_generation }}
+        if: inputs.extract_generation != ''
+        run: echo 'The requested extract generation passed the deployed Pages checks.'
       - name: Save published map screenshots
         if: always()
         uses: actions/upload-artifact@v4
