@@ -22,6 +22,7 @@ const serviceOverlap=process.argv.includes('--service-overlap');
 const watchFocus=process.argv.includes('--watch-focus');
 const startupFallback=process.argv.includes('--startup-fallback');
 const detailState=process.argv.includes('--detail-state');
+const toolbarClearance=process.argv.includes('--toolbar-clearance');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -484,7 +485,44 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(detailState){
+  if(toolbarClearance){
+    const {context,page}=await fresh(!chromiumSwitch);
+    try{
+      await page.setViewportSize({width:1100,height:760});
+      await page.goto(origin+'/#8/25.04/121.56');
+      const canvas=page.locator(chromiumSwitch?'canvas.maplibregl-canvas':'canvas.atlas-flat-preview');
+      await canvas.waitFor();
+      if(chromiumSwitch)await page.waitForSelector('body[data-map-ready=true]',{timeout:20000,state:'attached'});
+      const panel=page.getByRole('complementary',{name:'Map controls'});
+      if(!await page.locator('#settings-open').isVisible())await page.locator('#controls-open').click();
+      assert.ok(await panel.isVisible());
+      await page.getByTitle('Drawing tools',{exact:true}).click();
+      const point=page.locator('[data-draw="point"]');
+      const toolbar=page.locator('#draw-toolbar');
+      const other=chromiumSwitch?'.maplibregl-ctrl-top-right':'.atlas-flat-tool-buttons';
+      for(const width of [1100,1001,1240,1320]){
+        await page.setViewportSize({width,height:760});
+        const rects=await page.evaluate(other=>{
+          const rect=q=>document.querySelector(q).getBoundingClientRect();
+          const g=rect('#draw-toolbar'),p=rect('.panel'),r=rect(other);
+          const at=rect('[data-draw="point"]'),hit=document.elementFromPoint((at.left+at.right)/2,(at.top+at.bottom)/2);
+          return {left:g.left,right:g.right,panel:p.right,tools:r.left,point:hit?.closest('[data-draw]')?.dataset.draw};
+        },other);
+        assert.equal(rects.point,'point',width+' px: '+JSON.stringify(rects));
+        assert.ok(rects.left>=rects.panel+4&&rects.right<=rects.tools-4,width+' px: '+JSON.stringify(rects));
+        await point.click();
+        assert.equal(await point.getAttribute('aria-pressed'),'true');
+        await toolbar.locator('[data-draw="line"]').click();
+      }
+      await point.click();
+      const bounds=await canvas.boundingBox();
+      await page.mouse.click(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+      const geo=await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')
+        ?.features[0]?.geometry.coordinates).then(r=>r.jsonValue());
+      assert.ok(Math.abs(geo[0]-121.56)<0.002&&Math.abs(geo[1]-25.04)<0.002);
+      console.log('Point and Line clickable with expanded sidebar at 1001, 1100, 1240 and 1320 px; verified first saved point in '+(chromiumSwitch?'Chromium WebGL':'Firefox Canvas'));
+    }finally{await context.close();}
+  } else if(detailState){
     const {context,page}=await fresh(false);
     await page.setViewportSize({width:1320,height:760});
     try{
