@@ -1,0 +1,15 @@
+{
+  "complete": true,
+  "ways": 426215,
+  "finnishWays": 8298,
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 65698635,
+    "kept": 426215,
+    "waysWithoutGeometry": 0
+  }
+}
