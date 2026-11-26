@@ -24,7 +24,7 @@ const manifest={complete:true,schema:1,license:'ODbL-1.0',minzoom:3,maxzoom:7,
   stations:1,tiles:2,bundles:1,polar:0,pendingRegions:0,completedRegions:32};
 const index={zoom:3,bundles:['4/3']};
 let mode='complete';
-const seen=[];
+const seen=[], curatedRequests=[];
 const bytes=(layer,id,name,coordinates)=>vtPbf.fromGeojsonVt({[layer]:{features:[{
   type:1,id,geometry:[coordinates],
   tags:{id:'node-'+id,osm_id:String(id),osm_type:'node',name,feature:'station',state:'present',station:'train'},
@@ -72,12 +72,13 @@ try{
   });
   await browser.route(url=>/\/standard_railway_text_stations(?:$|\/)/.test(url.pathname),route=>{
     const p=new URL(route.request().url()).pathname;
+    curatedRequests.push(p);
     if(/\/\d+\/\d+\/\d+$/.test(p))return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
       body:p.endsWith('/8/133/120')?Buffer.from(bytes('standard_railway_text_stations',46103,curated,[0,0])):Buffer.alloc(0)});
     return route.fulfill({json:{minzoom:8,maxzoom:8,tiles:['https://openrailwaymap.app/standard_railway_text_stations/{z}/{x}/{y}']}});
   });
   for(const [state,z] of [['complete',4],['complete',3],['incomplete',4],['broken-bundle',4]]){
-    mode=state;seen.length=0;
+    mode=state;seen.length=0;curatedRequests.length=0;
     const p=await browser.newPage(),failures=[];
     try{
       p.on('pageerror',e=>failures.push(e.message));
@@ -99,7 +100,12 @@ try{
       await p.goto(origin+'/?names=0&stations=1&relief=0&transport=0&destinations=0&constraints=0&detail=0#'+z+'/'+lat+'/11.25');
       const canvas=p.locator('canvas.atlas-flat-preview');
       await canvas.waitFor();
-      await p.waitForFunction(label=>window.stationLabels.has(label),curated,{timeout:12000});
+      await p.waitForFunction(label=>window.stationLabels.has(label),curated,{timeout:12000}).catch(async error=>{
+        console.error('curated overview', JSON.stringify({state,z,curatedRequests,failures,
+          labels:await p.evaluate(()=>[...window.stationLabels]),
+          status:await p.locator('#map-status').textContent()}));
+        throw error;
+      });
       if(z===4&&state!=='complete'){
         await p.mouse.click(384,320);
         await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
