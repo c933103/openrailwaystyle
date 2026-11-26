@@ -534,6 +534,20 @@ try {
         await page.keyboard.press('Escape');
         assert.equal(await menu.isHidden(),true,'touch hold must still open the Watch menu');
         assert.equal((await read()).z,after.z,'touch hold must not zoom');
+        const bearing=() => page.evaluate(async off=>{
+          if(off)return JSON.parse(localStorage.getItem('atlas_view')).b;
+          const {map}=await import(document.querySelector('script[type=module]').src);
+          return map.getBearing();
+        },off);
+        const b0=await bearing(), twist=(angle)=>Array.from({length:2},(_,i)=>{
+          const sign=i===0?-1:1;
+          return {x:Math.round(pt.x+sign*85*Math.cos(angle)),y:Math.round(pt.y+sign*85*Math.sin(angle)),id:i+1};
+        });
+        await send('touchStart',twist(0));
+        for(const angle of [0.15,0.30,0.50,0.75])await send('touchMove',twist(angle));
+        await send('touchEnd');
+        await page.waitForTimeout(650);
+        console.log(JSON.stringify({twist:off?'Canvas':'WebGL',initialBearing:b0,finalBearing:await bearing(),zoom:(await read()).z}));
       }finally{await context.close();}
     }
   } else if(doubleClickZoom){
