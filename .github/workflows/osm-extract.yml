@@ -31,6 +31,10 @@ on:
         description: 'Only the gap tiles from Overpass: no region is downloaded'
         type: boolean
         default: false
+      region_ids:
+        description: 'Comma-separated planned region IDs; blank refreshes the full plan'
+        type: string
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -55,7 +59,10 @@ jobs:
       - name: Plan the regions
         env:
           SOURCE_DATE: ${{ inputs.source_date }}
+          EXTRACT_REGION_IDS: ${{ inputs.region_ids }}
+          EXTRACT_GAPS_ONLY: ${{ inputs.gaps_only }}
         run: |
+          node --input-type=module -e 'import {parseRegionSelection} from "./scripts/extract-run.mjs"; parseRegionSelection(process.env.EXTRACT_REGION_IDS, process.env.EXTRACT_GAPS_ONLY === "true")'
           status=0
           node --import ./scripts/overpass-meter.mjs scripts/plan-osm-regions.mjs plan "$SOURCE_DATE" || status=$?
           cat plan/plan.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
@@ -68,10 +75,14 @@ jobs:
         run: node scripts/extract-release.mjs load plan/index.json
       - name: Take only a valid plan
         id: matrix
+        env:
+          EXTRACT_REGION_IDS: ${{ inputs.region_ids }}
+          EXTRACT_GAPS_ONLY: ${{ inputs.gaps_only }}
         run: node scripts/extract-run.mjs matrix plan/plan.json plan/index.json
       # The parts no planned region covers, cut into tiles for Overpass
       # (scripts/gap-tiles.mjs).
       - name: Cut the remainder into gap tiles
+        if: inputs.region_ids == ''
         run: node scripts/gap-tiles.mjs plan/plan.json plan/gaps.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -137,6 +148,7 @@ jobs:
   # (scripts/acquire-gap-tiles.mjs). A tile that fails keeps its copy.
   gaps:
     needs: plan
+    if: inputs.region_ids == ''
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
