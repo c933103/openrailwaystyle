@@ -70,10 +70,27 @@ const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=
   patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
 }))));
 
-async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource, savedView } = {}) {
-  const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
+async function start({ styleLoaded = false, failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, metadataClock, platformGeometryOptions, departureLoader, elevationOptions, cacheOnlyLibraries, noLegacyCrypto=false, controlSource, savedView, rollbackEntry=false } = {}) {
+  const entry = rollbackEntry ? html.replace(' data-flat-entry="staged"','') : html;
+  const dom = new JSDOM(entry, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
+  window.structuredClone = structuredClone;
+  // jsdom has no GPU or stylesheet loader. Model the two browser boundaries
+  // that the real entry now checks, while keeping the actual application code.
+  const nativeGetContext=window.HTMLCanvasElement.prototype.getContext;
+  window.HTMLCanvasElement.prototype.getContext=function(kind,...args){
+    return kind==='webgl2'?{getExtension(){return null;}}:nativeGetContext.call(this,kind,...args);
+  };
+  const webglCSS=window.document.getElementById('maplibre-css');
+  const href=Object.getOwnPropertyDescriptor(window.HTMLLinkElement.prototype,'href');
+  Object.defineProperty(webglCSS,'href',{
+    get(){return href.get.call(this);},
+    set(value){
+      href.set.call(this,value);
+      queueMicrotask(()=>this.dispatchEvent(new window.Event(cacheOnlyLibraries?'error':'load')));
+    },
+  });
   if (savedView) window.localStorage.setItem('atlas_view', JSON.stringify(savedView));
   const errors = [], maps = [];
   const fonts=[];

@@ -485,7 +485,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
     if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.4.js'))throw Error('replacement library unavailable');
+    if(failReplacement&&url.pathname.endsWith('vendor/flat-browser.js'))throw Error('required Canvas module unavailable');
     const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace(/-atlas\.\d+\.js$/,'.js')));
     if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
@@ -513,7 +513,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
   assert.match(await (await request(old,'./')).text(),/app.mjs\?v=old/, 'failed updated control module keeps the complete old page');
   failControl=false;
   assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
-  failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
+  failReplacement=true;await assert.rejects(install(worker(newSource)),/required Canvas module unavailable/);
   offline=true;
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
@@ -613,7 +613,7 @@ for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup r
   } finally {result.dom.window.close();}
 });
 test('installation help works before renderer libraries load and after WebGL initialization fails', async t => {
-  for (const options of [{delayLibraries: true}, {failWebGL: true}]) await t.test(JSON.stringify(options), async () => {
+  for (const options of [{delayLibraries: true}, {failWebGL: true, rollbackEntry:true}]) await t.test(JSON.stringify(options), async () => {
     const {dom, window, maps} = await start(options);
     try {
       const get = id => window.document.getElementById(id);

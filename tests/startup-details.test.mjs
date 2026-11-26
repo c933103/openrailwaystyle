@@ -449,8 +449,8 @@ test('tiles served as stored load the rare Han slices of their text, such as ser
  }finally{dom.window.close();}
 });
 
-test('real renderer initialization failures reach the visible error message', async () => {
-  const {dom,window,errors} = await start({failWebGL:true});
+test('the rollback entry still reports a renderer initialization failure', async () => {
+  const {dom,window,errors} = await start({failWebGL:true,rollbackEntry:true});
   try {
     assert.equal(errors.length,1);
     assert.match(window.document.getElementById('map-status').textContent,/could not start WebGL/);
