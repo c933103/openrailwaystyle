@@ -2205,6 +2205,12 @@ async function initialize() {
           ? '2D map: '+webglStartupFailure+'; '+state : '2D map: '+state;
       },
     });
+    // Network recovery can restore a name at the same view/language. Normal
+    // paints still share a batch and do not poll a successful no-match.
+    addEventListener('online',()=>{
+      curatedBatch='';
+      flat.invalidateLabels();
+    },{signal:stationsLifetime.signal});
     refreshFlatLabels=flat.invalidateLabels;
     platformLengths=createPlatformLengths({
       ...flat.platformProjection,getZoom:flat.getZoom,getSource:flat.getSource,
