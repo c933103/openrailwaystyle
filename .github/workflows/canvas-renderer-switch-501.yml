@@ -2,37 +2,6 @@ name: Verify staged Railway Atlas renderer switch
 on:
   push:
     branches: [work/canvas-entry-501]
-    paths:
-      - '.github/workflows/canvas-renderer-switch-501.yml'
-      - '.github/workflows/site.yml'
-      - 'scripts/data-source.mjs'
-      - 'scripts/data-sources.json'
-      - 'scripts/check-flat-entry-firefox.mjs'
-      - 'scripts/check-flat-platform-firefox.mjs'
-      - 'scripts/check-flat-mongolian-firefox.mjs'
-      - 'scripts/check-flat-relief-firefox.mjs'
-      - 'scripts/check-flat-contours-firefox.mjs'
-      - 'scripts/check-flat-crossings-firefox.mjs'
-      - 'scripts/check-flat-rail-symbols-firefox.mjs'
-      - 'scripts/check-flat-basemaps-firefox.mjs'
-      - 'scripts/check-flat-world-stations-firefox.mjs'
-      - 'styles/station-world.mjs'
-      - 'styles/tile-bundles.mjs'
-      - 'tests/station-world.test.mjs'
-      - 'scripts/check-flat-recovery-firefox.mjs'
-      - 'tests/fixtures/mongolian-font/**'
-      - 'styles/platform-length.mjs'
-      - 'tests/ci-node-runtime-security.test.mjs'
-      - 'tests/helpers/profile-ui-harness.mjs'
-      - 'styles/index.html'
-      - 'scripts/check-flat-offline-firefox.mjs'
-      - 'scripts/check-startup-preloads-browser.mjs'
-      - 'styles/app.mjs'
-      - 'styles/app.css'
-      - 'styles/sw.js'
-      - 'styles/flat-*.mjs'
-      - 'tests/flat-camera.test.mjs'
-      - 'tests/flat-gesture.test.mjs'
 permissions:
   contents: read
 jobs:
