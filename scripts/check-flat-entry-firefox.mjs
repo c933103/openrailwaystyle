@@ -1112,6 +1112,52 @@ try {
       assert.deepEqual(await recipient.page.evaluate(()=>window.webglAttempts),[]);
     } finally {await recipient.context.close();}
   } finally {await compassCase.context.close();}
+  // A drag rotates but a stationary secondary click still opens Watch.
+  const mouseBearing=await fresh(true);
+  try {
+    const {page:p}=mouseBearing;
+    await p.goto(origin+'/?ui=watch#9/25.04/121.56/40');
+    await ready(p);
+    const canvas=p.locator('canvas.atlas-flat-preview'), menu=p.locator('#watch-menu');
+    const box=await canvas.boundingBox();
+    const x=Math.round(box.x+box.width*.59), y=Math.round(box.y+box.height*.58);
+    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
+    const center=()=>p.locator('#map').getAttribute('data-flat-center');
+    const originalCenter=await center();
+    const startView=await view();
+    const drag=async(button,dx)=>{
+      await p.mouse.move(x,y);
+      await p.mouse.down({button});
+      await p.mouse.move(x+dx,y,{steps:4});
+    };
+    await p.mouse.click(x,y,{button:'right'});
+    await menu.waitFor({state:'visible'});
+    await p.keyboard.press('Escape');
+    await menu.waitFor({state:'hidden'});
+    assert.equal(await view(),startView,'stationary secondary click changes no camera state');
+    await drag('right',50);
+    await p.keyboard.press('Escape');
+    await p.mouse.up({button:'right'});
+    assert.equal(await view(),startView,'Escape must roll back rotation without persistence');
+    assert.equal(await menu.isHidden(),true);
+    await drag('right',50);
+    await p.mouse.up({button:'right'});
+    const right=JSON.parse(await view());
+    assert.ok(Math.abs(right.b)<0.001&&right.z===9,'right drag must only change the bearing');
+    assert.equal(await center(),originalCenter);
+    assert.equal(await menu.isHidden(),true,'no context menu after right drag');
+    await p.keyboard.down('Control');
+    await drag('left',-50);
+    await p.mouse.up();
+    await p.keyboard.up('Control');
+    const ctrl=JSON.parse(await view());
+    assert.ok(Math.abs(ctrl.b-40)<0.001&&ctrl.z===9,'Control-drag must rotate instead of panning');
+    assert.equal(await center(),originalCenter);
+    assert.equal(await menu.isHidden(),true);
+    await p.mouse.click(x,y,{button:'right'});
+    await menu.waitFor({state:'visible'});
+  } finally {await mouseBearing.context.close();}
+
   // Native Shift-left drags on the real Canvas entry.
   const boxCase=await fresh(true);
   try {

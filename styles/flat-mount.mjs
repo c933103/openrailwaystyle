@@ -30,7 +30,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
   canvas.tabIndex = 0;
-  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom. Shift-drag to zoom to an area. Press Shift with Left or Right to rotate.');
+  canvas.setAttribute('aria-label','Canvas map preview. Drag or use the arrow keys to move. Pinch or press plus and minus to zoom. Shift-drag to zoom to an area. Right-drag, Control-drag, or press Shift with Left or Right to rotate.');
   Object.assign(canvas.style,{display:'block',width:'100%',height:'100%',touchAction:'none'});
   const boxOverlay=document.createElement('div');
   boxOverlay.className='atlas-flat-box-zoom';
@@ -75,6 +75,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   let tileDetail=initialDetail;
   let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null, boxZoom=null;
+  let mouseRotation=null, rightContext=false;
   let stationFallbackMask=()=>false;
   const allowFeature=(id,feature,tile)=>!flatStationFallbackLayer(id)||stationFallbackMask(feature,tile);
   const measureOverlay=flatMeasureAdapter(canvas,schedule);
@@ -132,6 +133,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if (camera?.width===width && camera.height===height) return;
     gesture.cancel();
     cancelBoxZoom();
+    cancelMouseRotation();
     canvas.width=Math.round(width*pixelRatio); canvas.height=Math.round(height*pixelRatio);
     context.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);
     setCamera(flatCamera({center:camera?.center??requestedView.center,zoom:camera?.zoom??requestedView.zoom,
@@ -333,9 +335,43 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     boxOverlay.hidden=true;
     if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
   }
+  function cancelMouseRotation() {
+    if(!mouseRotation)return;
+    const {id,initial,turned}=mouseRotation;
+    mouseRotation=null;
+    if(turned)setCamera(initial);
+    if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+  }
+  function turnMouse(e) {
+    const rotation=mouseRotation;
+    const dx=localPoint(e)[0]-rotation.x;
+    if(!rotation.turned&&Math.abs(dx)<4)return;
+    rotation.turned=true;
+    const angle=rotation.initial.bearing-dx*.8;
+    const bearing=((angle+180)%360+360)%360-180;
+    setCamera(flatCamera({...rotation.initial,bearing}));
+  }
+  // Some platforms emit the native menu on button-down, others on button-up.
+  // Suppress it for this right gesture only; replay a stationary click below.
+  listen('contextmenu',e=>{
+    if(e.isTrusted&&e.button===2&&rightContext){e.preventDefault();e.stopPropagation();}
+  });
   listen('pointerdown',e=>{
-    if(e.button!==0||toolDrag||boxZoom)return;
+    if(toolDrag||boxZoom||mouseRotation)return;
+    rightContext=false;
     const tool=activeTool();
+    if(!tool&&!gesture.active&&e.pointerType==='mouse'&&!e.altKey&&!e.shiftKey&&!e.metaKey&&
+        (e.button===2||e.button===0&&e.ctrlKey)){
+      mouseRotation={id:e.pointerId,x:localPoint(e)[0],y:localPoint(e)[1],initial:camera,
+        right:e.button===2,turned:false,moved:false};
+      rightContext=mouseRotation.right;
+      e.preventDefault();
+      e.stopPropagation();
+      canvas.focus({preventScroll:true});
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if(e.button!==0)return;
     if(!tool&&!gesture.active&&e.pointerType==='mouse'&&e.shiftKey&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
       boxZoom={id:e.pointerId,start:localPoint(e),camera};
       canvas.focus({preventScroll:true});
@@ -351,6 +387,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   listen('pointerleave',()=>{readoutPoint=null;updateReadout();});
   listen('pointermove',e=>{
     if(e.pointerType==='mouse'){readoutPoint=localPoint(e);updateReadout();}
+    if(mouseRotation){
+      if(e.pointerId!==mouseRotation.id)return;
+      const [x,y]=localPoint(e);
+      if(Math.hypot(x-mouseRotation.x,y-mouseRotation.y)>=4)mouseRotation.moved=true;
+      turnMouse(e);
+      return;
+    }
     if(boxZoom){
       if(e.pointerId!==boxZoom.id)return;
       const rect=flatBoxRect(boxZoom.camera,boxZoom.start,localPoint(e));
@@ -370,6 +413,21 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     }
   });
   function endPointer(e,cancel=false){
+    if(mouseRotation){
+      if(e.pointerId!==mouseRotation.id)return;
+      if(cancel){cancelMouseRotation();return;}
+      const [x,y]=localPoint(e);
+      const {id,right,moved,x:startX,y:startY}=mouseRotation;
+      turnMouse(e);
+      const {turned}=mouseRotation;
+      mouseRotation=null;
+      if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+      if(turned)setCamera(camera,true);
+      else if(right&&!moved&&Math.hypot(x-startX,y-startY)<4)
+        canvas.dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,cancelable:true,
+          button:2,clientX:e.clientX,clientY:e.clientY}));
+      return;
+    }
     if(boxZoom){
       if(e.pointerId!==boxZoom.id)return;
       const {start,camera:initial}=boxZoom;
@@ -393,13 +451,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const tool=activeTool();
     if(tool===measure&&tool?.mode==='distance'){e.preventDefault();tool.end();}
     else if(tool===drawing&&tool?.multiPoint){e.preventDefault();tool.finish();}
-    else if(!tool&&e.button===0){
+    else if(!tool&&e.button===0&&!e.ctrlKey){
       e.preventDefault();
       zoomBy(e.shiftKey?-1:1,localPoint(e));
     }
   });
   function zoomBy(delta, anchor) {
-    if (disposed || gesture.active || toolDrag || boxZoom || !delta) return;
+    if (disposed || gesture.active || toolDrag || boxZoom || mouseRotation || !delta) return;
     const zoom=Math.max(-0.5,Math.min(22,camera.zoom+delta));
     if (zoom===camera.zoom) return;
     setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
@@ -410,6 +468,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     zoomBy(-Math.sign(e.deltaY)*0.25,[e.clientX-rect.left,e.clientY-rect.top]);
   },{passive:false});
   listen('keydown',e=>{
+    if(mouseRotation){
+      if(e.key==='Escape'){e.preventDefault();cancelMouseRotation();}
+      return;
+    }
     if(boxZoom){
       if(e.key==='Escape'){e.preventDefault();cancelBoxZoom();}
       return;
@@ -442,6 +504,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const close=()=>{
     if(disposed) return;
     cancelBoxZoom();
+    cancelMouseRotation();
     disposed=true;
     if(measure?.active)measure.setMode(measure.mode);
     lifetime.abort(); observer.disconnect();clearWake();
@@ -449,7 +512,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     for(const entry of metadata.values()) entry.controller.abort();
     queue.close();canvas.remove();boxOverlay.remove();
   };
-  window.addEventListener('blur',cancelBoxZoom,{signal});
+  window.addEventListener('blur',()=>{cancelBoxZoom();cancelMouseRotation();},{signal});
   window.addEventListener('online',()=>recover(true),{signal});
   window.addEventListener('offline',clearWake,{signal});
   document.addEventListener('visibilitychange',()=>recover(false),{signal});
@@ -458,6 +521,8 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const moveTo=({center,zoom,bounds})=>{
     if(disposed) return;
     gesture.cancel();
+    cancelBoxZoom();
+    cancelMouseRotation();
     const next=bounds?fitFlatBounds(camera,bounds):null;
     setCamera(next??flatCamera({center,zoom,width:camera.width,height:camera.height,bearing:camera.bearing}),true);
   };
