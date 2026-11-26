@@ -19,6 +19,7 @@ const standardPage=await readFile(new URL('index.html',root),'utf8');
 const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"');
 const chromiumSwitch=process.argv.includes('--chromium-switch');
 const serviceOverlap=process.argv.includes('--service-overlap');
+const watchFocus=process.argv.includes('--watch-focus');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -421,7 +422,61 @@ try {
       return {initial,zoomed,recovered,completedEvents:first,cancelledEvents:cancelled};
     } finally {await context.close();}
   }
-  if(serviceOverlap){
+  if(watchFocus){
+    const {page,context}=await fresh(!chromiumSwitch,chromiumSwitch,false,chromiumSwitch);
+    try {
+      await page.goto(origin+'/?ui=watch');
+      const selector=chromiumSwitch?'canvas.maplibregl-canvas':'canvas.atlas-flat-preview';
+      const canvas=page.locator(selector),menu=page.locator('#watch-menu');
+      if(chromiumSwitch)await page.waitForSelector('body[data-map-ready=true]',{state:'attached',timeout:10000});
+      else await ready(page);
+      const focused=()=>page.evaluate(s=>document.activeElement?.matches(s)===true,selector);
+      const closed=async()=>{
+        assert.equal(await menu.isHidden(),true);
+        assert.equal(await page.locator('#map-frame').evaluate(e=>e.inert),false);
+        assert.equal(await focused(),true,'closing Watch controls must focus the active renderer canvas');
+      };
+      const open=async()=>{
+        await page.keyboard.press('Shift+F10');
+        await menu.waitFor({timeout:3500});
+        assert.equal(await page.locator('#map-frame').evaluate(e=>e.inert),true);
+        assert.equal(await menu.getByLabel('Railway view').evaluate(e=>e===document.activeElement),true);
+      };
+      await canvas.focus();
+      await open();
+      await page.keyboard.press('Escape');
+      await closed();
+      if(!chromiumSwitch){
+        const original=await page.locator('#map').getAttribute('data-flat-center');
+        await page.keyboard.press('ArrowRight');
+        await page.waitForFunction(before=>document.querySelector('#map').dataset.flatCenter!==before,original,{timeout:3500});
+      }
+      await open();
+      await menu.getByRole('button',{name:'Map',exact:true}).click();
+      await closed();
+      await open();
+      await menu.getByLabel('Map options').selectOption('layers');
+      const stations=menu.getByRole('button',{name:'Stations',exact:true});
+      const before=await stations.getAttribute('aria-pressed');
+      await stations.click();
+      await closed();
+      await open();
+      await menu.getByLabel('Map options').selectOption('layers');
+      assert.equal(await menu.getByRole('button',{name:'Stations',exact:true}).getAttribute('aria-pressed'),String(before!=='true'));
+      await page.keyboard.press('Escape');
+      await closed();
+      if(chromiumSwitch){
+        const box=await canvas.boundingBox(),client=await context.newCDPSession(page);
+        const pt={x:Math.round(box.x+box.width*.6),y:Math.round(box.y+box.height*.55)};
+        await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[pt]});
+        await menu.waitFor({timeout:2200});
+        await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        await page.keyboard.press('Escape');
+        await closed();
+      }else assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
+      console.log('Watch controls restore keyboard focus after Escape, Map, and layer choice in '+(chromiumSwitch?'Chromium WebGL; native touch hold still opens them.':'Firefox Canvas; arrow pan and keyboard reopen work without WebGL.'));
+    } finally {await context.close();}
+  } else if(serviceOverlap){
    const service=await fresh(true),p=service.page;
    try {
     await p.clock.install({time:fixtureServiceStart});

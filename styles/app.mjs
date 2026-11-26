@@ -2954,7 +2954,8 @@ addEventListener('pageshow',()=>frequencyExpiry.resume());
 const watchGesture=installWatchGesture($('map'),{active:()=>settings.ui==='watch'&&$('watch-menu').hidden,open:()=>openWatchMenu()});
 function closeWatchMenu() {
   $('watch-menu').hidden=true;$('map-frame').inert=false;
-  const canvas=map?.getCanvas();canvas?.focus?.({preventScroll:true});
+  const canvas=useFlat?$('map').querySelector('canvas.atlas-flat-preview'):map?.getCanvas();
+  canvas?.focus?.({preventScroll:true});
 }
 function syncWatchLayout() {
   const watch=settings.ui==='watch',changed=document.body.dataset.ui!==settings.ui;
@@ -3005,6 +3006,13 @@ $('watch-layout').addEventListener('change',()=>{settings.ui=$('watch-layout').c
 $('watch-menu').addEventListener('keydown',event=>{
   if(event.key==='Escape'){event.preventDefault();closeWatchMenu();}
   if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+});
+// A native touch release can move focus outside the temporary menu. Still
+// allow Escape to dismiss it when a keyboard is used after the hold.
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!event.defaultPrevented&&settings.ui==='watch'&&!$('watch-menu').hidden){
+    event.preventDefault();closeWatchMenu();
+  }
 });
 applySettings();
 initialize().catch(error => {
