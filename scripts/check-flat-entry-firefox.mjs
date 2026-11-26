@@ -30,6 +30,7 @@ const toolbarClearance=process.argv.includes('--toolbar-clearance');
 const doubleClickZoom=process.argv.includes('--double-click-zoom');
 const watchDoubleTap=process.argv.includes('--watch-double-tap');
 const pwaOffline=process.argv.includes('--pwa-canvas-offline');
+const desktopParity=process.argv.includes('--canvas-desktop-parity');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -501,7 +502,169 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(pwaOffline){
+  async function verifyCanvasDesktopParity(){
+  // A drag rotates but a stationary secondary click still opens Watch.
+  const mouseBearing=await fresh(true);
+  try {
+    const {page:p}=mouseBearing;
+    await p.goto(origin+'/?ui=watch#9/25.04/121.56/40');
+    await ready(p);
+    const canvas=p.locator('canvas.atlas-flat-preview'), menu=p.locator('#watch-menu');
+    const box=await canvas.boundingBox();
+    const x=Math.round(box.x+box.width*.59), y=Math.round(box.y+box.height*.58);
+    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
+    const center=()=>p.locator('#map').getAttribute('data-flat-center');
+    const originalCenter=await center();
+    const startView=await view();
+    const drag=async(button,dx)=>{
+      await p.mouse.move(x,y);
+      await p.mouse.down({button});
+      await p.mouse.move(x+dx,y,{steps:4});
+    };
+    await p.mouse.click(x,y,{button:'right'});
+    await menu.waitFor({state:'visible'});
+    await p.keyboard.press('Escape');
+    await menu.waitFor({state:'hidden'});
+    assert.equal(await view(),startView,'stationary secondary click changes no camera state');
+    await drag('right',50);
+    await p.keyboard.press('Escape');
+    await p.mouse.up({button:'right'});
+    assert.equal(await view(),startView,'Escape must roll back rotation without persistence');
+    assert.equal(await menu.isHidden(),true);
+    await drag('right',50);
+    await p.mouse.up({button:'right'});
+    const right=JSON.parse(await view());
+    assert.ok(Math.abs(right.b)<0.001&&right.z===9,'right drag must only change the bearing');
+    assert.equal(await center(),originalCenter);
+    assert.equal(await menu.isHidden(),true,'no context menu after right drag');
+    await p.keyboard.down('Control');
+    await drag('left',-50);
+    await p.mouse.up();
+    await p.keyboard.up('Control');
+    const ctrl=JSON.parse(await view());
+    assert.ok(Math.abs(ctrl.b-40)<0.001&&ctrl.z===9,'Control-drag must rotate instead of panning');
+    assert.equal(await center(),originalCenter);
+    assert.equal(await menu.isHidden(),true);
+    await p.mouse.click(x,y,{button:'right'});
+    await menu.waitFor({state:'visible'});
+  } finally {await mouseBearing.context.close();}
+
+  // Native Shift-left drags on the real Canvas entry.
+  const boxCase=await fresh(true);
+  try {
+    const {page:p}=boxCase;
+    await p.setViewportSize({width:1200,height:760});
+    await p.goto(origin+'/#9/25.04/121.56/40');
+    await ready(p);
+    const canvas=p.locator('canvas.atlas-flat-preview'), overlay=p.locator('.atlas-flat-box-zoom');
+    const box=await canvas.boundingBox();
+    const points=[[.54,.38],[.77,.57]].map(([x,y])=>[
+      Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)]);
+    for(const point of points) assert.equal(await p.evaluate(([x,y])=>
+      document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),point),true);
+    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
+    const initial=await view();
+    const drag=async()=>{
+      await p.mouse.move(...points[0]);
+      await p.keyboard.down('Shift');
+      await p.mouse.down();
+      await p.mouse.move(...points[1],{steps:5});
+      await overlay.waitFor({state:'visible'});
+      const drawn=await overlay.boundingBox();
+      assert.ok(Math.abs(drawn.x-points[0][0])<1&&Math.abs(drawn.y-points[0][1])<1);
+      assert.ok(Math.abs(drawn.width-points[1][0]+points[0][0])<1);
+      assert.ok(Math.abs(drawn.height-points[1][1]+points[0][1])<1);
+    };
+    const release=async()=>{
+      await p.mouse.up();
+      await p.keyboard.up('Shift');
+      await overlay.waitFor({state:'hidden'});
+    };
+    await drag();
+    await p.keyboard.press('Escape');
+    await release();
+    assert.equal(await view(),initial,'Escape must not move the map');
+    await canvas.evaluate(el=>el.addEventListener('pointerdown',e=>window.boxPointer=e.pointerId,{once:true}));
+    await drag();
+    await canvas.evaluate(el=>el.dispatchEvent(new PointerEvent('pointercancel',{pointerId:window.boxPointer})));
+    await release();
+    assert.equal(await view(),initial,'pointer cancellation must not move the map');
+    const expected=await p.evaluate(async({box,points})=>{
+      const {flatCamera}=await import('/styles/flat-camera.mjs');
+      const camera=flatCamera({center:[121.56,25.04],zoom:9,bearing:40,width:box.width,height:box.height});
+      return {
+        center:camera.unproject([(points[0][0]+points[1][0])/2-box.x,(points[0][1]+points[1][1])/2-box.y]),
+        z:9+Math.log2(Math.min(box.width/(points[1][0]-points[0][0]),box.height/(points[1][1]-points[0][1]))),
+      };
+    },{box,points});
+    await drag();
+    assert.equal(await view(),initial,'preview must not move the camera before release');
+    await release();
+    const after=JSON.parse(await view());
+    assert.ok(Math.abs(after.z-expected.z)<0.001&&after.b===40);
+    assert.ok(after.c.every((v,i)=>Math.abs(v-expected.center[i])<0.000002));
+    await p.mouse.move(...points[0]);await p.mouse.down();
+    await p.mouse.move(...points[1],{steps:5});await p.mouse.up();
+    assert.equal(await overlay.isHidden(),true);
+    const panned=JSON.parse(await view());
+    assert.equal(panned.z,after.z);
+    assert.notDeepEqual(panned.c,after.c);
+    await p.keyboard.down('Shift');
+    await p.mouse.dblclick(...points[0]);
+    await p.keyboard.up('Shift');
+    assert.ok(Math.abs(JSON.parse(await view()).z-after.z+1)<0.001);
+  } finally {await boxCase.context.close();}
+
+  // Inject movement headings through the geolocation callback, and sample the
+  // real canvas pixels. Playwright's setGeolocation does not expose heading.
+  const directionalLocation=await fresh(true);
+  try {
+    const {page:p}=directionalLocation;
+    await p.addInitScript(()=>{
+      Object.defineProperty(navigator,'geolocation',{value:{
+        watchPosition(success){window.emitHeading=heading=>success({
+          coords:{longitude:0,latitude:0,accuracy:1,heading},
+        });return 17;},
+        clearWatch(){},
+      }});
+    });
+    await p.goto(origin);
+    await ready(p);
+    const button=p.getByRole('button',{name:'My location',exact:true});
+    const canvas=p.locator('canvas.atlas-flat-preview');
+    await button.click();
+    const emit=heading=>p.evaluate(async heading=>{
+      window.emitHeading(heading);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    },heading);
+    const blue=([x,y])=>{
+      const c=document.querySelector('canvas.atlas-flat-preview'), density=c.width/c.clientWidth;
+      const d=c.getContext('2d').getImageData(c.width/2+x*density,c.height/2+y*density,1,1).data;
+      return d[0]===21&&d[1]===118&&d[2]===229&&d[3]===255;
+    };
+    await emit(0);
+    await p.waitForFunction(blue,[0,-15]);
+    await emit(90);
+    await p.waitForFunction(blue,[15,0]);
+    assert.equal(await p.evaluate(blue,[0,-15]),false);
+    for(let i=0;i<6;i++)await canvas.press('Shift+ArrowRight');
+    await p.waitForFunction(blue,[0,-15]);
+    assert.equal(await p.evaluate(blue,[15,0]),false);
+    await emit(null);
+    assert.equal(await p.evaluate(blue,[0,-15]),false,'missing heading must remove the arrow');
+    assert.equal(await p.evaluate(blue,[0,0]),true,'missing heading must keep the fix marker');
+    await emit(360);
+    assert.equal(await p.evaluate(blue,[0,-15]),false,'out-of-range headings must not draw');
+    if(await button.getAttribute('data-location-state')==='paused') await button.click();
+    await button.click();
+    assert.equal(await button.getAttribute('aria-pressed'),'false');
+  } finally {await directionalLocation.context.close();}
+
+  }
+  if(desktopParity){
+    await verifyCanvasDesktopParity();
+    console.log('Native Canvas desktop parity: mouse bearing, Watch context menu, box zoom and location heading');
+  } else if(pwaOffline){
     // Test an actual installed worker, not a network route pretending to be a cache.
     const {context,page:p}=await fresh(true);
     try{
@@ -1154,118 +1317,6 @@ try {
       assert.deepEqual(await recipient.page.evaluate(()=>window.webglAttempts),[]);
     } finally {await recipient.context.close();}
   } finally {await compassCase.context.close();}
-  // A drag rotates but a stationary secondary click still opens Watch.
-  const mouseBearing=await fresh(true);
-  try {
-    const {page:p}=mouseBearing;
-    await p.goto(origin+'/?ui=watch#9/25.04/121.56/40');
-    await ready(p);
-    const canvas=p.locator('canvas.atlas-flat-preview'), menu=p.locator('#watch-menu');
-    const box=await canvas.boundingBox();
-    const x=Math.round(box.x+box.width*.59), y=Math.round(box.y+box.height*.58);
-    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
-    const center=()=>p.locator('#map').getAttribute('data-flat-center');
-    const originalCenter=await center();
-    const startView=await view();
-    const drag=async(button,dx)=>{
-      await p.mouse.move(x,y);
-      await p.mouse.down({button});
-      await p.mouse.move(x+dx,y,{steps:4});
-    };
-    await p.mouse.click(x,y,{button:'right'});
-    await menu.waitFor({state:'visible'});
-    await p.keyboard.press('Escape');
-    await menu.waitFor({state:'hidden'});
-    assert.equal(await view(),startView,'stationary secondary click changes no camera state');
-    await drag('right',50);
-    await p.keyboard.press('Escape');
-    await p.mouse.up({button:'right'});
-    assert.equal(await view(),startView,'Escape must roll back rotation without persistence');
-    assert.equal(await menu.isHidden(),true);
-    await drag('right',50);
-    await p.mouse.up({button:'right'});
-    const right=JSON.parse(await view());
-    assert.ok(Math.abs(right.b)<0.001&&right.z===9,'right drag must only change the bearing');
-    assert.equal(await center(),originalCenter);
-    assert.equal(await menu.isHidden(),true,'no context menu after right drag');
-    await p.keyboard.down('Control');
-    await drag('left',-50);
-    await p.mouse.up();
-    await p.keyboard.up('Control');
-    const ctrl=JSON.parse(await view());
-    assert.ok(Math.abs(ctrl.b-40)<0.001&&ctrl.z===9,'Control-drag must rotate instead of panning');
-    assert.equal(await center(),originalCenter);
-    assert.equal(await menu.isHidden(),true);
-    await p.mouse.click(x,y,{button:'right'});
-    await menu.waitFor({state:'visible'});
-  } finally {await mouseBearing.context.close();}
-
-  // Native Shift-left drags on the real Canvas entry.
-  const boxCase=await fresh(true);
-  try {
-    const {page:p}=boxCase;
-    await p.setViewportSize({width:1200,height:760});
-    await p.goto(origin+'/#9/25.04/121.56/40');
-    await ready(p);
-    const canvas=p.locator('canvas.atlas-flat-preview'), overlay=p.locator('.atlas-flat-box-zoom');
-    const box=await canvas.boundingBox();
-    const points=[[.54,.38],[.77,.57]].map(([x,y])=>[
-      Math.round(box.x+box.width*x),Math.round(box.y+box.height*y)]);
-    for(const point of points) assert.equal(await p.evaluate(([x,y])=>
-      document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),point),true);
-    const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
-    const initial=await view();
-    const drag=async()=>{
-      await p.mouse.move(...points[0]);
-      await p.keyboard.down('Shift');
-      await p.mouse.down();
-      await p.mouse.move(...points[1],{steps:5});
-      await overlay.waitFor({state:'visible'});
-      const drawn=await overlay.boundingBox();
-      assert.ok(Math.abs(drawn.x-points[0][0])<1&&Math.abs(drawn.y-points[0][1])<1);
-      assert.ok(Math.abs(drawn.width-points[1][0]+points[0][0])<1);
-      assert.ok(Math.abs(drawn.height-points[1][1]+points[0][1])<1);
-    };
-    const release=async()=>{
-      await p.mouse.up();
-      await p.keyboard.up('Shift');
-      await overlay.waitFor({state:'hidden'});
-    };
-    await drag();
-    await p.keyboard.press('Escape');
-    await release();
-    assert.equal(await view(),initial,'Escape must not move the map');
-    await canvas.evaluate(el=>el.addEventListener('pointerdown',e=>window.boxPointer=e.pointerId,{once:true}));
-    await drag();
-    await canvas.evaluate(el=>el.dispatchEvent(new PointerEvent('pointercancel',{pointerId:window.boxPointer})));
-    await release();
-    assert.equal(await view(),initial,'pointer cancellation must not move the map');
-    const expected=await p.evaluate(async({box,points})=>{
-      const {flatCamera}=await import('/styles/flat-camera.mjs');
-      const camera=flatCamera({center:[121.56,25.04],zoom:9,bearing:40,width:box.width,height:box.height});
-      return {
-        center:camera.unproject([(points[0][0]+points[1][0])/2-box.x,(points[0][1]+points[1][1])/2-box.y]),
-        z:9+Math.log2(Math.min(box.width/(points[1][0]-points[0][0]),box.height/(points[1][1]-points[0][1]))),
-      };
-    },{box,points});
-    await drag();
-    assert.equal(await view(),initial,'preview must not move the camera before release');
-    await release();
-    const after=JSON.parse(await view());
-    assert.ok(Math.abs(after.z-expected.z)<0.001&&after.b===40);
-    assert.ok(after.c.every((v,i)=>Math.abs(v-expected.center[i])<0.000002));
-    await p.mouse.move(...points[0]);await p.mouse.down();
-    await p.mouse.move(...points[1],{steps:5});await p.mouse.up();
-    assert.equal(await overlay.isHidden(),true);
-    const panned=JSON.parse(await view());
-    assert.equal(panned.z,after.z);
-    assert.notDeepEqual(panned.c,after.c);
-    await p.keyboard.down('Shift');
-    await p.mouse.dblclick(...points[0]);
-    await p.keyboard.up('Shift');
-    assert.ok(Math.abs(JSON.parse(await view()).z-after.z+1)<0.001);
-  } finally {await boxCase.context.close();}
-
   // Browser-provided synthetic positions, never an operator's actual location.
   const locationCase=await fresh(true);
   try {
@@ -1331,51 +1382,6 @@ try {
     await assertCenter(114.003,22.002);
     assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
   } finally {await locationCase.context.close();}
-  // Inject movement headings through the geolocation callback, and sample the
-  // real canvas pixels. Playwright's setGeolocation does not expose heading.
-  const directionalLocation=await fresh(true);
-  try {
-    const {page:p}=directionalLocation;
-    await p.addInitScript(()=>{
-      Object.defineProperty(navigator,'geolocation',{value:{
-        watchPosition(success){window.emitHeading=heading=>success({
-          coords:{longitude:0,latitude:0,accuracy:1,heading},
-        });return 17;},
-        clearWatch(){},
-      }});
-    });
-    await p.goto(origin);
-    await ready(p);
-    const button=p.getByRole('button',{name:'My location',exact:true});
-    const canvas=p.locator('canvas.atlas-flat-preview');
-    await button.click();
-    const emit=heading=>p.evaluate(async heading=>{
-      window.emitHeading(heading);
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    },heading);
-    const blue=([x,y])=>{
-      const c=document.querySelector('canvas.atlas-flat-preview'), density=c.width/c.clientWidth;
-      const d=c.getContext('2d').getImageData(c.width/2+x*density,c.height/2+y*density,1,1).data;
-      return d[0]===21&&d[1]===118&&d[2]===229&&d[3]===255;
-    };
-    await emit(0);
-    await p.waitForFunction(blue,[0,-15]);
-    await emit(90);
-    await p.waitForFunction(blue,[15,0]);
-    assert.equal(await p.evaluate(blue,[0,-15]),false);
-    for(let i=0;i<6;i++)await canvas.press('Shift+ArrowRight');
-    await p.waitForFunction(blue,[0,-15]);
-    assert.equal(await p.evaluate(blue,[15,0]),false);
-    await emit(null);
-    assert.equal(await p.evaluate(blue,[0,-15]),false,'missing heading must remove the arrow');
-    assert.equal(await p.evaluate(blue,[0,0]),true,'missing heading must keep the fix marker');
-    await emit(360);
-    assert.equal(await p.evaluate(blue,[0,-15]),false,'out-of-range headings must not draw');
-    if(await button.getAttribute('data-location-state')==='paused') await button.click();
-    await button.click();
-    assert.equal(await button.getAttribute('aria-pressed'),'false');
-  } finally {await directionalLocation.context.close();}
-
   const deniedLocation=await fresh(true);
   try {
     const p=deniedLocation.page;

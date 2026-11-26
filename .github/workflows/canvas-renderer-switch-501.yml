@@ -80,6 +80,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps firefox
+      - name: Exercise native Canvas box zoom, mouse rotation and location heading
+        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --canvas-desktop-parity
       - name: Install and reload the Canvas PWA with WebGL missing and then offline
         run: timeout 100s node scripts/check-flat-entry-firefox.mjs --pwa-canvas-offline
       - name: Verify automatic Canvas startup and distinguish shared-data errors
