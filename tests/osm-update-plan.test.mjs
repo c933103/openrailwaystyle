@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile, readdir} from 'node:fs/promises';
+import {parseConfig, parseFile, settings, SOURCES_FILE} from '../scripts/data-source.mjs';
 import {OSM_UPDATES, OSM_UPDATE_PATHS, dueUpdates, lastDueTime, builderChanged} from '../scripts/osm-update-plan.mjs';
 
 const workflows = new URL('../.github/workflows/', import.meta.url);
@@ -63,10 +64,27 @@ test('manual runs choose one dataset or all, in run order; lifecycle runs take c
   assert.throws(() => dueUpdates(new Date('x'), {}), /Invalid time/);
 });
 
+test('crossings extract selection skips automatic Overpass work but preserves fallback and other datasets', async () => {
+  const now = at('2026-11-29T03:23:00Z');
+  const file = parseFile(await readFile(SOURCES_FILE, 'utf8'));
+  const sources = settings({...file, crossings: 'extract'});
+  const rebuilt = ['crossings'];
+  const normal = ids(dueUpdates(now, {}, {rebuilt}));
+  assert.ok(normal.includes('crossings'));
+  assert.ok(normal.includes('lifecycle'), 'this change does not stop any other dataset');
+  assert.deepEqual(ids(dueUpdates(now, {}, {rebuilt, sources})), normal.filter(id => id !== 'crossings'));
+  assert.deepEqual(ids(dueUpdates(now, {}, {sources, only: 'crossings'})), ['crossings']);
+  assert.deepEqual(ids(dueUpdates(now, {}, {sources, only: 'all'})), OSM_UPDATES.map(e => e.id));
+  assert.deepEqual(ids(dueUpdates(now, {}, {rebuilt, sources: settings({...file, crossings: 'overpass'})})), normal);
+  assert.deepEqual(ids(dueUpdates(now, {}, {rebuilt, sources: settings({...file, crossings: 'extract'},
+    parseConfig('{"crossings":"overpass"}'))})), normal);
+});
+
 test('the scheduler is the only schedule for these Overpass workflows, and starts each one by dispatch', async () => {
   const scheduler = await readFile(new URL('osm-updates.yml', workflows), 'utf8');
   assert.match(scheduler, /cron: '23 3-23\/6 \* \* \*'/);
   assert.match(scheduler, /group: osm-updates\n\s+cancel-in-progress: false/);
+  assert.ok(scheduler.includes('DATA_SOURCES: ${{ vars.DATA_SOURCES }}'), 'honour the same source override as Pages');
   assert.match(scheduler, /max-parallel: 1\n\s+fail-fast: false/, 'one at a time; a failure does not stop the rest');
   // The slot is released only when GitHub reports the dataset run completed;
   // a failed status request is retried, never read as the end of the run.
