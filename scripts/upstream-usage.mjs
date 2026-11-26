@@ -32,7 +32,16 @@ export function usageRecords(log) {
   return records;
 }
 
-// Totals per host, and per workflow and host.
+// A host's change updates in one record ({requests, bytes}), or null when
+// the record comes from the meter before it counted them.
+const changesOf = usage => {
+  const c = usage?.changes;
+  return c && Number.isSafeInteger(c.requests) && c.requests >= 0 && Number.isFinite(c.bytes) && c.bytes >= 0 ? c : null;
+};
+
+// Totals per host, and per workflow and host. `changeRequests` and
+// `changeBytes` are the change updates (augmented diffs); `unsplit` counts
+// the host's records without that split, whose change updates are unknown.
 export function summarize(jobs) {
   const hosts = new Map(), workflows = new Map();
   // These counters belong to a complete meter record, not to each host.
@@ -45,8 +54,10 @@ export function summarize(jobs) {
     } else measurement.unknownRecords++;
   }
   const add = (map, key, usage) => {
-    const total = map.get(key) || {requests: 0, bytes: 0, skipped: 0, jobs: 0};
+    const total = map.get(key) || {requests: 0, bytes: 0, skipped: 0, jobs: 0, changeRequests: 0, changeBytes: 0, unsplit: 0};
     total.requests += usage.requests || 0; total.bytes += usage.bytes || 0; total.skipped += usage.skipped || 0;
+    const changes = changesOf(usage);
+    if (changes) { total.changeRequests += changes.requests; total.changeBytes += changes.bytes; } else total.unsplit++;
     map.set(key, total);
     return total;
   };
@@ -80,15 +91,17 @@ export function usageReport({start, end, runs, jobs, unread, unfinished = []}, s
     ...(!summary.measurement || summary.measurement.unknownRecords ? ['**Incomplete:** some meter records lack valid body-measurement metadata; byte completeness is unknown.', ''] : []),
     ...(summary.measurement?.unmeasuredBodies ? [`**Incomplete:** ${summary.measurement.unmeasuredBodies} unread responses lacked a declared length; recorded bytes are a lower bound.`, ''] : []),
     `- ${runs} workflow runs; ${jobs} jobs with usage lines${unread.length ? `; ${unread.length} job logs could not be read: ${unread.slice(0, 20).join(', ')}` : ''}`, '',
-    '| Host | Requests | MB | Held back (meter pause) | Jobs | Against the guidance |', '| --- | ---: | ---: | ---: | ---: | --- |'];
+    '| Host | Requests | MB | Change updates: requests | Change updates: MB | Held back (meter pause) | Jobs | Against the guidance |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |'];
+  const changeCell = (t, value) => t.unsplit ? `${value} + unknown (${t.unsplit} records before the split)` : String(value);
   for (const [host, t] of Object.entries(summary.hosts)) {
     const g = GUIDANCE[host];
-    const against = g ? `one-off: ${(100 * t.requests / g.oneOff.requests).toFixed(1)}% of queries, ${(100 * t.bytes / g.oneOff.bytes).toFixed(1)}% of bytes; regular use: ${(100 * t.requests / g.regular.requests).toFixed(0)}%, ${(100 * t.bytes / g.regular.bytes).toFixed(0)}%` : '—';
-    lines.push(`| ${host} | ${t.requests} | ${(t.bytes / MB).toFixed(1)} | ${t.skipped} | ${t.jobs} | ${against} |`);
+    const regular = () => t.unsplit ? 'unknown: some records lack the change-update split' : `${(100 * t.changeRequests / g.regular.requests).toFixed(0)}% of queries, ${(100 * t.changeBytes / g.regular.bytes).toFixed(0)}% of bytes`;
+    const against = g ? `everything against one-off use: ${(100 * t.requests / g.oneOff.requests).toFixed(1)}% of queries, ${(100 * t.bytes / g.oneOff.bytes).toFixed(1)}% of bytes; change updates against regular use: ${regular()}` : '—';
+    lines.push(`| ${host} | ${t.requests} | ${(t.bytes / MB).toFixed(1)} | ${changeCell(t, t.changeRequests)} | ${changeCell(t, (t.changeBytes / MB).toFixed(2))} | ${t.skipped} | ${t.jobs} | ${against} |`);
   }
-  lines.push('', '| Workflow | Host | Requests | MB | Held back | Jobs |', '| --- | --- | ---: | ---: | ---: | ---: |');
-  for (const w of summary.workflows) lines.push(`| ${w.workflow} | ${w.host} | ${w.requests} | ${(w.bytes / MB).toFixed(1)} | ${w.skipped} | ${w.jobs} |`);
-  lines.push('', 'The meter cannot tell one-off downloads from routine change updates; the workflow rows show which runs the bytes came from.');
+  lines.push('', '| Workflow | Host | Requests | MB | Change updates: requests | Change updates: MB | Held back | Jobs |', '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |');
+  for (const w of summary.workflows) lines.push(`| ${w.workflow} | ${w.host} | ${w.requests} | ${(w.bytes / MB).toFixed(1)} | ${changeCell(w, w.changeRequests)} | ${changeCell(w, (w.changeBytes / MB).toFixed(2))} | ${w.skipped} | ${w.jobs} |`);
+  lines.push('', 'Change updates are the requests whose Overpass query is an augmented diff (`[adiff:…]`): the routine updates between full downloads. The wiki\'s regular-use guidance (100 queries and 10 MB a day) is held against them; everything else is full downloads, held against the one-off guidance with the rest. Other routine full queries (a small list fetched on every run) are in the workflow rows.');
   if (summary.measurement) lines.push('', `Body measurement: ${summary.measurement.unreadBodies} unread responses; ${summary.measurement.unmeasuredBodies} without a declared length; ${summary.measurement.unknownRecords} records with unknown metadata. These record-level counts cannot be assigned to individual hosts. Unread responses with declared lengths retain the meter\'s existing byte estimate.`);
   lines.push('', 'Completeness covers readable, finished jobs and their available meter records; it is not proof that all provider traffic was instrumented. The window selects workflow creation times, not individual request times.');
   return `${lines.join('\n')}\n`;

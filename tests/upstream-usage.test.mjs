@@ -68,6 +68,25 @@ test('unread logs independently prevent complete reporting; declared body length
   assert.match(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary), /not proof that all provider traffic was instrumented/);
 });
 
+test('the change updates are summed apart and held against regular use; full downloads against one-off use', () => {
+  const split = (bytes, requests, changes) => ({bytes, requests, changes});
+  const jobs = [
+    {workflow: 'Heritage', records: [usage({'overpass-api.de': split(4e6, 30, {requests: 20, bytes: 3e6})})]},
+    {workflow: 'Crossings', records: [usage({'overpass-api.de': split(9e6, 50, {requests: 40, bytes: 5e6})})]},
+    {workflow: 'Extracts', records: [usage({'download.geofabrik.de': split(8e9, 3, {requests: 0, bytes: 0})})]},
+  ];
+  const summary = summarize(jobs);
+  assert.deepEqual(summary.hosts['overpass-api.de'], {requests: 80, bytes: 13e6, skipped: 0, jobs: 2, changeRequests: 60, changeBytes: 8e6, unsplit: 0});
+  assert.deepEqual(summary.workflows.filter(w => w.host === 'overpass-api.de').map(w => [w.workflow, w.changeRequests, w.changeBytes]), [['Crossings', 40, 5e6], ['Heritage', 20, 3e6]]);
+  const report = usageReport({start: 's', end: 'e', runs: 3, jobs: 3, unread: []}, summary);
+  assert.match(report, /\| overpass-api\.de \| 80 \| 13\.0 \| 60 \| 8\.00 \| 0 \| 2 \| everything against one-off use: 0\.8% of queries, 1\.3% of bytes; change updates against regular use: 60% of queries, 80% of bytes \|/);
+  assert.match(report, /\| Crossings \| overpass-api\.de \| 50 \| 9\.0 \| 40 \| 5\.00 \| 0 \| 1 \|/);
+  assert.doesNotMatch(report, /\+ unknown|unknown: some records/);
+  // A malformed split counts as unknown, not as zero.
+  const bad = summarize([{workflow: 'X', records: [usage({'overpass-api.de': split(1, 1, {requests: -1, bytes: 0})})]}]);
+  assert.equal(bad.hosts['overpass-api.de'].unsplit, 1);
+});
+
 test('only the meter lines of a job log are records', () => {
   const log = [
     '2026-11-05T06:00:00.0000000Z ##[group]Run node --import ./scripts/overpass-meter.mjs scripts/build.mjs',
@@ -90,13 +109,14 @@ test('the day totals per host and per workflow, with every job counted once per 
     {workflow: 'Extracts', records: [usage({'download.geofabrik.de': {bytes: 8e9, requests: 3}, 'overpass-api.de': {bytes: 0, requests: 1}})]},
   ];
   const summary = summarize(jobs);
-  assert.deepEqual(summary.hosts['overpass-api.de'], {requests: 7, bytes: 5e6, skipped: 2, jobs: 3});
-  assert.deepEqual(summary.hosts['download.geofabrik.de'], {requests: 3, bytes: 8e9, skipped: 0, jobs: 1});
+  // Records from the meter before the change-update split: unknown, never zero.
+  assert.deepEqual(summary.hosts['overpass-api.de'], {requests: 7, bytes: 5e6, skipped: 2, jobs: 3, changeRequests: 0, changeBytes: 0, unsplit: 4});
+  assert.deepEqual(summary.hosts['download.geofabrik.de'], {requests: 3, bytes: 8e9, skipped: 0, jobs: 1, changeRequests: 0, changeBytes: 0, unsplit: 1});
   assert.deepEqual(summary.workflows.map(w => `${w.host} ${w.workflow} ${w.requests} ${w.jobs}`),
     ['download.geofabrik.de Extracts 3 1', 'overpass-api.de Heritage 6 2', 'overpass-api.de Extracts 1 1']);
   const report = usageReport({start: '2026-11-05T05:00:00Z', end: '2026-11-06T05:00:00Z', runs: 4, jobs: 3, unread: [99]}, summary);
-  assert.match(report, /\| overpass-api\.de \| 7 \| 5\.0 \| 2 \| 3 \| one-off: 0\.1% of queries, 0\.5% of bytes; regular use: 7%, 50% \|/);
-  assert.match(report, /\| download\.geofabrik\.de \| 3 \| 8000\.0 \| 0 \| 1 \| — \|/);
+  assert.match(report, /\| overpass-api\.de \| 7 \| 5\.0 \| 0 \+ unknown \(4 records before the split\) \| 0\.00 \+ unknown \(4 records before the split\) \| 2 \| 3 \| everything against one-off use: 0\.1% of queries, 0\.5% of bytes; change updates against regular use: unknown: some records lack the change-update split \|/);
+  assert.match(report, /\| download\.geofabrik\.de \| 3 \| 8000\.0 \| 0 \+ unknown \(1 records before the split\) \| 0\.00 \+ unknown \(1 records before the split\) \| 0 \| 1 \| — \|/);
   assert.match(report, /4 workflow runs; 3 jobs with usage lines; 1 job logs could not be read: 99/);
   assert.deepEqual(GUIDANCE['overpass-api.de'].regular, {requests: 100, bytes: 1e7});
 });

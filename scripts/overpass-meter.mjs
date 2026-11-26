@@ -26,6 +26,13 @@
 // cooldown before any decision that splits a region (heritage waits 120 s
 // before its last attempt), so every such decision still rests on a request
 // actually sent. The requests not sent are reported as `skipped`.
+// Each host also reports `changes`: the requests, and their bytes, whose
+// Overpass query is an augmented diff ([adiff:…], scripts/overpass-adiff.mjs
+// and crossing-data.mjs), that is, the routine change updates. The rest are
+// full downloads. The daily sum (scripts/upstream-usage.mjs) holds the change
+// updates against the wiki's regular-use guidance, which decides #330's
+// freshness option. A record without `changes` comes from the meter before
+// this split.
 import {appendFileSync, writeSync} from 'node:fs';
 import {basename} from 'node:path';
 
@@ -36,7 +43,17 @@ export const COOLDOWN_MS = setting('OVERPASS_COOLDOWN_MS', 60_000);
 const hosts = new Map();
 const bodies = new Set();
 let requests = 0;
-const entry = host => { if (!hosts.has(host)) hosts.set(host, {bytes: 0, requests: 0, failures: 0, failedAt: 0, skipped: 0}); return hosts.get(host); };
+const entry = host => { if (!hosts.has(host)) hosts.set(host, {bytes: 0, requests: 0, failures: 0, failedAt: 0, skipped: 0, changes: {bytes: 0, requests: 0}}); return hosts.get(host); };
+// The Overpass query a request sends: the `data` field of a form body
+// (URLSearchParams or its text) or of the URL. A Request's own body cannot
+// be read without consuming it, so only its URL is looked at.
+const queryOf = (input, init) => {
+  const body = init?.body;
+  if (body instanceof URLSearchParams) return body.get('data') ?? '';
+  if (typeof body === 'string') return new URLSearchParams(body).get('data') ?? body;
+  try { return new URL(input instanceof Request ? input.url : String(input)).searchParams.get('data') ?? ''; } catch { return ''; }
+};
+export const isChangeQuery = query => /\[adiff:/.test(String(query));
 // No answer at all: the connection failed or the request timed out. A
 // caller's own abort is not the server's fault.
 const unanswered = error => error?.name === 'TimeoutError' || (error?.name === 'TypeError' && /fetch failed/i.test(error.message));
@@ -50,16 +67,18 @@ if (typeof original === 'function') {
       throw new TypeError('fetch failed', {cause: new Error(`not sent: ${host} did not answer ${counted.failures} requests in a row; asked again after a ${COOLDOWN_MS / 1000} s pause`)});
     }
     counted.requests++; requests++;
+    const change = isChangeQuery(queryOf(input, init));
+    if (change) counted.changes.requests++;
     let response;
     try { response = await original(input, init); }
     catch (error) { if (unanswered(error)) { counted.failures++; counted.failedAt = performance.now(); } throw error; }
     counted.failures = 0;
     if (!response.body) return response;
     const header = response.headers.get('content-length'), length = /^\d+$/.test(header || '') ? Number(header) : NaN;
-    const tracked = {host, read: 0, declared: Number.isSafeInteger(length) ? length : null, done: false};
+    const tracked = {host, change, read: 0, declared: Number.isSafeInteger(length) ? length : null, done: false};
     bodies.add(tracked);
     const body = response.body.pipeThrough(new TransformStream({
-      transform(chunk, controller) { counted.bytes += chunk.byteLength; tracked.read += chunk.byteLength; controller.enqueue(chunk); },
+      transform(chunk, controller) { counted.bytes += chunk.byteLength; if (change) counted.changes.bytes += chunk.byteLength; tracked.read += chunk.byteLength; controller.enqueue(chunk); },
       flush() { tracked.done = true; },
     }));
     const metered = new Response(body, {status: response.status, statusText: response.statusText, headers: response.headers});
@@ -69,13 +88,17 @@ if (typeof original === 'function') {
 }
 
 export function overpassUsage() {
-  const totals = new Map([...hosts].map(([host, {bytes, requests, skipped}]) => [host, {bytes, requests, ...(skipped ? {skipped} : {})}]));
+  const totals = new Map([...hosts].map(([host, {bytes, requests, skipped, changes}]) => [host, {bytes, requests, ...(skipped ? {skipped} : {}), changes: {...changes}}]));
   let unread = 0, unmeasured = 0;
   for (const body of bodies) {
     if (body.done) continue;
     unread++;
     if (body.declared === null) unmeasured++;
-    else totals.get(body.host).bytes += Math.max(0, body.declared - body.read);
+    else {
+      const rest = Math.max(0, body.declared - body.read), total = totals.get(body.host);
+      total.bytes += rest;
+      if (body.change) total.changes.bytes += rest;
+    }
   }
   const sorted = [...totals].sort(([a], [b]) => a.localeCompare(b));
   const skipped = sorted.reduce((sum, [, t]) => sum + (t.skipped ?? 0), 0);
