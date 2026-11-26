@@ -6,10 +6,14 @@ const contextPoint = layer => layer.layout?.['symbol-placement'] == null &&
   /^context-(transport|destinations|constraints)-.+-label$/.test(layer.id) &&
   typeof layer.layout?.['icon-image'] === 'string' && layer.layout['icon-image'].startsWith('context-');
 
+const crossingMark = layer => layer.id==='infrastructure-crossing-marks' &&
+  (layer.layout?.['symbol-placement']??'point')==='point' && layer.layout?.['icon-image']==='crossing-x';
+
 export function flatTextLabel(layer) {
   return layer.type==='symbol' && layer['source-layer']!=null &&
     ['point','line','line-center'].includes(layer.layout?.['symbol-placement']??'point') &&
-    layer.layout?.['text-field']!=null && (layer.layout?.['icon-image']==null || contextPoint(layer));
+    (crossingMark(layer) ||
+      layer.layout?.['text-field']!=null && (layer.layout?.['icon-image']==null || contextPoint(layer)));
 }
 const properties={
   text:['layout','text-field'], maxWidth:['layout','text-max-width'], size:['layout','text-size'], font:['layout','text-font'],
@@ -24,6 +28,26 @@ export function compileFlatTextLabel(layer) {
   const {filter,needGeometry}=featureFilter(layer.filter);
   if(needGeometry) return null;
   const placement=layer.layout['symbol-placement']??'point';
+  if(crossingMark(layer)){
+    const expression=(section,name)=>{
+      const spec=latest[section+'_symbol'][name];
+      return normalizePropertyExpression(layer[section]?.[name]??spec.default,spec);
+    };
+    const size=expression('layout','icon-size'),color=expression('paint','icon-color');
+    const halo=expression('paint','icon-halo-color'),haloWidth=expression('paint','icon-halo-width');
+    const opacity=expression('paint','icon-opacity');
+    return {sourceLayer:layer['source-layer'],placement,
+      resolve(global,feature,canonical,state={}){
+        if(feature.type!==1||!filter(global,feature,canonical))return null;
+        const resolvedSize=size.evaluate(global,feature,state,canonical);
+        const alpha=opacity.evaluate(global,feature,state,canonical);
+        if(!(resolvedSize>0)||!(alpha>0))return null;
+        return {crossing:{size:resolvedSize,opacity:alpha,
+          color:color.evaluate(global,feature,state,canonical),
+          halo:halo.evaluate(global,feature,state,canonical),
+          haloWidth:haloWidth.evaluate(global,feature,state,canonical)}};
+      }};
+  }
   const usesLegacyTokens=typeof layer.layout['text-field']==='string';
   const expressions=Object.entries(properties).map(([key,[section,name]])=>{
     const spec=latest[section+'_symbol'][name];
@@ -167,6 +191,17 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
       let count=0;
       for(const label of candidates.sort((a,b)=>(a.sort??0)-(b.sort??0))){
         const {label:text,size,px,py,haloWidth,padding=0}=label;
+        if(label.crossing){
+          const {size,haloWidth}=label.crossing;
+          const extent=5*size+haloWidth;
+          const rect={left:px-extent,right:px+extent,top:py-extent,bottom:py+extent};
+          if(rect.right<=0||rect.left>=camera.width||rect.bottom<=0||rect.top>=camera.height)continue;
+          // Infrastructure crossing marks overlap without reserving label space.
+          drawn.push({label,crossing:label.crossing});
+          onSymbol(id,label,[rect]);
+          count++;
+          continue;
+        }
         let icon,iconRect,iconBlock,iconWidth,iconHeight;
         if(label.iconName){
           icon=getIcon(label.iconName);
@@ -247,7 +282,24 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
     }
     // Placement priority is independent of paint order: accepted labels
     // from a higher-priority group remain on top if overlap is allowed.
-    for(const {label,lines,widths,width,x,y,lineHeight,font,layout,icon,iconRect,iconWidth,iconHeight} of drawn.reverse()){
+    for(const {label,lines,widths,width,x,y,lineHeight,font,layout,icon,iconRect,iconWidth,iconHeight,crossing} of drawn.reverse()){
+      if(crossing){
+        // Equivalent to the WebGL distance-field icon's 4px diagonal half
+        // span and 2px stroke at sprite pixel ratio 2.
+        const {px,py}=label, span=4*crossing.size, width=2*crossing.size;
+        context.globalAlpha=alpha*crossing.opacity;
+        context.lineCap='round';
+        context.beginPath();
+        context.moveTo(px-span,py-span);context.lineTo(px+span,py+span);
+        context.moveTo(px-span,py+span);context.lineTo(px+span,py-span);
+        if(crossing.haloWidth>0){
+          context.strokeStyle=crossing.halo.toString();
+          context.lineWidth=width+2*crossing.haloWidth;
+          context.stroke();
+        }
+        context.strokeStyle=crossing.color.toString();context.lineWidth=width;context.stroke();
+        continue;
+      }
       if(icon){
         context.globalAlpha=alpha*label.iconOpacity;
         context.drawImage(icon,iconRect.left,iconRect.top,iconWidth,iconHeight);

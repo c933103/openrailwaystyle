@@ -150,3 +150,24 @@ test('mixed-script line captions stay upright, wait for their font, and respect 
   assert.deepEqual(loaded.draws.filter(a=>a[0]==='rotate').map(a=>a[1]),[-Math.PI/4,Math.PI/2]);
   assert.deepEqual(loaded.draws.filter(a=>a[0]==='fill').map(a=>a[1]),['Ordinary','Монгол ',word]);
 });
+
+test('level-crossing marks use the generated road and foot colours only in the configured zoom band',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+  const marks=style.layers.find(l=>l.id==='infrastructure-crossing-marks');
+  const point=(id,x,kind)=>({type:1,id,extent:256,paths:[[{x,y:55}]],properties:{kind}});
+  const data=[point(11,45,'road'),point(12,90,'foot'),point(13,256,'road')];
+  const tiles=new Map([[marks.source,[{tile:{x:0,y:0,z:0},vector:{layer:()=>data}}]]]);
+  const ctx=context(), hits=[], paints=[];
+  Object.assign(ctx,{beginPath(){},moveTo(){},lineTo(){},
+    stroke(){paints.push([this.strokeStyle,this.lineWidth]);}});
+  const draw=compileFlatFrame([marks]), options={onSymbol:(_,label)=>hits.push(label.feature.id)};
+  for(const zoom of [10.99,15])assert.equal(draw(ctx,{...camera,zoom},tiles,options).layerDraws.has(marks.id),false);
+  const result=draw(ctx,{...camera,zoom:13},tiles,options);
+  assert.deepEqual(result.unsupported,[]);
+  assert.deepEqual(hits,[11,12]);
+  assert.equal(result.layerDraws.get(marks.id),2);
+  assert.deepEqual(paints.map(p=>p[0]),['rgba(255,254,248,1)','rgba(160,112,74,1)',
+    'rgba(255,254,248,1)','rgba(99,51,44,1)']);
+  assert.ok(paints[0][1]>paints[1][1],'Distance mark keeps its visible contrasting halo');
+});
